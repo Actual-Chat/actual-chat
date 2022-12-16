@@ -332,7 +332,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     {
         var content = entry.GetContentOrDescription();
         var markup = MarkupParser.Parse(content);
-        markup = new MarkupTrimmer(maxLength).Rewrite(markup);
+        markup = new MarkupTrimmer().Trim(markup, maxLength);
         return MarkupFormatter.ReadableUnstyled.Format(markup);
     }
 }

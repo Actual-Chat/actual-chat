@@ -179,8 +179,8 @@
         var content = entry.Content;
         var markup = entry switch {
             { SystemEntry: { } se } => new SystemMarkup(MarkupParser.Parse(se.Option?.ToMarkup() ?? "")),
-            { IsAudioEntry: true } when !isQuote => new PlayableTextMarkup(content, entry.TextToTimeMap),
-            { IsAudioEntry: true } when isQuote => new PlainTextMarkup(content),
+            { HasAudioEntry: true } when !isQuote => new PlayableTextMarkup(content, entry.TextToTimeMap),
+            { HasAudioEntry: true } when isQuote => new PlainTextMarkup(content),
             _ => MarkupParser.Parse(content),
         };
         return markup;

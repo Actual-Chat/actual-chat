@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public class MarkupValidator : MarkupVisitor<bool>
+public record MarkupValidator : MarkupVisitor<bool>
 {
     public enum AggregationMode { All, Any }
 

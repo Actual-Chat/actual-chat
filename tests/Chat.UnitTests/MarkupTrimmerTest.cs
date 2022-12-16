@@ -14,7 +14,7 @@ public class MarkupTrimmerTest
         });
 
         // act
-        var trimmed = new MarkupTrimmer(100).Rewrite(markup);
+        var trimmed = new MarkupTrimmer().Trim(markup, 100);
 
         // assert
         MarkupFormatter.ReadableUnstyled.Format(trimmed).Should().Be("Hi, @Jack! How are you?");
@@ -29,7 +29,7 @@ public class MarkupTrimmerTest
         });
 
         // act
-        var trimmed = new MarkupTrimmer(10).Rewrite(markup);
+        var trimmed = new MarkupTrimmer().Trim(markup, 10);
 
         // assert
         MarkupFormatter.ReadableUnstyled.Format(trimmed).Should().Be("Hi, Jack! …");
@@ -48,7 +48,7 @@ public class MarkupTrimmerTest
         });
 
         // act
-        var trimmed = new MarkupTrimmer(11).Rewrite(markup);
+        var trimmed = new MarkupTrimmer().Trim(markup, 11);
 
         // assert
         MarkupFormatter.ReadableUnstyled.Format(trimmed).Should().Be("Hi, Jack! H…");

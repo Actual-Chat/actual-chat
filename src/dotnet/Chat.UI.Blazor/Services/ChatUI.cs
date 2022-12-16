@@ -149,7 +149,7 @@ public partial class ChatUI : WorkerBase
         var lastTextEntryContent = news.LastTextEntry?.GetContentOrDescription() ?? "";
         if (lastTextEntryContent.Length != 0) {
             var markup = MarkupParser.Parse(lastTextEntryContent);
-            markup = new MarkupTrimmer(ChatInfo.MaxLastTextEntryContentLength).Rewrite(markup);
+            markup = new MarkupTrimmer().Trim(markup, ChatInfo.MaxLastTextEntryContentLength);
             lastTextEntryContent = MarkupFormatter.ReadableUnstyled.Format(markup);
         }
 

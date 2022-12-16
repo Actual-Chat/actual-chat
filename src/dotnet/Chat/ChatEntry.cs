@@ -54,11 +54,13 @@ public sealed record ChatEntry(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsSystemEntry => SystemEntry != null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsAudioEntry => AudioEntryId.HasValue;
+    public bool HasAudioEntry => AudioEntryId.HasValue;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsVideoEntry => VideoEntryId.HasValue;
+    public bool HasVideoEntry => VideoEntryId.HasValue;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsMediaEntry => VideoEntryId.HasValue || AudioEntryId.HasValue;
+    public bool HasMediaEntry => VideoEntryId.HasValue || AudioEntryId.HasValue;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
 
     public ChatEntry() : this(ChatEntryId.None) { }
 

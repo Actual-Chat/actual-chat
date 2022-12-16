@@ -58,12 +58,12 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chatEntry = Message.Entry;
-        var hasAttachments = chatEntry.Attachments.Length > 0;
-        var markup = await _chatMarkupHub.ParseAndNameMentions(chatEntry.Content, cancellationToken);
+        var entry = Message.Entry;
+        var hasAttachments = entry.Attachments.Length > 0;
+        var markup = _chatMarkupHub.Parse(entry.Content);
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _quoteText = string.IsNullOrWhiteSpace(text) && hasAttachments ? "Click to see attachment" : text;
-        var ownAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, cancellationToken);
+        var ownAuthor = await Authors.GetOwn(Session, entry.ChatId, cancellationToken);
         return new (Message, _quoteText, ownAuthor);
     }
 

@@ -2,7 +2,7 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public abstract record MarkupFormatterBase : RefStatelessMarkupVisitor<Utf16ValueStringBuilder>
+public abstract record MarkupFormatterBase : MarkupVisitorWithState<Utf16ValueStringBuilder>
 {
     public string Format(Markup markup)
     {

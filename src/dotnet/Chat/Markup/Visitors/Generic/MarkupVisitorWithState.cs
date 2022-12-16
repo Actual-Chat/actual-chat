@@ -1,6 +1,46 @@
 namespace ActualChat.Chat;
 
-public abstract record RefStatelessMarkupVisitor<TState>
+public abstract record MarkupVisitorWithState<TState, TResult>
+{
+    protected virtual TResult Visit(Markup markup, ref TState state)
+        => markup switch {
+            MarkupSeq markupSeq => VisitSeq(markupSeq, ref state),
+            CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, ref state),
+            MentionMarkup mention => VisitMention(mention, ref state),
+            UrlMarkup urlMarkup => VisitUrl(urlMarkup, ref state),
+            StylizedMarkup stylizedMarkup => VisitStylized(stylizedMarkup, ref state),
+            TextMarkup textMarkup => VisitText(textMarkup, ref state),
+            _ => VisitUnknown(markup, ref state),
+        };
+
+    protected virtual TResult VisitText(TextMarkup markup, ref TState state)
+        => markup switch {
+            PlainTextMarkup plainTextMarkup => VisitPlainText(plainTextMarkup, ref state),
+            PlayableTextMarkup playableTextMarkup => VisitPlayableText(playableTextMarkup, ref state),
+            PreformattedTextMarkup preformattedTextMarkup => VisitPreformattedText(preformattedTextMarkup, ref state),
+            NewLineMarkup newLineMarkup => VisitNewLine(newLineMarkup, ref state),
+            UnparsedTextMarkup unparsedMarkup => VisitUnparsed(unparsedMarkup, ref state),
+            _ => VisitUnknown(markup, ref state),
+        };
+
+    protected abstract TResult VisitSeq(MarkupSeq markup, ref TState state);
+    protected abstract TResult VisitStylized(StylizedMarkup markup, ref TState state);
+
+    protected abstract TResult VisitUrl(UrlMarkup markup, ref TState state);
+    protected abstract TResult VisitMention(MentionMarkup markup, ref TState state);
+    protected abstract TResult VisitCodeBlock(CodeBlockMarkup markup, ref TState state);
+
+    protected abstract TResult VisitPlainText(PlainTextMarkup markup, ref TState state);
+    protected abstract TResult VisitPlayableText(PlayableTextMarkup markup, ref TState state);
+    protected abstract TResult VisitPreformattedText(PreformattedTextMarkup markup, ref TState state);
+    protected abstract TResult VisitNewLine(NewLineMarkup markup, ref TState state);
+    protected abstract TResult VisitUnparsed(UnparsedTextMarkup markup, ref TState state);
+
+    protected virtual TResult VisitUnknown(Markup markup, ref TState state)
+        => throw new ArgumentOutOfRangeException(nameof(markup));
+}
+
+public abstract record MarkupVisitorWithState<TState>
 {
     protected virtual void Visit(Markup markup, ref TState state)
     {
@@ -41,11 +81,11 @@ public abstract record RefStatelessMarkupVisitor<TState>
         case PreformattedTextMarkup preformattedTextMarkup:
             VisitPreformattedText(preformattedTextMarkup, ref state);
             break;
-        case UnparsedTextMarkup unparsedMarkup:
-            VisitUnparsed(unparsedMarkup, ref state);
-            break;
         case NewLineMarkup newLineMarkup:
             VisitNewLine(newLineMarkup, ref state);
+            break;
+        case UnparsedTextMarkup unparsedMarkup:
+            VisitUnparsed(unparsedMarkup, ref state);
             break;
         default:
             VisitUnknown(markup, ref state);
@@ -60,7 +100,6 @@ public abstract record RefStatelessMarkupVisitor<TState>
     }
 
     protected abstract void VisitStylized(StylizedMarkup markup, ref TState state);
-
     protected abstract void VisitUrl(UrlMarkup markup, ref TState state);
     protected abstract void VisitMention(MentionMarkup markup, ref TState state);
     protected abstract void VisitCodeBlock(CodeBlockMarkup markup, ref TState state);

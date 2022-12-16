@@ -227,7 +227,7 @@
         var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
             chatIdRange,
-            x => x.AuthorId == author.Id && x is { IsMediaEntry: false, IsStreaming: false },
+            x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },
             1000, // Max. 1000 entries to scan upwards
             CancellationToken.None);
         if (lastEditableEntry == null)

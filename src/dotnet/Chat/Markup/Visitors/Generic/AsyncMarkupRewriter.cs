@@ -1,10 +1,7 @@
 namespace ActualChat.Chat;
 
-public abstract class AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
+public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
 {
-    public ValueTask<Markup> Rewrite(Markup markup, CancellationToken cancellationToken)
-        => Visit(markup, cancellationToken);
-
     protected override async ValueTask<Markup> VisitSeq(MarkupSeq markup, CancellationToken cancellationToken)
     {
         var newItems = new List<Markup>();
@@ -25,20 +22,20 @@ public abstract class AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
     }
 
     protected override ValueTask<Markup> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
     protected override ValueTask<Markup> VisitMention(MentionMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
     protected override ValueTask<Markup> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
 
     protected override ValueTask<Markup> VisitPlainText(PlainTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
     protected override ValueTask<Markup> VisitPlayableText(PlayableTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
     protected override ValueTask<Markup> VisitPreformattedText(PreformattedTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
     protected override ValueTask<Markup> VisitNewLine(NewLineMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
     protected override ValueTask<Markup> VisitUnparsed(UnparsedTextMarkup markup, CancellationToken cancellationToken)
-        => ValueTask.FromResult<Markup>(markup);
+        => new (markup);
 }

@@ -63,7 +63,7 @@
         if (_chatMarkupHub == null! || _chatMarkupHub.ChatId != chatId)
             _chatMarkupHub = ChatMarkupHubFactory[chatId];
 
-        var markup = await _chatMarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
+        var markup = _chatMarkupHub.Parse(Message.Entry.Content);
         _text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _ownAuthor = await Authors.GetOwn(Session, chatId, CancellationToken.None);
     }

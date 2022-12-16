@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public abstract class MarkupVisitor<TResult>
+public abstract record MarkupVisitor<TResult>
 {
     protected virtual TResult Visit(Markup markup)
         => markup switch {

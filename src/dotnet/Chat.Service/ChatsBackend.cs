@@ -402,7 +402,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             var content = entry.Content;
             var markup = MarkupParser.Parse(content);
             var mentionNamer = ChatMarkupHubFactory[chatId].MentionNamer;
-            markup = await mentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
+            markup = await mentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             content = MarkupFormatter.Default.Format(markup);
             entry = entry with { Content = content };
         }

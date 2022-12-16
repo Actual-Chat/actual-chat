@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public abstract class AsyncMarkupVisitor<TResult>
+public abstract record AsyncMarkupVisitor<TResult>
 {
     protected virtual ValueTask<TResult> Visit(Markup markup, CancellationToken cancellationToken)
         => markup switch {
