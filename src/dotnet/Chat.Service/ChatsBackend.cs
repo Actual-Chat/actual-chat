@@ -398,14 +398,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
         // Injecting mention names into the markup
-        if (entry is { Kind: ChatEntryKind.Text, Content.Length: > 0 }) {
-            var content = entry.Content;
-            var markup = MarkupParser.Parse(content);
-            var mentionNamer = ChatMarkupHubFactory[chatId].MentionNamer;
-            markup = await mentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
-            content = MarkupFormatter.Default.Format(markup);
-            entry = entry with { Content = content };
-        }
+        var chatMarkupHub = ChatMarkupHubFactory[chatId];
+        entry = await chatMarkupHub.NameMentions(entry, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

@@ -11,6 +11,9 @@ public static class ChatMarkupHubExt
             return entry;
 
         var content = entry.Content;
+        if (content.IsNullOrEmpty())
+            return entry;
+
         var markup = markupHub.Parser.Parse(content);
         var newMarkup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
         if (ReferenceEquals(newMarkup, markup))
