@@ -17,7 +17,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         // await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
         // await UpgradePermissions(dbContext, cancellationToken).ConfigureAwait(false);
         // await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
-        await FixCorruptedLastReadPositions(dbContext, cancellationToken).ConfigureAwait(false);
+        // await FixCorruptedLastReadPositions(dbContext, cancellationToken).ConfigureAwait(false);
     }
 
     // Active upgrade steps
