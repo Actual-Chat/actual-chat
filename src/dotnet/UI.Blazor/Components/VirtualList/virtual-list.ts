@@ -388,20 +388,6 @@ export class VirtualList {
                 this.setStickyEdge(null);
             }
 
-            if (!this._isRendering) {
-                const location = window.location;
-                const now = Date.now();
-                const timeSinceLastScroll = now - this._scrollTime ?? 0;
-                // longest scroll animation at Chrome is 3s
-                if (location.hash !== '' && timeSinceLastScroll > 3000) {
-                    const scrollToKey = location.hash.substring(1);
-                    if (!this._visibleItems.has(scrollToKey)) {
-                        const currentState = history.state;
-                        history.pushState(currentState, document.title, location.pathname + location.search);
-                    }
-                }
-            }
-
             this.updateVisibleKeysThrottled();
         }
     };
