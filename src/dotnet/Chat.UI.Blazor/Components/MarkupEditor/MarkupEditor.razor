@@ -30,7 +30,7 @@
     [Parameter] public EventCallback OpenPrevious { get; set; }
 
     public IJSObjectReference JSRef { get; private set; } = null!;
-    public MarkupHub MarkupHub => HtmlConverter.MarkupHub;
+    public ChatMarkupHub ChatMarkupHub => HtmlConverter.ChatMarkupHub;
     public Task WhenReady => _whenReadySource.Task;
 
     public MarkupEditor() {
@@ -77,7 +77,7 @@
     }
 
     public async ValueTask SetText(string text, bool mustFocus = false) {
-        var markup = await MarkupHub.ParseAndNameMentions(text, default);
+        var markup = await ChatMarkupHub.ParseAndNameMentions(text, default);
         await SetMarkup(markup, mustFocus);
     }
 

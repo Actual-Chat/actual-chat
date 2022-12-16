@@ -40,7 +40,7 @@
 </div>
 
 @code {
-    private MarkupHub _markupHub = null!;
+    private ChatMarkupHub _chatMarkupHub = null!;
     private string _text = null!;
     private AuthorFull? _ownAuthor = null;
 
@@ -48,7 +48,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ServiceFactory<MarkupHub, ChatId> MarkupHubFactory { get; init; } = null!;
+    [Inject] private KeyedFactory<ChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
@@ -60,10 +60,10 @@
 
     protected override async Task OnParametersSetAsync() {
         var chatId = ChatId;
-        if (_markupHub == null! || _markupHub.ChatId != chatId)
-            _markupHub = MarkupHubFactory[chatId];
+        if (_chatMarkupHub == null! || _chatMarkupHub.ChatId != chatId)
+            _chatMarkupHub = ChatMarkupHubFactory[chatId];
 
-        var markup = await _markupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
+        var markup = await _chatMarkupHub.ParseAndNameMentions(Message.Entry.Content, CancellationToken.None);
         _text = MarkupFormatter.ReadableUnstyled.Format(markup);
         _ownAuthor = await Authors.GetOwn(Session, chatId, CancellationToken.None);
     }

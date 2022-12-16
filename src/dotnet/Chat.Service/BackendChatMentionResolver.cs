@@ -7,7 +7,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
 
-    public ChatId ChatId { get; set; }
+    public ChatId ChatId { get; }
 
     public BackendChatMentionResolver(IServiceProvider services, ChatId chatId)
     {

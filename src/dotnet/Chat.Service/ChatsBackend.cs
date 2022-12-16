@@ -21,7 +21,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IMarkupParser MarkupParser { get; }
-    private ServiceFactory<BackendChatMentionResolver, ChatId> ChatMentionResolverFactory { get; }
+    private KeyedFactory<BackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
@@ -34,7 +34,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
-        ChatMentionResolverFactory = services.ServiceFactory<BackendChatMentionResolver, ChatId>();
+        ChatMarkupHubFactory = services.KeyedFactory<BackendChatMarkupHub, ChatId>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         DiffEngine = services.GetRequiredService<DiffEngine>();
@@ -401,7 +401,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (entry is { Kind: ChatEntryKind.Text, Content.Length: > 0 }) {
             var content = entry.Content;
             var markup = MarkupParser.Parse(content);
-            var mentionNamer = new MentionNamer(ChatMentionResolverFactory[chatId]);
+            var mentionNamer = ChatMarkupHubFactory[chatId].MentionNamer;
             markup = await mentionNamer.Rewrite(markup, cancellationToken).ConfigureAwait(false);
             content = MarkupFormatter.Default.Format(markup);
             entry = entry with { Content = content };

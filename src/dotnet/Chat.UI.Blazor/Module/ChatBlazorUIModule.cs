@@ -33,15 +33,13 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         services.AddScoped<NavbarUI>();
         services.AddScoped<IAudioOutputController, AudioOutputController>();
+        services.AddScoped(c => new CachingKeyedFactory<ChatMarkupHub, ChatId>(c, 256).ToGeneric());
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>();
-        services.AddServiceFactory<ChatMentionResolver, ChatId>(ServiceLifetime.Scoped);
-        services.AddServiceFactory<ChatMentionSearchProvider, ChatId>(ServiceLifetime.Scoped);
-        services.AddServiceFactory<MarkupHub, ChatId>(ServiceLifetime.Scoped);
 
         // Chat activity
         services.AddScoped<ChatActivity>();

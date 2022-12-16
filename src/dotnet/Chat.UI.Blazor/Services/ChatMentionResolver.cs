@@ -8,7 +8,7 @@ public class ChatMentionResolver : IChatMentionResolver
     private IAccounts Accounts { get; }
     private IAuthors Authors { get; }
 
-    public ChatId ChatId { get; set; }
+    public ChatId ChatId { get; }
 
     public ChatMentionResolver(IServiceProvider services, ChatId chatId)
     {

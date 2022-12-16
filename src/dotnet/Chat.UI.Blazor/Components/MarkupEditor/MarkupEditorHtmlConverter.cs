@@ -5,11 +5,11 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
 {
-    public MarkupHub MarkupHub { get; init; }
+    public ChatMarkupHub ChatMarkupHub { get; init; }
 
-    public MarkupEditorHtmlConverter(MarkupHub markupHub)
+    public MarkupEditorHtmlConverter(ChatMarkupHub chatMarkupHub)
     {
-        MarkupHub = markupHub;
+        ChatMarkupHub = chatMarkupHub;
         UrlClass = "editor-url";
         MentionClass = "editor-mention";
         PreformattedTextClass = "editor-preformatted";

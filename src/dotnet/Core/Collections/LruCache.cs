@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Collections;
 
 public interface ILruCache<in TKey, TValue>

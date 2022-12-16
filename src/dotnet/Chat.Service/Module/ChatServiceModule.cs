@@ -101,12 +101,12 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IReactions, Reactions>();
         fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
 
-        // ChatMentionResolver
-        services.AddServiceFactory<BackendChatMentionResolver, ChatId>();
-
         // ContentSaver
         services.AddResponseCaching();
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+
+        // ChatMarkupHub
+        services.AddSingleton(c => new CachingKeyedFactory<BackendChatMarkupHub, ChatId>(c, 4096, true).ToGeneric());
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
