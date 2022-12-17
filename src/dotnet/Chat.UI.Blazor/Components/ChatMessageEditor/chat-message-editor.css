@@ -2,7 +2,15 @@
     @apply relative;
     @apply bg-07 md:bg-01;
 }
-
+.chat-message-editor.narrow {
+    background: transparent;
+}
+.post-panel-wrapper {
+    @apply -flex-y w-full overflow-x-hidden bg-transparent;
+}
+.chat-message-editor.narrow .post-panel-wrapper {
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 40%, rgba(68,68,68,1) 40%);
+}
 .post-panel {
     @apply flex-x justify-between items-center;
     @apply w-full min-h-12;

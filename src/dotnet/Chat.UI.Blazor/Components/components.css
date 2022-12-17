@@ -212,6 +212,13 @@
     @apply bg-round-hover;
 }
 
+.writable-chat-footer {
+    @apply relative bg-transparent md:bg-transparent;
+}
+.writable-chat-footer.narrow {
+    background: transparent;
+}
+
 .chat-footer {
     @apply flex justify-center items-center w-full h-full bg-01;
     @apply py-0 md:py-1.5 px-2;

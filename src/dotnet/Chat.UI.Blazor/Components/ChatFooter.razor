@@ -9,7 +9,7 @@
         editorCls = "wide";
 }
 
-<div class="relative min-h-auto bg-07 md:bg-01 @editorCls" oncontextmenu="return false;">
+<div class="writable-chat-footer @editorCls" oncontextmenu="return false;">
     @if (m == Model.None) {
         // render skeletons until State is computed
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
