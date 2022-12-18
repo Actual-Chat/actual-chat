@@ -11,6 +11,9 @@
 .chat-message-editor.narrow .post-panel-wrapper {
     background: linear-gradient(to bottom, rgba(255,255,255,0) 40%, rgba(68,68,68,1) 40%);
 }
+.chat-message-editor.narrow.narrow-panel .post-panel-wrapper {
+    @apply bg-07;
+}
 .post-panel {
     @apply flex-x justify-between items-center;
     @apply w-full min-h-12;
