@@ -64,26 +64,6 @@ public sealed record ChatEntry(
 
     public ChatEntry() : this(ChatEntryId.None) { }
 
-    public string GetContentOrDescription()
-    {
-        if (SystemEntry != null) {
-
-        }
-        if (!Content.IsNullOrEmpty()) {
-
-            return Content;
-        }
-
-        var imageCount = Attachments.Count(x => x.IsImage());
-        var description = imageCount switch {
-            1 => "image",
-            > 1 => "images",
-            0 when Attachments.Length == 1 => Attachments[0].FileName,
-            _ => "files: " + string.Join(", ", Attachments.Select(x => x.FileName)),
-        };
-        return description;
-    }
-
     // This record relies on version-based equality
     public bool Equals(ChatEntry? other) => EqualityComparer.Equals(this, other);
     public override int GetHashCode() => EqualityComparer.GetHashCode(this);

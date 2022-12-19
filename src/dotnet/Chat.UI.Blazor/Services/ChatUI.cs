@@ -26,7 +26,7 @@ public partial class ChatUI : WorkerBase
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
-    private IMarkupParser MarkupParser { get; }
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private IUserPresences UserPresences { get; }
@@ -51,8 +51,8 @@ public partial class ChatUI : WorkerBase
 
     public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
     public IStoredState<ChatId> SelectedChatId { get; }
-    public IMutableState<LinkedChatEntry?> LinkedChatEntry { get; }
-    public IMutableState<long> HighlightedChatEntryId { get; }
+    public IMutableState<RelatedChatEntry?> RelatedChatEntry { get; }
+    public IMutableState<long> HighlightedEntryId { get; }
     public IMutableState<Range<long>> VisibleIdRange { get; }
     public IMutableState<bool> IsEndAnchorVisible { get; }
 
@@ -62,7 +62,7 @@ public partial class ChatUI : WorkerBase
         Services = services;
         Clocks = services.Clocks();
         StateFactory = services.StateFactory();
-        MarkupParser = services.GetRequiredService<IMarkupParser>();
+        ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();
 
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
@@ -86,8 +86,8 @@ public partial class ChatUI : WorkerBase
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixActiveChats,
             });
-        LinkedChatEntry = StateFactory.NewMutable<LinkedChatEntry?>();
-        HighlightedChatEntryId = StateFactory.NewMutable<long>();
+        RelatedChatEntry = StateFactory.NewMutable<RelatedChatEntry?>();
+        HighlightedEntryId = StateFactory.NewMutable<long>();
         VisibleIdRange = StateFactory.NewMutable<Range<long>>();
         IsEndAnchorVisible = StateFactory.NewMutable<bool>(true);
 
@@ -146,11 +146,11 @@ public partial class ChatUI : WorkerBase
             hasUnreadMentions = lastMentionEntryId > readEntryId;
         }
 
-        var lastTextEntryContent = news.LastTextEntry?.GetContentOrDescription() ?? "";
-        if (lastTextEntryContent.Length != 0) {
-            var markup = MarkupParser.Parse(lastTextEntryContent);
-            markup = new MarkupTrimmer().Trim(markup, ChatInfo.MaxLastTextEntryContentLength);
-            lastTextEntryContent = MarkupFormatter.ReadableUnstyled.Format(markup);
+        var lastTextEntryText = "";
+        if (news.LastTextEntry is { } lastTextEntry) {
+            var chatMarkupHub = ChatMarkupHubFactory[chatId];
+            var markup = await chatMarkupHub.GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken);
+            lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
         }
 
         var result = new ChatInfo(contact) {
@@ -160,7 +160,7 @@ public partial class ChatUI : WorkerBase
             ReadEntryId = readEntryId,
             UnreadCount = new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount),
             HasUnreadMentions = hasUnreadMentions,
-            LastTextEntryContent = lastTextEntryContent,
+            LastTextEntryText = lastTextEntryText,
         };
         return result;
     }

@@ -1,8 +1,8 @@
 using ActualChat.Search;
 
-namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.Chat.UI.Blazor.Services.Internal;
 
-public class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
+internal class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
 {
     private Session Session { get; }
     private IChats Chats { get; }

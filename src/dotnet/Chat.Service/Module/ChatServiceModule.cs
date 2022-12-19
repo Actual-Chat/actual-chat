@@ -106,7 +106,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
         // ChatMarkupHub
-        services.AddSingleton(c => new CachingKeyedFactory<BackendChatMarkupHub, ChatId>(c, 4096, true).ToGeneric());
+        services.AddSingleton(c =>
+            new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

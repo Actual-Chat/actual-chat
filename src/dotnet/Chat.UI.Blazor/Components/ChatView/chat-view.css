@@ -118,3 +118,13 @@
     @apply cursor-pointer;
     @apply hover:opacity-80;
 }
+
+.chat-message-quote {
+    @apply px-1.5 w-full h-12;
+    @apply flex-x items-center;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply text-03 cursor-pointer;
+}
+.chat-message-quote-removed {
+    @apply italic h-6 cursor-default;
+}

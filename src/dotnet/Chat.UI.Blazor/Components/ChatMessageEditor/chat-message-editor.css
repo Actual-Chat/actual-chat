@@ -158,6 +158,12 @@
     @apply absolute bottom-2;
 }
 
-.linked-message-panel {
+.related-chat-entry-panel {
     @apply flex-x bg-03 w-full h-8 outline-none py-0;
+}
+.related-chat-entry {
+    @apply flex-x w-full bg-03 py-2 px-2 text-base cursor-pointer;
+}
+.related-chat-entry .btn.btn-square:hover .btn-content {
+    @apply bg-transparent;
 }

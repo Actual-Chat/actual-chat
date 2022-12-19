@@ -30,7 +30,7 @@
             RemoveClick="@(a => RemoveAttachment(a))"
             ClearClick="@(_ => ClearAttachments())"
             PostClick="@(_ => Post())"/>
-        <LinkedMessagePanel />
+        <RelatedChatEntryPanel />
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
@@ -45,7 +45,8 @@
                             <MarkupEditor
                                 @key="MarkupEditorKey"
                                 @ref="MarkupEditorRef"
-                                HtmlConverter="@HtmlConverter"
+                                MentionNamer="@ChatMarkupHub.MentionNamer"
+                                HtmlConverter="@ChatMarkupHub.EditorHtmlConverter"
                                 Id="message-input"
                                 Class="message-input -flex-y"
                                 Autofocus="Autofocus"
@@ -85,15 +86,14 @@
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
-    private ChatMarkupHub ChatMarkupHub { get; set; } = null!;
-    private MarkupEditorHtmlConverter HtmlConverter => ChatMarkupHub.EditorHtmlConverter;
+    private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SyncedStateLease<long?>? ReadState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private KeyedFactory<ChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
+    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -164,20 +164,21 @@
             AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
             _ = MarkupEditorRef.Clear();
 
-            var linkedChatEntry = ChatUI.LinkedChatEntry.Value;
-            var chatEntry = linkedChatEntry?.Entry;
-            ChatUI.LinkedChatEntry.Value = null;
+            var relatedChatEntry = ChatUI.RelatedChatEntry.Value;
+            var relatedChatEntryId = relatedChatEntry?.Id ?? default;
+            ChatUI.RelatedChatEntry.Value = null;
             _ = UICommander.RunNothing();
 
             long readEntryId;
-            if (linkedChatEntry?.Type == ChatEntryLinkType.Edit) {
-                if (chatEntry == null)
-                    throw new InternalError("Linked chat entry points to null entry.");
-                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, chatEntry.ChatId, chatEntry.LocalId, text));
-                readEntryId = chatEntry.LocalId;
+            if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
+                if (relatedChatEntryId.IsNone)
+                    throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
+                await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text));
+                readEntryId = relatedChatEntryId.LocalId;
 
             } else {
-                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, chatEntry?.Id.LocalId);
+                var repliedEntryId = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
+                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, repliedEntryId);
             }
 
             if (ReadState != null && ReadState.Value < readEntryId)
@@ -193,7 +194,7 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        ChatUI.LinkedChatEntry.Value = new(ChatEntryLinkType.Edit, chatEntry);
+        ChatUI.RelatedChatEntry.Value = new(RelatedEntryKind.Edit, chatEntry.Id);
         _ = UICommander.RunNothing();
         await MarkupEditorRef.SetText(chatEntry.Content, true);
     }
@@ -238,7 +239,7 @@
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
-        ChatUI.LinkedChatEntry.Value = null;
+        ChatUI.RelatedChatEntry.Value = null;
         _ = UICommander.RunNothing();
         await MarkupEditorRef.Clear(true);
     }

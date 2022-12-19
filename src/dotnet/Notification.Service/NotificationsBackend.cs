@@ -16,7 +16,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
 
-    private IMarkupParser MarkupParser { get; }
+    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private UrlMapper UrlMapper { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
 
@@ -27,7 +27,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
         DbNotificationResolver = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
 
-        MarkupParser = services.GetRequiredService<IMarkupParser>();
+        ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
     }
@@ -240,7 +240,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (changeKind != ChangeKind.Create || entry.IsSystemEntry)
             return;
 
-        var text = GetText(entry);
+        var text = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
         await EnqueueMessageRelatedNotifications(entry, author, text, NotificationKind.Message, userIds, cancellationToken)
             .ConfigureAwait(false);
@@ -262,7 +262,8 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
 
-        var text = $"{reaction.EmojiId} to \"{GetText(entry, 30)}\"";
+        var text = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
+        text = $"{reaction.EmojiId} to \"{text}\"";
         var userIds = new[] { author.UserId };
         await EnqueueMessageRelatedNotifications(entry, reactionAuthor, text, NotificationKind.Reaction, userIds, cancellationToken)
             .ConfigureAwait(false);
@@ -328,11 +329,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
         };
 
-    private string GetText(ChatEntry entry, int maxLength = 100)
+    private async ValueTask<string> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
     {
-        var content = entry.GetContentOrDescription();
-        var markup = MarkupParser.Parse(content);
-        markup = new MarkupTrimmer().Trim(markup, maxLength);
-        return MarkupFormatter.ReadableUnstyled.Format(markup);
+        var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
+        var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);
+        return markup.ToReadableText(consumer);
     }
 }

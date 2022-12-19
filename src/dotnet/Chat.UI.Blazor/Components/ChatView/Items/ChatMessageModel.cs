@@ -15,7 +15,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsUnread { get; init; }
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
-    public bool IsQuote { get; init; }
     public bool ShowEntryKind { get; init; }
 
     public ChatMessageModel(ChatEntry entry)
@@ -82,14 +81,14 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
-            var contentKindChanged = !isPrevAudio.HasValue || isPrevAudio.Value ^ isAudio;
+            var showEntryKind = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
             var model = new ChatMessageModel(entry) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
                 IsUnread = isUnread,
                 IsFirstUnread = isUnread && !isPrevUnread,
-                ShowEntryKind = contentKindChanged
+                ShowEntryKind = showEntryKind,
             };
             result.Add(model);
 

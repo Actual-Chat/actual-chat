@@ -272,7 +272,7 @@ public partial class ChatUI
 
     private async Task ResetHighlightedChatEntry(CancellationToken cancellationToken)
     {
-        var changes = HighlightedChatEntryId
+        var changes = HighlightedEntryId
             .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
             .Where(x => x.Value != 0);
         CancellationTokenSource? cts = null;
@@ -284,7 +284,7 @@ public partial class ChatUI
                 var highlightedChatEntryId = cHighlightedChatEntryId.Value;
                 _ = BackgroundTask.Run(async () => {
                     await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
-                    HighlightedChatEntryId.Set(
+                    HighlightedEntryId.Set(
                         highlightedChatEntryId,
                         (expected, result) => result.IsValue(out var v) && v == expected ? default : result);
                 }, CancellationToken.None);

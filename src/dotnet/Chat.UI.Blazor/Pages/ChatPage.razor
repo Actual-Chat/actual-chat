@@ -116,8 +116,8 @@
             ChatUI.VisibleIdRange.Value = new(0, 0);
             ChatUI.IsEndAnchorVisible.Value = true;
             ChatUI.SelectedChatId.Value = chatId;
-            if (ChatUI.LinkedChatEntry.Value != null)
-                ChatUI.LinkedChatEntry.Value = null;
+            if (ChatUI.RelatedChatEntry.Value != null)
+                ChatUI.RelatedChatEntry.Value = null;
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
             _ = UICommander.RunNothing();
         }

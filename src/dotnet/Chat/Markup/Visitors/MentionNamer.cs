@@ -1,6 +1,11 @@
 namespace ActualChat.Chat;
 
-public record MentionNamer(IMentionResolver<string> MentionResolver) : AsyncMarkupRewriter
+public interface IMentionNamer
+{
+    ValueTask<Markup> Apply(Markup markup, CancellationToken cancellationToken);
+}
+
+public record MentionNamer(IMentionResolver<string> MentionResolver) : AsyncMarkupRewriter, IMentionNamer
 {
     public Func<MentionMarkup, MentionMarkup> UnresolvedMentionRewriter { get; init; } =
         m => m with { Name = m.NameOrNotAvailable };

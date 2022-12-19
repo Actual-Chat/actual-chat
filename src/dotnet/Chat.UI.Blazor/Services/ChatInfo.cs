@@ -18,7 +18,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public long? ReadEntryId { get; init; }
     public Trimmed<int> UnreadCount { get; init; }
     public bool HasUnreadMentions { get; init; }
-    public string LastTextEntryContent { get; init; } = "";
+    public string LastTextEntryText { get; init; } = "";
 
     // Shortcuts
     public ChatId Id => Contact.Id.ChatId;

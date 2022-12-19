@@ -13,8 +13,12 @@ public class CachingMarkupParser : IMarkupParser
 
     public Markup Parse(string text)
     {
+        if (text.IsNullOrEmpty())
+            return Markup.Empty;
+
         if (_cache.TryGetValue(text, out var markup))
             return markup;
+
         markup = _parser.Parse(text);
         _cache.TryAdd(text, markup);
         return markup;

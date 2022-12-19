@@ -1,8 +1,8 @@
 using ActualChat.Users;
 
-namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.Chat.UI.Blazor.Services.Internal;
 
-public class ChatMentionResolver : IChatMentionResolver
+internal class ChatMentionResolver : IChatMentionResolver
 {
     private Session Session { get; }
     private IAccounts Accounts { get; }

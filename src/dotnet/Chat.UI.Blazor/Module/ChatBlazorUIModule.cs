@@ -33,7 +33,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         services.AddScoped<NavbarUI>();
         services.AddScoped<IAudioOutputController, AudioOutputController>();
-        services.AddScoped(c => new CachingKeyedFactory<ChatMarkupHub, ChatId>(c, 256).ToGeneric());
+        services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);

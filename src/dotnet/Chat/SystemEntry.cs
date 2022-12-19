@@ -18,7 +18,7 @@ public record SystemEntry : IUnionRecord<SystemEntryOption?>
 
 public abstract record SystemEntryOption : IRequirementTarget
 {
-    public abstract string ToMarkup();
+    public abstract Markup ToMarkup();
 }
 
 [DataContract]
@@ -27,6 +27,6 @@ public record MembersChangedOption(
     [property: DataMember] bool HasLeft
     ) : SystemEntryOption
 {
-    public override string ToMarkup()
-        => $"@a:{AuthorId} has {(HasLeft ? "left" : "joined")} the chat.";
+    public override Markup ToMarkup()
+        => new PlainTextMarkup($"@a:{AuthorId} has {(HasLeft ? "left" : "joined")} the chat.");
 }

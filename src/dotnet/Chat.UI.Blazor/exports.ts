@@ -7,7 +7,6 @@ import './Components/components.css';
 import './Components/Author/author.css';
 import './Components/ChatView/Greetings/greetings.css';
 import './Components/ChatView/Items/Attachment/attachment.css';
-import './Components/ChatView/Items/Quote/quote.css';
 import './Components/ChatView/Items/Reactions/message-reactions.css';
 import './Components/ChatView/chat-view.css';
 import './Components/ChatMenu/chat-menu.css';

@@ -2,10 +2,18 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>
+public interface IMarkupTrimmer
 {
+    Markup Trim(Markup markup, int maxLength, Func<MentionMarkup, string>? mentionFormatter = null);
+}
+
+public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarkupTrimmer
+{
+    public static MarkupTrimmer Instance { get; } = new();
+
     public Markup Trim(Markup markup, int maxLength, Func<MentionMarkup, string>? mentionFormatter = null)
     {
+        mentionFormatter ??= MentionMarkup.NameOrNotAvailableFormatter;
         var state = new State(maxLength, mentionFormatter);
         return Visit(markup, ref state);
     }
@@ -89,10 +97,10 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>
         public int Length { get; private set; }
         public bool IsTrimmed { get; set; }
 
-        public State(int maxLength, Func<MentionMarkup, string>? mentionFormatter = null)
+        public State(int maxLength, Func<MentionMarkup, string> mentionFormatter)
         {
             MaxLength = maxLength;
-            MentionFormatter = mentionFormatter ?? MentionMarkup.NameOrNotAvailableFormatter;
+            MentionFormatter = mentionFormatter;
         }
 
         public Markup TryAppendEllipsis()

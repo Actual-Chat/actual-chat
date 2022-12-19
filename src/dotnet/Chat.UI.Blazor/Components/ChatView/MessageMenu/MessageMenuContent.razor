@@ -91,7 +91,7 @@
     }
 
     private async Task Reply(ChatEntry chatEntry) {
-        ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
+        ChatUI.RelatedChatEntry.Value = new (RelatedEntryKind.Reply, chatEntry.Id);
         await UIEventHub.Publish<FocusChatMessageEditorEvent>();
     }
 

@@ -1,15 +1,13 @@
-using ActualChat.Chat.UI.Blazor.Services;
 using Cysharp.Text;
 
-namespace ActualChat.Chat.UI.Blazor.Components;
+namespace ActualChat.Chat;
 
-public sealed record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
+public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
 {
-    public ChatMarkupHub ChatMarkupHub { get; init; }
+    public static MarkupEditorHtmlConverter Instance { get; } = new();
 
-    public MarkupEditorHtmlConverter(ChatMarkupHub chatMarkupHub)
+    public MarkupEditorHtmlConverter()
     {
-        ChatMarkupHub = chatMarkupHub;
         UrlClass = "editor-url";
         MentionClass = "editor-mention";
         PreformattedTextClass = "editor-preformatted";

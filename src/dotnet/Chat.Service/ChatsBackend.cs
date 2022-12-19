@@ -21,7 +21,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IMarkupParser MarkupParser { get; }
-    private KeyedFactory<BackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
+    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
@@ -34,7 +34,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
-        ChatMarkupHubFactory = services.KeyedFactory<BackendChatMarkupHub, ChatId>();
+        ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         DiffEngine = services.GetRequiredService<DiffEngine>();
@@ -399,7 +399,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Injecting mention names into the markup
         var chatMarkupHub = ChatMarkupHubFactory[chatId];
-        entry = await chatMarkupHub.NameMentions(entry, cancellationToken).ConfigureAwait(false);
+        entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

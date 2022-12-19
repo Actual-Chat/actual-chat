@@ -2,16 +2,22 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public abstract record MarkupFormatterBase : MarkupVisitorWithState<Utf16ValueStringBuilder>
+public interface IMarkupFormatter
+{
+    string Format(Markup markup);
+    void FormatTo(Markup markup, ref Utf16ValueStringBuilder sb);
+}
+
+public abstract record MarkupFormatterBase : MarkupVisitorWithState<Utf16ValueStringBuilder>, IMarkupFormatter
 {
     public string Format(Markup markup)
     {
         var sb = ZString.CreateStringBuilder();
-        Format(markup, ref sb);
+        FormatTo(markup, ref sb);
         return sb.ToString();
     }
 
-    public void Format(Markup markup, ref Utf16ValueStringBuilder sb)
+    public void FormatTo(Markup markup, ref Utf16ValueStringBuilder sb)
         => Visit(markup, ref sb);
 
     // Protected methods

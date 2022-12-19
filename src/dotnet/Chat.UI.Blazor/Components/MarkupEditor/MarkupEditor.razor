@@ -17,10 +17,14 @@
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<IMarkupEditorBackend> BlazorRef { get; set; } = null!;
 
+    [Inject] public IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] public IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public MentionListManager? MentionListManager { get; set; }
-    [Parameter, EditorRequired] public MarkupEditorHtmlConverter HtmlConverter { get; set; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    public IMentionNamer MentionNamer { get; set; } = null!;
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    public IMarkupFormatter HtmlConverter { get; set; } = null!;
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -30,7 +34,6 @@
     [Parameter] public EventCallback OpenPrevious { get; set; }
 
     public IJSObjectReference JSRef { get; private set; } = null!;
-    public ChatMarkupHub ChatMarkupHub => HtmlConverter.ChatMarkupHub;
     public Task WhenReady => _whenReadySource.Task;
 
     public MarkupEditor() {
@@ -77,7 +80,8 @@
     }
 
     public async ValueTask SetText(string text, bool mustFocus = false) {
-        var markup = await ChatMarkupHub.ParseAndNameMentions(text, default);
+        var markup = MarkupParser.Parse(text);
+        markup = await MentionNamer.Apply(markup, default).ConfigureAwait(false);
         await SetMarkup(markup, mustFocus);
     }
 

@@ -238,7 +238,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         if (isHighlighted)
             // highlight entry when it has already been loaded
-            ChatUI.HighlightedChatEntryId.Value = entryId;
+            ChatUI.HighlightedEntryId.Value = entryId;
 
         return result;
     }
