@@ -23,18 +23,10 @@
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 .chat-audio-panel .record-off-btn.btn:hover .btn-content {
-    @apply bg-primary text-04;
-}
-.narrow .chat-audio-panel .record-off-btn.btn .btn-content,
-.narrow .chat-audio-panel .record-off-btn.btn:hover .btn-content {
     @apply text-04 bg-gradient-to-b from-primary to-[#B60B84];
 }
 .chat-audio-panel .record-on-btn.btn .btn-content,
 .chat-audio-panel .record-on-btn.btn:hover .btn-content {
-    @apply bg-error text-04;
-}
-.narrow .chat-audio-panel .record-on-btn.btn .btn-content,
-.narrow .chat-audio-panel .record-on-btn.btn:hover .btn-content {
     @apply bg-[#FF3880] text-04;
 }
 .chat-audio-panel .language-button,
@@ -85,15 +77,15 @@
 .narrow .chat-audio-panel .recorder-button .btn.recorder-skeleton .btn-content {
     @apply min-w-20 min-h-20;
 }
-.narrow .chat-audio-panel .recorder-wrapper.record-off,
-.narrow .chat-audio-panel .recorder-wrapper.record-on-to-off {
+.chat-audio-panel .recorder-wrapper.record-off,
+.chat-audio-panel .recorder-wrapper.record-on-to-off {
     @apply w-20 h-20 rounded-full border border-double border-transparent;
     background-image: linear-gradient(white, white), linear-gradient(to bottom, #2970FF, #C60077);
     background-origin: border-box;
     background-clip: padding-box, border-box;
 }
-.narrow .chat-audio-panel .recorder-wrapper.record-on,
-.narrow .chat-audio-panel .recorder-wrapper.record-off-to-on {
+.chat-audio-panel .recorder-wrapper.record-on,
+.chat-audio-panel .recorder-wrapper.record-off-to-on {
     @apply border-[#FF3880] transition-colors duration-300;
 }
 .narrow .chat-audio-panel .recorder-wrapper.record-off .record-on-btn.btn {
@@ -212,24 +204,10 @@
 }
 /* Buttons, Desktop view */
 .wide .chat-audio-panel .recorder-wrapper {
-    @apply relative flex h-14 w-14 top-1 justify-center rounded-full border-primary;
+    @apply relative flex h-14 w-14 top-1 justify-center rounded-full;
 }
 .wide .chat-audio-panel .recorder-wrapper .btn {
     @apply self-center m-0.5;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-off,
-.wide .chat-audio-panel .recorder-wrapper.record-on-to-off {
-    @apply border-primary transition-colors duration-300;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-on,
-.wide .chat-audio-panel .recorder-wrapper.record-off-to-on {
-    @apply border-error transition-colors duration-300;
-}
-.wide .chat-audio-panel .recorder-wrapper .record-on-btn.btn .btn-content {
-    @apply shadow-mobile-button shadow-error-hover;
-}
-.wide .chat-audio-panel .recorder-wrapper .record-off-btn.btn .btn-content {
-    @apply shadow-lg shadow-secondary;
 }
 .wide .chat-audio-panel .recorder-wrapper.record-off .record-on-btn.btn {
     @apply absolute scale-0;
