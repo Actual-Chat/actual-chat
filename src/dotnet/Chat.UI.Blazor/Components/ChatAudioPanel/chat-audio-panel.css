@@ -23,10 +23,18 @@
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 .chat-audio-panel .record-off-btn.btn:hover .btn-content {
+    @apply bg-primary text-04;
+}
+.narrow .chat-audio-panel .record-off-btn.btn .btn-content,
+.narrow .chat-audio-panel .record-off-btn.btn:hover .btn-content {
     @apply text-04 bg-gradient-to-b from-primary to-[#B60B84];
 }
 .chat-audio-panel .record-on-btn.btn .btn-content,
 .chat-audio-panel .record-on-btn.btn:hover .btn-content {
+    @apply bg-error text-04;
+}
+.narrow .chat-audio-panel .record-on-btn.btn .btn-content,
+.narrow .chat-audio-panel .record-on-btn.btn:hover .btn-content {
     @apply bg-[#FF3880] text-04;
 }
 .chat-audio-panel .language-button,
