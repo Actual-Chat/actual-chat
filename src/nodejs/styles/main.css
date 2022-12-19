@@ -151,13 +151,9 @@ input.input-underlined {
 
 .chat-layout .layout-body {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
-    @apply p-0;
+    @apply p-0 -mb-24 md:mb-0;
 }
-@media not (min-width: 1024px) {
-    .chat-layout .layout-body {
-        @apply -mb-24;
-    }
-}
+
 .chat-layout .layout-footer {
     @apply min-h-footer;
     @apply shadow-none;
