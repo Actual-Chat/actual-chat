@@ -178,3 +178,9 @@
 .related-chat-entry .btn.btn-square:hover .btn-content {
     @apply bg-transparent;
 }
+.related-chat-entry-panel .btn.btn-round .btn-content {
+    @apply min-w-8 min-h-8 max-w-8 max-h-8;
+}
+.related-chat-entry-panel .btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
+}
