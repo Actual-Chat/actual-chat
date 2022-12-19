@@ -17,14 +17,25 @@
 
 @if (CanRecord) {
     <div class="@wrapperCls recorder-wrapper">
-        <ButtonRound Class="record-off-btn"
-                     Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
-            <img src="/logo-white.svg" alt="logo" class="recorder-icon">
-        </ButtonRound>
+        @if (ScreenSize.IsNarrow()) {
+            <ButtonRound Class="record-off-btn"
+                         Click="OnClick"
+                         @ontouchend="OnLongPressStop"
+                         @onmouseup="OnLongPressStop"
+                         @onlongpress="OnLongPressStart"
+                         data-long-press-delay="200">
+                <img src="/logo-white.svg" alt="logo" class="recorder-icon">
+            </ButtonRound>
+        } else {
+            <ButtonRound Class="record-off-btn"
+                         Click="OnClick"
+                         @ontouchend="OnLongPressStop"
+                         @onmouseup="OnLongPressStop"
+                         @onlongpress="OnLongPressStart"
+                         data-long-press-delay="200">
+                <i class="icon-mic text-3xl font-normal"></i>
+            </ButtonRound>
+        }
         <ButtonRound Class="record-on-btn"
                      Click="OnClick"
                      @ontouchend="OnLongPressStop"
@@ -58,6 +69,7 @@
     private bool IsRecording => !IsLoading && State.LatestNonErrorValue.IsRecording;
     private bool IsLongPressOn { get; set; } = false;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
