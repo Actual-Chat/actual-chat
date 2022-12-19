@@ -17,25 +17,14 @@
 
 @if (CanRecord) {
     <div class="@wrapperCls recorder-wrapper">
-        @if (ScreenSize.IsNarrow()) {
-            <ButtonRound Class="record-off-btn"
-                         Click="OnClick"
-                         @ontouchend="OnLongPressStop"
-                         @onmouseup="OnLongPressStop"
-                         @onlongpress="OnLongPressStart"
-                         data-long-press-delay="200">
+        <ButtonRound Class="record-off-btn"
+                     Click="OnClick"
+                     @ontouchend="OnLongPressStop"
+                     @onmouseup="OnLongPressStop"
+                     @onlongpress="OnLongPressStart"
+                     data-long-press-delay="200">
                 <img src="/logo-white.svg" alt="logo" class="recorder-icon">
-            </ButtonRound>
-        } else {
-            <ButtonRound Class="record-off-btn"
-                         Click="OnClick"
-                         @ontouchend="OnLongPressStop"
-                         @onmouseup="OnLongPressStop"
-                         @onlongpress="OnLongPressStart"
-                         data-long-press-delay="200">
-                <i class="icon-mic text-3xl font-normal"></i>
-            </ButtonRound>
-        }
+        </ButtonRound>
         <ButtonRound Class="record-on-btn"
                      Click="OnClick"
                      @ontouchend="OnLongPressStop"

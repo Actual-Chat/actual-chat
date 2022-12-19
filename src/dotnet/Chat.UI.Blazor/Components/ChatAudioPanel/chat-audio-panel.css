@@ -41,7 +41,8 @@
 .recorder-wrapper .recorder-icon {
     @apply h-10 w-10;
 }
-.narrow-panel.narrow .recorder-wrapper .recorder-icon {
+.narrow-panel.narrow .recorder-wrapper .recorder-icon,
+.wide .recorder-wrapper .recorder-icon {
     @apply h-7 w-7;
 }
 
