@@ -58,7 +58,6 @@
     private bool IsRecording => !IsLoading && State.LatestNonErrorValue.IsRecording;
     private bool IsLongPressOn { get; set; } = false;
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
