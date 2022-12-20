@@ -7,9 +7,10 @@ namespace ActualChat.Chat.Module;
 
 public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
 {
-    private async Task Upgrade(ChatDbContext dbContext, CancellationToken cancellationToken)
+    private Task Upgrade(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         Log.LogInformation("Upgrading DB...");
+        return Task.CompletedTask;
         // Log.LogInformation("Upgrading DB: no upgrades");
         // return Task.CompletedTask;
 

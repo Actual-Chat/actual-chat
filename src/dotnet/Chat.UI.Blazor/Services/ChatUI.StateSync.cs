@@ -16,7 +16,7 @@ public partial class ChatUI
             PushRealtimePlaybackState(cancellationToken),
             SyncRecordingState(cancellationToken),
             PushKeepAwakeState(cancellationToken),
-            ResetHighlightedChatEntry(cancellationToken),
+            ResetHighlightedEntry(cancellationToken),
             StopRecordingWhenInactive(cancellationToken),
             Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
 
@@ -270,18 +270,18 @@ public partial class ChatUI
         return (recordingChatId, end);
     }
 
-    private async Task ResetHighlightedChatEntry(CancellationToken cancellationToken)
+    private async Task ResetHighlightedEntry(CancellationToken cancellationToken)
     {
         var changes = HighlightedEntryId
             .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .Where(x => x.Value != 0);
+            .Where(x => !x.Value.IsNone);
         CancellationTokenSource? cts = null;
         try {
-            await foreach (var cHighlightedChatEntryId in changes.ConfigureAwait(false)) {
+            await foreach (var cHighlightedEntryId in changes.ConfigureAwait(false)) {
                 cts.CancelAndDisposeSilently();
                 cts = cancellationToken.CreateLinkedTokenSource();
                 var ctsToken = cts.Token;
-                var highlightedChatEntryId = cHighlightedChatEntryId.Value;
+                var highlightedChatEntryId = cHighlightedEntryId.Value;
                 _ = BackgroundTask.Run(async () => {
                     await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
                     HighlightedEntryId.Set(

@@ -44,7 +44,7 @@
             return;
 
         await UIEventHub.Publish(new NavigateToChatEntryEvent(lastEntryId));
-        ChatUI.HighlightedEntryId.Value = lastEntryId.LocalId;
+        ChatUI.HighlightedEntryId.Value = lastEntryId;
     }
 
     public sealed record Model(bool IsVisible, ChatEntryId LastEntryId)

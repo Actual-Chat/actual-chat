@@ -50,6 +50,6 @@
 
     private async Task OnQuoteClick() {
         await UIEventHub.Publish(new NavigateToChatEntryEvent(Entry.Id));
-        ChatUI.HighlightedEntryId.Value = Entry.LocalId;
+        ChatUI.HighlightedEntryId.Value = Entry.Id;
     }
 }

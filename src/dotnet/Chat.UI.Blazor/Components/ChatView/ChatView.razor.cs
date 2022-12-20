@@ -127,14 +127,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
-        var lastReadEntryId = LastReadEntryState?.Value ?? 0;
-        if (LastReadEntryState != null && lastReadEntryId >= chatIdRange.End) {
+        var lastReadEntryLid = LastReadEntryState?.Value ?? 0;
+        if (LastReadEntryState != null && lastReadEntryLid >= chatIdRange.End) {
             // looks like an error, let's reset last read position to the las entry id
-            lastReadEntryId = chatIdRange.End - 1;
-            LastReadEntryState.Value = lastReadEntryId;
+            lastReadEntryLid = chatIdRange.End - 1;
+            LastReadEntryState.Value = lastReadEntryLid;
         }
-        var entryId = lastReadEntryId;
-        var mustScrollToEntry = query.IsNone && entryId != 0;
+        var entryLid = lastReadEntryLid;
+        var mustScrollToEntry = query.IsNone && entryLid != 0;
 
         // get latest tile to check whether the Author has submitted new entry
         var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
@@ -153,7 +153,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
             // scroll to the latest Author entry - e.g.m when author submits the new one
             _initialLastReadEntryId = entry.LocalId;
-            entryId = entry.LocalId;
+            entryLid = entry.LocalId;
             mustScrollToEntry = true;
         }
 
@@ -164,19 +164,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
                 isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
-                entryId = navigateToEntryId.Value;
+                entryLid = navigateToEntryId.Value;
                 if (!_fullyVisibleEntryIds.Contains(navigateToEntryId.Value))
                     mustScrollToEntry = true;
             }
         var scrollToKey = mustScrollToEntry
-            ? entryId.ToString(CultureInfo.InvariantCulture)
+            ? entryLid.ToString(CultureInfo.InvariantCulture)
             : null;
 
         // if we are scrolling somewhere - let's load date near the entryId
         var queryRange = mustScrollToEntry
             ? new Range<long>(
-                entryId - PageSize,
-                entryId + PageSize)
+                entryLid - PageSize,
+                entryLid + PageSize)
             : query.IsNone
                 ? new Range<long>(
                     chatIdRange.End - (2*PageSize),
@@ -236,9 +236,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             hasVeryLastItem,
             scrollToKey);
 
-        if (isHighlighted)
+        if (isHighlighted) {
             // highlight entry when it has already been loaded
-            ChatUI.HighlightedEntryId.Value = entryId;
+            var highlightedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, entryLid, AssumeValid.Option);
+            ChatUI.HighlightedEntryId.Value = highlightedEntryId;
+        }
 
         return result;
     }

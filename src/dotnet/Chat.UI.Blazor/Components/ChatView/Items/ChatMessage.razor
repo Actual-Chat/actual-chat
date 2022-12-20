@@ -171,7 +171,7 @@
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
         var relatedChatEntry = await ChatUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
-        var isHighlighted = entry.Id.LocalId == await ChatUI.HighlightedEntryId.Use(cancellationToken);
+        var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -199,7 +199,7 @@
 
     private async Task OnQuoteClick() {
         await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
-        ChatUI.HighlightedEntryId.Value = Message.Entry.LocalId;
+        ChatUI.HighlightedEntryId.Value = Message.Entry.Id;
     }
 
     private bool HasAnyMentions(Markup markup)
