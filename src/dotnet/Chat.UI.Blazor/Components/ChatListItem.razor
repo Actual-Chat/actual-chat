@@ -26,7 +26,7 @@
                     <SearchUIHighlighter Text="@m.Chat.Title"/>
                 </span>
                 @if (lastTextEntry != null) {
-                    <div class="text-xs text-03 truncate rounded-bl px-1 border-l border-b border-text-05">
+                    <div class="text-xs text-03 truncate">
                         @if (m.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span>
                                 <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
