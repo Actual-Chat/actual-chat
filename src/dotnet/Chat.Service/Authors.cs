@@ -10,6 +10,7 @@ namespace ActualChat.Chat;
 public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 {
     private IAuthorsBackend? _backend;
+    private IAvatars? _avatars;
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
 
@@ -20,6 +21,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IUserPresences UserPresences { get; }
     private IServerKvas ServerKvas { get; }
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
 
     public Authors(IServiceProvider services) : base(services)
     {
@@ -138,7 +140,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, joinAnonymously) = command;
+        var (session, chatId, avatarId, joinAnonymously) = command;
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
             return author;
@@ -146,12 +148,18 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Join);
 
+        if (!avatarId.IsEmpty) {
+            var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
+            avatarIds.SingleOrDefault(x => x == avatarId).Require();
+        }
+
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upsertCommand = new IAuthorsBackend.UpsertCommand(
             chatId, author?.Id ?? default, account.Id, null,
             new AuthorDiff() {
                 IsAnonymous = joinAnonymously,
                 HasLeft = false,
+                AvatarId = avatarId.NullIfEmpty(),
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 

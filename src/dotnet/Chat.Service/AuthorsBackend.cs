@@ -3,6 +3,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Db;
 using ActualChat.Users;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -258,6 +259,42 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
             return author;
         }
+    }
+
+    [EventHandler]
+    public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent @event, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        var (_, oldAvatar, changeKind) = @event;
+        if (changeKind != ChangeKind.Remove)
+            return;
+
+        oldAvatar = oldAvatar.Require();
+
+        var authors = await ListAuthorsByAvatarId(oldAvatar.UserId, oldAvatar.Id, cancellationToken).ConfigureAwait(false);
+
+        foreach (var author in authors) {
+            var command = new IAuthorsBackend.UpsertCommand(author.ChatId,
+                author.Id,
+                author.UserId,
+                author.Version,
+                new AuthorDiff { AvatarId = null, });
+            await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<ImmutableList<AuthorFull>> ListAuthorsByAvatarId(UserId userId, Symbol avatarId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbAuthors = await dbContext.Authors
+            .Where(a => a.UserId == userId && a.AvatarId == avatarId.Value)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbAuthors.Select(x => x.ToModel()).ToImmutableList();
     }
 
     // Private / internal methods

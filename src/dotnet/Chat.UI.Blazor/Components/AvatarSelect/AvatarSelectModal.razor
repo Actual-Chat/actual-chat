@@ -1,0 +1,69 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using Stl.Extensibility
+@implements IModalView<AvatarSelectModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@inherits ComputedStateComponent<AvatarSelectModal.ViewModel>
+@{
+    var m = State.Value;
+}
+
+<DialogFrame HasCloseButton="true" Title="Choose avatar" Class="avatar-select-modal">
+    <Body>
+    @if (m == ViewModel.None) {
+        return;
+    }
+
+    <div class="avatar-select">
+        @foreach (var avatar in m.Avatars) {
+            <Tile Click="_ => Join(avatar)" Class="avatar-select-item">
+                <TileItem>
+                    <Icon>
+                        <AvatarCard Avatar="@avatar"/>
+                    </Icon>
+                    <Content>
+                        @avatar.Name
+                    </Content>
+                    <Right>
+                        @if (m.DefaultAvatarId == avatar.Id) {
+                            <i class="icon-star text-xl text-primary"></i>
+                        }
+                    </Right>
+                </TileItem>
+            </Tile>
+        }
+    </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override ComputedState<ViewModel>.Options GetStateOptions()
+        => new() { InitialValue = ViewModel.None };
+
+    protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+        var avatars = await avatarIds.Select(x => Avatars.GetOwn(Session, x, cancellationToken)).Collect();
+        var existingAvatars = avatars.SkipNullItems().ToImmutableArray();
+        return new ViewModel(existingAvatars, account.Avatar.Id);
+    }
+
+    private async Task Join(AvatarFull avatar) {
+        var command = new IAuthors.JoinCommand(Session, ModalModel.Chat.Id, avatar.Id);
+        await UICommander.Run(command);
+        await ModalInstance.CloseAsync();
+    }
+
+    public record Model(Chat Chat);
+
+    public record ViewModel(ImmutableArray<AvatarFull> Avatars, Symbol DefaultAvatarId) {
+        public static readonly ViewModel None = new(ImmutableArray<AvatarFull>.Empty, Symbol.Empty);
+    }
+}

@@ -71,7 +71,7 @@ public class Avatars : IAvatars
         if (change.Create.HasValue)
             settings = settings.WithAvatarId(avatar.Id);
         else if (change.Remove)
-            settings = settings.WithoutAvatarId(avatar.Id);
+            settings = settings.WithoutAvatarId(avatarId);
         if (!ReferenceEquals(settings, oldSettings))
             await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
 
