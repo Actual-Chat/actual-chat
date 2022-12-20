@@ -1,18 +1,21 @@
 .copy-to-clipboard {
-    @apply flex-x items-center gap-x-1;
+    @apply flex-x items-center gap-x-2;
 }
 .copy-to-clipboard input {
     @apply flex-auto;
     @apply bg-transparent border-b border-placeholder;
 }
-.copy-to-clipboard .btn.btn-square {
+.copy-to-clipboard .btn.btn-round {
     @apply bg-transparent hover:bg-04;
 }
-.copy-to-clipboard .btn.btn-square .btn-content-inner {
+.copy-to-clipboard .btn.btn-round .btn-content {
+    @apply min-h-10 min-w-10 max-w-10 max-h-10;
+}
+.copy-to-clipboard .btn.btn-round .btn-content-inner {
     @apply flex-none flex-x gap-x-1;
 }
 .copy-to-clipboard .c-copied {
-    @apply flex-none font-light text-xs;
+    @apply flex-none font-medium text-xxs text-primary;
 }
 
 .copy-to-clipboard input:focus {

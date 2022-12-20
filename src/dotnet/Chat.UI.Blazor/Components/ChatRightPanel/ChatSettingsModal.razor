@@ -42,7 +42,7 @@
                 @if (_form.IsPublic) {
                     @if (m.Link is { } publicUrl) {
                         <h4 class="section">Public join link</h4>
-                        <CopyToClipboard Class="px-1 pl-2" Text="@publicUrl.ShortLocalUrl" CopyText="@publicUrl.AbsoluteUrl" />
+                        <CopyToClipboard Text="@publicUrl.ShortLocalUrl" CopyText="@publicUrl.AbsoluteUrl"/>
                     }
                 } else {
                     @if (m.Rules.CanInvite()) {

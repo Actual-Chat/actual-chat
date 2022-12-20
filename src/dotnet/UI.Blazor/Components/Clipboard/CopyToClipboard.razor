@@ -9,11 +9,12 @@
         Class="@ButtonClass"
         Tooltip="Copy"
         FloatingPosition="FloatingPosition.Top">
-        <i class="icon-copy text-xl" aria-hidden="true"></i>
         @if (OrdinalEquals(_lastCopiedText, GetCopyText()) && !HideCopiedTag) {
             <div class="c-copied">
                 copied!
             </div>
+        } else {
+            <i class="icon-copy text-xl" aria-hidden="true"></i>
         }
     </ButtonRound>
 </div>
