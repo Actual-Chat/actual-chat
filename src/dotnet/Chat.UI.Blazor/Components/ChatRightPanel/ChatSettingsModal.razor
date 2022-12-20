@@ -18,7 +18,7 @@
                     <DataAnnotationsValidator/>
 
                     <div class="pb-2 mb-4 border-b border-bg-03">
-                        <FormSection>
+                        <FormSection For="() => ModalModel.Chat">
                             <ChatMuteToggle Chat="@ModalModel.Chat" />
                         </FormSection>
                     </div>
@@ -31,11 +31,11 @@
                         ContentId="@_form.Picture">
                     </PicUpload>
 
-                    <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
+                    <FormSection For="() => _form.Title" Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
                         <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" Autofocus="true" Class="right-panel-input"/>
                     </FormSection>
 
-                    <FormSection Class="flex h-12 md:h-8 justify-center">
+                    <FormSection For="() => _form.IsPublic" Class="flex h-12 md:h-8 justify-center">
                         <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
                     </FormSection>
                 }

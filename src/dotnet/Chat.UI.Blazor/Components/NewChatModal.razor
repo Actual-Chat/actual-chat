@@ -7,10 +7,10 @@
     <DataAnnotationsValidator/>
     <DialogFrame Title="New chat">
         <Body>
-            <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
+            <FormSection For="() => _form.Title" Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
                 <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
             </FormSection>
-            <FormSection Class="flex h-12 md:h-8 justify-center">
+            <FormSection For="() => _form.IsPublic" Class="flex h-12 md:h-8 justify-center">
                 <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
             </FormSection>
         </Body>
