@@ -19,6 +19,9 @@ public sealed record UserAvatarSettings
     {
         if (!AvatarIds.Contains(avatarId))
             return this;
-        return this with { AvatarIds = AvatarIds.RemoveAll(x => x == avatarId) };
+
+        var avatars = AvatarIds.RemoveAll(x => x == avatarId);
+        var defaultAvatarId = DefaultAvatarId != avatarId ? DefaultAvatarId : avatars.FirstOrDefault();
+        return this with { AvatarIds = avatars, DefaultAvatarId = defaultAvatarId };
     }
 }

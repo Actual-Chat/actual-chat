@@ -1,18 +1,16 @@
-﻿using ActualChat.Users.Db;
+﻿using ActualChat.Commands;
+using ActualChat.Users.Db;
+using ActualChat.Users.Events;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
 public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 {
-    private IServerKvasBackend ServerKvasBackend { get; }
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }
 
     public AvatarsBackend(IServiceProvider services) : base(services)
-    {
-        ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
-        DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
-    }
+        => DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
 
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken)
@@ -39,6 +37,7 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        AvatarFull? existingAvatar = null;
         if (change.IsCreate(out var avatar)) {
             avatar = avatar with {
                 Id = DbAvatar.IdGenerator.Next(),
@@ -52,6 +51,7 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
                 .Get(avatarId, cancellationToken)
                 .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
+            existingAvatar = dbAvatar.ToModel();
 
             if (change.IsUpdate(out avatar)) {
                 avatar = avatar with {
@@ -59,11 +59,15 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
                 };
                 dbAvatar.UpdateFrom(avatar);
             }
-            else
+            else {
+                avatar = dbAvatar.ToModel();
                 dbContext.Remove(dbAvatar);
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        new AvatarChangedEvent(avatar, existingAvatar, change.Kind).EnqueueOnCompletion(
+            Queues.Users.ShardBy(avatar.UserId));
         return avatar;
     }
 }

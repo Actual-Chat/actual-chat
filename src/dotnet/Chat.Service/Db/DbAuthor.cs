@@ -9,6 +9,7 @@ namespace ActualChat.Chat.Db;
 [Table("Authors")]
 [Index(nameof(ChatId), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(UserId))]
+[Index(nameof(UserId), nameof(AvatarId))]
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

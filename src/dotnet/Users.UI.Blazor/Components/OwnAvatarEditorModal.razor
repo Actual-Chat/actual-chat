@@ -43,7 +43,7 @@
             </button>
         </FormSection>
 
-        <button type="button" class="delete-avatar-btn">
+        <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
             <div>
                 <i class="icon-trash03 text-xl text-error"></i>
             </div>
@@ -160,6 +160,14 @@
 
     private void OnCancel()
         => CloseModal();
+
+    private async Task OnDeleteAvatarClick() {
+        var command = new IAvatars.ChangeCommand(Session, ModalModel.AvatarId, null, new() {
+            Remove = true,
+        });
+        await UICommander.Run(command);
+        _ = ModalInstance.CloseAsync();
+    }
 
     private void CloseModal()
         => _ = ModalInstance.CloseAsync();
