@@ -4,6 +4,7 @@
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     var chat = m.Chat;
     var info = m.Info;
+    var lastTextEntry = info.LastTextEntry;
     var mediaState = m.MediaState;
     var canWrite = chat.Rules.CanWrite();
     var isMenuVisible = m.IsListening || m.IsRecording;
@@ -24,11 +25,11 @@
                 <span class="text-headline-1 text-02 text-ellipsis whitespace-nowrap overflow-hidden">
                     <SearchUIHighlighter Text="@m.Chat.Title"/>
                 </span>
-                @if (info.LastTextEntry != null) {
+                @if (lastTextEntry != null) {
                     <div class="text-xs text-03 text-ellipsis whitespace-nowrap overflow-hidden rounded-bl px-1 border-l border-b border-text-05">
-                        @if (m.Chat.Kind != ChatKind.Peer) {
+                        @if (m.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span>
-                                <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@info.LastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                                <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
                             </span>
                         }
                         @info.LastTextEntryText

@@ -1,3 +1,5 @@
+using Cysharp.Text;
+
 namespace ActualChat.Chat;
 
 [DataContract]
@@ -24,9 +26,20 @@ public abstract record SystemEntryOption : IRequirementTarget
 [DataContract]
 public record MembersChangedOption(
     [property: DataMember] AuthorId AuthorId,
+    [property: DataMember] string AuthorName,
     [property: DataMember] bool HasLeft
     ) : SystemEntryOption
 {
+    [Obsolete("This constructor is used to deserialize legacy MembersChangedOption w/o AuthorName property.")]
+    public MembersChangedOption() : this(default, "", false) { }
+
     public override Markup ToMarkup()
-        => new PlainTextMarkup($"@a:{AuthorId} has {(HasLeft ? "left" : "joined")} the chat.");
+    {
+        var authorMentionId = ZString.Concat("a:", AuthorId);
+        var authorName = AuthorName.NullIfEmpty() ?? "Someone";
+        var verb = HasLeft ? "left" : "joined";
+        return new MarkupSeq(
+            new MentionMarkup(authorMentionId, authorName),
+            new PlainTextMarkup($" has {verb} the chat."));
+    }
 }

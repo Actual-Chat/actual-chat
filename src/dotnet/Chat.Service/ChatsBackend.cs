@@ -481,7 +481,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
-            SystemEntry = new MembersChangedOption(author.Id, hasLeft),
+            SystemEntry = new MembersChangedOption(author.Id, author.Avatar.Name, hasLeft),
         });
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
