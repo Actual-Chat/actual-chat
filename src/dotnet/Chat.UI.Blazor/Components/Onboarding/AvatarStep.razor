@@ -48,13 +48,13 @@
                 </Button>
             </div>
         </div>
-        <FormSection InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection For="() => _stepModel.Name" InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
         </FormSection>
-        <FormSection InputId="lastName" Label="Last name (optional)" IsLabelInsideInput="true">
+        <FormSection For="() => _stepModel.LastName" InputId="lastName" Label="Last name (optional)" IsLabelInsideInput="true">
             <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
         </FormSection>
-        <FormSection InputId="userName" Label="@("@username")" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection For="() => _stepModel.UserName" InputId="userName" Label="@("@username")" IsLabelInsideInput="true" IsRequired="true">
             <InputText id="userName" @bind-Value="_stepModel.UserName"/>
         </FormSection>
     </Form>

@@ -8,7 +8,7 @@
         Model="@_stepModel"
         OnValidSubmit="@HandleValidSubmit">
         <DataAnnotationsValidator/>
-        <FormSection InputId="country" Label="Country" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection For="() => _stepModel.Country" InputId="country" Label="Country" IsLabelInsideInput="true" IsRequired="true">
             <InputSelect id="country" @bind-Value="_stepModel.Country">
                 @foreach (var phoneCode in PhoneCodes.List)
                 {
@@ -17,21 +17,27 @@
             </InputSelect>
         </FormSection>
         <div class="flex-x gap-x-1">
-            <FormSection InputId="phoneCode" Label="Code" Class="w-20" IsLabelInsideInput="true" IsRequired="true">
+            <FormSection For="() => _stepModel.Code" InputId="phoneCode" Label="Code" Class="w-20" IsLabelInsideInput="true" IsRequired="true">
                 <InputText id="phoneCode" @bind-Value="_stepModel.Code"/>
             </FormSection>
-            <FormSection InputId="phoneNumber" Label="Phone number" Class="grow" IsLabelInsideInput="true" IsRequired="true">
+            <FormSection
+                For="() => _stepModel.Number"
+                InputId="phoneNumber"
+                Label="Phone number"
+                Class="grow"
+                IsLabelInsideInput="true"
+                IsRequired="true">
                 <InputText id="phoneNumber" @bind-Value="_stepModel.Number"/>
             </FormSection>
         </div>
-        <FormSection>
+        <FormSection For="() => _stepModel.SyncContacts">
             <Checkbox
                 Id="syncContacts"
                 Checked="@_stepModel.SyncContacts"
                 Change="OnSyncContactsChange"
                 Name="Sync Contacts"/>
         </FormSection>
-        <FormSection InputId="email" Label="Email (optional)" IsLabelInsideInput="true">
+        <FormSection For="() => _stepModel.Email" InputId="email" Label="Email (optional)" IsLabelInsideInput="true">
             <InputText id="email" @bind-Value="_stepModel.Email"/>
         </FormSection>
     </Form>

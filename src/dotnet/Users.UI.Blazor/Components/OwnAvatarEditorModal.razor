@@ -20,15 +20,15 @@
             </NoPicture>
         </PicUpload>
 
-        <FormSection InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+        <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
         </FormSection>
 
-        <FormSection InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
+        <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
         </FormSection>
 
-        <FormSection InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
+        <FormSection For="() => _form.IsDefault" InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
             <button
                 type="button"
                 class="default-avatar-btn"
@@ -53,7 +53,7 @@
         </button>
 
         @if (!ModalModel.ChatId.IsNone) {
-            <FormSection InputId="@_form.IsActiveFieldId">
+            <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
                 <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
                             Label="Used in this chat (otherwise the default one is used)"/>
             </FormSection>

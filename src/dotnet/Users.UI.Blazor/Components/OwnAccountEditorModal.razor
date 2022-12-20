@@ -18,11 +18,11 @@
             Size="SquareSize.Size30"
             Class="edit-account-avatar"/>
 
-        <FormSection InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+        <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true"/>
         </FormSection>
 
-        <FormSection InputId="@_form.PhoneFieldId" Label="Phone" IsRequired="false" IsLabelInsideInput="true">
+        <FormSection For="() => _form.Phone" InputId="@_form.PhoneFieldId" Label="Phone" IsRequired="false" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Phone" Id="@_form.PhoneFieldId" Autofocus="true"/>
         </FormSection>
 
