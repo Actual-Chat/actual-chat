@@ -57,7 +57,7 @@
 }
 .btn.btn-round.notify-call-toggle,
 .panel-closed .btn.btn-round.notify-call-toggle {
-    @apply flex-none flex-x self-end outline-none p-0 h-12 scale-100;
+    @apply flex-none flex-x self-end outline-none p-0 mx-1 h-12 scale-100;
     @apply text-05 md:text-icons-01 bg-07 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
@@ -170,16 +170,19 @@
 }
 
 .related-chat-entry-panel {
-    @apply flex-x bg-03 w-full h-8 outline-none py-0;
+    @apply flex-x bg-03 w-full h-10 outline-none py-0;
 }
 .related-chat-entry {
-    @apply flex-x w-full bg-03 py-2 px-2 text-base cursor-pointer;
+    @apply flex-x w-full bg-03 md:py-2 px-2 text-base cursor-pointer;
 }
-.related-chat-entry .btn.btn-square:hover .btn-content {
+.related-chat-entry .btn.btn-round {
+    @apply mx-1 md:mx-2 min-w-12 md:min-w-0;
+}
+.related-chat-entry .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }
 .related-chat-entry-panel .btn.btn-round .btn-content {
-    @apply min-w-8 min-h-8 max-w-8 max-h-8;
+    @apply min-h-8 max-h-8;
 }
 .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply bg-transparent;

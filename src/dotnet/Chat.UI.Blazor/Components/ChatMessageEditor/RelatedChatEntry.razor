@@ -4,7 +4,7 @@
 @{
     var entry = Entry;
     var colorCls = IsOwn ? "text-06 " : "text-primary ";
-    var fontCls = "text-sm md:text-base leading-4 md:leading-6 ";
+    var fontCls = "text-base leading-4 md:leading-6 ";
     var authorNameCls = colorCls + fontCls + "font-medium max-w-full md:max-w-64 pl-2";
 }
 
@@ -17,7 +17,7 @@
                     <AuthorName AuthorSid="@entry.AuthorId" Class="@authorNameCls"/>
                     <span class="@colorCls @fontCls pr-1">:&nbsp</span>
                 </div>
-                <div class="flex-1 truncate px-2 md:px-0 text-xs md:text-base">@_text</div>
+                <div class="flex-1 truncate px-2 md:px-0 text-sm md:text-base">@_text</div>
             </div>
             <RenderSlot Name="QuoteCloseButton"/>
         </div>
