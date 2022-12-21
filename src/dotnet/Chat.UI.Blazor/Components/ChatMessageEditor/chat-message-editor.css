@@ -128,15 +128,16 @@
 }
 
 .attachment-list {
-    @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto w-full;
-    @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-bg-04 divide-dashed;
-    @apply border-4 border-primary rounded-xl;
+    @apply flex-x gap-x-2 w-full justify-start my-1 p-2 overflow-x-auto;
 }
-.clear-attachments-btn.btn.btn-round {
-    @apply relative min-w-12 self-center;
+.clear-attachments-btn.btn {
+    @apply min-h-6 max-h-6 border-transparent;
 }
-.clear-attachments-btn.btn.btn-round .btn-content {
-    @apply bg-error text-error-title min-w-full;
+.clear-attachments-btn.btn:hover {
+    @apply border-error;
+}
+.clear-attachments-btn.btn .btn-content {
+    @apply min-w-full text-error font-medium;
 }
 .post-attachments-btn.btn.btn-round {
     @apply relative min-w-12 self-center;
@@ -145,19 +146,28 @@
     @apply bg-primary text-primary-title min-w-full;
 }
 .attachment-wrapper {
-    @apply relative min-w-48 max-w-48 mr-2 pl-2 first:pl-0 last:mr-0;
+    @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
 }
 .attachment-item {
-    @apply relative grid min-h-40 max-h-48 p-3 rounded-none overflow-y-auto overflow-x-hidden;
+    @apply relative flex justify-center mt-auto rounded-lg overflow-hidden;
+    @apply min-h-34 max-h-34 min-w-34 max-w-34;
+    @apply border border-bg-04;
 }
-.attachment-wrapper .btn.btn-round {
-    @apply w-8 h-8 text-04 m-0 self-center;
+.remove-attachment-btn.btn {
+    @apply absolute top-0 right-0 text-04;
+    @apply min-w-9 max-w-9 min-h-9 max-h-9 self-center;
 }
-.attachment-wrapper .btn.btn-round .btn-content {
-    @apply bg-primary;
+.remove-attachment-btn.btn .btn-content {
+    @apply justify-center bg-[#BABABA];
 }
-.attachment-wrapper .btn.btn-round:hover .btn-content {
-    @apply bg-error-ring;
+.remove-attachment-btn.btn:hover .btn-content {
+    @apply bg-error;
+}
+.add-attachment.btn .btn-content {
+    @apply bg-04;
+}
+.add-attachment.btn:hover .btn-content {
+    @apply bg-03;
 }
 .attach-btn.btn.btn-round {
     @apply self-start;

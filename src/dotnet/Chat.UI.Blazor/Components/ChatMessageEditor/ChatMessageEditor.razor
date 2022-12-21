@@ -27,6 +27,7 @@
         <AttachmentList
             @key="AttachmentListKey"
             @ref="AttachmentListRef"
+            JSRef="JSRef"
             RemoveClick="@(a => RemoveAttachment(a))"
             ClearClick="@(_ => ClearAttachments())"
             PostClick="@(_ => Post())"/>

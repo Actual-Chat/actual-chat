@@ -70,7 +70,7 @@
         @apply w-0;
     }
     .custom-scrollbar-x::-webkit-scrollbar {
-        @apply h-3;
+        @apply h-1.5;
     }
 
     .custom-scrollbar::-webkit-scrollbar-track,
