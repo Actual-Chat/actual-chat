@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Users.Db;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -36,8 +37,8 @@ public class ReadPositionsBackend: DbServiceBase<UsersDbContext>, IReadPositions
         await using var __ = dbContext.ConfigureAwait(false);
 
         var id = DbReadPosition.ComposeId(userId, chatId);
-        var dbReadPosition = await dbContext.ReadPositions
-            .Get(id, cancellationToken)
+        var dbReadPosition = await dbContext.ReadPositions.ForUpdate()
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
         bool hasChanges = false;
         if (dbReadPosition == null) {
