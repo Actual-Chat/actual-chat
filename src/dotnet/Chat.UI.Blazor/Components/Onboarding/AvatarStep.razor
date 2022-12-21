@@ -4,6 +4,14 @@
 @using Microsoft.Toolkit.HighPerformance
 @using Stl.Generators
 
+@{
+    var noAvatar = _stepModel.AvatarId == null || _stepModel.AvatarId.Value.IsEmpty;
+}
+
+@if (noAvatar) {
+    return;
+}
+
 <div>
     <p class="text-title-1 text-center mb-8">Set up your avatar and name</p>
     <Form
@@ -48,7 +56,7 @@
                 </Button>
             </div>
         </div>
-        <FormSection For="() => _stepModel.Name" ShowErrors="true" InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection For="() => _stepModel.Name" InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
         </FormSection>
         <FormSection For="() => _stepModel.LastName" InputId="lastName" Label="Last name (optional)" IsLabelInsideInput="true">
@@ -79,13 +87,14 @@
         }
         var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull {
-                PrincipalId = account.Id,
+                UserId = account.Id,
             }.WithMissingPropertiesFrom(account.Avatar),
         });
         var (newAvatar, error) = await UICommander.Run(createAvatarCommand);
         if (error != null)
             return;
         _stepModel.AvatarId = newAvatar.Id;
+        _stepModel.AvatarPicture = newAvatar.Picture;
         var setDefaultAvatarCommand = new IAvatars.SetDefaultCommand(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
     }
