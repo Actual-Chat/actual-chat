@@ -38,7 +38,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         model.RequireSomeVersion();
 
         if (UserId.IsNullOrEmpty())
-            UserId = model.UserId.Id.NullIfEmpty();
+            UserId = model.UserId.Value.NullIfEmpty();
         else if (model.UserId != (Symbol)UserId)
             throw StandardError.Constraint("Can't change Avatar.UserId.");
 

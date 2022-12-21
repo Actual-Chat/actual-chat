@@ -46,6 +46,8 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Id = id;
         Version = model.Version;
+        ChatId = id.ChatId;
+        LocalId = id.LocalId;
         IsAnonymous = model.IsAnonymous;
         UserId = model.UserId.Value.NullIfEmpty();
         AvatarId = model.AvatarId.NullIfEmpty();
