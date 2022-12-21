@@ -481,10 +481,21 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (oldHasLeft == author.HasLeft)
             return;
 
+        // Let's delay fetching an author a bit
+        Author? readAuthor = null;
+        var retrier = new Retrier(5, new RetryDelaySeq(0.25, 1));
+        while (retrier.NextOrThrow()) {
+            await Clocks.CoarseCpuClock.Delay(retrier.Delay, cancellationToken).ConfigureAwait(false);
+            readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, cancellationToken).ConfigureAwait(false);
+            if (readAuthor?.Avatar != null)
+                break;
+        }
+        var authorName = readAuthor?.Avatar.Name.NullIfEmpty() ?? MentionMarkup.NotAvailableName;
+
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
-            SystemEntry = new MembersChangedOption(author.Id, author.Avatar.Name, author.HasLeft),
+            SystemEntry = new MembersChangedOption(author.Id, authorName, author.HasLeft),
         });
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
