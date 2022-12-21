@@ -12,7 +12,9 @@
         <ChatMessage Message="@context" />
     </Item>
     <Empty>
-        <Greetings/>
+        @if (Chat.Id != Constants.Chat.AnnouncementsChatId) {
+            <Greetings/>
+        }
     </Empty>
     <Skeleton>
         @{

@@ -89,7 +89,7 @@
                 </li>
             }
         }
-        @if (items.Count == 0) {
+        @if (items.Count == 0 && Data != VirtualListData<TItem>.None) {
             @Empty
         }
     </ul>
