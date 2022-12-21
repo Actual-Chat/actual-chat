@@ -60,10 +60,10 @@
         BlazorRef = null!;
     }
 
-    public ValueTask FocusAsync()
+    public ValueTask Focus()
         => ElementRef.FocusAsync();
 
-    public ValueTask ClearAsync()
+    public ValueTask Clear()
         => JSRef.InvokeVoidAsync("clear");
 
     [JSInvokable]

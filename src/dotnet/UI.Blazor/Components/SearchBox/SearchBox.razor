@@ -24,10 +24,10 @@
     [Parameter] public string Placeholder { get; set; } = "Search...";
 
     public ValueTask Focus()
-        => InputRef.FocusAsync();
+        => InputRef.Focus();
 
     public ValueTask Cancel()
-        => InputRef.ClearAsync();
+        => InputRef.Clear();
 
     private Task OnInput(string text)
         => TextChanged.InvokeAsync(text);

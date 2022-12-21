@@ -1,11 +1,11 @@
 @namespace Blazored.Modal
 
 <div class="blazored-modal-focus-trap" @ref="_container" @onkeydown="HandleKeyPresses" @onkeyup="HandleKeyPresses">
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startSecond" @onfocus="FocusEndAsync"></div>
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startFirst" @onfocus="FocusEndAsync"></div>
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startSecond" @onfocus="FocusEnd"></div>
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startFirst" @onfocus="FocusEnd"></div>
     @ChildContent
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endFirst" @onfocus="FocusStartAsync"></div>
-    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endSecond" @onfocus="FocusStartAsync"></div>
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endFirst" @onfocus="FocusStart"></div>
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endSecond" @onfocus="FocusStart"></div>
 </div>
 
 @code {
@@ -37,13 +37,13 @@
     internal async Task SetFocus()
         => await _startFirst.FocusAsync();
 
-    private async Task FocusStartAsync(FocusEventArgs args) {
+    private async Task FocusStart(FocusEventArgs args) {
         _skipRender = true;
         if (!_shiftPressed)
             await _startFirst.FocusAsync();
     }
 
-    private async Task FocusEndAsync(FocusEventArgs args)
+    private async Task FocusEnd(FocusEventArgs args)
     {
         _skipRender = true;
         if (_shiftPressed)

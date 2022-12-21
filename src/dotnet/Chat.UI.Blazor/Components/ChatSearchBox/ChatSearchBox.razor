@@ -73,13 +73,13 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_needsFocus) {
-            await _inputRef.FocusAsync();
+            await _inputRef.Focus();
             _needsFocus = false;
         }
     }
 
     public ValueTask Focus()
-        => _inputRef.FocusAsync();
+        => _inputRef.Focus();
 
     public async Task Cancel()
     {
