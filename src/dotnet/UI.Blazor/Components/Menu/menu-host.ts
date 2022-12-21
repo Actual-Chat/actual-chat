@@ -1,6 +1,8 @@
 import './menu.css';
 import { Disposable } from 'disposable';
 import { nanoid } from 'nanoid';
+import { HistoryUI, HistoryStepToken } from '../../Services/HistoryUI/history-ui';
+
 import {
     combineLatestWith,
     delay,
@@ -63,6 +65,8 @@ enum MenuTriggers {
 export class MenuHost implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menus: Menu[] = [];
+    private preventHistoryModification: boolean;
+    private historyStepToken: HistoryStepToken;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -109,6 +113,10 @@ export class MenuHost implements Disposable {
         this.hideMenu(menu);
     }
 
+    private getHistoryUi() : HistoryUI {
+       return <HistoryUI>(<any>window).App.historyUI;
+    }
+
     private renderMenu(eventData: EventData): void {
         const menuIndex = this.menus.findIndex(
             x => x.eventData.menuRef == eventData.menuRef
@@ -126,14 +134,32 @@ export class MenuHost implements Disposable {
             return;
         }
 
-        this.hideMenus(x => x.isHoverMenu === eventData.isHoverMenu);
+        try {
+            this.preventHistoryModification = true;
+            this.hideMenus(x => x.isHoverMenu === eventData.isHoverMenu);
+        }
+        finally {
+            this.preventHistoryModification = false;
+        }
 
         const menu: Menu = {
             id: nanoid(),
             eventData: eventData,
         };
         this.menus.push(menu);
+        if (!eventData.isHoverMenu && !this.historyStepToken) {
+            debugLog?.log(`about to push backStep on render menu`, history.state);
+            this.historyStepToken = this.getHistoryUi()
+                .pushBackStep(true, this.hideMenusOnBack);
+            debugLog?.log(`pushed state to render menu`, history.state);
+        }
         this.blazorRef.invokeMethodAsync('OnRenderMenu', menu.eventData.menuRef, menu.id, eventData.isHoverMenu);
+    }
+
+    private hideMenusOnBack = (): void => {
+        debugLog?.log('context menu should be closed on back');
+        if (this.menus.length)
+            this.hideMenus(e => !e.isHoverMenu);
     }
 
     private hideOverlay(): void {
@@ -147,11 +173,28 @@ export class MenuHost implements Disposable {
         overlay.style.display = 'none';
     }
 
+    private removeHistoryStep(): void {
+        if (this.preventHistoryModification || !this.historyStepToken)
+            return;
+        if (this.menus.filter(c => !c.eventData.isHoverMenu).length)
+            return;
+        const goBack = this.getHistoryUi()
+            .isActiveStep(this.historyStepToken);
+        this.historyStepToken = undefined;
+        if (goBack) {
+            history.back();
+            debugLog?.log(`removed history back step on hide menu`);
+        } else {
+            debugLog?.log(`history back step has been already replaced before on hide menu`);
+        }
+    }
+
     private hideMenu(menu: Menu): void {
         debugLog?.log(`hideMenu, menu:`, menu);
         if (menu.elementRef)
             menu.elementRef.style.display = 'none';
         this.hideOverlay();
+        this.removeHistoryStep();
 
         this.blazorRef.invokeMethodAsync('OnHideMenu', menu.id);
     }
