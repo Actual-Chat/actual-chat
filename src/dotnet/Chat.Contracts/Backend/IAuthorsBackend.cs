@@ -15,29 +15,13 @@ public interface IAuthorsBackend : IComputeService
 
     [CommandHandler]
     Task<AuthorFull> Upsert(UpsertCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<AuthorFull> ChangeHasLeft(ChangeHasLeftCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<AuthorFull> SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record UpsertCommand(
         [property: DataMember] ChatId ChatId,
+        [property: DataMember] AuthorId AuthorId,
         [property: DataMember] UserId UserId,
-        [property: DataMember] bool? HasLeft = null
+        [property: DataMember] long? ExpectedVersion,
+        [property: DataMember] AuthorDiff Diff
         ) : ICommand<AuthorFull>, IBackendCommand;
-
-    [DataContract]
-    public sealed record ChangeHasLeftCommand(
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] AuthorId AuthorId,
-        [property: DataMember] bool HasLeft
-    ) : ICommand<AuthorFull>, IBackendCommand;
-
-    [DataContract]
-    public sealed record SetAvatarCommand(
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] AuthorId AuthorId,
-        [property: DataMember] Symbol AvatarId
-    ) : ICommand<AuthorFull>, IBackendCommand;
 }

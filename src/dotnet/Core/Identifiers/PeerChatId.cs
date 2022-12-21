@@ -70,6 +70,17 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         UserId2 = userId2;
     }
 
+    // Helpers
+
+    public int IndexOf(UserId userId)
+    {
+        if (UserId1 == userId)
+            return 0;
+        if (UserId2 == userId)
+            return 1;
+        return -1;
+    }
+
     // Conversion
 
     public override string ToString() => Value;
@@ -109,9 +120,9 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         if (userId1Length < 0)
             return false;
 
-        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1))
+        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1) || userId1.IsGuestId)
             return false;
-        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2))
+        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2) || userId2.IsGuestId)
             return false;
         if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
             return false; // Wrong sort order

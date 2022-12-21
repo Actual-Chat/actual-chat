@@ -34,7 +34,8 @@ public interface IAuthors : IComputeService
     [DataContract]
     public sealed record JoinCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId
+        [property: DataMember] ChatId ChatId,
+        [property: DataMember] bool? JoinAnonymously = null
     ) : ISessionCommand<AuthorFull>;
 
     [DataContract]

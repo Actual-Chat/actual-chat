@@ -36,11 +36,3 @@ public record Author(
     public virtual bool Equals(Author? other) => EqualityComparer.Equals(this, other);
     public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }
-
-[DataContract]
-public sealed record AuthorDiff : RecordDiff
-{
-    [DataMember] public Symbol AvatarId { get; init; }
-    [DataMember] public bool IsAnonymous { get; init; }
-    [DataMember] public bool HasLeft { get; init; }
-}

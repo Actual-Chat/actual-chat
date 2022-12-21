@@ -137,7 +137,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId) = command;
+        var (session, chatId, joinAnonymously) = command;
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is { HasLeft: false })
             return author;
@@ -146,7 +146,9 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         chatRules.Require(ChatPermissions.Join);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(chatId, account.Id, false);
+        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+            chatId, author?.Id ?? default, account.Id, null,
+            new AuthorDiff() { IsAnonymous = joinAnonymously });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
@@ -175,8 +177,10 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return;
         chat.Rules.Require(ChatPermissions.Leave);
 
-        var changeHasLeftCommand = new IAuthorsBackend.ChangeHasLeftCommand(chatId, author.Id, true);
-        await Commander.Call(changeHasLeftCommand, true, cancellationToken).ConfigureAwait(false);
+        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+            chatId, author.Id, default, author.Version,
+            new AuthorDiff() { HasLeft = true });
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -203,10 +207,12 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
         var author = await GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author == null)
+        if (author == null || author.AvatarId == command.AvatarId)
             return;
 
-        var setAvatarCommand = new IAuthorsBackend.SetAvatarCommand(chatId, author.Id, avatarId);
-        await Commander.Call(setAvatarCommand, true, cancellationToken).ConfigureAwait(false);
+        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+            chatId, author.Id, default, author.Version,
+            new AuthorDiff() { AvatarId = avatarId });
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

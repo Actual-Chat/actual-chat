@@ -473,15 +473,18 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (Computed.IsInvalidating())
             return;
 
-        var (author, changeKind) = @event;
+        var (author, oldAuthor) = @event;
         if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.IsPeerChatId(out _))
             return;
 
-        var hasLeft = changeKind == ChangeKind.Remove || author.HasLeft;
+        var oldHasLeft = oldAuthor?.HasLeft ?? true;
+        if (oldHasLeft == author.HasLeft)
+            return;
+
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
-            SystemEntry = new MembersChangedOption(author.Id, author.Avatar.Name, hasLeft),
+            SystemEntry = new MembersChangedOption(author.Id, author.Avatar.Name, author.HasLeft),
         });
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

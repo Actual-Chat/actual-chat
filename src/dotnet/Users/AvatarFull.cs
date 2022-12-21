@@ -13,7 +13,7 @@ public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Versio
     public static new AvatarFull None { get; } = new(Symbol.Empty, 0);
     public static new AvatarFull Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
 
-    [DataMember] public Symbol PrincipalId { get; init; }
+    [DataMember] public UserId UserId { get; init; }
 
     public AvatarFull() : this(Symbol.Empty) { }
 

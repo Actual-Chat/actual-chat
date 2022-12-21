@@ -162,7 +162,11 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (author, _) = @event;
+        var (author, oldAuthor) = @event;
+        var oldHasLeft = oldAuthor?.HasLeft ?? true;
+        if (oldHasLeft == author.HasLeft)
+            return;
+
         var userId = author.UserId;
         var chatId = author.ChatId;
         if (userId.IsNone) // We do nothing for anonymous authors for now

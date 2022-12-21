@@ -2,7 +2,6 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Db;
-using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -12,25 +11,21 @@ namespace ActualChat.Chat;
 public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 {
     private IChatsBackend? _chatsBackend;
-    private IAuthors? _frontend;
 
-    private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IAvatarsBackend AvatarsBackend { get; }
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; }
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; }
-    private IServerKvas ServerKvas { get; }
-    private IAuthors Frontend => _frontend ??= Services.GetRequiredService<IAuthors>();
+    private DiffEngine DiffEngine { get; }
 
     public AuthorsBackend(IServiceProvider services) : base(services)
     {
-        Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         DbAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
         DbAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();
         AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
-        ServerKvas = services.ServerKvas();
+        DiffEngine = services.GetRequiredService<DiffEngine>();
     }
 
     // [ComputeMethod]
@@ -45,10 +40,18 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return Bots.GetWalle(chatId);
 
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
-        if (dbAuthor == null)
-            return null;
+        AuthorFull? author;
+        if (dbAuthor == null) {
+            if (!chatId.IsPeerChatId(out var peerChatId))
+                return null;
 
-        var author = dbAuthor.ToModel();
+            author = GetDefaultPeerChatAuthor(peerChatId, authorId);
+            if (author == null)
+                return null;
+        }
+        else
+            author = dbAuthor.ToModel();
+
         author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
         return author;
     }
@@ -74,6 +77,12 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             author = dbAuthor?.ToModel();
+        }
+        if (author == null) {
+            if (!chatId.IsPeerChatId(out var peerChatId))
+                return null;
+
+            author = GetDefaultPeerChatAuthor(peerChatId, userId);
             if (author == null)
                 return null;
         }
@@ -87,6 +96,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     {
         if (chatId.IsNone)
             return ImmutableArray<AuthorId>.Empty;
+
+        if (chatId.IsPeerChatId(out var peerChatId))
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToImmutableArray();
 
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
@@ -105,6 +117,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (chatId.IsNone)
             return ImmutableArray<UserId>.Empty;
 
+        if (chatId.IsPeerChatId(out var peerChatId))
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToImmutableArray();
+
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -119,206 +134,133 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [CommandHandler]
     public virtual async Task<AuthorFull> Upsert(IAuthorsBackend.UpsertCommand command, CancellationToken cancellationToken)
     {
-        var (chatId, userId, hasLeftOpt) = command;
+        var (chatId, authorId, userId, expectedVersion, diff) = command;
         if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId");
-        if (userId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid UserId");
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+        if (!authorId.IsNone && authorId.ChatId != chatId)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
+        if (userId.IsNone && authorId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId must be provided.");
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invAuthor = context.Operation().Items.Get<AuthorFull>();
+            var invChangeKind = context.Operation().Items.GetOrDefault(ChangeKind.Update);
             if (invAuthor != null) {
+                _ = Get(chatId, invAuthor.Id, default);
                 var invUserId = invAuthor.UserId;
-                if (!invUserId.IsNone) {
+                if (invChangeKind == ChangeKind.Create) {
                     _ = GetByUserId(chatId, invUserId, default);
+                    _ = ListAuthorIds(chatId, default);
                     _ = ListUserIds(chatId, default);
                 }
-                _ = Get(chatId, invAuthor.Id, default);
-                _ = ListAuthorIds(chatId, default);
             }
             return default!;
         }
 
-        AvatarFull? newAvatar = null;
-        var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+        var defaultAuthor = chatId.IsPeerChatId(out var peerChatId)
+            ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).Require()
+            : null;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAuthor = await dbContext.Authors.ForUpdate()
-            .Include(a => a.Roles)
-            .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbAuthor != null) {
-            // Already exist, so we don't recreate one
-            var author = dbAuthor.ToModel();
-            var changedAuthor = author;
-            if (hasLeftOpt is { } hasLeft && changedAuthor.HasLeft != hasLeft)
-                changedAuthor = changedAuthor with { HasLeft = hasLeft };
+        var dbAuthors = dbContext.Authors.ForUpdate().Include(a => a.Roles);
+        var dbAuthor = await (authorId.IsNone
+            ? dbAuthors.SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+            : dbAuthors.SingleOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
+            ).ConfigureAwait(false);
+        var existingAuthor = dbAuthor?.ToModel() ?? defaultAuthor;
+        var changeKind = existingAuthor == null ? ChangeKind.Create : ChangeKind.Update;
 
-            if (ReferenceEquals(changedAuthor, author))
-                return author;
+        if (existingAuthor != null) {
+            // Update existing author, incl. one of the default ones in peer chat
+            existingAuthor.RequireVersion(expectedVersion);
+            var account = await AccountsBackend.Get(existingAuthor.UserId, cancellationToken).Require().ConfigureAwait(false);
 
-            changedAuthor = changedAuthor with {
-                Version = VersionGenerator.NextVersion(changedAuthor.Version),
+            var author = DiffEngine.Patch(existingAuthor, diff) with {
+                Version = VersionGenerator.NextVersion(existingAuthor.Version),
             };
-            dbAuthor.UpdateFrom(changedAuthor);
 
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            author = dbAuthor.ToModel();
-            context.Operation().Items.Set(author);
+            // Check constraints
+            if (author.IsAnonymous) {
+                if (!existingAuthor.IsAnonymous)
+                    throw StandardError.Constraint("IsAnonymous can be changed only to false.");
+            }
+            else if (account.IsGuest)
+                throw StandardError.Constraint("Unauthenticated authors must be anonymous.");
+            if (author.HasLeft && !peerChatId.IsNone)
+                throw StandardError.Constraint("Peer chat authors can't leave.");
 
-            // Raise AuthorChangedEvent
-            new AuthorChangedEvent(author, ChangeKind.Update)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
-            return author;
+            if (dbAuthor == null) {
+                // First author update in peer chat = create it
+                dbAuthor = new DbAuthor(author);
+                dbContext.Add(dbAuthor);
+            }
+            else
+                dbAuthor.UpdateFrom(author);
         }
         else {
-            if (account.IsGuest) {
-                // We're creating an author for unregistered user here,
-                // so we have to create a new random avatar
-                var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
-                    Create = new AvatarFull() {
-                        Name = RandomNameGenerator.Default.Generate(),
-                        Bio = "Unregistered user",
-                        Picture = "", // NOTE(AY): Add a random one?
-                    },
-                });
-                newAvatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-            }
+            // Create author, + we know here it's not a peer chat
+            if (userId.IsNone)
+                throw new ArgumentOutOfRangeException(nameof(command), "UserId is required to create a new author.");
+            var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
             var localId = await DbAuthorLocalIdGenerator
                 .Next(dbContext, chatId, cancellationToken)
                 .ConfigureAwait(false);
-            var id = DbAuthor.ComposeId(chatId, localId);
-            dbAuthor = new() {
-                Id = id,
-                Version = VersionGenerator.NextVersion(),
-                ChatId = chatId,
-                LocalId = localId,
-                UserId = account.Id,
-                AvatarId = newAvatar?.Id,
+            var id = new AuthorId(chatId, localId, AssumeValid.Option);
+            var author = new AuthorFull(id, VersionGenerator.NextVersion()) {
+                UserId = userId,
                 IsAnonymous = account.IsGuest,
-                HasLeft = hasLeftOpt ?? true,
             };
-            dbContext.Add(dbAuthor);
+            author = DiffEngine.Patch(author, diff);
 
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            // Check constraints
+            if (author.HasLeft)
+                throw StandardError.Constraint("New authors can't instantly leave the chat.");
+            if (author.IsAnonymous) {
+                if (author.AvatarId.IsEmpty) {
+                    // Creating a random avatar for anonymous authors w/o pre-selected avatar
+                    var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
+                        Create = new AvatarFull() {
+                            UserId = userId,
+                            Name = RandomNameGenerator.Default.Generate(),
+                            Bio = "Someone anonymous",
+                            Picture = "", // NOTE(AY): Add a random one?
+                        },
+                    });
+                    var avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+                    author = author with { AvatarId = avatar.Id };
+                }
+            }
+            else if (account.IsGuest)
+                throw StandardError.Constraint("Unauthenticated authors must be anonymous.");
+
+            dbAuthor = new DbAuthor(author);
+            dbContext.Add(dbAuthor);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        {
             var author = dbAuthor.ToModel();
             context.Operation().Items.Set(author);
+            context.Operation().Items.Set(changeKind);
 
-            if (newAvatar != null) {
-                // We're creating an author for unregistered user here,
-                // and its newAvatar.PrincipalId is empty here,
-                // so we need to set it to the right one as a follow-up.
-                newAvatar = newAvatar with {
-                    PrincipalId = author.Id,
-                };
-                new IAvatarsBackend.ChangeCommand(newAvatar.Id, newAvatar.Version, new Change<AvatarFull>() {
-                    Update = newAvatar,
-                }).EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
+            if (peerChatId.IsNone) {
+                // Set chat read position to the very end
+                var chatTextIdRange = await ChatsBackend
+                    .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
+                    .ConfigureAwait(false);
+                new IReadPositionsBackend.SetCommand(author.UserId, command.ChatId, chatTextIdRange.End - 1)
+                    .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
             }
-
-            // Set chat read position to the very end
-            var chatTextIdRange = await ChatsBackend
-                .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
-                .ConfigureAwait(false);
-            new IReadPositionsBackend.SetCommand(command.UserId, command.ChatId, chatTextIdRange.End - 1)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
-
             // Raise AuthorChangedEvent
-            new AuthorChangedEvent(author, ChangeKind.Create)
+            new AuthorChangedEvent(author, existingAuthor)
                 .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
             return author;
         }
-    }
-
-    // [CommandHandler]
-    public virtual async Task<AuthorFull> ChangeHasLeft(IAuthorsBackend.ChangeHasLeftCommand command, CancellationToken cancellationToken)
-    {
-        var (chatId, authorId, hasLeft) = command;
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId");
-        if (authorId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid UserId");
-
-        var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
-            var invAuthor = context.Operation().Items.Get<AuthorFull>();
-            if (invAuthor != null) {
-                var invUserId = invAuthor.UserId;
-                if (!invUserId.IsNone) {
-                    _ = GetByUserId(chatId, invUserId, default);
-                    _ = ListUserIds(chatId, default);
-                }
-                _ = Get(chatId, invAuthor.Id, default);
-                _ = ListAuthorIds(chatId, default);
-            }
-            return default!;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbAuthor = await dbContext.Authors.ForUpdate()
-            .Include(a => a.Roles)
-            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-        if (dbAuthor.HasLeft == hasLeft)
-            return dbAuthor.ToModel();
-
-        dbAuthor.HasLeft = hasLeft;
-        dbAuthor.Version = VersionGenerator.NextVersion(dbAuthor.Version);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        var author = dbAuthor.ToModel();
-        context.Operation().Items.Set(author);
-        new AuthorChangedEvent(author, ChangeKind.Update)
-            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
-        return author;
-    }
-
-    // [CommandHandler]
-    public virtual async Task<AuthorFull> SetAvatar(IAuthorsBackend.SetAvatarCommand command, CancellationToken cancellationToken)
-    {
-        var (chatId, authorId, avatarId) = command;
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId");
-        if (authorId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid UserId");
-
-        var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
-            var invAuthor = context.Operation().Items.Get<AuthorFull>();
-            if (invAuthor != null) {
-                var invUserId = invAuthor.UserId;
-                if (!invUserId.IsNone) {
-                    _ = GetByUserId(chatId, invUserId, default);
-                    _ = ListUserIds(chatId, default);
-                }
-                _ = Get(chatId, invAuthor.Id, default);
-                _ = ListAuthorIds(chatId, default);
-            }
-            return default!;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbAuthor = await dbContext.Authors.ForUpdate()
-            .Include(a => a.Roles)
-            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-        dbAuthor.AvatarId = avatarId.NullIfEmpty();
-        dbAuthor.Version = VersionGenerator.NextVersion(dbAuthor.Version);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        var author = dbAuthor.ToModel();
-        context.Operation().Items.Set(author);
-        return author;
     }
 
     // Private / internal methods
@@ -343,4 +285,42 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             Picture = DefaultUserPicture.GetAvataaar(author.Id),
             Bio = "",
         };
+
+    private AuthorFull[] GetDefaultPeerChatAuthors(PeerChatId chatId)
+        => new[] {
+            GetDefaultPeerChatAuthor(chatId, chatId.UserId1)!,
+            GetDefaultPeerChatAuthor(chatId, chatId.UserId2)!,
+        };
+
+    private AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, AuthorId authorId, UserId userId)
+        => authorId.IsNone
+            ? GetDefaultPeerChatAuthor(chatId, userId)
+            : GetDefaultPeerChatAuthor(chatId, authorId);
+
+    private AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, AuthorId authorId)
+    {
+        if (authorId.ChatId.Id != chatId.Id)
+            return null;
+        if (authorId.LocalId == 1)
+            return GetDefaultPeerChatAuthor(chatId, chatId.UserId1);
+        if (authorId.LocalId == 2)
+            return GetDefaultPeerChatAuthor(chatId, chatId.UserId2);
+        return null;
+    }
+
+    private AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, UserId userId)
+    {
+        var localId = chatId.IndexOf(userId) + 1;
+        if (localId < 1)
+            return null;
+
+        var authorId = new AuthorId(chatId, localId, AssumeValid.Option);
+        var author = new AuthorFull(authorId) {
+            IsAnonymous = false,
+            UserId = userId,
+            AvatarId = "",
+            HasLeft = false,
+        };
+        return author;
+    }
 }

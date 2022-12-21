@@ -15,7 +15,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string? PrincipalId { get; set; }
+    public string UserId { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public string Bio { get; set; } = "";
@@ -25,7 +25,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public AvatarFull ToModel()
         => new(Id, Version) {
-            PrincipalId = PrincipalId ?? Symbol.Empty,
+            UserId = new UserId(UserId),
             Name = Name,
             Picture = Picture,
             Bio = Bio,
@@ -37,10 +37,10 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
-        if (PrincipalId.IsNullOrEmpty())
-            PrincipalId = model.PrincipalId.NullIfEmpty()?.Value;
-        else if (PrincipalId != model.PrincipalId)
-            throw StandardError.Constraint("Can't change Avatar.PrincipalId.");
+        if (UserId.IsNullOrEmpty())
+            UserId = model.UserId;
+        else if (model.UserId != (Symbol)UserId)
+            throw StandardError.Constraint("Can't change Avatar.UserId.");
 
         Id = id;
         Version = model.Version;

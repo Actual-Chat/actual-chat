@@ -31,7 +31,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         dbContext.Chats.Add(dbChat);
 
         var dbAuthor = new DbAuthor {
-            Id = DbAuthor.ComposeId(defaultChatId, 1),
+            Id = new AuthorId(defaultChatId, 1, AssumeValid.Option),
             ChatId = defaultChatId,
             LocalId = 1,
             Version = VersionGenerator.NextVersion(),
@@ -77,7 +77,7 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
         var chatId = Constants.Chat.DefaultChatId;
         for (int i = 1; i < 30; i++) {
             var dbAuthor = new DbAuthor {
-                Id = DbAuthor.ComposeId(chatId, i + 1),
+                Id = new AuthorId(chatId, i + 1, AssumeValid.Option),
                 ChatId = chatId,
                 LocalId = i + 1,
                 Version = VersionGenerator.NextVersion(),

@@ -70,7 +70,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     private static DbAuthor AddAuthor(ChatDbContext dbContext,  ChatId chatId, UserId userId)
     {
         var dbAuthor = new DbAuthor {
-            Id = DbAuthor.ComposeId(chatId, 1),
+            Id = new AuthorId(chatId, 1, AssumeValid.Option),
             ChatId = chatId,
             LocalId = 1,
             Version = 1,

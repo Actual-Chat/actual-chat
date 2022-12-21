@@ -23,13 +23,12 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public List<DbAuthorRole> Roles { get; } = new();
 
-    public static string ComposeId(ChatId chatId, long localId)
-        => new AuthorId(chatId, localId, AssumeValid.Option).Id;
+    public DbAuthor() { }
+    public DbAuthor(AuthorFull model) => UpdateFrom(model);
 
     public AuthorFull ToModel()
     {
         var result = new AuthorFull(new AuthorId(Id), Version) {
-            Version = Version,
             IsAnonymous = IsAnonymous,
             UserId = new UserId(UserId ?? Symbol.Empty, AssumeValid.Option),
             AvatarId = AvatarId ?? "",
