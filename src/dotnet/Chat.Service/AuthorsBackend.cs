@@ -148,9 +148,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var invChangeKind = context.Operation().Items.GetOrDefault(ChangeKind.Update);
             if (invAuthor != null) {
                 _ = Get(chatId, invAuthor.Id, default);
-                var invUserId = invAuthor.UserId;
+                _ = GetByUserId(chatId, invAuthor.UserId, default);
                 if (invChangeKind == ChangeKind.Create) {
-                    _ = GetByUserId(chatId, invUserId, default);
                     _ = ListAuthorIds(chatId, default);
                     _ = ListUserIds(chatId, default);
                 }
