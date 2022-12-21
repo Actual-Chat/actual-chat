@@ -15,7 +15,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string UserId { get; set; }
+    public string? UserId { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public string Bio { get; set; } = "";
@@ -38,7 +38,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         model.RequireSomeVersion();
 
         if (UserId.IsNullOrEmpty())
-            UserId = model.UserId;
+            UserId = model.UserId.Id.NullIfEmpty();
         else if (model.UserId != (Symbol)UserId)
             throw StandardError.Constraint("Can't change Avatar.UserId.");
 
