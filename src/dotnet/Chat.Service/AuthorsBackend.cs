@@ -144,12 +144,12 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var invAuthor = context.Operation().Items.Get<AuthorFull>();
-            var invChangeKind = context.Operation().Items.GetOrDefault(ChangeKind.Update);
-            if (invAuthor != null) {
+            var (invAuthor, invOldAuthor) = context.Operation().Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
+            if (!invAuthor.Id.IsNone) {
                 _ = Get(chatId, invAuthor.Id, default);
                 _ = GetByUserId(chatId, invAuthor.UserId, default);
-                if (invChangeKind == ChangeKind.Create) {
+                var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
+                if (invAuthor.HasLeft != invOldHadLeft) {
                     _ = ListAuthorIds(chatId, default);
                     _ = ListUserIds(chatId, default);
                 }
@@ -170,7 +170,6 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             : dbAuthors.SingleOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
             ).ConfigureAwait(false);
         var existingAuthor = dbAuthor?.ToModel() ?? defaultAuthor;
-        var changeKind = existingAuthor == null ? ChangeKind.Create : ChangeKind.Update;
 
         if (existingAuthor != null) {
             // Update existing author, incl. one of the default ones in peer chat
@@ -242,10 +241,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        {
+        { // Nested to get a new var scope
             var author = dbAuthor.ToModel();
-            context.Operation().Items.Set(author);
-            context.Operation().Items.Set(changeKind);
+            context.Operation().Items.Set((author, existingAuthor));
 
             if (peerChatId.IsNone) {
                 // Set chat read position to the very end
