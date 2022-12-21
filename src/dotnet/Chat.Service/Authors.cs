@@ -148,7 +148,10 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upsertCommand = new IAuthorsBackend.UpsertCommand(
             chatId, author?.Id ?? default, account.Id, null,
-            new AuthorDiff() { IsAnonymous = joinAnonymously });
+            new AuthorDiff() {
+                IsAnonymous = joinAnonymously,
+                HasLeft = false,
+            });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
