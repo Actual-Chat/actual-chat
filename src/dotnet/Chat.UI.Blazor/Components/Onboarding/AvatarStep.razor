@@ -48,7 +48,7 @@
                 </Button>
             </div>
         </div>
-        <FormSection For="() => _stepModel.Name" InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection For="() => _stepModel.Name" ShowErrors="true" InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
         </FormSection>
         <FormSection For="() => _stepModel.LastName" InputId="lastName" Label="Last name (optional)" IsLabelInsideInput="true">

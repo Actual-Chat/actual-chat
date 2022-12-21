@@ -45,7 +45,7 @@
             @ChildContent
         </div>
     }
-    @if (isInvalid && ShowError) {
+    @if (isInvalid && ShowErrors) {
         <div class="form-section-validation">
             @foreach (var message in messages) {
                 <div class="form-section-validation-message">@message</div>
@@ -73,7 +73,7 @@
     [Parameter] public string InputId { get; set; } = "";
     [Parameter] public bool IsRequired { get; set; }
     [Parameter] public bool IsLabelInsideInput { get; set; }
-    [Parameter] public bool ShowError { get; set; }
+    [Parameter] public bool ShowErrors { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public Expression<Func<TValue>>? For { get; set; }
 
