@@ -7,21 +7,18 @@
                 @HeaderContent.Invoke(this)
             </div>
         }
-
         <div class="stepper-body">
             @if (ChildContent != null) {
                 <div class="stepper-content">
                     @ChildContent.Invoke(this)
                 </div>
             }
-
             @if (FooterContent != null) {
                 <div class="stepper-footer">
                     @FooterContent.Invoke(this)
                 </div>
             }
         </div>
-
     </CascadingValue>
 </div>
 
@@ -56,14 +53,23 @@
     public void MoveForward() {
         if (_currentStep == null)
             return;
+        var isStepValid = _currentStep.Validate();
+        if (!isStepValid)
+            return;
         var index = _steps.IndexOf(_currentStep);
+        var previousStep = _currentStep;
         _currentStep = _steps.ElementAtOrDefault(index + 1);
+        previousStep.Refresh();
+        _currentStep?.Refresh();
     }
 
     public void MoveBack() {
         if (_currentStep == null)
             return;
         var index = _steps.IndexOf(_currentStep);
+        var previousStep = _currentStep;
         _currentStep = _steps.ElementAtOrDefault(index - 1);
+        previousStep.Refresh();
+        _currentStep?.Refresh();
     }
 }

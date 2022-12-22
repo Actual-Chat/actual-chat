@@ -1,12 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using System.ComponentModel.DataAnnotations
+@inherits Step;
+
+@if (Stepper.CurrentStep != this) {
+    return;
+}
 
 <div>
     <p class="text-title-1 text-center">Your phone number and email</p>
     <p class="text-headline-1 mb-8">Please confirm your country code and enter your phone number</p>
     <Form
-        Model="@_stepModel"
-        OnValidSubmit="@HandleValidSubmit">
+        @ref="_formRef"
+        Model="@_stepModel">
         <DataAnnotationsValidator/>
         <FormSection For="() => _stepModel.Country" InputId="country" Label="Country" IsLabelInsideInput="true" IsRequired="true">
             <InputSelect id="country" @bind-Value="_stepModel.Country">
@@ -44,7 +49,16 @@
 </div>
 
 @code {
+    private Form? _formRef;
     private readonly PhoneStepModel _stepModel = new();
+
+    public override bool Validate() {
+        return _formRef?.EditContext?.Validate() ?? false;
+    }
+
+    private void OnSyncContactsChange(ChangeEventArgs args) {
+        _stepModel.SyncContacts = args.Value is true;
+    }
 
     public class PhoneStepModel {
         private string _country = PhoneCodes.Default.Country;
@@ -67,12 +81,5 @@
         public bool SyncContacts { get; set; }
 
         public string? Email { get; set; }
-    }
-
-    private void HandleValidSubmit() {
-    }
-
-    private void OnSyncContactsChange(ChangeEventArgs args) {
-        _stepModel.SyncContacts = args.Value is true;
     }
 }
