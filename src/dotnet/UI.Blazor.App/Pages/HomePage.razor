@@ -9,7 +9,7 @@
     var account = m.Account;
     if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
-    if (ReferenceEquals(account, AccountFull.None)) { // Loaded, but user doesn't have an account
+    if (account.IsGuest) { // Loaded, but user doesn't have an account
         _signInHasRequested = true;
         if (_enableIncompleteUI) {
             <Landing/>
