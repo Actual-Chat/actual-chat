@@ -4,14 +4,6 @@
 @using Microsoft.Toolkit.HighPerformance
 @using Stl.Generators
 
-@{
-    var noAvatar = _stepModel.AvatarId == null || _stepModel.AvatarId.Value.IsEmpty;
-}
-
-@if (noAvatar) {
-    return;
-}
-
 <div>
     <p class="text-title-1 text-center mb-8">Set up your avatar and name</p>
     <Form
@@ -37,6 +29,7 @@
                     </div>
                 </Button>
                 <FileUpload
+                    @key="@_stepModel.AvatarId"
                     id="fileUpload"
                     UploadUrl="@($"/api/user-avatars/{_stepModel.AvatarId}/upload-picture")"
                     Uploaded="OnImagePicked"
