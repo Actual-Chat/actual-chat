@@ -3,12 +3,17 @@
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using Microsoft.Toolkit.HighPerformance
 @using Stl.Generators
+@inherits Step;
+
+@if (Stepper.CurrentStep != this) {
+    return;
+}
 
 <div>
     <p class="text-title-1 text-center mb-8">Set up your avatar and name</p>
     <Form
-        Model="@_stepModel"
-        OnValidSubmit="@HandleValidSubmit">
+        @ref="_formRef"
+        Model="@_stepModel">
         <DataAnnotationsValidator/>
         <div class="flex-x mb-8">
             <Pic
@@ -62,6 +67,7 @@
 </div>
 
 @code {
+    private Form? _formRef;
     private readonly AvatarStepModel _stepModel = new();
 
     [Inject] private Session Session { get; init; } = null!;
@@ -70,6 +76,10 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
+    public override bool Validate() {
+        return _formRef?.EditContext?.Validate() ?? false;
+    }
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
@@ -92,6 +102,14 @@
         await UICommander.Run(setDefaultAvatarCommand);
     }
 
+    private void OnImagePicked(string contentId) {
+        _stepModel.AvatarPicture = contentId;
+    }
+
+    private void OnGenerateAvatarClick() {
+        _stepModel.AvatarPicture = DefaultUserPicture.GetAvataaar(IdGenerator.Next());
+    }
+
     public class AvatarStepModel {
         [Required]
         public string? Name { get; set; }
@@ -100,16 +118,5 @@
         public string? UserName { get; set; }
         public string? AvatarPicture { get; set; }
         public Symbol? AvatarId { get; set; }
-    }
-
-    private void HandleValidSubmit() {
-    }
-
-    private void OnImagePicked(string contentId) {
-        _stepModel.AvatarPicture = contentId;
-    }
-
-    private void OnGenerateAvatarClick() {
-        _stepModel.AvatarPicture = DefaultUserPicture.GetAvataaar(IdGenerator.Next());
     }
 }

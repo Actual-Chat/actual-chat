@@ -2,11 +2,6 @@
 @using Stl.Extensibility
 @implements IModalView<OnboardingModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
-@inherits ComputedStateComponent<OnboardingModal.ComputedModel>
-
-@{
-    var m = State.LatestNonErrorValue;
-}
 
 <DialogFrame
     Class="onboarding-modal"
@@ -26,17 +21,13 @@
             }
         </HeaderContent>
         <ChildContent>
-            <Step>
-                <PhoneStep/>
-            </Step>
-            <Step>
-                <AvatarStep/>
-            </Step>
+            <PhoneStep/>
+            <AvatarStep/>
         </ChildContent>
         <FooterContent>
             @if (stepper.IsLast) {
                 <Button
-                    Click="ModalInstance.CloseAsync"
+                    Click="() => OnLastClick(stepper)"
                     Class="btn-primary btn-w-full">
                     Start messaging
                 </Button>
@@ -60,29 +51,14 @@
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() {
-            InitialValue = ComputedModel.None,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
-
-    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
-        var account = await Accounts.GetOwn(Session, cancellationToken);
-        if (!account.IsActive())
-            return ComputedModel.None;
-        return new ComputedModel {
-            EnableIncompleteUI = enableIncompleteUI,
-        };
+    private void OnLastClick(Stepper stepper) {
+        if (stepper.CurrentStep == null)
+            return;
+        var isStepValid = stepper.CurrentStep.Validate();
+        if (!isStepValid)
+            return;
+        ModalInstance.CloseAsync();
     }
 
     public sealed record Model;
-
-    public sealed record ComputedModel {
-        public static ComputedModel None { get; } = new() {
-            EnableIncompleteUI = false,
-        };
-
-        public bool EnableIncompleteUI { get; init; }
-    }
 }
