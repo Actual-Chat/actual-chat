@@ -33,7 +33,7 @@ public class MainActivity : MauiAppCompatActivity
     private const int RC_SIGN_IN_GOOGLE = 800;
     // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
 #if ISDEVMAUI
-    private const string ServerGoogleClientId = "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com";
+    private const string ServerGoogleClientId = "367046672456-75p2d55jama2mtivjbcgp0hkaa6jsihq.apps.googleusercontent.com";
 #else
     private const string ServerGoogleClientId = "936885469539-89riml3ri3rsu35tdh9gtdvrtj4c08fs.apps.googleusercontent.com";
 #endif
