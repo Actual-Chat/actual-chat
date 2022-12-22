@@ -215,11 +215,8 @@ public sealed class ChatEntryReader
         var idTile = IdTileLayer.GetTile(minEntryId);
         var cTileTask = CaptureTile(idTile.Range, cancellationToken);
         var cIdRangeTask = CaptureIdRange(cancellationToken);
-        await Task.WhenAll(cTileTask.AsTask(), cIdRangeTask.AsTask()).ConfigureAwait(false);
-#pragma warning disable MA0004
-        var cTile = await cTileTask;
-        var cIdRange = await cIdRangeTask;
-#pragma warning restore MA0004
+        var cTile = await cTileTask.ConfigureAwait(false);
+        var cIdRange = await cIdRangeTask.ConfigureAwait(false);
 
         while (true) {
             if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
