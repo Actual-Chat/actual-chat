@@ -16,6 +16,8 @@ export class ChatMessageEditor {
     private readonly filePicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
+    private attachmentList: HTMLDivElement;
+    private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver : MutationObserver;
     private lastHeight: number;
@@ -50,6 +52,12 @@ export class ChatMessageEditor {
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
 
+        this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
+        this.attachmentListObserver.observe(this.editorDiv, {
+            attributes: true,
+            childList: true,
+        });
+
         this.notifyPanelObserver = new MutationObserver(this.updateNotifyPanelRelated);
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
@@ -62,10 +70,36 @@ export class ChatMessageEditor {
         this.filePicker.removeEventListener('change', this.onFilePickerChange);
         this.attachButton.removeEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.removeEventListener('click', this.onNotifyPanelClick);
+        if (this.attachmentList != null) {
+            this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
+        }
         this.notifyPanelObserver.disconnect();
     }
 
     // Public methods
+
+    private updateAttachmentListState = (mutationsList, observer) => {
+        mutationsList.forEach(m => {
+            m.addedNodes.forEach(element => {
+                if (element.className == 'attachment-list-wrapper') {
+                    this.attachmentList = this.editorDiv.querySelector('.attachment-list')
+                    this.attachmentList.addEventListener('wheel', this.onHorizontalScroll);
+                }
+            });
+            m.removedNodes.forEach(element => {
+                if (element.className == 'attachment-list-wrapper') {
+                    if (this.attachmentList != null) {
+                        this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
+                    }
+                }
+            });
+        })
+    };
+
+    private onHorizontalScroll = ((event: WheelEvent & { target: Element; }) => {
+        event.preventDefault();
+        this.attachmentList.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
+    });
 
     public onMarkupEditorReady(markupEditor: MarkupEditor)
     {

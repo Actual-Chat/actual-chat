@@ -127,6 +127,9 @@
     @apply disabled;
 }
 
+.attachment-list-wrapper {
+    @apply relative flex-y bg-01 px-2 border-y;
+}
 .attachment-list {
     @apply flex-x gap-x-4 w-full justify-start my-1 p-2 overflow-x-auto;
 }
