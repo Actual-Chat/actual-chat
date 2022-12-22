@@ -149,7 +149,7 @@
     @apply relative p-px bg-03 rounded-lg;
 }
 .attachment-item {
-    @apply relative flex justify-center mt-auto rounded-lg overflow-hidden;
+    @apply relative flex-y gap-x-1 justify-center mt-auto rounded-t-lg overflow-hidden;
     @apply min-h-34 max-h-34 min-w-34 max-w-34;
 }
 .remove-attachment-btn.btn {
@@ -165,6 +165,10 @@
 }
 .remove-attachment-btn.btn:hover .btn-content {
     @apply bg-error opacity-80;
+}
+.attachment-filename {
+    @apply flex-1 w-full max-w-34 truncate self-center px-2 md:px-0.5 p-0.5 cursor-default;
+    @apply text-center text-03 text-xs font-medium bg-01 rounded-b-lg;
 }
 .add-attachment.btn .btn-content {
     @apply bg-04;
