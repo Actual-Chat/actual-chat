@@ -3,23 +3,30 @@
 @using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
 @{
-    var overlayClass = IsOverlayVisible ? "ac-menu-overlay" : "";
+    RenderFragment RenderMenu(Model menu) =>
+        @<div
+             id="@menu.Id"
+             @key="menu.Id"
+             class="@(GetMenuCssClass(menu))">
+            <ul class="ac-menu-list">
+                <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
+            </ul>
+        </div>;
 }
 
 <div class="ac-menu-host @(GetHostCssClass())">
     <CascadingValue Value="@this" IsFixed="true">
-        <div class="@(GetOverlayCssClass())">
+        @if (IsOverlayVisible) {
+            <div class="ac-menu-overlay">
+                @foreach (var menu in _visibleMenus) {
+                    @RenderMenu(menu);
+                }
+            </div>
+        } else {
             @foreach (var menu in _visibleMenus) {
-                <div
-                    id="@menu.Id"
-                    @key="menu.Id"
-                    class="@(GetMenuCssClass(menu))">
-                    <ul class="ac-menu-list">
-                        <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
-                    </ul>
-                </div>
+                @RenderMenu(menu);
             }
-        </div>
+        }
     </CascadingValue>
 </div>
 
@@ -92,9 +99,6 @@
 
     private string GetHostCssClass()
         => IsOverlayVisible ? "no-events" : "";
-
-    private string GetOverlayCssClass()
-        => IsOverlayVisible ? "ac-menu-overlay" : "";
 
     private string GetMenuCssClass(Model menu) {
         var cls = menu.IsHoverMenu
