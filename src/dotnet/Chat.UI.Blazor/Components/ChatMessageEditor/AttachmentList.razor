@@ -14,9 +14,9 @@
             @foreach (var attachment in Attachments) {
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
-                        <div class="attachment-item bg-03">
+                        <div class="attachment-item">
                             <ButtonSquare Click="@(() => RemoveClick.InvokeAsync(attachment))" Class="remove-attachment-btn">
-                                <i class="icon-trash03 text-2xl font-thin"></i>
+                                <i class="icon-trash03 text-2xl font-thin text-04"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
                                 <img class="min-h-34" src="@attachment.Url" alt="image"/>
@@ -26,14 +26,14 @@
                                 </div>
                             }
                         </div>
-                        <div class="flex-1 float-left max-w-34 truncate text-03 text-xs font-medium text-center self-center m-1 cursor-default" title="@attachment.FileName">
+                        <div class="flex-1 float-left max-w-32 truncate text-03 text-xs font-medium text-center self-center m-1 cursor-default" title="@attachment.FileName">
                             @attachment.FileName
                         </div>
                     </div>
                 </li>
             }
             @if (Attachments.Length < 10) {
-                <li class="attachment-wrapper flex mb-6">
+                <li class="attachment-wrapper flex min-w-34 justify-center">
                     <ButtonRound Class="add-attachment" Click="@(() => ShowFilePicker())">
                         <i class="icon-plus text-2xl text-icons-01"></i>
                     </ButtonRound>

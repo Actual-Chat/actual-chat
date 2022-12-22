@@ -57,7 +57,7 @@
 }
 .btn.btn-round.notify-call-toggle,
 .panel-closed .btn.btn-round.notify-call-toggle {
-    @apply flex-none flex-x self-end outline-none p-0 mx-1 h-12 scale-100;
+    @apply flex-none flex-x self-end outline-none p-0 mx-1 md:mx-0 h-12 scale-100;
     @apply text-05 md:text-icons-01 bg-07 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
@@ -128,7 +128,7 @@
 }
 
 .attachment-list {
-    @apply flex-x gap-x-2 w-full justify-start my-1 p-2 overflow-x-auto;
+    @apply flex-x gap-x-4 w-full justify-start my-1 p-2 overflow-x-auto;
 }
 .clear-attachments-btn.btn {
     @apply min-h-6 max-h-6 border-transparent;
@@ -146,22 +146,25 @@
     @apply bg-primary text-primary-title min-w-full;
 }
 .attachment-wrapper {
-    @apply relative mr-2 pl-2 first:pl-0 last:mr-0;
+    @apply relative p-px bg-03 rounded-lg;
 }
 .attachment-item {
     @apply relative flex justify-center mt-auto rounded-lg overflow-hidden;
     @apply min-h-34 max-h-34 min-w-34 max-w-34;
-    @apply border border-bg-04;
 }
 .remove-attachment-btn.btn {
     @apply absolute top-0 right-0 text-04;
     @apply min-w-9 max-w-9 min-h-9 max-h-9 self-center;
 }
 .remove-attachment-btn.btn .btn-content {
-    @apply justify-center bg-[#BABABA];
+    @apply justify-center;
+    background: rgba(0,0,0,0.4);
+}
+.remove-attachment-btn.btn .btn-content i {
+    @apply opacity-80;
 }
 .remove-attachment-btn.btn:hover .btn-content {
-    @apply bg-error;
+    @apply bg-error opacity-80;
 }
 .add-attachment.btn .btn-content {
     @apply bg-04;
