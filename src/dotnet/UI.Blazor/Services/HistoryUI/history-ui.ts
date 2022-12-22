@@ -82,15 +82,15 @@ export class HistoryUI {
         // Enrich history state that blazor setups
         // https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Services/NavigationManager.ts#L157
         // enrichment allows to detect navigation, back and forward moves.
-        const historyUi = this;
+        const historyUI = this;
         history.pushState = (data: any, unused: string, url?: string | URL | null) : void => {
             debugLog?.log(`pushState:`, data);
             const shouldBeReplaced = history.state && history.state._shouldBeReplaced;
-            historyUi.navigate(!!shouldBeReplaced, data, unused, url);
+            historyUI.navigate(!!shouldBeReplaced, data, unused, url);
         }
         history.replaceState = (data: any, unused: string, url?: string | URL | null) : void => {
             debugLog?.log(`replaceState:`, data);
-            historyUi.navigate(true, data, unused, url);
+            historyUI.navigate(true, data, unused, url);
         }
     }
 

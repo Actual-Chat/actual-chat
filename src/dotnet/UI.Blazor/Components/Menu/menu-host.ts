@@ -113,7 +113,7 @@ export class MenuHost implements Disposable {
         this.hideMenu(menu);
     }
 
-    private getHistoryUi() : HistoryUI {
+    private getHistoryUI() : HistoryUI {
        return <HistoryUI>(<any>window).App.historyUI;
     }
 
@@ -149,7 +149,7 @@ export class MenuHost implements Disposable {
         this.menus.push(menu);
         if (!eventData.isHoverMenu && !this.historyStepToken) {
             debugLog?.log(`about to push backStep on render menu`, history.state);
-            this.historyStepToken = this.getHistoryUi()
+            this.historyStepToken = this.getHistoryUI()
                 .pushBackStep(true, this.hideMenusOnBack);
             debugLog?.log(`pushed state to render menu`, history.state);
         }
@@ -178,7 +178,7 @@ export class MenuHost implements Disposable {
             return;
         if (this.menus.filter(c => !c.eventData.isHoverMenu).length)
             return;
-        const goBack = this.getHistoryUi()
+        const goBack = this.getHistoryUI()
             .isActiveStep(this.historyStepToken);
         this.historyStepToken = undefined;
         if (goBack) {
