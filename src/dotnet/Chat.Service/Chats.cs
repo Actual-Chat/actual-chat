@@ -198,7 +198,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         }
 
         chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-        await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (change.Create.HasValue)
+            await Authors.EnsureJoined(session, chat.Id, cancellationToken).ConfigureAwait(false);
         return chat;
     }
 
