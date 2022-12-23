@@ -13,6 +13,21 @@ public class MobileAuthClient
         Log = log;
     }
 
+    public async Task<bool> SetupSession()
+    {
+        var sessionId = AppSettings.SessionId;
+        var requestUri = $"{UrlMapper.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
+        try {
+            var httpClient = new HttpClient();
+            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(true);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to setup session");
+            return false;
+        }
+    }
+
     public async Task<bool> SignInGoogle(string code)
     {
         if (string.IsNullOrEmpty(code))
@@ -25,7 +40,7 @@ public class MobileAuthClient
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            Log.LogError("Failed to sign in google", e);
+            Log.LogError(e, "Failed to sign in google");
             return false;
         }
     }
@@ -40,7 +55,7 @@ public class MobileAuthClient
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            Log.LogError("Failed to sign out", e);
+            Log.LogError(e, "Failed to sign out");
             return false;
         }
     }

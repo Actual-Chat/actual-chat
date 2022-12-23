@@ -72,12 +72,21 @@ public static class MauiProgram
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = AppServices.LogFor(typeof(WebMReader));
 
+        EnsureSessionInfoCreated(mauiApp.Services);
+
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
         StartHostedServices(mauiApp);
 
         return mauiApp;
     }
+
+    private static void EnsureSessionInfoCreated(IServiceProvider services)
+        => Task.Run(async () => {
+            var mobileAuthClient = services.GetRequiredService<MobileAuthClient>();
+            if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
+                throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
+        }).Wait();
 
     private static void StartHostedServices(MauiApp mauiApp)
         => mauiApp.Services.HostedServices().Start()

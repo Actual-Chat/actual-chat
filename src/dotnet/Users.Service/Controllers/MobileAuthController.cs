@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Users.Controllers;
 
@@ -30,11 +31,44 @@ public class MobileAuthController : Controller
         Commander = commander;
     }
 
-    [HttpGet("sessionSetup/{sessionId}")]
-    public async Task SessionSetup(string sessionId, CancellationToken cancellationToken)
+    [HttpGet("setupSession/{sessionId}")]
+    public async Task<ActionResult> SetupSession(string sessionId, CancellationToken cancellationToken)
     {
+        var httpContext = HttpContext;
+        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
+        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
+            ? userAgentValues.FirstOrDefault() ?? ""
+            : "";
+
         var authHelper = Services.GetRequiredService<ServerAuthHelper>();
-        await authHelper.UpdateAuthState(new Session(sessionId), HttpContext, cancellationToken).ConfigureAwait(false);
+        var session = new Session(sessionId);
+        await authHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
+
+        var auth = Services.GetRequiredService<IAuth>();
+        var sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
+        if (sessionInfo == null) {
+            var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
+            var commander = Services.Commander();
+            await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
+        var sb = new StringBuilder();
+        sb.Append("SessionInfo: ");
+        sb.Append(sessionInfo != null ? sessionInfo.SessionHash : "no-session-info");
+
+        sb.AppendLine();
+        sb.Append("Account: ");
+        try {
+            var accounts = Services.GetRequiredService<IAccounts>();
+            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            sb.Append(account.Id.Value);
+        }
+        catch (Exception e) {
+            sb.Append(e);
+        }
+
+        return Content(sb.ToString());
     }
 
     // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs
