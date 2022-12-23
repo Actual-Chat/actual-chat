@@ -176,6 +176,7 @@
 
     <!-- Android -->
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.3.0" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.0.8" />
     <PackageVersion Include="Xamarin.Google.Dagger" Version="2.41.0.2" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
