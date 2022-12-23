@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http;
 using System.Security.Authentication;
+using Android.App;
+using Java.Util.Concurrent;
 using Xamarin.Android.Net;
 
 namespace ActualChat.App.Maui.Services;
@@ -8,12 +10,13 @@ namespace ActualChat.App.Maui.Services;
 public partial class NativeHttpClientFactory
 {
     private partial HttpMessageHandler? CreatePlatformMessageHandler()
-        => new AndroidMessageHandler {
-            SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-            AutomaticDecompression = DecompressionMethods.All,
-            UseCookies = true,
-            MaxConnectionsPerServer = 200,
-        };
+        => new CronetMessageHandler(Services.GetRequiredService<IExecutorService>());
+    // => new AndroidMessageHandler {
+    //     SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+    //     AutomaticDecompression = DecompressionMethods.All,
+    //     UseCookies = true,
+    //     MaxConnectionsPerServer = 200,
+    // };
 
 
     // this code can be used for debugging purposes

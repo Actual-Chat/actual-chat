@@ -100,6 +100,10 @@ public static class MauiProgram
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
+#if ANDROID
+        services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
+            Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
+#endif
         ConfigureServices(services);
 
         var mauiApp = builder.Build();
