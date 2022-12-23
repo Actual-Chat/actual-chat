@@ -201,14 +201,72 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return chat;
     }
 
-    public virtual Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return Task.FromResult<ChatEntry>(null!); // It just spawns other commands, so nothing to do here
+            return default!; // It just spawns other commands, so nothing to do here
 
-        return command.LocalId != null
-            ? UpdateTextEntry(command, cancellationToken)
-            : CreateTextEntry(command, cancellationToken);
+        var (session, chatId, localId, text, repliedChatEntryId) = command;
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+
+        ChatEntry textEntry;
+        if (localId is { } vLocalId) {
+            // Update
+            var textEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, vLocalId, AssumeValid.Option);
+            textEntry = await GetChatEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+
+            // Check constraints
+            textEntry.Require(ChatEntry.MustNotBeRemoved);
+            if (textEntry.AuthorId != author.Id)
+                throw StandardError.Unauthorized("You can edit only your own messages.");
+            if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryId.HasValue)
+                throw StandardError.Constraint("Only text messages can be edited.");
+
+            textEntry = textEntry with { Content = text };
+            if (repliedChatEntryId.IsSome(out var v))
+                textEntry = textEntry with { RepliedEntryLocalId = v };
+            var upsertCommand = new IChatsBackend.UpsertEntryCommand(textEntry);
+            textEntry = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            // Create
+            var textEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+            var upsertCommand = new IChatsBackend.UpsertEntryCommand(
+                new ChatEntry(textEntryId) {
+                    AuthorId = author.Id,
+                    Content = text,
+                    RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+                },
+                command.Attachments.Length > 0);
+            textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+
+            for (var index = 0; index < command.Attachments.Length; index++) {
+                var attachmentUpload = command.Attachments[index];
+                var (fileName, content, contentType) = attachmentUpload;
+                var contentLocalId = Ulid.NewUlid().ToString();
+                var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
+
+                var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
+                await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
+
+                var attachment = new TextEntryAttachment() {
+                    EntryId = textEntry.Id,
+                    Index = index,
+                    Length = content.Length,
+                    ContentType = contentType,
+                    FileName = fileName,
+                    ContentId = contentId,
+                    Width = attachmentUpload.Width,
+                    Height = attachmentUpload.Height,
+                };
+                var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
+                await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return textEntry;
     }
 
     // [CommandHandler]
@@ -217,19 +275,34 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, entryId) = command;
-        var entry = await GetChatEntry(session,
-                chatId,
-                entryId,
-                ChatEntryKind.Text,
-                cancellationToken)
-            .ConfigureAwait(false);
-        await AssertCanRemoveTextEntry(entry, session, cancellationToken).ConfigureAwait(false);
+        var (session, chatId, localId) = command;
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var textEntry = await RemoveChatEntry(session, chatId, entryId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var textEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
+        var textEntry = await GetChatEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
 
-        if (textEntry.AudioEntryId != null)
-            await RemoveChatEntry(session, chatId, textEntry.AudioEntryId.Value, ChatEntryKind.Audio, cancellationToken).ConfigureAwait(false);
+        // Check constraints
+        textEntry.Require(ChatEntry.MustNotBeRemoved);
+        if (textEntry.AuthorId != author.Id)
+            throw StandardError.Unauthorized("You can remove only your own messages.");
+        if (textEntry.IsStreaming)
+            throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
+
+        await Remove(textEntryId).ConfigureAwait(false);
+        if (textEntry.AudioEntryId is { } localAudioEntryId) {
+            var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            await Remove(audioEntryId).ConfigureAwait(false);
+        }
+
+        async Task Remove(ChatEntryId entryId1)
+        {
+            var entry1 = await GetChatEntry(session, entryId1, cancellationToken).ConfigureAwait(false);
+            entry1 = entry1 with { IsRemoved = true };
+            var upsertCommand = new IChatsBackend.UpsertEntryCommand(entry1);
+            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // Private methods
@@ -247,134 +320,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     private async Task<ChatEntry> GetChatEntry(
-        Session session, ChatId chatId, long localId, ChatEntryKind kind,
+        Session session, ChatEntryId entryId,
         CancellationToken cancellationToken)
     {
-        var idTile = IdTileStack.FirstLayer.GetTile(localId);
-        var tile = await GetTile(session, chatId, kind, idTile.Range, cancellationToken)
+        var idTile = IdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var tile = await GetTile(session, entryId.ChatId, entryId.Kind, idTile.Range, cancellationToken)
             .ConfigureAwait(false);
-        var chatEntry = tile.Entries.Single(e => e.LocalId == localId);
-        return chatEntry;
-    }
-
-    private async Task<ChatEntry> CreateTextEntry(
-        IChats.UpsertTextEntryCommand command,
-        CancellationToken cancellationToken)
-    {
-        var (session, chatId, _, text, repliedChatEntryId) = command;
-        // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
-        // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
-        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Write);
-
-        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
-        var id = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-        var backendCommand = new IChatsBackend.UpsertEntryCommand(
-            new ChatEntry(id) {
-                AuthorId = author.Id,
-                Content = text,
-                RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
-            },
-            command.Attachments.Length > 0);
-        var chatEntry = await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
-
-        for (var index = 0; index < command.Attachments.Length; index++) {
-            var attachmentUpload = command.Attachments[index];
-            var (fileName, content, contentType) = attachmentUpload;
-            var contentLocalId = Ulid.NewUlid().ToString();
-            var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
-
-            var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
-            await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
-
-            var attachment = new TextEntryAttachment() {
-                EntryId = chatEntry.Id,
-                Index = index,
-                Length = content.Length,
-                ContentType = contentType,
-                FileName = fileName,
-                ContentId = contentId,
-                Width = attachmentUpload.Width,
-                Height = attachmentUpload.Height,
-            };
-            var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
-            await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-        return chatEntry;
-    }
-
-    private async Task<ChatEntry> UpdateTextEntry(
-        IChats.UpsertTextEntryCommand command,
-        CancellationToken cancellationToken)
-    {
-        var (session, chatId, id, text, repliedChatEntryId) = command;
-        var chatEntry = await GetChatEntry(session,
-                chatId,
-                id!.Value,
-                ChatEntryKind.Text,
-                cancellationToken)
-            .ConfigureAwait(false);
-
-        await AssertCanUpdateTextEntry(chatEntry, session, cancellationToken).ConfigureAwait(false);
-
-        chatEntry = chatEntry with { Content = text };
-        if (repliedChatEntryId.IsSome(out var v))
-            chatEntry = chatEntry with { RepliedEntryLocalId = v };
-        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
-        return await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<ChatEntry> RemoveChatEntry(Session session, ChatId chatId, long entryId, ChatEntryKind kind, CancellationToken cancellationToken)
-    {
-        var chatEntry = await GetChatEntry(session, chatId, entryId, kind, cancellationToken).ConfigureAwait(false);
-
-        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chatEntry.AuthorId != author.Id)
-            throw StandardError.Unauthorized("You can delete only your own messages.");
-
-        chatEntry = chatEntry with { IsRemoved = true };
-        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
-        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-        return chatEntry;
-    }
-
-    // Assertions
-
-    private async ValueTask AssertCanUpdateTextEntry(
-        ChatEntry chatEntry,
-        Session session,
-        CancellationToken cancellationToken)
-    {
-        var chat = await Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Write);
-
-        if (chatEntry.IsRemoved)
-            throw StandardError.NotFound<ChatEntry>();
-
-        var author = await Authors.GetOwn(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
-        if (chatEntry.AuthorId != author.Id)
-            throw StandardError.Unauthorized("User can edit only their own messages.");
-
-        if (chatEntry.Kind != ChatEntryKind.Text || !chatEntry.StreamId.IsEmpty)
-            throw StandardError.Constraint("Only text messages can be edited.");
-    }
-
-    private async ValueTask AssertCanRemoveTextEntry(
-        ChatEntry chatEntry,
-        Session session,
-        CancellationToken cancellationToken)
-    {
-        var chat = await Get(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Write);
-
-        if (chatEntry.IsRemoved)
-            throw StandardError.NotFound<ChatEntry>();
-
-        var author = await Authors.GetOwn(session, chatEntry.ChatId, cancellationToken).Require().ConfigureAwait(false);
-        if (chatEntry.AuthorId != author.Id)
-            throw StandardError.Unauthorized("User can remove only their own messages.");
-
-        if (chatEntry.IsStreaming)
-            throw StandardError.Constraint("This chat entry is streaming.");
+        var entry = tile.Entries.Single(e => e.LocalId == entryId.LocalId);
+        return entry;
     }
 }
