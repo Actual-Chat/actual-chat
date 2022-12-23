@@ -27,7 +27,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await ChatUI.List(ChatListOrder.ByLastEventTime, cancellationToken);
-        var count = chats.Select(c => c.UnmutedUnreadCount).Sum();
+        var count = chats.Select(c => c.UnmutedUnreadCount).Count(x => x.Value > 0);
         return new(count);
     }
 
