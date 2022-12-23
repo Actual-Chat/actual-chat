@@ -125,6 +125,11 @@ module.exports = (env, args) => {
           { from: _('../../firebase.config.json'), to: 'config/firebase.config.js', noErrorOnMissing: true },
         ],
       }),
+      new CopyPlugin({
+        patterns: [
+          { from: 'images', to: 'images' },
+        ],
+      }),
       // @ts-ignore
       new FileManagerPlugin({
         events: {
