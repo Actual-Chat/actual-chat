@@ -30,6 +30,13 @@ public class MobileAuthController : Controller
         Commander = commander;
     }
 
+    [HttpGet("sessionSetup/{sessionId}")]
+    public async Task SessionSetup(string sessionId, CancellationToken cancellationToken)
+    {
+        var authHelper = Services.GetRequiredService<ServerAuthHelper>();
+        await authHelper.UpdateAuthState(new Session(sessionId), HttpContext, cancellationToken).ConfigureAwait(false);
+    }
+
     // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs
     [HttpGet("{scheme}")]
     public async Task Get([FromRoute] string scheme)
