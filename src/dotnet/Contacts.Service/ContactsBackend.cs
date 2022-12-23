@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
@@ -21,6 +20,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
     {
+        if (ownerId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(ownerId));
         if (contactId.OwnerId != ownerId)
             throw new ArgumentOutOfRangeException(nameof(contactId));
 
@@ -44,6 +45,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken)
     {
+        if (ownerId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(ownerId));
+
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -167,9 +171,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (oldHasLeft == author.HasLeft)
             return;
 
-        var userId = author.UserId;
         var chatId = author.ChatId;
-        if (userId.IsNone) // We do nothing for anonymous authors for now
+        var userId = author.UserId;
+        if (chatId.IsNone || userId.IsNone) // Weird case
             return;
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
