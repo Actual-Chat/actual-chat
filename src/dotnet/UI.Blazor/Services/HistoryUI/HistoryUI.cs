@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -9,7 +8,6 @@ public class HistoryUI
 {
     private readonly List<HistoryItem> _history = new ();
     private PendingHistoryItem? _pendingHistoryItem;
-    private IJSObjectReference? _jsRef;
     private int _historyIndex;
     private readonly string _initialLocation;
     private bool _rewriteInitialLocation;
@@ -58,8 +56,6 @@ public class HistoryUI
     {
         if (_isTestServer)
             return;
-
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.HistoryUI.create");
 
         var url = Nav.GetLocalUrl();
         if (!url.IsHome() && !url.IsChatRoot()) {
