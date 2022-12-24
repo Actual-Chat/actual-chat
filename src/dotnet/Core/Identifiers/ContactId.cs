@@ -43,6 +43,10 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     public ContactId(Symbol id, UserId ownerId, ChatId chatId, AssumeValid _)
     {
+        if (id.IsEmpty) {
+            this = None;
+            return;
+        }
         Id = id;
         OwnerId = ownerId;
         ChatId = chatId;
@@ -50,6 +54,10 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
 
     public ContactId(UserId ownerId, ChatId chatId, AssumeValid _)
     {
+        if (ownerId.IsNone || chatId.IsNone) {
+            this = None;
+            return;
+        }
         Id = Format(ownerId, chatId);
         OwnerId = ownerId;
         ChatId = chatId;

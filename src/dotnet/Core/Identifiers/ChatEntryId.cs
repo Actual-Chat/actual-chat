@@ -41,6 +41,10 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     public ChatEntryId(Symbol id, ChatId chatId, ChatEntryKind kind, long localId, AssumeValid _)
     {
+        if (id.IsEmpty) {
+            this = None;
+            return;
+        }
         Id = id;
         ChatId = chatId;
         Kind = kind;
@@ -49,6 +53,10 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     public ChatEntryId(ChatId chatId, ChatEntryKind kind, long localId, AssumeValid _)
     {
+        if (chatId.IsNone) {
+            this = None;
+            return;
+        }
         Id = Format(chatId, kind, localId);
         ChatId = chatId;
         Kind = kind;

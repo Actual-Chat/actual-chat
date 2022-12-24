@@ -39,6 +39,10 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
 
     public RoleId(Symbol id, ChatId chatId, long localId, AssumeValid _)
     {
+        if (id.IsEmpty) {
+            this = None;
+            return;
+        }
         Id = id;
         ChatId = chatId;
         LocalId = localId;
@@ -46,6 +50,10 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
 
     public RoleId(ChatId chatId, long localId, AssumeValid _)
     {
+        if (chatId.IsNone) {
+            this = None;
+            return;
+        }
         Id = Format(chatId, localId);
         ChatId = chatId;
         LocalId = localId;

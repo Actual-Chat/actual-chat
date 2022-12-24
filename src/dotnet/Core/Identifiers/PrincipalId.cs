@@ -36,6 +36,10 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 
     public PrincipalId(AuthorId authorId, AssumeValid _)
     {
+        if (authorId.IsNone) {
+            this = None;
+            return;
+        }
         Id = authorId.Id;
         Kind = PrincipalKind.Author;
         AuthorId = authorId;
@@ -44,6 +48,10 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
 
     public PrincipalId(UserId userId, AssumeValid _)
     {
+        if (userId.IsNone) {
+            this = None;
+            return;
+        }
         Id = userId.Id;
         Kind = PrincipalKind.User;
         AuthorId = default;

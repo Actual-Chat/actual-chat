@@ -38,8 +38,10 @@ public abstract class SymbolIdentifierTestBase<TIdentifier> : TestBase
         var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
         for (var i = 0; i < identifiers.Length; i++) {
             var id1 = identifiers[i];
+            Out.WriteLine($"{id1.GetType().Name} '{id1}'");
             for (var j = 0; j < identifiers.Length; j++) {
                 var id2 = identifiers[j];
+                Out.WriteLine($"== '{id2}' -> {Equals(id1, id2)}");
                 Equals(id1, id2).Should().Be(Equals(i, j));
             }
         }

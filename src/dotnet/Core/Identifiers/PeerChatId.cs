@@ -65,6 +65,10 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
 
     public PeerChatId(Symbol id, UserId userId1, UserId userId2, AssumeValid _)
     {
+        if (id.IsEmpty) {
+            this = None;
+            return;
+        }
         Id = id;
         UserId1 = userId1;
         UserId2 = userId2;

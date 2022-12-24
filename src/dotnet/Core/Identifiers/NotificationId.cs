@@ -43,12 +43,20 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
 
     public NotificationId(Symbol id, UserId userId, Ulid ulid, AssumeValid _)
     {
+        if (id.IsEmpty) {
+            this = None;
+            return;
+        }
         Id = id;
         UserId = userId;
     }
 
     public NotificationId(UserId userId, Ulid ulid, AssumeValid _)
     {
+        if (userId.IsNone) {
+            this = None;
+            return;
+        }
         Id = Format(userId, ulid);
         UserId = userId;
         Ulid = ulid;
