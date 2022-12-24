@@ -7,14 +7,21 @@
 
 @switch (_kind) {
 case MarkupUrlKind.Chat:
-    <a class="@cls" href="@Markup.Url" @onclick="OnClick" @onclick:preventDefault="true"
+    <a class="@cls"
+       href="@Markup.Url"
+       @onclick="@OnClick"
+       @onclick:preventDefault="true"
        data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.ChatId, _message.Key, Markup.Url))"
        data-menu-trigger="@MenuTriggers.RightClick.Format()">
         @Markup.Url
     </a>
     break;
 case MarkupUrlKind.Image:
-    <a class="@cls" href="@Markup.Url" role="button" @onclick="OnClick" @onclick:preventDefault="true">
+    <a class="@cls"
+       href="@Markup.Url"
+       role="button"
+       @onclick="OnClick"
+       @onclick:preventDefault="true">
         <img src="@Markup.Url" alt="@Markup.Url"/>
     </a>
     break;

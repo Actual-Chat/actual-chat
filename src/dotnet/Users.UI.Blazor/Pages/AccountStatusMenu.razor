@@ -4,7 +4,7 @@
 @foreach (var value in Enum.GetValues<AccountStatus>()) {
     <MenuEntry
         Text="@value.ToString()"
-        OnClick="_ => OnStatusSelected(value)">
+        Click="@(_ => OnAccountStatusClick(value))">
     </MenuEntry>
 }
 
@@ -13,7 +13,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    private async Task OnStatusSelected(AccountStatus newStatus) {
+    private async Task OnAccountStatusClick(AccountStatus newStatus) {
         var account = await Accounts.GetOwn(Session, default);
         var command = new IAccounts.UpdateCommand(
             Session,

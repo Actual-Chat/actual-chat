@@ -3,8 +3,8 @@
 @implements IDisposable
 
 <SideNav Direction="SideNavDirection.LeftToRight"
-         Opened="() => NavbarUI.ChangeVisibility(true)"
-         Closed="() => NavbarUI.ChangeVisibility(false)"
+         Opened="@(_ => NavbarUI.ChangeVisibility(true))"
+         Closed="@(_ => NavbarUI.ChangeVisibility(false))"
          IsOpen="@NavbarUI.IsVisible">
     <div class="flex-x h-full w-full bg-04">
         <ThinLeftPanel/>

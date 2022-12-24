@@ -14,7 +14,7 @@
 
 @foreach (var (name, displayName) in unusedAuthSchemas) {
     var title = "Sign in with " + displayName;
-    <MenuEntry Text="@title" OnClick="(() => SignIn(name))"/>
+    <MenuEntry Text="@title" Click="@(_ => SignIn(name))"/>
 }
 
 @code {

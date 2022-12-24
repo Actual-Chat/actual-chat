@@ -42,7 +42,7 @@
                             : "Error:";
                         <Error @key="requirement"
                                Title="@title"
-                               Dismissed="_ => OnDismiss(requirement)">@error.Message</Error>
+                               Dismissed="@(_ => OnDismiss(requirement))">@error.Message</Error>
                     }
                 </div>
                 <div class="p-5 pt-0">

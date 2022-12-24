@@ -10,10 +10,11 @@
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
-        <li class="message-reactions-reaction @ownReactionClass" @onclick="_ => ToggleReaction(reaction.Emoji)"
+        <li class="message-reactions-reaction @ownReactionClass"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id, reaction.Emoji))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()"
-            data-menu-position="@(FloatingPosition.Right.ToPositionString())">
+            data-menu-position="@(FloatingPosition.Right.ToPositionString())"
+            @onclick="@(_ => ToggleReaction(reaction.Emoji))">
             <EmojiIcon Id="@reaction.Emoji.Id" class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>

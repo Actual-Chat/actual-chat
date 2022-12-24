@@ -29,7 +29,10 @@
         </FormSection>
 
         <FormSection InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
-            <button type="button" class="default-avatar-btn" onclick="@ChangeDefaultAvatar">
+            <button
+                type="button"
+                class="default-avatar-btn"
+                @onclick="@ChangeDefaultAvatar">
                 <div>
                     <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-icons-01")"></i>
                 </div>

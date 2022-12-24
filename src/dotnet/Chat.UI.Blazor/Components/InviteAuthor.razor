@@ -17,7 +17,7 @@
             @foreach (var contact in FilteredContacts) {
                 <div class="flex-x items-center gap-x-2 w-full rounded-md pl-2 hover:bg-02"
                      @key="@contact.Account.Id"
-                     @onclick="() => OnContactClick(contact)">
+                     @onclick="@(_ => OnContactClick(contact))">
                     @if (contact.IsExisting) {
                         <Checkbox Checked="true" Disabled="true"/>
                     } else {

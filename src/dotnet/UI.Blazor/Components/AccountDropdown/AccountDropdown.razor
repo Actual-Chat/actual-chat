@@ -8,7 +8,7 @@
         return;
 
     if (!account.IsGuest) {
-        <button class="account-btn btn-square" onclick="@OnSettingsClick">
+        <button class="account-btn btn-square" @onclick="@OnSettingsClick">
             <AccountView/>
         </button>
     } else {

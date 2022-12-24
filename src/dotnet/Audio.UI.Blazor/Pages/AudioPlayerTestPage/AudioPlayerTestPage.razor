@@ -20,11 +20,19 @@
     <p>[Blazor] from JS create() call to the end of first data(): @InitializeDuration ms</p>
     <p>[Js] from ctor to the play(): @StartPlayingDelay ms</p>
     @if (_isPlaying) {
-        <button onclick="@(() => OnToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700">Stop</button>
-        <button onclick="@(() => OnBlockMainThread(BlockMainThreadMs))" class="mt-3 px-4 py-1 text-gray-700 rounded-md bg-yellow-300">Block JS main thread for @BlockMainThreadMs ms</button>
-        <button onclick="@(() => OnPauseToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-blue-700">@(_isPaused ? "Resume" : "Paused")</button>
+        <button
+            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700"
+            @onclick="@OnToggleClick">Stop</button>
+        <button
+            class="mt-3 px-4 py-1 text-gray-700 rounded-md bg-yellow-300"
+            @onclick="@(() => OnBlockMainThread(BlockMainThreadMs))">Block JS main thread for @BlockMainThreadMs ms</button>
+        <button
+            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-blue-700"
+            @onclick="@OnPauseToggleClick">@(_isPaused ? "Resume" : "Paused")</button>
     } else {
-        <button onclick="@(() => OnToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700">@(_isPlaying ? "StopTask" : "AudioContext")</button>
+        <button
+            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700"
+            @onclick="@OnToggleClick" >@(_isPlaying ? "StopTask" : "AudioContext")</button>
     }
 </div>
 

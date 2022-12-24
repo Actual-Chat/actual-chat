@@ -1,11 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<li @onclick="OnClick"
-    @ontouchend="OnClick"
+<li
     class="ac-menu-item @Class"
     data-tooltip="@Tooltip"
     data-editor-trigger="@(TriggerEditor.ToString())"
-    data-tooltip-position="@(FloatingPosition.ToPositionString())">
+    data-tooltip-position="@(FloatingPosition.ToPositionString())"
+    @onclick="@Click"
+    @ontouchend="@Click">
     <div class="ac-menu-content">
         <div class="ac-menu-icon">
             @if (IconContent == null ) {
@@ -27,7 +28,6 @@
 </li>
 
 @code {
-    [Parameter] public EventCallback OnClick { get; set; }
     [Parameter] public string Icon { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -36,4 +36,5 @@
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public FloatingPosition FloatingPosition { get; set; }
     [Parameter] public bool TriggerEditor { get; set; } = false;
+    [Parameter] public EventCallback Click { get; set; }
 }

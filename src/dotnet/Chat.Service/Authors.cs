@@ -84,6 +84,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
+
         if (author.IsAnonymous || author.UserId.IsNone)
             return null;
 

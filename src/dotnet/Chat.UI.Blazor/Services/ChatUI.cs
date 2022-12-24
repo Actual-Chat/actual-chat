@@ -310,9 +310,6 @@ public partial class ChatUI : WorkerBase
 
     // Helpers
 
-    public void ShowAuthorModal(AuthorId authorId)
-        => ModalUI.Show(new AuthorModal.Model(authorId));
-
     public void ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 

@@ -14,45 +14,45 @@
     }
     @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
         <MenuEntry
-            OnClick="@(() => Edit(entry))"
             Icon="icon-edit"
             Class="important-item"
             TriggerEditor="true"
-            Text="Edit">
+            Text="Edit"
+            Click="@(() => Edit(entry))">
         </MenuEntry>
     }
     @if (m.CanReply) {
         <MenuEntry
-            OnClick="@(() => Reply(entry))"
             Icon="icon-reply"
             TriggerEditor="true"
-            Text="Reply">
+            Text="Reply"
+            Click="@(() => Reply(entry))">
         </MenuEntry>
     }
     <MenuEntry
-        OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })"
         Icon="icon-hash-fill"
-        Text="Create thread">
+        Text="Create thread"
+        Click="@(() => _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"))">
     </MenuEntry>
     @if (!ClickedLinkUrl.IsNullOrEmpty()) {
         <MenuEntry
-            OnClick="@OnCopyLinkClick"
             Icon="icon-copy"
-            Text="Copy link">
+            Text="Copy link"
+            Click="@OnCopyLinkClick">
         </MenuEntry>
     }
     <MenuEntry
-        OnClick="@(() => CopyMessageLink(entry))"
         Icon="icon-link-2"
-        Text="Copy message link">
+        Text="Copy message link"
+        Click="@(() => CopyMessageLink(entry))">
     </MenuEntry>
-    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
+    @if (m is { IsJoined: true, IsEntryAuthor: true } && !entry.IsStreaming) {
         <MenuEntrySeparator />
         <MenuEntry
-            OnClick="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))"
             Class="warning-item"
             Icon="icon-trash03"
-            Text="Delete message">
+            Text="Delete message"
+            Click="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))">
         </MenuEntry>
     }
 </div>

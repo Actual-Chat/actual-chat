@@ -2,7 +2,12 @@
 @using ActualChat.UI.Blazor.Services
 
 <div class="@Class copy-to-clipboard">
-    <input @ref="InputRef" class="@InputClass" type="text" value="@Text" onclick="@OnClick"/>
+    <input
+        @ref="InputRef"
+        class="@InputClass"
+        type="text"
+        value="@Text"
+        @onclick="@OnClick"/>
     <ButtonRound
         Click="OnClick"
         ContentClass="flex-x gap-x-1"

@@ -3,8 +3,8 @@
 <ul class="reaction-select">
     @foreach (var emoji in _emojis) {
         <MenuEntry
-            OnClick="_ => React(emoji.Id)"
-            Class="reaction-select-reaction">
+            Class="reaction-select-reaction"
+            Click="@(_ => React(emoji.Id))">
             <IconContent>
                 <EmojiIcon Id="@emoji.Id" class="reaction-select-reaction-emoji"/>
             </IconContent>

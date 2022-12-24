@@ -8,7 +8,7 @@
     var authorNameCls = colorCls + fontCls + "font-medium max-w-full md:max-w-64 pl-2";
 }
 
-<div class="related-chat-entry" @onclick="OnQuoteClick">
+<div class="related-chat-entry" @onclick="@OnQuoteClick">
     @if (Kind == RelatedEntryKind.Reply) {
         <div class="flex-x w-full max-h-10 md:max-h-8 items-center">
             <i class="icon-reply text-xl @colorCls"></i>

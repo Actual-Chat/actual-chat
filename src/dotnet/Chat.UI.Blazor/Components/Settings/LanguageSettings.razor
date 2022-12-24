@@ -15,7 +15,8 @@
         <div class="language-settings-item">
             <Radio Id="@($"language-settings-primary-{language}")" Name="language-settings-primary"
                    Value="@language" IsChecked="@(language == languages.Primary)"
-                   Title="@language.Title" Change="_ => SetPrimary(language)" />
+                   Title="@language.Title"
+                   Change="@(_ => SetPrimary(language))" />
         </div>
     }
 </fieldset>
@@ -23,15 +24,21 @@
 <fieldset class="language-settings" id="language-settings-secondary">
     <legend>Your secondary language:</legend>
     <div class="language-settings-item">
-        <Radio Id="language-settings-secondary-none" Name="language-settings-secondary"
-               Value="" IsChecked="@(languages.Secondary == null)"
-               Title="None" Change="_ => SetSecondary(null)"/>
+        <Radio
+            Id="language-settings-secondary-none" Name="language-settings-secondary"
+            Title="None"
+            Value=""
+            IsChecked="@(languages.Secondary == null)"
+            Change="@(_ => SetSecondary(null))"/>
     </div>
     @foreach (var language in Languages.All.Where(x => x != languages.Primary)) {
         <div class="language-settings-item">
-            <Radio Id="@($"language-settings-secondary-{language}")" Name="language-settings-secondary"
-                   Value="@language" IsChecked="@(language == languages.Secondary)"
-                   Title="@language.Title" Change="_ => SetSecondary(language)"/>
+            <Radio
+                Id="@($"language-settings-secondary-{language}")" Name="language-settings-secondary"
+                Title="@language.Title"
+                Value="@language"
+                IsChecked="@(language == languages.Secondary)"
+                Change="@(_ => SetSecondary(language))"/>
             @* Disabled="@(language == languages.Primary)"/> *@
         </div>
     }

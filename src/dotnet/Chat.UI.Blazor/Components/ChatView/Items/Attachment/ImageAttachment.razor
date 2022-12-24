@@ -15,8 +15,11 @@
 }
 
 <div class="image-attachment">
-    <a class="cursor-pointer" href="@url"
-       role="button" @onclick="_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Width, attachment.Height, ChatEntry)" @onclick:preventDefault="true">
+    <a class="cursor-pointer"
+       href="@url"
+       role="button"
+       @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Width, attachment.Height, ChatEntry))"
+       @onclick:preventDefault="true">
         <img class="inline skeleton" style="@imgStyle" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
     </a>
 </div>

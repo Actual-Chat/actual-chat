@@ -5,10 +5,11 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.Model>
 {
+    [Inject] protected Session Session { get; init; } = null!;
     [Inject] protected IAuthors Authors { get; init; } = null!;
     [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
     [Inject] protected IUserPresences UserPresences { get; init; } = null!;
-    [Inject] protected Session Session { get; init; } = null!;
+    [Inject] protected AuthorUI AuthorUI { get; init; } = null!;
 
     protected AuthorId AuthorId { get; private set; }
     protected ChatId ChatId => AuthorId.ChatId;

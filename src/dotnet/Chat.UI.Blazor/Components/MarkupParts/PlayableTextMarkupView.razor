@@ -23,7 +23,9 @@
         @if (!playOnClickIsEnabled) {
             <span class="@cls">@word.Value</span>
         } else {
-            <span class="@cls" @onclick="_ => OnClick(word.TextRange.Start)">@word.Value</span>
+            <span
+                class="@cls"
+                @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
         }
     }
 </span>

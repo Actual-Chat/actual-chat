@@ -13,7 +13,9 @@
     </div>
     <div class="flex-x flex-wrap gap-x-2 w-full px-2">
         @foreach (var contact in SelectedContacts) {
-            <btn class="selected-contact" @onclick="@(() => OnRemoveContact.InvokeAsync(contact))">
+            <btn
+                class="selected-contact"
+                @onclick="@(() => OnRemoveContact.InvokeAsync(contact))">
                 <div class="remove-contact-icon">
                     <i class="icon-close text-04 text-2xl pl-0.5"></i>
                 </div>

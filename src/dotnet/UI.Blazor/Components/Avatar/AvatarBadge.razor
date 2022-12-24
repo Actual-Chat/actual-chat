@@ -3,7 +3,7 @@
 @using ActualChat.Chat
 @inherits FusionComponentBase
 
-<div class="avatar-badge" onclick="@Click">
+<div class="avatar-badge" @onclick="@Click">
     <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
     <div class="flex-y ml-2">
         <div class="avatar-badge-name grid">

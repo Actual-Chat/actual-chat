@@ -15,7 +15,7 @@
             Notification="@notification"
             AutoCloseDelay="@(_isHovered ? null : TimeSpan.FromSeconds(5))"
             AnimationTime="@(TimeSpan.FromSeconds(1))"
-            Closed="() => OnClose(notificationId)"/>
+            Closed="@(_ => OnClose(notificationId))"/>
     }
 </div>
 

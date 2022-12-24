@@ -8,8 +8,9 @@
         return;
     }
 
-    <div class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
-         @onclick="OnAuthorClick">
+    <div
+        class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
+        @onclick="@(_ => AuthorUI.Show(_authorId))">
         <div class="truncate">
             <i class="absolute icon-at text-lg"></i>
             <span class="ml-5">
@@ -22,16 +23,11 @@
 @code {
     private AuthorId _authorId;
 
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
 
     protected override void OnParametersSet() {
         var id = Markup.Id;
         if (id.OrdinalHasPrefix("a:", out var authorId))
             AuthorId.TryParse(authorId, out _authorId);
-    }
-
-    private void OnAuthorClick() {
-        if (!_authorId.IsNone)
-            ChatUI.ShowAuthorModal(_authorId);
     }
 }

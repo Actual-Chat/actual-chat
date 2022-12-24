@@ -24,7 +24,7 @@
 
     @if (m.Link is { } publicUrl) {
         <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-            @onclick="() => OnPublicUrlClick(publicUrl)">
+            @onclick="@(_ => OnPublicUrlClick(publicUrl))">
             <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
                 <i class="icon-link-2 text-2xl text-icons-03"></i>
             </div>
@@ -40,7 +40,7 @@
     }
 
     <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-         @onclick="() => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted)"
+         @onclick="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
          @onclick:preventDefault="true">
         <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
             <i class="icon-bell text-2xl text-icons-03"></i>

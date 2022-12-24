@@ -21,7 +21,7 @@
                     AuthorSid="@authorId"
                     ShowPresence="true"
                     NameClass="font-medium text-02 select-none"
-                    Click="() => OnAuthorClick(authorId)"/>
+                    Click="@(_ => AuthorUI.Show(authorId))"/>
             }
         }
         <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Length</div>
@@ -30,7 +30,7 @@
                 AuthorSid="@authorId"
                 ShowPresence="true"
                 NameClass="font-medium text-02 select-none"
-                Click="() => OnAuthorClick(authorId)"/>
+                Click="@(_ => AuthorUI.Show(authorId))"/>
         }
     </div>
 </div>
@@ -38,7 +38,7 @@
 @code {
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
@@ -73,8 +73,8 @@
         };
     }
 
-    private void OnAuthorClick(AuthorId authorId)
-        => ModalUI.Show(new AuthorModal.Model(authorId));
+    private Task OnAuthorClick(AuthorId authorId)
+        => AuthorUI.Show(authorId);
 
     private void OnSelfClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());

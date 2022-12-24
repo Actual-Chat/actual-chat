@@ -11,11 +11,11 @@
     <ButtonSquare
         Class="@GetButtonClass(IsServerSideBlazor)"
         IsDisabled="@IsServerSideBlazor"
-        Click="_ => BlazorModeHelper.ChangeMode(true)" >Server</ButtonSquare>
+        Click="@(_ => BlazorModeHelper.ChangeMode(true))">Server</ButtonSquare>
     <ButtonSquare
         Class="@GetButtonClass(!IsServerSideBlazor)"
         IsDisabled="@(!IsServerSideBlazor)"
-        Click="_ => BlazorModeHelper.ChangeMode(false)" >WASM</ButtonSquare>
+        Click="@(_ => BlazorModeHelper.ChangeMode(false))" >WASM</ButtonSquare>
 </div>
 
 @code {
