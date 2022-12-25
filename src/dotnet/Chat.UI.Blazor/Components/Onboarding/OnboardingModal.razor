@@ -27,14 +27,14 @@
         <FooterContent>
             @if (stepper.IsLast) {
                 <Button
-                    Click="() => OnLastClick(stepper)"
-                    Class="btn-primary btn-w-full">
+                    Class="btn-primary btn-w-full"
+                    Click="() => OnLastStepComplete(stepper)">
                     Start messaging
                 </Button>
             } else if (stepper.CanMoveForward) {
                 <Button
-                    Click="stepper.MoveForward"
-                    Class="btn-primary btn-w-full">
+                    Class="btn-primary btn-w-full"
+                    Click="stepper.MoveForward">
                     Next
                 </Button>
             }
@@ -51,13 +51,11 @@
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private void OnLastClick(Stepper stepper) {
-        if (stepper.CurrentStep == null)
+    private async Task OnLastStepComplete(Stepper stepper) {
+        var stepCompleted = await stepper.MoveForward();
+        if (!stepCompleted)
             return;
-        var isStepValid = stepper.CurrentStep.Validate();
-        if (!isStepValid)
-            return;
-        ModalInstance.CloseAsync();
+        await ModalInstance.CloseAsync();
     }
 
     public sealed record Model;
