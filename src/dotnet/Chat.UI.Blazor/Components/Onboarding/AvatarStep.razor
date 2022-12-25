@@ -5,7 +5,12 @@
 @using Stl.Generators
 @inherits Step;
 
-@if (Stepper.CurrentStep != this) {
+@if (CurrentStep != this) {
+    return;
+}
+
+@if (CurrentStep.IsCompleted) {
+    <CompletedStep/>
     return;
 }
 
@@ -54,13 +59,27 @@
                 </Button>
             </div>
         </div>
-        <FormSection For="() => _stepModel.Name" InputId="name" Label="Name" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection
+            For="() => _stepModel.Name"
+            InputId="name"
+            Label="Name"
+            IsLabelInsideInput="true"
+            IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
         </FormSection>
-        <FormSection For="() => _stepModel.LastName" InputId="lastName" Label="Last name (optional)" IsLabelInsideInput="true">
+        <FormSection
+            For="() => _stepModel.LastName"
+            InputId="lastName"
+            Label="Last name (optional)"
+            IsLabelInsideInput="true">
             <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
         </FormSection>
-        <FormSection For="() => _stepModel.UserName" InputId="userName" Label="@("@username")" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection
+            For="() => _stepModel.UserName"
+            InputId="userName"
+            Label="@("@username")"
+            IsLabelInsideInput="true"
+            IsRequired="true">
             <InputText id="userName" @bind-Value="_stepModel.UserName"/>
         </FormSection>
     </Form>
@@ -77,8 +96,13 @@
 
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
-    public override bool Validate() {
-        return _formRef?.EditContext?.Validate() ?? false;
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override Task Save() {
+        return Task.CompletedTask;
     }
 
     protected override async Task OnInitializedAsync() {

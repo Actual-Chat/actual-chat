@@ -2,7 +2,12 @@
 @using System.ComponentModel.DataAnnotations
 @inherits Step;
 
-@if (Stepper.CurrentStep != this) {
+@if (CurrentStep != this) {
+    return;
+}
+
+@if (CurrentStep.IsCompleted) {
+    <CompletedStep/>
     return;
 }
 
@@ -13,7 +18,12 @@
         @ref="_formRef"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
-        <FormSection For="() => _stepModel.Country" InputId="country" Label="Country" IsLabelInsideInput="true" IsRequired="true">
+        <FormSection
+            For="() => _stepModel.Country"
+            InputId="country"
+            Label="Country"
+            IsLabelInsideInput="true"
+            IsRequired="true">
             <InputSelect id="country" @bind-Value="_stepModel.Country">
                 @foreach (var phoneCode in PhoneCodes.List)
                 {
@@ -22,7 +32,13 @@
             </InputSelect>
         </FormSection>
         <div class="flex-x gap-x-1">
-            <FormSection For="() => _stepModel.Code" InputId="phoneCode" Label="Code" Class="w-20" IsLabelInsideInput="true" IsRequired="true">
+            <FormSection
+                For="() => _stepModel.Code"
+                InputId="phoneCode"
+                Label="Code"
+                Class="w-20"
+                IsLabelInsideInput="true"
+                IsRequired="true">
                 <InputText id="phoneCode" @bind-Value="_stepModel.Code"/>
             </FormSection>
             <FormSection
@@ -42,7 +58,11 @@
                 Change="OnSyncContactsChange"
                 Name="Sync Contacts"/>
         </FormSection>
-        <FormSection For="() => _stepModel.Email" InputId="email" Label="Email (optional)" IsLabelInsideInput="true">
+        <FormSection
+            For="() => _stepModel.Email"
+            InputId="email"
+            Label="Email (optional)"
+            IsLabelInsideInput="true">
             <InputText id="email" @bind-Value="_stepModel.Email"/>
         </FormSection>
     </Form>
@@ -52,8 +72,13 @@
     private Form? _formRef;
     private readonly PhoneStepModel _stepModel = new();
 
-    public override bool Validate() {
-        return _formRef?.EditContext?.Validate() ?? false;
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override Task Save() {
+        return Task.CompletedTask;
     }
 
     private void OnSyncContactsChange(ChangeEventArgs args) {
@@ -79,7 +104,6 @@
         public string? Number { get; set; }
 
         public bool SyncContacts { get; set; }
-
         public string? Email { get; set; }
     }
 }

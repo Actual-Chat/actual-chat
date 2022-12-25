@@ -30,7 +30,7 @@
     [Parameter] public RenderFragment<Stepper>? ChildContent { get; set; }
     [Parameter] public RenderFragment<Stepper>? FooterContent { get; set; }
 
-    public Step? CurrentStep => _currentStep;
+    internal Step? CurrentStep => _currentStep;
 
     public void AddStep(Step step) {
         _steps.Add(step);
@@ -50,17 +50,18 @@
 
     public bool CanMoveBack => _currentStep != null && !IsFirst;
 
-    public void MoveForward() {
+    public async Task<bool> MoveForward() {
         if (_currentStep == null)
-            return;
-        var isStepValid = _currentStep.Validate();
-        if (!isStepValid)
-            return;
+            return false;
+        var isStepCompleted = await _currentStep.Complete();
+        if (!isStepCompleted)
+            return false;
         var index = _steps.IndexOf(_currentStep);
         var previousStep = _currentStep;
         _currentStep = _steps.ElementAtOrDefault(index + 1);
         previousStep.Refresh();
         _currentStep?.Refresh();
+        return true;
     }
 
     public void MoveBack() {
