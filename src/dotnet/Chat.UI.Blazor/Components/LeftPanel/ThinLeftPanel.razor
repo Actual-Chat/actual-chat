@@ -35,10 +35,11 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
     private void OnShowCreationModal()
         => ModalUI.Show(new CreationModal.Model());
 
     private void OnShowOnboardingModal()
-        => ModalUI.Show(new OnboardingModal.Model());
+        => OnboardingUI.Show();
 }
