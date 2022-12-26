@@ -18,6 +18,6 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         var entryId = new TextEntryId(sEntryId);
-        _entry = await Chats.Get(Session, entryId);
+        _entry = await Chats.GetEntry(Session, entryId);
     }
 }

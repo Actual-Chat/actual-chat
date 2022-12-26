@@ -67,11 +67,12 @@
         if (startTimeOpt is not { } startTime)
             return;
 
+        // We resolve some of the services lazily here, coz they're supposed to be used quite rarely
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
 
         var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
-        var audioEntry = await chats.Get(session, audioEntryId);
+        var audioEntry = await chats.GetEntry(session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case

@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.Chat;
 
 public sealed class ChatEntryReader
 {

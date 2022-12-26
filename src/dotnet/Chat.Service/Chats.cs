@@ -217,10 +217,12 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (localId is { } vLocalId) {
             // Update
             var textEntryId = new TextEntryId(chatId, vLocalId, AssumeValid.Option);
-            textEntry = await GetChatEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+            textEntry = await this
+                .GetEntry(session,textEntryId, cancellationToken)
+                .Require(ChatEntry.MustNotBeRemoved)
+                .ConfigureAwait(false);
 
             // Check constraints
-            textEntry.Require(ChatEntry.MustNotBeRemoved);
             if (textEntry.AuthorId != author.Id)
                 throw StandardError.Unauthorized("You can edit only your own messages.");
             if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryId.HasValue)
@@ -283,11 +285,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var textEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
-        var textEntry = await GetChatEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+        var textEntry = await this
+            .GetEntry(session, textEntryId, cancellationToken)
+            .Require(ChatEntry.MustNotBeRemoved)
+            .ConfigureAwait(false);
 
         // Check constraints
-        textEntry.Require(ChatEntry.MustNotBeRemoved);
         if (textEntry.AuthorId != author.Id)
             throw StandardError.Unauthorized("You can remove only your own messages.");
         if (textEntry.IsStreaming)
@@ -301,7 +305,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         async Task Remove(ChatEntryId entryId1)
         {
-            var entry1 = await GetChatEntry(session, entryId1, cancellationToken).ConfigureAwait(false);
+            var entry1 = await this.GetEntry(session, entryId1, cancellationToken).ConfigureAwait(false);
+            if (entry1 == null || entry1.IsRemoved)
+                return;
+
             entry1 = entry1 with { IsRemoved = true };
             var upsertCommand = new IChatsBackend.UpsertEntryCommand(entry1);
             await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -320,16 +327,5 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return new PrincipalId(account.Id, AssumeValid.Option);
-    }
-
-    private async Task<ChatEntry> GetChatEntry(
-        Session session, ChatEntryId entryId,
-        CancellationToken cancellationToken)
-    {
-        var idTile = IdTileStack.FirstLayer.GetTile(entryId.LocalId);
-        var tile = await GetTile(session, entryId.ChatId, entryId.Kind, idTile.Range, cancellationToken)
-            .ConfigureAwait(false);
-        var entry = tile.Entries.Single(e => e.LocalId == entryId.LocalId);
-        return entry;
     }
 }

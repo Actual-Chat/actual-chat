@@ -190,7 +190,7 @@
             return null;
 
         var repliedEntryId = new ChatEntryId(Message.Entry.ChatId, Message.Entry.Kind, repliedEntryLocalId, AssumeValid.Option);
-        var repliedEntry = await Chats.Get(Session, repliedEntryId, cancellationToken)
+        var repliedEntry = await Chats.GetEntry(Session, repliedEntryId, cancellationToken)
             ?? ChatEntry.Removed(repliedEntryId);
 
         return repliedEntry;

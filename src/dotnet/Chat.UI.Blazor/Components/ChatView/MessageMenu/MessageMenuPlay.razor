@@ -42,6 +42,8 @@
 }
 
 @code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
 
     [Parameter] public ChatEntry Entry { get; set; } = null!;
@@ -102,17 +104,15 @@
     }
 
     private async Task OnPlay() {
-        var session = Services.GetRequiredService<Session>();
-        var chats = Services.GetRequiredService<IChats>();
-
         var entry = Entry;
         var chatId = entry.ChatId;
         var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
-        var audioEntry = await chats.Get(session, audioEntryId);
+        var audioEntry = await Chats.GetEntry(Session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case
         }
+
         var startAt = audioEntry.BeginsAt;
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
         chatPlayers.StartHistoricalPlayback(chatId, startAt);

@@ -16,7 +16,7 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         var entryId = new TextEntryId(sEntryId);
-        var entry = await Chats.Get(Session, entryId, CancellationToken.None);
+        var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
         _chatMessageModel = entry != null
             ? new ChatMessageModel(entry)
             : null;

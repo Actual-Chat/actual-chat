@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.Chat;
 
 public static class ChatsExt
 {
@@ -10,16 +10,19 @@ public static class ChatsExt
         TileLayer<long>? idTileLayer = null)
         => new(chats, session, chatId, entryKind, idTileLayer);
 
-    public static ValueTask<ChatEntry?> Get(
+    public static async ValueTask<ChatEntry?> GetEntry(
         this IChats chats,
         Session session,
         ChatEntryId entryId,
         CancellationToken cancellationToken = default)
     {
         if (entryId.IsNone)
-            return ValueTask.FromResult((ChatEntry?)null);
+            return null;
 
-        var reader = chats.NewEntryReader(session, entryId.ChatId, entryId.Kind);
-        return reader.Get(entryId.LocalId, cancellationToken);
+        var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var tile = await chats.GetTile(session, entryId.ChatId, entryId.Kind, idTile.Range, cancellationToken)
+            .ConfigureAwait(false);
+        var entry = tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
+        return entry;
     }
 }
