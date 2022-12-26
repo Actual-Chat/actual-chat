@@ -78,43 +78,26 @@
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
   </PropertyGroup>
 
-<!--  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">-->
-<!--&lt;!&ndash;    <AndroidLinkTool>r8</AndroidLinkTool>&ndash;&gt;-->
-<!--&lt;!&ndash; r8, full Trimming and LLVM optimization doesn work, it shows following error-->
-<!-- java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses-->
-<!--&ndash;&gt;-->
-<!--    <EnableLLVM>False</EnableLLVM>-->
-<!--    <AndroidEnableProfiledAot>True</AndroidEnableProfiledAot>-->
-<!--    <EnableTrimAnalyzer>True</EnableTrimAnalyzer>-->
-<!--    <PublishTrimmed>True</PublishTrimmed>-->
-<!--    <TrimMode>partial</TrimMode>-->
-<!--  </PropertyGroup>-->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+<!--    <AndroidLinkTool>r8</AndroidLinkTool>-->
+<!-- r8, full Trimming and LLVM optimization doesn work, it shows following error
+ java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;"
+ field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses
+-->
+    <EnableLLVM>False</EnableLLVM>
+    <AndroidEnableProfiledAot>True</AndroidEnableProfiledAot>
+    <EnableTrimAnalyzer>True</EnableTrimAnalyzer>
+    <PublishTrimmed>True</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+  </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug-maui|net7.0-android|AnyCPU'">
-
-    <!--<AndroidSupportedAbis>x86_64;arm64-v8a</AndroidSupportedAbis>
-    <EnableLLVM>True</EnableLLVM>
-    <TrimMode>link</TrimMode>-->
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-android|AnyCPU'">
-    <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
-    <EnableLLVM>True</EnableLLVM>
-    <TrimMode>link</TrimMode>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-android|AnyCPU'">
-    <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
-    <EnableLLVM>True</EnableLLVM>
-    <TrimMode>link</TrimMode>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android'">

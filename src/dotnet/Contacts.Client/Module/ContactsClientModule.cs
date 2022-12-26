@@ -1,9 +1,11 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Contacts.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ContactsClientModule : HostModule
 {
     public ContactsClientModule(IPluginInfoProvider.Query _) : base(_) { }

@@ -29,6 +29,7 @@ namespace ActualChat.UI.Blazor.App
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioClientModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioBlazorUIModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatClientModule))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContactsClientModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatBlazorUIModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InviteClientModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersContractsModule))]
