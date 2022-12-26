@@ -49,6 +49,8 @@ public class CronetMessageHandler : HttpMessageHandler
         {
             var body = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             requestBuilder.SetUploadDataProvider(UploadDataProviders.Create(body), Executor);
+            foreach (var header in request.Content.Headers)
+                requestBuilder.AddHeader(header.Key, string.Join(',', header.Value));
         }
         requestBuilder.Build().Start();
 
@@ -88,6 +90,9 @@ public class CronetMessageHandler : HttpMessageHandler
         public override void OnFailed(UrlRequest p0, UrlResponseInfo p1, CronetException p2)
         {
             _responseBodyChannel?.DisposeSilently();
+            _responseBody?.DisposeSilently();
+            _responseBodyChannel = null;
+            _responseBody = null;
             _result.SetException(p2);
         }
 
@@ -100,6 +105,8 @@ public class CronetMessageHandler : HttpMessageHandler
             if (_redirectCount++ > MaxRedirectCount) {
                 _responseBody?.DisposeSilently();
                 _responseBodyChannel?.DisposeSilently();
+                _responseBodyChannel = null;
+                _responseBody = null;
                 p0.Cancel();
             }
             p0.FollowRedirect();
@@ -141,6 +148,7 @@ public class CronetMessageHandler : HttpMessageHandler
         public override void OnSucceeded(UrlRequest p0, UrlResponseInfo p1)
         {
             _responseBodyChannel?.DisposeSilently();
+            _responseBodyChannel = null;
 
             var ret = new HttpResponseMessage ((HttpStatusCode)p1.HttpStatusCode) {
                 RequestMessage = RequestMessage,
@@ -152,8 +160,10 @@ public class CronetMessageHandler : HttpMessageHandler
                         : HttpVersion.Version30,
             };
             if (_responseBody != null) {
+                _responseBody.Flush();
                 _responseBody.Position = 0;
                 ret.Content = new StreamContent(_responseBody);
+                _responseBody = null;
             }
             else
                 ret.Content = new StreamContent(Stream.Null);
@@ -169,9 +179,11 @@ public class CronetMessageHandler : HttpMessageHandler
 
         public override void OnCanceled(UrlRequest request, UrlResponseInfo info)
         {
-            _responseBody?.DisposeSilently();
             _responseBodyChannel?.DisposeSilently();
-            _result.TrySetCanceled(CancellationToken);
+            _responseBody?.DisposeSilently();
+            _responseBodyChannel = null;
+            _responseBody = null;
+            _ = _result.TrySetCanceled(CancellationToken);
             base.OnCanceled(request, info);
         }
     }
