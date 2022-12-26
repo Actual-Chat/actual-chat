@@ -19,16 +19,12 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public string ContentId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
 
-    public static string ComposeId(ChatEntryId entryId, int index)
-    {
-        if (entryId.Kind != ChatEntryKind.Text)
-            throw new ArgumentOutOfRangeException(nameof(entryId), "Only text entries support attachments.");
-        return Invariant($"{entryId.ChatId}:{entryId.LocalId}:{index}");
-    }
+    public static string ComposeId(TextEntryId entryId, int index)
+        => $"{entryId}:{index}";
 
     public TextEntryAttachment ToModel()
     {
-        var entryId = new ChatEntryId(EntryId);
+        var entryId = new TextEntryId(EntryId);
         return new (Id, Version) {
             EntryId = entryId,
             Index = Index,
@@ -39,14 +35,13 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
 
     public void UpdateFrom(TextEntryAttachment model)
     {
-        var entryId = model.EntryId;
-        var id = ComposeId(entryId, model.Index);
+        var id = ComposeId(model.EntryId, model.Index);
         this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
 
         Id = id;
         Version = model.Version;
-        EntryId = entryId;
+        EntryId = model.EntryId;
         Index = model.Index;
         ContentId = model.ContentId;
         MetadataJson = model.MetadataJson;

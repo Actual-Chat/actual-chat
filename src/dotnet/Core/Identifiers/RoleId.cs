@@ -50,7 +50,7 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
 
     public RoleId(ChatId chatId, long localId, AssumeValid _)
     {
-        if (chatId.IsNone) {
+        if (chatId.IsNone || localId < 0) {
             this = None;
             return;
         }
@@ -76,7 +76,7 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
     // Parsing
 
     private static string Format(ChatId chatId, long localId)
-        => chatId.IsNone ? "" : $"{chatId.Value}:{localId.ToString(CultureInfo.InvariantCulture)}";
+        => chatId.IsNone ? "" : $"{chatId.Value}:{localId.Format()}";
 
     public static RoleId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId>();

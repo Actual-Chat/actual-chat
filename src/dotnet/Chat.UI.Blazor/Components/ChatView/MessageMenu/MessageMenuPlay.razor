@@ -102,13 +102,13 @@
     }
 
     private async Task OnPlay() {
-        var entry = Entry;
-        var chatId = entry.ChatId;
-        var audioEntryId = entry.AudioEntryId.GetValueOrDefault(); // It's there for sure, otherwise click won't work
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryKind.Audio);
-        var audioEntry = await chatEntryReader.Get(audioEntryId, default);
+
+        var entry = Entry;
+        var chatId = entry.ChatId;
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
+        var audioEntry = await chats.Get(session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case

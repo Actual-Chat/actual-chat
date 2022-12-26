@@ -21,9 +21,10 @@
     @if (entry.AudioEntryId != null) {
         <MessageMenuPlay Entry="@entry"/>
     }
-    <ButtonRound data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
-                 data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
-                 data-menu-position="@(FloatingPosition.LeftStart.ToPositionString())">
+    <ButtonRound
+        data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
+        data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
+        data-menu-position="@(FloatingPosition.LeftStart.ToPositionString())">
         <i class="icon-more-vertical text-xl text-icon-01"></i>
     </ButtonRound>
 </div>
@@ -56,7 +57,7 @@
 
     private Task OnReactionClick() {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
-            EntryId = Message.Entry.Id,
+            EntryId = Message.Entry.Id.ToTextEntryId(),
             EmojiId = Emoji.ThumbsUp,
         }));
     }

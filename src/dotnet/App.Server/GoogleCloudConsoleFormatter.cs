@@ -304,6 +304,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
         [DoesNotReturn]
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ThrowOutOfMemoryException_BufferMaximumSizeExceeded(uint capacity)
-            => throw new OutOfMemoryException(Invariant($"Cannot allocate a buffer of size {capacity}."));
+            => throw new OutOfMemoryException(
+                $"Cannot allocate a buffer of size {capacity.Format()}.");
     }
 }

@@ -188,7 +188,7 @@ public sealed class AudioProcessor : IAudioProcessor
         TranscriptSegment segment,
         CancellationToken cancellationToken)
     {
-        var streamId = $"{audioSegment.StreamId}-{segment.Index:D}";
+        var streamId = $"{audioSegment.StreamId}-{segment.Index.ToString("D", CultureInfo.InvariantCulture)}";
         var transcripts = TranscriptPostProcessor
             .Apply(segment, cancellationToken)
             .TrimOnCancellation(cancellationToken);

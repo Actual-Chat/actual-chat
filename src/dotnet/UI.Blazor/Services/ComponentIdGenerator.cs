@@ -8,7 +8,7 @@ public class ComponentIdGenerator
 
     public string Next(string prefix = "")
     {
-        var suffix = NextLong().ToString(CultureInfo.InvariantCulture);
+        var suffix = NextLong().Format();
         return prefix.IsNullOrEmpty() ? suffix : $"{prefix}-{suffix}";
     }
 }

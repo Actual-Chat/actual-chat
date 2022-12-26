@@ -20,7 +20,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public ChatMessageModel(ChatEntry entry)
     {
         Entry = entry;
-        Key = entry.LocalId.ToString(CultureInfo.InvariantCulture);
+        Key = entry.LocalId.Format();
     }
 
     public override string ToString()

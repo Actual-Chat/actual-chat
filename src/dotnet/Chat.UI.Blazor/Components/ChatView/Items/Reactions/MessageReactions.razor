@@ -11,7 +11,7 @@
     @foreach (var reaction in m.Reactions) {
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
         <li class="message-reactions-reaction @ownReactionClass"
-            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(ChatEntry.Id, reaction.Emoji))"
+            data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, reaction.Emoji))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()"
             data-menu-position="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@(_ => ToggleReaction(reaction.Emoji))">
@@ -21,7 +21,7 @@
     }
 
     <li class="message-reactions-add"
-        data-menu="@(MenuRef.New<ReactionSelectMenu>(ChatEntry.Id))"
+        data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
         data-menu-trigger="@MenuTriggers.LeftClick.Format()"
         data-menu-position="@(FloatingPosition.Right.ToPositionString())">
         <AddReactionIcon class="message-reactions-add-icon"/>
@@ -34,26 +34,38 @@
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
-    [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new Model(ChatEntry.HasReactions, ImmutableArray<ReactionSummary>.Empty), };
+        => new() {
+            InitialValue = new Model(Entry.HasReactions, ImmutableArray<ReactionSummary>.Empty),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var summaries = await Reactions.ListSummaries(Session, ChatEntry.Id, cancellationToken);
+        if (!Entry.Id.IsTextEntryId(out var textEntryId))
+            return Model.None;
+
+        var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken);
         if (summaries.Length == 0)
             return new Model(false, summaries);
-        var ownReaction = await Reactions.Get(Session, ChatEntry.Id, cancellationToken);
+        var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken);
         return new Model(true, summaries, ownReaction);
     }
 
     private Task ToggleReaction(Symbol emojiId) {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
-            EntryId = ChatEntry.Id,
+            EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
         }));
     }
 
-    public record Model(bool HasReactions, ImmutableArray<ReactionSummary> Reactions, Reaction? OwnReaction = null);
+    public record Model(
+        bool HasReactions,
+        ImmutableArray<ReactionSummary> Reactions,
+        Reaction? OwnReaction = null
+    ) {
+        public static Model None { get; } = new(false, ImmutableArray<ReactionSummary>.Empty);
+    };
 }

@@ -11,21 +11,21 @@
 </ul>
 
 @code {
-    private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
     private string _emoji = "";
+    private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
+
     [Inject] private IReactions Reactions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        if (Arguments is { Length: 2 }) {
-            var chatEntryId = new ChatEntryId(Arguments[0]);
-            _emoji = Arguments[1];
-            var summaries = await Reactions.ListSummaries(Session, chatEntryId, CancellationToken.None).ConfigureAwait(false);
-            var summary = summaries.FirstOrDefault(x => x.EmojiId == _emoji);
-            if (summary == null)
-                return;
+        if (Arguments is not [ var sEntryId, var emoji ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-            _firstAuthorIds = summary.FirstAuthorIds;
-        }
+        var entryId = new TextEntryId(sEntryId);
+        var summaries = await Reactions.ListSummaries(Session, entryId, CancellationToken.None).ConfigureAwait(false);
+        var summary = summaries.FirstOrDefault(x => x.EmojiId == _emoji);
+
+        _emoji = emoji;
+        _firstAuthorIds = summary?.FirstAuthorIds ?? ImmutableList<AuthorId>.Empty;
     }
 }

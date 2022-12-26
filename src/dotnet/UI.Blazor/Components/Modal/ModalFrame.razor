@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = $"modal-frame {Class}";
-    var closeBtnCls = $"modal-close {CloseButtonCls}";
+    var closeBtnCls = $"modal-close {CloseButtonClass}";
 }
 
 <ModalChrome Class="@cls">
-    @if (ShowMobileHeader) {
+    @if (HasMobileHeader) {
         <div class="modal-mobile-header">
             <ButtonRound Click="OnCloseClick" Class="transparent">
                 <i class="icon-arrow-left text-2xl"></i>
@@ -33,11 +33,10 @@
 @code {
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string CloseButtonClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public string CloseButtonCls { get; set; } = "";
-    [Parameter] public bool ShowMobileHeader { get; set; } = true;
-    [Parameter] public bool ImageViewer { get; set; }
+    [Parameter] public bool HasMobileHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 

@@ -216,7 +216,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
             // Update
-            var textEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, vLocalId, AssumeValid.Option);
+            var textEntryId = new TextEntryId(chatId, vLocalId, AssumeValid.Option);
             textEntry = await GetChatEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
 
             // Check constraints
@@ -234,7 +234,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         }
         else {
             // Create
-            var textEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+            var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
             var upsertCommand = new IChatsBackend.UpsertEntryCommand(
                 new ChatEntry(textEntryId) {
                     AuthorId = author.Id,
@@ -243,6 +243,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 },
                 command.Attachments.Length > 0);
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            textEntryId = textEntry.Id.ToTextEntryId();
 
             for (var index = 0; index < command.Attachments.Length; index++) {
                 var attachmentUpload = command.Attachments[index];
@@ -254,7 +255,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
 
                 var attachment = new TextEntryAttachment() {
-                    EntryId = textEntry.Id,
+                    EntryId = textEntryId,
                     Index = index,
                     Length = content.Length,
                     ContentType = contentType,

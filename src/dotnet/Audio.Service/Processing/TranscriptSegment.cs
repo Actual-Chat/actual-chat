@@ -5,7 +5,7 @@ namespace ActualChat.Audio.Processing;
 public sealed class TranscriptSegment
 {
     public static string GetStreamId(string audioStreamId, int index)
-        => $"{audioStreamId}-{index:D}";
+        => $"{audioStreamId}-{index.ToString("D", CultureInfo.InvariantCulture)}";
 
     public OpenAudioSegment AudioSegment { get; }
     public Transcript Prefix { get; }

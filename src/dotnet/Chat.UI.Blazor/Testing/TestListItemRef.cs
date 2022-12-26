@@ -14,7 +14,7 @@ public sealed class TestListItemRef : IVirtualListItem
     public TestListItemRef(int id, int rangeSeed, int? contentSeed)
     {
         Id = id;
-        Key = id.ToString(CultureInfo.InvariantCulture);
+        Key = id.Format();
         RangeSeed = rangeSeed;
         ContentSeed = contentSeed;
     }

@@ -3,12 +3,12 @@ namespace ActualChat.Chat;
 public interface IReactions : IComputeService
 {
     [ComputeMethod]
-    Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken);
+    Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
-        ChatEntryId entryId,
+        TextEntryId entryId,
         CancellationToken cancellationToken);
 
     [CommandHandler]

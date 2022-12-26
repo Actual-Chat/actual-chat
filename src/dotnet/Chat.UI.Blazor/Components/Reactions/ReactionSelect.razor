@@ -19,7 +19,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
-    [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
 
     protected override void OnParametersSet() {
@@ -29,7 +30,7 @@
 
     private Task React(Symbol emojiId) {
         var command = new IReactions.ReactCommand(Session, new Reaction {
-            EntryId = ChatEntry.Id,
+            EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
         });
         return UICommander.Run(command);

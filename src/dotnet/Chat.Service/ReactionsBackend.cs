@@ -19,19 +19,20 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbReaction = await dbContext.Reactions.Get(DbReaction.ComposeId(entryId, authorId), cancellationToken)
+        var id = DbReaction.ComposeId(entryId, authorId);
+        var dbReaction = await dbContext.Reactions.Get(id, cancellationToken)
             .ConfigureAwait(false);
         return dbReaction?.ToModel();
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ReactionSummary>> List(
-        ChatEntryId entryId,
+        TextEntryId entryId,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();

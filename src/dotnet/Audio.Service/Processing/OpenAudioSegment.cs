@@ -1,13 +1,11 @@
-
 using ActualChat.Chat;
-using ActualChat.Users;
 
 namespace ActualChat.Audio.Processing;
 
 public sealed class OpenAudioSegment
 {
     public static string GetStreamId(string audioRecordId, int index)
-        => $"{audioRecordId}-{index:D4}";
+        => $"{audioRecordId}-{index.ToString("D4", CultureInfo.InvariantCulture)}";
 
     public int Index { get; }
     public string StreamId { get; }

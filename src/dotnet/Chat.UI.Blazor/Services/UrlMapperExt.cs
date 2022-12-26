@@ -5,11 +5,11 @@ public static class UrlMapperExt
     public static string AudioBlobUrl(this UrlMapper urlMapper, ChatEntry audioEntry)
     {
         if (audioEntry.Kind != ChatEntryKind.Audio)
-            throw new ArgumentOutOfRangeException(nameof(audioEntry), Invariant(
-                $"Only Audio entries are supported, but an entry of {audioEntry.Kind} type was provides."));
+            throw new ArgumentOutOfRangeException(nameof(audioEntry),
+                $"Only Audio entries are supported, but an entry of {audioEntry.Kind.ToString()} type was provides.");
         if (audioEntry.Content.IsNullOrEmpty())
-            throw new ArgumentOutOfRangeException(nameof(audioEntry), Invariant(
-                $"{nameof(audioEntry)} doesn't have Content."));
+            throw new ArgumentOutOfRangeException(nameof(audioEntry),
+                $"{nameof(audioEntry)} doesn't have Content.");
 
         return urlMapper.ToAbsolute(urlMapper.ApiBaseUrl, "audio/download/" + audioEntry.Content);
     }

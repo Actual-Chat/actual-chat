@@ -2,12 +2,12 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
-<ModalFrame Class="@Class" Title="@Title"
-            HasHeader="HasHeader"
-            HasCloseButton="HasCloseButton"
-            ShowMobileHeader="@ShowMobileHeader"
-            CloseButtonCls="@CloseButtonCls"
-            ImageViewer="@ImageViewer">
+<ModalFrame
+    Class="@Class" Title="@Title"
+    CloseButtonClass="@CloseButtonClass"
+    HasHeader="HasHeader"
+    HasCloseButton="HasCloseButton"
+    HasMobileHeader="@HasMobileHeader">
     <div class="dialog-body">
         @Body
     </div>
@@ -17,19 +17,18 @@
 </ModalFrame>
 
 @code {
-    [Inject] private Escapist Escapist { get; init; } = null!;
-
     private CancellationTokenSource TokenSource { get; } = new();
     private IAsyncDisposable? EscapeSubscription { get; set; }
+
+    [Inject] private Escapist Escapist { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
-    [Parameter] public string CloseButtonCls { get; set; } = "";
-    [Parameter] public bool ImageViewer { get; set; }
+    [Parameter] public string CloseButtonClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public bool ShowMobileHeader { get; set; } = true;
+    [Parameter] public bool HasMobileHeader { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }

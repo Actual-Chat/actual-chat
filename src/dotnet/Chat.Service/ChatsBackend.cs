@@ -430,7 +430,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            InvalidateTiles(entryId.ChatId, entryId.Kind, entryId.LocalId, ChangeKind.Update);
+            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update);
             return default!;
         }
 

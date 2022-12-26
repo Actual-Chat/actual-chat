@@ -16,15 +16,12 @@
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        if (Arguments is { Length: 3 }) {
-            var chatId = new ChatId(Arguments[0]);
-            var entryId = long.Parse(Arguments[1]);
-            _link = Arguments[2].NullIfEmpty();
-            var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
-            var chatEntry = await reader.Get(entryId, CancellationToken.None);
-            _chatMessageModel = chatEntry != null
-                ? new ChatMessageModel(chatEntry)
-                : null;
-        }
+        if (Arguments is not [ var sEntryId, var link ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        var entryId = new TextEntryId(sEntryId);
+        var entry = await Chats.Get(Session, entryId, CancellationToken.None);
+        _chatMessageModel = entry != null ? new ChatMessageModel(entry) : null;
+        _link = link.NullIfEmpty();
     }
 }

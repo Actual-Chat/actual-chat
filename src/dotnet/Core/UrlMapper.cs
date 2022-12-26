@@ -79,8 +79,8 @@ public sealed class UrlMapper
         if (!HasImageProxy)
             return imageUrl;
 
-        var sMaxWidth = maxWidth.ToString(CultureInfo.InvariantCulture);
-        var sMaxHeight = maxHeight.ToString(CultureInfo.InvariantCulture);
+        var sMaxWidth = maxWidth.Format();
+        var sMaxHeight = maxHeight.Format();
         return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight},fit/{imageUrl}";
     }
 

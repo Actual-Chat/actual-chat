@@ -7,11 +7,11 @@ public static class Links
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone
             ? "/chat"
-            : $"/chat/{entryId.ChatId.Value}#{entryId.LocalId.ToString(CultureInfo.InvariantCulture)}";
+            : $"/chat/{entryId.ChatId.Value}#{entryId.LocalId.Format()}";
 
     public static LocalUrl Chat(ChatId chatId, long? entryId = null)
         => entryId is { } vEntryId
-            ? $"/chat/{chatId.Value}#{vEntryId.ToString(CultureInfo.InvariantCulture)}"
+            ? $"/chat/{chatId.Value}#{vEntryId.Format()}"
             : $"/chat/{chatId.Value}";
 
     public static LocalUrl User(UserId userId)

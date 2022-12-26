@@ -21,14 +21,17 @@ public sealed class ChatEntryReader
         IdTileLayer = idTileLayer ?? IdTileStack.FirstLayer;
     }
 
-    public async Task<ChatEntry?> Get(long id, CancellationToken cancellationToken)
+    public async ValueTask<ChatEntry?> Get(long id, CancellationToken cancellationToken)
     {
+        if (id < 0)
+            return null;
+
         var idTile = IdTileLayer.GetTile(id);
         var tile = await Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken).ConfigureAwait(false);
         return tile.Entries.SingleOrDefault(e => e.LocalId == id);
     }
 
-    public async Task<ChatEntry?> GetFirst(Range<long> idRange, CancellationToken cancellationToken)
+    public async ValueTask<ChatEntry?> GetFirst(Range<long> idRange, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
@@ -45,7 +48,7 @@ public sealed class ChatEntryReader
         return null;
     }
 
-    public async Task<ChatEntry?> GetFirst(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+    public async ValueTask<ChatEntry?> GetFirst(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
@@ -66,7 +69,7 @@ public sealed class ChatEntryReader
         return null;
     }
 
-    public async Task<ChatEntry?> GetLast(Range<long> idRange, CancellationToken cancellationToken)
+    public async ValueTask<ChatEntry?> GetLast(Range<long> idRange, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
@@ -84,7 +87,7 @@ public sealed class ChatEntryReader
         return null;
     }
 
-    public async Task<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+    public async ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {

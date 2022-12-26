@@ -9,7 +9,7 @@ public record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
     [DataMember] public Symbol Id { get; init; }
     [DataMember] public long Version { get; init; }
     [DataMember] public AuthorId AuthorId { get; init; }
-    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public TextEntryId EntryId { get; init; }
     [DataMember] public Symbol EmojiId { get; init; }
     [DataMember] public Moment ModifiedAt { get; init; }
 

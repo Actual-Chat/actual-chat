@@ -107,12 +107,12 @@ public static class ChatMarkupHubExt
         var imageText = imageCount switch {
             0 => "",
             1 => "an image",
-            _ => $"{imageCount.ToString(CultureInfo.InvariantCulture)} images",
+            _ => $"{imageCount.Format()} images",
         };
         var fileText = fileCount switch {
             0 => "",
             1 => attachments[0].FileName,
-            _ => $"{attachments.Length.ToString(CultureInfo.InvariantCulture)} files",
+            _ => $"{attachments.Length.Format()} files",
         };
         var text = (imageText.Length, fileText.Length) switch {
             (0, _) => fileText,

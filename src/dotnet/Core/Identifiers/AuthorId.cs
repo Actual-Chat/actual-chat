@@ -76,7 +76,7 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
     // Parsing
 
     private static string Format(ChatId chatId, long localId)
-        => chatId.IsNone ? "" : $"{chatId.Value}:{localId.ToString(CultureInfo.InvariantCulture)}";
+        => chatId.IsNone ? "" : $"{chatId.Value}:{localId.Format()}";
 
     public static AuthorId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>();

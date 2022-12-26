@@ -7,7 +7,7 @@ public record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementT
 {
     [DataMember] public Symbol Id { get; init; } = "";
     [DataMember] public long Version { get; init; }
-    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public TextEntryId EntryId { get; init; }
     [DataMember] public Symbol EmojiId { get; init; }
     [DataMember] public long Count { get; init; }
 

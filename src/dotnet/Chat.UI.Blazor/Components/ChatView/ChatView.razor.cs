@@ -168,7 +168,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     mustScrollToEntry = true;
             }
         var scrollToKey = mustScrollToEntry
-            ? entryLid.ToString(CultureInfo.InvariantCulture)
+            ? entryLid.Format()
             : null;
 
         // if we are scrolling somewhere - let's load date near the entryId

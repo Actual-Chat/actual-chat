@@ -53,7 +53,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     public ChatEntryId(ChatId chatId, ChatEntryKind kind, long localId, AssumeValid _)
     {
-        if (chatId.IsNone) {
+        if (chatId.IsNone || localId < 0) {
             this = None;
             return;
         }
@@ -69,6 +69,22 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     public static implicit operator Symbol(ChatEntryId source) => source.Id;
     public static implicit operator string(ChatEntryId source) => source.Id.Value;
 
+    public bool IsTextEntryId(out TextEntryId textEntryId)
+    {
+        if (Kind != ChatEntryKind.Text) {
+            textEntryId = default;
+            return false;
+        }
+        textEntryId = new TextEntryId(Id, ChatId, LocalId, AssumeValid.Option);
+        return true;
+    }
+
+    public TextEntryId ToTextEntryId()
+        => IsTextEntryId(out var textEntryId) ? textEntryId : throw StandardError.Format<TextEntryId>();
+
+    public TextEntryId AsTextEntryId()
+        => IsTextEntryId(out var textEntryId) ? textEntryId : default;
+
     // Equality
 
     public bool Equals(ChatEntryId other) => Id.Equals(other.Id);
@@ -80,7 +96,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     // Parsing
 
     private static string Format(ChatId chatId, ChatEntryKind kind, long localId)
-        => chatId.IsNone ? "" : Invariant($"{chatId}:{kind:D}:{localId}");
+        => chatId.IsNone ? "" : $"{chatId}:{kind.Format()}:{localId.Format()}";
 
     public static ChatEntryId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ChatEntryId>();
@@ -96,7 +112,6 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
         var chatIdLength = s.OrdinalIndexOf(":");
         if (chatIdLength < 0)
             return false;
-
         if (!ChatId.TryParse(s[..chatIdLength], out var chatId))
             return false;
 

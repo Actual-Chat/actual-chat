@@ -11,7 +11,7 @@ public sealed record TextEntryAttachment(
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
 
-    [DataMember] public ChatEntryId EntryId { get; init; }
+    [DataMember] public TextEntryId EntryId { get; init; }
     [DataMember] public int Index { get; init; }
     [DataMember] public string ContentId { get; init; } = "";
 

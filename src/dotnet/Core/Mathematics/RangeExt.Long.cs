@@ -49,7 +49,7 @@ public static partial class RangeExt
 
     public static Range<string> AsStringRange(this Range<long> range)
         => new (
-            range.Start.ToString(CultureInfo.InvariantCulture),
+            range.Start.Format(),
             range.End.ToString(CultureInfo.InvariantCulture));
 
     public static Range<long> AsLongRange(this Range<string> range)

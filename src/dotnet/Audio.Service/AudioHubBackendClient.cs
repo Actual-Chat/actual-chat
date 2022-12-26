@@ -54,7 +54,7 @@ public class AudioHubBackendClient : HubClientBase,
 
     private static string GetHubUrl(string address, int port)
     {
-        var protocol = port.ToString(CultureInfo.InvariantCulture).OrdinalEndsWith("80")
+        var protocol = port.Format().OrdinalEndsWith("80")
             ? "http"
             : "https";
         return $"{protocol}://{address}:{port}/backend/hub/audio";

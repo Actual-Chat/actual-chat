@@ -225,7 +225,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
-            var openTelemetryEndpointUri = Invariant($"http://{host}:{port}").ToUri();
+            var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
             services.AddOpenTelemetryMetrics(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))

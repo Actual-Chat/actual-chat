@@ -3,10 +3,10 @@ namespace ActualChat.Chat;
 public interface IReactionsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
+    Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<ReactionSummary>> List(ChatEntryId entryId, CancellationToken cancellationToken);
+    Task<ImmutableArray<ReactionSummary>> List(TextEntryId entryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task React(ReactCommand command, CancellationToken cancellationToken);

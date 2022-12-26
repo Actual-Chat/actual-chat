@@ -251,7 +251,7 @@
         => await MarkupEditorRef.Focus();
 
     private async Task OnEditChatMessageEvent(EditChatMessageEvent @event, CancellationToken cancellationToken) {
-        var chatEntry = @event.ChatEntry;
+        var chatEntry = @event.Entry;
         await Edit(chatEntry, cancellationToken);
     }
 

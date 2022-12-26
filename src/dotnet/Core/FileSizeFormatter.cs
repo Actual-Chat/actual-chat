@@ -11,6 +11,6 @@ public static class FileSizeFormatter
         long bytes = Math.Abs(byteCount);
         int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
         double num = Math.Round(bytes / Math.Pow(1024, place), 1);
-        return (Math.Sign(byteCount) * num).ToString(CultureInfo.InvariantCulture) + suf[place];
+        return (Math.Sign(byteCount) * num).Format() + suf[place];
     }
 }

@@ -9,4 +9,17 @@ public static class ChatsExt
         ChatEntryKind entryKind,
         TileLayer<long>? idTileLayer = null)
         => new(chats, session, chatId, entryKind, idTileLayer);
+
+    public static ValueTask<ChatEntry?> Get(
+        this IChats chats,
+        Session session,
+        ChatEntryId entryId,
+        CancellationToken cancellationToken = default)
+    {
+        if (entryId.IsNone)
+            return ValueTask.FromResult((ChatEntry?)null);
+
+        var reader = chats.NewEntryReader(session, entryId.ChatId, entryId.Kind);
+        return reader.Get(entryId.LocalId, cancellationToken);
+    }
 }

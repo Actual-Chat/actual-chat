@@ -29,7 +29,7 @@ public class DbReactionSummary : IHasId<string>, IHasVersion<long>, IRequirement
     public ReactionSummary ToModel()
         => new () {
             Id = Id,
-            EntryId = new ChatEntryId(EntryId),
+            EntryId = new TextEntryId(EntryId),
             EmojiId = EmojiId,
             Count = Count,
             Version = Version,

@@ -51,8 +51,8 @@
 }
 
 <div class="@cls"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.ChatId, Message.Key).ToString())"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.ChatId, Message.Key, "").ToString())"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
      data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
      data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
      data-long-press-delay="500">
@@ -105,7 +105,7 @@
                     </div>
                 }
                 @if (entry.HasReactions) {
-                    <MessageReactions ChatEntry="@entry" />
+                    <MessageReactions Entry="@entry" />
                 }
             </div>
         </div>
@@ -189,9 +189,8 @@
         if (Entry.RepliedEntryLocalId is not { } repliedEntryLocalId)
             return null;
 
-        var reader = Chats.NewEntryReader(Session, Message.Entry.ChatId, ChatEntryKind.Text);
         var repliedEntryId = new ChatEntryId(Message.Entry.ChatId, Message.Entry.Kind, repliedEntryLocalId, AssumeValid.Option);
-        var repliedEntry = await reader.Get(repliedEntryLocalId, CancellationToken.None)
+        var repliedEntry = await Chats.Get(Session, repliedEntryId, cancellationToken)
             ?? ChatEntry.Removed(repliedEntryId);
 
         return repliedEntry;

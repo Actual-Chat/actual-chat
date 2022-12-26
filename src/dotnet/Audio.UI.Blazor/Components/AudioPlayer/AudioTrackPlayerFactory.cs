@@ -21,7 +21,7 @@ public sealed class AudioTrackPlayerFactory : ITrackPlayerFactory
     }
 
     public TrackPlayer Create(IMediaSource source) => new AudioTrackPlayer(
-        Interlocked.Increment(ref _lastCreatedId).ToString(CultureInfo.InvariantCulture),
+        Interlocked.Increment(ref _lastCreatedId).Format(),
         source,
         _circuitContext,
         _js,

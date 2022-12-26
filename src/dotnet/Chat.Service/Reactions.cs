@@ -16,7 +16,7 @@ internal class Reactions : IReactions
     }
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken)
     {
         var chatAuthor = await Authors.GetOwn(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
@@ -30,7 +30,7 @@ internal class Reactions : IReactions
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<ReactionSummary>> ListSummaries(
         Session session,
-        ChatEntryId entryId,
+        TextEntryId entryId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
