@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Contacts.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -7,6 +8,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Contacts.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ContactsServiceModule : HostModule<ContactsSettings>
 {
     public ContactsServiceModule(IPluginInfoProvider.Query _) : base(_) { }

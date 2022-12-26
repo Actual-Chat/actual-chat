@@ -61,7 +61,8 @@ public static class MauiProgram
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
-            .ConfigureLifecycleEvents(ConfigureLifecycleEvents);
+            .ConfigureLifecycleEvents(ConfigureLifecycleEvents)
+            .Logging.AddDebug();
 
         var services = builder.Services;
         services.AddMauiBlazorWebView();
@@ -125,9 +126,18 @@ public static class MauiProgram
 
     private static void EnsureSessionInfoCreated(IServiceProvider services)
         => Task.Run(async () => {
-            var mobileAuthClient = services.GetRequiredService<MobileAuthClient>();
-            if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
-                throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
+            var log = services.GetRequiredService<ILogger<MauiApp>>();
+            try {
+                var mobileAuthClient = services.GetRequiredService<MobileAuthClient>();
+                log.LogInformation("Creating session...");
+                if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
+                    throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
+                log.LogInformation("Creating session... Completed");
+            }
+            catch (Exception e) {
+                log.LogError(e, "Failed to create session");
+            }
+
         }).Wait();
 
     private static void StartHostedServices(MauiApp mauiApp)
