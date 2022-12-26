@@ -1,3 +1,8 @@
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<ChatHeader.Model>
+@{
+    var m = State.Value;
+}
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
     <div>
         <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
@@ -20,12 +25,21 @@
     <div class="chat-header-control-panel mx-2">
         <div class="flex-x gap-x-1">
             <ChatSearch/>
-            <ButtonRound Click="OnInviteClick"
-                         Class="transparent"
-                         Tooltip="Add participants..."
-                         FloatingPosition="FloatingPosition.Bottom">
-                <i class="icon-person-add text-2xl ml-1"></i>
-            </ButtonRound>
+            @if (m.CanAddToContacts) {
+                <ButtonRound Click="OnAddToContactsClick"
+                             Class="transparent"
+                             Tooltip="Add to contacts..."
+                             FloatingPosition="FloatingPosition.Bottom">
+                    <i class="icon-person-add text-2xl ml-1"></i>
+                </ButtonRound>
+            } else if(m.CanInvite) {
+                <ButtonRound Click="OnInviteClick"
+                             Class="transparent"
+                             Tooltip="Add participants..."
+                             FloatingPosition="FloatingPosition.Bottom">
+                    <i class="icon-person-add text-2xl ml-1"></i>
+                </ButtonRound>
+            }
         </div>
         <ButtonRound
             Click="OnSwitchRightPanelClick"
@@ -43,15 +57,44 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnInviteClick()
         => ModalUI.Show(new InviteAuthor.Model(Chat));
 
+    private async Task OnAddToContactsClick() {
+        var contact = State.Value.Contact!;
+        var command = new IContacts.ChangeCommand(Session, contact.Id, null, new Change<Contact> {
+            Create = contact,
+        });
+        await UICommander.Run(command);
+    }
+
     private void OnSwitchRightPanelClick()
         => RightPanelUI.Switch();
 
     private void OnOpenLeftPanelClick()
         => NavbarUI.ChangeVisibility(true);
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() { InitialValue = Model.None };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (Chat.Kind == ChatKind.Peer) {
+            var contact = await Contacts.GetForChat(Session, Chat.Id, cancellationToken);
+            return new(!contact.IsStored(), false, contact);
+        }
+
+        return new(false, Chat.Rules.CanInvite(), null);
+    }
+
+    public sealed record Model(bool CanAddToContacts, bool CanInvite, Contact? Contact) {
+        public  static readonly Model None = new(false, false, null);
+    }
 }
