@@ -94,6 +94,25 @@
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug-maui|net7.0-android|AnyCPU'">
+
+    <!--<AndroidSupportedAbis>x86_64;arm64-v8a</AndroidSupportedAbis>
+    <EnableLLVM>True</EnableLLVM>
+    <TrimMode>link</TrimMode>-->
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-android|AnyCPU'">
+    <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+    <EnableLLVM>True</EnableLLVM>
+    <TrimMode>link</TrimMode>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-android|AnyCPU'">
+    <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+    <EnableLLVM>True</EnableLLVM>
+    <TrimMode>link</TrimMode>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>

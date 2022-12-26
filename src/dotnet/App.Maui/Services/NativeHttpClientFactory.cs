@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using Microsoft.Extensions.DependencyInjection;
+using System.Net;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
@@ -31,17 +26,22 @@ public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageH
     public HttpClient CreateClient(string name)
         // Each call to CreateClient(String) is guaranteed to return a new HttpClient instance.
         // https://learn.microsoft.com/en-us/dotnet/api/system.net.http.ihttpclientfactory.createclient?view=dotnet-plat-ext-6.0#remarks
-        => ConfigureClient(new HttpClient(CreateHandler(name), false), name);
+        => ConfigureClient(new HttpClient(CreateHandler(name), false) {
+                DefaultRequestVersion = HttpVersion.Version30,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+            },
+            name);
 
     public HttpMessageHandler CreateHandler(string name)
-        => _messageHandlers.GetOrAdd(name, name1 => {
-            var handler = CreatePlatformMessageHandler();
+        => _messageHandlers.GetOrAdd(name,
+            static (name1, this1) => {
+            var handler = this1.CreatePlatformMessageHandler();
             if (handler == null)
                 throw StandardError.NotSupported<NativeHttpClientFactory>(
                     $"{nameof(CreatePlatformMessageHandler)} should not return null on all supported platforms except Windows.");
 
-            return ConfigureMessageHandler(handler, name1);
-        });
+            return this1.ConfigureMessageHandler(handler, name1);
+        }, this);
 
     private partial HttpMessageHandler? CreatePlatformMessageHandler();
 
