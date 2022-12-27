@@ -27,7 +27,7 @@ public static class ScopedServicesAccessor
                 if (_scopedServices != null && !ReferenceEquals(_scopedServices, value))
                     throw Errors.AlreadyInitialized(nameof(ScopedServices));
 #if ANDROID
-                Android.Util.Log.Debug(AndroidConstants.LogTag, $"ScopedServicesAccessor.Initialize. IsInitialized: {IsInitialized}");
+                AppServices.LogFor("ScopedServicesAccessor").LogDebug("ScopedServicesAccessor.Initialize. IsInitialized: {IsInitialized}", IsInitialized);
 #endif
                 _scopedServices = value;
                 _whenInitializedSource.TrySetResult(default);

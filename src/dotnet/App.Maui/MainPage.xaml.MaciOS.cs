@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AVFoundation;
 using Microsoft.AspNetCore.Components.WebView;
 using WebKit;
 
@@ -27,6 +28,25 @@ public partial class MainPage
         e.Configuration.MediaPlaybackRequiresUserAction = false;
         e.Configuration.RequiresUserActionForMediaPlayback = false;
         e.Configuration.UpgradeKnownHostsToHttps = true;
+
+        // TODO: request only when it's required
+        var audioCaptureStatus = AVCaptureDevice.GetAuthorizationStatus(AVAuthorizationMediaType.Audio);
+        Log.LogInformation("AudioCaptureStatus={AudioCaptureStatus}", audioCaptureStatus);
+        switch (audioCaptureStatus)
+        {
+        case AVAuthorizationStatus.NotDetermined:
+        case AVAuthorizationStatus.Authorized:
+            AVCaptureDevice.RequestAccessForMediaType(AVAuthorizationMediaType.Audio,
+                granted => {
+                    Log.LogInformation("AVCaptureDeviceRequestSuccess={Success}", granted);
+                });
+            break;
+        case AVAuthorizationStatus.Restricted:
+        case AVAuthorizationStatus.Denied:
+            break;
+        default:
+            throw new ArgumentOutOfRangeException();
+        }
     }
 
     private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)

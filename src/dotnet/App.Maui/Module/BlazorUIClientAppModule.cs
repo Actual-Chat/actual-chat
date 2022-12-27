@@ -14,9 +14,7 @@ public class BlazorUIClientAppModule : HostModule, IBlazorUIModule
     [ServiceConstructor]
     public BlazorUIClientAppModule(IPluginHost plugins) : base(plugins) { }
 
-    public override void InjectServices(IServiceCollection services)
-    {
+    public override void InjectServices(IServiceCollection services) =>
         // Auth
         services.AddScoped<IClientAuth, MauiClientAuth>();
-    }
 }

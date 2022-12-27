@@ -4,14 +4,12 @@ using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.App;
 using Android.Gms.Auth.Api.SignIn;
-using Android.Util;
 using Android.Content;
 using Result = Android.App.Result;
 using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
-using ActualChat.UI.Blazor;
 
 namespace ActualChat.App.Maui;
 
@@ -42,6 +40,8 @@ public class MainActivity : MauiAppCompatActivity
 
     private GoogleSignInClient mGoogleSignInClient = null!;
 
+    private ILogger Log { get; set; } = NullLogger.Instance;
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         var isLoaded = false;
@@ -57,11 +57,12 @@ public class MainActivity : MauiAppCompatActivity
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log.Debug(AndroidConstants.LogTag, $"MainActivity.OnCreate, is loaded: {isLoaded}");
+        Log = AppServices.LogFor<MainActivity>();
+        Log.LogDebug("MainActivity.OnCreate, is loaded: {IsLoaded}", isLoaded);
 
         base.OnCreate(savedInstanceState);
 
-        Log.Debug(AndroidConstants.LogTag, $"MainActivity.base.OnCreate completed");
+        Log.LogDebug("MainActivity.base.OnCreate completed");
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
@@ -103,25 +104,25 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnStart()
     {
-        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnStart");
+        Log.LogDebug("MainActivity.OnStart");
         base.OnStart();
     }
 
     protected override void OnStop()
     {
-        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnStop");
+        Log.LogDebug("MainActivity.OnStop");
         base.OnStop();
     }
 
     protected override void OnDestroy()
     {
-        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnDestroy");
+        Log.LogDebug("MainActivity.OnDestroy");
         base.OnDestroy();
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
-        Log.Debug(AndroidConstants.LogTag, "MainActivity.OnNewIntent");
+        Log.LogDebug("MainActivity.OnNewIntent");
         base.OnNewIntent(intent);
 
         TryProcessNotificationTap(intent);
@@ -161,13 +162,13 @@ public class MainActivity : MauiAppCompatActivity
                         _ = OnSignInWithGoogle(account);
                 }
                 catch (Android.Gms.Common.Apis.ApiException e) {
-                    Log.Debug(AndroidConstants.LogTag, "Could not get an account from intent: " + e.ToString());
+                    Log.LogDebug(e, "Could not get an account from intent");
                 }
             }
             if (resultCode == Result.Ok)
                 _ = CheckResult(data!);
             else {
-                Log.Debug(AndroidConstants.LogTag, $"Google SignIn. SignInIntent result is NOK. Actual result: {resultCode}.");
+                Log.LogDebug("Google SignIn. SignInIntent result is NOK. Actual result: {ResultCode}", resultCode);
                 new AlertDialog.Builder(this)
                     .SetTitle("Google SignIn")!
                     .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")!
@@ -215,7 +216,7 @@ public class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
-        Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap");
+        Log.LogDebug($"MainActivity.NotificationTap");
 
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -240,7 +241,7 @@ public class MainActivity : MauiAppCompatActivity
             var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
             var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
-            Log.Debug(AndroidConstants.LogTag, $"MainActivity.NotificationTap navigates to '{url}'");
+            Log.LogDebug("MainActivity.NotificationTap navigates to '{Url}'", url);
             _ = handler.Handle(url);
         }
         _ = Handle();

@@ -22,6 +22,7 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<DeviceInfo>(ServiceLifetime.Scoped);
 
-        services.TryAddTransient<IDeviceTokenRetriever, WebDeviceTokenRetriever>();
+        if (HostInfo.AppKind != AppKind.Maui)
+            services.TryAddTransient<IDeviceTokenRetriever, WebDeviceTokenRetriever>();
     }
 }

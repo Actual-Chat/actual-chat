@@ -100,6 +100,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -179,7 +180,17 @@
 
             } else {
                 var repliedEntryId = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
-                readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, repliedEntryId);
+                // Overriding message post for iOS only
+                if (HostInfo.AppKind == AppKind.Maui && HostInfo.Platform == Platform.iOS) {
+                    var command = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {
+                        RepliedChatEntryId = repliedEntryId,
+                    };
+    // TODO: add attachments
+                    var chatEntry = await UICommander.Run(command, CancellationToken.None);
+                    readEntryId = chatEntry.Value.LocalId;
+                } else {
+                    readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, repliedEntryId);
+                }
             }
 
             if (ReadState != null && ReadState.Value < readEntryId)

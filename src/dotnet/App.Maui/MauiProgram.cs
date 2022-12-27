@@ -9,7 +9,10 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Notification.UI.Blazor;
 using Microsoft.JSInterop;
+using Serilog;
+using Serilog.Events;
 
 namespace ActualChat.App.Maui;
 
@@ -18,6 +21,39 @@ namespace ActualChat.App.Maui;
 public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
+    {
+        var loggerConfiguration = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("System", LogEventLevel.Warning)
+            .Enrich.FromLogContext();
+#if ANDROID
+        loggerConfiguration = loggerConfiguration.WriteTo.AndroidLog()
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, AndroidConstants.LogTag);
+#elif IOS
+        loggerConfiguration = loggerConfiguration.WriteTo.NSLog();
+#endif
+        Log.Logger = loggerConfiguration.CreateLogger();
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
+
+        try {
+            Log.Information("Starting to build actual.chat maui app");
+            var app = CreateMauiAppInternal();
+            Log.Information("Successfully built actual.chat maui app");
+            return app;
+        }
+        catch (Exception ex) {
+            Log.Fatal(ex, "Failed to build actual.chat maui app");
+            throw;
+        }
+    }
+
+    private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        Log.Information("Unhandled exception, isTerminating={IsTerminating}. \n{Exception}",
+            e.IsTerminating,
+            e.ExceptionObject);
+    }
+
+    private static MauiApp CreateMauiAppInternal()
     {
         var builder = MauiApp.CreateBuilder();
         builder
@@ -36,6 +72,7 @@ public static class MauiProgram
 
         services.AddLogging(logging => logging
             .AddDebug()
+            .AddSerilog(Log.Logger, dispose: true)
             .SetMinimumLevel(LogLevel.Information)
         );
 
@@ -56,6 +93,7 @@ public static class MauiProgram
             Environment = environment,
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = GetBaseUrl(),
+            Platform = PlatformInfoProvider.GetPlatform(),
         });
 
         builder.ConfigureMauiHandlers(handlers => {
@@ -171,8 +209,10 @@ public static class MauiProgram
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
+        services.AddTransient<IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
         services.AddScoped<IAudioOutputController, AndroidAudioOutputController>();
+#elif IOS
+        services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>();
 #endif
 
         // Misc.

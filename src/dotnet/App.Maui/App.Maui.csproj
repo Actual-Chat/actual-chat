@@ -54,7 +54,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <FixedEnvironment Condition="'$(FixedEnvironment)' == ''"/>
+    <FixedEnvironment Condition="'$(FixedEnvironment)' == ''" />
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
     <AnalysisLevel>preview</AnalysisLevel>
   </PropertyGroup>
@@ -161,6 +161,9 @@
 
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
     <!--
       MAUI msbuild tasks doesn't work with
       <Content Include="..\UI.Blazor.Host\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />

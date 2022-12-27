@@ -1,4 +1,3 @@
-using Android.Util;
 using Android.Webkit;
 using Java.Interop;
 using WebView = Android.Webkit.WebView;
@@ -9,7 +8,7 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
-        Log.Debug(AndroidConstants.LogTag, $"MauiBlazorWebViewHandler.ConnectHandler");
+        Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
 
         base.ConnectHandler(platformView);
         var baseUri = UrlMapper.BaseUri;
@@ -25,7 +24,7 @@ public partial class MauiBlazorWebViewHandler
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
         var jsInterface = new JavascriptInterface(this, platformView);
         platformView.AddJavascriptInterface(jsInterface, "Android");
-        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient));
+        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<JavascriptInterface>()));
     }
 
     private class JavascriptInterface : Java.Lang.Object
@@ -70,9 +69,13 @@ public partial class MauiBlazorWebViewHandler
     private class WebViewClientOverride : WebViewClient
     {
         private WebViewClient Original { get; }
+        private ILogger Log { get; }
 
-        public WebViewClientOverride(WebViewClient original)
-            => Original = original;
+        public WebViewClientOverride(WebViewClient original, ILogger log)
+        {
+            Original = original;
+            Log = log;
+        }
 
         public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
             => Original.ShouldOverrideUrlLoading(view, request);
@@ -98,7 +101,7 @@ public partial class MauiBlazorWebViewHandler
             base.DoUpdateVisitedHistory(view, url, isReload);
             var canGoBack = view.CanGoBack();
             // It seems at this point we can not trust CanGoBack value, when it's navigated to a new address.
-            Log.Debug(AndroidConstants.LogTag, $"WebViewClientOverride.DoUpdateVisitedHistory. Url: '{url}'. IsReload: '{isReload}'. CanGoBack: '{canGoBack}'.");
+            Log.LogDebug("WebViewClientOverride.DoUpdateVisitedHistory. Url: '{Url}'. IsReload: '{IsReload}'. CanGoBack: '{CanGoBack}'", url, isReload, canGoBack);
         }
 
         protected override void Dispose(bool disposing)
