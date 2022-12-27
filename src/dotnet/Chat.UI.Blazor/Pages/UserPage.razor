@@ -1,15 +1,13 @@
-@page "/u/{UserId}"
-@using ActualChat.Contacts
+@page "/u/{UserSid}"
 @inherits ComputedStateComponent<UserPage.Model>
 @{
     var m = State.LatestNonErrorValue;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
     var account = m.Account;
     if (!Account.MustExist.IsSatisfied(account)) {
-        if (ReferenceEquals(m, Model.None)) {
-            <RequireOtherAccount UserId="@UserId" />
-            return;
-        }
-        // Model isn't loaded yet
+        <RequireOtherAccount UserSid="@UserSid" />
         return;
     }
 }
@@ -18,40 +16,49 @@
 <MainHeader>
     <span>User:&nbsp;</span>
     <span class="text-01">@account.Avatar.Name</span>
+    @if (m.IsOwn) {
+        <span> &ndash; it's you</span>
+    }
 </MainHeader>
 
-<div class="user-info_badge">
-    <AccountCircle UserSid="@account.Id" Size="SquareSize.Size12" ShowPresence="true" />
-    <AccountName UserSid="@account.Id" Class="text-02 font-semibold text-lg"/>
-</div>
-
-@if (m.CanAddContact || m.CanChat) {
-    <div class="user-info_buttons">
-        <div class="btn-group btn-group-font-normal">
-            @if (m.CanAddContact) {
-                <Button Class="btn-primary" Click="OnAddContactClick" IsDisabled="@IsAddingContact">Add to Contacts</Button>
-            }
-            @if (m.CanChat) {
-                <Button Class="btn-primary" Click="OnSendMessageClick">Send Message</Button>
-            }
-        </div>
+<div class="user-page">
+    <div class="c-badge">
+        <AccountCircle UserSid="@account.Id" Size="SquareSize.Size12" ShowPresence="true" />
+        <AccountName UserSid="@account.Id" Class="text-02 font-semibold text-lg"/>
+        @* TODO(AY): Show something similar to what we show in peer chats! *@
     </div>
-}
 
-<h4 class="section section-top">Link to this page</h4>
-<UserPageLink/>
+    <div class="c-notes">
+        @if (m.Account.IsGuest) {
+            <p>
+                It's a guest (anonymous) user. Sorry, but you can't chat with them.
+            </p>
+        } else if (m.OwnAccount.IsGuest) {
+            <p>
+                You must <SignInDropdown/> to start chatting with
+                <AccountName UserSid="@account.Id" />.
+            </p>
+        } else if (!m.PeerChatId.IsNone) {
+            <DelayedRedirect To="@Links.Chat(m.PeerChatId)"/>
+        } else if (m.IsOwn) {
+            <p>
+                It's your own user page.
+                You can share it with other people to let them chat with you.
+            </p>
+            <p>
+                Link to share: <UserPageLink/>
+            </p>
+        } else {
+            throw StandardError.Internal("Invalid UserPage.Model.");
+        }
+    </div>
+</div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
 
-    private bool IsAddingContact { get; set; }
-
-    [Parameter] public string UserId { get; set; } = "";
+    [Parameter] public string UserSid { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -60,28 +67,27 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var userId = new UserId(UserId, ParseOrNone.Option);
+        var userId = new UserId(UserSid, ParseOrNone.Option);
         if (userId.IsNone)
             return Model.None;
 
-        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
         var account = await Accounts.Get(Session, userId, cancellationToken);
         if (account == null)
             return Model.None;
 
-        var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
-        var contactId = new ContactId(ownAccount.Id, peerChatId, AssumeValid.Option);
-        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
+        var isOwn = ownAccount.Id == account.Id;
+        var canChat = !ownAccount.IsGuest && !account.IsGuest && !isOwn;
+        var peerChatId = canChat ? new PeerChatId(ownAccount.Id, account.Id) : default;
         return new Model {
             OwnAccount = ownAccount,
             Account = account,
             PeerChatId = peerChatId,
-            ContactId = contactId,
-            CanAddContact = !contactIds.Any(id => id == contactId),
-            CanChat = true,
+            IsOwn = isOwn,
         };
     }
 
+    /*
     private async Task OnAddContactClick() {
         if (IsAddingContact)
             return;
@@ -101,12 +107,7 @@
             StateHasChanged();
         }
     }
-
-    private void OnSendMessageClick() {
-        var m = State.LatestNonErrorValue;
-        m.Account.Require();
-        Nav.NavigateTo(Links.Chat(m.PeerChatId));
-    }
+    */
 
     // Nested types
 
@@ -117,8 +118,6 @@
         public AccountFull OwnAccount { get; init; } = AccountFull.None;
         public Account Account { get; init; } = Account.None;
         public PeerChatId PeerChatId { get; init; }
-        public ContactId ContactId { get; init; }
-        public bool CanAddContact { get; init; }
-        public bool CanChat { get; init; }
+        public bool IsOwn { get; init; }
     }
 }

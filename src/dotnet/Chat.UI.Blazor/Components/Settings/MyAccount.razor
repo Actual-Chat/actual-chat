@@ -7,7 +7,7 @@
 
     var user = account.User;
     var avatar = account.Avatar;
-    var link = Links.User(account.Id).ToDual(UrlMapper);
+    var link = Links.User(account.Id).ToDisplayUrl(UrlMapper);
     user.Claims.TryGetValue(ClaimTypes.Email, out var email);
     user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var mobilePhone);
     var phone = !string.IsNullOrEmpty(mobilePhone) ? mobilePhone : "+1 234 567 89 00";

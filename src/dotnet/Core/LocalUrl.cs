@@ -29,9 +29,9 @@ public readonly struct LocalUrl : IEquatable<LocalUrl>
     public string ToAbsolute(NavigationManager nav)
         => nav.ToAbsoluteUri(Value).ToString();
 
-    public DualUrl ToDual(UrlMapper urlMapper)
+    public DisplayUrl ToDisplayUrl(UrlMapper urlMapper)
         => new (this, ToAbsolute(urlMapper));
-    public DualUrl ToDual(NavigationManager nav)
+    public DisplayUrl ToDisplayUrl(NavigationManager nav)
         => new (this, ToAbsolute(nav));
 
     public static implicit operator LocalUrl(string url) => new (url);

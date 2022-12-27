@@ -73,7 +73,7 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var publicUrl = Chat.IsPublic ? Links.Chat(Chat.Id).ToDual(UrlMapper) : (DualUrl?)null;
+        var publicUrl = Chat.IsPublic ? Links.Chat(Chat.Id).ToDisplayUrl(UrlMapper) : (DisplayUrl?)null;
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return new Model {
             Title = Chat.Title,
@@ -83,7 +83,7 @@
         };
     }
 
-    private ValueTask OnPublicUrlClick(DualUrl publicUrl)
+    private ValueTask OnPublicUrlClick(DisplayUrl publicUrl)
         => ClipboardUI.WriteText(publicUrl.AbsoluteUrl);
 
     private Task OnValueChanged(bool isMuted)
@@ -100,7 +100,7 @@
 
         public string? Picture { get; init; }
         public string? Title { get; init; }
-        public DualUrl? Link { get; init; }
+        public DisplayUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
     }
 }

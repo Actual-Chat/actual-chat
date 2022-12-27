@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-public readonly record struct DualUrl(LocalUrl LocalUrl, string AbsoluteUrl)
+public readonly record struct DisplayUrl(LocalUrl LocalUrl, string AbsoluteUrl)
 {
     public string ShortLocalUrl
         => LocalUrl.Value[1..];
@@ -13,6 +13,6 @@ public readonly record struct DualUrl(LocalUrl LocalUrl, string AbsoluteUrl)
     }
 
     // Equality
-    public bool Equals(DualUrl other) => LocalUrl.Equals(other.LocalUrl);
+    public bool Equals(DisplayUrl other) => LocalUrl.Equals(other.LocalUrl);
     public override int GetHashCode() => LocalUrl.GetHashCode();
 }

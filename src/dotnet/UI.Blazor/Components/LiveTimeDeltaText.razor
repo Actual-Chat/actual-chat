@@ -16,7 +16,7 @@
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public Moment? Moment { get; set; }
+    [Parameter, EditorRequired] public Moment? Moment { get; set; }
     [Parameter] public string NullText { get; set; } = "n/a";
 
     protected override ComputedState<string>.Options GetStateOptions() {

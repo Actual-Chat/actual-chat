@@ -32,6 +32,6 @@
     [Parameter, EditorRequired] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
 
-    private DualUrl GetLink(Invite invite)
-        => Links.Invite(LinkFormat, invite.Id).ToDual(UrlMapper);
+    private DisplayUrl GetLink(Invite invite)
+        => Links.Invite(LinkFormat, invite.Id).ToDisplayUrl(UrlMapper);
 }

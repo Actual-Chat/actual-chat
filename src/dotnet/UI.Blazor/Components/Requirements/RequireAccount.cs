@@ -9,7 +9,7 @@ public class RequireAccount : RequirementComponent
     [Inject] protected IAccounts Accounts { get; init; } = null!;
 
     [Parameter] public bool MustBeActive { get; set; } = true;
-    [Parameter] public bool MustBeAdmin { get; set; } = false;
+    [Parameter] public bool MustBeAdmin { get; set; }
 
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {

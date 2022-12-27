@@ -4,7 +4,7 @@
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    var link = Links.User(account.Id).ToDual(UrlMapper);
+    var link = Links.User(account.Id).ToDisplayUrl(UrlMapper);
 }
 
 <div class="user-page-link flex-x justify-start items-center gap-x-1">
@@ -20,10 +20,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() {
-            InitialValue = AccountFull.Loading,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
+        => new() { InitialValue = AccountFull.Loading };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);

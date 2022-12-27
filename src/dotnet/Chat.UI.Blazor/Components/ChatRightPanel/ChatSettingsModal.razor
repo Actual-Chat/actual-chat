@@ -110,7 +110,7 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
-        var link = Links.Chat(ModalModel.Chat.Id).ToDual(UrlMapper);
+        var link = Links.Chat(ModalModel.Chat.Id).ToDisplayUrl(UrlMapper);
         return new() {
             Rules = rules,
             Link = link,
@@ -175,7 +175,7 @@
         public static Model None { get; } = new();
 
         public AuthorRules? Rules { get; init; }
-        public DualUrl? Link { get; init; }
+        public DisplayUrl? Link { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }
 }
