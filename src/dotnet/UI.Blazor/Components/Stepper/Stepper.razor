@@ -53,9 +53,11 @@
     public async Task<bool> MoveForward() {
         if (_currentStep == null)
             return false;
+
         var isStepCompleted = await _currentStep.Complete();
         if (!isStepCompleted)
             return false;
+
         var index = _steps.IndexOf(_currentStep);
         var previousStep = _currentStep;
         _currentStep = _steps.ElementAtOrDefault(index + 1);
@@ -67,6 +69,7 @@
     public void MoveBack() {
         if (_currentStep == null)
             return;
+
         var index = _steps.IndexOf(_currentStep);
         var previousStep = _currentStep;
         _currentStep = _steps.ElementAtOrDefault(index - 1);

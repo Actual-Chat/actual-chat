@@ -21,9 +21,11 @@ public abstract class Step : ComponentBase
     {
         if (IsCompleted)
             return true;
+
         var isValid = await Validate();
         if (!isValid)
             return false;
+
         await Save();
         IsCompleted = true;
         return true;

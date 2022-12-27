@@ -86,24 +86,14 @@
 </div>
 
 @code {
-    private Form? _formRef;
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private readonly AvatarStepModel _stepModel = new();
+    private Form? _formRef;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-
-    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
-
-    protected override Task<bool> Validate() {
-        var isValid = _formRef?.EditContext?.Validate() ?? false;
-        return Task.FromResult(isValid);
-    }
-
-    protected override Task Save() {
-        return Task.CompletedTask;
-    }
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
@@ -124,6 +114,15 @@
         _stepModel.AvatarPicture = newAvatar.Picture;
         var setDefaultAvatarCommand = new IAvatars.SetDefaultCommand(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override Task Save() {
+        return Task.CompletedTask;
     }
 
     private void OnImagePicked(string contentId) {
