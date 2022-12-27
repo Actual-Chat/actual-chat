@@ -26,6 +26,12 @@ public sealed record AccountFull(
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 
     [DataMember] public bool IsAdmin { get; init; }
+    [DataMember] public string Phone { get; init; }
+    [DataMember] public bool SyncContacts { get; init; }
+    [DataMember] public string Email { get; init; }
+    [DataMember] public string Name { get; init; }
+    [DataMember] public string LastName { get; init; }
+    [DataMember] public string Username { get; init; }
 
     public AccountFull() : this(None.User) { }
 
