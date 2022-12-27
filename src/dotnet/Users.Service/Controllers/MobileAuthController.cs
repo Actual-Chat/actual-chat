@@ -40,9 +40,7 @@ public class MobileAuthController : Controller
             ? userAgentValues.FirstOrDefault() ?? ""
             : "";
 
-        var authHelper = Services.GetRequiredService<ServerAuthHelper>();
         var session = new Session(sessionId);
-        await authHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
 
         var auth = Services.GetRequiredService<IAuth>();
         var sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
