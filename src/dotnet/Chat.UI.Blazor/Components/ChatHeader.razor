@@ -56,13 +56,13 @@
 @code {
     private string _subTitle = " ";
 
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
