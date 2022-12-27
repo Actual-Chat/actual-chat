@@ -26,18 +26,28 @@
         <div class="flex-x gap-x-1">
             <ChatSearch/>
             @if (m.CanAddToContacts) {
-                <ButtonRound Click="OnAddToContactsClick" Class="transparent" Tooltip="Add to contacts..."
-                             FloatingPosition="FloatingPosition.Bottom">
+                <ButtonRound
+                    Click="OnAddToContactsClick"
+                    Class="transparent"
+                    Tooltip="Add to contacts..."
+                    FloatingPosition="FloatingPosition.Bottom">
                     <i class="icon-person-add text-2xl ml-1"></i>
                 </ButtonRound>
             } else if(m.CanInvite) {
-                <ButtonRound Click="OnInviteClick" Class="transparent" Tooltip="Add participants..."
-                             FloatingPosition="FloatingPosition.Bottom">
+                <ButtonRound
+                    Click="OnInviteClick"
+                    Class="transparent"
+                    Tooltip="Add participants..."
+                    FloatingPosition="FloatingPosition.Bottom">
                     <i class="icon-person-add text-2xl ml-1"></i>
                 </ButtonRound>
             }
         </div>
-        <ButtonRound Click="OnSwitchRightPanelClick" Class="transparent" Tooltip="Chat properties" FloatingPosition="FloatingPosition.Bottom">
+        <ButtonRound
+            Click="OnSwitchRightPanelClick"
+            Class="transparent"
+            Tooltip="Chat properties"
+            FloatingPosition="FloatingPosition.Bottom">
             <i class="icon-layout text-2xl"></i>
         </ButtonRound>
     </div>
