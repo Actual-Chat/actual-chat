@@ -69,8 +69,8 @@
 </div>
 
 @code {
-    private Form? _formRef;
     private readonly PhoneStepModel _stepModel = new();
+    private Form? _formRef;
 
     protected override Task<bool> Validate() {
         var isValid = _formRef?.EditContext?.Validate() ?? false;

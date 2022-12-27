@@ -7,7 +7,7 @@
     Class="onboarding-modal"
     ShowMobileHeader="false"
     HasHeader="false"
-    HandleEscape="false">
+    HasEscapeHandler="false">
     <Body>
     <Stepper Context="stepper">
         <HeaderContent>
@@ -44,9 +44,9 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Features Features { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
