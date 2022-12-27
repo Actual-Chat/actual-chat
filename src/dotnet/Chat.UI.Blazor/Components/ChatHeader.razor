@@ -26,26 +26,18 @@
         <div class="flex-x gap-x-1">
             <ChatSearch/>
             @if (m.CanAddToContacts) {
-                <ButtonRound Click="OnAddToContactsClick"
-                             Class="transparent"
-                             Tooltip="Add to contacts..."
+                <ButtonRound Click="OnAddToContactsClick" Class="transparent" Tooltip="Add to contacts..."
                              FloatingPosition="FloatingPosition.Bottom">
                     <i class="icon-person-add text-2xl ml-1"></i>
                 </ButtonRound>
             } else if(m.CanInvite) {
-                <ButtonRound Click="OnInviteClick"
-                             Class="transparent"
-                             Tooltip="Add participants..."
+                <ButtonRound Click="OnInviteClick" Class="transparent" Tooltip="Add participants..."
                              FloatingPosition="FloatingPosition.Bottom">
                     <i class="icon-person-add text-2xl ml-1"></i>
                 </ButtonRound>
             }
         </div>
-        <ButtonRound
-            Click="OnSwitchRightPanelClick"
-            Class="transparent"
-            Tooltip="Chat properties"
-            FloatingPosition="FloatingPosition.Bottom">
+        <ButtonRound Click="OnSwitchRightPanelClick" Class="transparent" Tooltip="Chat properties" FloatingPosition="FloatingPosition.Bottom">
             <i class="icon-layout text-2xl"></i>
         </ButtonRound>
     </div>
@@ -88,13 +80,14 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (Chat.Kind == ChatKind.Peer) {
             var contact = await Contacts.GetForChat(Session, Chat.Id, cancellationToken);
-            return new(!contact.IsStored(), false, contact);
+            return new(false, contact);
         }
 
-        return new(false, Chat.Rules.CanInvite(), null);
+        return new(Chat.Rules.CanInvite(), null);
     }
 
-    public sealed record Model(bool CanAddToContacts, bool CanInvite, Contact? Contact) {
-        public  static readonly Model None = new(false, false, null);
+    public sealed record Model(bool CanInvite, Contact? Contact) {
+        public  static readonly Model None = new( false, null);
+        public bool CanAddToContacts => Contact != null && !Contact.IsStored();
     }
 }
