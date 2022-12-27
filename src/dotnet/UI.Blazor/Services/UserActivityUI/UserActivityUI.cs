@@ -12,9 +12,10 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     public IState<Moment> LastActiveAt => _lastActiveAt;
     private IJSRuntime JS { get; }
 
-    public UserActivityUI(IJSRuntime js, IStateFactory stateFactory)
+    public UserActivityUI(IServiceProvider services)
     {
-        JS = js;
+        JS = services.GetRequiredService<IJSRuntime>();
+        var stateFactory = services.GetRequiredService<IStateFactory>();
         _whenInitialized = Initialize();
         _lastActiveAt = stateFactory.NewComputed<Moment>(
             new () { ComputedOptions = new () { AutoInvalidationDelay = Constants.Presence.UpdatePeriod } },

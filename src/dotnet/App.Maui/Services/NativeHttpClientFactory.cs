@@ -12,15 +12,11 @@ public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageH
     private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; }
     private List<IHttpMessageHandlerBuilderFilter> Filters { get; }
 
-    public NativeHttpClientFactory(
-        IServiceProvider services,
-
-        IOptionsSnapshot<HttpClientFactoryOptions> options,
-        IEnumerable<IHttpMessageHandlerBuilderFilter> filters)
+    public NativeHttpClientFactory(IServiceProvider services)
     {
         Services = services;
-        Options = options;
-        Filters = filters.ToList();
+        Options = services.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>();
+        Filters = services.GetRequiredService<IEnumerable<IHttpMessageHandlerBuilderFilter>>().ToList();
     }
 
     public HttpClient CreateClient(string name)

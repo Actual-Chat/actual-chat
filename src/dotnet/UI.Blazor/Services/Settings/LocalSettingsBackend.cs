@@ -8,10 +8,10 @@ public sealed class LocalSettingsBackend : IBatchingKvasBackend
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
-    public LocalSettingsBackend(Dispatcher dispatcher, IJSRuntime js)
+    public LocalSettingsBackend(IServiceProvider services)
     {
-        Dispatcher = dispatcher;
-        JS = js;
+        Dispatcher = services.GetRequiredService<Dispatcher>();
+        JS =  services.GetRequiredService<IJSRuntime>();
     }
 
     public Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)

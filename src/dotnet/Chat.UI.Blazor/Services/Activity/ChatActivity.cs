@@ -14,11 +14,11 @@ public class ChatActivity
     internal IStateFactory StateFactory { get; }
     internal MomentClockSet Clocks { get; }
 
-    public ChatActivity(Session session, IServiceProvider services)
+    public ChatActivity(IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
-        Session = session;
+        Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();
         StateFactory = services.StateFactory();
         Clocks = services.Clocks();

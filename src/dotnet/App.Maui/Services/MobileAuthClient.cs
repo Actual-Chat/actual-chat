@@ -6,11 +6,11 @@ public class MobileAuthClient
     private UrlMapper UrlMapper { get; }
     private ILogger<MobileAuthClient> Log { get; }
 
-    public MobileAuthClient(ClientAppSettings appSettings, UrlMapper urlMapper, ILogger<MobileAuthClient> log)
+    public MobileAuthClient(IServiceProvider services)
     {
-        AppSettings = appSettings;
-        UrlMapper = urlMapper;
-        Log = log;
+        AppSettings = services.GetRequiredService<ClientAppSettings>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
+        Log = services.GetRequiredService<ILogger<MobileAuthClient>>();
     }
 
     public async Task<bool> SetupSession()

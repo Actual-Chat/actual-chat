@@ -10,11 +10,11 @@ public class FeedbackUI
     private readonly UICommander _uiCommander;
     private IModalRef? _modal;
 
-    public FeedbackUI(Session session, ModalUI modalUI, UICommander uiCommander)
+    public FeedbackUI(IServiceProvider services)
     {
-        _session = session;
-        _modalUI = modalUI;
-        _uiCommander = uiCommander;
+        _session = services.GetRequiredService<Session>();
+        _modalUI = services.GetRequiredService<ModalUI>();
+        _uiCommander = services.GetRequiredService<UICommander>();
     }
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)

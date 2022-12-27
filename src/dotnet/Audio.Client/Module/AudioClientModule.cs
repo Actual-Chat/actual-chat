@@ -21,8 +21,8 @@ public class AudioClientModule : HostModule
 
         services.AddFusion().AddRestEaseClient();
 
-        services.AddScoped<AudioDownloader>();
-        services.AddScoped<AudioClient>();
+        services.AddScoped<AudioDownloader>(sp => new AudioDownloader(sp));
+        services.AddScoped<AudioClient>(sp => new AudioClient(sp));
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
     }

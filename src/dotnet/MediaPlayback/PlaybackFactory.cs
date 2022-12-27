@@ -15,16 +15,12 @@ public class PlaybackFactory : IPlaybackFactory
     private readonly ILogger<Playback> _playbackLog;
     private readonly Action<TrackInfo, PlayerState> _onTrackPlayingChanged;
 
-    public PlaybackFactory(
-        IStateFactory stateFactory,
-        ITrackPlayerFactory trackPlayerFactory,
-        IActivePlaybackInfo activePlaybackInfo,
-        ILogger<Playback> playbackLog)
+    public PlaybackFactory(IServiceProvider services)
     {
-        _stateFactory = stateFactory;
-        _trackPlayerFactory = trackPlayerFactory;
-        _activePlaybackInfo = activePlaybackInfo;
-        _playbackLog = playbackLog;
+        _stateFactory = services.GetRequiredService<IStateFactory>();
+        _trackPlayerFactory = services.GetRequiredService<ITrackPlayerFactory>();
+        _activePlaybackInfo = services.GetRequiredService<IActivePlaybackInfo>();
+        _playbackLog = services.GetRequiredService<ILogger<Playback>>();
         _onTrackPlayingChanged = OnTrackPlayingChanged;
     }
 
