@@ -21,6 +21,7 @@ public class WebModule : HostModule, IWebModule
         // Controllers, etc.
         services.AddMvcCore(options => {
             options.ModelBinderProviders.Add(new ModelBinderProvider());
+            options.ModelMetadataDetailsProviders.Add(new ValidationMetadataProvider());
         });
     }
 
