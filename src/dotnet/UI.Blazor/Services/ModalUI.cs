@@ -12,12 +12,12 @@ public sealed class ModalUI
     private ModalService ModalService { get; }
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
-    public ModalUI(BrowserInfo browserInfo, HistoryUI historyUI, ModalService modalService, IMatchingTypeFinder matchingTypeFinder)
+    public ModalUI(IServiceProvider services)
     {
-        BrowserInfo = browserInfo;
-        HistoryUI = historyUI;
-        ModalService = modalService;
-        MatchingTypeFinder = matchingTypeFinder;
+        BrowserInfo = services.GetRequiredService<BrowserInfo>();
+        HistoryUI = services.GetRequiredService<HistoryUI>();
+        ModalService = services.GetRequiredService<ModalService>();
+        MatchingTypeFinder = services.GetRequiredService<MatchingTypeFinder>();
     }
 
 #pragma warning disable IL2072

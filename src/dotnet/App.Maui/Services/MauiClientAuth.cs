@@ -8,11 +8,11 @@ internal sealed class MauiClientAuth : IClientAuth
     private UrlMapper UrlMapper { get; }
     private ILogger<MauiClientAuth> Log { get; }
 
-    public MauiClientAuth(ClientAppSettings appSettings, UrlMapper urlMapper, ILogger<MauiClientAuth> log)
+    public MauiClientAuth(IServiceProvider services)
     {
-        AppSettings = appSettings;
-        UrlMapper = urlMapper;
-        Log = log;
+        AppSettings = services.GetRequiredService<ClientAppSettings>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
+        Log = services.GetRequiredService<ILogger<MauiClientAuth>>();
     }
 
     public async ValueTask SignIn(string scheme)

@@ -31,23 +31,23 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
-        services.AddScoped<NavbarUI>();
-        services.AddScoped<AuthorUI>();
-        services.AddScoped<IAudioOutputController, AudioOutputController>();
+        services.AddScoped<NavbarUI>(sp => new NavbarUI(sp));
+        services.AddScoped<AuthorUI>(sp => new AuthorUI(sp));
+        services.AddScoped<IAudioOutputController>(sp => new AudioOutputController(sp));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
-        services.AddScoped<PlayableTextPaletteProvider>();
+        services.AddScoped<PlayableTextPaletteProvider>(sp => new PlayableTextPaletteProvider());
 
         // Chat activity
-        services.AddScoped<ChatActivity>();
+        services.AddScoped<ChatActivity>(sp => new ChatActivity(sp));
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings
-        services.AddScoped<LanguageUI>();
+        services.AddScoped<LanguageUI>(sp => new LanguageUI(sp));
 
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }

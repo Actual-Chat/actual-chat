@@ -29,16 +29,18 @@ public class CoreModule : HostModule<CoreSettings>
             .ToList();
 
         // Common services
-        services.AddSingleton<UrlMapper>();
+        services.AddSingleton<UrlMapper>(sp => new UrlMapper(
+            sp.GetRequiredService<HostInfo>()));
 
         // Matching type finder
-        services.AddSingleton(new MatchingTypeFinder.Options() {
+        services.AddSingleton(new MatchingTypeFinder.Options {
             ScannedAssemblies = pluginAssemblies,
         });
-        services.AddSingleton<IMatchingTypeFinder, MatchingTypeFinder>();
+        services.AddSingleton<IMatchingTypeFinder>(sp => new MatchingTypeFinder(
+            sp.GetRequiredService<MatchingTypeFinder.Options>()));
 
         // DiffEngine
-        services.AddSingleton<DiffEngine>();
+        services.AddSingleton<DiffEngine>(sp => new DiffEngine(sp));
 
         // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
@@ -54,8 +56,8 @@ public class CoreModule : HostModule<CoreSettings>
         fusion.AddFusionTime();
 
         // Features
-        services.AddScoped<Features>();
-        fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
+        services.AddScoped<Features>(sp => new Features(sp));
+        fusion.AddComputeService<IClientFeatures>(ServiceLifetime.Scoped);
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);
@@ -69,7 +71,7 @@ public class CoreModule : HostModule<CoreSettings>
 
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty())
-            services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
+            services.AddSingleton<IBlobStorageProvider>(new TempFolderBlobStorageProvider());
         else
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
 

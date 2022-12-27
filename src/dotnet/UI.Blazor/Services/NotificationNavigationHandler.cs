@@ -7,10 +7,10 @@ public class NotificationNavigationHandler
     private NavigationManager Nav { get; }
     private UrlMapper UrlMapper { get; }
 
-    public NotificationNavigationHandler(NavigationManager nav, UrlMapper urlMapper)
+    public NotificationNavigationHandler(IServiceProvider services)
     {
-        Nav = nav;
-        UrlMapper = urlMapper;
+        Nav = services.GetRequiredService<NavigationManager>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
     }
 
     public Task Handle(string url)

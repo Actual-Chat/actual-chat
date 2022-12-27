@@ -6,8 +6,8 @@ public class NavigationInterceptor
 {
     private UrlMapper UrlMapper { get; }
 
-    public NavigationInterceptor(UrlMapper urlMapper)
-        => UrlMapper = urlMapper;
+    public NavigationInterceptor(IServiceProvider services)
+        => UrlMapper = services.GetRequiredService<UrlMapper>();
 
     internal bool TryIntercept(Uri uri)
     {

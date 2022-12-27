@@ -13,8 +13,9 @@ public sealed class AudioOutputController : IAudioOutputController
     private readonly IMutableState<bool> _isAudioOn;
     private readonly IMutableState<bool> _isSpeakerphoneOn;
 
-    public AudioOutputController(IStateFactory stateFactory)
+    public AudioOutputController(IServiceProvider services)
     {
+        var stateFactory = services.GetRequiredService<IStateFactory>();
         _isAudioOn = stateFactory.NewMutable<bool>();
         _isSpeakerphoneOn = stateFactory.NewMutable<bool>();
     }

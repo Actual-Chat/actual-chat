@@ -208,29 +208,29 @@ public static class MauiProgram
         // HttpClient
 #if !WINDOWS
         services.RemoveAll<IHttpClientFactory>();
-        services.AddSingleton<NativeHttpClientFactory>();
+        services.AddSingleton<NativeHttpClientFactory>(sp => new NativeHttpClientFactory(sp));
         services.TryAddSingleton<IHttpClientFactory>(serviceProvider => serviceProvider.GetRequiredService<NativeHttpClientFactory>());
         services.TryAddSingleton<IHttpMessageHandlerFactory>(serviceProvider => serviceProvider.GetRequiredService<NativeHttpClientFactory>());
 #endif
         AppStartup.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
-        services.AddScoped<IClientAuth, MauiClientAuth>();
-        services.AddTransient<MobileAuthClient>();
+        services.AddScoped<IClientAuth>(sp => new MauiClientAuth(sp));
+        services.AddTransient<MobileAuthClient>(sp => new MobileAuthClient(sp));
 
         // UI
-        services.AddSingleton<NavigationInterceptor>();
+        services.AddSingleton<NavigationInterceptor>(sp => new NavigationInterceptor(sp));
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        services.AddTransient<IDeviceTokenRetriever, AndroidDeviceTokenRetriever>();
-        services.AddScoped<IAudioOutputController, AndroidAudioOutputController>();
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new AndroidDeviceTokenRetriever());
+        services.AddScoped<IAudioOutputController>(sp => new AndroidAudioOutputController(sp));
 #elif IOS
         services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>();
 #endif
 
         // Misc.
-        services.AddScoped<DisposeTracer>();
+        services.AddScoped<DisposeTracer>(sp => new DisposeTracer());
     }
 
     private static Symbol GetSessionId()

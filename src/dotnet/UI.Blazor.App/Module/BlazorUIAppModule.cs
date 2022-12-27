@@ -20,7 +20,7 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
             return; // Blazor UI only module
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
         if (!isServerSideBlazor) {
-            services.AddScoped<SignOutReloader>();
+            services.AddScoped<SignOutReloader>(sp => new SignOutReloader(sp));
             services.ConfigureUILifetimeEvents(events => {
                 events.OnAppInitialized += c => {
                     var signOutReloader = c.GetRequiredService<SignOutReloader>();
