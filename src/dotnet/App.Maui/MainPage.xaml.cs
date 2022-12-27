@@ -6,19 +6,20 @@ namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
-    private readonly ClientAppSettings _appSettings;
-    private readonly NavigationInterceptor _navInterceptor;
+    private ClientAppSettings AppSettings { get; }
+    private NavigationInterceptor NavInterceptor { get; }
+    private ILogger Log { get; }
 
     public BlazorWebView BlazorWebView
         => this._blazorWebView;
 
-    public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor)
+    public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor, ILogger<MainPage> log)
     {
-        _appSettings = appSettings;
-        _navInterceptor = navInterceptor;
+        AppSettings = appSettings;
+        NavInterceptor = navInterceptor;
+        Log = log;
 
         InitializeComponent();
-
         _blazorWebView.BlazorWebViewInitializing += BlazorWebViewInitializing;
         _blazorWebView.BlazorWebViewInitialized += BlazorWebViewInitialized;
         _blazorWebView.UrlLoading += OnUrlLoading;
@@ -36,7 +37,7 @@ public partial class MainPage : ContentPage
     private void OnUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
         var uri = eventArgs.Url;
-        if (_navInterceptor.TryIntercept(uri))
+        if (NavInterceptor.TryIntercept(uri))
             // On Windows platform load cancellation seems not working while issues are closed a while ago. Uri is opened in WebView.
             // https://github.com/MicrosoftEdge/WebView2Feedback/issues/560
             // https://github.com/MicrosoftEdge/WebView2Feedback/issues/2072

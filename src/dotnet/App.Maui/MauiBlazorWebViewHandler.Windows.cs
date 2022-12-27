@@ -7,6 +7,7 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(WebView2Control platformView)
     {
+        Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
         base.ConnectHandler(platformView);
 
         platformView.CoreWebView2Initialized += CoreWebView2Initialized;

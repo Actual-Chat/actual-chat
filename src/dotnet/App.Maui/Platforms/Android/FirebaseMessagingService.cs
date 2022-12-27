@@ -2,7 +2,6 @@ using ActualChat.Notification;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
-using Android.Util;
 using AndroidX.Core.App;
 using Firebase.Messaging;
 
@@ -12,15 +11,19 @@ namespace ActualChat.App.Maui;
 [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
 public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
+    private ILogger Log { get; set; } = NullLogger.Instance;
+    public override void OnCreate()
+        => Log = AppServices.LogFor<FirebaseMessagingService>();
+
     public override void OnNewToken(string token)
     {
-        Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnNewToken: '{token}'");
+        Log.LogDebug("FirebaseMessagingService.OnNewToken: \'{Token}\'", token);
         base.OnNewToken(token);
     }
 
     public override void OnMessageReceived(RemoteMessage message)
     {
-        Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnMessageReceived. MessageId={message.MessageId}");
+        Log.LogDebug("FirebaseMessagingService.OnMessageReceived. MessageId={MessageId}", message.MessageId);
 
         base.OnMessageReceived(message);
 
@@ -42,7 +45,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
             if (handler.IsAlreadyThere(chatId)) {
                 // Do nothing if notification leads to the active chat.
-                Log.Debug(AndroidConstants.LogTag, $"FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: '{chatId}'.");
+                Log.LogDebug("FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: \'{ChatId}\'.", chatId);
                 return;
             }
         }

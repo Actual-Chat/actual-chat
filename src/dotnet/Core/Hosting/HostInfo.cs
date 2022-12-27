@@ -36,4 +36,5 @@ public sealed record HostInfo
     public bool IsProductionInstance => _isProductionInstance ??= Environment == ProductionEnvironment;
     public bool IsStagingInstance => _isStagingInstance ??= Environment == StagingEnvironment;
     public bool IsDevelopmentInstance => _isDevelopmentInstance ??= Environment == DevelopmentEnvironment;
+    public Platform Platform { get; set; }
 }

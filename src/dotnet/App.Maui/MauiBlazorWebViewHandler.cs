@@ -7,6 +7,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
     public ClientAppSettings AppSettings { get; private set; } = null!;
     public UrlMapper UrlMapper { get; private set; } = null!;
+    private ILogger Log { get; set; } = NullLogger.Instance;
 
     public MauiBlazorWebViewHandler()
     {
@@ -21,5 +22,6 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         base.SetMauiContext(mauiContext);
         AppSettings = mauiContext.Services.GetRequiredService<ClientAppSettings>();
         UrlMapper = mauiContext.Services.UrlMapper();
+        Log = mauiContext.Services.LogFor<MauiBlazorWebViewHandler>();
     }
 }

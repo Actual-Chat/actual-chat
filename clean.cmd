@@ -10,5 +10,5 @@
 BATCH
 
 #!/bin/sh
-rm -rf artifacts src/nodejs/node_modules src/dotnet/*/wwwroot/dist
+rm -rf artifacts src/nodejs/node_modules src/dotnet/*/wwwroot/dist **/obj/
 echo Clean completed.

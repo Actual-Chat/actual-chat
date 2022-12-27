@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { NextInteraction } from 'next-interaction';
 import { Log, LogLevel } from 'logging';
+import { BrowserInfo } from './Services/BrowserInfo/browser-info';
 
 const LogScope = 'MessagingInit';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -110,6 +111,8 @@ function hasPromiseBasedNotificationApi(): boolean {
 }
 
 NextInteraction.addHandler(async () => {
+    if (BrowserInfo.isMaui)
+        return;
     const isGranted = await requestNotificationPermission();
     if (!isGranted)
         errorLog?.log(`Notification permission isn't granted`);

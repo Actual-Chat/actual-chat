@@ -5,7 +5,6 @@ using Android.Content;
 using Android.Media;
 using Android.OS;
 using Android.Runtime;
-using Android.Util;
 using Kotlin.Jvm.Functions;
 using Xamarin.Twilio.AudioSwitch;
 using static Android.Media.AudioManager;
@@ -23,19 +22,22 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
 
     public IState<bool> IsAudioOn => _isAudioOn;
     public IState<bool> IsSpeakerphoneOn { get; }
+    private ILogger Log { get; }
 
     public AndroidAudioOutputController(IServiceProvider services)
     {
         _audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
+        Log = services.LogFor<AndroidAudioOutputController>();
+
         if (Build.VERSION.SdkInt >= BuildVersionCodes.S) {
             try {
-                _audioManager.AddOnModeChangedListener(Platform.AppContext.MainExecutor!, new ModeChangedListener());
+                _audioManager.AddOnModeChangedListener(Platform.AppContext.MainExecutor!, new ModeChangedListener(services.LogFor<ModeChangedListener>()));
             }
             catch(Exception e) {
-                Log.Warn(AndroidConstants.LogTag, Java.Lang.Throwable.FromException(e), "Failed to add ModeChangedListener");
+                Log.LogWarning(e, "Failed to add ModeChangedListener");
             }
         }
-        _audioSwitch = new AudioSwitch(Platform.AppContext, true, new FocusChangeListener());
+        _audioSwitch = new AudioSwitch(Platform.AppContext, true, new FocusChangeListener(services.LogFor<FocusChangeListener>()));
         _audioSwitch.Start(new StartupCallback());
 
         var stateFactory = services.StateFactory();
@@ -73,7 +75,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
             if (_isAudioOn.Value == mustEnable)
                 return mustEnable;
 
-            Log.Debug(AndroidConstants.LogTag, $"ToggleAudio({mustEnable})");
+            Log.LogDebug("ToggleAudio({MustEnable})", mustEnable);
             if (mustEnable) {
                 _audioSwitch.Activate();
                 _isAudioOn.Value = true;
@@ -97,7 +99,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
             if (IsSpeakerphoneActuallyOn() == mustEnable)
                 return ValueTask.FromResult(mustEnable);
 
-            Log.Debug(AndroidConstants.LogTag, $"ToggleSpeakerphone({mustEnable})");
+            Log.LogDebug("ToggleSpeakerphone({MustEnable})", mustEnable);
             if (mustEnable) {
                 var devices = _audioSwitch.AvailableAudioDevices;
                 var speakerphone = devices.FirstOrDefault(c => c is AudioDevice.Speakerphone);
@@ -125,7 +127,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
         lock (_lock) {
             var result = _audioSwitch.SelectedAudioDevice;
             if (mustLog)
-                Log.Debug(AndroidConstants.LogTag, $"GetSelectedAudioDevice() -> {result}");
+                Log.LogDebug("GetSelectedAudioDevice() -> {AudioDevice}", result);
             return result;
         }
     }
@@ -139,7 +141,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
         if (mode == Mode.InCommunication)
             return;
 
-        Log.Debug(AndroidConstants.LogTag, $"AudioManager.Mode: {mode} -> {Mode.InCommunication}");
+        Log.LogDebug("AudioManager.Mode: {Mode} -> {InCommunication}", mode, Mode.InCommunication);
         _audioManager.Mode = Mode.InCommunication;
     }
 
@@ -151,14 +153,24 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
 
     private class FocusChangeListener : Java.Lang.Object, IOnAudioFocusChangeListener
     {
+        private ILogger Log { get; }
+
+        public FocusChangeListener(ILogger log)
+            => Log = log;
+
         public void OnAudioFocusChange([GeneratedEnum] AudioFocus focusChange)
             // TODO(DF): handle audio focus change
-            => Log.Debug(AndroidConstants.LogTag, $"AudioFocus changed: {focusChange}");
+            => Log.LogDebug("AudioFocus changed: {AudioFocus}", focusChange);
     }
 
     private class ModeChangedListener : Java.Lang.Object, IOnModeChangedListener
     {
+        private ILogger Log { get; }
+
+        public ModeChangedListener(ILogger log)
+            => Log = log;
+
         public void OnModeChanged(int mode)
-             => Log.Debug(AndroidConstants.LogTag, $"AudioManager.Mode change: {(Mode)mode}");
+             => Log.LogDebug("AudioManager.Mode change: {Mode}", (Mode)mode);
     }
 }
