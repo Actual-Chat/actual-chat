@@ -70,7 +70,6 @@
   </PropertyGroup>-->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
-    <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <AndroidKeyStore>True</AndroidKeyStore>
     <AndroidSigningKeyStore>myapp.keystore</AndroidSigningKeyStore>
     <AndroidSigningKeyAlias>key</AndroidSigningKeyAlias>
