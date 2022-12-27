@@ -15,7 +15,7 @@
             </div>
         </div>
         <div class="menu-content">
-            <button>
+            <button onclick="@Signin">
                 Sign in
             </button>
             <button>
@@ -50,4 +50,5 @@
 
 @code {
     [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback Signin { get; set; }
 }

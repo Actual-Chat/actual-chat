@@ -17,7 +17,7 @@
 }
 
 <div @ref="Ref" class="landing @(isMobile ? "mobile" : "desktop")">
-    <LandingLeftMenu IsOpen="@m.IsMenuOpen"/>
+    <LandingLeftMenu IsOpen="@m.IsMenuOpen" Signin="@(() => SignIn(googleScheme.Name))"/>
 
     @* Header *@
     <div class="landing-header blur-bg">
@@ -135,7 +135,7 @@
                 </div>
             }
         </div>
-        <LandingLinks IsMobile="@isMobile"/>
+        <LandingLinks IsMobile="@isMobile" EnableIncompleteUI="@m.EnableIncompleteUI"/>
     </div>
 
     @* Page 4 *@
@@ -309,7 +309,7 @@
 
             </div>
         </div>
-        <LandingLinks IsMobile="@isMobile"/>
+        <LandingLinks IsMobile="@isMobile" EnableIncompleteUI="@m.EnableIncompleteUI"/>
     </div>
 
     @* Page 9 *@
@@ -450,7 +450,7 @@
                         So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.</span>
                 </div>
             </div>
-            <LandingLinks IsMobile="@isMobile"/>
+            <LandingLinks IsMobile="@isMobile" EnableIncompleteUI="@m.EnableIncompleteUI"/>
             <div class="flex-x bg-07 @(isMobile ? "p-4" : "h-60 p-12")">
                 <div class="flex-y w-full">
                     <div class="h-full justify-start text-04 @(isMobile ? "flex-y" : "flex-x gap-x-12")">

@@ -11,11 +11,7 @@
         return;
     if (account.IsGuest) { // Loaded, but user doesn't have an account
         _signInHasRequested = true;
-        if (_enableIncompleteUI) {
-            <Landing/>
-        } else {
-            <Welcome/>
-        }
+        <Landing/>
         return;
     }
 

@@ -209,7 +209,7 @@
     @apply w-0 bg-transparent transition-all ease-in-out duration-100;
 }
 .landing-menu .menu-footer {
-    @apply flex-x gap-x-2 items-center justify-center h-1/3;
+    @apply flex-x gap-x-2 items-center justify-center h-1/4 md:h-1/3;
 }
 .landing-menu .menu-content {
     @apply flex-y gap-y-8 h-full w-7/12 self-center items-start justify-center;

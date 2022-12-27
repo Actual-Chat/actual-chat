@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.App
 
 <div class="landing-links">
@@ -17,25 +18,28 @@
                 Download for Android
             </div>
         </button>
-        <button class="link-btn">
-            <div class="link-btn-content">
-                <img src="/landing/apple-logo-white.svg" alt="apple">
-            </div>
-            <div class="text-04 @(IsMobile ? "text-sm" : "")">
-                Download for iPhone/iPad
-            </div>
-        </button>
-        <button class="link-btn">
-            <div class="link-btn-content">
-                <img src="/landing/web-logo-white.svg" alt="web">
-            </div>
-            <div class="text-04 @(IsMobile ? "text-sm" : "")">
-                Download for Web
-            </div>
-        </button>
+        @if (EnableIncompleteUI) {
+            <button class="link-btn">
+                <div class="link-btn-content">
+                    <img src="/landing/apple-logo-white.svg" alt="apple">
+                </div>
+                <div class="text-04 @(IsMobile ? "text-sm" : "")">
+                    Download for iPhone/iPad
+                </div>
+            </button>
+            <button class="link-btn">
+                <div class="link-btn-content">
+                    <img src="/landing/web-logo-white.svg" alt="web">
+                </div>
+                <div class="text-04 @(IsMobile ? "text-sm" : "")">
+                    Download for Web
+                </div>
+            </button>
+        }
     </div>
 </div>
 
 @code{
+    [Parameter] public bool EnableIncompleteUI { get; set; }
     [Parameter] public bool IsMobile { get; set; }
 }
