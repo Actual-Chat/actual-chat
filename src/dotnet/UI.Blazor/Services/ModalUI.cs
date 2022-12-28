@@ -17,7 +17,7 @@ public sealed class ModalUI
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
         HistoryUI = services.GetRequiredService<HistoryUI>();
         ModalService = services.GetRequiredService<ModalService>();
-        MatchingTypeFinder = services.GetRequiredService<MatchingTypeFinder>();
+        MatchingTypeFinder = services.GetRequiredService<IMatchingTypeFinder>();
     }
 
 #pragma warning disable IL2072

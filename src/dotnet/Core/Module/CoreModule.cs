@@ -57,7 +57,7 @@ public class CoreModule : HostModule<CoreSettings>
 
         // Features
         services.AddScoped<Features>(sp => new Features(sp));
-        fusion.AddComputeService<IClientFeatures>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);

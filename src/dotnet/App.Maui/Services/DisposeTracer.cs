@@ -4,8 +4,8 @@ internal class DisposeTracer : IDisposable
 {
     private ILogger<DisposeTracer> Log { get; }
 
-    public DisposeTracer(ILogger<DisposeTracer> log)
-        => Log = log;
+    public DisposeTracer(IServiceProvider services)
+        => Log = services.GetRequiredService<ILogger<DisposeTracer>>();
 
     public void Dispose()
     {
@@ -13,8 +13,7 @@ internal class DisposeTracer : IDisposable
 
 #if ANDROID
         // I am trying to figure out when container is disposed.
-        Log.LogDebug(
-            $"Blazor app scoped container is being disposed. StackTrace: {Environment.NewLine}{{StackTrace}}",
+        Log.LogDebug("Blazor app scoped container is being disposed. StackTrace: \n{StackTrace}",
             stackTrace);
 #endif
     }
