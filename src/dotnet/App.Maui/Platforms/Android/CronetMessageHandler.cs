@@ -29,7 +29,9 @@ public class CronetMessageHandler : HttpMessageHandler
             .Build();
     }
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
     {
         Debug.Assert(request.RequestUri != null);
 
@@ -45,8 +47,7 @@ public class CronetMessageHandler : HttpMessageHandler
         foreach (var header in request.Headers)
             requestBuilder.AddHeader(header.Key, string.Join(',', header.Value));
 
-        if (request.Content != null)
-        {
+        if (request.Content != null) {
             var body = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             requestBuilder.SetUploadDataProvider(UploadDataProviders.Create(body), Executor);
             foreach (var header in request.Content.Headers)
@@ -69,7 +70,7 @@ public class CronetMessageHandler : HttpMessageHandler
         private const int MaxRedirectCount = 3;
         private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
-        private readonly TaskCompletionSource<HttpResponseMessage> _result;
+        private readonly TaskSource<HttpResponseMessage> _result;
 
         private int _redirectCount;
         private MemoryStream? _responseBody;
@@ -84,16 +85,13 @@ public class CronetMessageHandler : HttpMessageHandler
         {
             RequestMessage = requestMessage;
             CancellationToken = cancellationToken;
-            _result = new TaskCompletionSource<HttpResponseMessage>();
+            _result = TaskSource.New<HttpResponseMessage>(true);
         }
 
         public override void OnFailed(UrlRequest p0, UrlResponseInfo p1, CronetException p2)
         {
-            _responseBodyChannel?.DisposeSilently();
-            _responseBody?.DisposeSilently();
-            _responseBodyChannel = null;
-            _responseBody = null;
-            _result.SetException(p2);
+            CleanUp();
+            _result.TrySetException(p2);
         }
 
         public override void OnRedirectReceived(UrlRequest p0, UrlResponseInfo p1, string p2)
@@ -103,10 +101,7 @@ public class CronetMessageHandler : HttpMessageHandler
                 return;
             }
             if (_redirectCount++ > MaxRedirectCount) {
-                _responseBody?.DisposeSilently();
-                _responseBodyChannel?.DisposeSilently();
-                _responseBodyChannel = null;
-                _responseBody = null;
+                CleanUp();
                 p0.Cancel();
             }
             p0.FollowRedirect();
@@ -131,15 +126,13 @@ public class CronetMessageHandler : HttpMessageHandler
                 return;
             }
             p2.Flip();
-            try
-            {
+            try {
                 _responseBodyChannel ??= Java.Nio.Channels.Channels.NewWritableChannel(_responseBody)!;
                 _responseBodyChannel.Write(p2);
                 p2.Clear();
                 p0.Read(p2);
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 p0.Cancel();
                 _result.TrySetException(e);
             }
@@ -150,7 +143,7 @@ public class CronetMessageHandler : HttpMessageHandler
             _responseBodyChannel?.DisposeSilently();
             _responseBodyChannel = null;
 
-            var ret = new HttpResponseMessage ((HttpStatusCode)p1.HttpStatusCode) {
+            var ret = new HttpResponseMessage((HttpStatusCode)p1.HttpStatusCode) {
                 RequestMessage = RequestMessage,
                 ReasonPhrase = p1.HttpStatusText,
                 Version = string.IsNullOrWhiteSpace(p1.NegotiatedProtocol)
@@ -169,8 +162,8 @@ public class CronetMessageHandler : HttpMessageHandler
                 ret.Content = new StreamContent(Stream.Null);
 
             foreach (var (key, values) in p1.AllHeaders)
-                if (key.StartsWith("content",StringComparison.OrdinalIgnoreCase))
-                    ret.Content.Headers.Add(key,values);
+                if (key.StartsWith("content", StringComparison.OrdinalIgnoreCase))
+                    ret.Content.Headers.Add(key, values);
                 else
                     ret.Headers.Add(key, values);
             // we are waiting for transmit completion - but we can try to return Response as soon as possible with uncompleted StreamContent
@@ -179,12 +172,17 @@ public class CronetMessageHandler : HttpMessageHandler
 
         public override void OnCanceled(UrlRequest request, UrlResponseInfo info)
         {
+            CleanUp();
+            _ = _result.TrySetCanceled(CancellationToken);
+            base.OnCanceled(request, info);
+        }
+
+        private void CleanUp()
+        {
             _responseBodyChannel?.DisposeSilently();
             _responseBody?.DisposeSilently();
             _responseBodyChannel = null;
             _responseBody = null;
-            _ = _result.TrySetCanceled(CancellationToken);
-            base.OnCanceled(request, info);
         }
     }
 }
