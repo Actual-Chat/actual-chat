@@ -28,12 +28,12 @@
         }
         <div class="flex-x w-full @(isMobile ? "justify-center" : "")">
             <div class="min-w-fit">
-                <img src="/landing/ac-icon-light.svg" alt="icon" class="light-icon">
-                <img src="/landing/ac-icon-dark.svg" alt="icon" class="dark-icon absolute top-3">
+                <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon absolute top-3">
             </div>
             <div class="px-2 self-center @(!isMobile ? "w-full mb-2" : "max-w-40")">
-                <img src="/landing/ac-title-light.svg" alt="brand" class="light-title">
-                <img src="/landing/ac-title-dark.svg" alt="brand" class="dark-title absolute top-4">
+                <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title absolute top-4">
             </div>
             <div class="header-text">
                 @if (!isMobile) {
@@ -45,14 +45,14 @@
                             Sign in with
                         </div>
                         <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
-                            <img src="/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
                         </ButtonRound>
                         @if (m.EnableIncompleteUI) {
                             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                                <img src="/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
+                                <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
                             </ButtonRound>
                             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                                <img src="/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
+                                <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
                             </ButtonRound>
                         }
                     </div>
@@ -74,7 +74,7 @@
             <div class="flex-x h-full overflow-hidden @(isMobile ? "px-4" : "px-16")">
                 <div class="main-text">
                     <div class="text-04">
-                        <div class="title-text">Text of call?</div>
+                        <div class="title-text">Text or call?</div>
                         <div class="title-text">But do you really have to choose?</div>
                         <div class="py-8 @(isMobile ? "text-4.5xl font-thin" : "text-xl")">We want to redefine the meaning of "Chat". Actually.</div>
                     </div>
@@ -84,21 +84,21 @@
                                 Sign in with
                             </div>
                             <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
-                                <img src="/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
+                                <img src="/dist/images/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
                             </ButtonRound>
                             @if (m.EnableIncompleteUI) {
                                 <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                                    <img src="/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                                    <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
                                 </ButtonRound>
                                 <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                                    <img src="/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                                    <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
                                 </ButtonRound>
                             }
                         </div>
                     </div>
                 </div>
                 <div class="flex w-2/5 justify-center @(isMobile ? "hidden" : "")">
-                    <img src="/landing/android-phone.svg" alt="phone">
+                    <img src="/dist/images/landing/android-phone.svg" alt="phone">
                 </div>
             </div>
         </div>
@@ -114,7 +114,7 @@
                 <div class="title-text">Voice and text merged into a single medium</div>
                 @if (isMobile) {
                     <div class="flex justify-center p-4">
-                        <img src="/landing/voice-and-text.svg" alt="voice and text">
+                        <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
                     </div>
                 }
                 <div class="flex-y gap-y-2">
@@ -131,7 +131,7 @@
             </div>
             @if (!isMobile) {
                 <div class="flex justify-center w-1/2 p-16 pb-24 pl-6">
-                    <img src="/landing/voice-and-text.svg" alt="voice and text">
+                    <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
                 </div>
             }
         </div>
@@ -148,7 +148,7 @@
         </div>
         <div class="h-full overflow-hidden bg-[#EEEEF6] @(isMobile ? "flex-y px-4" : "flex-x")">
             <div class="flex justify-center @(isMobile ? "p-8" : "w-1/2 p-16 pb-24 pr-6")">
-                <img src="/landing/stressless.svg" alt="stressless">
+                <img src="/dist/images/landing/stressless.svg" alt="stressless">
             </div>
             <div class="flex-y justify-center @(isMobile ? "" : "w-1/2 p-16 pb-24 pl-6")">
                 <div class="title-text">Stressless</div>
@@ -185,18 +185,18 @@
                 <div class="flex-y gap-y-4 justify-center w-full h-full">
                     <div class="flex-x gap-x-8">
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/person-01.svg" alt="body">
+                            <img src="/dist/images/landing/person-01.svg" alt="body">
                         </div>
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/person-02.svg" alt="body">
+                            <img src="/dist/images/landing/person-02.svg" alt="body">
                         </div>
                     </div>
                     <div class="flex-x gap-x-8">
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/person-03.svg" alt="body">
+                            <img src="/dist/images/landing/person-03.svg" alt="body">
                         </div>
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/landing/person-04.svg" alt="body">
+                            <img src="/dist/images/landing/person-04.svg" alt="body">
                         </div>
                     </div>
                 </div>
@@ -209,7 +209,7 @@
         <div class="h-full overflow-hidden bg-[#EEEEF6] @(isMobile ? "flex-y py-8" : "flex-x")">
             <div class="flex items-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="flex overflow-hidden justify-center items-center">
-                    <img src="/landing/synchronous.svg" alt="synchronous">
+                    <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
                 </div>
             </div>
             <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pb-24 pl-6")">
@@ -247,13 +247,13 @@
                 </div>
                 <div class="flex @(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
                     <div class="flex overflow-hidden justify-center items-center">
-                        <img src="/landing/productive.svg" alt="productive" class="h-full">
+                        <img src="/dist/images/landing/productive.svg" alt="productive" class="h-full">
                     </div>
                 </div>
             </div>
             <div class="bg-[#EEEEF6] @(isMobile ? "flex-y py-16" : "flex-x min-h-136")">
                 <div class="flex justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pr-6")">
-                    <img src="/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
+                    <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
                 </div>
                 <div class="flex-y justify-center @(isMobile ? "p-4" : "w-1/2 p-16 pl-6")">
                     <div class="title-text">Team-friendy</div>
@@ -282,7 +282,7 @@
 
                 <div class="flex-y gap-y-2">
                     <div class="flex h-60 items-center justify-center">
-                        <img src="/landing/enjoyable-01.svg" alt="enjoyable">
+                        <img src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
                     </div>
                     <div class="px-8 text-center">
                         Many people prefer hearing you rather than reading your texts
@@ -291,7 +291,7 @@
 
                 <div class="flex-y gap-y-2">
                     <div class="flex h-60 items-center justify-center">
-                        <img src="/landing/enjoyable-02.svg" alt="enjoyable" class="">
+                        <img src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
                     </div>
                     <div class="px-8 text-center">
                         Some of us are much better speakers than writers
@@ -300,7 +300,7 @@
 
                 <div class="flex-y">
                     <div class="flex h-60 items-center justify-center">
-                        <img src="/landing/enjoyable-03.svg" alt="enjoyable" class="">
+                        <img src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
                     </div>
                     <div class="px-8 text-center">
                         Jokes are almost always more fun when they’re told
@@ -321,7 +321,7 @@
             <div class="w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-01.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-01.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Voice & text</span>
@@ -331,7 +331,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-02.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-02.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Markdown-style</span>
@@ -340,7 +340,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-03.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-03.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Replies, @@mentions, and reactions</span>
@@ -351,7 +351,7 @@
             <div class="w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-04.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-04.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Group and peer-to-peer</span>
@@ -360,7 +360,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-05.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-05.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <div>
@@ -373,7 +373,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-06.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-06.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Characters</span>
@@ -385,7 +385,7 @@
             <div class="w-full justify-between @(isMobile ? "flex-y gap-y-8" : "flex-x")">
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-07.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-07.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Unlimited Image & file uploads</span>
@@ -393,7 +393,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isMobile ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isMobile ? "justify-center" : "h-60 items-end")">
-                        <img src="/landing/dialog-08.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-08.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isMobile ? "text-2xl" : "")">
                         <span class="font-bold">Languages</span>
