@@ -14,7 +14,6 @@
 
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ModalService ModalService { get; set; } = default!;
 
@@ -75,7 +74,7 @@
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
         var locationHasChanged = !OrdinalEquals(_lastLocation, e.Location);
         _lastLocation = e.Location;
-        if (BrowserInfo.ScreenSize.Value.IsNarrow() && !locationHasChanged)
+        if (!locationHasChanged)
             return;
         _ = CancelModals();
     }
