@@ -8,8 +8,8 @@ internal class AndroidDeviceTokenRetriever : IDeviceTokenRetriever
 {
     private ILogger<AndroidDeviceTokenRetriever> Log { get; }
 
-    public AndroidDeviceTokenRetriever(ILogger<AndroidDeviceTokenRetriever> log)
-        => Log = log;
+    public AndroidDeviceTokenRetriever(IServiceProvider services)
+        => Log = services.GetRequiredService<ILogger<AndroidDeviceTokenRetriever>>();
 
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)
     {

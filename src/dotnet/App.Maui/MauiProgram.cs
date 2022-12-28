@@ -223,14 +223,14 @@ public static class MauiProgram
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new AndroidDeviceTokenRetriever());
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new AndroidDeviceTokenRetriever(sp));
         services.AddScoped<IAudioOutputController>(sp => new AndroidAudioOutputController(sp));
 #elif IOS
         services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>();
 #endif
 
         // Misc.
-        services.AddScoped<DisposeTracer>(sp => new DisposeTracer());
+        services.AddScoped<DisposeTracer>(sp => new DisposeTracer(sp));
     }
 
     private static Symbol GetSessionId()
