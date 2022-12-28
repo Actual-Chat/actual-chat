@@ -22,7 +22,7 @@
         <DataAnnotationsValidator/>
         <div class="flex-x mb-8">
             <Pic
-                Title="@_stepModel.UserName"
+                Title="@_stepModel.Name"
                 ContentId="@_stepModel.AvatarPicture"
                 Size="SquareSize.Size20">
                 <NoPicture>
@@ -75,12 +75,12 @@
             <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
         </FormSection>
         <FormSection
-            For="() => _stepModel.UserName"
+            For="() => _stepModel.Username"
             InputId="userName"
             Label="@("@username")"
             IsLabelInsideInput="true"
             IsRequired="true">
-            <InputText id="userName" @bind-Value="_stepModel.UserName"/>
+            <InputText id="userName" @bind-Value="_stepModel.Username"/>
         </FormSection>
     </Form>
 </div>
@@ -121,8 +121,30 @@
         return Task.FromResult(isValid);
     }
 
-    protected override Task Save() {
-        return Task.CompletedTask;
+    protected override async Task Save() {
+        var account = await Accounts.GetOwn(Session, default);
+        var updateAccountCommand = new IAccounts.UpdateCommand(
+            Session,
+            account with {
+                Name = _stepModel.Name,
+                LastName = _stepModel.LastName,
+                Username = _stepModel.Username,
+            },
+            account.Version);
+        await UICommander.Run(updateAccountCommand);
+
+        var avatar = await Avatars.GetOwn(Session, _stepModel.AvatarId, default).Require();
+        var updateAvatarCommand = new IAvatars.ChangeCommand(
+            Session,
+            _stepModel.AvatarId,
+            avatar.Version,
+            new Change<AvatarFull> {
+                Update = avatar with {
+                    Name = _stepModel.Name,
+                    Picture = _stepModel.AvatarPicture,
+                },
+            });
+        await UICommander.Run(updateAvatarCommand);
     }
 
     private void OnImagePicked(string contentId) {
@@ -135,11 +157,11 @@
 
     public class AvatarStepModel {
         [Required]
-        public string? Name { get; set; }
-        public string? LastName { get; set; }
+        public string Name { get; set; } = "";
+        public string LastName { get; set; } = "";
         [Required]
-        public string? UserName { get; set; }
-        public string? AvatarPicture { get; set; }
-        public Symbol? AvatarId { get; set; }
+        public string Username { get; set; } = "";
+        public string AvatarPicture { get; set; } = "";
+        public Symbol AvatarId { get; set; } = "";
     }
 }
