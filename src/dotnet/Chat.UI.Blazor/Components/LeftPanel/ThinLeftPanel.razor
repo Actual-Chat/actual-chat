@@ -32,10 +32,16 @@
 </div>
 
 @code {
+    private bool _enableIncompleteUI;
+
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+    }
 
     private void OnShowCreationModal()
         => ModalUI.Show(new CreationModal.Model());
