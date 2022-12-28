@@ -4,7 +4,7 @@
 }
 /* ChatAudioPanel, Mobile view */
 .narrow .chat-audio-panel {
-    @apply w-full self-stretch items-center gap-x-6 py-2 rounded-b-5xl;
+    @apply w-full self-stretch items-center gap-x-6 py-2 rounded-b-4xl;
     background: linear-gradient(to top, rgba(255,255,255,1) 5%, rgba(255,255,255,1) 35%, transparent);
 }
 /* ChatAudioPanel, Mobile view, Text mode */
