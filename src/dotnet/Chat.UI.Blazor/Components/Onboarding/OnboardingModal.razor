@@ -44,10 +44,6 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -55,6 +51,7 @@
         var stepCompleted = await stepper.MoveForward();
         if (!stepCompleted)
             return;
+
         await ModalInstance.CloseAsync();
     }
 
