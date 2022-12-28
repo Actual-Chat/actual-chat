@@ -30,10 +30,7 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() {
-            InitialValue = AccountFull.Loading,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
+        => new() { InitialValue = AccountFull.Loading };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);

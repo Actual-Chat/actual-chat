@@ -45,6 +45,7 @@
     <Using Include="System.Globalization" />
     <Using Include="System.FormattableString" Static="True" />
     <Using Include="System.Linq" />
+    <Using Include="System.Reflection" />
     <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
@@ -60,6 +61,8 @@
     <Using Include="Stl.DependencyInjection" />
     <Using Include="Stl.Mathematics" />
     <Using Include="Stl.Serialization" />
+    <Using Include="Stl.OS" />
+    <Using Include="Stl.Reflection" />
     <Using Include="Stl.Text" />
     <Using Include="Stl.Time" />
     <Using Include="Stl.Fusion" />

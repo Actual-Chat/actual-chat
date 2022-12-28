@@ -146,21 +146,28 @@ input.input-underlined {
 /* Layouts */
 
 .base-layout-body {
-    @apply flex-1 overflow-y-auto flex-y relative float-left;
+    @apply relative;
+    @apply flex-1 flex flex-col flex-nowrap;
+    @apply overflow-y-auto;
+    @apply float-left;
 }
 
-.chat-layout .layout-body {
-    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
+.list-view-layout .layout-body {
+    @apply h-full w-full flex flex-col flex-nowrap justify-between;
     @apply p-0 -mb-24 md:mb-0;
+    @apply overflow-y-auto;
 }
 
-.chat-layout .layout-footer {
+.list-view-layout .layout-footer {
     @apply min-h-footer;
     @apply shadow-none;
 }
 
-.no-chat-layout .layout-body {
+.default-layout .layout-body {
+    @apply h-full w-full flex flex-col flex-nowrap justify-start gap-y-4;
     @apply p-4;
+    @apply overflow-y-auto;
+    @apply float-left;
 }
 
 /* Welcome page */

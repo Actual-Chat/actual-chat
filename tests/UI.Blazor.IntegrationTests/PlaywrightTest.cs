@@ -30,7 +30,7 @@ public class PlaywrightTest : AppHostTestBase
 
         await Task.Delay(2000).ConfigureAwait(false);
 
-        var chatPage = await page.QuerySelectorAsync(".chat-layout").ConfigureAwait(false);
+        var chatPage = await page.QuerySelectorAsync(".list-view-layout").ConfigureAwait(false);
         chatPage.Should().NotBeNull();
         var input = await page.QuerySelectorAsync("[role='textbox']").ConfigureAwait(false);
         input.Should().NotBeNull();
@@ -64,7 +64,7 @@ public class PlaywrightTest : AppHostTestBase
         }
 
         static async Task<IReadOnlyList<IElementHandle>> GetMessages(IPage page)
-            => await page.QuerySelectorAllAsync(".chat-layout .content");
+            => await page.QuerySelectorAllAsync(".list-view-layout .content");
 
         static async Task<string?> GetLastMessage(IEnumerable<IElementHandle> messages)
             => await messages.Last().TextContentAsync().ConfigureAwait(false);
@@ -81,7 +81,7 @@ public class PlaywrightTest : AppHostTestBase
         await Task.Delay(1000);
         account.Id.Value.Should().NotBeNullOrEmpty();
         account.User.Name.Should().Be("ChatPageTester");
-        var messages = await page.QuerySelectorAllAsync(".chat-layout .content");
+        var messages = await page.QuerySelectorAllAsync(".list-view-layout .content");
         messages.Count.Should().BeGreaterThan(0);
         await Task.Delay(200);
     }

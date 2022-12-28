@@ -1,5 +1,3 @@
-using Stl.Reflection;
-
 namespace ActualChat.Kvas;
 
 public static class KvasExt

@@ -5,7 +5,7 @@
 
 <div class="wide-left-panel -flex-y md:flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
     <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 px-2 gap-x-1">
-        <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="OnSelectedChatChangedEvent" />
+        <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
         <SearchBox
             @ref="_searchBoxRef"
             Placeholder="Find chat..."

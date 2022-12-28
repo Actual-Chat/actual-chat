@@ -1,6 +1,4 @@
-﻿using Stl.Reflection;
-
-namespace ActualChat.Messaging;
+﻿namespace ActualChat.Messaging;
 
 public interface IMessageProcess
 {

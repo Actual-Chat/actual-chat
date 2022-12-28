@@ -1,7 +1,6 @@
 using ActualChat.Commands.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.OS;
 
 namespace ActualChat.Commands;
 

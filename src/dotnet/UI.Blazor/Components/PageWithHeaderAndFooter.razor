@@ -1,5 +1,5 @@
 <div class="page-with-header-and-footer h-full w-full flex-x">
-    @LeftPanel
+    @LeftDrawer
     <div class="@Class relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
         <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
             @Header
@@ -21,7 +21,7 @@
             </div>
         </div>
     </div>
-    @RightPanel
+    @RightDrawer
 </div>
 
 @code {
@@ -31,6 +31,6 @@
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? SubFooter { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
-    [Parameter] public RenderFragment? LeftPanel { get; set; }
-    [Parameter] public RenderFragment? RightPanel { get; set; }
+    [Parameter] public RenderFragment? LeftDrawer { get; set; }
+    [Parameter] public RenderFragment? RightDrawer { get; set; }
 }

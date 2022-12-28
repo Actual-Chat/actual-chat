@@ -22,14 +22,10 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() {
-            InitialValue = AccountFull.Loading,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
+        => new() { InitialValue = AccountFull.Loading };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
-
 
     private void OnSettingsClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());

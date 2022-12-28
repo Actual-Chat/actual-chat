@@ -1,13 +1,8 @@
-@using ActualChat.UI.Blazor.Services
-@using Blazored.Modal
-@using Stl.OS
 @using Stl.Plugins
-@using System.Reflection
-@using ActualChat.UI.Blazor.App.Services
 @implements IDisposable
 
 <BrowserInfoProvider>
-<BlazoredModal ActivateFocusTrap="true" />
+    <BlazoredModal ActivateFocusTrap="true" />
 
     @if (!_whenReadyToRender.IsCompletedSuccessfully) {
         @*
@@ -18,16 +13,21 @@
         return;
     }
 
+    <AlwaysVisibleComponents/>
+
     <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
-        <Found>
-            <ErrorWrapper>
-                <RouteView RouteData="@context" DefaultLayout="@typeof(NoChatLayout)"/>
-            </ErrorWrapper>
+        <Found Context="routeData">
+            <RequirementChecker>
+                <Success>
+                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
+                </Success>
+                <Failure Context="failures">
+                    <ErrorBlock Failures="@failures"/>
+                </Failure>
+            </RequirementChecker>
         </Found>
         <NotFound>
-            <LayoutView Layout="@typeof(NoChatLayout)">
-                <p>Sorry, there's nothing here.</p>
-            </LayoutView>
+            <PageNotFoundBlock/>
         </NotFound>
     </Router>
 

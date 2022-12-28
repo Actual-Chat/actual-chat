@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using Stl.OS;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.Module;

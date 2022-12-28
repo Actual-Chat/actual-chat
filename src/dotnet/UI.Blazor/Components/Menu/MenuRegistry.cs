@@ -1,5 +1,3 @@
-using Stl.Reflection;
-
 namespace ActualChat.UI.Blazor.Components;
 
 public static class MenuRegistry

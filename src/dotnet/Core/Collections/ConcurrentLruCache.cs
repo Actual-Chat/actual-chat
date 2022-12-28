@@ -1,5 +1,3 @@
-using Stl.OS;
-
 namespace ActualChat.Collections;
 
 public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>

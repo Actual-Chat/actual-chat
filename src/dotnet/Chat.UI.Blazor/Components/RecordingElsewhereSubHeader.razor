@@ -27,8 +27,6 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,

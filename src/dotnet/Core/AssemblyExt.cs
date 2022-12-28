@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace ActualChat;
 
 public static class AssemblyExt

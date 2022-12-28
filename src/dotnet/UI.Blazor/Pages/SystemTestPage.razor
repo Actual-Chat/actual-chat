@@ -2,14 +2,8 @@
 
 <MainHeader>System Test Page</MainHeader>
 
-<div class="flex-y justify-start gap-y-1">
-    <div class="flex-1">
-        <Button Click="OnInvalidateEverythingClick">Invalidate Everything</Button>
-    </div>
-    <div class="flex-1">
-        <Button Click="OnGCCollectClick">GC.Collect() x 3</Button>
-    </div>
-</div>
+<Button Click="OnInvalidateEverythingClick">Invalidate Everything</Button>
+<Button Click="OnGCCollectClick">GC.Collect() x 3</Button>
 
 @code {
     private Task OnInvalidateEverythingClick() {

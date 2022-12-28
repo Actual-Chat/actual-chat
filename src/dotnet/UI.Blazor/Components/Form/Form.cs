@@ -1,4 +1,3 @@
-using System.Reflection;
 using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Components;

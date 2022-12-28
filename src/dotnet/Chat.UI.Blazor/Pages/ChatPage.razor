@@ -3,7 +3,7 @@
 @using ActualChat.Notification.UI.Blazor
 @using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatPage.Model>
-@layout ChatLayout
+@layout ListViewLayout
 @{
     var m = _lastRenderedModel = State.LatestNonErrorValue;
     if (m.IsUnavailable) {
@@ -15,11 +15,6 @@
 }
 
 @* @key=... ensures child components are recreated on navigation to another chat *@
-
-@* Left panel can be rendered w/o chat being loaded *@
-<RenderIntoSlot Name="MainLeftPanel">
-    <LeftPanel/>
-</RenderIntoSlot>
 
 @if (chat == null) {
     /* Chat isn't yet fetched, so nothing to render on the right side */
@@ -36,11 +31,6 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubHeader" Order="-1000_000" Key="HistoricalPlaybackSubHeader">
-    <CascadingValue Value="chat">
-        <HistoricalPlaybackSubHeader/>
-    </CascadingValue>
-</RenderIntoStack>
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
     <CascadingValue Value="chat">
         <UnreadCountSubHeader Click="@OnUnreadCountSubHeaderClick"/>
@@ -53,19 +43,13 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="RecordingElsewhereSubHeader">
-    <CascadingValue Value="chat">
-        <RecordingElsewhereSubHeader/>
-    </CascadingValue>
-</RenderIntoStack>
-
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubHeader">
     <CascadingValue Value="chat">
         <NavigateToEndSubHeader/>
     </CascadingValue>
 </RenderIntoStack>
 
-<RenderIntoSlot Name="MainRightPanel">
+<RenderIntoSlot Name="MainRightDrawer">
     <CascadingValue Value="chat">
         <ChatRightPanel/>
     </CascadingValue>

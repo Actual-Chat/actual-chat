@@ -1,12 +1,14 @@
 @inherits LayoutComponentBase
 @layout BaseLayout
 
-<PageWithHeaderAndFooter Class="chat-layout">
-    <LeftPanel><RenderSlot Name="MainLeftPanel"/></LeftPanel>
+<PageWithHeaderAndFooter Class="default-layout">
+    <LeftDrawer><RenderSlot Name="MainLeftDrawer"/></LeftDrawer>
     <Header><RenderSlot Name="MainHeader"/></Header>
     <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
     <Footer><RenderSlot Name="MainFooter"/></Footer>
     <SubFooter><RenderStack Name="SubFooter"/></SubFooter>
     <Body>@Body</Body>
-    <RightPanel><RenderSlot Name="MainRightPanel"/></RightPanel>
+    <RightDrawer><RenderSlot Name="MainRightDrawer"/></RightDrawer>
 </PageWithHeaderAndFooter>
+
+

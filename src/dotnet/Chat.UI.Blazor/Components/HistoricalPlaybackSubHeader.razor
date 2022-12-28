@@ -82,11 +82,11 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
-    [CascadingParameter] public Chat ChatViewChat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -98,8 +98,9 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var lastModel = State.ValueOrDefault;
 
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);
-        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
+        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId } || chatId.IsNone)
             return Model.NotPlaying;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken);
@@ -136,7 +137,7 @@
                 ChatPlayer = historicalChatPlayer,
                 IsPaused = isPaused,
                 ChatTitle = chatTitle,
-                ShowChatTitle = chatId != ChatViewChat.Id,
+                ShowChatTitle = chatId != selectedChatId,
                 AuthorSids = authorSids,
             };
 

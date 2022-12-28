@@ -3,7 +3,6 @@ using System.Net.Mime;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.IO;
 using Stl.IO;
-using Stl.OS;
 
 namespace ActualChat.Blobs;
 

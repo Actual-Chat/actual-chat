@@ -3,38 +3,32 @@
 
 <MainHeader>Markup Editor Test Page</MainHeader>
 
-<PageWithHeaderAndFooter>
-    <Body>
+<EditForm Model="@this" class="flex-y gap-y-4">
+    <div>
+        <Button Click="OnGetMarkupClick">Get markup</Button>
+        <Button Click="OnSetMarkupClick">Set markup</Button>
+    </div>
 
-    <EditForm Model="@this" class='my-2 flex-y'>
-        <div>
-            <Button Click="OnGetMarkupClick">Get markup</Button>
-            <Button Click="OnSetMarkupClick">Set markup</Button>
-        </div>
+    <InputTextArea @bind-Value="_markup" class="my-2 border-2 border-bg-03 rounded min-h-[8rem]">
+    </InputTextArea>
 
-        <InputTextArea @bind-Value="_markup" class="my-2 border-2 border-bg-03 rounded min-h-[8rem]">
-        </InputTextArea>
+    <p class="my-2">Parsed: <code>@_parsedMarkup</code></p>
 
-        <p class="my-2">Parsed: <code>@_parsedMarkup</code></p>
-
-        <div class="relative">
-            <MentionListManager Limit="5">
-                <MarkupEditor
-                    @ref="_editorRef"
-                    MentionNamer="@_chatMarkupHub.MentionNamer"
-                    HtmlConverter="@_chatMarkupHub.EditorHtmlConverter"
-                    Id="message-input"
-                    Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"
-                    Placeholder="Enter some text..."
-                    Post="OnPost"
-                    Cancel="OnCancel"
-                    OpenPrevious="OnOpenPrevious"/>
-            </MentionListManager>
-        </div>
-    </EditForm>
-
-    </Body>
-</PageWithHeaderAndFooter>
+    <div class="relative">
+        <MentionListManager Limit="5">
+            <MarkupEditor
+                @ref="_editorRef"
+                MentionNamer="@_chatMarkupHub.MentionNamer"
+                HtmlConverter="@_chatMarkupHub.EditorHtmlConverter"
+                Id="message-input"
+                Class="my-2 border-2 border-bg-03 rounded min-h-[8rem]"
+                Placeholder="Enter some text..."
+                Post="OnPost"
+                Cancel="OnCancel"
+                OpenPrevious="OnOpenPrevious"/>
+        </MentionListManager>
+    </div>
+</EditForm>
 
 @code{
     private MarkupEditor _editorRef = null!;

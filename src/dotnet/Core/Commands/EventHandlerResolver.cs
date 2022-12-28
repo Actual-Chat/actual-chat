@@ -1,5 +1,3 @@
-using Stl.Reflection;
-
 namespace ActualChat.Commands;
 
 public class EventHandlerResolver : ICommandHandlerResolver, IEventHandlerResolver

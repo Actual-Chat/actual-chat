@@ -1,5 +1,3 @@
-using Stl.Reflection;
-
 namespace ActualChat.DependencyInjection;
 
 public class CachingKeyedFactory<TService, TKey> : KeyedFactory<TService, TKey>
