@@ -110,6 +110,7 @@
         var (newAvatar, error) = await UICommander.Run(createAvatarCommand);
         if (error != null)
             return;
+
         _stepModel.AvatarId = newAvatar.Id;
         _stepModel.AvatarPicture = newAvatar.Picture;
         var setDefaultAvatarCommand = new IAvatars.SetDefaultCommand(Session, newAvatar.Id);
