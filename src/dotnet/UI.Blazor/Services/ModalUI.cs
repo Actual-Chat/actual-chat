@@ -29,9 +29,6 @@ public sealed class ModalUI
             throw StandardError.NotFound<IModalView>(
                 $"No modal view component for '{model.GetType().GetName()}' model.");
 
-        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
-            return Task.FromResult(ShowInternal(componentType, model, isFullScreen));
-
         IModalRef? modalReference = null;
         var whenCompletedSource = TaskSource.New<IModalRef>(true);
         HistoryUI.NavigateTo(

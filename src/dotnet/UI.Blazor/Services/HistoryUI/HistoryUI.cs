@@ -6,6 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 // Service should be instantiated on app start.
 public class HistoryUI
 {
+    private const string MarkerPrefix = "marker:";
     private readonly List<HistoryItem> _history = new ();
     private PendingHistoryItem? _pendingHistoryItem;
     private int _historyIndex;
@@ -87,8 +88,12 @@ public class HistoryUI
             OnForwardAction = onForwardAction,
             OnBackAction = onBackAction
         };
-        _pendingHistoryItem = new PendingHistoryItem(historyItem, _historyIndex);
-        Nav.NavigateTo(Nav.Uri);
+        _pendingHistoryItem = new PendingHistoryItem(historyItem, Guid.NewGuid().ToString());
+        Nav.NavigateTo(Nav.Uri, new NavigationOptions {
+            ForceLoad = false,
+            ReplaceHistoryEntry = false,
+            HistoryEntryState = MarkerPrefix + _pendingHistoryItem.Marker
+        });
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -131,23 +136,26 @@ public class HistoryUI
             move = HistoryMove.Navigate;
         }
 
-        HistoryItem historyItem;
+        HistoryItem? historyItem = null;
         if (move == HistoryMove.Navigate) {
             if (_pendingHistoryItem != null) {
-                if (_pendingHistoryItem.HistoryIndex != _historyIndex)
-                    throw StandardError.Constraint("PendingHistoryItem is not consistent.");
-                if (!OrdinalEquals(_pendingHistoryItem.HistoryItem.Uri, location))
-                    throw StandardError.Constraint("PendingHistoryItem is not consistent. Location is wrong.");
+                var marker = !state.UserState.IsNullOrEmpty() && state.UserState.StartsWith(MarkerPrefix, StringComparison.Ordinal)
+                    ? state.UserState.Substring(MarkerPrefix.Length)
+                    : "";
+                var match = !marker.IsNullOrEmpty() && _pendingHistoryItem.Marker.Equals(marker);
+                if (match) {
+                    if (!OrdinalEquals(_pendingHistoryItem.HistoryItem.Uri, location))
+                        throw StandardError.Constraint("PendingHistoryItem is not consistent. Location is wrong.");
 
-                var prototype = _pendingHistoryItem.HistoryItem;
-                historyItem = new HistoryItem(prototype.Uri, state.Id) {
-                    OnForwardAction = prototype.OnForwardAction,
-                    OnBackAction = prototype.OnBackAction,
-                };
-                _pendingHistoryItem = null;
+                    var prototype = _pendingHistoryItem.HistoryItem;
+                    historyItem = new HistoryItem(prototype.Uri, state.Id) {
+                        OnForwardAction = prototype.OnForwardAction,
+                        OnBackAction = prototype.OnBackAction,
+                    };
+                    _pendingHistoryItem = null;
+                }
             }
-            else
-                historyItem = new HistoryItem(location, state.Id);
+            historyItem ??= new HistoryItem(location, state.Id);
             if (_history.Count < readHistoryIndex)
                 throw StandardError.Constraint("History is not consistent.");
             if (_history.Count > readHistoryIndex)
@@ -184,7 +192,7 @@ public class HistoryUI
  #pragma warning restore IL2026
     }
 
-    private record PendingHistoryItem(HistoryItemPrototype HistoryItem, int HistoryIndex);
+    private record PendingHistoryItem(HistoryItemPrototype HistoryItem, string Marker);
 
     private record HistoryItem(string Uri, string Id)
     {

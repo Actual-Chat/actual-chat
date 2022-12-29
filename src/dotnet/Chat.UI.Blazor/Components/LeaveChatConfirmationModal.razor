@@ -17,6 +17,8 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -25,9 +27,14 @@
         => _ = ModalInstance.CloseAsync();
 
     private async Task OnLeave(MouseEventArgs arg) {
+        var isSelectedChat = ModalModel.Chat.Id.Equals(ChatUI.SelectedChatId.Value);
         var command = new IAuthors.LeaveCommand(Session, ModalModel.Chat.Id);
-        await UICommander.Run(command);
-        await ModalInstance.CloseAsync();
+        var result = await UICommander.Run(command);
+        if (!result.HasError) {
+            await ModalInstance.CloseAsync();
+            if (isSelectedChat)
+                Nav.NavigateTo(Links.Chat(Constants.Chat.AnnouncementsChatId));
+        }
     }
 
     public sealed record Model(Chat Chat);
