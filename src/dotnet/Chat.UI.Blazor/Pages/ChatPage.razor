@@ -5,7 +5,7 @@
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
 @{
-    var m = _lastRenderedModel = State.Value;
+    var m = _rendered = State.Value;
     if (m.IsUnavailable) {
         <RequireChat ChatSid="@m.ChatId" />
         return;
@@ -60,7 +60,7 @@
 </CascadingValue>
 
 @code {
-    private Model? _lastRenderedModel;
+    private Model? _rendered;
     private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -74,9 +74,9 @@
     [Parameter] public string ChatId { get; set; } = "";
 
     protected override bool ShouldRender()
-        => ReferenceEquals(_lastRenderedModel, null)
+        => ReferenceEquals(_rendered, null)
             || State.HasError
-            || !ReferenceEquals(_lastRenderedModel, State.Value);
+            || !ReferenceEquals(_rendered, State.Value);
 
     protected override Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
@@ -109,7 +109,7 @@
         var chat = await Chats.Get(Session, chatId, cancellationToken);
         var account = await Accounts.GetOwn(Session, cancellationToken);
         var result = new Model(chatId, chat, account);
-        return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
+        return result.IsSame(_rendered) ? _rendered! : result;
     }
 
     private void OnUnreadCountSubHeaderClick()

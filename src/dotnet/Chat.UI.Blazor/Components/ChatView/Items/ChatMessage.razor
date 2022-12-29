@@ -4,9 +4,9 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
 @{
-    var m = _lastRenderedModel = State.Value;
-    var message = _lastRenderedMessage = Message;
-    var markup = _lastRenderedMarkup = _markup;
+    var m = _rendered = State.Value;
+    var message = _renderedMessage = Message;
+    var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
 
     // Flags
@@ -115,9 +115,9 @@
 </div>
 
 @code {
-    private Model? _lastRenderedModel;
-    private ChatMessageModel? _lastRenderedMessage;
-    private Markup? _lastRenderedMarkup;
+    private Model? _rendered;
+    private ChatMessageModel? _renderedMessage;
+    private Markup? _renderedMarkup;
     private IChatMarkupHub _chatMarkupHub = null!;
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
@@ -147,9 +147,9 @@
     }
 
     protected override bool ShouldRender() {
-        return !ReferenceEquals(_lastRenderedModel, State.Value)
-            || !ReferenceEquals(_lastRenderedMessage, Message)
-            || !ReferenceEquals(_lastRenderedMarkup, _markup);
+        return !ReferenceEquals(_rendered, State.Value)
+            || !ReferenceEquals(_renderedMessage, Message)
+            || !ReferenceEquals(_renderedMarkup, _markup);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
@@ -182,7 +182,7 @@
             IsReplyTarget = isReplyTarget,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
         };
-        return result.Equals(_lastRenderedModel) ? _lastRenderedModel! : result;
+        return result.Equals(_rendered) ? _rendered! : result;
     }
 
     private async Task<ChatEntry?> GetRepliedEntry(CancellationToken cancellationToken) {

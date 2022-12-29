@@ -1,7 +1,7 @@
 @using ActualChat.Search
 @inherits ComputedStateComponent<ChatState>
 @{
-    var m = _lastRenderedModel = State.Value;
+    var m = _rendered = State.Value;
     var chat = m.Chat;
     var info = m.Info;
     var lastTextEntry = info.LastTextEntry;
@@ -72,7 +72,7 @@
 </NavbarItem>
 
 @code {
-    private ChatState? _lastRenderedModel = null;
+    private ChatState? _rendered = null;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
@@ -80,7 +80,7 @@
     [Parameter, EditorRequired] public ChatListKind ListKind { get; init; }
 
     protected override bool ShouldRender()
-        => State.HasError || !ReferenceEquals(_lastRenderedModel, State.Value);
+        => State.HasError || !ReferenceEquals(_rendered, State.Value);
 
     protected override ComputedState<ChatState>.Options GetStateOptions()
         => new() {

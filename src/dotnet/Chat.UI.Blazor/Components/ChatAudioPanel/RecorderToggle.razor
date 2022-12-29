@@ -2,12 +2,12 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
-    var lastRenderedState = _lastRenderedState;
-    var m = _lastRenderedState = State.Value;
-    if (lastRenderedState.Chat.Id != m.Chat.Id)
-        lastRenderedState = m; // Disables the animation on chat switching
+    var rendered = _rendered;
+    var m = _rendered = State.Value;
+    if (rendered.Chat.Id != m.Chat.Id)
+        rendered = m; // Disables the animation on chat switching
 
-    var wrapperCls = (lastRenderedState.IsRecording, m.IsRecording) switch {
+    var wrapperCls = (rendered.IsRecording, m.IsRecording) switch {
         (false, true) => "record-off-to-on",
         (true, false) => "record-on-to-off",
         (_, true) => "record-on",
@@ -47,7 +47,7 @@
 }
 
 @code {
-    private Model _lastRenderedState = Model.None;
+    private Model _rendered = Model.None;
     private bool? _canRecord = null;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
