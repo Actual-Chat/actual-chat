@@ -30,13 +30,11 @@ public sealed class AuthorUI
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
 
-        if (account == null || account.IsGuest || ownAccount.IsGuest)
-            await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
-        else if (account.Id == ownAccount.Id)
-            // NOTE(AY): Show settings? Do nothing?
+        var mustShowModal = account == null || account.IsGuest || ownAccount.IsGuest || account.Id == ownAccount.Id;
+        if (mustShowModal)
             await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
         else {
-            var peerChatId = new PeerChatId(ownAccount.Id, account.Id);
+            var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
             Nav.NavigateTo(Links.Chat(peerChatId));
         }
     }

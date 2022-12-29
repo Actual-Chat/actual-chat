@@ -41,7 +41,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return null;
 
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        return author;
+        return author.ToAuthor();
     }
 
     // [ComputeMethod]
@@ -87,8 +87,10 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author == null)
             return null;
 
-        if (author.IsAnonymous || author.UserId.IsNone)
-            return null;
+        if (author.IsAnonymous) {
+            var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            return ownAccount.Id == author.UserId ? ownAccount.ToAccount() : null;
+        }
 
         var account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
         return account.ToAccount();

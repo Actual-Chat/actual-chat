@@ -2,17 +2,20 @@
 @inherits AuthorBadgeBase
 @{
     var m = State.Value;
+    var author = m.Author;
 }
 
 @if (ShowDetailsOnClick) {
     <AvatarName
-        Avatar="@m.Author.Avatar"
+        Avatar="@author.Avatar"
         Class="@Class"
-        Click="@(_ => AuthorUI.Show(m.Author.Id))"/>
+        IsAnonymous="@author.IsAnonymous"
+        Click="@(_ => AuthorUI.Show(author.Id))"/>
 }
 else {
     <AvatarName
-        Avatar="@m.Author.Avatar"
+        Avatar="@author.Avatar"
+        IsAnonymous="@author.IsAnonymous"
         Class="@Class"/>
 }
 

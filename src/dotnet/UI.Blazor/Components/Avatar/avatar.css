@@ -3,7 +3,11 @@
 }
 
 .avatar-name {
-    @apply select-none;
+    @apply whitespace-nowrap select-none;
+}
+
+.avatar-name > .c-anonymous {
+    @apply sup;
 }
 
 /* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */
