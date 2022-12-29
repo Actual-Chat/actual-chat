@@ -3,9 +3,9 @@
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var lastRenderedState = _lastRenderedState;
-    var m = _lastRenderedState = State.LatestNonErrorValue;
+    var m = _lastRenderedState = State.Value;
     if (lastRenderedState.Chat.Id != m.Chat.Id)
-        lastRenderedState = m;
+        lastRenderedState = m; // Disables the animation on chat switching
 
     var wrapperCls = (lastRenderedState.IsRecording, m.IsRecording) switch {
         (false, true) => "record-off-to-on",
@@ -54,8 +54,8 @@
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     private bool CanRecord => _canRecord ?? true;
-    private bool IsLoading => !Chat.Id.IsNone && State.LatestNonErrorValue.Chat.Id != Chat.Id;
-    private bool IsRecording => !IsLoading && State.LatestNonErrorValue.IsRecording;
+    private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsRecording => !IsLoading && State.Value.IsRecording;
     private bool IsLongPressOn { get; set; } = false;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;

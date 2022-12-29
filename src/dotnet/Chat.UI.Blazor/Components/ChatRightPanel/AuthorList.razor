@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Events
 @inherits ComputedStateComponent<AuthorList.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <div class="flex flex-col w-full h-full px-5 py-3 people-tab">

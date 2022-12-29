@@ -5,7 +5,7 @@
 @inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var account = m.Account;
     if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
@@ -60,7 +60,7 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         var account = m.Account;
         if (!ReferenceEquals(account, AccountFull.Loading))
             LoadingUI.MarkLoaded();

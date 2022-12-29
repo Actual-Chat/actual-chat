@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits AccountBadgeBase
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <AvatarName Avatar="@m.Account.Avatar" Class="@Class" />

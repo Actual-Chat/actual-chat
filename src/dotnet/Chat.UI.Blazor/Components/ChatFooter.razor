@@ -1,7 +1,7 @@
 ﻿@using ActualChat.Chat.UI.Blazor.Pages
 @inherits ComputedStateComponent<ChatFooter.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var editorCls = "";
     if (ScreenSize.IsNarrow())
         editorCls = "narrow";

@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatInfo?>
 @{
-    var count = State.LatestNonErrorValue?.UnreadCount ?? 0;
+    var count = State.Value?.UnreadCount ?? 0;
     if (count == 0)
         return;
 

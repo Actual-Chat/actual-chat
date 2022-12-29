@@ -2,7 +2,7 @@
 @using ActualChat.Notification
 @inherits ComputedStateComponent<ChatNotificationMode>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <Toggle

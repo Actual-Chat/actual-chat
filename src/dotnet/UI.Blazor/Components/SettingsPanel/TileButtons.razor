@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<bool>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var cls = m ? "text-primary" : "text-icons-01";
 }
 

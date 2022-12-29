@@ -1,7 +1,7 @@
 @using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var count = m.AllChats.Select(c => c.UnreadCount).Sum();
 
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
@@ -84,7 +84,7 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        if (State.LatestNonErrorValue != Model.None)
+        if (State.Value != Model.None)
             LoadingUI.MarkLoaded();
     }
 
@@ -104,7 +104,7 @@
     }
 
     private void OnUnreadBadgeClick() {
-        var allChats = State.LatestNonErrorValue.AllChats;
+        var allChats = State.Value.AllChats;
         var firstUnreadChat = allChats.FirstOrDefault(c => c.UnmutedUnreadCount != 0);
         if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatUI.SelectedChatId.Value)
             return;

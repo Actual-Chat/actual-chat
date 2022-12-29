@@ -18,7 +18,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     private VirtualListDataQuery LastQuery { get; set; } = VirtualListDataQuery.None;
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
-    private VirtualListData<TItem> Data => State.LatestNonErrorValue;
+    private VirtualListData<TItem> Data => State.Value;
     private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
 
     private int RenderIndex { get; set; } = 0;

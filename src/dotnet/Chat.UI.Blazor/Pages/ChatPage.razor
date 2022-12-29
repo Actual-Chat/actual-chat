@@ -5,7 +5,7 @@
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
 @{
-    var m = _lastRenderedModel = State.LatestNonErrorValue;
+    var m = _lastRenderedModel = State.Value;
     if (m.IsUnavailable) {
         <RequireChat ChatSid="@m.ChatId" />
         return;
@@ -76,7 +76,7 @@
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
             || State.HasError
-            || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
+            || !ReferenceEquals(_lastRenderedModel, State.Value);
 
     protected override Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)

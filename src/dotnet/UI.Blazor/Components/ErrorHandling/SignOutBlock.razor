@@ -3,7 +3,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<AccountFull>
 @{
-    var account = State.LatestNonErrorValue;
+    var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 

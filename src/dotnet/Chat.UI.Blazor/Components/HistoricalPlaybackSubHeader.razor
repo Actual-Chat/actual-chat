@@ -152,14 +152,14 @@
         => ChatPlayers.StopPlayback();
 
     private void OnResume() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         if (m.ChatPlayer == null)
             return;
         _ = m.ChatPlayer.Playback.Resume(default);
     }
 
     private void OnPause() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         if (m.ChatPlayer == null)
             return;
         _ = m.ChatPlayer.Playback.Pause(default);
@@ -173,7 +173,7 @@
 
     private void Rewind(TimeSpan shift) {
         _rewindController ??= new RewindController(OnRewindRequested);
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         var moment = m.PlayingAt;
         if (!moment.HasValue || m.ChatPlayer == null)
             return;
@@ -182,7 +182,7 @@
 
     private void OnRewindRequested(ChatId chatId, DateTime momentFrom, TimeSpan shift) {
         _ = InvokeAsync(() => {
-            var m = State.LatestNonErrorValue;
+            var m = State.Value;
             if (m.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
                 _ = PlayAt(m.ChatPlayer, momentFrom, shift);
         });

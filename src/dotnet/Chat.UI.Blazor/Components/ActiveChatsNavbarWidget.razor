@@ -1,6 +1,6 @@
 @inherits ComputedStateComponent<ActiveChatsNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var title = "Active chats";
     var titleClass = "text-sm font-medium px-2 pb-2";
     if (m.IsCollapsed) {

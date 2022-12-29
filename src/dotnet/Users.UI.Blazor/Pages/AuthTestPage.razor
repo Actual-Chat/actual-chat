@@ -2,7 +2,7 @@
 @using Error = ActualChat.UI.Blazor.Components.Error
 @inherits ComputedStateComponent<AuthTestPage.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var error = State.Error;
     var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();

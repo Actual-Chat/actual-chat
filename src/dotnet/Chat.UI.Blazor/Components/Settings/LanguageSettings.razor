@@ -2,7 +2,7 @@
 @using ActualChat.Chat.UI.Blazor.Components.Notifications
 @inherits ComputedStateComponent<LanguageSettings.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
         return;
 

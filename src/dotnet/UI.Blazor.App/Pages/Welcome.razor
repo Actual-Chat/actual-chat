@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Welcome.Model>
 @layout NoLayout
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var account = m.Account;
     var user = account.User;
     var usedAuthSchemas = user.Identities.Select(kv => kv.Key.Schema).ToHashSet();

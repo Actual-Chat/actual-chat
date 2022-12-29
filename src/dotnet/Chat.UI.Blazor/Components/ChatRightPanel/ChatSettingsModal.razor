@@ -2,11 +2,11 @@
 @using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
-@implements IModalView<ChatSettingsModal.ModalInput>
-@inherits ComputedStateComponent<ChatSettingsModal.Model>
-@attribute [MatchFor(typeof(ModalInput), typeof(IModalView))]
+@implements IModalView<ChatSettingsModal.Model>
+@inherits ComputedStateComponent<ChatSettingsModal.ComputedModel>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
@@ -85,11 +85,11 @@
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
-    [Parameter] public ModalInput ModalModel { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = ComputedModel.None,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
@@ -102,7 +102,7 @@
         _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var rules = await Chats.GetRules(Session, ModalModel.Chat.Id, cancellationToken);
         var invites = await Invites.ListChatInvites(Session, ModalModel.Chat.Id, cancellationToken);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
@@ -135,6 +135,19 @@
         await ModalInstance.CloseAsync();
     }
 
+    private void OnImagePicked(string contentId) {
+        _form.Picture = contentId;
+        StateHasChanged();
+    }
+
+    private async Task OnNewInviteClick() {
+        var invite = new Invite {
+            Remaining = 10, // TODO: make it configurable
+            Details = new ChatInviteOption(ModalModel.Chat.Id),
+        };
+        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+    }
+
     public sealed class FormModel
     {
         [Required, MinLength(1)]
@@ -156,26 +169,13 @@
         }
     }
 
-    private void OnImagePicked(string contentId) {
-        _form.Picture = contentId;
-        StateHasChanged();
-    }
-
-    private async Task OnNewInviteClick() {
-        var invite = new Invite {
-            Remaining = 10, // TODO: make it configurable
-            Details = new ChatInviteOption(ModalModel.Chat.Id),
-        };
-        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
-    }
-
-    public sealed record ModalInput(Chat Chat);
-
-    public sealed record Model {
-        public static Model None { get; } = new();
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new();
 
         public AuthorRules? Rules { get; init; }
         public DisplayUrl? Link { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }
+
+    public sealed record Model(Chat Chat);
 }

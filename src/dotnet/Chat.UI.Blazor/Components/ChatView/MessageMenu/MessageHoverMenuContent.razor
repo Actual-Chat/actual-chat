@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<MessageHoverMenuContent.Model>
 @{
     var entry = Message.Entry;
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var quickReactionTooltip = $"React with '{Emoji.ThumbsUp.Name}'";
 }
 <div class="flex-x gap-x-1">

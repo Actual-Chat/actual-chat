@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<AuthorRules>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <div class="flex-x px-2 md:pl-5 md:pr-2 min-h-14 border-b border-bg-04">
@@ -29,12 +29,6 @@
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void OnHideRightPanelClick()
-        => RightPanelUI.ChangeVisibility(false);
-
-    private void OnEditChatSettingsClick()
-        => ModalUI.Show(new ChatSettingsModal.ModalInput(Chat));
-
     protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {
             InitialValue = AuthorRules.None(Chat.Id),
@@ -43,4 +37,10 @@
 
     protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)
         => Chats.GetRules(Session, Chat.Id, default);
+
+    private void OnHideRightPanelClick()
+        => RightPanelUI.ChangeVisibility(false);
+
+    private void OnEditChatSettingsClick()
+        => ModalUI.Show(new ChatSettingsModal.Model(Chat));
 }

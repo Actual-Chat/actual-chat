@@ -1,7 +1,7 @@
 @page "/u/{UserSid}"
 @inherits ComputedStateComponent<UserPage.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
         return;
 
@@ -86,28 +86,6 @@
             IsOwn = isOwn,
         };
     }
-
-    /*
-    private async Task OnAddContactClick() {
-        if (IsAddingContact)
-            return;
-
-        IsAddingContact = true;
-        StateHasChanged();
-        try {
-            var m = State.LatestNonErrorValue;
-            m.Account.Require();
-            var command = new IContacts.ChangeCommand(Session, m.ContactId, null, new Change<Contact>() {
-                Create = new Contact(m.ContactId),
-            });
-            await UICommander.Run(command);
-        }
-        finally {
-            IsAddingContact = false;
-            StateHasChanged();
-        }
-    }
-    */
 
     // Nested types
 

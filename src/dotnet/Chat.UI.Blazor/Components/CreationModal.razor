@@ -4,7 +4,7 @@
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<CreationModal.ComputedModel>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var btnCls = PageNumber == 1 ? "creation-panel-01" : "";
 
     RenderFragment RenderArrowBack()

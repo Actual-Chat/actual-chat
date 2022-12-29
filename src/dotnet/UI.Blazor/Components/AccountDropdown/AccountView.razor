@@ -2,7 +2,7 @@
 @using ActualChat.Users
 @inherits ComputedStateComponent<ActualChat.Users.AccountFull>
 @{
-    var account = State.LatestNonErrorValue;
+    var account = State.Value;
     if (account == AccountFull.Loading)
         return;
 }

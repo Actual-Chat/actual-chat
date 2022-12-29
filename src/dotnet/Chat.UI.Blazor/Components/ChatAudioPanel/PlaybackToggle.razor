@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<PlaybackToggle.Model>
 @{
     var lastRenderedState = _lastRenderedState;
-    var m = _lastRenderedState = State.LatestNonErrorValue;
+    var m = _lastRenderedState = State.Value;
     if (lastRenderedState.Chat.Id != m.Chat.Id)
         lastRenderedState = m;
     var mediaState = m.MediaState;
@@ -35,8 +35,8 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
-    private bool IsLoading => !Chat.Id.IsNone && State.LatestNonErrorValue.Chat.Id != Chat.Id;
-    private bool IsListening => !IsLoading && State.LatestNonErrorValue.MediaState.IsListening;
+    private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsListening => !IsLoading && State.Value.MediaState.IsListening;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 

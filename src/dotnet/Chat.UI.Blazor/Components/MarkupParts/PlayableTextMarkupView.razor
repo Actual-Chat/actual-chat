@@ -3,7 +3,7 @@
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
 @attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
-    var m = _lastRenderedModel = State.LatestNonErrorValue;
+    var m = _lastRenderedModel = State.Value;
     var colorCls = m.Color switch {
         PlayableTextColor.Blue => "playable-text-color-blue",
         PlayableTextColor.Purple => "playable-text-color-purple",
@@ -209,7 +209,7 @@
     }
 
     public override ValueTask DisposeAsync() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         m.ColorLease?.Release();
         return base.DisposeAsync();
     }

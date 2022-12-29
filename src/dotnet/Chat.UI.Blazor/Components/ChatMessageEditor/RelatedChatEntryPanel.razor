@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<RelatedChatEntryPanel.Model?>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     if (m == null)
         return;
 }

@@ -39,7 +39,7 @@
     }
 
     private async Task OnClick() {
-        var lastEntryId = State.LatestNonErrorValue.LastEntryId;
+        var lastEntryId = State.Value.LastEntryId;
         if (lastEntryId.IsNone)
             return;
 

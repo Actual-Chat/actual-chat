@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatMediaState>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
 }
@@ -25,5 +25,5 @@
         => ChatUI.GetMediaState(ChatId);
 
     private void OnListenClick()
-        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
+        => _ = ChatUI.SetListeningState(ChatId, !State.Value.IsListening);
 }

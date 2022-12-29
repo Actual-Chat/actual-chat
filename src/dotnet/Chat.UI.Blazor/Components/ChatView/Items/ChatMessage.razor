@@ -4,7 +4,7 @@
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
 @{
-    var m = _lastRenderedModel = State.LatestNonErrorValue;
+    var m = _lastRenderedModel = State.Value;
     var message = _lastRenderedMessage = Message;
     var markup = _lastRenderedMarkup = _markup;
     var entry = message.Entry;
@@ -147,7 +147,7 @@
     }
 
     protected override bool ShouldRender() {
-        return !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue)
+        return !ReferenceEquals(_lastRenderedModel, State.Value)
             || !ReferenceEquals(_lastRenderedMessage, Message)
             || !ReferenceEquals(_lastRenderedMarkup, _markup);
     }

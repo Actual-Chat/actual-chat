@@ -2,7 +2,7 @@
 @using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<MessageMenuContent.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var entry = ChatMessageModel.Entry;
     var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
 }

@@ -4,7 +4,7 @@
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var title = $"User: {m.Author.Avatar.Name}";
 }
 
@@ -81,7 +81,7 @@
         IsAddingContact = true;
         StateHasChanged();
         try {
-            var m = State.LatestNonErrorValue;
+            var m = State.Value;
             if (m.ContactId.IsNone)
                 return;
 
@@ -99,7 +99,7 @@
     }
 
     private void OnSendMessageClick() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         if (m.ContactId.IsNone || m.OwnAccount == null)
             return;
 

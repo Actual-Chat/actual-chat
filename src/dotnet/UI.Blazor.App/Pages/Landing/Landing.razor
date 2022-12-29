@@ -7,7 +7,7 @@
 @inherits ComputedStateComponent<Landing.Model>
 @layout NoLayout
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var account = m.Account;
     var user = account?.User.OrGuest();
     var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
@@ -533,7 +533,7 @@
         return new() {
             Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
             EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
-            IsMenuOpen = State.LatestNonErrorValue.IsMenuOpen,
+            IsMenuOpen = State.Value.IsMenuOpen,
         };
     }
 
@@ -541,7 +541,7 @@
         => ClientAuth.SignIn(name);
 
     private void OnMenuHandle() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         m.IsMenuOpen = !m.IsMenuOpen;
         StateHasChanged();
     }

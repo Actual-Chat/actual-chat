@@ -2,7 +2,7 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatRecorderToggle.Model?>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var recordState = m?.RecordingState ?? RecordingState.Off;
     var wrapperCls = recordState switch
     {
@@ -73,7 +73,7 @@
         var recordingChatId = await ChatUI.GetRecordingChatId();
         var isRecordingRequested = recordingChatId == ChatId && !recordingChatId.IsNone;
         // Default scheduler is used from here
-        var lastState = State.LatestNonErrorValue;
+        var lastState = State.Value;
         if (lastState == null)
             return new (isRecordingRequested ? RecordingState.On : RecordingState.Off);
 
@@ -94,7 +94,7 @@
     }
 
     private async Task OnClick() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         var isRecordingInThisChat = m?.RecordingState is RecordingState.On or RecordingState.OffToOn or RecordingState.Initializing;
         if (isRecordingInThisChat) {
             _ = ChatUI.SetRecordingChatId(default);

@@ -4,12 +4,12 @@
 @inherits ComputedStateComponent<TState?>
 @implements IMenu
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     if (m == null)
         return; // Nothing to render yet
 }
 
-<CascadingValue Value="State.LatestNonErrorValue">
+<CascadingValue Value="@m">
     <DynamicComponent Type="typeof(TMenuContent)"/>
 </CascadingValue>
 
@@ -22,7 +22,7 @@
     public bool IsShown { get; private set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        var canBeShown = State.LatestNonErrorValue != null;
+        var canBeShown = State.Value != null;
         if (IsShown != canBeShown)
             await Show(canBeShown);
     }

@@ -2,7 +2,7 @@
 @using ActualChat.Chat
 @inherits ComputedStateComponent<ImmutableArray<AvatarFull>>
 @{
-    var avatars = State.LatestNonErrorValue;
+    var avatars = State.Value;
 }
 
 <div class="flex-y gap-y-2">

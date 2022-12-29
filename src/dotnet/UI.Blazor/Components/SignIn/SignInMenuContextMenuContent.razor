@@ -3,7 +3,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<ActualChat.Users.AccountFull>
 @{
-    var account = State.LatestNonErrorValue;
+    var account = State.Value;
     if (AuthSchemas == null || !account.IsGuest)
         return;
 

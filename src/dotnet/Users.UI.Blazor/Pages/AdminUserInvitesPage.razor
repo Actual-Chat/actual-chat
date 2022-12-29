@@ -2,7 +2,7 @@
 @using ActualChat.Invite
 @inherits ComputedStateComponent<ImmutableArray<Invite>>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <RequireAccount MustBeAdmin="true"/>

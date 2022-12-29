@@ -2,7 +2,7 @@
 @using ActualChat.Notification
 @inherits ComputedStateComponent<RightPanelChatInfo.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     if (m.Title == null)
         return;
 }

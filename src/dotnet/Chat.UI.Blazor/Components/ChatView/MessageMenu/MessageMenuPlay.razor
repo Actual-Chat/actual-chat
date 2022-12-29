@@ -88,7 +88,7 @@
         }
         if (!playingAt.HasValue && State.ValueOrDefault != null) {
             // Try to keep last state to avoid blinks
-            var m = State.LatestNonErrorValue;
+            var m = State.Value;
             if (m.CanPlay == canPlay)
                 return m;
         }

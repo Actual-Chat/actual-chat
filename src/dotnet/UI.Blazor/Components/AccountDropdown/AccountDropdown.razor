@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Events
 @inherits ComputedStateComponent<AccountFull>
 @{
-    var account = State.LatestNonErrorValue;
+    var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
