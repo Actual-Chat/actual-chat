@@ -1,16 +1,10 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
@@ -345,6 +339,38 @@ internal static class Program
                 var dotnetTask = Cli
                     .Wrap(dotnet)
                     .WithArguments($"build -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
+                    .ToConsole(Green("dotnet: "))
+                    .ExecuteAsync(token).Task;
+
+                var npmTask = Cli
+                    .Wrap(npm)
+                    .WithArguments($"run build:{configuration}")
+                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
+                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
+                    .ToConsole(Blue("webpack: "))
+                    .ExecuteAsync(token).Task;
+
+                await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
+            }
+            finally {
+                if (!cts.IsCancellationRequested)
+                    cts.Cancel();
+                cts.Dispose();
+            }
+        });
+
+        Target("maui", DependsOn("clean-dist", "npm-install"), async () => {
+            var npm = TryFindCommandPath("npm")
+                ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
+
+            // if one of process exits then close another on Cancel()
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var token = cts.Token;
+            try {
+                var dotnetTask = Cli
+                    .Wrap(dotnet)
+                    .WithArguments($"build -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
+                    .WithWorkingDirectory(Path.Combine("src", "dotnet", "App.Maui"))
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
