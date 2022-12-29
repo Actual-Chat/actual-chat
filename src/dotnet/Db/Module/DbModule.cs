@@ -66,7 +66,7 @@ public class DbModule : HostModule<DbSettings>
         services.AddDbContextFactory<TDbContext>(builder => {
             switch (dbKind) {
             case DbKind.InMemory:
-                Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).Name);
+                Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).GetName());
                 builder.UseInMemoryDatabase(dbInfo.ConnectionString);
                 builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
                 break;

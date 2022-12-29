@@ -38,7 +38,7 @@ public class RedisModule : HostModule<RedisSettings>
         var configuration = parts.FirstOrDefault() ?? "";
         var keyPrefix = parts.Skip(1).SingleOrDefault() ?? "";
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
-            typeof(TContext).Name, configuration, keyPrefix);
+            typeof(TContext).GetName(), configuration, keyPrefix);
 
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;

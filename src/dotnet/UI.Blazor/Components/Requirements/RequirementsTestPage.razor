@@ -44,7 +44,7 @@
                 Errors:
                 <ul>
                     @foreach (var error in context.Errors) {
-                        <li><b>@error.GetType().Name</b>: @error.Message</li>
+                        <li><b>@error.GetType().GetName()</b>: @error.Message</li>
                     }
                 </ul>
             </div>

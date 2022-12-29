@@ -79,9 +79,9 @@ public readonly struct AuthorId : ISymbolIdentifier<AuthorId>
         => chatId.IsNone ? "" : $"{chatId.Value}:{localId.Format()}";
 
     public static AuthorId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<AuthorId>(s);
     public static AuthorId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<AuthorId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out AuthorId result)
     {

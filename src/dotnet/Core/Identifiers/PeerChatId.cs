@@ -106,9 +106,9 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         => userId1.IsNone ? "" : $"{IdPrefix}{userId1}-{userId2}";
 
     public static PeerChatId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<PeerChatId>(s);
     public static PeerChatId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<PeerChatId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out PeerChatId result)
     {

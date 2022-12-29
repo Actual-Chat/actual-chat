@@ -83,9 +83,9 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
         => ownerId.IsNone ? "" : $"{ownerId} {chatId}";
 
     public static ContactId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>(s);
     public static ContactId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<ContactId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out ContactId result)
     {

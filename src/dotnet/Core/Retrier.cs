@@ -14,7 +14,7 @@ public struct Retrier
     }
 
     public override string ToString()
-        => $"{GetType().Name}(#{TryIndex} / {MaxTryCount})";
+        => $"{GetType().GetName()}(#{TryIndex} / {MaxTryCount})";
 
     public bool Next()
         => MaxTryCount > ++TryIndex;

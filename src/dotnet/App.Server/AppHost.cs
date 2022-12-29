@@ -67,9 +67,9 @@ public class AppHost : IDisposable
         {
             DbInitializer.Current = dbInitializer;
             try {
-                log.LogInformation("{DbInitializer} started", dbInitializer.GetType().Name);
+                log.LogInformation("{DbInitializer} started", dbInitializer.GetType().GetName());
                 await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
-                log.LogInformation("{DbInitializer} completed", dbInitializer.GetType().Name);
+                log.LogInformation("{DbInitializer} completed", dbInitializer.GetType().GetName);
                 taskSource.TrySetResult(default);
             }
             catch (OperationCanceledException) {

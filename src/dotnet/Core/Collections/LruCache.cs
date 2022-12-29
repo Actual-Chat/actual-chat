@@ -87,7 +87,7 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     {
         if (!TryAdd(key, value))
             throw new ArgumentException(
-                $"The same key already exists in the {GetType().Name}.",
+                $"The same key already exists in the {GetType().GetName()}.",
                 nameof(value));
     }
 

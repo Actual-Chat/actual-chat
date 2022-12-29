@@ -79,9 +79,9 @@ public readonly struct RoleId : ISymbolIdentifier<RoleId>
         => chatId.IsNone ? "" : $"{chatId.Value}:{localId.Format()}";
 
     public static RoleId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<RoleId>(s);
     public static RoleId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<RoleId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out RoleId result)
     {

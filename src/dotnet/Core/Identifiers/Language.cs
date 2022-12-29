@@ -62,9 +62,9 @@ public readonly struct Language : ISymbolIdentifier<Language>
     // Parsing
 
     public static Language Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<Language>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<Language>(s);
     public static Language ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<Language>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out Language result)
     {

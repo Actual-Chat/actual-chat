@@ -87,9 +87,9 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     // Parsing
 
     public static PrincipalId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<PrincipalId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<PrincipalId>(s);
     public static PrincipalId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<PrincipalId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out PrincipalId result)
     {

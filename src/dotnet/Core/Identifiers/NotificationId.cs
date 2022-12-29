@@ -82,9 +82,9 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
         => userId.IsNone ? "" : $"{userId}:{ulid}";
 
     public static NotificationId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<NotificationId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<NotificationId>(s);
     public static NotificationId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<NotificationId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out NotificationId result)
     {

@@ -75,9 +75,9 @@ public readonly struct UserId : ISymbolIdentifier<UserId>,
     // Parsing
 
     public static UserId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<UserId>(s);
     public static UserId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<UserId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out UserId result)
     {

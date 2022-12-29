@@ -30,7 +30,7 @@ public sealed class SearchPhrase
     }
 
     public override string ToString()
-        => $"{GetType().Name}(\"{Text}\", re'{GetTermRegexString()}')";
+        => $"{GetType().GetName()}(\"{Text}\", re'{GetTermRegexString()}')";
 
     public string GetTermRegexString()
     {

@@ -81,9 +81,9 @@ public readonly struct TextEntryId : ISymbolIdentifier<TextEntryId>
         => chatId.IsNone ? "" : $"{chatId}:0:{localId.Format()}";
 
     public static TextEntryId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<TextEntryId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<TextEntryId>(s);
     public static TextEntryId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<TextEntryId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out TextEntryId result)
     {

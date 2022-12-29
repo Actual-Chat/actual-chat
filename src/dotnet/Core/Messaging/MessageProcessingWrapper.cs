@@ -15,7 +15,7 @@ public static class MessageProcessingWrapper
             throw;
         }
         catch (Exception ex) {
-            throw new MessageProcessingException($"{message.GetType().Name} processing failed.", ex) {
+            throw new MessageProcessingException($"{message.GetType().GetName()} processing failed.", ex) {
                 ProcessedMessage = message,
             };
         }
@@ -34,7 +34,7 @@ public static class MessageProcessingWrapper
             throw;
         }
         catch (Exception ex) {
-            throw new MessageProcessingException($"{message.GetType().Name} processing failed.", ex) {
+            throw new MessageProcessingException($"{message.GetType().GetName()} processing failed.", ex) {
                 ProcessedMessage = message,
             };
         }

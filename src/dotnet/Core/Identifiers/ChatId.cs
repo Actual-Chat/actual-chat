@@ -80,9 +80,9 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
     // Parsing
 
     public static ChatId Parse(string? s)
-        => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>();
+        => TryParse(s, out var result) ? result : throw StandardError.Format<ChatId>(s);
     public static ChatId ParseOrNone(string? s)
-        => TryParse(s, out var result) ? result : default;
+        => TryParse(s, out var result) ? result : StandardError.Format<ChatId>(s).LogWarning(DefaultLog, None);
 
     public static bool TryParse(string? s, out ChatId result)
     {

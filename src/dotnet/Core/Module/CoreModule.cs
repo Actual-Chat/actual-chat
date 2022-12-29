@@ -29,6 +29,8 @@ public class CoreModule : HostModule<CoreSettings>
             .ToList();
 
         // Common services
+        services.AddSingleton<StaticImportsInitializer>();
+        services.AddHostedService<StaticImportsInitializer>();
         services.AddSingleton<UrlMapper>(sp => new UrlMapper(
             sp.GetRequiredService<HostInfo>()));
 

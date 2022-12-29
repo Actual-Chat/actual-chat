@@ -29,6 +29,7 @@
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
+    <Using Include="ActualChat.StaticImports" Static="true" />
     <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Channels" />
     <Using Include="ActualChat.Collections" />
