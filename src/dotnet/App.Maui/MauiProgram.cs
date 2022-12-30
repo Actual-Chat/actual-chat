@@ -227,6 +227,8 @@ public static class MauiProgram
         services.AddScoped<IAudioOutputController>(sp => new AndroidAudioOutputController(sp));
 #elif IOS
         services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>();
+#elif WINDOWS
+        services.AddTransient<IDeviceTokenRetriever, WindowsDeviceTokenRetriever>();
 #endif
 
         // Misc.
