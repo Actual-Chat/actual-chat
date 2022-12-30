@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Transcription;
 using Stl.Fusion.Client;
@@ -19,7 +20,13 @@ public class AudioClientModule : HostModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
             return; // Client-side only module
 
-        services.AddFusion().AddRestEaseClient();
+        var fusionClient = services.AddFusion().AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
 
         services.AddScoped<AudioDownloader>(sp => new AudioDownloader(sp));
         services.AddScoped<AudioClient>(sp => new AudioClient(sp));

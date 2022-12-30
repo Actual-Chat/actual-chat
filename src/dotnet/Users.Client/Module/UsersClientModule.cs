@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using Stl.Fusion.Client;
@@ -20,6 +21,12 @@ public class UsersClientModule : HostModule
 
         var fusion = services.AddFusion();
         var fusionClient = services.AddFusion().AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
         var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
 
         fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();

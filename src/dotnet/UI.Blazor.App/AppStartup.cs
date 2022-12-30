@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using ActualChat.Audio.Module;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
@@ -84,6 +85,10 @@ namespace ActualChat.UI.Blazor.App
                 var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                 var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
                 o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUrl.ToUri());
+                o.HttpClientActions.Add(client => {
+                    client.DefaultRequestVersion = HttpVersion.Version30;
+                    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                });
             });
             fusionClient.ConfigureWebSocketChannel(c => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();

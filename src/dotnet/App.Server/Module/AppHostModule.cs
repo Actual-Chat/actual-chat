@@ -141,6 +141,12 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
         var fusionAuth = fusion.AddAuthentication();
         fusion.AddLocalCommandScheduler(Queues.Default);
 

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using Microsoft.Extensions.ObjectPool;
@@ -85,6 +86,12 @@ public class CoreModule : HostModule<CoreSettings>
     {
         var fusion = services.AddFusion();
         var fusionClient = fusion.AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
 
         // Features
         fusionClient.AddReplicaService<ServerFeaturesClient.IClient, ServerFeaturesClient.IClientDef>();

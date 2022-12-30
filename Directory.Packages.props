@@ -94,7 +94,8 @@
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)"/>
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)"/>
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2"/>
-    <PackageVersion Include="RestEase" Version="1.5.7"/>
+    <PackageVersion Include="RestEase" Version="1.6.1"/>
+    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.1"/>
     <PackageVersion Include="Pidgin" Version="3.2.0"/>
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
     <PackageVersion Include="Polly" Version="7.2.3"/>
