@@ -226,9 +226,11 @@ public static class MauiProgram
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new AndroidDeviceTokenRetriever(sp));
         services.AddScoped<IAudioOutputController>(sp => new AndroidAudioOutputController(sp));
 #elif IOS
-        services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>();
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(sp => new IOSDeviceTokenRetriever());
+#elif MACCATALYST
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, MacDeviceTokenRetriever>(sp => new MacDeviceTokenRetriever());
 #elif WINDOWS
-        services.AddTransient<IDeviceTokenRetriever, WindowsDeviceTokenRetriever>();
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new WindowsDeviceTokenRetriever());
 #endif
 
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
