@@ -1,4 +1,4 @@
-import '../node_modules/long-press-event/dist/long-press-event.min.js'
+import './long-press-event.js'
 import SwiftClick from 'swiftclick';
 import { NextInteraction } from 'next-interaction';
 
