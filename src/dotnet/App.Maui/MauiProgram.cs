@@ -231,6 +231,7 @@ public static class MauiProgram
         services.AddTransient<IDeviceTokenRetriever, WindowsDeviceTokenRetriever>();
 #endif
 
+        ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
         services.AddScoped<DisposeTracer>(sp => new DisposeTracer(sp));
     }

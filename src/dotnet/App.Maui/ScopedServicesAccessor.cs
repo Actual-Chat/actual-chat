@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Stl.Internal;
 
 namespace ActualChat.App.Maui;
@@ -37,6 +38,8 @@ public static class ScopedServicesAccessor
     {
         lock(_lock) {
             if (_scopedServices != null) {
+                var jsRuntime = _scopedServices.GetRequiredService<IJSRuntime>();
+                Services.JSObjectReferenceDisconnectHelper.MarkAsDisconnected(jsRuntime);
                 _scopedServices = null;
                 _whenInitializedSource = TaskSource.New<Unit>(true);
                 AppServices.LogFor(nameof(ScopedServicesAccessor)).LogDebug("ScopedServicesAccessor.Release.");
