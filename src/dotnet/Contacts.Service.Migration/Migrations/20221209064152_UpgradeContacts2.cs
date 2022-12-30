@@ -26,7 +26,7 @@ namespace ActualChat.Contacts.Migrations
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
-            var dbInitializer = DbInitializer.Current as DbInitializer<ContactsDbContext>;
+            var dbInitializer = DbInitializer.Get<ContactsDbInitializer>();
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();

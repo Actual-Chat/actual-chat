@@ -23,19 +23,11 @@ namespace ActualChat.Contacts.Migrations
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
-            var dbInitializer = DbInitializer.Current as DbInitializer<ContactsDbContext>;
-            var chatDbInitializer = dbInitializer.InitializeTasks
-                .Select(kv => kv.Key is ChatDbInitializer x ? x : null)
-                .SingleOrDefault(x => x != null);
-            if (chatDbInitializer == null)
-                return;
+            var dbInitializer = DbInitializer.Get<ContactsDbInitializer>();
+            var chatDbInitializer = await DbInitializer.Get<ChatDbInitializer>().CompleteEarlierMigrations(this);
+            var usersDbInitializer = await DbInitializer.Get<UsersDbInitializer>().CompleteEarlierMigrations(this);
 
-            var usersDbInitializer = dbInitializer.InitializeTasks
-                .Select(kv => kv.Key is UsersDbInitializer x ? x : null)
-                .SingleOrDefault(x => x != null);
-            if (usersDbInitializer == null)
-                return;
-
+            var log = dbInitializer.Services.LogFor(GetType());
             var clocks = dbInitializer.Services.Clocks();
             var versionGenerator = dbInitializer.DbHub.VersionGenerator;
 
