@@ -84,7 +84,7 @@
         _ = Loaded();
     }
 
-    public void Dispose()
+    public virtual void Dispose()
         => CircuitContext.Dispose();
 
     private async Task PrepareForTheFirstRender() {

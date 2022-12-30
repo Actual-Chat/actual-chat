@@ -6,7 +6,7 @@ public static class ScopedServicesAccessor
 {
     private static readonly object _lock = new();
     private static IServiceProvider? _scopedServices;
-    private static readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
+    private static TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
     public static bool IsInitialized
         => _scopedServices != null;
@@ -26,11 +26,20 @@ public static class ScopedServicesAccessor
                     throw new ArgumentNullException(nameof(value));
                 if (_scopedServices != null && !ReferenceEquals(_scopedServices, value))
                     throw Errors.AlreadyInitialized(nameof(ScopedServices));
-#if ANDROID
-                AppServices.LogFor("ScopedServicesAccessor").LogDebug("ScopedServicesAccessor.Initialize. IsInitialized: {IsInitialized}", IsInitialized);
-#endif
+                AppServices.LogFor(nameof(ScopedServicesAccessor)).LogDebug("ScopedServicesAccessor.Initialize. IsInitialized: {IsInitialized}", IsInitialized);
                 _scopedServices = value;
                 _whenInitializedSource.TrySetResult(default);
+            }
+        }
+    }
+
+    public static void Forget()
+    {
+        lock(_lock) {
+            if (_scopedServices != null) {
+                _scopedServices = null;
+                _whenInitializedSource = TaskSource.New<Unit>(true);
+                AppServices.LogFor(nameof(ScopedServicesAccessor)).LogDebug("ScopedServicesAccessor.Release.");
             }
         }
     }

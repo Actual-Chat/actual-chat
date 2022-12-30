@@ -11,4 +11,18 @@ public class MauiBlazorApp : UI.Blazor.App.App
         ScopedServicesAccessor.ScopedServices = Services;
         base.OnInitialized();
     }
+
+    public override void Dispose()
+    {
+        // On refreshing page, MAUI dispose PageContext.
+        // Which dispose Renderer with all components.
+        // And after that container is disposed.
+        // So we forget previous scoped services container in advance.
+        ScopedServicesAccessor.Forget();
+        base.Dispose();
+    }
+
+    public MauiBlazorApp()
+    {
+    }
 }
