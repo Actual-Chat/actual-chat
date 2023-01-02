@@ -1,11 +1,11 @@
 using System.Text.RegularExpressions;
 using ActualChat.Hosting;
-using Cysharp.Text;
 
 namespace ActualChat;
 
 public sealed class UrlMapper
 {
+    private static readonly char[] UriPathEndChar = new[] { '#', '?' };
     private static readonly Regex IsAbsoluteUrlRe = new(@"^[\w\d]+://", RegexOptions.Compiled);
 
     private string _baseUrlWithoutBackslash;
@@ -67,6 +67,38 @@ public sealed class UrlMapper
                 ? _baseUrlWithoutBackslash + url
                 : baseUrl + url;
         return baseUrl + url.TrimStart('/');
+    }
+
+    /// <summary>
+    /// Given a base URI (e.g., one previously returned by <see cref="BaseUri"/>),
+    /// converts an absolute URI into one relative to the base URI prefix.
+    /// </summary>
+    /// <param name="uri">An absolute URI that is within the space of the base URI.</param>
+    /// <returns>A relative URI path.</returns>
+    public string ToBaseRelativePath(string uri)
+    {
+        if (uri.StartsWith(BaseUri!.OriginalString, StringComparison.Ordinal))
+        {
+            // The absolute URI must be of the form "{baseUri}something" (where
+            // baseUri ends with a slash), and from that we return "something"
+            return uri.Substring(BaseUri.OriginalString.Length);
+        }
+
+        var pathEndIndex = uri.IndexOfAny(UriPathEndChar);
+        var uriPathOnly = pathEndIndex < 0 ? uri : uri.Substring(0, pathEndIndex);
+        if ($"{uriPathOnly}/".Equals(BaseUri.OriginalString, StringComparison.Ordinal))
+        {
+            // Special case: for the base URI "/something/", if you're at
+            // "/something" then treat it as if you were at "/something/" (i.e.,
+            // with the trailing slash). It's a bit ambiguous because we don't know
+            // whether the server would return the same page whether or not the
+            // slash is present, but ASP.NET Core at least does by default when
+            // using PathBase.
+            return uri.Substring(BaseUri.OriginalString.Length - 1);
+        }
+
+        var message = $"The URI '{uri}' is not contained by the base URI '{BaseUri}'.";
+        throw new ArgumentException(message);
     }
 
     // Returns absolute URL
