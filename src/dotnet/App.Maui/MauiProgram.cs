@@ -13,6 +13,7 @@ using ActualChat.Notification.UI.Blazor;
 using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.App.Maui;
 
@@ -225,6 +226,8 @@ public static class MauiProgram
 #if ANDROID
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new AndroidDeviceTokenRetriever(sp));
         services.AddScoped<IAudioOutputController>(sp => new AndroidAudioOutputController(sp));
+        services.AddScoped<ClipboardUI>(sp => new AndroidClipboardUI(
+            sp.GetRequiredService<IJSRuntime>()));
 #elif IOS
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(sp => new IOSDeviceTokenRetriever());
 #elif MACCATALYST

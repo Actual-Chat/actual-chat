@@ -65,7 +65,7 @@
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatMessageModel ChatMessageModel { get; set; } = null!;
     [Parameter] public string? ClickedLinkUrl { get; set; }
@@ -96,7 +96,7 @@
     }
 
     private async Task CopyMessageLink(ChatEntry chatEntry) {
-        var url = $"{Nav.BaseUri}chat/{chatEntry.ChatId}#{chatEntry.LocalId}";
+        var url = UrlMapper.BaseUri + Links.Chat(chatEntry.Id);
         await ClipboardUI.WriteText(url);
     }
 
