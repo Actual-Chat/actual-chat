@@ -245,7 +245,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
                     cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
                         ExporterTimeoutMilliseconds = 10_000,
-                        MaxExportBatchSize = 256,
+                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                         MaxQueueSize = 1024,
                         ScheduledDelayMilliseconds = 20_000,
                     };
@@ -267,6 +267,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                         "/status",
                         "/_blazor",
                         "/_framework",
+                        "/healthz",
                     };
                     opt.Filter = httpContext =>
                         !excludedPaths.Any(x
@@ -279,7 +280,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
                     cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
                         ExporterTimeoutMilliseconds = 10_000,
-                        MaxExportBatchSize = 256,
+                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                         MaxQueueSize = 1024,
                         ScheduledDelayMilliseconds = 20_000,
                     };
