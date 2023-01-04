@@ -11,6 +11,8 @@ public interface IAccounts : IComputeService
 
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    public Task InvalidateEverything(InvalidateEverythingCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record UpdateCommand(
@@ -18,4 +20,10 @@ public interface IAccounts : IComputeService
         [property: DataMember] AccountFull Account,
         [property: DataMember] long? ExpectedVersion
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record InvalidateEverythingCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] bool Everywhere = false
+        ) : ICommand<Unit>, IBackendCommand;
 }

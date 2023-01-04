@@ -1,13 +1,15 @@
-using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Module;
 
 public partial class ChatDbInitializer
 {
-    private async Task Verify(ChatDbContext dbContext, CancellationToken cancellationToken)
+    protected override async Task VerifyData(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Verifying DB...");
+        Log.LogInformation("Verifying data...");
+
+        var dbContext = DbHub.CreateDbContext(true);
+        await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.Chats
             .Select(c => c.Id)

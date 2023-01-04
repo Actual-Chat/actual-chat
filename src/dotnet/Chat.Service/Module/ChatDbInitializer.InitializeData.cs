@@ -1,75 +1,113 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Mathematics.Internal;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.Authentication.Commands;
 using Stl.IO;
 
 namespace ActualChat.Chat.Module;
 
-public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
+public partial class ChatDbInitializer
 {
-    private async Task Generate(ChatDbContext dbContext, CancellationToken cancellationToken)
+    protected override async Task InitializeData(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Generating initial DB content...");
+        // This initializer runs after everything else
+        var dependencies = (
+            from kv in InitializeTasks
+            let dbInitializer = kv.Key
+            // let dbInitializerName = dbInitializer.GetType().Name
+            let task = kv.Value
+            where dbInitializer != this
+            select task
+            ).ToArray();
+        await Task.WhenAll(dependencies).ConfigureAwait(false);
 
-        // Creating "The Actual One" chat
-        var defaultChatId = Constants.Chat.DefaultChatId;
-        var adminUserId = Constants.User.Admin.UserId;
-        var dbChat = new DbChat {
-            Id = defaultChatId,
-            Version = VersionGenerator.NextVersion(),
-            Title = "The Actual One",
-            CreatedAt = Clocks.SystemClock.Now,
-            IsPublic = true,
-            Owners = {
-                new DbChatOwner {
-                    DbChatId = defaultChatId,
-                    DbUserId = adminUserId,
-                },
-            },
-        };
-        dbContext.Chats.Add(dbChat);
+        Log.LogInformation("Initializing data...");
 
-        var dbAuthor = new DbAuthor {
-            Id = new AuthorId(defaultChatId, 1, AssumeValid.Option),
-            ChatId = defaultChatId,
-            LocalId = 1,
-            Version = VersionGenerator.NextVersion(),
-            IsAnonymous = false,
-            UserId = adminUserId,
-        };
-        dbContext.Authors.Add(dbAuthor);
+        var dbContext = DbHub.CreateDbContext(true);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
+        if (HostInfo.IsDevelopmentInstance)
+            await EnsureDefaultChatExists(dbContext, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task EnsureAnnouncementsChatExists(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        if (await dbContext.Chats.AnyAsync(c => c.Id == chatId, cancellationToken).ConfigureAwait(false))
+            return;
 
         try {
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("There is no 'Announcements' chat, creating one");
+            var command = new IChatsUpgradeBackend.CreateAnnouncementsChatCommand();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("'Announcements' chat is created");
         }
-        catch (DbUpdateException) {
-            // Looks like we're starting w/ existing DB
-            dbContext.ChangeTracker.Clear();
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create 'Announcements' chat!");
+            throw;
         }
+    }
 
-        await AddAuthors(dbContext, cancellationToken).ConfigureAwait(false);
+    private async Task EnsureDefaultChatExists(ChatDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var chatId = Constants.Chat.DefaultChatId;
+        if (await dbContext.Chats.AnyAsync(c => c.Id == chatId, cancellationToken).ConfigureAwait(false))
+            return;
 
-        await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
-            .ConfigureAwait(false);
-        await AddAudioBlob("0001.webm", "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm", cancellationToken)
-            .ConfigureAwait(false);
+        try {
+            Log.LogInformation("There is no default chat, creating one");
 
-        var now = Clocks.SystemClock.Now;
-        await AddRandomEntries(dbContext,
-                dbChat,
-                dbAuthor,
-                0.1,
-                2000,
-                null,
-                cancellationToken)
-            .ConfigureAwait(false);
-        // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+            var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
+            var admin = await accountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
 
-        // TODO(AY): Remove this once logic above is upgraded to create chats properly
-        await UpgradeChats(dbContext, cancellationToken).ConfigureAwait(false);
-        await UpgradePermissions(dbContext, cancellationToken).ConfigureAwait(false);
-        await EnsureAnnouncementsChatExists(dbContext, cancellationToken).ConfigureAwait(false);
+            var command = new IChatsBackend.ChangeCommand(chatId, null, new() {
+                Create = new ChatDiff {
+                    Title = "The Actual One",
+                    IsPublic = true,
+                },
+            }, admin.Id);
+            var chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+
+            var dbChat = await dbContext.Chats
+                .Get(chat.Id, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+            var dbAdminAuthor = await dbContext.Authors
+                .SingleAsync(a => a.ChatId == chat.Id && a.UserId == admin.Id, cancellationToken)
+                .ConfigureAwait(false);
+
+            await AddAuthors(dbContext, cancellationToken).ConfigureAwait(false);
+
+            await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
+                .ConfigureAwait(false);
+            await AddAudioBlob("0001.webm", "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm", cancellationToken)
+                .ConfigureAwait(false);
+
+            var now = Clocks.SystemClock.Now;
+            await AddRandomEntries(dbContext,
+                    dbChat,
+                    dbAdminAuthor,
+                    0.1,
+                    2000,
+                    null,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            // await AddRandomEntries(dbContext, dbChat, dbAdminAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+
+            // We modify the DB directly here, so we have to invalidate everything
+            await InvalidateEverything(cancellationToken).ConfigureAwait(false);
+
+            Log.LogInformation("Default chat is created");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create default chat!");
+            throw;
+        }
     }
 
     private async Task AddAuthors(ChatDbContext dbContext, CancellationToken cancellationToken)
@@ -265,8 +303,9 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         var filePath = GetAudioDataDir() & fileName;
         var sourceBlobStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
-        var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken)
+        var blobs = Services.GetRequiredService<IBlobStorageProvider>();
+        var audioBlobs = blobs.GetBlobStorage(BlobScope.AudioRecord);
+        await audioBlobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         static FilePath GetAudioDataDir()
@@ -274,6 +313,27 @@ public partial class ChatDbInitializer : DbInitializer<ChatDbContext>
             return new FilePath(Path.GetDirectoryName(typeof(ChatDbInitializer).Assembly.Location)) & "data";
         }
     }
+
+    private async Task InvalidateEverything(CancellationToken cancellationToken)
+    {
+        // Signing in to admin session
+        var commander = Services.Commander();
+        var session = Services.GetRequiredService<ISessionFactory>().CreateSession();
+        var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
+        var admin = await accountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
+        admin = admin.Require(AccountFull.MustBeAdmin);
+
+        var signInCommand = new SignInCommand(session, admin.User, admin.User.Identities.Keys.Single());
+        await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
+
+        var invalidateEverythingCommand = new IAccounts.InvalidateEverythingCommand(session, true);
+        await Services.Commander().Run(invalidateEverythingCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Helpers
+
+    private static readonly string[] RandomWords =
+        { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
 
     private static string GetRandomSentence(Random random, int maxLength)
         => Enumerable

@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 public class ChatActivityTest : AppHostTestBase
 {
-    private ChatId TestChatId { get; } = new("the-actual-one");
+    private ChatId TestChatId => Constants.Chat.DefaultChatId;
 
     public ChatActivityTest(ITestOutputHelper @out) : base(@out) { }
 

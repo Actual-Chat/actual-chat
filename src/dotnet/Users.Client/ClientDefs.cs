@@ -14,6 +14,8 @@ public interface IAccountsClientDef
     Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
     Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(InvalidateEverything))]
+    Task InvalidateEverything([Body] IAccounts.InvalidateEverythingCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userPresences")]

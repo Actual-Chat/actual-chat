@@ -31,4 +31,8 @@ public class AccountsController : ControllerBase, IAccounts
     [HttpPost]
     public Task Update([FromBody] IAccounts.UpdateCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task InvalidateEverything(IAccounts.InvalidateEverythingCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
 }
