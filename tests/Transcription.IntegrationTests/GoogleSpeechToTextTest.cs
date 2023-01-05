@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ActualChat.Audio;
+using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf;
@@ -23,26 +24,36 @@ public class GoogleSpeechToTextTest : TestBase
     [InlineData("0004-AK-recoded.opus", true)]
     [InlineData("0004-AK-recoded.webm", false)]
     [InlineData("0004-AK-recoded.webm", true)]
-    [InlineData("0004-AK-recoded.flac", false)]
-    [InlineData("0004-AK-recoded.flac", true)]
-    [InlineData("0004-AK-recoded.wav", false)]
-    [InlineData("0004-AK-recoded.wav", true)]
+    // [InlineData("0004-AK-recoded.flac", false)]
+    // [InlineData("0004-AK-recoded.flac", true)]
+    // [InlineData("0004-AK-recoded.wav", false)]
+    // [InlineData("0004-AK-recoded.wav", true)]
+    [InlineData("large-file.webm", true)]
     public async Task MeasureResponseTime(string fileName, bool withDelay)
     {
         // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         const string recognizer = "projects/784581221205/locations/global/recognizers/r-dev-tst-ru-ru";
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(128, CancellationToken.None);
-        if (withDelay)
-            byteStream = byteStream.SelectAwait(async chunk => {
-                await Task.Delay(20);
-                return chunk;
-            });
+        var memoized = byteStream.Memoize();
+        var resultStream = memoized.Replay();
+        if (withDelay) {
+            var i = 0;
+            resultStream = memoized.Replay()
+                .SelectAwait(async chunk => {
+                    if (i++ > 69)
+                        await Task.Delay(20);
+                    return chunk;
+                });
+        }
 
         var builder = new SpeechClientBuilder();
         var speechClient = await builder.BuildAsync().ConfigureAwait(false);
         var recognizeRequests = speechClient
-            .StreamingRecognize();
+            .StreamingRecognize(
+                // CallSettings.FromCancellationToken(CancellationToken.None),
+                CallSettings.FromExpiration(Expiration.FromTimeout(TimeSpan.FromMinutes(10))),
+                new BidirectionalStreamingSettings(1));
         var streamingRecognitionConfig = new StreamingRecognitionConfig {
             Config = new RecognitionConfig {
                 AutoDecodingConfig = new AutoDetectDecodingConfig()
@@ -54,21 +65,32 @@ public class GoogleSpeechToTextTest : TestBase
                 // EnableVoiceActivityEvents =
             },
         };
-        var sw = new Stopwatch();
-        sw.Start();
 
         await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
             StreamingConfig = streamingRecognitionConfig,
             Recognizer = recognizer,
         }).ConfigureAwait(false);
-        _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests, streamingRecognitionConfig),
+        await using var recognizeResponses = recognizeRequests.GetResponseStream();
+        await Task.Delay(500);
+        // await Task.Delay(20000);
+
+        _ = BackgroundTask.Run(() => PushAudio(resultStream, recognizeRequests, streamingRecognitionConfig),
             Log,
             "Error");
-        await using var recognizeResponses = recognizeRequests.GetResponseStream();
-        var firstResponse = await recognizeResponses.FirstAsync();
-        sw.Stop();
-        Out.WriteLine("First transcription received in: {0} ms", sw.ElapsedMilliseconds);
-        Out.WriteLine(firstResponse.ToString());
+        var sw = new Stopwatch();
+        sw.Start();
+        // var firstResponse = await recognizeResponses.FirstAsync();
+        var first = false;
+        await foreach (var streamingRecognizeResponse in recognizeResponses) {
+            if (!first) {
+                first = true;
+                sw.Stop();
+                Out.WriteLine("First transcription received in: {0} ms", sw.ElapsedMilliseconds);
+                Out.WriteLine(streamingRecognizeResponse.ToString());
+            }
+
+            Out.WriteLine(streamingRecognizeResponse.ToString());
+        }
     }
 
     private async Task PushAudio(
@@ -77,7 +99,10 @@ public class GoogleSpeechToTextTest : TestBase
         StreamingRecognitionConfig streamingRecognitionConfig)
     {
         try {
+            var i = 0;
             await foreach (var chunk in byteStream.ConfigureAwait(false)) {
+                // if (++i % 80 == 0)
+                //     await Task.Delay(5000);
                 var request = new StreamingRecognizeRequest {
                     StreamingConfig = streamingRecognitionConfig,
                     Audio = ByteString.CopyFrom(chunk),
