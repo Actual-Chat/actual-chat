@@ -45,7 +45,7 @@ public static class MigrationExt
         await using var _ = dbContext.ConfigureAwait(false);
         var db = dbContext.Database;
 
-        if (dbInitializer.DbInfo.ShouldRecreateDb || db.IsInMemory())
+        if (db.IsInMemory())
             return dbInitializer;
 
         var dbInitializerTypeName = dbInitializer.GetType().GetName();
