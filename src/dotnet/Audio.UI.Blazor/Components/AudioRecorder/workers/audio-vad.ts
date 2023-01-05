@@ -84,13 +84,15 @@ export class VoiceActivityDetector {
         }
 
         const tensor = new ort.Tensor(monoPcm, [1, SAMPLES_PER_WINDOW]);
-        const feeds = { input: tensor, h0: h0, c0: c0 };
+        const srArray = new BigInt64Array(1).fill(BigInt(16000));
+        const sr = new ort.Tensor(srArray);
+        const feeds = { input: tensor, h: h0, c: c0, sr: sr };
         const result = await this.session.run(feeds);
         const { output, hn, cn } = result;
         this.h0 = hn;
         this.c0 = cn;
 
-        const prob: number = output.data[1] as number;
+        const prob: number = output.data[0] as number;
         const avgProb = movingAverages.append(prob);
         const longAvgProb = this.longMovingAverages.append(prob);
         let currentEvent = this.lastActivityEvent;
