@@ -189,12 +189,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var idTile = IdTileStack.GetTile(idTileRange);
         var smallerIdTiles = idTile.Smaller();
         if (smallerIdTiles.Length != 0) {
-            var smallerChatTiles = new List<ChatTile>();
-            foreach (var smallerIdTile in smallerIdTiles) {
-                var smallerChatTile = await GetTile(chatId, entryKind, smallerIdTile.Range, includeRemoved, cancellationToken)
-                    .ConfigureAwait(false);
-                smallerChatTiles.Add(smallerChatTile);
-            }
+            var smallerChatTiles = await smallerIdTiles
+                .Select(sidTile => GetTile(chatId,
+                    entryKind,
+                    sidTile.Range,
+                    includeRemoved,
+                    cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+
             return new ChatTile(smallerChatTiles, includeRemoved);
         }
         if (!includeRemoved) {
