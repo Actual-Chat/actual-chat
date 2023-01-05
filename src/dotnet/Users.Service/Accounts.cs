@@ -72,6 +72,7 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
             var operation = context.Operation();
             if (everywhere || operation.AgentId == agentInfo.Id)
                 ComputedRegistry.Instance.InvalidateEverything();
+            return;
         }
 
         var account = await GetOwn(session, cancellationToken).ConfigureAwait(false);

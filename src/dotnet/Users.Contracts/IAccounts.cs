@@ -25,5 +25,5 @@ public interface IAccounts : IComputeService
     public sealed record InvalidateEverythingCommand(
         [property: DataMember] Session Session,
         [property: DataMember] bool Everywhere = false
-        ) : ICommand<Unit>, IBackendCommand;
+        ) : ISessionCommand<Unit>;
 }
