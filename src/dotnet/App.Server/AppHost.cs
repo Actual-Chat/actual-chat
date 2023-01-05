@@ -66,10 +66,11 @@ public class AppHost : IDisposable
         async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
         {
             DbInitializer.Current = dbInitializer;
+            var dbInitializerName = dbInitializer.GetType().GetName();
             try {
-                log.LogInformation("{DbInitializer} started", dbInitializer.GetType().GetName());
+                log.LogInformation("{DbInitializer} started", dbInitializerName);
                 await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
-                log.LogInformation("{DbInitializer} completed", dbInitializer.GetType().GetName);
+                log.LogInformation("{DbInitializer} completed", dbInitializerName);
                 taskSource.TrySetResult(default);
             }
             catch (OperationCanceledException) {
@@ -77,7 +78,7 @@ public class AppHost : IDisposable
                 throw;
             }
             catch (Exception e) {
-                log.LogError(e, "{DbInitializer} failed", dbInitializer.GetType());
+                log.LogError(e, "{DbInitializer} failed", dbInitializerName);
                 taskSource.TrySetException(e);
                 throw;
             }
