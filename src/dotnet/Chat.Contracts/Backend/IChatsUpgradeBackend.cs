@@ -13,7 +13,6 @@ public interface IChatsUpgradeBackend : ICommandService
     public sealed record CreateAnnouncementsChatCommand(
     ) : ICommand<Chat>, IBackendCommand;
 
-    [DataContract]
     public sealed record UpgradeChatCommand(
         [property: DataMember] ChatId ChatId
     ) : ICommand<Unit>, IBackendCommand;

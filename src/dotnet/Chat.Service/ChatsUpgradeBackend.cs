@@ -32,6 +32,16 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         IChatsUpgradeBackend.UpgradeChatCommand command,
         CancellationToken cancellationToken)
     {
+        // NOTE(AY): Currently this command just "repairs" some of chat properties,
+        // even though originally it was upgrading DbChat.Owners to roles & authors.
+        //
+        // This part isn't there anymore, coz Owners are gone,
+        // and there is no code calling this command.
+        //
+        // I left it here mainly "just in case" - e.g. if in future we'll end up using
+        // exactly the same command to perform chat upgrades (though migrations are
+        // certainly preferable for that).
+
         var chatId = command.ChatId.Require();
         var context = CommandContext.GetCurrent();
 
@@ -45,7 +55,6 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbChat = await dbContext.Chats
-            .Include(c => c.Owners)
             .SingleOrDefaultAsync(c => c.Id == chatId, cancellationToken)
             .ConfigureAwait(false);
         if (dbChat == null)
@@ -85,53 +94,6 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var ownerIds = dbChat.Owners.Select(o => new UserId(o.DbUserId)).ToArray();
-            var ownerAuthors = await ownerIds
-                .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
-                .Collect()
-                .ConfigureAwait(false);
-
-            if (ownerIds.Length > 0) {
-                var dbOwnerRole = systemDbRoles.SingleOrDefault(r => r.SystemRole == SystemRole.Owner);
-                if (dbOwnerRole == null) {
-                    var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
-                        Create = new RoleDiff() {
-                            SystemRole = SystemRole.Owner,
-                            Permissions = ChatPermissions.Owner,
-                            AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId>() {
-                                AddedItems = ImmutableArray<AuthorId>.Empty.AddRange(ownerAuthors.Select(a => a.Id)),
-                            },
-                        },
-                    });
-                    await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
-                }
-                else {
-                    // We want another transaction view here
-                    using var dbContext2 = CreateDbContext();
-                    var ownerRoleAuthorIds = (await dbContext2.Authors
-                        .Where(a => a.ChatId == chatId && a.UserId != null && a.Roles.Any(r => r.DbRoleId == dbOwnerRole.Id))
-                        .Select(a => a.Id)
-                        .ToListAsync(cancellationToken)
-                        .ConfigureAwait(false))
-                        .Select(x => (Symbol)x)
-                        .ToHashSet();
-                    var missingAuthors = ownerAuthors.Where(a => !ownerRoleAuthorIds.Contains(a.Id));
-
-                    var ownerRoleId = new RoleId(dbOwnerRole.Id);
-                    var changeOwnersRoleCmd = new IRolesBackend.ChangeCommand(
-                        chatId, ownerRoleId, dbOwnerRole.Version,
-                        new() {
-                            Update = new RoleDiff() {
-                                Permissions = ChatPermissions.Owner,
-                                AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId>() {
-                                    AddedItems = ImmutableArray<AuthorId>.Empty.AddRange(missingAuthors.Select(a => a.Id)),
-                                },
-                            },
-                        });
-                    await Commander.Call(changeOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
             var dbAnyoneRole = systemDbRoles.SingleOrDefault(r => r.SystemRole == SystemRole.Anyone);
             if (dbAnyoneRole == null) {
                 var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
@@ -148,8 +110,6 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
             }
         }
 
-        // NOTE(AY): Uncomment this once we're completely sure there are no issues w/ owners -> roles upgrade
-        // dbChat.Owners.Clear();
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);

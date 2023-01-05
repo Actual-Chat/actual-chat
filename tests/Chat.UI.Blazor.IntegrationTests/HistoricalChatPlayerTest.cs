@@ -90,12 +90,6 @@ public class HistoricalChatPlayerTest : AppHostTestBase
             Title = "Test chat",
             CreatedAt = сreatedAt,
             IsPublic = true,
-            Owners = {
-                new DbChatOwner {
-                    DbChatId = chatId,
-                    DbUserId = ownerUserId,
-                },
-            },
         };
         dbContext.Chats.Add(dbChat);
         return dbChat;

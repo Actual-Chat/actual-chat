@@ -36,9 +36,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
             // DbChat
-            db.AddEntityResolver<string, DbChat>(_ => new() {
-                QueryTransformer = query => query.Include(chat => chat.Owners),
-            });
+            db.AddEntityResolver<string, DbChat>();
 
             // DbChatEntry
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(

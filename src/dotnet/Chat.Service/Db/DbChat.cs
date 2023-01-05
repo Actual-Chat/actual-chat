@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Stl.Generators;
 using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
@@ -27,8 +26,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
-
-    public List<DbChatOwner> Owners { get; set; } = new();
 
     public Chat ToModel()
         => new(new ChatId(Id), Version) {
