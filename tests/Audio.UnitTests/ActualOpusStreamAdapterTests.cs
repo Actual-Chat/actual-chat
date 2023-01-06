@@ -64,6 +64,26 @@ public class ActualOpusStreamAdapterTests
         outArray.Length.Should().Be(10563); // we added preSkip with this commit
     }
 
+    [Fact(Skip = "Manual")]
+    public async Task ReadWriteFile()
+    {
+        var streamAdapter = new ActualOpusStreamAdapter(_log);
+        var byteStream = GetAudioFilePath((FilePath)"silence.opuss")
+            .ReadByteStream( 1024);
+        await using var outputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, "data", "silence-prefix.opuss"),
+            FileMode.OpenOrCreate,
+            FileAccess.ReadWrite);
+        var audio = await streamAdapter.Read(byteStream, default);
+        var outByteStream = streamAdapter.Write(audio, CancellationToken.None).Take(101);
+        var i = 0;
+        await foreach (var x in outByteStream) {
+            _log.LogInformation("{I}", i++);
+            await outputStream.WriteAsync(x);
+        }
+        outputStream.Flush();
+    }
+
     private static FilePath GetAudioFilePath(FilePath fileName)
         => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 }

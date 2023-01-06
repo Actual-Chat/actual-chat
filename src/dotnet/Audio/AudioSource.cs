@@ -14,6 +14,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         CodecSettings = Convert.ToBase64String(OpusStreamFormat),
     };
 
+    public new Task<AudioFormat> FormatTask => base.FormatTask;
+    public new ILogger Log => base.Log;
+
     public AudioSource(
         Task<AudioFormat> formatTask,
         IAsyncEnumerable<AudioFrame> frameStream,

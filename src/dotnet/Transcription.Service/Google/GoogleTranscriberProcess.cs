@@ -4,11 +4,13 @@ using Cysharp.Text;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf;
+using Stl.IO;
 
 namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
+    private static readonly Task<AudioSource> _silenceAudioSourceTask = LoadSilenceAudio();
     private readonly Task<string> _recognizerTask;
 
     private ILogger Log { get; }
@@ -48,9 +50,7 @@ public class GoogleTranscriberProcess : WorkerBase
     {
         try {
             var recognizerId = await _recognizerTask.ConfigureAwait(false);
-            var webMStreamAdapter = new WebMStreamAdapter(Log);
-            await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
-            var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);
+
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
             var recognizeRequests = speechClient
@@ -72,6 +72,13 @@ public class GoogleTranscriberProcess : WorkerBase
                     Recognizer = recognizerId,
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
+
+            var webMStreamAdapter = new WebMStreamAdapter(Log);
+            var silenceAudio = await _silenceAudioSourceTask.ConfigureAwait(false);
+            var audioSource = silenceAudio
+                .Take(TimeSpan.FromMilliseconds(2000), cancellationToken)
+                .Concat(AudioSource, cancellationToken);
+            var byteStream = webMStreamAdapter.Write(audioSource, cancellationToken);
 
             _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests, streamingRecognitionConfig),
                 Log,
@@ -205,5 +212,14 @@ public class GoogleTranscriberProcess : WorkerBase
         finally {
             await recognizeRequests.WriteCompleteAsync().ConfigureAwait(false);
         }
+    }
+
+    private static Task<AudioSource> LoadSilenceAudio()
+    {
+        var byteStream = typeof(GoogleTranscriberProcess).Assembly
+            .GetManifestResourceStream("ActualChat.Transcription.data.silence.opuss")!
+            .ReadByteStream(true);
+        var streamAdapter = new ActualOpusStreamAdapter(DefaultLog);
+        return streamAdapter.Read(byteStream, CancellationToken.None);
     }
 }

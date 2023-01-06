@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="data\silence.opuss" />
+  </ItemGroup>
+
 </Project>

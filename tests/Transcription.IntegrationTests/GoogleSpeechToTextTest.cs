@@ -99,7 +99,7 @@ public class GoogleSpeechToTextTest : TestBase
         StreamingRecognitionConfig streamingRecognitionConfig)
     {
         try {
-            var i = 0;
+            // var i = 0;
             await foreach (var chunk in byteStream.ConfigureAwait(false)) {
                 // if (++i % 80 == 0)
                 //     await Task.Delay(5000);

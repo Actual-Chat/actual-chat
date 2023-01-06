@@ -145,9 +145,6 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
         var position = 0;
         await foreach (var frame in source.GetFrames(cancellationToken).ConfigureAwait(false)) {
             position += WriteFrame(frame.Data, buffer.Span[position..]);
-            if (position <= 1024)
-                continue;
-
             yield return buffer.Span[..position].ToArray();
             position = 0;
         }
