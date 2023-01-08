@@ -47,7 +47,7 @@ public class GoogleTranscriber : ITranscriber
 
     private Task<string> GetRecognizer(TranscriptionOptions options, CancellationToken cancellationToken)
     {
-        var region = GetRegionId();
+        var region = GetRegionId(options.Language);
         var languageCode = GetLanguageCode(options.Language);
         var recognizerId = $"{languageCode.ToLowerInvariant()}";
 
@@ -118,14 +118,25 @@ public class GoogleTranscriber : ITranscriber
         return recognizerTask.WaitAsync(cancellationToken);
     }
 
-    private string GetRegionId()
-        => CoreSettings.GoogleRegionId.NullIfEmpty()
-            ?? throw StandardError.Configuration($"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
+    // https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
+    // See supported languages
+    private string GetRegionId(Language language)
+    {
+        var regionId = CoreSettings.GoogleRegionId.NullIfEmpty()
+            ?? throw StandardError.Configuration(
+                $"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
+        return (regionId, language.Code.Value) switch {
+            ("us-central1", "EN") => "us-central1",
+            ("us-central1", "ES") => "us-central1",
+            _ => "us",
+        };
+    }
 
     private string GetLanguageCode(Language language)
         => language.Code.Value switch {
+            "EN" => "en-US",
             "ES" => "es-US",
-            "FR" => "fr-CA",
+            "FR" => "fr-FR",
             _ => language,
         };
 
