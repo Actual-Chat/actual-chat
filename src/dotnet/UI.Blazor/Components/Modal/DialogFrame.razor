@@ -32,6 +32,7 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
+    [Parameter] public ElementReference? Ref { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender && HasEscapeHandler)

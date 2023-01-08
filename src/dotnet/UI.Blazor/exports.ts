@@ -17,6 +17,7 @@ export * from './Services/Vibration/vibration';
 export * from './Components/Clipboard/clipboard';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
+export * from './Components/ImageViewerModal/image-viewer';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
 export * from './Components/SideNav/side-nav';

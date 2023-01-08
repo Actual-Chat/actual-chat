@@ -1,6 +1,7 @@
 @using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
+@using ActualChat.UI.Blazor.Module
 @implements IModalView<ImageViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
@@ -15,7 +16,7 @@
     <Body>
         <ImageViewerHeader OnCloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
 
-        <div class="image-viewer-content">
+        <div @ref="@Ref" class="image-viewer-content">
             <img class="hidden"
                  width="@ModalModel.Width"
                  height="@ModalModel.Height"
@@ -34,14 +35,28 @@
 
 @code {
     private string _cachedImgElementId = "";
+    private DotNetObjectReference<ImageViewerModal> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
 
     [Inject] private ComponentIdGenerator IdGenerator { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
         => _cachedImgElementId = IdGenerator.Next("image-viewer-modal-cached-image");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.ImageViewer.create",
+                Ref, BlazorRef
+                );
+        }
+    }
 
     private void CloseModal()
         => _ = ModalInstance.CloseAsync();
