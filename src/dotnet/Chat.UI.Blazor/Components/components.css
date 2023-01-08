@@ -196,7 +196,6 @@
 
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
-    @apply bg-02 border-t border-bg-04;
 }
 .active-chats .navbar-item.active {
     @apply bg-selected;
