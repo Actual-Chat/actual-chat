@@ -7,7 +7,7 @@
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
         @<Tab
              Title="@tabTitle" Id="@tabId.ToString()"
-             Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full chats-tab">
+             Class="flex-y self-start relative overflow-y-visible md:overflow-y-auto custom-scrollbar h-full chats-tab">
             <TitleContent>
                 <span>@tabTitle</span>
                 <UnreadCount Value="@count" Click="@OnUnreadBadgeClick"/>
@@ -23,15 +23,13 @@
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats" AddClick="OnCreateNewChatClick">
     <ChildContent>
-        <div class="-flex-y w-full h-full">
+        <div class="flex-y md:-flex-y w-full h-full overflow-y-auto md:overflow-y-visible custom-scrollbar">
             <ActiveChatsNavbarWidget/>
-
             <TabPanel
                 BottomHill="true"
-                Class="overflow-y-hidden"
+                Class="md:overflow-y-hidden"
                 TabsClass="left-panel-tabs"
                 ActiveTabChanged="@OnActiveTabChanged">
-
                 @RenderTab(TabId.Recent, "Recent")
             </TabPanel>
         </div>
