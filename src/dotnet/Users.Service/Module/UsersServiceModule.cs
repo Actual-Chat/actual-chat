@@ -108,8 +108,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
             return false;
         });
         var fusion = services.AddFusion();
-        fusion.AddLocalCommandScheduler(Queues.Users);
-        commander.AddEventHandlers();
 
         // Auth
         var fusionAuth = fusion.AddAuthentication();

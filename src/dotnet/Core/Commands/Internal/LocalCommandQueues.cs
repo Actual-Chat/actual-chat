@@ -1,15 +1,23 @@
 namespace ActualChat.Commands.Internal;
 
-public class LocalCommandQueues : ICommandQueues
+public sealed class LocalCommandQueues : ICommandQueues
 {
-    private readonly ConcurrentDictionary<string, LocalCommandQueue> _queues = new (StringComparer.Ordinal);
+    // NOTE(AY): We ignore ShardKey here for now, coz there are no shards
+    private readonly ConcurrentDictionary<Symbol, LocalCommandQueue> _queues = new();
 
-    public LocalCommandQueues()
-    { }
+    private IServiceProvider Services { get; }
 
-    public ICommandQueue Get(QueueRef queueRef)
-        => _queues.GetOrAdd(queueRef.Name, _ => new LocalCommandQueue());
+    public LocalCommandQueues(IServiceProvider services)
+        => Services = services;
 
-    public ICommandQueueReader Reader(string queueName, string shardIdentifier)
-        => new LocalCommandQueueReader(_queues.GetOrAdd(queueName, _ => new LocalCommandQueue()));
+    public ICommandQueue this[QueueRef queueRef]
+        => Get(queueRef.Name);
+
+    public ICommandQueueReader GetReader(Symbol queueName, Symbol shardKey)
+        => Get(queueName);
+
+    // Private methods
+
+    private LocalCommandQueue Get(Symbol queueName)
+        => _queues.GetOrAdd(queueName, static (_, self) => self.Services.Activate<LocalCommandQueue>(), this);
 }

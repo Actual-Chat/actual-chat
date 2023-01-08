@@ -28,7 +28,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
-    [CommandHandler(IsFilter = true, Priority = 1)]
+    [CommandFilter(Priority = 1)]
     public virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
@@ -68,7 +68,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    [CommandHandler(IsFilter = true, Priority = FusionEntityFrameworkCommandHandlerPriority.DbOperationScopeProvider + 1)]
+    [CommandFilter(Priority = FusionEntityFrameworkCommandHandlerPriority.DbOperationScopeProvider + 1)]
     public virtual async Task OnSignedIn(SignInCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
@@ -95,7 +95,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
                 .EnqueueOnCompletion(Queues.Users.ShardBy(userId), Queues.Default);
     }
 
-    [CommandHandler(IsFilter = true, Priority = 1)]
+    [CommandFilter(Priority = 1)]
     protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on user name edit:
@@ -117,7 +117,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
     }
 
-    [CommandHandler(IsFilter = true, Priority = 1)]
+    [CommandFilter(Priority = 1)]
     public virtual async Task OnSetupSession(SetupSessionCommand command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions when session gets "touched" or setup:

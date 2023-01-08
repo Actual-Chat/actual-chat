@@ -21,3 +21,5 @@ Misc:
 - UnreadCountSubHeader - make sure all unread counts don't pop on post every time
 - SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
 
+Backlog:
+- Extract SessionService w/ proper sharding (+ use Redis?) and migrate to our own AuthService

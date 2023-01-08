@@ -24,7 +24,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
         _testSettings = _appHost.Services.GetRequiredService<TestSettings>();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _tester = _appHost.NewPlaywrightTester();
-        _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
+        _sessionFactory = _appHost.Services.SessionFactory();
         _adminSession = _sessionFactory.CreateSession();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));

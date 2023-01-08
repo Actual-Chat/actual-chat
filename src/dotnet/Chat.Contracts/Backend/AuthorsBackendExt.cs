@@ -2,6 +2,8 @@ namespace ActualChat.Chat;
 
 public static class AuthorsBackendExt
 {
+    public static Task? TrackedTask = null;
+
     public static async Task<AuthorFull> EnsureJoined(
         this IAuthorsBackend authorsBackend,
         ChatId chatId,
@@ -12,8 +14,11 @@ public static class AuthorsBackendExt
         if (author is { HasLeft: false })
             return author;
 
-        var command = new IAuthorsBackend.UpsertCommand(chatId, default, userId, default, new AuthorDiff());
-        author = await authorsBackend.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
+        var command = new IAuthorsBackend.UpsertCommand(chatId, default, userId, null, new AuthorDiff());
+        var commander = authorsBackend.GetCommander();
+        var context = await commander.Run(command, true, cancellationToken).ConfigureAwait(false);
+        var typedContext = (CommandContext<AuthorFull>) context;
+        author = await typedContext.ResultTask.ConfigureAwait(false);
         return author;
     }
 }

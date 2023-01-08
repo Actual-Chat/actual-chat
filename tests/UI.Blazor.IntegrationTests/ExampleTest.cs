@@ -11,7 +11,7 @@ public class ExampleTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
-        var sessionFactory = services.GetRequiredService<ISessionFactory>();
+        var sessionFactory = services.SessionFactory();
         var sessionA = sessionFactory.CreateSession();
 
         Assert.NotNull(sessionA);

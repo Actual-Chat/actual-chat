@@ -32,7 +32,7 @@ public class ChatOperationsTest : AppHostTestBase
                 IsPublic = isPublicChat,
             },
         }));
-        chat = chat.Require();
+        chat.Require();
         await Task.Delay(100); // Let's wait invalidations to hit the client
         chat = await chats.Get(session, chat.Id, default).Require();
 
@@ -92,7 +92,7 @@ public class ChatOperationsTest : AppHostTestBase
                     IsPublic = isPublicChat,
                 },
             }));
-            chat = chat.Require();
+            chat.Require();
             chatId = chat.Id;
 
             if (!isPublicChat) {
@@ -155,7 +155,7 @@ public class ChatOperationsTest : AppHostTestBase
                     IsPublic = isPublicChat,
                 },
             }));
-            chat = chat.Require();
+            chat.Require();
             chatId = chat.Id;
 
             if (!isPublicChat) {

@@ -1,15 +1,13 @@
-using ActualChat.Commands;
-
 namespace ActualChat.Core.UnitTests.Commands;
 
-public class DedicatedInterfaceEventHandler : IEventHandler<TestEvent2>
+public class DedicatedInterfaceEventHandler : ICommandHandler<TestEvent2>
 {
     private ScheduledCommandTestService TestService { get; }
 
     public DedicatedInterfaceEventHandler(ScheduledCommandTestService testService)
         => TestService = testService;
 
-    public virtual Task OnEvent(TestEvent2 @event, CommandContext context, CancellationToken cancellationToken)
+    public Task OnCommand(TestEvent2 @event, CommandContext context, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return Task.CompletedTask;

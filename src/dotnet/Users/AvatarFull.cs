@@ -19,6 +19,12 @@ public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Versio
 
     // Helpers
 
+    public Avatar ToAvatar() => new(Id, Version) {
+        Name = Name,
+        Bio = Bio,
+        Picture = Picture,
+    };
+
     public AvatarFull WithMissingPropertiesFrom(AvatarFull? other)
         => (AvatarFull) base.WithMissingPropertiesFrom(other);
     public new AvatarFull WithMissingPropertiesFrom(Avatar? other)

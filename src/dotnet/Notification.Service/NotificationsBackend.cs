@@ -234,7 +234,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return;
+            return; // It just spawns other commands, so nothing to do here
 
         var (entry, author, changeKind) = @event;
         if (changeKind != ChangeKind.Create || entry.IsSystemEntry)
@@ -252,7 +252,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return;
+            return; // It just spawns other commands, so nothing to do here
 
         var (reaction, entry, author, reactionAuthor, changeKind) = @event;
         if (changeKind == ChangeKind.Remove)

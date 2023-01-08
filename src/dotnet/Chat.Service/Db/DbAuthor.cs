@@ -7,8 +7,8 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("Authors")]
-[Index(nameof(ChatId), nameof(LocalId))]
-[Index(nameof(ChatId), nameof(UserId))]
+[Index(nameof(ChatId), nameof(LocalId), IsUnique = true)]
+[Index(nameof(ChatId), nameof(UserId), IsUnique = true)]
 [Index(nameof(UserId), nameof(AvatarId))]
 public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {

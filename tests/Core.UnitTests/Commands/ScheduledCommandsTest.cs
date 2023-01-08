@@ -15,14 +15,15 @@ public class ScheduledCommandsTest: TestBase
     {
         await using var services = new ServiceCollection()
             .AddLogging()
+            .AddLocalCommandQueues()
+            .AddCommandQueueProcessor(Queues.Default.Name)
             .AddFusion()
-            .AddLocalCommandScheduler(Queues.Default)
             .AddComputeService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = services.GetRequiredService<ICommandQueues>().Get(Queues.Default) as LocalCommandQueue;
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[Queues.Default];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
@@ -30,7 +31,7 @@ public class ScheduledCommandsTest: TestBase
         await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await Awaiter.WaitFor(() => queue!.CompletedCommandCount != 0);
+        await Awaiter.WaitFor(() => queue.SuccessCount != 0);
 
         testService.ProcessedEvents.Count.Should().Be(1);
     }
@@ -40,26 +41,25 @@ public class ScheduledCommandsTest: TestBase
     {
         await using var services = new ServiceCollection()
             .AddLogging()
-            .AddCommander()
-            .AddHandlers<DedicatedInterfaceEventHandler>()
-            .Services
+            .AddLocalCommandQueues()
+            .AddCommandQueueProcessor(Queues.Default.Name)
             .AddSingleton<DedicatedInterfaceEventHandler>()
+            .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
-            .AddLocalCommandScheduler(Queues.Default)
             .AddComputeService<ScheduledCommandTestService>()
             .AddComputeService<DedicatedEventHandler>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = services.GetRequiredService<ICommandQueues>().Get(Queues.Default) as LocalCommandQueue;
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[Queues.Default];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
 
-        await Awaiter.WaitFor(() => queue!.CompletedCommandCount == 2);
+        await Awaiter.WaitFor(() => queue.SuccessCount == 2);
 
         foreach (var @event in testService.ProcessedEvents)
             Out.WriteLine(@event.ToString());
@@ -72,26 +72,25 @@ public class ScheduledCommandsTest: TestBase
     {
         await using var services = new ServiceCollection()
             .AddLogging()
-            .AddCommander()
-            .AddHandlers<DedicatedInterfaceEventHandler>()
-            .Services
+            .AddLocalCommandQueues()
+            .AddCommandQueueProcessor(Queues.Default.Name)
             .AddSingleton<DedicatedInterfaceEventHandler>()
+            .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
-            .AddLocalCommandScheduler(Queues.Default)
             .AddComputeService<ScheduledCommandTestService>()
             .AddComputeService<DedicatedEventHandler>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = services.GetRequiredService<ICommandQueues>().Get(Queues.Default) as LocalCommandQueue;
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[Queues.Default];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand3());
 
-        await Awaiter.WaitFor(() => queue!.CompletedCommandCount == 2);
+        await Awaiter.WaitFor(() => queue.SuccessCount == 2);
 
         foreach (var @event in testService.ProcessedEvents)
             Out.WriteLine(@event.ToString());

@@ -133,6 +133,12 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);
 
+        // Queues
+        services.AddLocalCommandQueues();
+        services.AddCommandQueueProcessor(Queues.Default.Name);
+        services.AddCommandQueueProcessor(Queues.Users.Name);
+        services.AddCommandQueueProcessor(Queues.Chats.Name);
+
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
         services.AddSingleton(new PublisherOptions {
@@ -148,7 +154,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             });
         });
         var fusionAuth = fusion.AddAuthentication();
-        fusion.AddLocalCommandScheduler(Queues.Default);
 
         // Web
         var dataProtection = Settings.DataProtection.NullIfEmpty()

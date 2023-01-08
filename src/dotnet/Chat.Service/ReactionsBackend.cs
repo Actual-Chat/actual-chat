@@ -120,7 +120,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
                 .SingleOrDefaultAsync(x => x.Id == dbSummaryId, cancellationToken)
                 .ConfigureAwait(false);
             if (!mustIncrementCount)
-                dbSummary = dbSummary.Require();
+                dbSummary.Require();
 
             if (dbSummary == null) {
                 dbSummary = new DbReactionSummary(new ReactionSummary {

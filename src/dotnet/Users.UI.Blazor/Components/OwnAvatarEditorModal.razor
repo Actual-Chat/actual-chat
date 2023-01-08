@@ -107,7 +107,7 @@
     }
 
     private async Task OnSave() {
-        var (avatarId, chatId, title) = ModalModel;
+        var (avatarId, chatId, _) = ModalModel;
         var avatar = await Avatars.GetOwn(Session, avatarId, default);
         if (avatar == null) {
             _ = UICommander.Run(new LocalActionCommand() {

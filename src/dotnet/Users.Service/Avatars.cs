@@ -30,7 +30,10 @@ public class Avatars : IAvatars
 
     // [ComputeMethod]
     public virtual async Task<Avatar?> Get(Session session, Symbol avatarId, CancellationToken cancellationToken)
-        => await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+    {
+        var avatar = await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+        return avatar?.ToAvatar();
+    }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)

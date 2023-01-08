@@ -22,7 +22,7 @@ public class UserStatusTest : AppHostTestBase
             builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
-        _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
+        _sessionFactory = _appHost.Services.SessionFactory();
         _adminSession = _sessionFactory.CreateSession();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));

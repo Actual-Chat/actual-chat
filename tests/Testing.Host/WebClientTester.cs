@@ -43,7 +43,7 @@ public class WebClientTester : IWebClientTester
     public WebClientTester(AppHost appHost, IServiceProvider? clientServices = null)
     {
         AppHost = appHost;
-        var sessionFactory = AppServices.GetRequiredService<ISessionFactory>();
+        var sessionFactory = AppServices.SessionFactory();
         Session = sessionFactory.CreateSession();
         Commander.Run(new SetupSessionCommand(Session)).Wait();
         _mustDisposeClientServices = clientServices == null;

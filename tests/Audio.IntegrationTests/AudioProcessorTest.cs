@@ -20,7 +20,7 @@ public class AudioProcessorTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
-        var sessionFactory = services.GetRequiredService<ISessionFactory>();
+        var sessionFactory = services.SessionFactory();
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
@@ -47,7 +47,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.GetRequiredService<ISessionFactory>();
+        var sessionFactory = services.SessionFactory();
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
@@ -66,7 +66,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Kind = ChatKind.Group,
             },
         }));
-        chat = chat.Require();
+        chat.Require();
 
         using var cts = new CancellationTokenSource();
 
@@ -89,7 +89,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.GetRequiredService<ISessionFactory>();
+        var sessionFactory = services.SessionFactory();
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
@@ -107,7 +107,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Kind = ChatKind.Group,
             },
         }));
-        chat = chat.Require();
+        chat.Require();
 
         using var cts = new CancellationTokenSource();
 

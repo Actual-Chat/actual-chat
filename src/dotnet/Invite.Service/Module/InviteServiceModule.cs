@@ -54,8 +54,6 @@ public class InviteServiceModule : HostModule<InviteSettings>
             return false;
         });
         var fusion = services.AddFusion();
-        fusion.AddLocalCommandScheduler(Queues.Users);
-        commander.AddEventHandlers();
 
         // Module's own services
         fusion.AddComputeService<IInvites, Invites>();

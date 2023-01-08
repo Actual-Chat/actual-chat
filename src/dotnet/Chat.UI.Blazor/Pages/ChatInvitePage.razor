@@ -26,6 +26,7 @@
         _useResult = await UICommander.Run(useCommand);
         if (_useResult is not { } useResult || useResult.HasError)
             return;
+
         var invite = useResult.Value;
         var chatInvite = invite.Details.Chat.Require();
         Nav.NavigateTo(Links.Chat(chatInvite.ChatId));

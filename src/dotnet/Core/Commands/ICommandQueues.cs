@@ -2,7 +2,6 @@ namespace ActualChat.Commands;
 
 public interface ICommandQueues
 {
-    ICommandQueue Get(QueueRef queueRef);
-
-    ICommandQueueReader Reader(string queueName, string shardIdentifier);
+    ICommandQueue this[QueueRef queueRef] { get; }
+    ICommandQueueReader GetReader(Symbol queueName, Symbol shardKey);
 }

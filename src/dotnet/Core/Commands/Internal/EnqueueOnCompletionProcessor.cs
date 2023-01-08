@@ -28,15 +28,15 @@ public class EnqueueOnCompletionProcessor : IOperationCompletionListener
         switch (items.Count) {
         case 1:
             var (command0, queueRef0) = items[0];
-            return CommandQueues.Get(queueRef0).Enqueue(command0);
+            return CommandQueues[queueRef0].Enqueue(command0);
         case 2:
             (command0, queueRef0) = items[0];
             var (command1, queueRef1) = items[1];
-            var task1 = CommandQueues.Get(queueRef0).Enqueue(command0);
-            var task2 = CommandQueues.Get(queueRef1).Enqueue(command1);
+            var task1 = CommandQueues[queueRef0].Enqueue(command0);
+            var task2 = CommandQueues[queueRef1].Enqueue(command1);
             return Task.WhenAll(task1, task2);
         default:
-            var tasks = items.Select(x => CommandQueues.Get(x.QueueRef).Enqueue(x.Command));
+            var tasks = items.Select(x => CommandQueues[x.QueueRef].Enqueue(x.Command));
             return Task.WhenAll(tasks);
         }
     }

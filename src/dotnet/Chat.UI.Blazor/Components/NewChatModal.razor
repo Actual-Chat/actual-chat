@@ -55,7 +55,7 @@
             if (error != null)
                 return;
 
-            chat = chat.Require();
+            chat.Require();
             await ModalInstance.CloseAsync();
             Nav.NavigateTo(Links.Chat(chat.Id));
         }

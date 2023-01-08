@@ -237,8 +237,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return new ChatTile(idTileRange, true, entries);
     }
 
-    // Command handlers
-
     // [CommandHandler]
     public virtual async Task<Chat> Change(
         IChatsBackend.ChangeCommand command,
@@ -292,7 +290,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             }
             else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
-                ownerId = ownerId.Require("Command.OwnerId");
+                ownerId.Require("Command.OwnerId");
                 var author = await AuthorsBackend
                     .EnsureJoined(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
@@ -462,7 +460,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return;
+            return; // It just spawns other commands, so nothing to do here
 
         await JoinAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
 
@@ -474,7 +472,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent @event, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return;
+            return; // It just spawns other commands, so nothing to do here
 
         var (author, oldAuthor) = @event;
         if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.IsPeerChatId(out _))

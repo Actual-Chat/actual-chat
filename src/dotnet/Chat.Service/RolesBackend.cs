@@ -129,7 +129,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         }
 
         change.RequireValid();
-        chatId = chatId.Require("Command.ChatId");
+        chatId.Require("Command.ChatId");
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 

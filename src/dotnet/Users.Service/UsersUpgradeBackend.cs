@@ -14,6 +14,7 @@ public class UsersUpgradeBackend : DbServiceBase<UsersDbContext>,  IUsersUpgrade
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.Users
+            .OrderBy(c => c.Id)
             .Select(c => c.Id)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -55,8 +55,6 @@ public class NotificationModule : HostModule<NotificationSettings>
             return false;
         });
         var fusion = services.AddFusion();
-        fusion.AddLocalCommandScheduler(Queues.Users);
-        commander.AddEventHandlers();
 
         // Module's own services
         fusion.AddComputeService<INotifications, Notifications>();

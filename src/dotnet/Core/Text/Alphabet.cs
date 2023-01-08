@@ -1,3 +1,5 @@
+using Stl.Generators;
+
 namespace ActualChat;
 
 [StructLayout(LayoutKind.Auto)]
@@ -24,6 +26,8 @@ public sealed class Alphabet
     // We use readonly to (possibly) speed things up here
     public readonly string Symbols;
     public readonly UInt128 BitMask;
+    public readonly RandomStringGenerator Generator8;
+    public readonly RandomStringGenerator Generator16;
 
     public Alphabet(string symbols)
     {
@@ -37,6 +41,8 @@ public sealed class Alphabet
             if (oldMask == BitMask)
                 throw new ArgumentOutOfRangeException(nameof(symbols), "All characters must be unique.");
         }
+        Generator8 = new RandomStringGenerator(8, symbols);
+        Generator16 = new RandomStringGenerator(16, symbols);
     }
 
     // Conversion

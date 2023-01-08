@@ -6,8 +6,8 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
+[Index(nameof(ChatId), nameof(Kind), nameof(LocalId), IsUnique = true)]
 [Index(nameof(ChatId), nameof(Kind), nameof(IsRemoved), nameof(LocalId))] // For GetEntryCount queries
-[Index(nameof(ChatId), nameof(Kind), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(Kind), nameof(BeginsAt), nameof(EndsAt))]
 [Index(nameof(ChatId), nameof(Kind), nameof(EndsAt), nameof(BeginsAt))]
 [Index(nameof(ChatId), nameof(Kind), nameof(Version))]

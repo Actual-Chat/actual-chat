@@ -5,7 +5,7 @@ namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandTestService
 {
-    public readonly ConcurrentQueue<IEvent> ProcessedEvents = new();
+    public readonly ConcurrentQueue<IEventCommand> ProcessedEvents = new();
 
     [CommandHandler]
     public virtual Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)

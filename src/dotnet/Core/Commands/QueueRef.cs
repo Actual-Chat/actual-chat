@@ -3,7 +3,7 @@ namespace ActualChat.Commands;
 [DataContract]
 [StructLayout(LayoutKind.Auto)]
 public readonly record struct QueueRef(
-    [property: DataMember(Order = 0)] string Name,
+    [property: DataMember(Order = 0)] Symbol Name,
     [property: DataMember(Order = 1)] Symbol ShardKey = default,
     [property: DataMember(Order = 2)] QueuedCommandPriority Priority = QueuedCommandPriority.Default)
 {
@@ -22,9 +22,9 @@ public readonly record struct QueueRef(
         };
         return (!ShardKey.IsEmpty, Priority is not QueuedCommandPriority.Default) switch {
             (false, false) => Name,
-            (false, true) => $"{Name}.{prioritySuffix}",
-            (true, false) => $"{Name}[{ShardKey}]",
-            _ => $"{Name}[{ShardKey}].{prioritySuffix}",
+            (false, true) => $"{Name.Value}.{prioritySuffix}",
+            (true, false) => $"{Name.Value}[{ShardKey.Value}]",
+            _ => $"{Name.Value}[{ShardKey.Value}].{prioritySuffix}",
         };
     }
 

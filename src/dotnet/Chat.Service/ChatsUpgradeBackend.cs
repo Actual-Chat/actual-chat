@@ -1,30 +1,32 @@
-using System.Security.Claims;
 using ActualChat.Chat.Db;
 using ActualChat.Contacts;
-using ActualChat.Hosting;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBackend
+public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBackend
 {
+    private ChatsBackend ChatsBackend { get; }
     private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
     private IAuthorsUpgradeBackend AuthorsUpgradeBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
-    private IChatsBackend Backend { get; }
+    private IUsersUpgradeBackend UsersUpgradeBackend { get; }
+    private IBlobStorageProvider Blobs { get; }
 
     public ChatsUpgradeBackend(IServiceProvider services) : base(services)
     {
+        ChatsBackend = (ChatsBackend)services.GetRequiredService<IChatsBackend>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         AuthorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
-        Backend = services.GetRequiredService<IChatsBackend>();
+        UsersUpgradeBackend = services.GetRequiredService<IUsersUpgradeBackend>();
+        Blobs = Services.GetRequiredService<IBlobStorageProvider>();
     }
 
     // [CommandHandler]
@@ -47,7 +49,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
 
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>()!;
-            _ = Backend.Get(invChat.Id, default);
+            _ = ChatsBackend.Get(invChat.Id, default);
             return;
         }
 
@@ -116,111 +118,6 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateAnnouncementsChat(
-        IChatsUpgradeBackend.CreateAnnouncementsChatCommand command,
-        CancellationToken cancellationToken)
-    {
-        var chatId = Constants.Chat.AnnouncementsChatId;
-        if (Computed.IsInvalidating()) {
-            _ = Backend.Get(chatId, default);
-            return default!;
-        }
-
-        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
-        var hostInfo = Services.GetRequiredService<HostInfo>();
-        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
-
-        var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-        var creatorId = admin.Id;
-
-        var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
-        foreach (var userId in userIds) {
-            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                continue;
-
-            var user = account.User;
-            if (user.Claims.Count == 0)
-                continue;
-            if (!user.Claims.TryGetValue(ClaimTypes.Email, out var email))
-                continue;
-
-            if (hostInfo.IsDevelopmentInstance) {
-                if (email.OrdinalIgnoreCaseEndsWith("actual.chat"))
-                    userIdByEmail.Add(email, userId);
-            }
-            else {
-                if (OrdinalIgnoreCaseEquals(email, "alex.yakunin@actual.chat") || OrdinalIgnoreCaseEquals(email, "alexey.kochetov@actual.chat"))
-                    userIdByEmail.Add(email, userId);
-            }
-        }
-
-        if (creatorId.IsNone) {
-            if (userIdByEmail.TryGetValue("alex.yakunin@actual.chat", out var temp))
-                creatorId = temp;
-            else if (userIdByEmail.Count > 0)
-                creatorId = userIdByEmail.First().Value;
-        }
-        if (creatorId.IsNone)
-            throw StandardError.Constraint("Creator user not found");
-
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
-            Create = new ChatDiff {
-                Title = "Actual.chat Announcements",
-                IsPublic = true,
-            },
-        }, creatorId);
-        var chat = (await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false))!;
-
-        var anyoneRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Anyone, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-
-        var changeAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, anyoneRole.Id, null, new() {
-            Update = new RoleDiff() {
-                Permissions = ChatPermissions.Invite,
-            },
-        });
-        await Commander.Call(changeAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
-
-        var authorByUserId = new Dictionary<UserId, AuthorFull>();
-        foreach (var userId in userIds) {
-            // join existent users to the chat
-           var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
-           authorByUserId.Add(userId, author);
-        }
-
-        var ownerRole = await RolesBackend
-            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
-            .Require()
-            .ConfigureAwait(false);
-        var ownerAuthorIds = ImmutableArray<AuthorId>.Empty;
-        foreach (var userId in userIdByEmail.Values) {
-            if (userId == creatorId)
-                continue;
-            if (!authorByUserId.TryGetValue(userId, out var author))
-                continue;
-            ownerAuthorIds = ownerAuthorIds.Add(author.Id);
-        }
-
-        if (ownerAuthorIds.Length > 0) {
-            var changeOwnerRoleCmd = new IRolesBackend.ChangeCommand(chatId, ownerRole.Id, null, new() {
-                Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
-                        AddedItems = ownerAuthorIds,
-                    }
-                },
-            });
-            await Commander.Call(changeOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
-        }
-
-        return chat;
-    }
-
-    // [CommandHandler]
     public virtual async Task FixCorruptedReadPositions(
         IChatsUpgradeBackend.FixCorruptedReadPositionsCommand command,
         CancellationToken cancellationToken)
@@ -239,7 +136,7 @@ public class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBa
                 if (lastReadEntryId.GetValueOrDefault() == 0)
                     continue;
 
-                var idRange = await Backend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+                var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
                 var lastEntryId = idRange.End - 1;
                 if (lastEntryId >= lastReadEntryId)
                     continue;

@@ -40,6 +40,7 @@ public static partial class Constants
         }
 
         public static IReadOnlySet<UserId> SystemUserIds = new HashSet<UserId>(new [] {Admin.UserId, Walle.UserId});
+        public static int TestBotCount { get; } = 30;
     }
 
     public static class Attachments

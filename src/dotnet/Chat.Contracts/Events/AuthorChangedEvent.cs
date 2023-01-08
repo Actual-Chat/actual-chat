@@ -6,4 +6,4 @@ namespace ActualChat.Chat.Events;
 public record AuthorChangedEvent(
     [property: DataMember] AuthorFull Author,
     [property: DataMember] AuthorFull? OldAuthor
-) : IEvent;
+) : EventCommand;

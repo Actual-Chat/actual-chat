@@ -265,13 +265,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent @event, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return;
+            return; // It just spawns other commands, so nothing to do here
 
         var (_, oldAvatar, changeKind) = @event;
         if (changeKind != ChangeKind.Remove)
             return;
 
-        oldAvatar = oldAvatar.Require();
+        oldAvatar.Require();
 
         var authors = await ListAuthorsByAvatarId(oldAvatar.UserId, oldAvatar.Id, cancellationToken).ConfigureAwait(false);
 

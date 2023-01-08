@@ -214,7 +214,7 @@
             if (error != null)
                 return;
 
-            chat = chat.Require();
+            chat.Require();
 
             var userIds = (from contact in SelectedContacts where contact.Account != null select contact.Account!.Id).ToArray();
             var createAuthorsCommand = new IAuthors.InviteCommand(Session, chat.Id, userIds);

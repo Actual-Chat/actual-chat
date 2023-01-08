@@ -9,4 +9,4 @@ public record ReactionChangedEvent(
     [property: DataMember] AuthorFull Author,
     [property: DataMember] AuthorFull ReactionAuthor,
     [property: DataMember] ChangeKind ChangeKind
-) : IEvent;
+) : EventCommand;
