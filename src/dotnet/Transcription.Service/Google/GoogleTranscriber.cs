@@ -58,7 +58,6 @@ public class GoogleTranscriber : ITranscriber
             var parent = $"projects/{projectId}/locations/{region}";
             var name = $"{parent}/recognizers/{recognizerId}";
 
-            retry:
             try {
                 var getRecognizerRequest = new GetRecognizerRequest { Name = name };
                 var existingRecognizer = await speechClient
@@ -66,14 +65,6 @@ public class GoogleTranscriber : ITranscriber
                     .ConfigureAwait(false);
                 if (existingRecognizer.State == Recognizer.Types.State.Active)
                     return existingRecognizer.Name;
-            }
-            catch (RpcException e) when (
-                e.StatusCode is StatusCode.InvalidArgument
-                && e.Status.Detail.OrdinalStartsWith("Expected resource location to be global"))
-            {
-                parent = $"projects/{projectId}/locations/global";
-                name = $"{parent}/recognizers/{recognizerId}";
-                goto retry;
             }
             catch (RpcException e) when (e.StatusCode is StatusCode.NotFound) {
                 // NOTE(AY): Intended, it's created further in this case
@@ -122,14 +113,20 @@ public class GoogleTranscriber : ITranscriber
     // See supported languages
     private string GetRegionId(Language language)
     {
-        var regionId = CoreSettings.GoogleRegionId.NullIfEmpty()
-            ?? throw StandardError.Configuration(
-                $"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
-        return (regionId, language.Code.Value) switch {
-            ("us-central1", "EN") => "us-central1",
-            ("us-central1", "ES") => "us-central1",
-            _ => "us",
-        };
+        return "global";
+
+ #pragma warning disable CS0162
+        // Lower latency recognizers within single region are not supported yet
+
+        // var regionId = CoreSettings.GoogleRegionId.NullIfEmpty()
+        //     ?? throw StandardError.Configuration(
+        //         $"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
+        // return (regionId, language.Code.Value) switch {
+        //     ("us-central1", "EN") => "us-central1",
+        //     ("us-central1", "ES") => "us-central1",
+        //     _ => "us",
+        // };
+ #pragma warning restore CS0162
     }
 
     private string GetLanguageCode(Language language)
