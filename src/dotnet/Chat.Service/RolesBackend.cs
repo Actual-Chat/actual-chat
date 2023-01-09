@@ -194,8 +194,19 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             if (role.SystemRole is not SystemRole.None and not SystemRole.Owner)
                 throw StandardError.Constraint("This system role uses automatic membership rules.");
 
+            var existingAuthorIds = (await dbContext.AuthorRoles
+                .Where(ar => ar.DbRoleId == roleId)
+                .Select(ar => ar.DbAuthorId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false)
+                ).Select(x => new AuthorId(x))
+                .ToHashSet();
+
             // Adding items
-            foreach (var authorId in update.AuthorIds.AddedItems.Distinct())
+            var addedAuthorIds = update.AuthorIds.AddedItems
+                .Where(x => !existingAuthorIds.Contains(x))
+                .Distinct();
+            foreach (var authorId in addedAuthorIds)
                 dbContext.AuthorRoles.Add(new() {
                     DbRoleId = roleId,
                     DbAuthorId = authorId,

@@ -31,7 +31,7 @@ public class ContactsController : ControllerBase, IContacts
         => Service.ListIds(session, cancellationToken);
 
     [HttpPost]
-    public Task<Contact> Change([FromBody] IContacts.ChangeCommand command, CancellationToken cancellationToken)
+    public Task<Contact?> Change([FromBody] IContacts.ChangeCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 
     [HttpPost]

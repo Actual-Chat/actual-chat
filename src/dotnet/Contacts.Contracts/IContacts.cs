@@ -10,7 +10,7 @@ public interface IContacts : IComputeService
     Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Contact> Change(ChangeCommand command, CancellationToken cancellationToken);
+    Task<Contact?> Change(ChangeCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task Touch(TouchCommand command, CancellationToken cancellationToken);
 
@@ -20,7 +20,7 @@ public interface IContacts : IComputeService
         [property: DataMember] ContactId Id,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<Contact> Change
-    ) : ISessionCommand<Contact>;
+    ) : ISessionCommand<Contact?>;
 
     [DataContract]
     public sealed record TouchCommand(

@@ -634,11 +634,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private async Task AddOwner(ChatId chatId, Author author, CancellationToken cancellationToken)
     {
         var ownerRole = await RolesBackend.GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .Require()
             .ConfigureAwait(false);
-        if (ownerRole == null)
-            return;
 
-        var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+        var changeCommand = new IRolesBackend.ChangeCommand(chatId,
             ownerRole.Id,
             null,
             new Change<RoleDiff> {
@@ -648,7 +647,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     },
                 },
             });
-        await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(changeCommand, cancellationToken).ConfigureAwait(false);
     }
 
     internal Task<long> DbNextLocalId(

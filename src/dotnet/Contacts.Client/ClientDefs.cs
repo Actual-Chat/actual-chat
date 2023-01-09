@@ -13,7 +13,7 @@ public interface IContactsClientDef
     Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
-    Task<Contact> Change([Body] IContacts.ChangeCommand command, CancellationToken cancellationToken);
+    Task<Contact?> Change([Body] IContacts.ChangeCommand command, CancellationToken cancellationToken);
     [Post(nameof(Touch))]
     Task Touch([Body] IContacts.TouchCommand command, CancellationToken cancellationToken);
 }

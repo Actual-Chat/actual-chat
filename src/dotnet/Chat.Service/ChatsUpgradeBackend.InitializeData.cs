@@ -216,8 +216,9 @@ public partial class ChatsUpgradeBackend
                 var id = new ChatEntryId(chatId, ChatEntryKind.Text, localId, AssumeValid.Option);
                 var entry = new DbChatEntry {
                     Id = id,
-                    Kind = ChatEntryKind.Text,
                     ChatId = chatId,
+                    Kind = ChatEntryKind.Text,
+                    LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
                     EndsAt = lastEndsAt,

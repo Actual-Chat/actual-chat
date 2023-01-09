@@ -1,6 +1,6 @@
 namespace ActualChat.Commands;
 
-public class CommandQueueProcessor : WorkerBase
+public class CommandQueueScheduler : WorkerBase
 {
     public sealed class Options
     {
@@ -19,7 +19,7 @@ public class CommandQueueProcessor : WorkerBase
 
     public Options Settings { get; }
 
-    public CommandQueueProcessor(Options settings, IServiceProvider services)
+    public CommandQueueScheduler(Options settings, IServiceProvider services)
     {
         Settings = settings;
         Log = services.LogFor(GetType());
@@ -52,7 +52,7 @@ public class CommandQueueProcessor : WorkerBase
         CancellationToken cancellationToken)
     {
         try {
-            await Commander.Run(command.Command, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(command.Command, true, cancellationToken).ConfigureAwait(false);
             await queueReader.MarkCompleted(command, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {

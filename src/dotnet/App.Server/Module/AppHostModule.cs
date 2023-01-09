@@ -135,9 +135,9 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Queues
         services.AddLocalCommandQueues();
-        services.AddCommandQueueProcessor(Queues.Default.Name);
-        services.AddCommandQueueProcessor(Queues.Users.Name);
-        services.AddCommandQueueProcessor(Queues.Chats.Name);
+        services.AddCommandQueueScheduler(Queues.Default.Name);
+        services.AddCommandQueueScheduler(Queues.Users.Name);
+        services.AddCommandQueueScheduler(Queues.Chats.Name);
 
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();

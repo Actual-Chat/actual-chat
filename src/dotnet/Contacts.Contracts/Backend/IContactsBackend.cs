@@ -8,7 +8,7 @@ public interface IContactsBackend : IComputeService
     public Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task<Contact> Change(ChangeCommand command, CancellationToken cancellationToken);
+    public Task<Contact?> Change(ChangeCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     public Task Touch(TouchCommand command, CancellationToken cancellationToken);
 
@@ -17,7 +17,7 @@ public interface IContactsBackend : IComputeService
         [property: DataMember] ContactId Id,
         [property: DataMember] long? ExpectedVersion,
         [property: DataMember] Change<Contact> Change
-    ) : ICommand<Contact>, IBackendCommand;
+    ) : ICommand<Contact?>, IBackendCommand;
 
     [DataContract]
     public sealed record TouchCommand(

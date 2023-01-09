@@ -9,7 +9,7 @@ public static class HasVersionExt
         where TEntity : IHasVersion<long>
         => entity is { Version: > 0 };
 
-    public static TEntity RequireSomeVersion<TEntity>(this TEntity? entity)
+    public static TEntity RequireSomeVersion<TEntity>([NotNull] this TEntity? entity)
         where TEntity : IHasVersion<long>
     {
         if (entity == null)
@@ -20,7 +20,7 @@ public static class HasVersionExt
         return entity;
     }
 
-    public static TEntity RequireVersion<TEntity>(this TEntity? entity, long? expectedVersion)
+    public static TEntity RequireVersion<TEntity>([NotNull] this TEntity? entity, long? expectedVersion)
         where TEntity : IHasVersion<long>
     {
         if (entity == null)

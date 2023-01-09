@@ -21,23 +21,23 @@ public static class ServiceCollectionExt
         return services;
     }
 
-    public static IServiceCollection AddCommandQueueProcessor(
+    public static IServiceCollection AddCommandQueueScheduler(
         this IServiceCollection services,
         Symbol queueName,
         Symbol shardKey = default)
-        => services.AddCommandQueueProcessor(o => o.AddQueue(queueName, shardKey));
+        => services.AddCommandQueueScheduler(o => o.AddQueue(queueName, shardKey));
 
-    public static IServiceCollection AddCommandQueueProcessor(
+    public static IServiceCollection AddCommandQueueScheduler(
         this IServiceCollection services,
-        Action<CommandQueueProcessor.Options>? optionsBuilder = null)
+        Action<CommandQueueScheduler.Options>? optionsBuilder = null)
     {
-        var options = services.GetSingletonInstance<CommandQueueProcessor.Options>();
+        var options = services.GetSingletonInstance<CommandQueueScheduler.Options>();
         if (options == null) {
             options = new();
             services.AddCommander();
             services.AddSingleton(options);
-            services.AddSingleton<CommandQueueProcessor>();
-            services.AddHostedService<CommandQueueProcessor>();
+            services.AddSingleton<CommandQueueScheduler>();
+            services.AddHostedService<CommandQueueScheduler>();
         }
         optionsBuilder?.Invoke(options);
         return services;
