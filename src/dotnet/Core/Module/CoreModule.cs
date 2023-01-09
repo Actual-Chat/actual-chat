@@ -2,7 +2,11 @@
 using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.ObjectPool;
+using Microsoft.Extensions.Options;
 using Stl.Extensibility;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
@@ -73,8 +77,11 @@ public class CoreModule : HostModule<CoreSettings>
         services.AddSingleton<IContentSaver, ContentSaver>();
 
         var storageBucket = Settings.GoogleStorageBucket;
-        if (storageBucket.IsNullOrEmpty())
-            services.AddSingleton<IBlobStorageProvider>(new TempFolderBlobStorageProvider());
+        if (storageBucket.IsNullOrEmpty()) {
+            services.TryAddSingleton<IContentTypeProvider>(sp
+                => sp.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
+            services.AddSingleton<IBlobStorageProvider>(sp => new TempFolderBlobStorageProvider(sp));
+        }
         else
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
 
