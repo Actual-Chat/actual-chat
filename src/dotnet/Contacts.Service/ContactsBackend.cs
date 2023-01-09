@@ -130,7 +130,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(true);
-        contact = dbContact?.ToModel();
+        contact = dbContact.ToModel();
         return contact;
     }
 
