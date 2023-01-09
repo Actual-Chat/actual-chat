@@ -41,7 +41,7 @@ public class AudioProcessorTest : AppHostTestBase
         cts.Cancel();
     }
 
-    [Fact(Skip = "Will be resolved as soon as AK update stream contracts to return Task<Task> on Write")]
+    [Fact]
     public async Task PerformRecordingAndTranscriptionTest()
     {
         using var appHost = await NewAppHost();
@@ -61,7 +61,7 @@ public class AudioProcessorTest : AppHostTestBase
             });
 
         var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
-            Create = new ChatDiff() {
+            Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
             },
@@ -78,9 +78,10 @@ public class AudioProcessorTest : AppHostTestBase
         var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
         var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
         var readSize = await readTask;
+        readSize.Should().BeGreaterThan(100);
         var transcribed = await readTranscriptTask;
         transcribed.Should().BeGreaterThan(0);
-        readSize.Should().BeLessThan(writtenSize);
+        readSize.Should().BeLessOrEqualTo(writtenSize);
     }
 
     [Fact]
@@ -98,11 +99,11 @@ public class AudioProcessorTest : AppHostTestBase
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         await kvas.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
-                Primary = Languages.Main,
+                Primary = Languages.Russian,
             });
 
         var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
-            Create = new ChatDiff() {
+            Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
             },
@@ -163,7 +164,7 @@ public class AudioProcessorTest : AppHostTestBase
         string fileName = "file.webm",
         bool webMStream = true)
     {
-        var record = new AudioRecord(session, chatId, CpuClock.Now.EpochOffset.TotalSeconds);
+        var record = new AudioRecord(session, chatId, SystemClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath(fileName);
         var fileSize = (int)filePath.GetFileInfo().Length;

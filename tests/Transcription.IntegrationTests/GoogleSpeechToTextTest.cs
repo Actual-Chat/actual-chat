@@ -93,6 +93,78 @@ public class GoogleSpeechToTextTest : TestBase
         }
     }
 
+
+    [Fact(Skip = "Manual")]
+    public async Task MissingRecognizerErrorCanBeHandled()
+    {
+        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
+        // const string recognizer = "projects/784581221205/locations/us-central1/recognizers/r-dev-tst-en";
+        // const string recognizer = "projects/784581221205/locations/us/recognizers/r-dev-tst-ru-en";
+        const string recognizer = "projects/784581221205/locations/global/recognizers/r-dev-tst-ru-ru";
+        // const string recognizer = "projects/784581221205/locations/global/recognizers/r-dev-missing-ru-ru";
+        var byteStream = GetAudioFilePath("0004-AK.webm").ReadByteStream(128, CancellationToken.None);
+        var memoized = byteStream.Memoize();
+        var resultStream = memoized.Replay();
+        if (true) {
+            var i = 0;
+            resultStream = memoized.Replay()
+                .SelectAwait(async chunk => {
+                    if (i++ > 69)
+                        await Task.Delay(20);
+                    return chunk;
+                });
+        }
+
+        var builder = new SpeechClientBuilder {
+            // Endpoint = "us-central1-speech.googleapis.com:443",
+            // Endpoint = "us-speech.googleapis.com:443",
+        };
+        var speechClient = await builder.BuildAsync().ConfigureAwait(false);
+        var recognizeRequests = speechClient
+            .StreamingRecognize(
+                // CallSettings.FromCancellationToken(CancellationToken.None),
+                CallSettings.FromExpiration(Expiration.FromTimeout(TimeSpan.FromMinutes(10))),
+                new BidirectionalStreamingSettings(1));
+        var streamingRecognitionConfig = new StreamingRecognitionConfig {
+            Config = new RecognitionConfig {
+                AutoDecodingConfig = new AutoDetectDecodingConfig()
+            }, // Use recognizer' settings
+            StreamingFeatures = new StreamingRecognitionFeatures {
+                InterimResults = true,
+                // TODO(AK): test google VAD events - probably it might be useful
+                // VoiceActivityTimeout =
+                // EnableVoiceActivityEvents =
+            },
+        };
+
+        await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
+            StreamingConfig = streamingRecognitionConfig,
+            Recognizer = recognizer,
+        }).ConfigureAwait(false);
+        await using var recognizeResponses = recognizeRequests.GetResponseStream();
+        await Task.Delay(500);
+        // await Task.Delay(20000);
+
+        _ = BackgroundTask.Run(() => PushAudio(resultStream, recognizeRequests, streamingRecognitionConfig),
+            Log,
+            "Error");
+        var sw = new Stopwatch();
+        sw.Start();
+        // var firstResponse = await recognizeResponses.FirstAsync();
+        var first = false;
+        await foreach (var streamingRecognizeResponse in recognizeResponses) {
+            if (!first) {
+                first = true;
+                sw.Stop();
+                Out.WriteLine("First transcription received in: {0} ms", sw.ElapsedMilliseconds);
+                Out.WriteLine(streamingRecognizeResponse.ToString());
+            }
+
+            Out.WriteLine(streamingRecognizeResponse.ToString());
+        }
+    }
+
     private async Task PushAudio(
         IAsyncEnumerable<byte[]> byteStream,
         SpeechClient.StreamingRecognizeStream recognizeRequests,
@@ -101,8 +173,6 @@ public class GoogleSpeechToTextTest : TestBase
         try {
             // var i = 0;
             await foreach (var chunk in byteStream.ConfigureAwait(false)) {
-                // if (++i % 80 == 0)
-                //     await Task.Delay(5000);
                 var request = new StreamingRecognizeRequest {
                     StreamingConfig = streamingRecognitionConfig,
                     Audio = ByteString.CopyFrom(chunk),
