@@ -11,7 +11,7 @@ public sealed record QueuedCommand(
     public static IMomentClock Clock { get; set; }
 
     [DataMember] public ICommand Command { get; init; } = null!;
-    [DataMember] public QueueRef QueueRef { get; init; }
+    [DataMember] public QueueRef QueueRef { get; init; } = Queues.Default;
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public Moment? StartedAt { get; init; }
     [DataMember] public Moment? CompletedAt { get; init; }

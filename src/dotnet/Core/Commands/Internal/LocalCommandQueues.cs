@@ -30,5 +30,5 @@ public sealed class LocalCommandQueues : ICommandQueues
     // Private methods
 
     private LocalCommandQueue GetBackend(Symbol queueName)
-        => _queues.GetOrAdd(queueName, static (_, self) => new LocalCommandQueue(self), this);
+        => _queues.GetOrAdd(queueName, static (name, self) => new LocalCommandQueue(name, self), this);
 }

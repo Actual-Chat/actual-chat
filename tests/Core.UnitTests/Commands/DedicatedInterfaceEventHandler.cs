@@ -12,7 +12,7 @@ public class DedicatedInterfaceEventHandler : ICommandHandler<TestEvent2>
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
-        throw new InvalidOperationException("Should not run!");
+        return Task.CompletedTask;
  #pragma warning disable CS0162
         TestService.ProcessedEvents.Enqueue(@event);
         return Task.CompletedTask;
