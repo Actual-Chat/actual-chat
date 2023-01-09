@@ -1,12 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<NavigateToEndSubHeader.Model>
+@inherits ComputedStateComponent<NavigateToEndSubFooter.Model>
 @{
     var m = State.ValueOrDefault;
     if (m is not { IsVisible: true })
         return;
 }
 
-<div class="navigate-to-end-sub-header">
+<div class="navigate-to-end-sub-footer">
     <ButtonRound Tooltip="Navigate to the last message" Click="OnClick" Class="md:my-2">
         <i class="icon-arrow-down text-2xl font-thin"></i>
     </ButtonRound>

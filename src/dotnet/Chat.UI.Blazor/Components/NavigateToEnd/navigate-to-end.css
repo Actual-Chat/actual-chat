@@ -1,10 +1,10 @@
-.navigate-to-end-sub-header {
+.navigate-to-end-sub-footer {
     @apply relative;
 }
-.navigate-to-end-sub-header .btn.btn-round {
+.navigate-to-end-sub-footer .btn.btn-round {
     @apply absolute bottom-3 md:bottom-0 right-3 z-10;
     @apply flex items-center justify-center shadow-scrollbar shadow-md md:shadow-none;
 }
-.navigate-to-end-sub-header .btn.btn-round .btn-content {
+.navigate-to-end-sub-footer .btn.btn-round .btn-content {
     @apply font-bold text-4xl;
 }
