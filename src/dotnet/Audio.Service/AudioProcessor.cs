@@ -85,60 +85,45 @@ public sealed class AudioProcessor : IAudioProcessor
                 AudioSourceLog,
                 cancellationToken);
             var openSegment = new OpenAudioSegment(0, record, audio, author, languages, OpenAudioSegmentLog);
+            var recordedAt = Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset);
+            openSegment.SetRecordedAt(recordedAt);
             streamId = openSegment.StreamId;
-            openSegment.SetRecordedAt(Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset));
-
-            var audioStream = openSegment.Audio
-                .GetFrames(cancellationToken)
-                .Select(f => f.Data);
-
-            var publishAudioTask = BackgroundTask.Run(
-                () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
-                Log,
-                $"{nameof(AudioStreamServer.Write)} failed",
-                cancellationToken);
 
             var audioEntryTask = BackgroundTask.Run(
-                () => CreateAudioEntry(openSegment, cancellationToken),
+                () => CreateAudioEntry(openSegment, recordedAt, cancellationToken),
                 Log,
                 $"{nameof(CreateAudioEntry)} failed",
                 cancellationToken);
 
             var transcribeTask = BackgroundTask.Run(
-                () => TranscribeAudio(record.ChatId, openSegment, audioEntryTask, cancellationToken),
+                () => TranscribeAudio(record.ChatId, openSegment, audioEntryTask, CancellationToken.None),
                 Log,
                 $"{nameof(TranscribeAudio)} failed",
                 CancellationToken.None);
 
-            _ = BackgroundTask.Run(FinalizeAudioProcessing,
-                Log,
-                $"{nameof(FinalizeAudioProcessing)} failed",
-                CancellationToken.None);
+            var audioStream = openSegment.Audio
+                .GetFrames(cancellationToken)
+                .Select(f => f.Data);
+            await AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken).ConfigureAwait(false);
+
+            // TODO(AY): We should make sure finalization happens no matter what (later)!
+            // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
             await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
+            // close open audio segment when the duration become available
+            openSegment.Close(openSegment.Audio.Duration);
+            var closedSegment = await openSegment.ClosedSegmentTask.ConfigureAwait(false);
+            // we don't use cancellationToken there because we should finalize audio entry
+            // if it has been created successfully no matter of method cancellation
+            var audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None)
+                .ConfigureAwait(false);
+            // this should already have been completed by this time
+            var audioEntry = await audioEntryTask.ConfigureAwait(false);
+            await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)
+                .ConfigureAwait(false);
 
-            async Task FinalizeAudioProcessing()
-            {
-                // TODO(AY): We should make sure finalization happens no matter what (later)!
-                // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
-                // real-time audio transmission has been completed
-                await publishAudioTask.ConfigureAwait(false);
-                // this should already have been completed by this time
-                var audioEntry = await audioEntryTask.ConfigureAwait(false);
-                // close open audio segment when the duration become available
-                await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
-                openSegment.Close(openSegment.Audio.Duration);
-                var closedSegment = await openSegment.ClosedSegmentTask.ConfigureAwait(false);
-                // we don't use cancellationToken there because we should finalize audio entry
-                // if it has been created successfully no matter of method cancellation
-                var audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None)
-                    .ConfigureAwait(false);
-                await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)
-                    .ConfigureAwait(false);
-
-                // we don't care much about transcription errors - basically we should finalize audio entry before
-                await transcribeTask.ConfigureAwait(false);
-            }
+            // we don't care much about transcription errors - basically we should finalize audio entry before
+            await transcribeTask.ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Error processing audio stream {StreamId}", streamId);
@@ -211,24 +196,10 @@ public sealed class AudioProcessor : IAudioProcessor
 
     private async Task<ChatEntry> CreateAudioEntry(
         OpenAudioSegment audioSegment,
+        Moment recordedAt,
         CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
-        var beginsAt = now;
-        var recordedAt = beginsAt;
-        try {
-            DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
-            recordedAt = await audioSegment.RecordedAtTask
-                    .WaitAsync(TimeSpan.FromMilliseconds(25), cancellationToken)
-                    .ConfigureAwait(false)
-                ?? recordedAt;
-        }
-        catch (TimeoutException) {
-            // In case of delay recordedAt = beginsAt.
-            // Any delay here contributes to the overall delay,
-            // so we don't want to wait for too long for RecordedAtTask.
-        }
-
         var delay = now - recordedAt;
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 
@@ -238,7 +209,7 @@ public sealed class AudioProcessor : IAudioProcessor
             AuthorId = audioSegment.Author.Id,
             Content = "",
             StreamId = audioSegment.StreamId,
-            BeginsAt = beginsAt,
+            BeginsAt = now,
             ClientSideBeginsAt = recordedAt,
         });
         var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);

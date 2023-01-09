@@ -89,7 +89,8 @@ public static class TestHostFactory
             // everything below LogLevel.Information
             logging.AddProvider(
                 new XunitTestOutputLoggerProvider(
-                    new TestOutputHelperAccessor(output),
+                    new TestOutputHelperAccessor(
+                        new TimestampedTestOutput(output)),
                     (_, _) => true));
         });
 
