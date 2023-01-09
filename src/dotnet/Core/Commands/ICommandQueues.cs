@@ -1,7 +1,9 @@
 namespace ActualChat.Commands;
 
-public interface ICommandQueues
+public interface ICommandQueues : IHasServices
 {
+    IMomentClock Clock { get; }
     ICommandQueue this[QueueRef queueRef] { get; }
-    ICommandQueueReader GetReader(Symbol queueName, Symbol shardKey);
+
+    ICommandQueueBackend GetBackend(Symbol queueName, Symbol shardKey);
 }

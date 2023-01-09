@@ -7,7 +7,7 @@ public static class ServiceCollectionExt
 {
     public static IServiceCollection AddLocalCommandQueues(
         this IServiceCollection services,
-        Func<IServiceProvider, LocalCommandQueue.Options>? optionsBuilder = null)
+        Func<IServiceProvider, LocalCommandQueues.Options>? optionsBuilder = null)
     {
         services.AddCommander();
         if (!services.HasService<ICommandQueues>()) {
@@ -17,7 +17,7 @@ public static class ServiceCollectionExt
         if (optionsBuilder != null)
             services.AddSingleton(optionsBuilder);
         else
-            services.TryAddSingleton(static _ => new LocalCommandQueue.Options());
+            services.TryAddSingleton(static _ => new LocalCommandQueues.Options());
         return services;
     }
 

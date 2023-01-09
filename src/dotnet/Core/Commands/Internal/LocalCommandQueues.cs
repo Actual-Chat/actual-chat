@@ -2,22 +2,33 @@ namespace ActualChat.Commands.Internal;
 
 public sealed class LocalCommandQueues : ICommandQueues
 {
+    public sealed record Options
+    {
+        public int MaxQueueSize { get; init; } = Constants.Queues.LocalCommandQueueDefaultSize;
+    }
+
     // NOTE(AY): We ignore ShardKey here for now, coz there are no shards
-    private readonly ConcurrentDictionary<Symbol, LocalCommandQueue> _queues = new();
+    private readonly ConcurrentDictionary<Symbol, LocalCommandQueue> _queues;
 
-    private IServiceProvider Services { get; }
+    public Options Settings { get; }
+    public IServiceProvider Services { get; }
+    public IMomentClock Clock { get; }
 
-    public LocalCommandQueues(IServiceProvider services)
-        => Services = services;
+    public ICommandQueue this[QueueRef queueRef] => GetBackend(queueRef.Name);
 
-    public ICommandQueue this[QueueRef queueRef]
-        => Get(queueRef.Name);
+    public LocalCommandQueues(Options settings, IServiceProvider services)
+    {
+        Settings = settings;
+        Services = services;
+        Clock = QueuedCommand.Clock;
+        _queues = new ConcurrentDictionary<Symbol, LocalCommandQueue>();
+    }
 
-    public ICommandQueueReader GetReader(Symbol queueName, Symbol shardKey)
-        => Get(queueName);
+    public ICommandQueueBackend GetBackend(Symbol queueName, Symbol shardKey)
+        => GetBackend(queueName);
 
     // Private methods
 
-    private LocalCommandQueue Get(Symbol queueName)
-        => _queues.GetOrAdd(queueName, static (_, self) => self.Services.Activate<LocalCommandQueue>(), this);
+    private LocalCommandQueue GetBackend(Symbol queueName)
+        => _queues.GetOrAdd(queueName, static (_, self) => new LocalCommandQueue(self), this);
 }

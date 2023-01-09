@@ -27,29 +27,29 @@ public class EnqueueOnCompletionProcessor : IOperationCompletionListener
 
         switch (items.Count) {
         case 1:
-            var (command0, queueRef0) = items[0];
-            return CommandQueues[queueRef0].Enqueue(command0);
+            var command0 = items[0];
+            return CommandQueues[command0.QueueRef].Enqueue(command0);
         case 2:
-            (command0, queueRef0) = items[0];
-            var (command1, queueRef1) = items[1];
-            var task1 = CommandQueues[queueRef0].Enqueue(command0);
-            var task2 = CommandQueues[queueRef1].Enqueue(command1);
+            command0 = items[0];
+            var command1 = items[1];
+            var task1 = CommandQueues[command0.QueueRef].Enqueue(command0);
+            var task2 = CommandQueues[command1.QueueRef].Enqueue(command1);
             return Task.WhenAll(task1, task2);
         default:
-            var tasks = items.Select(x => CommandQueues[x.QueueRef].Enqueue(x.Command));
+            var tasks = items.Select(command => CommandQueues[command.QueueRef].Enqueue(command));
             return Task.WhenAll(tasks);
         }
     }
 
-    private static List<EnqueuedCommandEntry>? CollectEnqueueOnCompletionEntries(
+    private static List<QueuedCommand>? CollectEnqueueOnCompletionEntries(
         OptionSet operationItems,
-        List<EnqueuedCommandEntry>? result = null)
+        List<QueuedCommand>? result = null)
     {
         if (operationItems.Items.Count == 0)
             return result;
 
         result ??= new();
-        var entries = operationItems.Get<ImmutableList<EnqueuedCommandEntry>>();
+        var entries = operationItems.Get<ImmutableList<QueuedCommand>>();
         if (entries != null && entries.Count != 0)
             result.AddRange(entries);
 

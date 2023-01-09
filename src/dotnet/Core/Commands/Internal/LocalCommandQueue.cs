@@ -1,52 +1,35 @@
-using Stl.Comparison;
-
 namespace ActualChat.Commands.Internal;
 
-public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueReader
+public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
 {
-    public sealed record Options
-    {
-        public int Capacity { get; init; } = 1000;
-        public int MaxKnownCommandCount { get; init; } = 10_000;
-        public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
-        public IMomentClock? Clock { get; init; }
-    }
-
-    private readonly RecentlySeenSet<Ref<ICommand>> _knownCommands;
-    private readonly Channel<QueuedCommand> _commands;
+    private readonly Channel<QueuedCommand> _queue;
     private volatile int _successCount;
     private volatile int _failureCount;
     private volatile int _retryCount;
 
-    public Options Settings { get; }
+    ICommandQueues ICommandQueue.Queues => Queues;
+    public LocalCommandQueues Queues { get; }
     public int SuccessCount => _successCount;
     public int FailureCount => _failureCount;
     public int RetryCount => _retryCount;
 
-    public LocalCommandQueue(Options settings, IServiceProvider services)
+    private IMomentClock Clock { get; }
+
+    public LocalCommandQueue(LocalCommandQueues queues)
     {
-        Settings = settings;
-        var clock = settings.Clock ?? services.Clocks().CoarseCpuClock;
-        _knownCommands = new RecentlySeenSet<Ref<ICommand>>(
-            settings.MaxKnownCommandCount, settings.MaxKnownCommandAge, clock);
-        _commands = Channel.CreateBounded<QueuedCommand>(
-            new BoundedChannelOptions(settings.Capacity) {
+        Queues = queues;
+        Clock = queues.Clock;
+        _queue = Channel.CreateBounded<QueuedCommand>(
+            new BoundedChannelOptions(Queues.Settings.MaxQueueSize) {
                 FullMode = BoundedChannelFullMode.Wait,
             });
     }
 
-    public Task Enqueue(ICommand command, CancellationToken cancellationToken = default)
-    {
-        lock (_knownCommands) {
-            if (!_knownCommands.TryAdd(Ref.New(command)))
-                return Task.CompletedTask;
-        }
-
-        return _commands.Writer.WriteAsync(new QueuedCommand(NewId(), command), cancellationToken).AsTask();
-    }
+    public Task Enqueue(QueuedCommand command, CancellationToken cancellationToken = default)
+        => _queue.Writer.WriteAsync(command, cancellationToken).AsTask();
 
     public IAsyncEnumerable<QueuedCommand> Read(CancellationToken cancellationToken)
-        => _commands.Reader.ReadAllAsync(cancellationToken);
+        => _queue.Reader.ReadAllAsync(cancellationToken);
 
     public ValueTask MarkCompleted(QueuedCommand command, CancellationToken cancellationToken)
     {
@@ -63,11 +46,12 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueReader
 
         Interlocked.Increment(ref _retryCount);
         var newTryIndex = command.TryIndex + 1;
-        var newCommand = new QueuedCommand(
-            $"{command.Id.Value}-retry-{newTryIndex.ToString(CultureInfo.InvariantCulture)}",
-            command.Command,
-            newTryIndex);
-        return _commands.Writer.WriteAsync(newCommand, cancellationToken);
+        var newId = $"{command.Id.Value}-retry-{newTryIndex.ToString(CultureInfo.InvariantCulture)}";
+        var newCommand = command with {
+            Id = newId,
+            TryIndex = newTryIndex,
+        };
+        return _queue.Writer.WriteAsync(newCommand, cancellationToken);
     }
 
     // Private methods

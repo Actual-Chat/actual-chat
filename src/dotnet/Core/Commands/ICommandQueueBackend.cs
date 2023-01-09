@@ -1,6 +1,6 @@
 namespace ActualChat.Commands;
 
-public interface ICommandQueueReader
+public interface ICommandQueueBackend
 {
     IAsyncEnumerable<QueuedCommand> Read(CancellationToken cancellationToken);
     ValueTask MarkCompleted(QueuedCommand command, CancellationToken cancellationToken);

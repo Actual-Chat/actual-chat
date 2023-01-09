@@ -19,7 +19,7 @@ public static class ContactsExt
             Create = new Contact(contactId),
         });
         contact = await contacts.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
-        return contact;
+        return contact!;
     }
 
     // ListXxx

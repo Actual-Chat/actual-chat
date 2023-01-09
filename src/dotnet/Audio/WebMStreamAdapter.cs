@@ -32,12 +32,13 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
-        var target = Channel.CreateBounded<AudioFrame>(new BoundedChannelOptions(128) {
-            SingleWriter = true,
-            SingleReader = true,
-            AllowSynchronousContinuations = true,
-            FullMode = BoundedChannelFullMode.Wait,
-        });
+        var target = Channel.CreateBounded<AudioFrame>(
+            new BoundedChannelOptions(Constants.Queues.WebMStreamAdapterQueueSize) {
+                SingleWriter = true,
+                SingleReader = true,
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
 
         _ = BackgroundTask.Run(async () => {
             try {

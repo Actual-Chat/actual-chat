@@ -222,7 +222,7 @@ public partial class ChatsUpgradeBackend
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
                     EndsAt = lastEndsAt,
-                    Content = $"{id} {content ?? GetRandomSentence(rnd, 30)}",
+                    Content = $"{localId}: {content ?? GetRandomSentence(rnd, 30)}",
                     AuthorId = author.Id,
                 };
                 dbContext.Add(entry);

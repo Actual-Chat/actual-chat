@@ -2,5 +2,7 @@ namespace ActualChat.Commands;
 
 public interface ICommandQueue
 {
-    Task Enqueue(ICommand command, CancellationToken cancellationToken = default);
+    ICommandQueues Queues { get; }
+
+    Task Enqueue(QueuedCommand command, CancellationToken cancellationToken = default);
 }
