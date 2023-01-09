@@ -1,19 +1,25 @@
-using System.Net.Mime;
 using ActualChat.IO;
+using Microsoft.AspNetCore.StaticFiles;
 using Stl.IO;
 
 namespace ActualChat.Blobs.Internal;
 
 internal class LocalFolderBlobStorage : IBlobStorage
 {
-    private readonly FilePath _directory;
+    private IContentTypeProvider? _contentTypeProvider;
+    private FilePath BaseDirectory { get; }
+    private IServiceProvider Services { get; }
 
-    public LocalFolderBlobStorage(FilePath directory)
+    private IContentTypeProvider ContentTypeProvider
+        => _contentTypeProvider ??= Services.GetRequiredService<IContentTypeProvider>();
+
+    public LocalFolderBlobStorage(FilePath directory, IServiceProvider services)
     {
         if (directory == null)
             throw new ArgumentNullException(nameof(directory));
 
-        _directory = directory.DirectoryPath;
+        Services = services;
+        BaseDirectory = directory.DirectoryPath;
     }
 
     public Task<Stream?> Read(string path, CancellationToken cancellationToken)
@@ -21,7 +27,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
         ValidatePath(path);
 
         try {
-            return Task.FromResult<Stream?>(File.OpenRead( _directory & path));
+            return Task.FromResult<Stream?>(File.OpenRead( BaseDirectory & path));
         }
         catch (DirectoryNotFoundException) {
             return Task.FromResult<Stream?>(null);
@@ -37,10 +43,10 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
         ValidatePath(path);
 
-        var fullPath = _directory & path;
-        return !File.Exists(fullPath)
-            ? Task.FromResult<string?>(null)
-            : Task.FromResult<string?>(MediaTypeNames.Application.Octet);
+        var fullPath = BaseDirectory & path;
+        return File.Exists(fullPath) && ContentTypeProvider.TryGetContentType(fullPath, out var contentType)
+            ? Task.FromResult<string?>(contentType)
+            : Task.FromResult<string?>(null);
     }
 
     public async Task Write(string path, Stream dataStream, string contentType, CancellationToken cancellationToken)
@@ -50,7 +56,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
         ValidatePath(path);
 
-        var fullPath = _directory & path;
+        var fullPath = BaseDirectory & path;
         Directory.CreateDirectory(fullPath.DirectoryPath);
         var fileStream = File.Create(fullPath);
         await using var _ = fileStream.ConfigureAwait(false);
@@ -67,7 +73,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
         foreach (var path in paths) {
             ValidatePath(path);
 
-            var fullPath = (_directory & path).Value;
+            var fullPath = (BaseDirectory & path).Value;
             if (File.Exists(fullPath))
                 File.Delete(fullPath);
             else if (Directory.Exists(fullPath))
@@ -90,7 +96,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
         foreach (var path in paths) {
             ValidatePath(path);
 
-            var fullPath = (_directory & path).Value;
+            var fullPath = (BaseDirectory & path).Value;
             if (File.Exists(fullPath))
                 result[index] = true;
             else if (Directory.Exists(fullPath))
@@ -108,7 +114,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
         if (path == null) throw new ArgumentNullException(nameof(path));
 
         var filePath = FilePath.New(path);
-        if (!filePath.IsSubPathOf(_directory) && filePath.IsRooted)
+        if (!filePath.IsSubPathOf(BaseDirectory) && filePath.IsRooted)
             throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the base directory.");
     }
 }
