@@ -167,8 +167,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
         var dbAuthors = dbContext.Authors.ForUpdate().Include(a => a.Roles);
         var dbAuthor = await (authorId.IsNone
-            ? dbAuthors.SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
-            : dbAuthors.SingleOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
+            ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+            : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
             ).ConfigureAwait(false);
         var existingAuthor = dbAuthor?.ToModel() ?? defaultAuthor;
 
@@ -252,22 +252,23 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
                     .ConfigureAwait(false);
                 new IReadPositionsBackend.SetCommand(author.UserId, command.ChatId, chatTextIdRange.End - 1)
-                    .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
+                    .EnqueueOnCompletion(author.UserId);
             }
-            // Raise AuthorChangedEvent
+
+            // Raise events
             new AuthorChangedEvent(author, existingAuthor)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId), Queues.Chats.ShardBy(chatId));
+                .EnqueueOnCompletion(author.UserId, chatId);
             return author;
         }
     }
 
     [EventHandler]
-    public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent @event, CancellationToken cancellationToken)
+    public virtual async Task OnAvatarChangedEvent(AvatarChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (_, oldAvatar, changeKind) = @event;
+        var (_, oldAvatar, changeKind) = eventCommand;
         if (changeKind != ChangeKind.Remove)
             return;
 

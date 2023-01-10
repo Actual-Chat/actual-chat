@@ -151,7 +151,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             dbRole = new DbRole(role);
             if (role.SystemRole != SystemRole.None) {
                 var dbSameSystemRole = await dbContext.Roles.ForUpdate()
-                    .SingleOrDefaultAsync(r => r.ChatId == dbRole.ChatId && r.SystemRole == dbRole.SystemRole, cancellationToken)
+                    .FirstOrDefaultAsync(r => r.ChatId == dbRole.ChatId && r.SystemRole == dbRole.SystemRole, cancellationToken)
                     .ConfigureAwait(false);
                 if (dbSameSystemRole != null)
                     throw StandardError.Constraint("Only one system role of a given kind is allowed.");
@@ -161,7 +161,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         else {
             roleId.Require("Command.RoleId");
             dbRole = await dbContext.Roles.ForUpdate()
-                .SingleOrDefaultAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
+                .FirstOrDefaultAsync(r => r.ChatId == chatId && r.Id == roleId, cancellationToken)
                 .ConfigureAwait(false);
             dbRole = dbRole.RequireVersion(expectedVersion);
             role = dbRole.ToModel();

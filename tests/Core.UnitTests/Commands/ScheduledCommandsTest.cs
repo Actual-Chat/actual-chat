@@ -61,8 +61,8 @@ public class ScheduledCommandsTest: TestBase
 
         await Awaiter.WaitFor(() => queue.SuccessCount == 2);
 
-        foreach (var @event in testService.ProcessedEvents)
-            Out.WriteLine(@event.ToString());
+        foreach (var eventCommand in testService.ProcessedEvents)
+            Out.WriteLine(eventCommand.ToString());
 
         testService.ProcessedEvents.Count.Should().Be(3);
     }
@@ -92,8 +92,8 @@ public class ScheduledCommandsTest: TestBase
 
         await Awaiter.WaitFor(() => queue.SuccessCount == 2);
 
-        foreach (var @event in testService.ProcessedEvents)
-            Out.WriteLine(@event.ToString());
+        foreach (var eventCommand in testService.ProcessedEvents)
+            Out.WriteLine(eventCommand.ToString());
 
         testService.ProcessedEvents.Count.Should().Be(3);
     }

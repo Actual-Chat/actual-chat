@@ -13,7 +13,8 @@ public class ScheduledCommandTestService
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
-        new TestEvent(command.Error).EnqueueOnCompletion(Queues.Default);
+        // Raise events
+        new TestEvent(command.Error).EnqueueOnCompletion();
         return Task.CompletedTask;
     }
 
@@ -23,8 +24,9 @@ public class ScheduledCommandTestService
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
-        new TestEvent(null).EnqueueOnCompletion(Queues.Default);
-        new TestEvent2().EnqueueOnCompletion(Queues.Default);
+        // Raise events
+        new TestEvent(null).EnqueueOnCompletion();
+        new TestEvent2().EnqueueOnCompletion();
         return Task.CompletedTask;
     }
 
@@ -34,31 +36,34 @@ public class ScheduledCommandTestService
         if (Computed.IsInvalidating())
             return Task.CompletedTask;
 
-        new TestEvent(null).EnqueueOnCompletion(Queues.Default, Queues.Chats);
-        new TestEvent2().EnqueueOnCompletion(Queues.Default, Queues.Users);
+        new TestEvent(null)
+            .EnqueueOnCompletion(ChatId.None)
+            .EnqueueOnCompletion();
+        new TestEvent2()
+            .EnqueueOnCompletion(Queues.Default, Queues.Users); // Same as above, actually, but for UserId.None
         return Task.CompletedTask;
     }
 
     [EventHandler]
-    public virtual async Task ProcessTestEvent(TestEvent @event, CancellationToken cancellationToken)
+    public virtual async Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;
 
-        if (@event.Error != null)
-            throw new InvalidOperationException(@event.Error);
+        if (eventCommand.Error != null)
+            throw new InvalidOperationException(eventCommand.Error);
 
         await Task.Delay(250, cancellationToken);
-        ProcessedEvents.Enqueue(@event);
+        ProcessedEvents.Enqueue(eventCommand);
     }
 
     [EventHandler]
-    public virtual async Task ProcessTestEvent2(TestEvent2 @event, CancellationToken cancellationToken)
+    public virtual async Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;
 
         await Task.Delay(250, cancellationToken);
-        ProcessedEvents.Enqueue(@event);
+        ProcessedEvents.Enqueue(eventCommand);
     }
 }

@@ -38,7 +38,7 @@ public class ReadPositionsBackend: DbServiceBase<UsersDbContext>, IReadPositions
 
         var id = DbReadPosition.ComposeId(userId, chatId);
         var dbReadPosition = await dbContext.ReadPositions.ForUpdate()
-            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
         bool hasChanges = false;
         if (dbReadPosition == null) {

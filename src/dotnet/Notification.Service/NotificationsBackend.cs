@@ -180,7 +180,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         else {
             var notificationCopy = notification;
             dbNotification = await dbContext.Notifications.ForUpdate()
-                .SingleOrDefaultAsync(e => e.Id == notificationCopy.Id, cancellationToken)
+                .FirstOrDefaultAsync(e => e.Id == notificationCopy.Id, cancellationToken)
                 .ConfigureAwait(false);
             dbNotification = dbNotification.RequireVersion(notification.Version);
             notification = notification with {
@@ -229,14 +229,12 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     // Event handlers
 
     [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(
-        TextEntryChangedEvent @event,
-        CancellationToken cancellationToken)
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (entry, author, changeKind) = @event;
+        var (entry, author, changeKind) = eventCommand;
         if (changeKind != ChangeKind.Create || entry.IsSystemEntry)
             return;
 
@@ -247,14 +245,12 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     [EventHandler]
-    public virtual async Task OnReactionChangedEvent(
-        ReactionChangedEvent @event,
-        CancellationToken cancellationToken)
+    public virtual async Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (reaction, entry, author, reactionAuthor, changeKind) = @event;
+        var (reaction, entry, author, reactionAuthor, changeKind) = eventCommand;
         if (changeKind == ChangeKind.Remove)
             return;
         if (author.UserId.IsNone) // No notifs to anonymous users

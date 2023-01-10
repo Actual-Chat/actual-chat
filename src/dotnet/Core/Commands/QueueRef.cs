@@ -9,8 +9,8 @@ public readonly record struct QueueRef(
 {
     private static readonly char[] AnyDelimiter = { '.', '[' };
 
-    public QueueRef(string name, QueuedCommandPriority priority)
-        : this(name, "", priority) { }
+    public QueueRef(Symbol name, QueuedCommandPriority priority)
+        : this(name, Symbol.Empty, priority) { }
 
     public override string ToString()
     {
@@ -77,6 +77,7 @@ public readonly record struct QueueRef(
             var prioritySuffix = value[(shardKeyEndIndex + 2)..];
             if (GetPriority(prioritySuffix, value) is not { } priority)
                 return false;
+
             result = new QueueRef(name, shardKey, priority);
             return true;
         }
@@ -84,7 +85,7 @@ public readonly record struct QueueRef(
 
     private static QueuedCommandPriority? GetPriority(string prioritySuffix, string? value)
         => prioritySuffix switch {
-            "" => default,
+            "" => QueuedCommandPriority.Default,
             "low" => QueuedCommandPriority.Low,
             "high" => QueuedCommandPriority.High,
             "critical" => QueuedCommandPriority.Critical,

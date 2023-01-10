@@ -91,7 +91,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbContact = await dbContext.Contacts.ForUpdate()
-            .SingleOrDefaultAsync(c => c.Id == id, cancellationToken)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
         if (change.IsCreate(out var contact)) {
@@ -147,7 +147,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbContact = await dbContext.Contacts.ForUpdate()
-            .SingleOrDefaultAsync(c => c.Id == id, cancellationToken)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
         if (dbContact == null)
             return;
@@ -165,12 +165,12 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     // Events
 
     [EventHandler]
-    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent @event, CancellationToken cancellationToken)
+    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (author, oldAuthor) = @event;
+        var (author, oldAuthor) = eventCommand;
         var oldHasLeft = oldAuthor?.HasLeft ?? true;
         if (oldHasLeft == author.HasLeft)
             return;
@@ -195,12 +195,12 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     }
 
     [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent @event, CancellationToken cancellationToken)
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (_, author, changeKind) = @event;
+        var (_, author, changeKind) = eventCommand;
         if (changeKind != ChangeKind.Create)
             return;
 

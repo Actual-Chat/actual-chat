@@ -110,14 +110,16 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         if (mustUpdateHasReactions)
             await UpdateHasReactions().ConfigureAwait(false);
 
+        // Raise events
         new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind)
-            .EnqueueOnCompletion(Queues.Users.ShardBy(author.UserId));
+            .EnqueueOnCompletion(author.UserId, entry.ChatId);
+        return;
 
         async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)
         {
             var dbSummaryId = DbReactionSummary.ComposeId(entryId, emoji1);
             var dbSummary = await dbContext.ReactionSummaries.ForUpdate()
-                .SingleOrDefaultAsync(x => x.Id == dbSummaryId, cancellationToken)
+                .FirstOrDefaultAsync(x => x.Id == dbSummaryId, cancellationToken)
                 .ConfigureAwait(false);
             if (!mustIncrementCount)
                 dbSummary.Require();

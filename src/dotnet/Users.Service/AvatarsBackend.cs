@@ -66,8 +66,10 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        new AvatarChangedEvent(avatar, existingAvatar, change.Kind).EnqueueOnCompletion(
-            Queues.Users.ShardBy(avatar.UserId));
+
+        // Raise events
+        new AvatarChangedEvent(avatar, existingAvatar, change.Kind)
+            .EnqueueOnCompletion(avatar.UserId);
         return avatar;
     }
 }

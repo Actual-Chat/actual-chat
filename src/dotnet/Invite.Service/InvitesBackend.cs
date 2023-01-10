@@ -128,8 +128,10 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
             if (account.IsActive())
                 throw StandardError.StateTransition("Your account is already active.");
+
+            // Follow-up actions
             new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(account.Id));
+                .EnqueueOnCompletion(account.Id);
             break;
         case ChatInviteOption chatInviteOption:
             var chatId = chatInviteOption.ChatId;

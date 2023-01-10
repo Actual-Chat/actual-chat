@@ -86,13 +86,16 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             throw StandardError.Internal("No SessionInfo in operation's items.");
         var userId = new UserId(sessionInfo.UserId);
 
+        // Follow-up actions
         new IServerKvas.MigrateGuestKeysCommand(command.Session)
-            .EnqueueOnCompletion(Queues.Users.ShardBy(userId));
+            .EnqueueOnCompletion(userId);
 
         var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler
+
+        // Raise events
         if (isNewUser)
             new NewUserEvent(userId)
-                .EnqueueOnCompletion(Queues.Users.ShardBy(userId), Queues.Default);
+                .EnqueueOnCompletion();
     }
 
     [CommandFilter(Priority = 1)]
@@ -148,8 +151,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 
     private async Task UpdatePresence(UsersDbContext dbContext, UserId userId, CancellationToken cancellationToken)
     {
-        var dbUserPresence = await dbContext.UserPresences
-            .ForUpdate()
+        var dbUserPresence = await dbContext.UserPresences.ForUpdate()
             .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserPresence == null) {

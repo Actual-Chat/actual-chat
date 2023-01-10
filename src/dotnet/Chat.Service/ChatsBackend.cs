@@ -256,9 +256,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var dbChat = chatId.IsNone ? null :
+            await dbContext.Chats.ForUpdate()
+                // ReSharper disable once AccessToModifiedClosure
+                .FirstOrDefaultAsync(c => c.Id == chatId, cancellationToken)
+                .ConfigureAwait(false);
+        var oldChat = dbChat?.ToModel();
         Chat chat;
-        DbChat dbChat;
         if (change.IsCreate(out var update)) {
+            oldChat.RequireNull();
             var chatKind = update.Kind ?? chatId.Kind;
             if (chatKind == ChatKind.Group) {
                 if (chatId.IsNone)
@@ -323,11 +329,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         else if (change.IsUpdate(out update)) {
             ownerId.RequireNone();
-
-            dbChat = await dbContext.Chats.ForUpdate()
-                .SingleAsync(c => c.Id == chatId, cancellationToken)
-                .ConfigureAwait(false);
             dbChat.RequireVersion(expectedVersion);
+
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
@@ -337,6 +340,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
+
+        // Raise events
+        new ChatChangedEvent(chat, oldChat)
+            .EnqueueOnCompletion(UserId.None, chat.Id);
         return chat;
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff)
@@ -416,8 +423,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         var userId = author!.UserId;
+
+        // Raise events
         new TextEntryChangedEvent(entry, author, changeKind)
-            .EnqueueOnCompletion(Queues.Users.ShardBy(userId), Queues.Chats.ShardBy(chatId));
+            .EnqueueOnCompletion(userId, chatId);
         return entry;
     }
 
@@ -457,24 +466,24 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     // Event handlers
 
     [EventHandler]
-    public virtual async Task OnNewUserEvent(NewUserEvent @event, CancellationToken cancellationToken)
+    public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        await JoinAnnouncementsChat(@event.UserId, cancellationToken).ConfigureAwait(false);
+        await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance)
-            await JoinDefaultChatIfAdmin(@event.UserId, cancellationToken).ConfigureAwait(false);
+            await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
     }
 
     [EventHandler]
-    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent @event, CancellationToken cancellationToken)
+    public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (author, oldAuthor) = @event;
+        var (author, oldAuthor) = eventCommand;
         if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.IsPeerChatId(out _))
             return;
 

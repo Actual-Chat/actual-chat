@@ -34,9 +34,9 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
     // Events
 
     [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent @event, CancellationToken cancellationToken)
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var (entry, author, changeKind) = @event;
+        var (entry, author, changeKind) = eventCommand;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {

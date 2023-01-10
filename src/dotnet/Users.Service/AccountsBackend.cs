@@ -80,7 +80,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbAccount = await dbContext.Accounts.ForUpdate()
-            .SingleOrDefaultAsync(a => a.Id == account.Id, cancellationToken)
+            .FirstOrDefaultAsync(a => a.Id == account.Id, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.RequireVersion(expectedVersion);
         dbAccount.UpdateFrom(account);
