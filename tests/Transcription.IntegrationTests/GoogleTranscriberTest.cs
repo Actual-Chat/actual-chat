@@ -65,8 +65,6 @@ public class GoogleTranscriberTest : TestBase
     [Fact(Skip = "Manual")]
     public async Task ProperTextMapTest()
     {
-        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
-        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         var fileName = "0000-AY.webm";
         var services = CreateServices();
         var transcriber = new GoogleTranscriber(services);
