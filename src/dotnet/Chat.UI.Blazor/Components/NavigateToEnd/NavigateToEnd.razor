@@ -2,8 +2,8 @@
 @inherits ComputedStateComponent<NavigateToEnd.Model>
 @{
     var m = State.Value;
-    _animator.BeginTransition(m.IsVisible);
-    if (!_animator.IsVisible)
+    _animator.State = m.IsVisible;
+    if (_animator.MustHideComponent)
         return;
 }
 
