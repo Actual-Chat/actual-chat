@@ -26,8 +26,8 @@
     [Parameter, EditorRequired] public bool IsVisible { get; set; }
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300), Clocks.UIClock);
+        base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
