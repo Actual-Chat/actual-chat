@@ -47,15 +47,15 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     [JSInvokable]
-    public Task UpdateVisibleKeys(string?[] visibleKeys, bool isEndAnchorVisible)
+    public Task UpdateVisibleKeys(List<string> visibleKeys, bool isEndAnchorVisible)
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         // Do not update state if disposed
         if (JSRef == null)
             return Task.CompletedTask;
 
-        if (visibleKeys?.Length > 0 && VisibleKeysState != null)
-            VisibleKeysState.Value = visibleKeys.ToList()!;
+        if (visibleKeys.Count > 0 && VisibleKeysState != null)
+            VisibleKeysState.Value = visibleKeys;
 
         if (IsEndAnchorVisibleState != null)
             IsEndAnchorVisibleState.Value = isEndAnchorVisible;
