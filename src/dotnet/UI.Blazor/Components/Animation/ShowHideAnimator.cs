@@ -25,7 +25,7 @@ public class ShowHideAnimator : ComponentAnimator
         var (newClass, duration) = newState
             ? Class switch {
                 "hidden" => ("off", MinDuration),
-                "off" => ("off-to-on", Duration),
+                "off" => (isAnimating ? Class : "off-to-on", isAnimating ? skipAnimation : Duration),
                 "off-to-on" => (isAnimating ? Class : "", skipAnimation),
                 "" => (Class, skipAnimation),
                 "on-to-off" => ("off-to-on", Duration),
