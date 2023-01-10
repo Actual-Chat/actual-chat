@@ -205,8 +205,8 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        ChatUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: false);
-        await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: true);
+        ChatUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
+        await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 
     private ValueTask ShowFilePicker()
