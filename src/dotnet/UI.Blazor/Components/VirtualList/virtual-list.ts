@@ -18,7 +18,7 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const UpdateViewportInterval: number = 320;
-const UpdateVisibleKeysInterval: number = 250;
+const UpdateItemVisibilityInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
@@ -55,6 +55,7 @@ export class VirtualList {
     private readonly _itemRefs: Array<HTMLElement> = [];
     private readonly _newItemRefs: Array<Element> = [];
     private readonly _statistics: VirtualListStatistics = new VirtualListStatistics();
+    private readonly _keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
     private _isDisposed = false;
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
@@ -592,13 +593,13 @@ export class VirtualList {
             this.updateViewportThrottled();
     }, 2);
 
-    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateVisibleKeysInterval, 'delayHead');
+    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead');
     private updateVisibleKeys = serialize(async () => {
         if (this._isDisposed)
             return;
 
-        const visibleKeys = [...this._visibleItems].sort();
-        await this._blazorRef.invokeMethodAsync('UpdateVisibleKeys', visibleKeys, this._isEndAnchorVisible);
+        const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
+        await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', visibleItems, this._isEndAnchorVisible);
     }, 2);
 
     private updateOrderedItems(): void {
@@ -632,7 +633,7 @@ export class VirtualList {
     }
 
     // force repaint to fix blank item rendering issue
-    private forceRepaintThrottled = throttle(() => this.forceRepaint(), UpdateVisibleKeysInterval, 'default');
+    private forceRepaintThrottled = throttle(() => this.forceRepaint(), UpdateItemVisibilityInterval, 'default');
     private forceRepaint(items: HTMLElement[] | null = null): void {
         if (items == null) {
             const visibleItemRefs = new Array<HTMLElement>();

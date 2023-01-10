@@ -15,7 +15,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private long? _lastNavigateToEntryId;
     private long? _initialLastReadEntryId;
-    private HashSet<long> _fullyVisibleEntryIds = new ();
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -32,8 +31,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
-    private IMutableState<bool> IsEndAnchorVisible { get; set; } = null!;
-    private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
+    private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
     private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
@@ -44,10 +42,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Nav.LocationChanged += OnLocationChanged;
         try {
             NavigateToEntryId = StateFactory.NewMutable<long?>();
-            VisibleKeys = StateFactory.NewMutable(new List<string>());
-            IsEndAnchorVisible = StateFactory.NewMutable(true);
-            _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
-
+            ItemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty);
             LastReadEntryState = await ChatUI.LeaseReadState(Chat.Id, _disposeToken.Token);
             _initialLastReadEntryId = LastReadEntryState.Value;
         }
@@ -128,14 +123,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
         var lastReadEntryLid = LastReadEntryState?.Value ?? 0;
         if (LastReadEntryState != null && lastReadEntryLid >= chatIdRange.End) {
-            // looks like an error, let's reset last read position to the las entry id
+            // Looks like an error, let's reset last read position to the last entry Id
             lastReadEntryLid = chatIdRange.End - 1;
             LastReadEntryState.Value = lastReadEntryLid;
         }
         var entryLid = lastReadEntryLid;
         var mustScrollToEntry = query.IsNone && entryLid != 0;
 
-        // get latest tile to check whether the Author has submitted new entry
+        // Get the last tile to check whether the Author has submitted a new entry
         var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
         var lastTile = await Chats.GetTile(Session,
             chatId,
@@ -146,32 +141,32 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (entry.AuthorId != authorId || entry.LocalId <= _initialLastReadEntryId)
                 continue;
 
-            // scroll only on text entries
+            // Scroll only on text entries
             if (entry.IsStreaming || entry.AudioEntryId != null)
                 continue;
 
-            // scroll to the latest Author entry - e.g.m when author submits the new one
+            // Scroll to the latest Author entry - e.g.m when author submits the new one
             _initialLastReadEntryId = entry.LocalId;
             entryLid = entry.LocalId;
             mustScrollToEntry = true;
         }
 
         var isHighlighted = false;
-        // handle NavigateToEntry
+        // Handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
         if (!mustScrollToEntry)
             if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
                 isHighlighted = true;
                 _lastNavigateToEntryId = navigateToEntryId;
                 entryLid = navigateToEntryId.Value;
-                if (!_fullyVisibleEntryIds.Contains(navigateToEntryId.Value))
+                if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
                     mustScrollToEntry = true;
             }
         var scrollToKey = mustScrollToEntry
             ? entryLid.Format()
             : null;
 
-        // if we are scrolling somewhere - let's load date near the entryId
+        // If we are scrolling somewhere - let's load the date near the entryId
         var queryRange = mustScrollToEntry
             ? new Range<long>(
                 entryLid - PageSize,
@@ -185,7 +180,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
 
         var adjustedRange = queryRange.Clamp(chatIdRange);
-        // extend requested range if close to chat Id range
+        // Extend requested range if it's close to chat Id range
         var closeToTheEnd = adjustedRange.End >= chatIdRange.End - (PageSize / 2);
         var closeToTheStart = adjustedRange.Start <= chatIdRange.Start + (PageSize / 2);
         var extendedRange = (closeToTheStart, closeToTheEnd) switch {
@@ -244,52 +239,26 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return result;
     }
 
-    private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-            try {
-                await Task.WhenAny(
-                    VisibleKeys.Computed.WhenInvalidated(cancellationToken),
-                    IsEndAnchorVisible.Computed.WhenInvalidated(cancellationToken)
-                );
-                var visibleKeys = await VisibleKeys.Use(cancellationToken);
-                if (visibleKeys.Count == 0) {
-                    ChatUI.VisibleIdRange.Value = new(0, 0);
-                    continue;
-                }
-                var isEndAnchorVisible = await IsEndAnchorVisible.Use(cancellationToken);
-
-                var visibleEntryIds = visibleKeys
-                    .Select(key =>
-                        long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
-                            ? (long?)entryId
-                            : null)
-                    .Where(entryId => entryId.HasValue)
-                    .Select(entryId => entryId!.Value)
-                    .ToHashSet();
-                ChatUI.IsEndAnchorVisible.Value = isEndAnchorVisible;
-                ChatUI.VisibleIdRange.Value = new (visibleEntryIds.Min(), visibleEntryIds.Max());
-
-                var maxVisibleEntryId = visibleEntryIds.Max();
-                var minVisibleEntryId = visibleEntryIds.Min();
-                visibleEntryIds.Remove(maxVisibleEntryId);
-                visibleEntryIds.Remove(minVisibleEntryId);
-                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; });
-
-                if (LastReadEntryState?.Value >= maxVisibleEntryId)
-                    continue;
-
-                if (LastReadEntryState != null)
-                    LastReadEntryState.Value = maxVisibleEntryId;
-            }
-            catch (Exception e) when(e is not OperationCanceledException) {
-                Log.LogWarning(e,
-                    "Error monitoring visible key changes, LastReadEntryId = {LastReadEntryId}",
-                    LastReadEntryState?.Value);
-            }
-    }
-
     // Event handlers
+
+    private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
+    {
+        var lastItemVisibility = ItemVisibility.Value;
+        var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
+        if (itemVisibility.ContentEquals(lastItemVisibility))
+            return;
+
+        ItemVisibility.Value = itemVisibility;
+        if (lastItemVisibility.IsEndAnchorVisible != itemVisibility.IsEndAnchorVisible)
+            StateHasChanged(); // To re-render NavigateToEnd
+
+        var lastReadEntryState = LastReadEntryState;
+        if (itemVisibility.IsEmpty || lastReadEntryState == null)
+            return;
+
+        if (lastReadEntryState.Value is not { } readEntryId || readEntryId < itemVisibility.MaxEntryLid)
+            lastReadEntryState.Value = itemVisibility.MaxEntryLid;
+    }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => TryNavigateToEntry();

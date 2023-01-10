@@ -35,7 +35,7 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
-    var visibleKeys = (VisibleKeysState?.Value ?? new List<string>()).ToHashSet();
+    var visibleKeys = LastReportedItemVisibility.VisibleKeys;
     var items = Data.Items;
     LastData = Data;
     var itemClassBase = Data.Query.IsNone

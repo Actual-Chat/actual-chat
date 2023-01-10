@@ -3,8 +3,8 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 @{
-    var m = State.ValueOrDefault;
-    if (m?.RecordingChat == null)
+    var m = State.Value;
+    if (m.RecordingChat == null)
         return;
 }
 

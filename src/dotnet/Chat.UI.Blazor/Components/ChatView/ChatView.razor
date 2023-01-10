@@ -6,8 +6,7 @@
     Class="chat-view"
     DataSource="this"
     KeyComparer="LongAsStringKeyComparer.Default"
-    IsEndAnchorVisibleState="IsEndAnchorVisible"
-    VisibleKeysState="VisibleKeys">
+    ItemVisibilityChanged="OnItemVisibilityChanged">
     <Item>
         <ChatMessage Message="@context" />
     </Item>
@@ -43,3 +42,7 @@
         </div>
     </Skeleton>
 </VirtualList>
+
+<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
+    <NavigateToEnd ChatSid="@Chat.Id" IsVisible="@(!ItemVisibility.Value.IsEndAnchorVisible)"/>
+</RenderIntoStack>

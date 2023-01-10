@@ -43,12 +43,6 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
-    <CascadingValue Value="chat">
-        <NavigateToEndSubFooter/>
-    </CascadingValue>
-</RenderIntoStack>
-
 <RenderIntoSlot Name="MainRightDrawer">
     <CascadingValue Value="chat">
         <ChatRightPanel/>
@@ -97,8 +91,6 @@
             return Model.None;
 
         if (ChatUI.SelectedChatId.Value != chatId) {
-            ChatUI.VisibleIdRange.Value = new(0, 0);
-            ChatUI.IsEndAnchorVisible.Value = true;
             ChatUI.SelectChat(chatId);
             if (ChatUI.RelatedChatEntry.Value != null)
                 ChatUI.HideRelatedEntry(false);

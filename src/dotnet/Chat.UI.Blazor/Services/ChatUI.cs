@@ -59,8 +59,6 @@ public partial class ChatUI : WorkerBase
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
-    public IMutableState<Range<long>> VisibleIdRange { get; }
-    public IMutableState<bool> IsEndAnchorVisible { get; }
     public Task WhenLoaded => _selectedChatId.WhenRead;
 
     public ChatUI(IServiceProvider services)
@@ -97,8 +95,6 @@ public partial class ChatUI : WorkerBase
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixActiveChats,
             });
-        VisibleIdRange = StateFactory.NewMutable<Range<long>>();
-        IsEndAnchorVisible = StateFactory.NewMutable(true);
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);

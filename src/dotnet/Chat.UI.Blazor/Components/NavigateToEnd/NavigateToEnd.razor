@@ -1,30 +1,46 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<NavigateToEndSubFooter.Model>
+@inherits ComputedStateComponent<NavigateToEnd.Model>
 @{
-    var m = State.ValueOrDefault;
-    if (m is not { IsVisible: true })
+    var m = State.Value;
+    _animator.BeginTransition(m.IsVisible);
+    if (!_animator.IsVisible)
         return;
 }
 
-<div class="navigate-to-end-sub-footer">
+<div class="navigate-to-end @_animator.Class">
     <ButtonRound Tooltip="Navigate to the last message" Click="OnClick" Class="md:my-2">
         <i class="icon-arrow-down text-2xl font-thin"></i>
     </ButtonRound>
 </div>
 
 @code {
+    private ShowHideAnimator _animator = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+    [Parameter, EditorRequired] public bool IsVisible { get; set; }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300), Clocks.UIClock);
+    }
+
+    public override ValueTask DisposeAsync() {
+        _animator.Dispose();
+        return base.DisposeAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.Invisible };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId.IsNone)
-            return Model.Invisible;
-
-        var isEndAnchorVisible = await ChatUI.IsEndAnchorVisible.Use(cancellationToken).ConfigureAwait(false);
-        if (isEndAnchorVisible)
+        var chatId = new ChatId(ChatSid, ParseOrNone.Option);
+        if (!IsVisible || chatId.IsNone)
             return Model.Invisible;
 
         var chat = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
