@@ -196,10 +196,8 @@
         return repliedEntry;
     }
 
-    private async Task OnQuoteClick() {
-        await UIEventHub.Publish(new NavigateToChatEntryEvent(Message.Entry.Id));
-        ChatUI.HighlightedEntryId.Value = Message.Entry.Id;
-    }
+    private void OnQuoteClick()
+        => ChatUI.HighlightEntry(Message.Entry.Id, navigate: true);
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);

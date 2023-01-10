@@ -281,17 +281,30 @@ public partial class ChatUI
                 cts.CancelAndDisposeSilently();
                 cts = cancellationToken.CreateLinkedTokenSource();
                 var ctsToken = cts.Token;
-                var highlightedChatEntryId = cHighlightedEntryId.Value;
+                var highlightedEntryId = cHighlightedEntryId.Value;
                 _ = BackgroundTask.Run(async () => {
                     await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
-                    HighlightedEntryId.Set(
-                        highlightedChatEntryId,
-                        (expected, result) => result.IsValue(out var v) && v == expected ? default : result);
+                    var isReset = false;
+                    lock (_lock) {
+                        if (_highlightedEntryId.Value == highlightedEntryId) {
+                            _highlightedEntryId.Value = default;
+                            isReset = true;
+                        }
+                    }
+                    if (isReset)
+                        _ = UICommander.RunNothing();
                 }, CancellationToken.None);
             }
         }
         finally {
             cts.CancelAndDisposeSilently();
         }
+    }
+
+    private async Task RunNothingWhenStateChanges<T>(IState<T> state, CancellationToken cancellationToken)
+    {
+        var changes = state.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var _ in changes.ConfigureAwait(false))
+            await UICommander.RunNothing().ConfigureAwait(false);
     }
 }

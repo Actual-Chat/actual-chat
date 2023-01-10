@@ -30,8 +30,7 @@
         var entry = await Chats.GetEntry(Session, entryId, cancellationToken);
         if (entry == null) {
             // The entry was removed
-            ChatUI.RelatedChatEntry.Value = null;
-            _ = Services.UICommander().RunNothing();
+            ChatUI.HideRelatedEntry();
             return null;
         }
 

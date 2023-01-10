@@ -1,21 +1,15 @@
 @inherits ComputedStateComponent<ActiveChatsNavbarWidget.Model>
 @{
     var m = State.Value;
-    var title = "Active chats";
+    var title = "Recently active" + (m.IsSearchModeOn ? " — filtered on search" : "");
     var titleClass = "text-sm font-medium px-2 pb-2";
-    if (m.IsCollapsed) {
-        title += " are hidden on search";
-        titleClass = titleClass.Replace("pb-2", "");
-    }
 }
 
 @if (m.Chats.Count > 0) {
     <div class="active-chats">
-        <div class="@titleClass">@title</div>
+        <div class="@titleClass" data-tooltip="Your active or recently used chats (up to 3)">@title</div>
 
-        @if (!m.IsCollapsed) {
-            <ChatList Kind="ChatListKind.Active" Chats="@m.Chats"/>
-        }
+        <ChatList Kind="ChatListKind.Active" Chats="@m.Chats"/>
     </div>
 }
 
@@ -39,10 +33,31 @@
             ).SkipNullItems()
             .ToList();
 
-        var searchText = await SearchUI.Text.Use(cancellationToken);
+        // Make sure selected chat is either in the normal chat list or here chats
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chats.All(c => c.Id != selectedChatId)) {
+            var allChats = await ChatUI.ListUnordered(cancellationToken).ConfigureAwait(false);
+            if (!allChats.ContainsKey(selectedChatId)) {
+                var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+                if (selectedChat != null)
+                    chats.Insert(0, selectedChat);
+            }
+        }
+
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        if (!searchPhrase.IsEmpty) {
+            chats = (
+                from c in chats
+                let rank = searchPhrase.GetMatchRank(c.Chat.Title)
+                where rank > 0 || c.Chat.Id == selectedChatId
+                orderby c.Contact.IsPinned descending, rank descending
+                select c
+                ).ToList();
+        }
+
         return new Model {
             Chats = chats,
-            IsCollapsed = searchText.NullIfWhiteSpace() != null,
+            IsSearchModeOn = !searchPhrase.IsEmpty,
         };
     }
 
@@ -50,6 +65,6 @@
         public static Model None { get; } = new();
 
         public List<ChatInfo> Chats { get; init; } = new ();
-        public bool IsCollapsed { get; init; }
+        public bool IsSearchModeOn { get; init; }
     }
 }

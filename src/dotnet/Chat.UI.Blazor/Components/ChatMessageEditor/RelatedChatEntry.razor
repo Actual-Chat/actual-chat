@@ -61,11 +61,9 @@
         _text = markup.ToReadableText(MarkupConsumer.QuoteView);
     }
 
-    private async Task OnQuoteClick() {
-        await UIEventHub.Publish(new NavigateToChatEntryEvent(Entry.Id));
-        ChatUI.HighlightedEntryId.Value = Entry.Id;
-    }
+    private void OnQuoteClick()
+        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
 
-    private Task OnCancelClick()
+    private void OnCancelClick()
         => UIEventHub.Publish<CancelChatMessageEditEvent>();
 }

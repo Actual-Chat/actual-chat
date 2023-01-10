@@ -7,4 +7,7 @@ public static class ServiceProviderExt
 
     public static AccountSettings AccountSettings(this IServiceProvider services)
         => services.GetRequiredService<AccountSettings>();
+
+    public static UIEventHub UIEventHub(this IServiceProvider services)
+        => services.GetRequiredService<UIEventHub>();
 }

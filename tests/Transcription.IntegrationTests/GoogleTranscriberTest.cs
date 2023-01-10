@@ -31,7 +31,7 @@ public class GoogleTranscriberTest : TestBase
         // GlobalHttpSettings.SocketsHttpHandler.AllowHttp3
         // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
-        var services = CreateServiceProvider();
+        var services = CreateServices();
         var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
             Language = "ru-RU",
@@ -68,7 +68,7 @@ public class GoogleTranscriberTest : TestBase
         // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
         var fileName = "0000-AY.webm";
-        var services = CreateServiceProvider();
+        var services = CreateServices();
         var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
             Language = "ru-RU",
@@ -111,7 +111,7 @@ public class GoogleTranscriberTest : TestBase
     private static FilePath GetAudioFilePath(FilePath fileName)
         => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 
-    private ServiceProvider CreateServiceProvider()
+    private IServiceProvider CreateServices()
         => new ServiceCollection()
             .AddSingleton(CoreSettings)
             .AddLogging(logging => {

@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
@@ -18,7 +19,11 @@ public partial class ChatUI : WorkerBase
 
     private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _readStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
+    private readonly IStoredState<ChatId> _selectedChatId;
+    private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
+    private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
+    private readonly object _lock = new();
 
     private ChatPlayers? _chatPlayers;
     private AudioRecorder? _audioRecorder;
@@ -45,16 +50,18 @@ public partial class ChatUI : WorkerBase
     private KeepAwakeUI KeepAwakeUI { get; }
     private ModalUI ModalUI { get; }
     private UICommander UICommander { get; }
+    private UIEventHub UIEventHub { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
     private ILogger Log { get; }
 
     public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
-    public IStoredState<ChatId> SelectedChatId { get; }
-    public IMutableState<RelatedChatEntry?> RelatedChatEntry { get; }
-    public IMutableState<ChatEntryId> HighlightedEntryId { get; }
+    public IState<ChatId> SelectedChatId => _selectedChatId;
+    public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
+    public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public IMutableState<Range<long>> VisibleIdRange { get; }
     public IMutableState<bool> IsEndAnchorVisible { get; }
+    public Task WhenLoaded => _selectedChatId.WhenRead;
 
     public ChatUI(IServiceProvider services)
     {
@@ -79,15 +86,17 @@ public partial class ChatUI : WorkerBase
         KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
         ModalUI = services.GetRequiredService<ModalUI>();
         UICommander = services.UICommander();
+        UIEventHub = services.UIEventHub();
 
-        SelectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)));
+        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)));
+        _relatedChatEntry = StateFactory.NewMutable<RelatedChatEntry?>();
+        _highlightedEntryId = StateFactory.NewMutable<ChatEntryId>();
+
         ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixActiveChats,
             });
-        RelatedChatEntry = StateFactory.NewMutable<RelatedChatEntry?>();
-        HighlightedEntryId = StateFactory.NewMutable<ChatEntryId>();
         VisibleIdRange = StateFactory.NewMutable<Range<long>>();
         IsEndAnchorVisible = StateFactory.NewMutable(true);
 
@@ -98,20 +107,35 @@ public partial class ChatUI : WorkerBase
     }
 
     [ComputeMethod]
-    public virtual async Task<ImmutableList<ChatInfo>> List(ChatListOrder order, CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<ChatInfo>> List(ChatListOrder order, CancellationToken cancellationToken = default)
     {
-        var result = await ListOrdered(order, cancellationToken).ConfigureAwait(false);
-        var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (result.Any(c => c.Id == selectedChatId))
-            return result;
-
-        var selectedChat = await Get(selectedChatId, cancellationToken).ConfigureAwait(false);
-        if (selectedChat == null)
-            return result;
-
-        var pinnedChatCounts = result.Count(c => c.Contact.IsPinned);
-        result = result.Insert(pinnedChatCounts, selectedChat);
+        var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
+        var preOrderedChats = chats.Values
+            .OrderByDescending(c => c.Contact.IsPinned)
+            .ThenByDescending(c => c.HasUnreadMentions);
+        var orderedChats = order switch {
+            ChatListOrder.ByLastEventTime => preOrderedChats
+                .ThenByDescending(c => c.News.LastTextEntry?.Version ?? 0),
+            ChatListOrder.ByOwnUpdateTime => preOrderedChats
+                .ThenByDescending(c => c.Contact.TouchedAt),
+            ChatListOrder.ByUnreadCount => preOrderedChats
+                .ThenByDescending(c => c.UnreadCount.Value)
+                .ThenByDescending(c => c.News.LastTextEntry?.Version),
+            _ => throw new ArgumentOutOfRangeException(nameof(order)),
+        };
+        var result = orderedChats.ToList();
         return result;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(CancellationToken cancellationToken = default)
+    {
+        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+        var result = await contactIds
+            .Select(contactId => Get(contactId.ChatId, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+        return result.SkipNullItems().ToDictionary(c => c.Id);
     }
 
     [ComputeMethod]
@@ -310,6 +334,59 @@ public partial class ChatUI : WorkerBase
 
     // Helpers
 
+    public void SelectChat(ChatId chatId)
+    {
+        lock (_lock) {
+            if (_selectedChatId.Value == chatId)
+                return;
+
+            _selectedChatId.Value = chatId;
+        }
+        _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
+        UICommander.RunNothing();
+    }
+
+    public void ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
+    {
+        var relatedChatEntry = new RelatedChatEntry(kind, entryId);
+        lock (_lock) {
+            if (_relatedChatEntry.Value == relatedChatEntry)
+                return;
+
+            _relatedChatEntry.Value = relatedChatEntry;
+        }
+        if (focusOnEditor)
+            _ = UIEventHub.Publish<FocusChatMessageEditorEvent>();
+        if (updateUI)
+            UICommander.RunNothing();
+    }
+
+    public void HideRelatedEntry(bool updateUI = true)
+    {
+        lock (_lock) {
+            if (_relatedChatEntry.Value == null)
+                return;
+
+            _relatedChatEntry.Value = null;
+        }
+        if (updateUI)
+            UICommander.RunNothing();
+    }
+
+    public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)
+    {
+        lock (_lock) {
+            if (_highlightedEntryId.Value == entryId)
+                return;
+
+            _highlightedEntryId.Value = entryId;
+        }
+        if (navigate)
+            _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId));
+        if (updateUI)
+            UICommander.RunNothing();
+    }
+
     public void ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 
@@ -319,35 +396,6 @@ public partial class ChatUI : WorkerBase
         var result = new SyncedStateLease<long?>(lease);
         await result.WhenFirstTimeRead;
         return result;
-    }
-
-    // Protected methods
-
-    [ComputeMethod]
-    protected virtual async Task<ImmutableList<ChatInfo>> ListOrdered(ChatListOrder order, CancellationToken cancellationToken)
-    {
-        var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
-        var preOrderedChats = chats
-            .OrderByDescending(c => c.Contact.IsPinned)
-            .ThenByDescending(c => c.HasUnreadMentions);
-        var orderedChats = order switch {
-            ChatListOrder.ByLastEventTime => preOrderedChats.ThenByDescending(c => c.News.LastTextEntry?.Version ?? 0),
-            ChatListOrder.ByOwnUpdateTime => preOrderedChats.ThenByDescending(c => c.Contact.TouchedAt),
-            _ => throw new ArgumentOutOfRangeException(nameof(order)),
-        };
-        var result = orderedChats.ToImmutableList();
-        return result;
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<List<ChatInfo>> ListUnordered(CancellationToken cancellationToken)
-    {
-        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        var result = await contactIds
-            .Select(contactId => Get(contactId.ChatId, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
-        return result.SkipNullItems().ToList();
     }
 
     // Private methods

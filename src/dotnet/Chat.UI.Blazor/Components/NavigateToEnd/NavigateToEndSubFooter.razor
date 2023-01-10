@@ -38,13 +38,12 @@
         return new(true, lastEntryId);
     }
 
-    private async Task OnClick() {
+    private void OnClick() {
         var lastEntryId = State.Value.LastEntryId;
         if (lastEntryId.IsNone)
             return;
 
-        await UIEventHub.Publish(new NavigateToChatEntryEvent(lastEntryId));
-        ChatUI.HighlightedEntryId.Value = lastEntryId;
+        ChatUI.HighlightEntry(lastEntryId, navigate: true);
     }
 
     public sealed record Model(bool IsVisible, ChatEntryId LastEntryId)

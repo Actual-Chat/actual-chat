@@ -35,10 +35,10 @@
         if (nextEntry == null)
             return;
 
-        await UIEventHub.Publish(new NavigateToChatEntryEvent(nextEntry.Id));
-        ChatUI.HighlightedEntryId.Value = nextEntry.Id;
+        ChatUI.HighlightEntry(nextEntry.Id, navigate: true);
         _lastFoundEntry = nextEntry;
     }
 
-    private void OnSearchCancelled() => _lastFoundEntry = null;
+    private void OnSearchCancelled()
+        => _lastFoundEntry = null;
 }

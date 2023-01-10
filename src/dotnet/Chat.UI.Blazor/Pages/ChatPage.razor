@@ -99,11 +99,9 @@
         if (ChatUI.SelectedChatId.Value != chatId) {
             ChatUI.VisibleIdRange.Value = new(0, 0);
             ChatUI.IsEndAnchorVisible.Value = true;
-            ChatUI.SelectedChatId.Value = chatId;
+            ChatUI.SelectChat(chatId);
             if (ChatUI.RelatedChatEntry.Value != null)
-                ChatUI.RelatedChatEntry.Value = null;
-            _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
-            _ = UICommander.RunNothing();
+                ChatUI.HideRelatedEntry(false);
         }
 
         var chat = await Chats.Get(Session, chatId, cancellationToken);

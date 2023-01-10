@@ -90,10 +90,8 @@
         };
     }
 
-    private async Task Reply(ChatEntry chatEntry) {
-        ChatUI.RelatedChatEntry.Value = new (RelatedEntryKind.Reply, chatEntry.Id);
-        await UIEventHub.Publish<FocusChatMessageEditorEvent>();
-    }
+    private void Reply(ChatEntry chatEntry)
+        => ChatUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private async Task CopyMessageLink(ChatEntry chatEntry) {
         var url = UrlMapper.BaseUri + Links.Chat(chatEntry.Id);

@@ -49,11 +49,8 @@
         return new Model(canReply);
     }
 
-    private async Task Reply(ChatEntry chatEntry) {
-        ChatUI.RelatedChatEntry.Value = new (RelatedEntryKind.Reply, chatEntry.Id);
-        _ = Services.UICommander().RunNothing();
-        await UIEventHub.Publish(new FocusChatMessageEditorEvent());
-    }
+    private void Reply(ChatEntry chatEntry)
+        => ChatUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {

@@ -54,7 +54,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
     private void RegisterShowSettingsHandler(IServiceProvider services)
     {
-        var eventHub = services.GetRequiredService<UIEventHub>();
+        var eventHub = services.UIEventHub();
         eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
             var modalUI = services.GetRequiredService<ModalUI>();
             modalUI.Show(new SettingsModal.Model(), true);

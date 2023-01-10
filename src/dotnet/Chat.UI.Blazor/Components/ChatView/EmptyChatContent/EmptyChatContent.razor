@@ -1,0 +1,40 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<EmptyChatContent.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="empty-chat-content">
+    <div>There are no messages yet.</div>
+    @if (m.PeerAccount is { } peerAccount) {
+        <div>Say "Hi" to <AccountName UserSid="@m.PeerAccount.Id"/>!</div>
+    } else {
+        <div>Say "Hi" to your friends or invite them!</div>
+    }
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (!Chat.Id.IsPeerChatId(out var peerChatId))
+            return Model.None;
+
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
+        var peerAccountId = peerChatId.UserIds.OtherThan(ownAccount.Id);
+        var peerAccount = await Accounts.Get(Session, peerAccountId, cancellationToken);
+        return new Model() { PeerAccount = peerAccount };
+    }
+
+    public record Model {
+        public static Model None { get; } = new();
+
+        public Account? PeerAccount { get; init; }
+    }
+}

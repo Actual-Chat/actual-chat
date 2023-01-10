@@ -168,8 +168,7 @@
 
             var relatedChatEntry = ChatUI.RelatedChatEntry.Value;
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
-            ChatUI.RelatedChatEntry.Value = null;
-            _ = UICommander.RunNothing();
+            ChatUI.HideRelatedEntry(updateUI: false);
 
             long readEntryId;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
@@ -180,12 +179,12 @@
 
             } else {
                 var repliedEntryId = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
-                // Overriding message post for iOS only
-                if (HostInfo.AppKind == AppKind.Maui && HostInfo.Platform == Platform.iOS) {
+                if (HostInfo is { AppKind: AppKind.Maui, Platform: Platform.iOS }) {
+                    // iOS doesn't allow to post from JS, so we have to use workaround here
+                    // TODO: add support for attachments on iOS
                     var command = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {
                         RepliedChatEntryId = repliedEntryId,
                     };
-    // TODO: add attachments
                     var chatEntry = await UICommander.Run(command, CancellationToken.None);
                     readEntryId = chatEntry.Value.LocalId;
                 } else {
@@ -206,9 +205,8 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        ChatUI.RelatedChatEntry.Value = new(RelatedEntryKind.Edit, chatEntry.Id);
-        _ = UICommander.RunNothing();
-        await MarkupEditorRef.SetText(chatEntry.Content, true);
+        ChatUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: false);
+        await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: true);
     }
 
     private ValueTask ShowFilePicker()
@@ -251,9 +249,8 @@
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
-        ChatUI.RelatedChatEntry.Value = null;
-        _ = UICommander.RunNothing();
-        await MarkupEditorRef.Clear(true);
+        ChatUI.HideRelatedEntry();
+        await MarkupEditorRef.Clear(mustFocus: true);
     }
 
     // UIEventHub event handlers
