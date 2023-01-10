@@ -7,8 +7,8 @@ public abstract class StreamServerBase<TItem> : IDisposable
 
     protected int StreamBufferSize { get; init; } = 64;
     protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(600);
-    protected TimeSpan ReadStreamWaitDuration { get; init; } = TimeSpan.FromSeconds(2);
-    protected TimeSpan ReadStreamExpiration { get; init; } = TimeSpan.FromSeconds(5);
+    protected TimeSpan ReadStreamWaitDuration { get; init; } = TimeSpan.FromSeconds(10);
+    protected TimeSpan ReadStreamExpiration { get; init; } = TimeSpan.FromSeconds(15);
     protected TimeSpan WriteStreamExpiration { get; init; } = TimeSpan.FromSeconds(605);
 
     protected IServiceProvider Services { get; }
