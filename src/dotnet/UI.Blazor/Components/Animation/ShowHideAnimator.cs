@@ -4,7 +4,7 @@ public class ShowHideAnimator : ComponentAnimator
 {
     private bool _state;
 
-    public TimeSpan MinDuration { get; init; } = TimeSpan.FromMicroseconds(50);
+    public TimeSpan MinDuration { get; init; } = TimeSpan.FromMilliseconds(50);
 
     public bool State { get => _state; set => Transition(value); }
     public string Class { get; private set; }
@@ -25,7 +25,7 @@ public class ShowHideAnimator : ComponentAnimator
         var (newClass, duration) = newState
             ? Class switch {
                 "hidden" => ("off", MinDuration),
-                "off" => (isAnimating ? Class : "off-to-on", isAnimating ? skipAnimation : Duration),
+                "off" => ("off-to-on", Duration),
                 "off-to-on" => (isAnimating ? Class : "", skipAnimation),
                 "" => (Class, skipAnimation),
                 "on-to-off" => ("off-to-on", Duration),
