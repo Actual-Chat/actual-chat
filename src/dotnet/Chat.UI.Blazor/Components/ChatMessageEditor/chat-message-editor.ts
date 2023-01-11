@@ -1,14 +1,22 @@
 import './chat-message-editor.css';
-import { throttle } from 'promises';
+import {
+    Subject,
+    takeUntil,
+} from 'rxjs';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { Log, LogLevel } from 'logging';
+import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { throttle } from '../../../../nodejs/src/promises';
 
 const LogScope = 'MessageEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
+export type PanelMode = 'Normal' | 'Narrow';
+
 export class ChatMessageEditor {
+    private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private markupEditor: MarkupEditor;
@@ -22,9 +30,9 @@ export class ChatMessageEditor {
     private readonly notifyPanelObserver : MutationObserver;
     private lastHeight: number;
     private lastWidth: number;
-    private isMobile: boolean = null; // Intended: updateLayout needs this on the first run
-    private isNarrowMode: boolean = null; // Intended: updateLayout needs this on the first run
-    private isTextMode: boolean = null; // Intended: updateTextMode needs this on the first run
+    private isNarrowScreen: boolean = null; // Intended: updateLayout needs this on the first run
+    private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
+    private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
     private isNotifyPanelOpen: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
@@ -43,10 +51,12 @@ export class ChatMessageEditor {
         this.notifyPanel = this.editorDiv.querySelector(':scope .notify-call-panel');
 
         this.updateLayout();
-        this.updateTextMode();
+        this.updateHasContent();
 
         // Wiring up event listeners
-        window.visualViewport.addEventListener('resize', throttle(this.onWindowResize, 250, 'delayHead'));
+        ScreenSize.event$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => throttle(this.updateLayout, 250, 'delayHead'));
         this.input.addEventListener('paste', this.onInputPaste);
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
@@ -65,7 +75,11 @@ export class ChatMessageEditor {
     }
 
     public dispose() {
-        window.visualViewport.removeEventListener('resize', this.onWindowResize);
+        if (this.disposed$.isStopped)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
         this.input.removeEventListener('paste', this.onInputPaste);
         this.filePicker.removeEventListener('change', this.onFilePickerChange);
         this.attachButton.removeEventListener('click', this.onAttachButtonClick);
@@ -104,9 +118,9 @@ export class ChatMessageEditor {
     public onMarkupEditorReady(markupEditor: MarkupEditor)
     {
         this.markupEditor = markupEditor;
-        markupEditor.changed = () => this.updateTextMode();
-        this.updateTextMode();
-        if (this.isMobile)
+        markupEditor.changed = () => this.updateHasContent();
+        this.updateHasContent();
+        if (this.isNarrowScreen)
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
     }
 
@@ -157,7 +171,7 @@ export class ChatMessageEditor {
         this.attachments.delete(id);
         if (attachment?.Url)
             URL.revokeObjectURL(attachment.Url);
-        this.updateTextMode();
+        this.updateHasContent();
     }
 
     public clearAttachments() {
@@ -167,22 +181,22 @@ export class ChatMessageEditor {
         }
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
-        this.updateTextMode();
+        this.updateHasContent();
     }
 
     // Event handlers
 
-    private onWindowResize = () => this.updateLayout()
-
     private onAttachButtonClick = ((event: Event & { target: Element; }) => {
-        if (this.isNarrowMode)
+        if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
+            this.updateHasContent();
+        }
     });
 
     private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
-        if (this.isNarrowMode) {
+        if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
-            this.updateTextMode();
+            this.updateHasContent();
         }
     });
 
@@ -222,10 +236,10 @@ export class ChatMessageEditor {
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;
-        const isMobile = width < 1024;
+        const isNarrowScreen = width < 1024;
 
-        if (this.isMobile === isMobile) {
-            if (!isMobile)
+        if (this.isNarrowScreen === isNarrowScreen) {
+            if (!isNarrowScreen)
                 return; // Nothing to update in desktop mode
 
             if (width != this.lastWidth) {
@@ -244,10 +258,12 @@ export class ChatMessageEditor {
             debugLog?.log(`updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
             if (keyboardHeight >= 0.2 * maxHeight) {
                 // Mobile keyboard pull-out / pull-in
-                const isNarrowMode = Math.abs(height - minHeight) < 0.01; // FP: height == minHeight
-                if (this.isNarrowMode !== isNarrowMode) {
-                    this.isNarrowMode = isNarrowMode;
-                    if (isNarrowMode)
+                const panelMode = Math.abs(height - minHeight) < 0.01 // FP: height == minHeight
+                    ? 'Narrow'
+                    : 'Normal';
+                if (this.panelModel !== panelMode) {
+                    this.panelModel = panelMode;
+                    if (panelMode == 'Narrow')
                         this.editorDiv.classList.add('narrow-panel');
                     else
                         this.editorDiv.classList.remove('narrow-panel');
@@ -257,22 +273,22 @@ export class ChatMessageEditor {
             return;
         }
 
-        this.isMobile = isMobile;
+        this.isNarrowScreen = isNarrowScreen;
         this.lastHeight = height;
         this.lastWidth = width;
         const buttons = this.editorDiv.querySelectorAll(':scope div.chat-audio-panel .btn');
-        if (isMobile)
+        if (isNarrowScreen)
             buttons.forEach(b => b.addEventListener('click', this.onReturnFocusOnInput));
         else
             buttons.forEach(b => b.removeEventListener('click', this.onReturnFocusOnInput));
     }
 
-    private updateTextMode() {
+    private updateHasContent() {
         const text = this.markupEditor?.getText() ?? '';
         const isTextMode = text != '' || this.attachments.size > 0;
-        if (this.isTextMode === isTextMode)
+        if (this.hasContent === isTextMode)
             return;
-        this.isTextMode = isTextMode;
+        this.hasContent = isTextMode;
         if (isTextMode)
             this.editorDiv.classList.add('text-mode');
         else
@@ -329,7 +345,7 @@ export class ChatMessageEditor {
         else {
             this.attachmentsIdSeed++;
             this.attachments.set(attachment.Id, attachment);
-            this.updateTextMode();
+            this.updateHasContent();
         }
         return added;
     }

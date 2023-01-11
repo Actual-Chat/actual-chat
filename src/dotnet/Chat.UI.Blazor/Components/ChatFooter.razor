@@ -6,14 +6,14 @@
 
 <div class="writable-chat-footer" oncontextmenu="return false;">
     @if (m == Model.None) {
-        // render skeletons until State is computed
+        // Render skeletons until State is computed
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
                     <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
                     </div>
                 </div>
-                @* mobile panel *@
+                @* Mobile panel *@
                 @if (ScreenSize.IsNarrow()) {
                     <div class="chat-audio-panel flex-x gap-x-6">
                         <div class="language-button !shadow-none">
@@ -47,7 +47,7 @@
                     </div>
                 }
             </div>
-            @* desktop panel *@
+            @* Desktop panel *@
             @if (ScreenSize.IsWide()) {
                 <div class="chat-audio-panel">
                     <div class="playback-button">

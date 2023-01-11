@@ -16,7 +16,7 @@
     var isMobile = ScreenSize.IsNarrow();
 }
 
-<div @ref="Ref" class="landing @(isMobile ? "mobile" : "desktop")">
+<div @ref="Ref" class="landing">
     <LandingLeftMenu IsOpen="@m.IsMenuOpen" Signin="@(() => SignIn(googleScheme.Name))"/>
 
     @* Header *@

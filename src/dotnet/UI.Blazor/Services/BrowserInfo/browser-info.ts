@@ -51,7 +51,7 @@ export class BrowserInfo {
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
-        ScreenSize.sizeChange$.subscribe(x => this.onScreenSizeChanged(x))
+        ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
         if (this.appKind == 'Maui') {
             audioContextLazy.skipWaitForNextInteraction();
         }

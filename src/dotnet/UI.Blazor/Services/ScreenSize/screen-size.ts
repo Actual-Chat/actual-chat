@@ -22,8 +22,9 @@ export class ScreenSize {
     private static screenSizeMeasureDiv: HTMLDivElement;
 
     public static size: Size;
-    public static sizeChange$: Observable<Size>;
+    public static change$: Observable<Size>;
     public static size$: Observable<Size>;
+    public static event$: Observable<Event>;
 
     public static init() {
         this.screenSizeMeasureDiv = document.createElement("div");
@@ -36,19 +37,18 @@ export class ScreenSize {
             <div data-size='Medium'></div>
             <div data-size='Small'></div>
         `;
-
         this.size = 'Unknown';
         this.measureAndUpdate();
-        this.sizeChange$ = concat(
-            fromEvent(window, 'resize')
-        ).pipe(
+
+        this.event$ = fromEvent(window.visualViewport, 'resize');
+        this.change$ = this.event$.pipe(
             map(_ => this.measureAndUpdate()),
             distinctUntilChanged(),
             shareReplay(1)
         );
         this.size$ = concat(
             of(this.size),
-            this.sizeChange$
+            this.change$
         );
     }
 

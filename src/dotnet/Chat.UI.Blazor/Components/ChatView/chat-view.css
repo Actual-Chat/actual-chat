@@ -62,10 +62,10 @@
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
-.mobile .message-menu .reaction-select {
-    @apply h-10 gap-4;
+body.narrow .message-menu .reaction-select {
+    @apply gap-4;
 }
-.mobile .message-menu .reaction-select-reaction-emoji {
+body.narrow .message-menu .reaction-select-reaction-emoji {
     @apply w-6 h-6;
 }
 .chat-message:hover .message-reactions-add {

@@ -135,7 +135,7 @@ export class Landing {
     }
 
     private scrollToPage = (page: HTMLElement, event: Event, block: ScrollBlock = ScrollBlock.start) => {
-        if (!this.landing.classList.contains('mobile')) {
+        if (document.body.classList.contains('wide')) {
             this.preventEvent(event);
             page.scrollIntoView({ behavior: 'smooth', block: block, })
         }
