@@ -26,7 +26,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import escapist from '../../Services/Escapist/escapist';
-import screenSize from '../../Services/ScreenSize/screen-size';
+import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Vibration } from '../../Services/Vibration/vibration';
 import { Log, LogLevel } from 'logging';
 
@@ -246,7 +246,7 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'contextmenu')
             .pipe(
                 takeUntil(this.disposed$),
-                combineLatestWith(screenSize.size$),
+                combineLatestWith(ScreenSize.size$),
                 filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
@@ -261,7 +261,7 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'long-press')
             .pipe(
                 takeUntil(this.disposed$),
-                combineLatestWith(screenSize.size$),
+                combineLatestWith(ScreenSize.size$),
                 filter(([_, screenSize]) => screenSize === 'Small'),
                 map(([event, _]) => event),
                 map((event) => this.mapEvent(event, MenuTriggers.LongClick, false, false)),
@@ -277,7 +277,7 @@ export class MenuHost implements Disposable {
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
-                combineLatestWith(screenSize.size$),
+                combineLatestWith(ScreenSize.size$),
                 filter(([_, screenSize]) => screenSize !== 'Small'),
                 map(([mouseEvent, _]) => mouseEvent),
                 map((event) => this.mapHoverEvent(event)),

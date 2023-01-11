@@ -9,6 +9,8 @@ public interface IBrowserInfoBackend
     public sealed record InitResult(
         string ScreenSizeText,
         double UtcOffset,
+        bool IsMobile,
         bool IsTouchCapable,
+        bool IsMaui,
         string WindowId);
 }

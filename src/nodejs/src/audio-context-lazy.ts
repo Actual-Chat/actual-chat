@@ -133,7 +133,7 @@ export class AudioContextLazy implements Disposable {
         });
     }
 
-    public doNotWaitForInteraction(): void {
+    public skipWaitForNextInteraction(): void {
         this.requireInteraction = false;
         this.nextInteractionHandler?.dispose();
         this.nextInteractionHandler = null;

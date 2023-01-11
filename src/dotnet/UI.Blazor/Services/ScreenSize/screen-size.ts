@@ -1,6 +1,5 @@
 import {
     concat,
-    debounceTime,
     distinctUntilChanged,
     fromEvent,
     map,
@@ -20,10 +19,13 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 export type Size = 'Unknown' | 'Small' | 'Medium' | 'Large' | 'ExtraLarge' | 'ExtraLarge2';
 
 export class ScreenSize {
-    private readonly screenSizeMeasureDiv: HTMLDivElement;
-    private readonly screenSize$: Observable<Size>;
+    private static screenSizeMeasureDiv: HTMLDivElement;
 
-    constructor() {
+    public static size: Size;
+    public static sizeChange$: Observable<Size>;
+    public static size$: Observable<Size>;
+
+    public static init() {
         this.screenSizeMeasureDiv = document.createElement("div");
         this.screenSizeMeasureDiv.className = "screen-size-measure";
         document.body.appendChild(this.screenSizeMeasureDiv);
@@ -35,21 +37,32 @@ export class ScreenSize {
             <div data-size='Small'></div>
         `;
 
-        this.screenSize$ = concat(
-            of(1),
-            fromEvent(window, 'resize').pipe(debounceTime(300))
+        this.size = 'Unknown';
+        this.measureAndUpdate();
+        this.sizeChange$ = concat(
+            fromEvent(window, 'resize')
         ).pipe(
-            map(_ => this.measureScreenSize()),
+            map(_ => this.measureAndUpdate()),
             distinctUntilChanged(),
             shareReplay(1)
         );
+        this.size$ = concat(
+            of(this.size),
+            this.sizeChange$
+        );
     }
 
-    public get size$(): Observable<Size> {
-        return this.screenSize$;
+    private static measureAndUpdate(): Size {
+        const size = this.measure();
+        if (size != this.size) {
+            debugLog?.log(`measureAndUpdate: new size:`, size);
+            this.size = size;
+            this.updateBodyClasses();
+        }
+        return size;
     }
 
-    private measureScreenSize(): Size {
+    private static measure(): Size {
         let itemDiv : HTMLDivElement = null;
         for (const item of this.screenSizeMeasureDiv.children) {
             itemDiv = item as HTMLDivElement;
@@ -57,15 +70,26 @@ export class ScreenSize {
                 continue;
 
             const isVisible = window.getComputedStyle(itemDiv).getPropertyValue('width') !== 'auto';
-            debugLog?.log(`measureScreenSize: size:`, itemDiv.dataset['size'], ', isVisible:', isVisible);
+            // debugLog?.log(`measure: size:`, itemDiv.dataset['size'], ', isVisible:', isVisible);
             if (isVisible)
                 return itemDiv.dataset['size'] as Size;
         }
         // Returning the last "available" size
         return (itemDiv.dataset['size'] ?? "Unknown") as Size;
     };
+
+    private static updateBodyClasses() {
+        const classList = document.body.classList;
+        const isNarrow = this.size == 'Small';
+        if (isNarrow) {
+            classList.remove('wide');
+            classList.add('narrow');
+        }
+        else {
+            classList.remove('narrow');
+            classList.add('wide');
+        }
+    }
 }
 
-const screenSize = new ScreenSize();
-
-export default screenSize;
+ScreenSize.init();
