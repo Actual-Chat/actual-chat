@@ -37,12 +37,14 @@
             </div>
             <div class="header-text">
                 @if (!isMobile) {
-                    <div class="px-8">
-                        For business
-                    </div>
-                    <div class="signin-text">
-                        <div>
-                            Sign in with
+                    @if (m.EnableIncompleteUI) {
+                        <div class="px-8">
+                            For business
+                        </div>
+                    }
+                    <div class="signin-buttons">
+                        <div class="signin-text">
+                            Sign in with:
                         </div>
                         <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
                             <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">

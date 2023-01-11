@@ -210,9 +210,7 @@ export class Landing {
         let firstPage = this.pages[1] as HTMLElement;
         let firstPageBottom = firstPage.getBoundingClientRect().bottom;
         if (firstPageBottom <= 0) {
-            if (!list.contains('filled')) {
-                list.add('filled');
-            }
+            list.add('filled');
         } else {
             list.remove('filled');
         }

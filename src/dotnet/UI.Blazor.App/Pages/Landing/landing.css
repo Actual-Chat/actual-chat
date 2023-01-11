@@ -93,10 +93,7 @@
 .mobile .landing-header .header-text {
     @apply hidden;
 }
-.landing-header .signin-text {
-    @apply flex-x gap-x-4 h-10 items-center rounded-full border px-2 py-1 font-semibold;
-    @apply text-04 border-bg-04 transition-all ease-in-out duration-100;
-}
+
 .landing-header.filled .light-icon,
 .landing-header.filled .light-title {
     @apply opacity-0 transition-all ease-in-out duration-100;
@@ -112,7 +109,7 @@
     @apply text-01 border-text-01 transition-all ease-in-out duration-100;
 }
 .landing-header.blur-bg {
-    @apply backdrop-blur-2xl;
+    @apply backdrop-blur-xl;
 }
 .landing-header .signin-button.btn {
     @apply min-w-10 border border-bg-01 bg-transparent;
@@ -134,6 +131,15 @@
 }
 .landing-header.filled .menu-button.btn .btn-content {
     @apply text-01;
+}
+
+/* Header content */
+.landing-header .signin-buttons {
+    @apply flex-x items-center gap-x-3;
+    @apply rounded-full border border-bg-04;
+    @apply h-10 pl-4 pr-1 py-1;
+    @apply font-semibold;
+    @apply text-04;
 }
 
 .timeline-item {
