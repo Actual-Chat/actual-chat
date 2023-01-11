@@ -6,7 +6,7 @@ public class ShowHideAnimator : ComponentAnimator
 
     public TimeSpan MinDuration { get; init; } = TimeSpan.FromMilliseconds(50);
 
-    public bool State { get => _state; set => Transition(value); }
+    public bool State { get => _state; set => ChangeState(value); }
     public string Class { get; private set; }
     public bool MustHideComponent => OrdinalEquals(Class, "hidden");
 
@@ -17,10 +17,10 @@ public class ShowHideAnimator : ComponentAnimator
         Class = state ? "" : "hidden";
     }
 
-    private void Transition(bool newState)
+    private void ChangeState(bool newState)
     {
         var remainingDuration = (AnimationEndsAt - Clock.Now).Positive();
-        var isAnimating = remainingDuration == TimeSpan.Zero;
+        var isAnimating = remainingDuration != TimeSpan.Zero;
         var skipAnimation = TimeSpan.Zero;
         var (newClass, duration) = newState
             ? Class switch {

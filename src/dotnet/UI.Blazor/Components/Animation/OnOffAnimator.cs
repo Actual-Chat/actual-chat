@@ -4,7 +4,7 @@ public class OnOffAnimator : ComponentAnimator
 {
     private bool _state;
 
-    public bool State { get => _state; set => Transition(value); }
+    public bool State { get => _state; set => ChangeState(value); }
     public string Class { get; private set; }
 
     public OnOffAnimator(ComponentBase component, TimeSpan duration, IMomentClock clock, bool state = false)
@@ -14,10 +14,10 @@ public class OnOffAnimator : ComponentAnimator
         Class = state ? "on" : "off";
     }
 
-    private void Transition(bool newState)
+    private void ChangeState(bool newState)
     {
         var remainingDuration = (AnimationEndsAt - Clock.Now).Positive();
-        var isAnimating = remainingDuration == TimeSpan.Zero;
+        var isAnimating = remainingDuration != TimeSpan.Zero;
         var skipAnimation = TimeSpan.Zero;
         var (newClass, duration) = newState
             ? Class switch {
