@@ -1,5 +1,5 @@
 .image-viewer-modal.modal-frame {
-    @apply flex-y justify-center gap-y-0 p-0 md:mt-14;
+    @apply flex-y justify-center gap-y-0 p-0 md:my-14;
     @apply w-full md:w-fit md:max-w-full h-full overflow-hidden;
     @apply bg-transparent;
     @apply border-none rounded-none shadow-none;
@@ -7,11 +7,11 @@
 
 /*Image viewer header*/
 .image-viewer-header {
-    @apply absolute top-0;
+    @apply absolute top-0 z-20;
     @apply flex-x;
     @apply min-h-14 w-full px-3 md:px-2;
     @apply bg-black md:bg-transparent;
-    @apply backdrop-blur-none md:backdrop-blur-sm;
+    @apply backdrop-blur-none md:backdrop-blur-lg;
 }
 .image-viewer-header .image-header-btn.btn.btn-round.mobile {
     @apply flex md:hidden;
@@ -32,9 +32,8 @@
 
 /*Image viewer footer*/
 .image-viewer-footer {
-    @apply absolute flex-x bottom-0 min-h-14 w-full justify-center items-center bg-black;
-    @apply md:relative md:bottom-auto md:bg-transparent;
-    @apply backdrop-blur-none md:backdrop-blur-sm;
+    @apply absolute flex-x bottom-0 min-h-14 w-full justify-center items-center;
+    @apply bg-black md:bg-transparent backdrop-blur-lg;
 }
 .image-viewer-footer .show-original-button {
     @apply -mt-4 underline underline-offset-2;
@@ -51,8 +50,8 @@
 }
 
 .image-viewer-modal .image-viewer-content {
-    @apply flex flex-y justify-center items-center;
-    @apply max-w-full max-h-fit md:max-h-full;
+    @apply absolute flex flex-y justify-center items-center;
+    @apply max-h-fit md:max-h-full;
 }
 
 .image-viewer-modal .image-viewer-content img {
