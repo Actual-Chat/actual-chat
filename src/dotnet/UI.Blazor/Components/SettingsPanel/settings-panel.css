@@ -108,16 +108,13 @@
     @apply flex-1 flex-x h-6 justify-end;
 }
 .tile-hidden-btn {
-    @apply btn-sm transparent invisible;
+    @apply invisible;
 }
 .tile-item:hover .tile-hidden-btn {
     @apply visible;
 }
 .tile-hidden-btn:hover {
-    @apply transparent text-primary;
-}
-.tile-btn {
-    @apply btn-sm transparent;
+    @apply text-primary;
 }
 .tile-btn:hover {
     @apply text-primary;
