@@ -21,6 +21,7 @@
 @import './Components/SettingsPanel/settings-panel.css';
 @import './Components/SignIn/sign-in.css';
 @import './Components/SideNav/side-nav.css';
+@import './Components/Stepper/stepper.css';
 @import './Components/TabPanel/tab.css';
 @import './Components/Tooltip/tooltip.css';
 @import './Components/VirtualList/virtual-list.css';

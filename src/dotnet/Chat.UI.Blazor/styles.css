@@ -18,5 +18,6 @@
 @import './Components/Reactions/reaction-select.css';
 @import './Components/CreationPanel/creation-panel.css';
 @import './Components/MentionList/mention-list.css';
+@import './Components/Onboarding/onboarding-modal.css';
 
 @import './Pages/user-page.css';
