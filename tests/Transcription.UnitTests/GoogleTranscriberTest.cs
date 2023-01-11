@@ -14,7 +14,7 @@ public class GoogleTranscriberTest : TestBase
     [Fact]
     public async Task DuplicateFinalResponsesTest()
     {
-        var process = new GoogleTranscriberProcess(null!, null!, null!, Log);
+        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();
@@ -182,7 +182,7 @@ public class GoogleTranscriberTest : TestBase
     [Fact]
     public async Task TextToTimeMapTest()
     {
-        var process = new GoogleTranscriberProcess(null!, null!, null!, Log);
+        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();

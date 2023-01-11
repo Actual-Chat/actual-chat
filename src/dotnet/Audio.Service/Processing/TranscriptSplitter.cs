@@ -5,10 +5,10 @@ namespace ActualChat.Audio.Processing;
 
 public class TranscriptSplitter : TranscriptionProcessorBase
 {
-    public static TimeSpan TextEntryWaitDelay { get; set; } = TimeSpan.FromSeconds(0.2);
-    public static float QuickSplitPauseDuration { get; set; } = 0.1f;
-    public static float SplitPauseDuration { get; set; } = 0.75f;
-    public static float SplitOverlap { get; set; } = 0.25f;
+    public static TimeSpan TextEntryWaitDelay { get; } = TimeSpan.FromSeconds(0.2);
+    public static float QuickSplitPauseDuration => 0.1f;
+    public static float SplitPauseDuration => 0.75f;
+    public static float SplitOverlap => 0.25f;
 
     protected IChatsBackend ChatsBackend { get; }
 

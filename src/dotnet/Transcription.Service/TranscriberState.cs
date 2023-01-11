@@ -23,5 +23,5 @@ public class TranscriberState
         => Update(LastStable.WithSuffix(suffix, suffixTextToTimeMap, true));
 
     public Transcript Complete()
-        => Update(LastStable);
+        => Update(Last.WithFlags(TranscriptFlags.Stable));
 }

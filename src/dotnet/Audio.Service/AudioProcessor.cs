@@ -84,10 +84,24 @@ public sealed class AudioProcessor : IAudioProcessor
                 TimeSpan.Zero,
                 AudioSourceLog,
                 cancellationToken);
-            var openSegment = new OpenAudioSegment(0, record, audio, author, languages, OpenAudioSegmentLog);
+            var openSegment = new OpenAudioSegment(0,
+                record,
+                audio,
+                author,
+                languages,
+                OpenAudioSegmentLog);
             var recordedAt = Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset);
             openSegment.SetRecordedAt(recordedAt);
             streamId = openSegment.StreamId;
+
+            var audioStream = openSegment.Audio
+                .GetFrames(cancellationToken)
+                .Select(f => f.Data);
+            var publishAudioTask = BackgroundTask.Run(
+                () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
+                Log,
+                $"{nameof(AudioStreamServer.Write)} failed",
+                cancellationToken);
 
             var audioEntryTask = BackgroundTask.Run(
                 () => CreateAudioEntry(openSegment, recordedAt, cancellationToken),
@@ -101,14 +115,11 @@ public sealed class AudioProcessor : IAudioProcessor
                 $"{nameof(TranscribeAudio)} failed",
                 CancellationToken.None);
 
-            var audioStream = openSegment.Audio
-                .GetFrames(cancellationToken)
-                .Select(f => f.Data);
-            await AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken).ConfigureAwait(false);
-
             // TODO(AY): We should make sure finalization happens no matter what (later)!
             // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
+            await publishAudioTask.ConfigureAwait(false);
+            await audioEntryTask.ConfigureAwait(false);
             await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
             // close open audio segment when the duration become available
             openSegment.Close(openSegment.Audio.Duration);
@@ -127,6 +138,10 @@ public sealed class AudioProcessor : IAudioProcessor
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "Error processing audio stream {StreamId}", streamId);
+            throw;
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Cancelled processing audio stream {StreamId}", streamId);
             throw;
         }
     }

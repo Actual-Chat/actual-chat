@@ -13,15 +13,18 @@ public class GoogleTranscriber : ITranscriber
 
     private readonly Task<string> _projectIdTask;
 
-    private CoreSettings CoreSettings { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
+
+    private CoreSettings CoreSettings { get; }
+    private MomentClockSet Clocks { get; }
 
     public GoogleTranscriber(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         CoreSettings = services.GetRequiredService<CoreSettings>();
+        Clocks = services.GetRequiredService<MomentClockSet>();
         _projectIdTask = BackgroundTask.Run(LoadProjectId);
     }
 
@@ -45,7 +48,7 @@ public class GoogleTranscriber : ITranscriber
         var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
         var recognizeRequests = speechClient
             .StreamingRecognize(
-                CallSettings.FromCancellationToken(cancellationToken),
+                new CallSettings(cancellationToken, Expiration.FromTimeout(TimeSpan.FromMinutes(3)), null, null, null, null),
                 new BidirectionalStreamingSettings(1));
         var streamingRecognitionConfig = new StreamingRecognitionConfig {
             Config = new RecognitionConfig {
@@ -68,7 +71,8 @@ public class GoogleTranscriber : ITranscriber
         var silenceAudio = await _silenceAudioSourceTask.ConfigureAwait(false);
         var audioSourceJoined = silenceAudio
             .Take(TimeSpan.FromMilliseconds(2000), cancellationToken)
-            .Concat(audioSource, cancellationToken);
+            .Concat(audioSource, cancellationToken)
+            .ConcatUntil(silenceAudio, TimeSpan.FromSeconds(7), cancellationToken);
         var byteStream = webMStreamAdapter.Write(audioSourceJoined, cancellationToken);
         var memoizedByteStream = byteStream.Memoize(cancellationToken);
         var transcriptChannel = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
@@ -83,7 +87,7 @@ public class GoogleTranscriber : ITranscriber
             $"{nameof(GoogleTranscriber)}.{nameof(Transcribe)} failed",
             cancellationToken);
 
-        await foreach(var transcript in transcriptChannel.Reader.ReadAllAsync(cancellationToken))
+        await foreach(var transcript in transcriptChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             yield return transcript;
 
         await runTask.ConfigureAwait(false);
@@ -98,6 +102,7 @@ public class GoogleTranscriber : ITranscriber
                     memoizedByteStream.Replay(handleTranscriptCts.Token),
                     recognizeRequests,
                     streamingRecognitionConfig,
+                    Clocks,
                     Log);
                 var processRunTask = process.Run();
                 await using var _ = process.ConfigureAwait(false);
