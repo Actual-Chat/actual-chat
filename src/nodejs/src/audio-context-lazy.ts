@@ -19,39 +19,31 @@ async function defaultFactory(): Promise<AudioContext> {
 
     // Resume must be called during the sync part of this async flow,
     // i.e. it must be the very first async call
-    await resume(audioContext);
+    const resumedAudioContext = await resume(audioContext);
 
     await Promise.all([
-        audioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
-        audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
-        audioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
+        resumedAudioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
+        resumedAudioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
+        resumedAudioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
     ]);
 
-    await warmup(audioContext);
+    await warmup(resumedAudioContext);
 
-    return audioContext;
+    return resumedAudioContext;
 }
 
-async function resume(audioContext: AudioContext, force = false): Promise<void> {
+async function resume(audioContext: AudioContext): Promise<AudioContext> {
     debugLog?.log(`-> resume: audioContext.state =`, audioContext.state);
-    if (force || audioContext.state !== 'running' && audioContext.state !== 'closed') {
-        if (force) {
-            await audioContext.suspend();
-        }
-        const resumeTask = audioContext.resume().then(() => true);
-        let result = false;
-        for (let i = 1; i <= 20; i++) {
-            const delayTask = delayAsync(250).then(() => false);
-            result = await Promise.race([resumeTask, delayTask]);
-            if (!result)
-                debugLog?.log(`   can not resume audio context. Attempt=${i}.`);
-            if (result)
-                break;
-        }
-        if (!result)
-            throw new Error(`${LogScope}: Couldn't resume AudioContext.`);
+
+    if (audioContext.state === 'closed') {
+        return await defaultFactory();
     }
+    // if state is 'running' or 'suspended'
+    // should be performed during user interaction! - no awaits or callbacks
+    await audioContext.resume();
+
     debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);
+    return audioContext;
 }
 
 async function warmup(audioContext: AudioContext): Promise<AudioContext> {
@@ -112,8 +104,10 @@ export class AudioContextLazy implements Disposable {
                 let currentContextTime = audioContext.currentTime;
                 if (lastContextTime == currentContextTime) {
                     if (audioContext.state === 'suspended') {
-                        await resume(audioContext);
-                        return audioContext;
+                        const resumedAudioContext = await resume(audioContext);
+                        if (resumedAudioContext.state === 'running')
+                            // if we are lucky enough to have user interaction now...
+                            return resumedAudioContext;
                     }
                 } else {
                     audioContext['lastTime'] = audioContext.currentTime;
@@ -139,6 +133,8 @@ export class AudioContextLazy implements Disposable {
         this.nextInteractionHandler = null;
         void this.initContext();
     }
+
+    // private methods
 
     private async initContext(): Promise<void> {
         if (this.initContextStarted)
@@ -180,7 +176,7 @@ export class AudioContextLazy implements Disposable {
 
     private async refreshAudioContext(audioContext: AudioContext): Promise<void> {
         try {
-            await resume(audioContext, true);
+            await resume(audioContext);
             this.setAudioContext(audioContext)
         }
         catch (error) {
