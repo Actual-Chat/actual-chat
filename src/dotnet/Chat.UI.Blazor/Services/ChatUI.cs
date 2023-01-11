@@ -63,8 +63,8 @@ public partial class ChatUI : WorkerBase
 
     public ChatUI(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Services = services;
+        Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         StateFactory = services.StateFactory();
         ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();

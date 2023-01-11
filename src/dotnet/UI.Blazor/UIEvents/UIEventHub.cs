@@ -11,8 +11,8 @@ public sealed class UIEventHub
 
     public UIEventHub(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Services = services;
+        Log = services.LogFor(GetType());
     }
 
     public void Subscribe<TEvent>(UIEventHandler<TEvent> handler)

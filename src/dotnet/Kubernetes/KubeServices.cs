@@ -75,9 +75,9 @@ public class KubeServices : IKubeInfo
         public EndpointDiscoveryWorker(IServiceProvider services, Kube kube, KubeService kubeService)
         {
             Services = services;
+            Log = services.LogFor(GetType());
             Kube = kube;
             KubeService = kubeService;
-            Log = services.LogFor(GetType());
 
             var initialValue = new KubeServiceEndpoints(
                 kubeService,

@@ -26,8 +26,8 @@ public class CommandQueueScheduler : WorkerBase
     public CommandQueueScheduler(Options settings, IServiceProvider services)
     {
         Settings = settings;
-        Log = services.LogFor(GetType());
         Services = services;
+        Log = services.LogFor(GetType());
 
         Queues = services.GetRequiredService<ICommandQueues>();
         Commander = services.GetRequiredService<ICommander>();

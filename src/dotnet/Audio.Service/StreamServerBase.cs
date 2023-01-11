@@ -18,8 +18,8 @@ public abstract class StreamServerBase<TItem> : IDisposable
     protected StreamServerBase(IServiceProvider services)
     {
         Services = services;
-        Clocks = services.Clocks();
         Log = services.LogFor(GetType());
+        Clocks = services.Clocks();
     }
 
     public void Dispose()

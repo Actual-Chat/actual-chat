@@ -111,7 +111,7 @@ function hasPromiseBasedNotificationApi(): boolean {
 }
 
 NextInteraction.addHandler(async () => {
-    if (BrowserInfo.isMaui)
+    if (BrowserInfo.isMauiApp)
         return;
     const isGranted = await requestNotificationPermission();
     if (!isGranted)

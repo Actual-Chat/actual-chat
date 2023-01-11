@@ -11,6 +11,5 @@ public interface IBrowserInfoBackend
         double UtcOffset,
         bool IsMobile,
         bool IsTouchCapable,
-        bool IsMaui,
         string WindowId);
 }

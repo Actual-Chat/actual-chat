@@ -9,8 +9,8 @@ public class SignOutReloader : WorkerBase
 
     public SignOutReloader(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Services = services;
+        Log = services.LogFor(GetType());
         UICommander = Services.UICommander();
         Clocks = services.Clocks();
     }

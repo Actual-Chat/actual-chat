@@ -15,8 +15,8 @@ public sealed class KubeToken : WorkerBase
     public KubeToken(IServiceProvider services, FilePath path)
     {
         Services = services;
-        Path = path;
         Log = services.LogFor(GetType());
+        Path = path;
 
         var value = IsEmulated ? "" : File.ReadAllText(Path);
         State = services.StateFactory().NewMutable(value.Trim());

@@ -18,8 +18,9 @@ public partial class AccountUI : WorkerBase
 
     public AccountUI(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Services = services;
+        Log = services.LogFor(GetType());
+
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();

@@ -14,11 +14,11 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     private ILogger Log { get; }
     private HostInfo HostInfo { get; }
 
+    public AppKind AppKind { get; }
     public IState<ScreenSize> ScreenSize => _screenSize;
     public TimeSpan UtcOffset { get; private set; }
     public bool IsMobile { get; private set; }
     public bool IsTouchCapable { get; private set; }
-    public bool IsMaui { get; private set; }
     public string WindowId { get; private set; } = "";
     public Task WhenReady => _whenReadySource.Task;
 
@@ -28,6 +28,8 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         Log = services.LogFor(GetType());
         JS = services.GetRequiredService<IJSRuntime>();
         HostInfo = services.GetRequiredService<HostInfo>();
+        AppKind = HostInfo.AppKind;
+
         _screenSize = services.StateFactory().NewMutable<ScreenSize>();
         _whenReadySource = TaskSource.New<Unit>(true);
     }
@@ -41,7 +43,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         await JS.InvokeVoidAsync(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
             _backendRef,
-            HostInfo.AppKind == AppKind.Maui);
+            AppKind.ToString());
     }
 
     [JSInvokable]
@@ -51,7 +53,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
         IsTouchCapable = initResult.IsTouchCapable;
-        IsMaui = initResult.IsMaui;
         WindowId = initResult.WindowId;
         _whenReadySource.SetResult(default);
     }
