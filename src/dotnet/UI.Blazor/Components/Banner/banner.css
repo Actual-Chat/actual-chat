@@ -1,0 +1,21 @@
+.banner {
+    @apply flex-x w-full h-14 gap-x-1 items-center justify-between pl-6 pr-5 bg-banner-success;
+}
+.banner-icon {
+    @apply flex-x items-center justify-center text-2xl text-banner-success-icon;
+}
+.banner-icon-circle {
+    @apply rounded-full w-10 h-10 min-w-10 min-h-10 bg-01;
+}
+.banner-body {
+    @apply ml-1;
+}
+.banner-buttons {
+    @apply flex-x ml-auto items-center;
+}
+.banner-buttons-close {
+    @apply flex w-6 h-6  ml-3 rounded-full items-center justify-center;
+}
+.banner-buttons-close:hover i {
+    @apply text-03;
+}
