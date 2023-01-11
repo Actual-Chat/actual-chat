@@ -154,6 +154,7 @@
         => AttachmentListRef.Add(id, url, fileName, fileType, length);
 
     // Private methods
+    [Inject] private BannerUI BannerUI { get; set; } = null!;
 
     private async Task Post(string? text = null) {
         text ??= await MarkupEditorRef.GetText();

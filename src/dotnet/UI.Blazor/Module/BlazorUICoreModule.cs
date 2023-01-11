@@ -95,6 +95,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             sp.GetRequiredService<UIActionTracker>()));
         services.AddScoped<HistoryUI>(sp => new HistoryUI(sp));
         services.AddScoped<ModalUI>(sp => new ModalUI(sp));
+        services.AddScoped<BannerUI>(sp => new BannerUI(sp));
         services.AddScoped<FocusUI>(sp => new FocusUI(
             sp.GetRequiredService<IJSRuntime>()));
         services.AddScoped<Vibration>(sp => new Vibration(

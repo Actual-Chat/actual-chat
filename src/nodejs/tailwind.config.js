@@ -73,6 +73,8 @@ module.exports = {
         'error-toast-text': 'var(--error-toast-text)',
         'audio-message': 'var(--audio-message)',
         'online': 'var(--online)',
+        'banner-success': 'var(--banner-success)',
+        'banner-success-icon': 'var(--banner-success-icon)',
         'away': 'var(--away)',
         'unread': 'var(--unread)',
         'separator': 'var(--separator)',
