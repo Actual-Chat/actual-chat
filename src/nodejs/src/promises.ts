@@ -10,13 +10,13 @@ export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> 
 
 export class AsyncLock
 {
-    private _promise : Promise<Unit>;
+    private _promise: Promise<Unit>;
 
     constructor () {
         this._promise = Promise.resolve(Unit.Instance);
     }
 
-    public async lock<T>(job : () => Promise<T>) : Promise<T> {
+    public async lock<T>(job: () => Promise<T>): Promise<T> {
         await this._promise;
         const task = new PromiseSource<Unit>();
         this._promise = task;
@@ -62,15 +62,15 @@ export class PromiseSource<T> implements Promise<T> {
         this[Symbol.toStringTag] = this._promise[Symbol.toStringTag];
     }
 
-    public isResolved() : boolean {
+    public isResolved(): boolean {
         return this._isCompleted;
     }
 
-    public isCompleted() : boolean {
+    public isCompleted(): boolean {
         return this._isCompleted;
     }
 
-    public clearTimeout() : void {
+    public clearTimeout(): void {
         if (this._timeoutHandle == null)
             return;
 
@@ -78,7 +78,7 @@ export class PromiseSource<T> implements Promise<T> {
         this._timeoutHandle = null;
     }
 
-    public setTimeout(timeout: number, handler?: () => void) : void {
+    public setTimeout(timeout: number, handler?: () => void): void {
         this.clearTimeout();
         if (timeout == null)
             return;
@@ -172,11 +172,11 @@ class Call<T extends (...args: unknown[]) => unknown> {
         readonly parameters: Parameters<T>
     ) { }
 
-    public invoke() : unknown {
+    public invoke(): unknown {
         return this.func.apply(this.self, this.parameters);
     }
 
-    public invokeSafely() : unknown {
+    public invokeSafely(): unknown {
         try {
             return this.invoke();
         }
@@ -192,7 +192,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     interval: number,
     mode: ThrottleMode = 'default'
-) : ResettableFunc<T> {
+): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastFireTime = 0;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
@@ -240,7 +240,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     interval: number,
     debounceHead = false,
-) : ResettableFunc<T> {
+): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastCallTime = 0;
     let timeoutPromise: PromiseSource<void> | null = null;
@@ -281,7 +281,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>, TResult>(
     func: (...args: Parameters<T>) => PromiseLike<TResult>,
     limit: number | null = null
-) : (...sArgs: Parameters<T>) => Promise<TResult> {
+): (...sArgs: Parameters<T>) => Promise<TResult> {
     let lastCall: Promise<TResult> = Promise.resolve(null as TResult);
     let queueSize = 0;
 

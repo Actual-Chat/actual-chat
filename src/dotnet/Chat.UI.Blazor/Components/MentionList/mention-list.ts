@@ -5,7 +5,7 @@ const LogScope = 'MentionList';
 export class MentionList {
     private blazorRef: DotNet.DotNetObject;
     private readonly mentionList: HTMLElement;
-    private mentionListObserver : MutationObserver;
+    private mentionListObserver: MutationObserver;
 
     static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
         return new MentionList(mentionList, blazorRef);

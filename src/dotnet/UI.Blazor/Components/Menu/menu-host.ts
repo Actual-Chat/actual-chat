@@ -1,18 +1,11 @@
 import './menu.css';
-import { Disposable } from 'disposable';
-import { nanoid } from 'nanoid';
-import { HistoryUI, HistoryStepToken } from '../../Services/HistoryUI/history-ui';
-
 import {
-    combineLatestWith,
     delay,
-    empty,
     filter,
     fromEvent,
     map,
-    of,
+    merge,
     Subject,
-    switchMap,
     takeUntil,
 } from 'rxjs';
 import {
@@ -25,10 +18,15 @@ import {
     shift,
     VirtualElement,
 } from '@floating-ui/dom';
-import escapist from '../../Services/Escapist/escapist';
+import { Disposable } from 'disposable';
+import { nanoid } from 'nanoid';
+import { nextTick } from 'promises';
+import { Log, LogLevel } from 'logging';
+
+import { HistoryUI, HistoryStepId } from '../../Services/HistoryUI/history-ui';
+import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Vibration } from '../../Services/Vibration/vibration';
-import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -41,12 +39,13 @@ interface Coords {
 }
 
 interface EventData {
+    event: Event;
     menuRef: string;
-    placement: Placement;
-    closeOnSecondClick: boolean;
     isHoverMenu: boolean;
+    placement: Placement;
     element: HTMLElement;
     coords?: Coords;
+    time: number;
 }
 
 interface Menu {
@@ -63,10 +62,11 @@ enum MenuTriggers {
 }
 
 export class MenuHost implements Disposable {
+    private readonly skipClickEventPeriodMs = 350;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menus: Menu[] = [];
     private preventHistoryModification: boolean;
-    private historyStepToken: HistoryStepToken;
+    private historyStepId: HistoryStepId;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -75,12 +75,33 @@ export class MenuHost implements Disposable {
     constructor(
         private readonly blazorRef: DotNet.DotNetObject,
     ) {
-        try {
-            this.listenForEvents();
-        } catch (error) {
-            errorLog?.log(`constructor: unhandled error:`, error);
-            this.dispose();
-        }
+        merge(
+            fromEvent(document, 'click', { capture: true }),
+            fromEvent(document, 'long-press'),
+            fromEvent(document, 'contextmenu', { capture: true }),
+            )
+            .pipe(
+                takeUntil(this.disposed$),
+                map((event) => this.mapClickEvent(event)),
+                filter(eventData => eventData !== undefined),
+            ).subscribe((eventData: EventData) => this.renderMenu(eventData));
+
+        fromEvent(document, 'mouseover')
+            .pipe(
+                takeUntil(this.disposed$),
+                map(event => this.mapHoverEvent(event)),
+                filter(eventData => eventData !== undefined),
+                delay(100),
+            )
+            .subscribe((eventData: EventData) => this.renderMenu(eventData));
+
+        Escapist.escape$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: KeyboardEvent) => {
+                if (this.hideAllMenus()) {
+                    event.preventDefault();
+                }
+            });
     }
 
     public dispose(): void {
@@ -113,27 +134,32 @@ export class MenuHost implements Disposable {
         this.hideMenu(menu);
     }
 
-    private getHistoryUI() : HistoryUI {
-       return <HistoryUI>(<any>window).App.historyUI;
+    public get isDesktopMode(): boolean {
+        return ScreenSize.isWide();
     }
 
+    // Private methods
+
     private renderMenu(eventData: EventData): void {
+        debugLog?.log('renderMenu: eventData:', eventData)
         const menuIndex = this.menus.findIndex(
             x => x.eventData.menuRef == eventData.menuRef
             && x.eventData.element == eventData.element);
-        if (menuIndex > -1) {
+        if (menuIndex >= 0) {
             const menu = this.menus[menuIndex];
-            if (menu.eventData.closeOnSecondClick) {
-                this.menus.splice(menuIndex, 1);
-                this.hideMenu(menu);
-            } else {
-                menu.eventData = eventData;
-                void updatePosition(menu);
+            if (Date.now() - menu.eventData.time < this.skipClickEventPeriodMs) {
+                // We ignore all subsequent events within certain interval:
+                // they're either other "flavours" of the same event,
+                // or simply double / or mis-clicks.
+                return;
             }
 
+            menu.eventData = eventData;
+            void updatePosition(menu);
             return;
         }
 
+        /* NOTE(AY): Not sure what this block is supposed to do due to above "if"
         try {
             this.preventHistoryModification = true;
             this.hideMenus(x => x.isHoverMenu === eventData.isHoverMenu);
@@ -141,28 +167,29 @@ export class MenuHost implements Disposable {
         finally {
             this.preventHistoryModification = false;
         }
+        */
 
         const menu: Menu = {
             id: nanoid(),
             eventData: eventData,
         };
         this.menus.push(menu);
-        if (!eventData.isHoverMenu && !this.historyStepToken) {
-            debugLog?.log(`about to push backStep on render menu`, history.state);
-            this.historyStepToken = this.getHistoryUI()
-                .pushBackStep(true, this.hideMenusOnBack);
-            debugLog?.log(`pushed state to render menu`, history.state);
+        if (!eventData.isHoverMenu && !this.historyStepId) {
+            this.historyStepId = HistoryUI.pushBackStep(true, this.hideMenusOnBack);
+            debugLog?.log(`renderMenu: pushed state to render menu`, history.state);
         }
         this.blazorRef.invokeMethodAsync('OnRenderMenu', menu.eventData.menuRef, menu.id, eventData.isHoverMenu);
+        if (ScreenSize.isNarrow())
+            Vibration.vibrate();
     }
 
     private hideMenusOnBack = (): void => {
-        debugLog?.log('context menu should be closed on back');
+        debugLog?.log('hideMenusOnBack()');
         if (this.menus.length)
-            this.hideMenus(e => !e.isHoverMenu);
+            this.hideNonHoverMenus();
     }
 
-    private hideOverlay(): void {
+    private tryHideOverlay(): void {
         if (this.menus.length)
             return;
 
@@ -174,220 +201,195 @@ export class MenuHost implements Disposable {
     }
 
     private removeHistoryStep(): void {
-        if (this.preventHistoryModification || !this.historyStepToken)
+        if (this.preventHistoryModification || !this.historyStepId)
             return;
-        if (this.menus.filter(c => !c.eventData.isHoverMenu).length)
+        if (this.menus.filter(m => !m.eventData.isHoverMenu).length)
             return;
-        const goBack = this.getHistoryUI()
-            .isActiveStep(this.historyStepToken);
-        this.historyStepToken = undefined;
+
+        const goBack = HistoryUI.isActiveStep(this.historyStepId);
+        this.historyStepId = undefined;
         if (goBack) {
             history.back();
-            debugLog?.log(`removed history back step on hide menu`);
+            debugLog?.log(`removeHistoryStep(): removed history back step on hide menu`);
         } else {
-            debugLog?.log(`history back step has been already replaced before on hide menu`);
+            debugLog?.log(`removeHistoryStep(): history back step has already been replaced`);
         }
     }
 
-    private hideMenu(menu: Menu): void {
-        debugLog?.log(`hideMenu, menu:`, menu);
+    private hideMenu(menu: Menu): boolean {
+        debugLog?.log(`hideMenu: menu:`, menu);
         if (menu.elementRef)
             menu.elementRef.style.display = 'none';
-        this.hideOverlay();
+
+        const menuIndex = this.menus.indexOf(menu);
+        if (menuIndex >= 0)
+            this.menus.splice(menuIndex, 1);
+
+        this.tryHideOverlay();
         this.removeHistoryStep();
 
         this.blazorRef.invokeMethodAsync('OnHideMenu', menu.id);
+        return menuIndex >= 0;
     }
 
-    private hideAllMenus(): void {
-        debugLog?.log(`hideAllMenus`);
-        while (this.menus.length) {
-            this.hideMenu(this.menus.pop());
+    private hideAllMenus(): boolean {
+        debugLog?.log(`hideAllMenus()`);
+        const count = this.menus.length;
+        for (let i = count - 1; i >= 0; i--) {
+            const menu = this.menus[i];
+            this.hideMenu(menu)
         }
+        return count != 0;
     }
 
-    private hideMenus(predicate: (e: EventData) => boolean): void {
-        for (let i = 0; i < this.menus.length; i++) {
-            if (predicate(this.menus[i].eventData)) {
-                const removed = this.menus.splice(i, 1);
-                this.hideMenu(removed[0]);
-                i--;
+    private hideHoverMenus(): boolean {
+        debugLog?.log(`hideHoverMenus()`);
+        if (this.menus.length == 0) // Just to speed up typical case
+            return false;
+
+        return this.hideMenus(m => m.isHoverMenu);
+    }
+
+    private hideNonHoverMenus(): boolean {
+        debugLog?.log(`hideNonHoverMenus()`);
+        if (this.menus.length == 0) // Just to speed up typical case
+            return false;
+
+        return this.hideMenus(m => !m.isHoverMenu);
+    }
+
+    private hideMenus(predicate: (e: EventData) => boolean): boolean {
+        let result = false;
+        for (let i = this.menus.length - 1; i >= 0; i--) {
+            const menu = this.menus[i];
+            if (predicate(menu.eventData)) {
+                this.hideMenu(menu);
+                result = true;
             }
         }
+        return result;
     }
 
-    private listenForEvents(): void {
-        fromEvent(document, 'click')
-            .pipe(
-                takeUntil(this.disposed$),
-                map((event) => this.mapEvent(event, MenuTriggers.LeftClick, false, true)),
-                switchMap((eventData: EventData | undefined) => {
-                    return eventData ? of(eventData) : empty();
-                }),
-            )
-            .subscribe((eventData: EventData) => {
-                this.renderMenu(eventData);
-            });
+    private mapClickEvent(event: Event | PointerEvent): EventData | undefined {
+        let trigger = MenuTriggers.None
+        if (event.type == 'click')
+            trigger = MenuTriggers.LeftClick;
+        if (event.type == 'long-press')
+            trigger = MenuTriggers.LongClick;
+        if (event.type == 'contextmenu')
+            trigger = MenuTriggers.RightClick;
+        debugLog?.log('mapClickEvent, event:', event, ', trigger:', trigger);
 
-        fromEvent(document, 'contextmenu')
-            .pipe(
-                takeUntil(this.disposed$),
-            )
-            .subscribe((event: Event) => {
-                if (!(event.target instanceof Element))
-                    return undefined;
-
-                if (event.target.nodeName === 'IMG')
-                    return undefined;
-
+        const tryHideNonHoverMenus = (mustHandleAnyway: boolean = false): undefined => {
+            if (this.hideNonHoverMenus() || mustHandleAnyway) {
+                event.stopPropagation();
                 event.preventDefault();
-            });
+            }
+            return undefined;
+        }
 
-        fromEvent(document, 'contextmenu')
-            .pipe(
-                takeUntil(this.disposed$),
-                combineLatestWith(ScreenSize.size$),
-                filter(([_, screenSize]) => screenSize !== 'Small'),
-                map(([mouseEvent, _]) => mouseEvent),
-                map((event) => this.mapEvent(event, MenuTriggers.RightClick, true, false)),
-                switchMap((eventData: EventData | undefined) => {
-                    return eventData ? of(eventData) : empty();
-                }),
-            )
-            .subscribe((eventData: EventData) => {
-                this.renderMenu(eventData);
-            });
+        let isDesktopMode = this.isDesktopMode;
 
-        fromEvent(document, 'long-press')
-            .pipe(
-                takeUntil(this.disposed$),
-                combineLatestWith(ScreenSize.size$),
-                filter(([_, screenSize]) => screenSize === 'Small'),
-                map(([event, _]) => event),
-                map((event) => this.mapEvent(event, MenuTriggers.LongClick, false, false)),
-                switchMap((eventData: EventData | undefined) => {
-                    return eventData ? of(eventData) : empty();
-                }),
-            )
-            .subscribe((eventData: EventData) => {
-                this.renderMenu(eventData);
-                Vibration.vibrate();
-            });
-
-        fromEvent(document, 'mouseover')
-            .pipe(
-                takeUntil(this.disposed$),
-                combineLatestWith(ScreenSize.size$),
-                filter(([_, screenSize]) => screenSize !== 'Small'),
-                map(([mouseEvent, _]) => mouseEvent),
-                map((event) => this.mapHoverEvent(event)),
-                switchMap((eventData: EventData | undefined) => {
-                    return eventData ? of(eventData).pipe(delay(100)) : empty();
-                }),
-            )
-            .subscribe((eventData: EventData) => {
-                this.renderMenu(eventData);
-            });
-
-        fromEvent(document, 'touchend')
-            .pipe(
-                takeUntil(this.disposed$),
-                filter((event: TouchEvent) => {
-                    if (!(event.target instanceof Element))
-                        return false;
-
-                    const isOverlayClicked = event.target.classList.contains('ac-menu-overlay');
-                    if (isOverlayClicked)
-                        return true;
-
-                    const isMenuClicked = event.target.closest('.ac-menu, .ac-menu-hover') != null;
-                    return isMenuClicked;
-                }),
-            )
-            .subscribe(() => {
-                this.hideAllMenus();
-            });
-
-        escapist.escapeEvents()
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(() => {
-                this.hideAllMenus();
-            });
-    }
-
-    private mapEvent(
-        event: Event | PointerEvent,
-        triggers: MenuTriggers,
-        byCoords: boolean,
-        closeOnSecondClick: boolean
-    ): EventData | undefined {
+        // Ignore clicks which definitely aren't "ours"
+        if (trigger == MenuTriggers.None)
+            return undefined;
         if (!(event.target instanceof Element))
             return undefined;
-        if (event.target.nodeName === 'IMG')
+
+        // Ignore long clicks on desktop: they don't provide pointer coords -> menus can't be properly positioned
+        if (trigger == MenuTriggers.LongClick && isDesktopMode)
             return undefined;
-        debugLog?.log(
-            `mapEvent: event:`, event,
-            `, triggers:`, triggers,
-            `, byCoords:`, byCoords,
-            `, closeOnSecondClick`, closeOnSecondClick);
+
+        // Suppress browser context menu anywhere but on images
+        if (trigger == MenuTriggers.RightClick && event.target.nodeName !== 'IMG')
+            event.preventDefault();
+
+        // Process overlay click - useless, coz we anyway process clicks outside menus below
+        /*
+        const isOverlayClick = event.target.classList.contains('ac-menu-overlay');
+        if (isOverlayClick)
+            return tryHideNonHoverMenus(true);
+        */
+
+        const isClickInsideMenu = event.target.closest('.ac-menu, .ac-menu-hover') != null;
+        if (isClickInsideMenu) {
+            if (trigger == MenuTriggers.RightClick) {
+                // Right click may follow long click events, so we definitely need to suppress them inside menus
+                event.stopPropagation();
+                return undefined;
+            }
+
+            // The menu will process the action, but we can schedule menu hiding here
+            nextTick(() => this.hideAllMenus());
+            return undefined;
+        }
+
+        // We know here the click is outside of any menu.
+        // Are there any other non-hover menus visible?
+        if (this.menus.find(m => !m.eventData.isHoverMenu))
+            return tryHideNonHoverMenus(true);
 
         const closestElement = event.target.closest('[data-menu]');
-        if (!(closestElement instanceof HTMLElement)) {
-            this.hideAllMenus();
+        if (!(closestElement instanceof HTMLElement))
             return undefined;
-        }
+
         const menuTrigger = closestElement.dataset['menuTrigger'];
-        if (!menuTrigger || !(hasTrigger(menuTrigger, triggers))) {
-            this.hideAllMenus();
+        if (!menuTrigger || !(hasTrigger(menuTrigger, trigger)))
             return undefined;
-        }
+
         event.preventDefault();
+        if (isDesktopMode)
+            this.hideHoverMenus(); // Hide all hover menus on appearance of non-hover one
+
         const menuRef = closestElement.dataset['menu'];
         const placement = getPlacement(closestElement);
         const coords =
-            byCoords && event instanceof PointerEvent
+            isDesktopMode && event instanceof PointerEvent
                ? { x: event.clientX, y: event.clientY }
                : undefined;
         return {
-            placement,
-            isHoverMenu: false,
+            event: event,
             menuRef: menuRef,
-            closeOnSecondClick,
+            isHoverMenu: false,
+            placement,
             element: closestElement,
             coords: coords,
+            time: Date.now(),
         };
     }
 
     private mapHoverEvent(event: Event): EventData | undefined {
-        if (!(event.target instanceof Element)) {
-            this.hideMenus(x => x.isHoverMenu);
+        if (!this.isDesktopMode)
             return undefined;
-        }
-        const closestElement = event.target.closest('[data-hover-menu]');
-        if (!(closestElement instanceof HTMLElement)) {
-            const menu = event.target.closest('.ac-menu, .ac-menu-hover');
-            if (!menu) {
-                this.hideMenus(x => x.isHoverMenu);
-            }
+
+        const tryHideHoverMenus = (): undefined => {
+            this.hideHoverMenus();
             return undefined;
-        }
-        const trigger = closestElement.dataset['hoverMenu'];
-        const hoverMenu = this.menus.find(x => x.eventData.isHoverMenu);
-        if (hoverMenu) {
-            if (hoverMenu.eventData.menuRef === trigger) {
-                return undefined;
-            } else {
-                this.hideMenu(hoverMenu);
-            }
         }
 
+        if (!(event.target instanceof Element))
+            return tryHideHoverMenus();
+
+        const closestElement = event.target.closest('[data-hover-menu]');
+        if (!(closestElement instanceof HTMLElement)) {
+            const isInsideHoverMenu = event.target.closest('.ac-menu-hover') != null;
+            return isInsideHoverMenu ? undefined : tryHideHoverMenus();
+        }
+
+        const menuRef = closestElement.dataset['hoverMenu'];
+        const shownHoverMenu = this.menus.find(x => x.eventData.isHoverMenu);
+        if (shownHoverMenu && shownHoverMenu.eventData.menuRef === menuRef)
+            return undefined; // On top of shown hover menu trigger
+
+        tryHideHoverMenus();
         return {
-            placement: "top-end",
-            menuRef: trigger,
+            event: event,
+            menuRef: menuRef,
             isHoverMenu: true,
-            closeOnSecondClick: false,
+            placement: "top-end",
             element: closestElement,
             coords: undefined,
+            time: Date.now(),
         };
     }
 }

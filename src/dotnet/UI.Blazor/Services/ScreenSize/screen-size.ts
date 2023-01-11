@@ -71,7 +71,7 @@ export class ScreenSize {
     }
 
     private static measure(): Size {
-        let itemDiv : HTMLDivElement = null;
+        let itemDiv: HTMLDivElement = null;
         for (const item of this.screenSizeMeasureDiv.children) {
             itemDiv = item as HTMLDivElement;
             if (!item)

@@ -110,7 +110,7 @@ export class MarkupEditor {
         this.fixVirtualKeyboard();
     }
 
-    public isEditable(isEditable: boolean = null) : boolean {
+    public isEditable(isEditable: boolean = null): boolean {
         if (isEditable !== null)
             this.contentDiv.setAttribute('contenteditable', isEditable ? 'true' : 'false');
         return this.contentDiv.isContentEditable;
@@ -171,19 +171,19 @@ export class MarkupEditor {
 
     // Backend method invokers
 
-    private async onPost() : Promise<void> {
+    private async onPost(): Promise<void> {
         await this.blazorRef.invokeMethodAsync("OnPost", this.getText());
     }
 
-    private async onCancel() : Promise<void> {
+    private async onCancel(): Promise<void> {
         await this.blazorRef.invokeMethodAsync("OnCancel");
     }
 
-    private async onOpenPrevious() : Promise<void> {
+    private async onOpenPrevious(): Promise<void> {
         await this.blazorRef.invokeMethodAsync("OnOpenPrevious");
     }
 
-    private async onListCommand(listId: string, command: ListCommand) : Promise<void> {
+    private async onListCommand(listId: string, command: ListCommand): Promise<void> {
         debugLog?.log(`onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
         await this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
     }
@@ -365,7 +365,7 @@ export class MarkupEditor {
 
     // Helpers
 
-    private tryUseListHandler(listHandler: ListHandler, cursorRange: Range) : boolean {
+    private tryUseListHandler(listHandler: ListHandler, cursorRange: Range): boolean {
         const matchText = listHandler.getMatchText(cursorRange);
         const isActive = listHandler == this.listHandler;
         if (!matchText) {
@@ -414,7 +414,7 @@ export class MarkupEditor {
         }
     }
 
-    private expandSelection(listHandler: ListHandler) : boolean {
+    private expandSelection(listHandler: ListHandler): boolean {
         const cursorRange = this.getCursorRange();
         if (!cursorRange)
             return false;
@@ -642,11 +642,11 @@ enum ListCommandKind {
 
 // Helpers
 
-function asHTMLElement(node: Node) : HTMLElement | null {
+function asHTMLElement(node: Node): HTMLElement | null {
     return castNode<HTMLElement>(node, Node.ELEMENT_NODE);
 }
 
-function asText(node: Node) : Text | null {
+function asText(node: Node): Text | null {
     return castNode<Text>(node, Node.TEXT_NODE);
 }
 
@@ -658,13 +658,13 @@ function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | nul
     return node as unknown as TNode;
 }
 
-function cleanPastedText(text: string) : string {
+function cleanPastedText(text: string): string {
     text = text.replace(ZeroWidthSpaceRe, '');
     text = normalize(text);
     return text;
 }
 
-function normalize(text: string) : string {
+function normalize(text: string): string {
     return text.normalize().replace(CrlfRe, "\n");
 }
 

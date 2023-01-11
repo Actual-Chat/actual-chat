@@ -60,7 +60,7 @@ export class AudioRecorder {
         }
     }
 
-    public async startRecording(chatId : string): Promise<void> {
+    public async startRecording(chatId: string): Promise<void> {
         try {
             if (this.isRecording)
                 return;

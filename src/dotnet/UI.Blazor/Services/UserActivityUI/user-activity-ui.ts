@@ -32,10 +32,10 @@ export class UserActivityUI {
     }
 
     private async onInteracted() {
-        debugLog?.log(`${LogScope}: user interaction happened`);
+        debugLog?.log(`onInteracted: user interaction happened`);
         this._lastActiveAt = new Date();
         if (this._shouldNotify) {
-            debugLog?.log(`${LogScope}: notifying server about user activity`);
+            debugLog?.log(`onInteracted: notifying server about user activity`);
             await this._blazorRef.invokeMethodAsync('OnInteracted');
             this._shouldNotify = false;
         }

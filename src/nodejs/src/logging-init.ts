@@ -9,7 +9,7 @@ enum LogLevel {
 
 const LogMinLevelsKey = 'logMinLevels';
 
-export function initLogging(Log: unknown) : void {
+export function initLogging(Log: unknown): void {
     Log['defaultMinLevel'] = LogLevel.Debug;
     const minLevels = Log['minLevels'] as Map<string, LogLevel>;
     const w = globalThis;
@@ -47,9 +47,9 @@ export class LogMinLevels {
 function restoreFromStorage(storage: Storage, minLevels: Map<string, LogLevel>): boolean {
     const w = globalThis;
     if (w?.sessionStorage) {
-        const storedMinLevelsString = w.sessionStorage.getItem(LogMinLevelsKey);
-        if (storedMinLevelsString) {
-            const storedMinLevels = new Map(JSON.parse(storedMinLevelsString) as [string, LogLevel][]);
+        const storedMinLevelsJson = w.sessionStorage.getItem(LogMinLevelsKey);
+        if (storedMinLevelsJson) {
+            const storedMinLevels = new Map(JSON.parse(storedMinLevelsJson) as [string, LogLevel][]);
             if (!storedMinLevels.size || storedMinLevels.size == 0)
                 return false;
 
@@ -64,7 +64,7 @@ function persistToStorage(storage: Storage, minLevels: Map<string, LogLevel>): v
     storage.setItem(LogMinLevelsKey, JSON.stringify(Array.from(minLevels.entries())));
 }
 
-function reset (minLevels: Map<string, LogLevel>): void {
+function reset(minLevels: Map<string, LogLevel>): void {
     // Bumping up levels of noisy scopes
     minLevels.set('NextInteraction', LogLevel.Info);
     minLevels.set('InteractiveUI', LogLevel.Info);
@@ -85,11 +85,11 @@ function reset (minLevels: Map<string, LogLevel>): void {
     minLevels.set('AudioPlayer', LogLevel.Info);
     minLevels.set('UserActivityUI', LogLevel.Info);
     minLevels.set('MenuHost', LogLevel.Info);
+    minLevels.set('VirtualList', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
     minLevels.set('AudioContextLazy', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
-    minLevels.set('VirtualList', LogLevel.Info);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
 

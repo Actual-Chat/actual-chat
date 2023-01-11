@@ -214,7 +214,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         this.postStateChangedMessage('ended');
     }
 
-    private onPauseMessage(isPause : boolean) {
+    private onPauseMessage(isPause: boolean) {
         if (this.isPaused === isPause) {
             debugLog?.log(`onPauseMessage: already in pause state:`, this.isPaused);
             return;
@@ -278,7 +278,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         this.startPlaybackIfEnoughBuffered();
     }
 
-    private postStateChangedMessage(state : ProcessorState)
+    private postStateChangedMessage(state: ProcessorState)
     {
         const message: StateChangedProcessorMessage = {
             type: 'stateChanged',

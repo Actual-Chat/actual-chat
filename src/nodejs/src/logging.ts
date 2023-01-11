@@ -54,4 +54,3 @@ export class Log {
             this.log(data);
     }
 }
-

@@ -11,7 +11,7 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-async function defaultFactory() : Promise<AudioContext> {
+async function defaultFactory(): Promise<AudioContext> {
     const audioContext = new AudioContext({
         latencyHint: 'interactive',
         sampleRate: 48000,
@@ -32,7 +32,7 @@ async function defaultFactory() : Promise<AudioContext> {
     return audioContext;
 }
 
-async function resume(audioContext: AudioContext, force = false) : Promise<void> {
+async function resume(audioContext: AudioContext, force = false): Promise<void> {
     debugLog?.log(`-> resume: audioContext.state =`, audioContext.state);
     if (force || audioContext.state !== 'running' && audioContext.state !== 'closed') {
         if (force) {
@@ -87,7 +87,7 @@ export class AudioContextLazy implements Disposable {
     private nextInteractionHandler?: Disposable = null;
     private requireInteraction = true;
     private initContextStarted = false;
-    private asyncLock : AsyncLock;
+    private asyncLock: AsyncLock;
 
     public audioContext: AudioContext | null = null;
     public audioContextChanged: EventHandlerSet<AudioContext | null> = new EventHandlerSet<AudioContext | null>();
@@ -140,7 +140,7 @@ export class AudioContextLazy implements Disposable {
         void this.initContext();
     }
 
-    private async initContext() : Promise<void> {
+    private async initContext(): Promise<void> {
         if (this.initContextStarted)
             return;
         this.initContextStarted = true;
@@ -178,7 +178,7 @@ export class AudioContextLazy implements Disposable {
         }
     }
 
-    private async refreshAudioContext(audioContext : AudioContext) : Promise<void> {
+    private async refreshAudioContext(audioContext: AudioContext): Promise<void> {
         try {
             await resume(audioContext, true);
             this.setAudioContext(audioContext)

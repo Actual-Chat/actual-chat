@@ -25,7 +25,7 @@ export class InteractiveUI {
         NextInteraction.start();
     }
 
-    public static trySync() : void {
+    public static trySync(): void {
         const isInteractive = audioContextLazy.audioContext != null;
         if (this.isInteractive == isInteractive)
             return;
@@ -40,7 +40,7 @@ export class InteractiveUI {
             void this.sync();
     }
 
-    private static async sync() : Promise<void> {
+    private static async sync(): Promise<void> {
         if (this.isSyncing)
             return; // Sync is already in progress, it will do the job anyway
 

@@ -13,7 +13,7 @@ export class NextInteraction {
     private static readonly onTouchEnd = (event: Event) => NextInteraction.onEventThrottled(event);
     public static isStarted: boolean;
 
-    public static start() : void {
+    public static start(): void {
         if (this.isStarted)
             return;
 
@@ -26,7 +26,7 @@ export class NextInteraction {
         debugLog?.log(`start`);
     }
 
-    public static stop() : void {
+    public static stop(): void {
         if (!this.isStarted)
             return;
 
@@ -38,14 +38,14 @@ export class NextInteraction {
         debugLog?.log(`stop`);
     }
 
-    public static addHandler(handler: (Event) => unknown, justOnce = true) : EventHandler<Event> {
+    public static addHandler(handler: (Event) => unknown, justOnce = true): EventHandler<Event> {
         return this.event.add(handler, justOnce);
     }
 
     // Private methods
 
     private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500, 'skip');
-    private static onEvent(event: Event) : void {
+    private static onEvent(event: Event): void {
         debugLog?.log(`onEvent, event:`, event);
         this.event.triggerSilently(event);
     }

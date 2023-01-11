@@ -1,6 +1,6 @@
 import { Disposable } from 'disposable';
 import { Subject, takeUntil } from 'rxjs';
-import escapist from './escapist';
+import Escapist from './escapist';
 
 export class EscapistSubscription implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
@@ -10,7 +10,7 @@ export class EscapistSubscription implements Disposable {
     }
 
     constructor(blazorRef: DotNet.DotNetObject) {
-        escapist.escapeEvents()
+        Escapist.escape$
             .pipe(takeUntil(this.disposed$))
             .subscribe(async _ => {
                 await blazorRef.invokeMethodAsync('OnEscape');

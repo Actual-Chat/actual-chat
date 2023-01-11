@@ -93,7 +93,7 @@ export class VirtualList {
         backendRef: DotNet.DotNetObject,
     ) {
         if (debugLog) {
-            debugLog.log(`constructor`);
+            debugLog?.log(`constructor`);
             window['virtualList'] = this;
         }
 

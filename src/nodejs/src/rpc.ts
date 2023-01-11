@@ -13,7 +13,10 @@ export interface RpcCallMessage {
     arguments: unknown[],
 }
 
-export function rpcCallMessage(rpcResult: RpcResult<unknown> | number, method: string, ...args: unknown[]) : RpcCallMessage {
+export function rpcCallMessage(
+    rpcResult: RpcResult<unknown> | number,
+    method: string, ...args: unknown[]
+): RpcCallMessage {
     const rpcResultId = typeof rpcResult === 'number' ? rpcResult : rpcResult.id;
     return {
         rpcResultId: rpcResultId,
@@ -31,7 +34,7 @@ export interface RpcResultMessage extends Result<unknown> {
     rpcResultId: number;
 }
 
-export function rpcResultMessage(rpcResultId: number, value: unknown, error?: unknown) : RpcResultMessage {
+export function rpcResultMessage(rpcResultId: number, value: unknown, error?: unknown): RpcResultMessage {
     if (error !== undefined)
         return rpcErrorResultMessage(rpcResultId, error);
     return {
@@ -40,7 +43,7 @@ export function rpcResultMessage(rpcResultId: number, value: unknown, error?: un
     }
 }
 
-export function rpcErrorResultMessage(rpcResultId: number, error: unknown) : RpcResultMessage {
+export function rpcErrorResultMessage(rpcResultId: number, error: unknown): RpcResultMessage {
     return {
         rpcResultId: rpcResultId,
         value: undefined,
@@ -73,16 +76,16 @@ export class RpcResult<T> extends PromiseSource<T> {
         debugLog?.log(`RpcResult.ctor[#${this.id}]`)
     }
 
-    public static get<T>(id: number) : RpcResult<T> | null {
+    public static get<T>(id: number): RpcResult<T> | null {
         return results.get(id) as RpcResult<T> ?? null;
     }
 
-    public unregister() : boolean {
+    public unregister(): boolean {
         return results.delete(this.id);
     }
 }
 
-export function rpc<T>(sender: (rpcResult: RpcResult<T>) => unknown, timeout?: number) : RpcResult<T> {
+export function rpc<T>(sender: (rpcResult: RpcResult<T>) => unknown, timeout?: number): RpcResult<T> {
     const rpcResult = new RpcResult<T>();
     rpcResult.setTimeout(timeout);
     try {
@@ -100,7 +103,7 @@ export async function handleRpcCall(
     sender: (message: RpcResultMessage) => Promise<void> | void,
     target: object,
     errorHandler?: (error: unknown) => void
-) : Promise<unknown> {
+): Promise<unknown> {
     debugLog?.log(`handleRpcCall:`, rpcCallMessage)
     return handleRpc<unknown>(rpcCallMessage.rpcResultId, sender, async () => {
         // eslint-disable-next-line @typescript-eslint/ban-types
@@ -114,7 +117,7 @@ export async function handleRpc<T>(
     resultCallback: (message: RpcResultMessage) => Promise<void> | void,
     handler: () => Promise<T>,
     errorHandler?: (error: unknown) => void
-) : Promise<T> {
+): Promise<T> {
     let value: T | undefined = undefined;
     let error: unknown = undefined;
     try {
@@ -131,7 +134,7 @@ export async function handleRpc<T>(
     return value;
 }
 
-export function completeRpc(message: RpcResultMessage) : RpcResult<unknown> | null {
+export function completeRpc(message: RpcResultMessage): RpcResult<unknown> | null {
     const { rpcResultId, value, error } = message;
     const rpcResult = RpcResult.get<unknown>(rpcResultId);
     if (rpcResult == null) {

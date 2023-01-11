@@ -1,8 +1,8 @@
 export class Vibration {
-    public static vibrate(periodMs: number = 100): void {
+    public static vibrate(durationMs: number = 100): void {
         const canVibrate = ('vibrate' in navigator);
         if (!canVibrate)
             return;
-        window.navigator.vibrate(periodMs);
+        window.navigator.vibrate(durationMs);
     }
 }

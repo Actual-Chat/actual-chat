@@ -15,7 +15,7 @@ export class EventHandler<T> implements Disposable {
         this.event.remove(this);
     }
 
-    public trigger(argument: T) : unknown {
+    public trigger(argument: T): unknown {
         try {
             return this.handler(argument);
         }
@@ -25,7 +25,7 @@ export class EventHandler<T> implements Disposable {
         }
     }
 
-    public triggerSilently(argument: T) : unknown {
+    public triggerSilently(argument: T): unknown {
         try {
             return this.handler(argument);
         }
@@ -43,18 +43,18 @@ export class EventHandler<T> implements Disposable {
 export class EventHandlerSet<T> {
     private handlers?: Set<EventHandler<T>>;
 
-    public add(handler: (T) => unknown, justOnce = false) : EventHandler<T> {
+    public add(handler: (T) => unknown, justOnce = false): EventHandler<T> {
         const eventHandler = new EventHandler<T>(this, handler, justOnce);
         this.handlers ??= new Set<EventHandler<T>>();
         this.handlers.add(eventHandler);
         return eventHandler;
     }
 
-    public remove(handler: EventHandler<T>) : boolean {
+    public remove(handler: EventHandler<T>): boolean {
         return this.handlers?.delete(handler) ?? false;
     }
 
-    public trigger(argument: T) : unknown[] | null {
+    public trigger(argument: T): unknown[] | null {
         if (!this.handlers)
             return null;
         const results = new Array<unknown>();
@@ -63,7 +63,7 @@ export class EventHandlerSet<T> {
         return results;
     }
 
-    public triggerSilently(argument: T) : unknown[] | null {
+    public triggerSilently(argument: T): unknown[] | null {
         if (!this.handlers)
             return null;
         const results = new Array<unknown>();

@@ -253,6 +253,6 @@ export class OpusMediaRecorder {
         if (this.vadWorklet)
             this.vadWorklet.disconnect();
 
-        errorLog?.log(`${LogScope}.onWorkerError: unhandled error:`, error);
+        errorLog?.log(`onWorkerError: unhandled error:`, error);
     };
 }

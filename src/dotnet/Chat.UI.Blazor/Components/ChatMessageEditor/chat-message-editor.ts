@@ -27,7 +27,7 @@ export class ChatMessageEditor {
     private attachmentList: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
-    private readonly notifyPanelObserver : MutationObserver;
+    private readonly notifyPanelObserver: MutationObserver;
     private lastHeight: number;
     private lastWidth: number;
     private isNarrowScreen: boolean = null; // Intended: updateLayout needs this on the first run
@@ -124,7 +124,7 @@ export class ChatMessageEditor {
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
     }
 
-    public post = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
+    public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
         const attachments = [];
         if (this.attachments.size > 0) {
@@ -224,7 +224,7 @@ export class ChatMessageEditor {
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
         for (const file of this.filePicker.files) {
-            const added : boolean = await this.addAttachment(file);
+            const added: boolean = await this.addAttachment(file);
             if (!added)
                 break;
         }
@@ -323,7 +323,7 @@ export class ChatMessageEditor {
         }
     };
 
-    private endAnimations() : void {
+    private endAnimations(): void {
         this.notifyPanel.classList.remove('panel-opening', 'panel-closing');
         const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
         if (!playbackWrapper)
@@ -336,7 +336,7 @@ export class ChatMessageEditor {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-        const added : boolean = await this.blazorRef.invokeMethodAsync(
+        const added: boolean = await this.blazorRef.invokeMethodAsync(
             'AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
         if (!added) {
             if (attachment.Url)

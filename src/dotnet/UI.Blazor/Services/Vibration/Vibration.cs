@@ -9,6 +9,8 @@ public sealed class Vibration
     public Vibration(IJSRuntime js)
         => JS = js;
 
-    public ValueTask Vibrate()
-        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Vibration.vibrate");
+    public ValueTask Vibrate(TimeSpan? duration)
+        => JS.InvokeVoidAsync(
+            $"{BlazorUICoreModule.ImportName}.Vibration.vibrate",
+            duration?.TotalMilliseconds);
 }

@@ -18,7 +18,7 @@ export class Landing {
     private nearestBottomPageNumber: number = 2;
     private header: HTMLElement;
     readonly menu: HTMLElement;
-    private menuObserver : MutationObserver;
+    private menuObserver: MutationObserver;
     private links: HTMLElement[];
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
@@ -178,7 +178,7 @@ export class Landing {
         this.bottom = this.getRoundValue(this.landing.getBoundingClientRect().bottom);
     }
 
-    private getRoundValue = (value: number) : number =>
+    private getRoundValue = (value: number): number =>
         Math.round(value);
 
     private getInitialData = () => {

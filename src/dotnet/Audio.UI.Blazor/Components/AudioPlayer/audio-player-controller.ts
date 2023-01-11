@@ -56,7 +56,7 @@ export class AudioPlayerController implements Resettable {
 
     private constructor() {
         this.id = lastControllerId++;
-        debugLog?.log(`.ctor: #${this.id}`);
+        debugLog?.log(`constructor: #${this.id}`);
     }
 
     /**

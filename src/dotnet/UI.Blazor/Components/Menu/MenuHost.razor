@@ -98,7 +98,7 @@
         => ScreenSize.IsNarrow() && _visibleMenus.Any(x => !x.IsHoverMenu);
 
     private string GetHostCssClass()
-        => IsOverlayVisible ? "no-events" : "";
+        => IsOverlayVisible ? "has-overlay" : "";
 
     private string GetMenuCssClass(Model menu) {
         var cls = menu.IsHoverMenu
