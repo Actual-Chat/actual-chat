@@ -52,6 +52,14 @@ export class ScreenSize {
         );
     }
 
+    public static isNarrow(size?: Size): boolean {
+        return (size ?? this.size) == 'Small';
+    }
+
+    public static isWide(size?: Size): boolean {
+        return !this.isNarrow(size);
+    }
+
     private static measureAndUpdate(): Size {
         const size = this.measure();
         if (size != this.size) {
