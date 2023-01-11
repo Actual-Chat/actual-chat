@@ -47,16 +47,19 @@ body.narrow .ac-menu {
 .ac-menu-list {
 }
 .ac-menu-item {
-    @apply flex min-w-[120px] p-[6px] rounded-xl h-10 whitespace-nowrap hover:bg-round-hover text-02 cursor-pointer whitespace-nowrap;
-}
-body.narrow .ac-menu-item {
-    @apply h-12;
+    @apply flex-x;
+    @apply min-w-[120px] h-12 md:h-10 p-[6px];
+    @apply rounded-xl hover:bg-round-hover;
+    @apply text-02 whitespace-nowrap;
+    @apply cursor-pointer;
 }
 .ac-menu-separator {
-    @apply h-0 mx-2 my-1 border-b border-bg-04 bg-transparent;
+    @apply h-0 mx-2 my-1;
+    @apply border-b border-bg-04;
+    @apply bg-transparent;
 }
 .ac-menu-content {
-    @apply flex-x gap-x-2 items-center;
+    @apply flex-x items-center gap-x-2;
 }
 .ac-menu-icon > i {
     @apply text-icons-01 text-2xl;
