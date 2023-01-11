@@ -1,26 +1,4 @@
 // Please sort the imports alphabetically!
-import './Components/AccountDropdown/account-dropdown.css'
-import './Components/Avatar/avatar.css'
-import './Components/Badge/badge.css'
-import './Components/BlazorModeToggle/blazor-mode-toggle.css'
-import './Components/Button/button.css';
-import './Components/Checkbox/checkbox.css'
-import './Components/Clipboard/clipboard.css';
-import './Components/Dropdown/dropdown.css'
-import './Components/Form/form.css'
-import './Components/Form/toggle.css'
-import './Components/ImageViewerModal/image-viewer-modal.css'
-import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css'
-import './Components/Modal/modal.css' // based on BlazoredModal
-import './Components/Pic/pic.css'
-import './Components/PicUpload/pic-upload.css'
-import './Components/Radio/radio.css'
-import './Components/SearchBox/search-box.css'
-import './Components/SettingsPanel/settings-panel.css'
-import './Components/SignIn/sign-in.css'
-import './Components/SideNav/side-nav.css'
-import './Components/TabPanel/tab.css'
-
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';

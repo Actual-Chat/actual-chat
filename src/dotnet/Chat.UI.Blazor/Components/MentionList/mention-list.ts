@@ -1,5 +1,3 @@
-import './mention-list.css';
-
 const LogScope = 'MentionList';
 
 export class MentionList {

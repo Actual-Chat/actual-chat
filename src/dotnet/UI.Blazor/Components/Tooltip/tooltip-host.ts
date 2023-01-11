@@ -1,4 +1,3 @@
-import './tooltip.css';
 import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, empty } from 'rxjs';
 import {

@@ -1,4 +1,3 @@
-import './chat-message-editor.css';
 import {
     Subject,
     takeUntil,

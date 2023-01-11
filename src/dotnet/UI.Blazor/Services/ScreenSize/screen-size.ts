@@ -9,8 +9,6 @@ import {
 } from 'rxjs';
 import { Log, LogLevel } from 'logging';
 
-import './screen-size.css'
-
 const LogScope = 'ScreenSize';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
