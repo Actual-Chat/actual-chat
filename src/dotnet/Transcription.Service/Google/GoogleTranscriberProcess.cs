@@ -1,5 +1,4 @@
 using System.Numerics;
-using ActualChat.Audio;
 using Cysharp.Text;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf;
@@ -9,7 +8,10 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : WorkerBase
 {
-    private static readonly Task<AudioSource> _silenceAudioSourceTask = LoadSilenceAudio();
+    private static TimeSpan TranscriptCompletionDelay { get; } = TimeSpan.FromSeconds(2);
+
+    private readonly TranscriberState _state;
+    private readonly Channel<Transcript> _transcripts;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -18,21 +20,22 @@ public class GoogleTranscriberProcess : WorkerBase
     private IAsyncEnumerable<byte[]> AudioByteStream { get; }
     private SpeechClient.StreamingRecognizeStream RecognizeStream { get; }
     private StreamingRecognitionConfig RecognitionConfig { get; }
-    private TranscriberState State { get; }
-    private Channel<Transcript> Transcripts { get; }
+    private MomentClockSet Clocks { get; }
 
     public GoogleTranscriberProcess(
         IAsyncEnumerable<byte[]> audioByteStream,
         SpeechClient.StreamingRecognizeStream recognizeStream,
         StreamingRecognitionConfig recognitionConfig,
+        MomentClockSet clocks,
         ILogger? log = null)
     {
         Log = log ?? NullLogger.Instance;
         AudioByteStream = audioByteStream;
         RecognizeStream = recognizeStream;
         RecognitionConfig = recognitionConfig;
-        State = new();
-        Transcripts = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
+        Clocks = clocks;
+        _state = new();
+        _transcripts = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
             SingleWriter = true,
             SingleReader = true,
         });
@@ -40,7 +43,7 @@ public class GoogleTranscriberProcess : WorkerBase
 
     public IAsyncEnumerable<Transcript> GetTranscripts(
         CancellationToken cancellationToken = default)
-        => Transcripts.Reader.ReadAllAsync(cancellationToken);
+        => _transcripts.Reader.ReadAllAsync(cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
@@ -66,10 +69,10 @@ public class GoogleTranscriberProcess : WorkerBase
         }
         finally {
             if (error == null) {
-                var finalTranscript = State.Complete();
-                Transcripts.Writer.TryWrite(finalTranscript);
+                var finalTranscript = _state.Complete();
+                _transcripts.Writer.TryWrite(finalTranscript);
             }
-            Transcripts.Writer.TryComplete(error);
+            _transcripts.Writer.TryComplete(error);
         }
     }
 
@@ -84,16 +87,16 @@ public class GoogleTranscriberProcess : WorkerBase
             var result = results.Single(r => r.IsFinal);
             if (!TryParseFinal(result, out var text, out var textToTimeMap)) {
                 Log.LogWarning("Final transcript discarded. State.LastStable={LastStable}, Response={Response}",
-                    State.LastStable, response);
+                    _state.LastStable, response);
                 return;
             }
-            transcript = State.AppendStable(text, textToTimeMap);
+            transcript = _state.AppendStable(text, textToTimeMap);
         }
         else {
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
-            if (State.LastStable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
+            if (_state.LastStable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
                 // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
@@ -103,16 +106,16 @@ public class GoogleTranscriberProcess : WorkerBase
                 ? null
                 : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
 
-            transcript = State.AppendAlternative(text, endTime);
+            transcript = _state.AppendAlternative(text, endTime);
         }
         DebugLog?.LogDebug("Transcript={Transcript}", transcript);
-        Transcripts.Writer.TryWrite(transcript);
+        _transcripts.Writer.TryWrite(transcript);
     }
 
     private bool TryParseFinal(StreamingRecognitionResult result,
         out string text, out LinearMap textToTimeMap)
     {
-        var lastStable = State.LastStable;
+        var lastStable = _state.LastStable;
         var lastStableTextLength = lastStable.Text.Length;
         var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
 
@@ -175,19 +178,11 @@ public class GoogleTranscriberProcess : WorkerBase
             }
         }
         catch (Exception e) {
-            Transcripts.Writer.TryComplete(e);
+            _transcripts.Writer.TryComplete(e);
         }
         finally {
+            await Clocks.CpuClock.Delay(TranscriptCompletionDelay, StopToken).ConfigureAwait(false);
             await RecognizeStream.WriteCompleteAsync().ConfigureAwait(false);
         }
-    }
-
-    private static Task<AudioSource> LoadSilenceAudio()
-    {
-        var byteStream = typeof(GoogleTranscriberProcess).Assembly
-            .GetManifestResourceStream("ActualChat.Transcription.data.silence.opuss")!
-            .ReadByteStream(true);
-        var streamAdapter = new ActualOpusStreamAdapter(DefaultLog);
-        return streamAdapter.Read(byteStream, CancellationToken.None);
     }
 }

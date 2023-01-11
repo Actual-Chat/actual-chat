@@ -6,6 +6,7 @@ using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Users;
 using Stl.IO;
+using Stl.Mathematics;
 
 namespace ActualChat.Audio.IntegrationTests;
 
@@ -57,7 +58,7 @@ public class AudioProcessorTest : AppHostTestBase
         var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
         await kvas.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
-                Primary = Languages.Main,
+                Primary = Languages.Russian,
             });
 
         var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
@@ -82,6 +83,67 @@ public class AudioProcessorTest : AppHostTestBase
         var transcribed = await readTranscriptTask;
         transcribed.Should().BeGreaterThan(0);
         readSize.Should().BeLessOrEqualTo(writtenSize);
+    }
+
+    [Fact]
+    public async Task ShortTranscriptionTest()
+    {
+        using var appHost = await NewAppHost();
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var sessionFactory = services.SessionFactory();
+        var session = sessionFactory.CreateSession();
+        _ = await appHost.SignIn(session, new User("Bob"));
+        var audioProcessor = services.GetRequiredService<AudioProcessor>();
+        var audioStreamer = services.GetRequiredService<IAudioStreamer>();
+        var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
+        var chats = services.GetRequiredService<IChatsBackend>();
+        var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
+        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
+        await kvas.Set(UserLanguageSettings.KvasKey,
+            new UserLanguageSettings {
+                Primary = Languages.Russian,
+            });
+
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+            Create = new ChatDiff {
+                Title = "Test",
+                Kind = ChatKind.Group,
+            },
+        }));
+        chat.Require();
+
+        using var cts = new CancellationTokenSource();
+
+        var userChatSettings = new UserChatSettings { Language = Languages.Russian };
+        await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+
+        var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor,
+            log,
+            session,
+            chat.Id,
+            "0000.opuss",
+            false);
+
+        var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
+        var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
+        var readSize = await readTask;
+        readSize.Should().BeGreaterThan(100);
+        var transcribed = await readTranscriptTask;
+        transcribed.Should().BeGreaterThan(0);
+        readSize.Should().BeLessOrEqualTo(writtenSize);
+
+        var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
+        var lastIdTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(idRange.End - 1);
+        var lastTile = await chats.GetTile(
+            chat.Id,
+            ChatEntryKind.Text,
+            lastIdTile.Range,
+            true,
+            CancellationToken.None);
+        var lastEntry = lastTile.Entries.Last();
+        lastEntry.IsRemoved.Should().BeFalse();
+        lastEntry.Content.Should().Be("И раз");
     }
 
     [Fact]
