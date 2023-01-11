@@ -1,5 +1,4 @@
 // Please sort the imports alphabetically!
-import './Components/Stepper/stepper.css'
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';
