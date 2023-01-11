@@ -1,4 +1,3 @@
-import './markup-editor.css';
 import { throttle } from 'promises';
 import { UndoStack } from './undo-stack';
 import { Log, LogLevel } from 'logging';

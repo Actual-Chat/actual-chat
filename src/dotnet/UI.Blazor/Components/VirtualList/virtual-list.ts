@@ -1,4 +1,3 @@
-import './virtual-list.css';
 import { debounce, PromiseSource, serialize, throttle } from 'promises';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';

@@ -1,6 +1,4 @@
-﻿import './feedback.css';
-
-const filledStar: string = 'fa-star';
+﻿const filledStar: string = 'fa-star';
 const emptyStar: string = 'fa-star-o';
 
 export class Feedback {

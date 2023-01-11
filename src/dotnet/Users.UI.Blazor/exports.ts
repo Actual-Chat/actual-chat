@@ -1,1 +1,1 @@
-import './Components/own-avatar.css';
+// Please sort the imports alphabetically!

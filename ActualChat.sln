@@ -149,6 +149,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C
 		src\nodejs\styles\scrollbars.css = src\nodejs\styles\scrollbars.css
 		src\nodejs\styles\spinkit.css = src\nodejs\styles\spinkit.css
 		src\nodejs\styles\tailwind.css = src\nodejs\styles\tailwind.css
+		src\nodejs\styles\index.css = src\nodejs\styles\index.css
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Client", "src\dotnet\Notification.Client\Notification.Client.csproj", "{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}"

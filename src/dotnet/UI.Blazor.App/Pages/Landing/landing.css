@@ -12,14 +12,14 @@
 }
 .landing .page-1 .page-1-wrapper {
     @apply w-full h-full pt-16 bg-contain bg-no-repeat;
-    @apply bg-[url('ellipses.svg')];
+    @apply bg-[url('/dist/images/ellipses.svg')];
 }
 body.narrow .landing .page-1 {
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
 }
 body.narrow .landing .page-1 .page-1-wrapper {
     @apply w-full h-full pt-12 bg-cover bg-repeat-round;
-    @apply bg-[url('ellipses-mobile.svg')];
+    @apply bg-[url('/dist/images/ellipses-mobile.svg')];
 }
 .landing .page-1 .main-text {
     @apply flex-y w-3/5 justify-center;

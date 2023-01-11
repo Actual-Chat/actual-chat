@@ -1,4 +1,3 @@
-import './menu.css';
 import {
     delay,
     filter,
