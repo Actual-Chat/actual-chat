@@ -142,5 +142,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        services.TryAddSingleton<OtelMetrics>();
     }
 }

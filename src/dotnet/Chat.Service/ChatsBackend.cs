@@ -26,6 +26,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
     private DiffEngine DiffEngine { get; }
     private HostInfo HostInfo { get; }
+    private OtelMetrics Metrics { get; }
 
     public ChatsBackend(IServiceProvider services) : base(services)
     {
@@ -39,6 +40,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         DiffEngine = services.GetRequiredService<DiffEngine>();
         HostInfo = services.GetRequiredService<HostInfo>();
+        Metrics = services.GetRequiredService<OtelMetrics>();
     }
 
     // [ComputeMethod]
@@ -421,6 +423,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         if (entry.Kind is not ChatEntryKind.Text || entry.IsStreaming)
             return entry;
+
+        Metrics.MessageCount.Add(1);
 
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;

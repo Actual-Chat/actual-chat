@@ -7,6 +7,7 @@ using ActualChat.Redis.Module;
 using ActualChat.Commands;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
@@ -107,5 +108,6 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        services.TryAddSingleton<OtelMetrics>();
     }
 }
