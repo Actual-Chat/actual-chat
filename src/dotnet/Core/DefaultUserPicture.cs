@@ -21,7 +21,7 @@ public static class DefaultUserPicture
         if (email.IsNullOrEmpty())
             return null;
 
-        var hash = email.GetSHA1HashCode().ToLowerInvariant();
+        var hash = email.GetMD5HashCode().ToLowerInvariant();
         return $"https://www.gravatar.com/avatar/{hash}?s={size}";
     }
 
