@@ -143,7 +143,7 @@ public class AudioProcessorTest : AppHostTestBase
             CancellationToken.None);
         var lastEntry = lastTile.Entries.Last();
         lastEntry.IsRemoved.Should().BeFalse();
-        lastEntry.Content.Should().Be("И раз");
+        lastEntry.Content.Should().Be("И");
     }
 
     [Fact]

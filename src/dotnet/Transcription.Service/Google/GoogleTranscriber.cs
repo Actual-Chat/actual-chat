@@ -72,7 +72,7 @@ public class GoogleTranscriber : ITranscriber
         var audioSourceJoined = silenceAudio
             .Take(TimeSpan.FromMilliseconds(2000), cancellationToken)
             .Concat(audioSource, cancellationToken)
-            .ConcatUntil(silenceAudio, TimeSpan.FromSeconds(7), cancellationToken);
+            .ConcatUntil(silenceAudio, TimeSpan.FromSeconds(4), cancellationToken);
         var byteStream = webMStreamAdapter.Write(audioSourceJoined, cancellationToken);
         var memoizedByteStream = byteStream.Memoize(cancellationToken);
         var transcriptChannel = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
