@@ -61,7 +61,7 @@ public class ActualOpusStreamAdapterTests
         var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
         var outList = await outByteStream.ToListAsync();
         var outArray = outList.SelectMany(chunk => chunk).ToArray();
-        outArray.Length.Should().Be(10563); // we added preSkip with this commit
+        outArray.Length.Should().Be(10571); // we added preSkip and createdAt with this commit
     }
 
     [Fact(Skip = "Manual")]
