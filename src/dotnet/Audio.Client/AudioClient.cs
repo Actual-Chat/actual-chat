@@ -50,6 +50,12 @@ public class AudioClient : HubClientBase,
         return audio;
     }
 
+    public async Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
+    {
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
+        await connection.SendAsync("ReportLatency", latency, cancellationToken).ConfigureAwait(false);
+    }
+
     public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         Symbol streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)

@@ -5,16 +5,19 @@ namespace ActualChat.Audio;
 public class AudioStreamer : IAudioStreamer
 {
     private IAudioStreamServer AudioStreamServer { get; }
+    private OtelMetrics Metrics { get; }
     private ILogger<AudioStreamer> Log { get; }
     private ILogger<AudioSource> AudioSourceLog { get; }
 
     // ReSharper disable once ContextualLoggerProblem
     public AudioStreamer(
         IAudioStreamServer audioStreamServer,
+        OtelMetrics metrics,
         ILogger<AudioStreamer> log,
         ILogger<AudioSource> audioSourceLog)
     {
         AudioStreamServer = audioStreamServer;
+        Metrics = metrics;
         Log = log;
         AudioSourceLog = audioSourceLog;
     }
@@ -43,5 +46,11 @@ public class AudioStreamer : IAudioStreamer
             TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
+    }
+
+    public Task ReportLatency(TimeSpan latency,  CancellationToken cancellationToken)
+    {
+        Metrics.AudioLatency.Record(latency.Ticks / 10000f);
+        return Task.CompletedTask;
     }
 }
