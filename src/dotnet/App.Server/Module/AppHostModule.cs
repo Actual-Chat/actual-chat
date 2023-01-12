@@ -239,7 +239,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
             services.AddOpenTelemetry()
                 .WithMetrics(builder => builder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))
                     // gcloud exporter doesn't support some of metrics yet:
                     // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                     .AddAspNetCoreInstrumentation()
@@ -260,7 +259,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     })
                 )
                 .WithTracing(builder => builder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))
                     .SetErrorStatusOnException()
                     .AddSource(AppTrace.Name)
                     .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
@@ -293,7 +291,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                         cfg.Protocol = OtlpExportProtocol.Grpc;
                         cfg.Endpoint = openTelemetryEndpointUri;
                     })
-                );
+                )
+                .ConfigureResource(builder => builder
+                    .AddService("App", "actualchat", AppVersion))
+                .StartWithHost();
         }
     }
 }
