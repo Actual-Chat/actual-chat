@@ -1,5 +1,3 @@
-import './image-viewer-modal.css';
-
 const LogScope = 'ImageViewer';
 
 export class ImageViewer {
