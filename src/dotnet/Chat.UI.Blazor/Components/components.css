@@ -164,6 +164,12 @@
 .navbar-contacts {
     @apply h-full overflow-hidden;
 }
+.navbar-chats .sort-btn.btn {
+    @apply min-w-fit min-h-fit rounded-full;
+}
+.navbar-chats .sort-btn:hover .btn-content {
+    @apply text-primary;
+}
 .tab-panel .chats-tab.tab .navbar-item,
 .tab-panel .contacts-tab.tab .navbar-item {
     @apply relative;

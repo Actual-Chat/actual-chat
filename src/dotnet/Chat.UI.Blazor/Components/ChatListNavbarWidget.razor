@@ -23,6 +23,12 @@
         </Tab>;
 }
 
+<RenderIntoSlot Name="SortButton">
+    <ButtonRound Class="sort-btn">
+        <i class="icon-menu text-2xl text-icons-01"></i>
+    </ButtonRound>
+</RenderIntoSlot>
+
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y w-full h-full overflow-y-auto md:overflow-y-visible custom-scrollbar">
@@ -32,6 +38,7 @@
                 BottomHill="true"
                 Class="md:overflow-y-hidden"
                 TabsClass="left-panel-tabs"
+                AdditionalButtonName="SortButton"
                 ActiveTabChanged="@OnActiveTabChanged">
                 @RenderTab(TabId.ByOwnActivity, "Recent")
                 @RenderTab(TabId.ByAnyActivity, "Updated")

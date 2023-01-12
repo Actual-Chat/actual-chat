@@ -4,6 +4,9 @@
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
             <div class="relative btn-group">
+                @if (!AdditionalButtonName.IsNullOrEmpty()) {
+                    <RenderSlot Name="@AdditionalButtonName"/>
+                }
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
                     var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
@@ -42,6 +45,7 @@
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool BottomBorder { get; set; }
+    [Parameter] public string AdditionalButtonName { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
