@@ -1,3 +1,5 @@
+using System.Diagnostics.Metrics;
+
 namespace ActualChat.Audio;
 
 public abstract class StreamServerBase<TItem> : IDisposable
@@ -13,14 +15,22 @@ public abstract class StreamServerBase<TItem> : IDisposable
 
     protected IServiceProvider Services { get; }
     protected MomentClockSet Clocks { get; }
+    protected OtelMetrics Metrics { get; }
     protected ILogger Log { get; }
+
+    protected UpDownCounter<int>? StreamCounter =>
+        this is AudioStreamServer
+            ? Metrics.AudioStreamCount
+            : null;
 
     protected StreamServerBase(IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
+        Metrics = services.GetRequiredService<OtelMetrics>();
     }
+
 
     public void Dispose()
         => _disposeCts.CancelAndDisposeSilently();
@@ -43,6 +53,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
     // do not wait for write completion - just register stream!
     protected Task Write(Symbol streamId, IAsyncEnumerable<TItem> stream, CancellationToken cancellationToken)
     {
+        StreamCounter?.Add(1);
         var entry = GetOrAddStream(streamId, WriteStreamExpiration);
         var memoizer = stream.Memoize(cancellationToken);
         TaskSource.For(entry.Value).SetResult(memoizer);
@@ -70,7 +81,11 @@ public abstract class StreamServerBase<TItem> : IDisposable
                 var disposeTokenSource = self._disposeCts.Token.CreateLinkedTokenSource();
                 var entry = Expiring
                     .New(self._streams, streamId1, memoizerTask, disposeTokenSource)
-                    .SetDisposer(e => TaskSource.For(e.Value).TrySetCanceled())
+                    .SetDisposer(e => {
+                        if (memoizerTask.IsCompleted)
+                            self.StreamCounter?.Add(-1);
+                        TaskSource.For(e.Value).TrySetCanceled();
+                    })
                     .BumpExpiresAt(expiresIn, self.Clocks.CpuClock)
                     .BeginExpire();
                 return entry;

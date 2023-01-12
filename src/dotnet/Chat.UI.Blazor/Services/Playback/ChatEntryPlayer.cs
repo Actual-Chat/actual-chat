@@ -140,6 +140,12 @@ public sealed class ChatEntryPlayer : ProcessorBase
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
+        _ = BackgroundTask.Run(async () => {
+                var now = Clocks.SystemClock.Now;
+                var latency = now - audio.CreatedAt;
+                await AudioStreamer.ReportLatency(latency, cancellationToken);
+            },
+            cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }
 

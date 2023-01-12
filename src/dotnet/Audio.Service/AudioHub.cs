@@ -10,17 +10,20 @@ public class AudioHub : Hub
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
     private SessionMiddleware SessionMiddleware { get; }
+    private OtelMetrics Metrics { get; }
 
     public AudioHub(
         IAudioProcessor audioProcessor,
         IAudioStreamServer audioStreamServer,
         ITranscriptStreamServer transcriptStreamServer,
-        SessionMiddleware sessionMiddleware)
+        SessionMiddleware sessionMiddleware,
+        OtelMetrics metrics)
     {
         AudioProcessor = audioProcessor;
         AudioStreamServer = audioStreamServer;
         TranscriptStreamServer = transcriptStreamServer;
         SessionMiddleware = sessionMiddleware;
+        Metrics = metrics;
     }
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
@@ -31,6 +34,12 @@ public class AudioHub : Hub
         var stream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
         await foreach (var chunk in stream.ConfigureAwait(false))
             yield return chunk;
+    }
+
+    public Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
+    {
+        Metrics.AudioLatency.Record(latency.Ticks / 10000f);
+        return Task.CompletedTask;
     }
 
     public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
