@@ -54,7 +54,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddSingleton<AudioProcessor>();
         services.AddTransient<IAudioProcessor>(c => c.GetRequiredService<AudioProcessor>());
 
-        services.AddSingleton<OtelMetrics>();
+        services.TryAddSingleton<OtelMetrics>();
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
         services.AddSingleton<AudioStreamer>();
