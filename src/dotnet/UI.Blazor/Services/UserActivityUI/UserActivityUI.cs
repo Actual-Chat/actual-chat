@@ -23,7 +23,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     }
 
     public ValueTask SubscribeForNext(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("subscribeForNext", cancellationToken)e;
+        => _jsRef.InvokeVoidAsync("subscribeForNext", cancellationToken);
 
     [JSInvokable]
     public Task OnInteracted()
