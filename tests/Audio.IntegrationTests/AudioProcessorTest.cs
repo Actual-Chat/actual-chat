@@ -73,11 +73,12 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-
-        var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, log, session, chat.Id);
-
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
         var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
         var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
+
+        var writtenSize = await ProcessAudioFile(audioRecord, audioProcessor, log);
+
         var readSize = await readTask;
         readSize.Should().BeGreaterThan(100);
         var transcribed = await readTranscriptTask;
@@ -117,16 +118,18 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-
-        var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor,
-            log,
-            session,
-            chat.Id,
-            "0000.opuss",
-            false);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
 
         var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
         var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
+
+        var writtenSize = await ProcessAudioFile(
+            audioRecord,
+            audioProcessor,
+            log,
+            "0000.opuss",
+            false);
+
         var readSize = await readTask;
         readSize.Should().BeGreaterThan(100);
         var transcribed = await readTranscriptTask;
@@ -174,8 +177,12 @@ public class AudioProcessorTest : AppHostTestBase
 
         using var cts = new CancellationTokenSource();
 
-        var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, log, session, chat.Id);
-        var readSize = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var readSizeTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
+
+        var writtenSize = await ProcessAudioFile(audioRecord, audioProcessor, log);
+
+        var readSize = await readSizeTask;
         readSize.Should().BeLessThan(writtenSize);
     }
 
@@ -218,16 +225,13 @@ public class AudioProcessorTest : AppHostTestBase
         return sum;
     }
 
-    private async Task<(AudioRecord AudioRecord, int FileSize)> ProcessAudioFile(
+    private async Task<int> ProcessAudioFile(
+        AudioRecord audioRecord,
         AudioProcessor audioProcessor,
         ILogger log,
-        Session session,
-        ChatId chatId,
         string fileName = "file.webm",
         bool webMStream = true)
     {
-        var record = new AudioRecord(session, chatId, SystemClock.Now.EpochOffset.TotalSeconds);
-
         var filePath = GetAudioFilePath(fileName);
         var fileSize = (int)filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
@@ -235,8 +239,8 @@ public class AudioProcessorTest : AppHostTestBase
             ? new WebMStreamAdapter(log)
             : (IAudioStreamAdapter)new ActualOpusStreamAdapter(log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
-        await audioProcessor.ProcessAudio(record, 222, audio.GetFrames(CancellationToken.None), CancellationToken.None);
-        return (record, fileSize);
+        await audioProcessor.ProcessAudio(audioRecord, 222, audio.GetFrames(CancellationToken.None), CancellationToken.None);
+        return fileSize;
     }
 
     private static FilePath GetAudioFilePath(FilePath fileName)

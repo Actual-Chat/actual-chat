@@ -2,13 +2,13 @@ namespace ActualChat.Audio;
 
 public abstract class StreamServerBase<TItem> : IDisposable
 {
-    private readonly ConcurrentDictionary<Symbol, Expiring<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new();
-    private readonly CancellationTokenSource _disposeCts = new();
+    private readonly CancellationTokenSource _disposeCts = new ();
+    private readonly ConcurrentDictionary<Symbol, Expiring<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
     protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(600);
-    protected TimeSpan ReadStreamWaitDuration { get; init; } = TimeSpan.FromSeconds(10);
-    protected TimeSpan ReadStreamExpiration { get; init; } = TimeSpan.FromSeconds(15);
+    protected TimeSpan ReadStreamWaitDuration { get; init; } = TimeSpan.FromSeconds(2);
+    protected TimeSpan ReadStreamExpiration { get; init; } = TimeSpan.FromSeconds(5);
     protected TimeSpan WriteStreamExpiration { get; init; } = TimeSpan.FromSeconds(605);
 
     protected IServiceProvider Services { get; }
@@ -48,10 +48,10 @@ public abstract class StreamServerBase<TItem> : IDisposable
         TaskSource.For(entry.Value).SetResult(memoizer);
 
         BackgroundTask.Run(async () => {
-            await memoizer.WriteTask.ConfigureAwait(false);
-            await Clocks.CpuClock.Delay(ReadStreamWaitDuration, CancellationToken.None).ConfigureAwait(false);
-            entry.Dispose();
-        },
+                await memoizer.WriteTask.ConfigureAwait(false);
+                await Clocks.CpuClock.Delay(ReadStreamWaitDuration, CancellationToken.None).ConfigureAwait(false);
+                entry.Dispose();
+            },
             Log,
             $"{nameof(Write)} failed",
             CancellationToken.None);

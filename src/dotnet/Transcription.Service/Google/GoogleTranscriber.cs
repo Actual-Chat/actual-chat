@@ -68,12 +68,12 @@ public class GoogleTranscriber : ITranscriber
         }).ConfigureAwait(false);
 
         var webMStreamAdapter = new WebMStreamAdapter(Log);
-        var silenceAudio = await _silenceAudioSourceTask.ConfigureAwait(false);
-        var audioSourceJoined = silenceAudio
+        var silenceAudioSource = await _silenceAudioSourceTask.ConfigureAwait(false);
+        var resultAudioSource = silenceAudioSource
             .Take(TimeSpan.FromMilliseconds(2000), cancellationToken)
             .Concat(audioSource, cancellationToken)
-            .ConcatUntil(silenceAudio, TimeSpan.FromSeconds(4), cancellationToken);
-        var byteStream = webMStreamAdapter.Write(audioSourceJoined, cancellationToken);
+            .ConcatUntil(silenceAudioSource, TimeSpan.FromSeconds(4), cancellationToken);
+        var byteStream = webMStreamAdapter.Write(resultAudioSource, cancellationToken);
         var memoizedByteStream = byteStream.Memoize(cancellationToken);
         var transcriptChannel = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
             SingleWriter = true,
