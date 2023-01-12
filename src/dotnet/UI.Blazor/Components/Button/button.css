@@ -212,9 +212,9 @@
 .btn.btn-round.transparent:hover .btn-content {
     @apply hover:bg-round-focus;
 }
-.btn.btn-round.blackout:hover .btn-content,
-.btn.btn-round.blackout:focus .btn-content,
-.btn.btn-round.blackout:active .btn-content {
+.btn.blackout:hover .btn-content,
+.btn.blackout:focus .btn-content,
+.btn.blackout:active .btn-content {
     @apply text-03;
 }
 .btn.btn-round.show-on-hover {
