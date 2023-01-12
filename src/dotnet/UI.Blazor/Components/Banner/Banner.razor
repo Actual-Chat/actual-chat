@@ -6,35 +6,37 @@
     _animator.State = IsVisible;
     if (_animator.MustHideComponent)
         return;
-    var bgCircleCls = ShowIconCircle ? "banner-icon-circle" : "";
 }
 <div class="banner @_animator.Class">
-    <div class="banner-icon @bgCircleCls">
-        @Icon
-    </div>
-    <div class="banner-body">
-        @Body
-    </div>
-    @if (Buttons != null) {
-        <div class="banner-buttons">
-            @Buttons
-            @if (ShowCloseButton) {
-                <button class="blackout banner-buttons-close" @onclick="@OnClose">
-                    <i class="icon-close text-2xl text-icons-01"></i>
-                </button>
-            }
-        </div>
-    }
+     @if (Icon != null) {
+         @Icon
+     } else {
+         <SeverityIcon Severity="@Severity"></SeverityIcon>
+     }
+     <div class="banner-body">
+         @Body
+     </div>
+     @if (Buttons != null) {
+         <div class="banner-buttons">
+             @Buttons
+             @if (ShowCloseButton) {
+                 <Button Class="btn-transparent blackout text-icons-01">
+                     <i class="icon-close text-2xl"></i>
+                 </Button>
+             }
+         </div>
+     }
 </div>
 @code {
     private ShowHideAnimator _animator = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Parameter, EditorRequired] public RenderFragment Icon { get; set; } = null!;
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
+    [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; }
-    [Parameter] public bool ShowIconCircle { get; set; }
+    [Parameter] public bool ShowIconCircle { get; set; } = true;
     [Parameter] public bool IsVisible { get; set; } = true;
+    [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Info;
     [Parameter] public EventCallback Close { get; set; }
     [CascadingParameter] public BannerInstance BannerInstance { get; set; } = null!;
 

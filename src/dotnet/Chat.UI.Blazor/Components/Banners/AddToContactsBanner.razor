@@ -4,15 +4,12 @@
 @{
     var m = State.Value;
 }
-<Banner IsVisible="@m.CanAddToContacts">
-    <Icon>
-        <i class="icon-person-add"></i>
-    </Icon>
+<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning">
     <Body>
     This user is not in your contact list
     </Body>
     <Buttons>
-        <Button Class="btn-sm banner-btn" Click="@OnAddClick">Add to contacts</Button>
+        <Button Class="btn-transparent on" Click="@OnAddClick">Add to contacts</Button>
     </Buttons>
 </Banner>
 
