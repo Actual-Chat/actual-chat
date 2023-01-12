@@ -84,12 +84,13 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('AudioPlayerController', LogLevel.Info);
     minLevels.set('AudioPlayer', LogLevel.Info);
     minLevels.set('UserActivityUI', LogLevel.Info);
-    minLevels.set('MenuHost', LogLevel.Info);
     minLevels.set('VirtualList', LogLevel.Info);
+    minLevels.set('MenuHost', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
     minLevels.set('AudioContextLazy', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
+    // minLevels.set('MenuHost', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
 

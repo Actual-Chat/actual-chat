@@ -13,7 +13,7 @@
         <li class="message-reactions-reaction @ownReactionClass"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, reaction.Emoji))"
             data-menu-trigger="@MenuTriggers.RightClick.Format()"
-            data-menu-position="@(FloatingPosition.Right.ToPositionString())"
+            data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@(_ => ToggleReaction(reaction.Emoji))">
             <EmojiIcon Id="@reaction.Emoji.Id" class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
@@ -23,7 +23,7 @@
     <li class="message-reactions-add"
         data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
         data-menu-trigger="@MenuTriggers.LeftClick.Format()"
-        data-menu-position="@(FloatingPosition.Right.ToPositionString())">
+        data-menu-placement="@(FloatingPosition.Right.ToPositionString())">
         <AddReactionIcon class="message-reactions-add-icon"/>
     </li>
 </ul>

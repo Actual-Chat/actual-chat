@@ -16,8 +16,7 @@
     IsSelected="@m.IsSelected"
     data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
     data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
-    data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
-    data-long-press-delay="500">
+    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
             <ChatIcon Chat="m.Chat"/>
@@ -54,7 +53,7 @@
                 <div class="flex"
                      data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
                      data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
-                     data-menu-position="@(FloatingPosition.RightStart.ToPositionString())">
+                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
                     <ButtonRound
                         ContentClass="!bg-transparent"
                         Class="chat-menu-btn blackout">

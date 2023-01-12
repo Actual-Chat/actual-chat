@@ -11,7 +11,7 @@
     Class="@btnClass"
     data-menu="@(MenuRef.New<SignInMenuContextMenu>().ToString())"
     data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
-    data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())">
+    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     @if (ButtonType == MenuButton.Default) {
         <span>Sign in</span>
     } else {

@@ -67,8 +67,9 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbReaction = await dbContext.Reactions
-            .Get(DbReaction.ComposeId(entryId, authorId), cancellationToken)
+        var id = DbReaction.ComposeId(entryId, authorId);
+        var dbReaction = await dbContext.Reactions.ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
         var mustUpdateHasReactions = true;
         var changeKind = ChangeKind.Create;

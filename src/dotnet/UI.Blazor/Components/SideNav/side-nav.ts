@@ -47,7 +47,7 @@ export class SideNav implements Disposable {
                 }
             });
 
-        fromEvent(this.element, 'touchstart')
+        fromEvent(this.element, 'touchstart', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: TouchEvent) => {
                 element.classList.remove('side-nav-animate');
@@ -55,7 +55,7 @@ export class SideNav implements Disposable {
                 this.touchStartY = e.touches[0].clientY;
             });
 
-        fromEvent(this.element, 'touchmove')
+        fromEvent(this.element, 'touchmove', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: TouchEvent) => {
                 if (this.touchStartX === null || this.touchStartY === null) {
@@ -100,7 +100,7 @@ export class SideNav implements Disposable {
                 }
             });
 
-        fromEvent(this.element, 'touchend')
+        fromEvent(this.element, 'touchend', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
                 element.classList.add('side-nav-animate');

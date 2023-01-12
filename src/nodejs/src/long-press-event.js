@@ -9,34 +9,28 @@
 
     'use strict';
 
-    // local timer object based on rAF
-    var timer = null;
+    const defaultDelay = '500'; // 500ms, must be string
+    const ua = navigator.userAgent.toLowerCase();
+    const isAndroid = ua.indexOf('android') > -1;
+    const captureEventsOption = { capture: true };
 
-    // check if we're using a touch screen
-    var hasPointerEvents = (('PointerEvent' in window) || (window.navigator && 'msPointerEnabled' in window.navigator));
-    var isTouch = (('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+    const state = {
+        cancelNextClickAfterMouseUpEvent: false,
+        cancelNextClickEvent: false,
+    };
+    window.longPressEvent = state;
 
-    // switch to pointer events or touch events if using a touch screen
-    var mouseDown = hasPointerEvents ? 'pointerdown' : isTouch ? 'touchstart' : 'mousedown';
-    var mouseUp = hasPointerEvents ? 'pointerup' : isTouch ? 'touchend' : 'mouseup';
-    var mouseMove = hasPointerEvents ? 'pointermove' : isTouch ? 'touchmove' : 'mousemove';
-
-    // track number of pixels the mouse moves during long press
-    var ua = navigator.userAgent.toLowerCase();
-    var isAndroid = ua.indexOf('android') > -1;
-    var startX = 0; // mouse x position when timer started
-    var startY = 0; // mouse y position when timer started
-    var maxDiffX = isAndroid ? 5 : 10; // max number of X pixels the mouse can move during long press before it is canceled
-    var maxDiffY = isAndroid ? 5 : 10; // max number of Y pixels the mouse can move during long press before it is canceled
+    let timer = null;
+    let startX = 0; // mouse x position when timer started
+    let startY = 0; // mouse y position when timer started
+    let maxDiffX = isAndroid ? 5 : 10; // max number of X pixels the mouse can move during long press before it is canceled
+    let maxDiffY = isAndroid ? 5 : 10; // max number of Y pixels the mouse can move during long press before it is canceled
 
     // patch CustomEvent to allow constructor creation (IE/Chrome)
     if (typeof window.CustomEvent !== 'function') {
-
         window.CustomEvent = function (event, params) {
-
             params = params || { bubbles: false, cancelable: false, detail: undefined };
-
-            var evt = document.createEvent('CustomEvent');
+            let evt = document.createEvent('CustomEvent');
             evt.initCustomEvent(event, params.bubbles, params.cancelable, params.detail);
             return evt;
         };
@@ -44,16 +38,29 @@
         window.CustomEvent.prototype = window.Event.prototype;
     }
 
-    // requestAnimationFrame() shim by Paul Irish
-    window.requestAnimFrame = (function () {
-        return window.requestAnimationFrame ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame ||
-            window.oRequestAnimationFrame ||
-            window.msRequestAnimationFrame || function (callback) {
+    let defaultRequestAnimationFrame = window.requestAnimationFrame
+        || window.webkitRequestAnimationFrame
+        || window.mozRequestAnimationFrame
+        || window.oRequestAnimationFrame
+        || window.msRequestAnimationFrame;
+    let defaultCancelAnimationFrame = window.cancelAnimationFrame
+        || window.webkitCancelAnimationFrame
+        || window.webkitCancelRequestAnimationFrame
+        || window.mozCancelRequestAnimationFrame
+        || window.oCancelRequestAnimationFrame
+        || window.msCancelRequestAnimationFrame;
+    if (!(defaultCancelAnimationFrame && !defaultCancelAnimationFrame)) {
+        defaultRequestAnimationFrame = null;
+        defaultCancelAnimationFrame = null;
+    }
+    // console.log('RAF:', defaultRequestAnimationFrame, defaultCancelAnimationFrame);
+
+    let requestAnimationFrame = function (callback) {
+        if (defaultRequestAnimationFrame)
+            return defaultRequestAnimationFrame(callback);
+        else
             window.setTimeout(callback, 1000 / 60);
-        };
-    })();
+    };
 
     /**
      * Behaves the same as setTimeout except uses requestAnimationFrame() where possible for better performance
@@ -62,46 +69,33 @@
      * @returns {object} handle to the timeout object
      */
     function requestTimeout(fn, delay) {
-
-        if (!window.requestAnimationFrame && !window.webkitRequestAnimationFrame &&
-            !(window.mozRequestAnimationFrame && window.mozCancelRequestAnimationFrame) && // Firefox 5 ships without cancel support
-            !window.oRequestAnimationFrame && !window.msRequestAnimationFrame) return window.setTimeout(fn, delay);
-
-        var start = new Date().getTime();
-        var handle = {};
-
-        var loop = function () {
-            var current = new Date().getTime();
-            var delta = current - start;
-
-            if (delta >= delay) {
-                fn.call();
+        if (!defaultRequestAnimationFrame)
+            return {
+                timeout: window.setTimeout(fn, delay),
             }
-            else {
-                handle.value = requestAnimFrame(loop);
-            }
+
+        const start = new Date().getTime();
+        const handle = {
+            value: null,
         };
 
-        handle.value = requestAnimFrame(loop);
+        const loop = function () {
+            const delta = new Date().getTime() - start;
+            if (delta >= delay)
+                fn.call();
+            else
+                handle.value = requestAnimationFrame(loop);
+        };
 
+        handle.value = requestAnimationFrame(loop);
         return handle;
     }
 
-    /**
-     * Behaves the same as clearTimeout except uses cancelRequestAnimationFrame() where possible for better performance
-     * @param {object} handle The callback function
-     * @returns {void}
-     */
     function clearRequestTimeout(handle) {
-        if (handle) {
-            window.cancelAnimationFrame ? window.cancelAnimationFrame(handle.value) :
-                window.webkitCancelAnimationFrame ? window.webkitCancelAnimationFrame(handle.value) :
-                    window.webkitCancelRequestAnimationFrame ? window.webkitCancelRequestAnimationFrame(handle.value) : /* Support for legacy API */
-                        window.mozCancelRequestAnimationFrame ? window.mozCancelRequestAnimationFrame(handle.value) :
-                            window.oCancelRequestAnimationFrame ? window.oCancelRequestAnimationFrame(handle.value) :
-                                window.msCancelRequestAnimationFrame ? window.msCancelRequestAnimationFrame(handle.value) :
-                                    clearTimeout(handle);
-        }
+        if (handle?.timeout)
+            clearTimeout(handle.timeout);
+        else if (handle?.value)
+            defaultCancelAnimationFrame(handle.value);
     }
 
     /**
@@ -113,9 +107,7 @@
         clearLongPressTimer();
 
         originalEvent = unifyEvent(originalEvent);
-
-        // fire the long-press event
-        var allowClickEvent = this.dispatchEvent(new CustomEvent('long-press', {
+        let event = new CustomEvent('long-press', {
             bubbles: true,
             cancelable: true,
 
@@ -134,15 +126,11 @@
             pageY: originalEvent.pageY,
             screenX: originalEvent.screenX,
             screenY: originalEvent.screenY
-        }));
+        });
 
-        if (!allowClickEvent) {
-            // suppress the next click event if e.preventDefault() was called in long-press handler
-            document.addEventListener('click', function suppressEvent(e) {
-                document.removeEventListener('click', suppressEvent, true);
-                cancelEvent(e);
-            }, true);
-        }
+        const mustHandleDefault = this.dispatchEvent(event);
+        state.cancelNextClickEvent = false;
+        state.cancelNextClickAfterMouseUpEvent = !mustHandleDefault || !event.cancelBubble;
     }
 
     /**
@@ -151,10 +139,7 @@
      * @returns {MouseEvent|PointerEvent|Touch}
      */
     function unifyEvent(e) {
-        if (e.changedTouches !== undefined) {
-            return e.changedTouches[0];
-        }
-        return e;
+        return e.changedTouches !== undefined ? e.changedTouches[0] : e;
     }
 
     /**
@@ -163,16 +148,12 @@
      * @returns {void}
      */
     function startLongPressTimer(e) {
-
         clearLongPressTimer(e);
 
-        var el = e.target;
-
-        // get delay from html attribute if it exists, otherwise default to 1500
-        var longPressDelayInMs = parseInt(getNearestAttribute(el, 'data-long-press-delay', '1500'), 10); // default 1500
-
-        // start the timer
-        timer = requestTimeout(fireLongPressEvent.bind(el, e), longPressDelayInMs);
+        const el = e.target;
+        const delayText = getNearestAttributeValue(el, 'data-long-press-delay', defaultDelay);
+        const delay = parseInt(delayText);
+        timer = requestTimeout(fireLongPressEvent.bind(el, e), delay);
     }
 
     /**
@@ -181,8 +162,8 @@
      * @returns {void}
      */
     function clearLongPressTimer(e) {
-        clearRequestTimeout(timer);
-        timer = null;
+        clearRequestTimeout(state.timer);
+        state.timer = null;
     }
 
     /**
@@ -191,9 +172,9 @@
     * @returns {void}
     */
     function cancelEvent(e) {
+        e.stopPropagation();
         e.stopImmediatePropagation();
         e.preventDefault();
-        e.stopPropagation();
     }
 
     /**
@@ -202,9 +183,40 @@
      * @returns {void}
      */
     function mouseDownHandler(e) {
+        state.cancelNextClickAfterMouseUpEvent = false;
+        state.cancelNextClickEvent = false;
+
+        // NOTE(AY): Only primary button should trigger long presses!
+        if (e.button !== 0)
+            return;
+
         startX = e.clientX;
         startY = e.clientY;
         startLongPressTimer(e);
+    }
+
+    function mouseUpHandler(e) {
+        clearLongPressTimer();
+
+        if (!state.cancelNextClickAfterMouseUpEvent)
+            return;
+
+        state.cancelNextClickAfterMouseUpEvent = false;
+        state.cancelNextClickEvent = true;
+        // Let's stop click cancellation anyway in 200ms
+        requestTimeout(function() {
+            state.cancelNextClickEvent = false;
+        }, 200);
+    }
+
+    function clickHandler(e) {
+        clearLongPressTimer();
+
+        if (state.cancelNextClickEvent) {
+            state.cancelNextClickEvent = false;
+            cancelEvent(e);
+            // console.log('click event is cancelled after long-press event');
+        }
     }
 
     /**
@@ -213,15 +225,13 @@
      * @returns {void}
      */
     function mouseMoveHandler(e) {
-
         // calculate total number of pixels the pointer has moved
-        var diffX = Math.abs(startX - e.clientX);
-        var diffY = Math.abs(startY - e.clientY);
+        const diffX = Math.abs(startX - e.clientX);
+        const diffY = Math.abs(startY - e.clientY);
 
         // if pointer has moved more than allowed, cancel the long-press timer and therefore the event
-        if (diffX >= maxDiffX || diffY >= maxDiffY) {
+        if (diffX >= maxDiffX || diffY >= maxDiffY)
             clearLongPressTimer(e);
-        }
     }
 
     /**
@@ -231,30 +241,48 @@
      * @param {any} defaultValue - default value to return if no match found
      * @returns {any} attribute value or defaultValue
      */
-    function getNearestAttribute(el, attributeName, defaultValue) {
-
+    function getNearestAttributeValue(el, attributeName, defaultValue) {
         // walk up the dom tree looking for data-action and data-trigger
         while (el && el !== document.documentElement) {
-
-            var attributeValue = el.getAttribute(attributeName);
-
-            if (attributeValue) {
-                return attributeValue;
-            }
+            const value = el.getAttribute(attributeName);
+            if (value)
+                return value;
 
             el = el.parentNode;
         }
-
         return defaultValue;
     }
 
-    // hook events that clear a pending long press event
-    document.addEventListener(mouseUp, clearLongPressTimer, true);
-    document.addEventListener(mouseMove, mouseMoveHandler, true);
-    document.addEventListener('wheel', clearLongPressTimer, true);
-    document.addEventListener('scroll', clearLongPressTimer, true);
+    // console.log('long-press-event: attaching event handlers')
+    document.addEventListener('click', clickHandler, captureEventsOption);
+    document.addEventListener('contextmenu', clickHandler, captureEventsOption);
 
-    // hook events that can trigger a long press event
-    document.addEventListener(mouseDown, mouseDownHandler, true); // <- start
+    let hasPointerEvents = (('PointerEvent' in window) || (window.navigator && 'msPointerEnabled' in window.navigator));
+    if (hasPointerEvents) {
+        document.addEventListener('pointerdown', mouseDownHandler, captureEventsOption);
+        document.addEventListener('pointerup', mouseUpHandler, captureEventsOption);
+        document.addEventListener('pointermove', mouseMoveHandler, captureEventsOption);
+    }
+    else {
+        document.addEventListener('touchstart', mouseDownHandler, captureEventsOption);
+        document.addEventListener('mousedown', mouseDownHandler, captureEventsOption);
+        document.addEventListener('touchend', mouseUpHandler, captureEventsOption);
+        document.addEventListener('mouseup', mouseUpHandler, captureEventsOption);
+        document.addEventListener('touchmove', mouseMoveHandler, captureEventsOption);
+        document.addEventListener('mousemove', mouseMoveHandler, captureEventsOption);
+
+        /* Old code:
+        var isTouch = (('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+
+        // switch to pointer events or touch events if using a touch screen
+        var mouseDown = hasPointerEvents ? 'pointerdown' : isTouch ? 'touchstart' : 'mousedown';
+        var mouseUp = hasPointerEvents ? 'pointerup' : isTouch ? 'touchend' : 'mouseup';
+        var mouseMove = hasPointerEvents ? 'pointermove' : isTouch ? 'touchmove' : 'mousemove';
+        */
+    }
+
+    // hook events that clear a pending long press event
+    document.addEventListener('wheel', clearLongPressTimer, captureEventsOption);
+    document.addEventListener('scroll', clearLongPressTimer, captureEventsOption);
 
 }(window, document));

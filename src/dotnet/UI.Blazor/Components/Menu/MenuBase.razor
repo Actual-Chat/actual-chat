@@ -7,22 +7,6 @@
 
     [CascadingParameter] public MenuHost Host { get; set; } = null!;
 
-    public bool IsShown { get; private set; }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender)
-            await Show();
-    }
-
-    public async ValueTask Show(bool mustShow = true) {
-        if (IsShown == mustShow)
-            return;
-
-        IsShown = mustShow;
-        await Host.ShowMenu(this);
-    }
-
-    public ValueTask Hide()
-        => Show(false);
-
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+        => await Host.Position(this);
 }

@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
 @{
-    RenderFragment RenderMenu(Model menu) =>
+    RenderFragment RenderMenu(MenuModel menu) =>
         @<div
              id="@menu.Id"
              @key="menu.Id"
@@ -12,18 +12,19 @@
                 <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
             </ul>
         </div>;
+    var menu = _menu;
 }
 
 <div class="ac-menu-host @(GetHostCssClass())">
     <CascadingValue Value="@this" IsFixed="true">
-        @if (IsOverlayVisible) {
+        @if (IsOverlayVisible()) {
             <div class="ac-menu-overlay">
-                @foreach (var menu in _visibleMenus) {
+                @if (menu != null) {
                     @RenderMenu(menu);
                 }
             </div>
         } else {
-            @foreach (var menu in _visibleMenus) {
+            @if (menu != null) {
                 @RenderMenu(menu);
             }
         }
@@ -31,7 +32,7 @@
 </div>
 
 @code {
-    private readonly List<Model> _visibleMenus = new();
+    private MenuModel? _menu;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
 
@@ -46,21 +47,35 @@
         _blazorRef = null!;
     }
 
-    public ValueTask ShowMenu(IMenu menu)
-        => _jsRef.InvokeVoidAsync("showMenuById", menu.Id);
+    public ValueTask Show(
+        MenuRef menuRef,
+        string referenceElementId,
+        string? placement = null,
+        bool isHoverMenu = false)
+        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, referenceElementId, placement);
 
-    public ValueTask HideMenu(IMenu menu)
-        => _jsRef.InvokeVoidAsync("hideMenuById", menu.Id);
+    public ValueTask Show(
+        MenuRef menuRef,
+        ElementReference referenceElement,
+        string? placement = null,
+        bool isHoverMenu = false)
+        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, referenceElement, placement);
+
+    public ValueTask Hide(IMenu menu)
+        => _jsRef.InvokeVoidAsync("hideById", menu.Id);
+
+    public ValueTask Position(IMenu menu)
+        => _jsRef.InvokeVoidAsync("position", menu.Id);
 
     // JS interface
 
     [JSInvokable]
-    public Task OnRenderMenu(string menuRef, string id, bool isHoverMenu) {
-        if (_visibleMenus.Any(m => m.Id == id))
+    public Task OnRenderRequest(string id, string menuRef, bool isHoverMenu) {
+        if (_menu?.Id == id)
             return Task.CompletedTask;
 
         var parsedMenuRef = MenuRef.Parse(menuRef);
-        var model = new Model(
+        _menu = new MenuModel(
             id,
             parsedMenuRef.MenuType,
             new Dictionary<string, object>() {
@@ -68,18 +83,17 @@
                 { nameof(IMenu.Arguments), parsedMenuRef.Arguments },
             },
             isHoverMenu);
-        _visibleMenus.Add(model);
+
         StateHasChanged();
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnHideMenu(string id) {
-        var menu = _visibleMenus.FirstOrDefault(m => m.Id == id);
-        if (menu == null)
+    public Task OnHideRequest(string id) {
+        if (_menu?.Id != id)
             return Task.CompletedTask;
 
-        _visibleMenus.Remove(menu);
+        _menu = null;
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -94,22 +108,22 @@
         }
     }
 
-    private bool IsOverlayVisible
-        => ScreenSize.IsNarrow() && _visibleMenus.Any(x => !x.IsHoverMenu);
+    private bool IsOverlayVisible()
+        => ScreenSize.IsNarrow() && _menu != null;
 
     private string GetHostCssClass()
-        => IsOverlayVisible ? "has-overlay" : "";
+        => IsOverlayVisible() ? "has-overlay" : "";
 
-    private string GetMenuCssClass(Model menu) {
+    private string GetMenuCssClass(MenuModel menu) {
         var cls = menu.IsHoverMenu
             ? "ac-menu-hover"
             : "ac-menu";
-        if (IsOverlayVisible)
+        if (IsOverlayVisible())
             cls += " !block";
         return cls;
     }
 
-    private sealed record Model(
+    private sealed record MenuModel(
         string Id,
         Type Type,
         Dictionary<string, object> Parameters,

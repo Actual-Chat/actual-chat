@@ -118,6 +118,9 @@ input.input-underlined {
 /* Error container */
 
 .error-container {
-    @apply fixed z-error-container w-auto md:w-1/5 inset-x-2 md:inset-x-auto md:right-2 py-4;
-    @apply h-full overflow-y-auto;
+    @apply fixed z-error-container;
+    @apply w-auto md:w-1/3;
+    @apply inset-x-0 md:inset-x-auto md:right-0;
+    @apply p-4;
+    @apply h-auto overflow-y-auto;
 }

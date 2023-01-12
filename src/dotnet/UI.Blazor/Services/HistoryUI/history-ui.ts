@@ -20,17 +20,25 @@ export interface NavigationOptions {
     historyEntryState?: string;
 }
 
-let nextHistoryStepId: HistoryStepId = 1; // !0 == !undefined (frequent check), so let's avoid it
+let _nextStepId = 1; // !0 == !undefined (frequent check), so let's avoid it
+let nextStepId = () => _nextStepId++;
 
 export class HistoryUI {
-    private static readonly historySteps: Array<HistoryStep> = [{
-        id: nextHistoryStepId++,
+    private static readonly steps: Array<HistoryStep> = [{
+        id: nextStepId(),
         index: 0,
         data: null,
     }]
     private static readonly _pushState = history.pushState;
     private static readonly _replaceState = history.replaceState;
-    private static stepIndex: number = 0;
+    private static position: number = 0;
+
+    public static get currentPosition(): number {
+        return this.position;
+    }
+    public static get currentStepId(): HistoryStepId {
+        return this.steps[this.position].id;
+    }
 
     public static init(): void {
         // Enrich history state that blazor sets up
@@ -63,15 +71,15 @@ export class HistoryUI {
         this.internalNavigateTo(window.location.toString(), navigationOptions);
         if (shouldBeReplaced)
             history.state._shouldBeReplaced = true;
-        const historyStep = this.historySteps[this.stepIndex];
+        const historyStep = this.steps[this.position];
         historyStep.onBack = onBack;
         return historyStep.id;
     }
 
-    public static isActiveStep(id: HistoryStepId) : boolean
+    public static isCurrentStep(id: HistoryStepId): boolean
     {
-        const historyStep = this.historySteps[this.stepIndex];
-        return historyStep && id && historyStep.id == id;
+        const step = this.steps[this.position];
+        return step && id && step.id === id;
     }
 
     // Private methods
@@ -83,31 +91,34 @@ export class HistoryUI {
     }
 
     private static onPopState = (event: PopStateEvent) => {
-        const oldStepIndex = this.stepIndex;
-        this.stepIndex = this.getStepIndex(event.state);
-        if (oldStepIndex === this.stepIndex)
+        const oldPosition = this.position;
+        this.position = this.getPosition(event.state) ?? 0;
+        if (oldPosition === this.position)
             return; // No need to navigate
 
-        if (oldStepIndex > this.stepIndex) {
-            debugLog?.log(`onPopState: Navigating back from ${oldStepIndex} to ${this.stepIndex}`);
-            for (let i = oldStepIndex; i > this.stepIndex; i--) {
-                const historyStep = this.historySteps[i];
+        if (oldPosition > this.position) {
+            debugLog?.log(`onPopState: Navigating back: ${oldPosition} -> ${this.position}`);
+            for (let i = oldPosition; i > this.position; i--) {
+                const historyStep = this.steps[i];
                 if (historyStep) {
                     historyStep.onBack?.();
-                    this.historySteps.splice(i, 1);
+                    this.steps.splice(i, 1);
                 }
             }
         }
         else {
-            debugLog?.log(`onPopState: Navigating forward from ${oldStepIndex} to ${this.stepIndex}`);
+            debugLog?.log(`onPopState: Navigating forward: ${oldPosition} -> ${this.position}`);
         }
     }
 
-    private static getStepIndex(data: any): number {
-        let stepIndex = data && data._stepIndex ? data._stepIndex as number : 0;
-        stepIndex = Math.min(stepIndex, this.historySteps.length - 1);
-        stepIndex = Math.max(stepIndex, 0);
-        return stepIndex;
+    private static getPosition(data: any): number | null {
+        let position = data?._stepIndex;
+        if (typeof position !== 'number')
+            return null;
+
+        position = Math.min(position, this.steps.length - 1);
+        position = Math.max(position, 0);
+        return position;
     }
 
     private static enrichUserState(data: any)
@@ -121,19 +132,19 @@ export class HistoryUI {
 
     private static navigate(replace: boolean, dataOriginal: any, unused: string, url?: string | URL | null)
     {
-        const stepIndex = replace ? this.stepIndex : ++this.stepIndex;
+        const stepIndex = replace ? this.position : ++this.position;
         const data = {
             ...dataOriginal,
             _stepIndex: stepIndex,
             userState: this.enrichUserState(dataOriginal),
         };
         debugLog?.log(`onNavigate:`, replace, data, url);
-        this.historySteps[stepIndex] = {
-            id: nextHistoryStepId++,
+        this.steps[stepIndex] = {
+            id: nextStepId(),
             index: stepIndex,
             data: data,
         };
-        this.historySteps.splice(stepIndex + 1);
+        this.steps.splice(stepIndex + 1);
         if (replace)
             this._replaceState.call(history, data, unused, url);
         else

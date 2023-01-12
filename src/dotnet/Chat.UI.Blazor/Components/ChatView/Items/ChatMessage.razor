@@ -54,8 +54,7 @@
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
      data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
-     data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())"
-     data-long-press-delay="500">
+     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="flex-y w-full">
         <div class="chat-message group px-1.5 py-1 relative">
             @if (showAuthor) {

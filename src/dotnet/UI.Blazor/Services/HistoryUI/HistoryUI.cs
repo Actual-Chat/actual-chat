@@ -7,9 +7,9 @@ namespace ActualChat.UI.Blazor.Services;
 public class HistoryUI
 {
     private const string MarkerPrefix = "marker:";
+    private int _position;
     private readonly List<HistoryItem> _history = new ();
     private PendingHistoryItem? _pendingHistoryItem;
-    private int _historyIndex;
     private readonly string _initialLocation;
     private bool _rewriteInitialLocation;
     private readonly bool _isTestServer;
@@ -35,12 +35,12 @@ public class HistoryUI
         IsInitialLocation = true;
         if (_isTestServer) {
             _initialLocation = "";
-            _historyIndex = 0;
+            _position = 0;
         }
         else {
             var uri = Nav.Uri;
             _initialLocation = Nav.GetLocalUrl();
-            _historyIndex = 0;
+            _position = 0;
             _history.Add(new HistoryItem(uri, ""));
             Log.LogDebug("Initial location: '{Location}'", uri);
 
@@ -123,10 +123,10 @@ public class HistoryUI
     private void OnLocationChanged(string location, State state)
     {
         HistoryMove move;
-        var readHistoryIndex = state.Index;
-        if (readHistoryIndex < _historyIndex)
+        var readPosition = state.Index;
+        if (readPosition < _position)
             move = HistoryMove.Backward;
-        else if (readHistoryIndex > _historyIndex) {
+        else if (readPosition > _position) {
             var isExistingHistoryItem = _history.Any(c => OrdinalEquals(c.Id, state.Id));
             move = isExistingHistoryItem ? HistoryMove.Forward : HistoryMove.Navigate;
         }
@@ -136,7 +136,7 @@ public class HistoryUI
             move = HistoryMove.Navigate;
         }
 
-        HistoryItem? historyItem = null;
+        HistoryItem? item = null;
         if (move == HistoryMove.Navigate) {
             if (_pendingHistoryItem != null) {
                 var marker = !state.UserState.IsNullOrEmpty() && state.UserState.StartsWith(MarkerPrefix, StringComparison.Ordinal)
@@ -148,37 +148,37 @@ public class HistoryUI
                         throw StandardError.Constraint("PendingHistoryItem is not consistent. Location is wrong.");
 
                     var prototype = _pendingHistoryItem.HistoryItem;
-                    historyItem = new HistoryItem(prototype.Uri, state.Id) {
+                    item = new HistoryItem(prototype.Uri, state.Id) {
                         OnForwardAction = prototype.OnForwardAction,
                         OnBackAction = prototype.OnBackAction,
                     };
                     _pendingHistoryItem = null;
                 }
             }
-            historyItem ??= new HistoryItem(location, state.Id);
-            if (_history.Count < readHistoryIndex)
+            item ??= new HistoryItem(location, state.Id);
+            if (_history.Count < readPosition)
                 throw StandardError.Constraint("History is not consistent.");
-            if (_history.Count > readHistoryIndex)
-                _history.RemoveRange(readHistoryIndex, _history.Count - readHistoryIndex);
-            _history.Add(historyItem);
+            if (_history.Count > readPosition)
+                _history.RemoveRange(readPosition, _history.Count - readPosition);
+            _history.Add(item);
         }
         else if (move == HistoryMove.Forward) {
-            if (_history.Count < readHistoryIndex + 1)
+            if (_history.Count < readPosition + 1)
                 throw StandardError.Constraint("History does not contain forward item.");
-            historyItem = _history[readHistoryIndex];
+            item = _history[readPosition];
         }
         else {
-            if (_history.Count < readHistoryIndex + 2)
+            if (_history.Count < readPosition + 2)
                 throw StandardError.Constraint("History does not contain backward item.");
-            historyItem = _history[readHistoryIndex + 1];
+            item = _history[readPosition + 1];
         }
 
-        _historyIndex = readHistoryIndex;
+        _position = readPosition;
 
         if (move != HistoryMove.Backward)
-            historyItem.OnForwardAction?.Invoke();
+            item.OnForwardAction?.Invoke();
         else
-            historyItem.OnBackAction?.Invoke();
+            item.OnBackAction?.Invoke();
 
         AfterLocationChangedHandled?.Invoke(this, EventArgs.Empty);
     }

@@ -51,7 +51,7 @@
         <Button
             data-menu="@(MenuRef.New<AccountStatusMenu>().ToString())"
             data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
-            data-menu-position="@(FloatingPosition.BottomStart.ToPositionString())">
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="px-2 inline-flex">
                 <span class="float-left text-secondary font-semibold chat-header-title">
                     @m.Account.Status

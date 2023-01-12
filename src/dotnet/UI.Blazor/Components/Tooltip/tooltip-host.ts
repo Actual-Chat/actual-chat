@@ -106,7 +106,7 @@ export class TooltipHost implements Disposable {
                 offset(6),
                 flip(),
                 shift({ padding: 5 }),
-                arrow({ element: this.arrowRef }),
+                arrow({ referenceElement: this.arrowRef }),
             ],
         }).then(({ x, y, placement, middlewareData }) => {
             Object.assign(this.tooltipRef.style, {

@@ -402,6 +402,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return null!;
         }
 
+        if (HostInfo.IsDevelopmentInstance && entry.Kind == ChatEntryKind.Text && OrdinalEquals(entry.Content, "<error>"))
+            throw StandardError.Internal("Just a test error.");
+
         if (chatId.IsPeerChatId(out var peerChatId))
             _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
