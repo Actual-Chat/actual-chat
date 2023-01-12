@@ -11,8 +11,8 @@
 
     protected override ComputedState<Theme>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.Instant,
             InitialValue = ThemeUI.Theme.Value,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Theme> ComputeState(CancellationToken cancellationToken)

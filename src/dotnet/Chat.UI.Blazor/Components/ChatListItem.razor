@@ -15,7 +15,7 @@
     Url="@($"/chat/{chat.Id}")"
     IsSelected="@m.IsSelected"
     data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
-    data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
+    data-menu-trigger="@(MenuTriggers.Secondary.Format())"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <ChildContent>
         <div class="flex-x items-center gap-x-2">
@@ -52,7 +52,7 @@
                 <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
                 <div class="flex"
                      data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
-                     data-menu-trigger="@(MenuTriggers.LeftClick.Format())"
+                     data-menu-trigger="@(MenuTriggers.Primary.Format())"
                      data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
                     <ButtonRound
                         ContentClass="!bg-transparent"

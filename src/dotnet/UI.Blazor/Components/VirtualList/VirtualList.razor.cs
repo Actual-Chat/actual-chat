@@ -90,8 +90,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
         => new () {
-            UpdateDelayer = FixedDelayer.Instant,
             InitialValue = VirtualListData<TItem>.None,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)

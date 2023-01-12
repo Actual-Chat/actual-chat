@@ -1,17 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
-@typeparam TState where TState : notnull
-@typeparam TMenuContent
-@inherits ComputedStateComponent<TState?>
+@typeparam TState
+@inherits ComputedStateComponent<TState>
 @implements IMenu
-@{
-    var m = State.Value;
-    if (m == null)
-        return; // Nothing to render yet
-}
-
-<CascadingValue Value="@m">
-    <DynamicComponent Type="typeof(TMenuContent)"/>
-</CascadingValue>
 
 @code {
     [Parameter] public string Id { get; set; } = "";
@@ -20,10 +10,10 @@
     [CascadingParameter] public MenuHost Host { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (State.Value != null)
+        if (State.Snapshot.UpdateCount > 0)
             await Host.Position(this);
     }
 
-    protected override Task<TState?> ComputeState(CancellationToken cancellationToken)
+    protected override Task<TState> ComputeState(CancellationToken cancellationToken)
         => throw new NotImplementedException("This method must be overriden in descendant!");
 }

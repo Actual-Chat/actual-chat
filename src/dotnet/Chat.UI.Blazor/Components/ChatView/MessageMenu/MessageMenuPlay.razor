@@ -54,8 +54,8 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
     => new() {
-        UpdateDelayer = FixedDelayer.Instant,
         InitialValue = Model.NotPlaying,
+        UpdateDelayer = FixedDelayer.Instant,
     };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

@@ -12,7 +12,7 @@ case MarkupUrlKind.Chat:
        @onclick="@OnClick"
        @onclick:preventDefault="true"
        data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))"
-       data-menu-trigger="@MenuTriggers.RightClick.Format()">
+       data-menu-trigger="@MenuTriggers.Secondary.Format()">
         @Markup.Url
     </a>
     break;
@@ -28,7 +28,7 @@ case MarkupUrlKind.Image:
 default:
     <a class="@cls" href="@Markup.Url" target="_blank"
        data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))"
-       data-menu-trigger="@MenuTriggers.RightClick.Format()">
+       data-menu-trigger="@MenuTriggers.Secondary.Format()">
         @Markup.Url
     </a>
     break;

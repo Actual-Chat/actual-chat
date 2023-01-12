@@ -27,8 +27,8 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() => new () {
-        UpdateDelayer = FixedDelayer.Instant,
         InitialValue = Model.None,
+        UpdateDelayer = FixedDelayer.Instant,
     };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

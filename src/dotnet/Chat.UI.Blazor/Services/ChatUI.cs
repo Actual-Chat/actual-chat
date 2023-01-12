@@ -44,6 +44,7 @@ public partial class ChatUI : WorkerBase
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AccountSettings AccountSettings { get; }
     private LocalSettings LocalSettings { get; }
+    private Vibration Vibration { get; }
     private AccountUI AccountUI { get; }
     private LanguageUI LanguageUI { get; }
     private InteractiveUI InteractiveUI { get; }
@@ -78,6 +79,7 @@ public partial class ChatUI : WorkerBase
         Mentions = services.GetRequiredService<IMentions>();
         AccountSettings = services.AccountSettings();
         LocalSettings = services.LocalSettings();
+        Vibration = services.GetRequiredService<Vibration>();
         AccountUI = services.GetRequiredService<AccountUI>();
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
@@ -323,7 +325,11 @@ public partial class ChatUI : WorkerBase
             if (!chatId.IsNone) {
                 var newChat = new ActiveChat(chatId, true, true, Now);
                 activeChats = activeChats.AddOrUpdate(newChat);
+                _ = Vibration.Play("beginRecording");
             }
+            else
+                Vibration.Play("endRecording");
+
             UICommander.RunNothing();
             return activeChats;
         });

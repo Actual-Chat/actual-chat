@@ -7,4 +7,6 @@ public enum MenuTriggers
     LeftClick = 1,
     RightClick = 2,
     LongClick = 4,
+    Primary = LeftClick,
+    Secondary = RightClick | LongClick,
 }

@@ -16,9 +16,6 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
 
-    protected override ComputedState<Model?>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
-
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var relatedChatEntry = await ChatUI.RelatedChatEntry.Use(cancellationToken);
         if (relatedChatEntry is not { } vRelatedChatEntry)

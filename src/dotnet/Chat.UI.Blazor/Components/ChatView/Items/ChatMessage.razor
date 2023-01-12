@@ -53,7 +53,7 @@
 <div class="@cls"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
-     data-menu-trigger="@((MenuTriggers.LongClick | MenuTriggers.RightClick).Format())"
+     data-menu-trigger="@(MenuTriggers.Secondary.Format())"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="flex-y w-full">
         <div class="chat-message group px-1.5 py-1 relative">

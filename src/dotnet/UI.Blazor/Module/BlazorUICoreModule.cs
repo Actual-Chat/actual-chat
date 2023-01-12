@@ -98,14 +98,12 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<BannerUI>(sp => new BannerUI(sp));
         services.AddScoped<FocusUI>(sp => new FocusUI(
             sp.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<Vibration>(sp => new Vibration(
-            sp.GetRequiredService<IJSRuntime>()));
         services.AddScoped<KeepAwakeUI>(sp => new KeepAwakeUI(
             sp.GetRequiredService<IJSRuntime>()));
         services.AddScoped<UserActivityUI>(sp => new UserActivityUI(sp));
         services.AddScoped<Escapist>(sp => new Escapist(
             sp.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
+        services.AddScoped<Vibration>(sp => new Vibration(sp));
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
         // Actual.chat-specific UI services

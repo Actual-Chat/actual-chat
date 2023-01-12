@@ -116,10 +116,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = Model.None,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
+        return new() { InitialValue = Model.None };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

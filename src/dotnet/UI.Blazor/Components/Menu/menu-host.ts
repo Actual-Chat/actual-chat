@@ -15,7 +15,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { delayAsync, nextTick } from 'promises';
+import { delayAsync, nextTick, nextTickAsync } from 'promises';
 import { Log, LogLevel } from 'logging';
 
 import Escapist from '../../Services/Escapist/escapist';
@@ -47,8 +47,6 @@ interface Menu {
     isHoverMenu: boolean;
     placement: Placement;
     position: Vector2D | null;
-    event: Event | null;
-    time: number;
     historyStepId: string | null;
     menuElement: HTMLElement | null;
 }
@@ -107,18 +105,12 @@ export class MenuHost implements Disposable {
         referenceElement: HTMLElement | string,
         placement?: Placement | null,
         position?: Vector2D | null,
-        event?: Event | null,
     ): void {
-        let menu = this.create(menuRef, isHoverMenu, referenceElement, placement, position, event);
-        if (this.isShown(menu)) {
-            this.menu.placement = menu.placement;
-            this.menu.position = menu.position;
-            this.menu.event = menu.event;
-            this.menu.time = menu.time;
-            void updatePosition(this.menu);
-            return;
-        }
-        this.render(menu);
+        let menu = this.create(menuRef, isHoverMenu, referenceElement, placement, position);
+        if (this.isShown(menu))
+            void this.position(this.menu, menu);
+        else
+            this.render(menu);
     }
 
     public hideById(id: string): void {
@@ -131,7 +123,7 @@ export class MenuHost implements Disposable {
         this.hide();
     }
 
-    public async position(id: string): Promise<void> {
+    public async positionById(id: string): Promise<void> {
         const menu = this.menu;
         if (!menu || menu.id !== id) {
             warnLog?.log('position: no menu with id:', id)
@@ -144,7 +136,7 @@ export class MenuHost implements Disposable {
         }
 
         menu.menuElement = document.getElementById(menu.id);
-        void updatePosition(menu);
+        void this.position(menu);
     }
 
     // Private methods
@@ -155,7 +147,6 @@ export class MenuHost implements Disposable {
         referenceElement: HTMLElement | string,
         placement: Placement | null,
         position: Vector2D | null,
-        event: Event | null,
     ): Menu {
         if (!(referenceElement instanceof HTMLElement)) {
             const referenceElementId = referenceElement as string;
@@ -169,8 +160,6 @@ export class MenuHost implements Disposable {
             isHoverMenu: isHoverMenu,
             placement: placement,
             position: position,
-            event: event,
-            time: Date.now(),
             historyStepId: null,
             menuElement: null,
         };
@@ -239,6 +228,67 @@ export class MenuHost implements Disposable {
         this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
     }
 
+    private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {
+        if (!menu)
+            throw `${LogScope}.position: menu == null.`;
+
+        if (updatedMenu) {
+            menu.menuElement = updatedMenu.menuElement ?? menu.menuElement;
+            menu.placement = updatedMenu.placement ?? menu.placement;
+            menu.position = updatedMenu.position ?? menu.position;
+        }
+
+        let menuElement = menu.menuElement;
+        if (!menuElement)
+            return;
+
+        debugLog?.log(`position: menu:`, menu);
+        if (menuElement.style.display != 'block')
+            menuElement.style.display = 'block'
+
+        let referenceElement: ReferenceElement;
+        const middleware: Middleware[] = [];
+        const position = menu.position;
+        if (menu.isHoverMenu) {
+            referenceElement = menu.referenceElement;
+            middleware.push(offset({ mainAxis: -15, crossAxis: -10 }));
+            middleware.push(flip());
+        } else if (position && menu.referenceElement.nodeName != 'BUTTON') {
+            referenceElement = {
+                getBoundingClientRect() {
+                    return {
+                        width: 0,
+                        height: 0,
+                        x: position.x,
+                        y: position.y,
+                        top: position.y,
+                        left: position.x,
+                        right: position.x,
+                        bottom: position.y,
+                    };
+                },
+            } as VirtualElement;
+            middleware.push(flip());
+            middleware.push(shift({ padding: 5 }));
+        } else {
+            referenceElement = menu.referenceElement;
+            middleware.push(offset(6));
+            middleware.push(flip());
+            middleware.push(shift({ padding: 5 }));
+        }
+        const { x, y } = await computePosition(
+            referenceElement,
+            menuElement,
+            {
+                placement: menu.placement ?? 'top',
+                middleware: middleware,
+            });
+        Object.assign(menuElement.style, {
+            left: `${x}px`,
+            top: `${y}px`,
+        });
+    }
+
     // Event handlers
 
     private onClick(event: Event): void {
@@ -294,7 +344,17 @@ export class MenuHost implements Disposable {
         const position = isDesktopMode && event instanceof PointerEvent
             ? { x: event.clientX, y: event.clientY }
             : null;
-        this.showOrPosition(menuRef, false, triggerElement as HTMLElement, null, position, event);
+        const menu = this.create(menuRef, false, triggerElement as HTMLElement, null, position);
+        if (this.isShown(menu)) {
+            // Is it the second click on the same button that triggered the menu?
+            if (triggerElement.nodeName == 'BUTTON')
+                this.hide();
+            else
+                void this.position(this.menu, menu)
+        }
+        else
+            this.render(menu);
+
         event.stopImmediatePropagation();
         event.preventDefault();
     }
@@ -323,7 +383,7 @@ export class MenuHost implements Disposable {
         }
 
         const menuRef = triggerElement.dataset['hoverMenu'];
-        const menu = this.create(menuRef, true, triggerElement, "top-end", null, event);
+        const menu = this.create(menuRef, true, triggerElement, "top-end", null);
         if (this.isShown(menu))
             return;
 
@@ -341,60 +401,7 @@ function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
     return (Number(trigger) & triggers) === triggers;
 }
 
-function getPlacement(referenceElement: HTMLElement): Placement {
+function getPlacement(referenceElement: HTMLElement): Placement | null {
     const placement = referenceElement.dataset['menuPlacement'];
-    if (placement)
-        return placement as Placement;
-
-    return 'top';
-}
-
-async function updatePosition(menu: Menu): Promise<void> {
-    if (!menu.menuElement)
-        return;
-
-    debugLog?.log(`updatePosition, menu:`, menu);
-    menu.menuElement.style.display = 'block';
-
-    let referenceElement: ReferenceElement;
-    const middleware: Middleware[] = [];
-    const position = menu.position;
-    if (position) {
-        referenceElement = {
-            getBoundingClientRect() {
-                return {
-                    width: 0,
-                    height: 0,
-                    x: position.x,
-                    y: position.y,
-                    top: position.y,
-                    left: position.x,
-                    right: position.x,
-                    bottom: position.y,
-                };
-            },
-        } as VirtualElement;
-        middleware.push(flip());
-        middleware.push(shift({ padding: 5 }));
-    } else if (menu.isHoverMenu) {
-        referenceElement = menu.referenceElement;
-        middleware.push(offset({ mainAxis: -15, crossAxis: -10 }));
-        middleware.push(flip());
-    } else {
-        referenceElement = menu.referenceElement;
-        middleware.push(offset(6));
-        middleware.push(flip());
-        middleware.push(shift({ padding: 5 }));
-    }
-    const { x, y } = await computePosition(
-        referenceElement,
-        menu.menuElement,
-        {
-            placement: menu.placement,
-            middleware: middleware,
-        });
-    Object.assign(menu.menuElement.style, {
-        left: `${x}px`,
-        top: `${y}px`,
-    });
+    return placement?.length > 0 ? placement as Placement : null;
 }

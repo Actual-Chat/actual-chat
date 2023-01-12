@@ -1,0 +1,27 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedMenuBase<ChatState?>
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+
+    var rules = m.Chat.Rules;
+}
+
+<CascadingValue Value="m">
+    @if (rules.CanWrite()) {
+        <ChatMenuRecord/>
+    }
+    <ChatMenuPin/>
+    <ChatMenuListen/>
+    @if (rules.CanLeave()) {
+        <ChatMenuLeave/>
+    }
+</CascadingValue>
+
+@code{
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    protected override Task<ChatState?> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.GetState(new ChatId(Arguments[0]), false, cancellationToken);
+}
