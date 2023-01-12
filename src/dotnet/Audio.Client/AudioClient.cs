@@ -1,3 +1,4 @@
+using System.Buffers;
 using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -26,17 +27,25 @@ public class AudioClient : HubClientBase,
         var audioStream = connection
             .StreamAsync<byte[]>("GetAudioStream", streamId.Value, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        var frameStream = audioStream
-            .Select((packet, i) => new AudioFrame {
-                Data = packet,
+
+        var (headerDataTask, dataStream) = audioStream.SplitHead(cancellationToken);
+        var frameStream = dataStream
+            .Select((data, i) => new AudioFrame {
+                Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        var audio = new AudioSource(Task.FromResult(AudioSource.DefaultFormat),
+
+        var headerData = await headerDataTask.ConfigureAwait(false);
+        var headerDataSequence = new ReadOnlySequence<byte>(headerData);
+        var header = ActualOpusStreamHeader.Parse(ref headerDataSequence);
+
+        var audio = new AudioSource(
+            header.CreatedAt,
+            header.Format,
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
-        await audio.WhenFormatAvailable.ConfigureAwait(false);
         Log.LogDebug("GetAudio: Exited; StreamId = {StreamId}, SkipTo = {SkipTo}", streamId.Value, skipTo.ToShortString());
         return audio;
     }

@@ -237,6 +237,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
+            services.AddSingleton<OtelMetrics>();
             services.AddOpenTelemetry()
                 .WithMetrics(builder => builder
                     // gcloud exporter doesn't support some of metrics yet:

@@ -5,34 +5,32 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     where TFrame : MediaFrame
 {
     protected AsyncMemoizer<TFrame> MemoizedFrames { get; }
-    protected Task<TFormat> FormatTask { get; }
     protected Task<TimeSpan> DurationTask { get; }
     protected ILogger Log { get; }
-    public bool IsCancelled => FormatTask.IsCanceled;
+
+    public bool IsCancelled => DurationTask.IsCanceled;
     MediaFormat IMediaSource.Format => Format;
+    public TFormat Format { get; }
 #pragma warning disable VSTHRD002
-    public TFormat Format => FormatTask.IsCompleted
-        ? FormatTask.Result
-        : throw StandardError.Unavailable("Format isn't parsed yet.");
     public TimeSpan Duration => DurationTask.IsCompleted
         ? DurationTask.Result
         : throw StandardError.Unavailable("Duration isn't parsed yet.");
 #pragma warning restore VSTHRD002
-    public Task WhenFormatAvailable => FormatTask;
     public Task WhenDurationAvailable => DurationTask;
-
-    // Constructors
+    public Moment CreatedAt { get; }
 
     protected MediaSource(
-        Task<TFormat> formatTask,
+        Moment createdAt,
+        TFormat format,
         IAsyncEnumerable<TFrame> frameStream,
         ILogger log,
         CancellationToken cancellationToken)
     {
-        Log = log;
-        FormatTask = formatTask;
+        CreatedAt = createdAt;
+        Format = format;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
         MemoizedFrames = new AsyncMemoizer<TFrame>(IterateThrough(frameStream, cancellationToken), cancellationToken);
+        Log = log;
     }
 
     // Public methods

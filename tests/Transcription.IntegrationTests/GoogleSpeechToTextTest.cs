@@ -117,10 +117,9 @@ public class GoogleSpeechToTextTest : TestBase
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = webMStream ?? fileName.Extension == ".webm";
         var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(Log)
-            : new ActualOpusStreamAdapter(Log);
+            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, Log)
+            : new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
-        await audio.WhenFormatAvailable.ConfigureAwait(false);
         if (!withDelay)
             return audio;
 
@@ -129,7 +128,9 @@ public class GoogleSpeechToTextTest : TestBase
                 await Task.Delay(20);
                 return f;
             });
-        var delayedAudio = new AudioSource(Task.FromResult(audio.Format),
+        var delayedAudio = new AudioSource(
+            MomentClockSet.Default.SystemClock.Now,
+            audio.Format,
             delayedFrames,
             TimeSpan.Zero,
             Log,

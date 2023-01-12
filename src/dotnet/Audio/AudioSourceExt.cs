@@ -4,7 +4,8 @@ public static class AudioSourceExt
 {
     public static AudioSource Concat(this AudioSource left, AudioSource right, CancellationToken cancellationToken)
         => new (
-            left.FormatTask,
+            left.CreatedAt,
+            left.Format,
             left.GetFrames(cancellationToken).Concat(right.GetFrames(cancellationToken)),
             TimeSpan.Zero,
             left.Log,
@@ -12,7 +13,8 @@ public static class AudioSourceExt
 
     public static AudioSource ConcatUntil(this AudioSource left, AudioSource right, TimeSpan duration, CancellationToken cancellationToken)
         => new (
-            left.FormatTask,
+            left.CreatedAt,
+            left.Format,
             left.GetFrames(cancellationToken).ConcatUntil(right.GetFrames(cancellationToken), duration),
             TimeSpan.Zero,
             left.Log,
@@ -20,7 +22,8 @@ public static class AudioSourceExt
 
     public static AudioSource Take(this AudioSource left, TimeSpan duration, CancellationToken cancellationToken)
         => new (
-            left.FormatTask,
+            left.CreatedAt,
+            left.Format,
             left.GetFrames(cancellationToken).TakeWhile(f => f.Offset < duration),
             TimeSpan.Zero,
             left.Log,

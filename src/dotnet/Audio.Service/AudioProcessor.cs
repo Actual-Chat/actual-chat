@@ -78,8 +78,10 @@ public sealed class AudioProcessor : IAudioProcessor
             var author = await Authors
                 .EnsureJoined(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
+            var recordedAt = Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset);
             var audio = new AudioSource(
-                Task.FromResult(AudioSource.DefaultFormat with { PreSkipFrames = preSkipFrames }),
+                new Moment(recordedAt),
+                AudioSource.DefaultFormat with { PreSkipFrames = preSkipFrames },
                 recordingStream,
                 TimeSpan.Zero,
                 AudioSourceLog,
@@ -90,13 +92,13 @@ public sealed class AudioProcessor : IAudioProcessor
                 author,
                 languages,
                 OpenAudioSegmentLog);
-            var recordedAt = Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset);
             openSegment.SetRecordedAt(recordedAt);
             streamId = openSegment.StreamId;
 
             var audioStream = openSegment.Audio
                 .GetFrames(cancellationToken)
-                .Select(f => f.Data);
+                .Select(f => f.Data)
+                .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
             var publishAudioTask = BackgroundTask.Run(
                 () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
                 Log,
