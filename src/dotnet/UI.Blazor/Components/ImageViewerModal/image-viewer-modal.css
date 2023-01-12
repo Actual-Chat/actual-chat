@@ -50,8 +50,8 @@
 }
 
 .image-viewer-modal .image-viewer-content {
-    @apply absolute flex flex-y justify-center items-center;
-    @apply max-h-fit md:max-h-full;
+    @apply absolute flex-y max-h-fit;
+    @apply justify-center items-center backdrop-blur-md;
 }
 
 .image-viewer-modal .image-viewer-content img {
