@@ -6,18 +6,21 @@ namespace ActualChat.Audio;
 
 public sealed class WebMStreamAdapter : IAudioStreamAdapter
 {
-    private readonly ILogger _log;
     private readonly string _writingApp;
     private readonly ulong? _trackUid;
 
-    public WebMStreamAdapter(ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
+    private MomentClockSet Clocks { get; }
+    private ILogger Log { get; }
+
+    public WebMStreamAdapter(MomentClockSet clocks, ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
     {
-        _log = log;
+        Clocks = clocks;
+        Log = log;
         _writingApp = writingApp;
         _trackUid = trackUid;
     }
 
-    public Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
     {
         var formatTask = TaskSource.New<AudioFormat>(true).Task;
         var formatTaskSource = TaskSource.For(formatTask);
@@ -67,7 +70,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
                 throw;
             }
             catch (Exception e) {
-                _log.LogError(e, "Parse failed");
+                Log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
                 throw;
@@ -79,18 +82,20 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             }
         }, CancellationToken.None);
 
-        var audioSource = new AudioSource(formatTask,
+        var format = await formatTask.ConfigureAwait(false);
+        var audioSource = new AudioSource(
+            Clocks.SystemClock.Now,
+            format,
             target.Reader.ReadAllAsync(cancellationToken),
             TimeSpan.Zero,
-            _log,
+            Log,
             cancellationToken);
-        return Task.FromResult(audioSource);
+        return audioSource;
     }
 
     public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var random = new Random();
-        await source.WhenFormatAvailable.ConfigureAwait(false);
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
         var buffer = bufferLease.Memory;
         var position = 0;

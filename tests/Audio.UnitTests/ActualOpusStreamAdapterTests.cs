@@ -4,16 +4,16 @@ namespace ActualChat.Audio.UnitTests;
 
 public class ActualOpusStreamAdapterTests
 {
-    private readonly ILogger _log;
+    private ILogger Log { get; }
 
     public ActualOpusStreamAdapterTests(ILogger log)
-        => _log = log;
+        => Log = log;
 
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var webMStreamAdapter = new WebMStreamAdapter(_log);
-        var streamAdapter = new ActualOpusStreamAdapter(_log);
+        var webMStreamAdapter = new WebMStreamAdapter(MomentClockSet.Default,  Log);
+        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1024);
         var audio = await webMStreamAdapter.Read(byteStream, default);
@@ -33,8 +33,8 @@ public class ActualOpusStreamAdapterTests
     [Fact]
     public async Task OneByteSequenceCanBeRead()
     {
-        var webMStreamAdapter = new WebMStreamAdapter(_log);
-        var streamAdapter = new ActualOpusStreamAdapter(_log);
+        var webMStreamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log);
+        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1);
         var audio = await webMStreamAdapter.Read(byteStream, default);
@@ -54,7 +54,7 @@ public class ActualOpusStreamAdapterTests
     [Fact]
     public async Task SuccessfulReadFromFile()
     {
-        var streamAdapter = new ActualOpusStreamAdapter(_log);
+        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000.opuss")
             .ReadByteStream( 1024);
         var audio = await streamAdapter.Read(byteStream, default);
@@ -67,7 +67,7 @@ public class ActualOpusStreamAdapterTests
     [Fact(Skip = "Manual")]
     public async Task ReadWriteFile()
     {
-        var streamAdapter = new ActualOpusStreamAdapter(_log);
+        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"silence.opuss")
             .ReadByteStream( 1024);
         await using var outputStream = new FileStream(
@@ -78,7 +78,7 @@ public class ActualOpusStreamAdapterTests
         var outByteStream = streamAdapter.Write(audio, CancellationToken.None).Take(101);
         var i = 0;
         await foreach (var x in outByteStream) {
-            _log.LogInformation("{I}", i++);
+            Log.LogInformation("{I}", i++);
             await outputStream.WriteAsync(x);
         }
         outputStream.Flush();

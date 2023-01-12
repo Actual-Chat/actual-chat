@@ -67,7 +67,7 @@ public class GoogleTranscriber : ITranscriber
             Recognizer = recognizerName,
         }).ConfigureAwait(false);
 
-        var webMStreamAdapter = new WebMStreamAdapter(Log);
+        var webMStreamAdapter = new WebMStreamAdapter(Clocks, Log);
         var silenceAudioSource = await _silenceAudioSourceTask.ConfigureAwait(false);
         var resultAudioSource = silenceAudioSource
             .Take(TimeSpan.FromMilliseconds(2000), cancellationToken)
@@ -234,7 +234,7 @@ public class GoogleTranscriber : ITranscriber
         var byteStream = typeof(GoogleTranscriberProcess).Assembly
             .GetManifestResourceStream("ActualChat.Transcription.data.silence.opuss")!
             .ReadByteStream(true);
-        var streamAdapter = new ActualOpusStreamAdapter(DefaultLog);
+        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, DefaultLog);
         return streamAdapter.Read(byteStream, CancellationToken.None);
     }
 }

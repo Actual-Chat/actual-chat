@@ -119,7 +119,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _audioSource = await audioDownloader.Download(audioBlobUrl, TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioBlobUrl;
         }
-        await _audioSource.WhenFormatAvailable;
         return _audioSource;
     }
 
