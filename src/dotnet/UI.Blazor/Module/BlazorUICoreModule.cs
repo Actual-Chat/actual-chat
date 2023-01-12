@@ -103,10 +103,8 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<KeepAwakeUI>(sp => new KeepAwakeUI(
             sp.GetRequiredService<IJSRuntime>()));
         services.AddScoped<UserActivityUI>(sp => new UserActivityUI(sp));
-        services.AddTransient<EscapistSubscription>(sp => new EscapistSubscription(
-            sp.GetRequiredService<IJSRuntime>()));
         services.AddScoped<Escapist>(sp => new Escapist(
-            sp.GetRequiredService<Func<EscapistSubscription>>()));
+            sp.GetRequiredService<IJSRuntime>()));
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 

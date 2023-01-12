@@ -18,8 +18,8 @@ import { Disposable } from 'disposable';
 import { delayAsync, nextTick } from 'promises';
 import { Log, LogLevel } from 'logging';
 
-import { HistoryUI, HistoryStepId } from '../../Services/HistoryUI/history-ui';
 import Escapist from '../../Services/Escapist/escapist';
+import { HistoryUI } from '../../Services/HistoryUI/history-ui';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Vibration } from '../../Services/Vibration/vibration';
 
@@ -49,7 +49,7 @@ interface Menu {
     position: Vector2D | null;
     event: Event | null;
     time: number;
-    historyStepId: HistoryStepId | null;
+    historyStepId: string | null;
     menuElement: HTMLElement | null;
 }
 
@@ -78,7 +78,7 @@ export class MenuHost implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event) => this.onMouseOver(event));
 
-        Escapist.escape$
+        Escapist.event$
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: KeyboardEvent) => {
                 if (this.menu != null) {
@@ -267,15 +267,6 @@ export class MenuHost implements Disposable {
         if (trigger == MenuTriggers.RightClick && event.target.nodeName !== 'IMG')
             event.preventDefault();
 
-        const isClickInsideMenu = event.target.closest('.ac-menu, .ac-menu-hover') != null;
-        if (isClickInsideMenu) {
-            // The menu will process the action, but we can schedule menu hiding here
-            nextTick(() => this.hide({ id: this.menu.id }));
-            return;
-        }
-
-        // We know here the click is outside of any menu
-
         let triggerElement = event.target.closest('[data-menu]');
         let menuRef = null;
         if ((triggerElement instanceof HTMLElement)) {
@@ -285,6 +276,14 @@ export class MenuHost implements Disposable {
         }
 
         if (!menuRef) {
+            // We couldn't find any menu to activate on click
+            const isClickInsideMenu = event.target.closest('.ac-menu, .ac-menu-hover') != null;
+            if (isClickInsideMenu) {
+                // The menu will process the action, but we can schedule menu hiding here
+                nextTick(() => this.hide({ id: this.menu.id }));
+                return;
+            }
+
             // It's a click outside of any menu which doesn't trigger another menu
             this.hide({ isHoverMenu: false });
             event.stopImmediatePropagation();

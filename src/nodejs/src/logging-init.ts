@@ -12,16 +12,12 @@ const LogMinLevelsKey = 'logMinLevels';
 export function initLogging(Log: unknown): void {
     Log['defaultMinLevel'] = LogLevel.Debug;
     const minLevels = Log['minLevels'] as Map<string, LogLevel>;
-    const w = globalThis;
+
     let wasRestored = false;
-
-    if (w) {
-        w[LogMinLevelsKey] = new LogMinLevels(minLevels);
-        if (w.sessionStorage) {
-            wasRestored = restoreFromStorage(w.sessionStorage, minLevels);
-        }
+    if (globalThis) {
+        globalThis[LogMinLevelsKey] = new LogMinLevels(minLevels);
+        wasRestored = restore(minLevels);
     }
-
     if (!wasRestored)
         reset(minLevels);
 }
@@ -32,36 +28,40 @@ export class LogMinLevels {
 
     public override(scope: string, newLevel: LogLevel): void {
         this.minLevels.set(scope, newLevel);
-
-        const w = globalThis;
-        if (w?.sessionStorage) {
-            persistToStorage(w.sessionStorage, this.minLevels);
-        }
+        persist(this.minLevels);
     }
 
-    public reset() {
+    public reset(mustPersist = true) {
         reset(this.minLevels);
+        if (mustPersist)
+            persist(this.minLevels)
     }
 }
 
-function restoreFromStorage(storage: Storage, minLevels: Map<string, LogLevel>): boolean {
-    const w = globalThis;
-    if (w?.sessionStorage) {
-        const storedMinLevelsJson = w.sessionStorage.getItem(LogMinLevelsKey);
-        if (storedMinLevelsJson) {
-            const storedMinLevels = new Map(JSON.parse(storedMinLevelsJson) as [string, LogLevel][]);
-            if (!storedMinLevels.size || storedMinLevels.size == 0)
-                return false;
+function restore(minLevels: Map<string, LogLevel>): boolean {
+    const storage = globalThis?.sessionStorage;
+    if (!storage)
+        return false;
 
-            storedMinLevels.forEach((value, key) => minLevels.set(key, value));
-            return true;
-        }
-    }
-    return false;
+    const readJson = storage.getItem(LogMinLevelsKey);
+    if (!readJson)
+        return false;
+
+    const readMinLevels = new Map(JSON.parse(readJson) as [string, LogLevel][]);
+    if (!readMinLevels.size || readMinLevels.size == 0)
+        return false;
+
+    readMinLevels.forEach((value, key) => minLevels.set(key, value));
+    return true;
 }
 
-function persistToStorage(storage: Storage, minLevels: Map<string, LogLevel>): void {
+function persist(minLevels: Map<string, LogLevel>): boolean {
+    const storage = globalThis?.sessionStorage;
+    if (!storage)
+        return false;
+
     storage.setItem(LogMinLevelsKey, JSON.stringify(Array.from(minLevels.entries())));
+    return true;
 }
 
 function reset(minLevels: Map<string, LogLevel>): void {
@@ -93,9 +93,5 @@ function reset(minLevels: Map<string, LogLevel>): void {
     // minLevels.set('MenuHost', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
-
-    const w = globalThis;
-    if (w?.sessionStorage) {
-        persistToStorage(w.sessionStorage, minLevels);
-    }
+    persist(minLevels);
 }

@@ -2,26 +2,45 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class EscapistSubscription
+public class EscapistSubscription : IAsyncDisposable
 {
-    private readonly IJSRuntime _jsRuntime;
-    private Action? _escapeAction;
+    private Action? _action;
+    private DotNetObjectReference<EscapistSubscription>? _blazorRef;
+    private IJSObjectReference? _jsRef;
 
-    public EscapistSubscription(IJSRuntime jsRuntime) => _jsRuntime = jsRuntime;
+    public static async ValueTask<IAsyncDisposable> Create(
+        IJSRuntime js,
+        Action? action,
+        CancellationToken cancellationToken)
+    {
+        var subscription = new EscapistSubscription() {
+            _action = action
+        };
+        subscription._blazorRef = DotNetObjectReference.Create(subscription);
+        subscription._jsRef = await js.InvokeAsync<IJSObjectReference>(
+            $"{BlazorUICoreModule.ImportName}.EscapistSubscription.create",
+            cancellationToken,
+            subscription._blazorRef
+            ).ConfigureAwait(false);
+        return subscription;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        var jsRef = Interlocked.Exchange(ref _jsRef, null);
+        if (jsRef == null)
+            return;
+
+        _blazorRef?.Dispose();
+        try {
+            await jsRef.InvokeVoidAsync("dispose", CancellationToken.None).ConfigureAwait(false);
+        }
+        catch {
+            // Intended
+        }
+        await jsRef.DisposeSilentlyAsync().ConfigureAwait(false);
+    }
 
     [JSInvokable]
-    public void OnEscape() => _escapeAction?.Invoke();
-
-    public async Task<IAsyncDisposable> SubscribeAsync(Action action, CancellationToken token)
-    {
-        _escapeAction = action ?? throw new ArgumentNullException(nameof(action));
-
-        var factory = $"{BlazorUICoreModule.ImportName}.EscapistSubscription.create";
-        var blazorRef = DotNetObjectReference.Create(this);
-        var jsRef = await _jsRuntime.InvokeAsync<IJSObjectReference>(factory, token, blazorRef).ConfigureAwait(false);
-        return AsyncDisposable.New(async () => {
-            await jsRef.InvokeVoidAsync("dispose", CancellationToken.None).ConfigureAwait(false);
-            await jsRef.DisposeAsync().AsTask().ConfigureAwait(false);
-        });
-    }
+    public void OnEscape() => _action?.Invoke();
 }

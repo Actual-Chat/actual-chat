@@ -22,8 +22,8 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
             (_, token) => GetLastActiveAt(token));
     }
 
-    public Task SubscribeForNext(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("subscribeForNext", cancellationToken).AsTask();
+    public ValueTask SubscribeForNext(CancellationToken cancellationToken)
+        => _jsRef.InvokeVoidAsync("subscribeForNext", cancellationToken)e;
 
     [JSInvokable]
     public Task OnInteracted()

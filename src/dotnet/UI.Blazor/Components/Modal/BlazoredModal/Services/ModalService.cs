@@ -24,9 +24,7 @@ public class ModalService
             builder.CloseComponent();
         });
         modalReference = new ModalRef(modalInstanceId, modalInstance, this);
-
         OnModalInstanceAdded?.Invoke(modalReference);
-
         return modalReference;
     }
 

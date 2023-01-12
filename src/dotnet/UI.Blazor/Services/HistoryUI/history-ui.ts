@@ -4,10 +4,8 @@ import { v4 as uuid } from 'uuid';
 const LogScope: string = 'HistoryUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
-export type HistoryStepId = number;
-
 export type HistoryStep = {
-    id: HistoryStepId;
+    id: string;
     index: number;
     data: any;
     onBack?: () => void | undefined
@@ -20,8 +18,8 @@ export interface NavigationOptions {
     historyEntryState?: string;
 }
 
-let _nextStepId = 1; // !0 == !undefined (frequent check), so let's avoid it
-let nextStepId = () => _nextStepId++;
+let _nextStepId = 1;
+let nextStepId = () => 'hs-' + (_nextStepId++).toString();
 
 export class HistoryUI {
     private static readonly steps: Array<HistoryStep> = [{
@@ -36,7 +34,7 @@ export class HistoryUI {
     public static get currentPosition(): number {
         return this.position;
     }
-    public static get currentStepId(): HistoryStepId {
+    public static get currentStepId(): string {
         return this.steps[this.position].id;
     }
 
@@ -60,8 +58,7 @@ export class HistoryUI {
     public static pushBackStep(
         shouldBeReplaced: boolean,
         onBack?: () => void | undefined
-    ): HistoryStepId
-    {
+    ): string {
         const state = history.state;
         const replace = state && state._shouldBeReplaced;
         const navigationOptions = {
@@ -76,7 +73,7 @@ export class HistoryUI {
         return historyStep.id;
     }
 
-    public static isCurrentStep(id: HistoryStepId): boolean
+    public static isCurrentStep(id: string): boolean
     {
         const step = this.steps[this.position];
         return step && id && step.id === id;

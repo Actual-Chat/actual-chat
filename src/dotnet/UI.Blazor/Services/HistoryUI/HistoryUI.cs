@@ -83,16 +83,16 @@ public class HistoryUI
             return;
 
         if (_pendingHistoryItem != null)
-            throw StandardError.Constraint("There is still pending history item");
+            throw StandardError.Internal("There is still pending history item");
         var historyItem = new HistoryItemPrototype(Nav.Uri) {
             OnForwardAction = onForwardAction,
-            OnBackAction = onBackAction
+            OnBackAction = onBackAction,
         };
-        _pendingHistoryItem = new PendingHistoryItem(historyItem, Guid.NewGuid().ToString());
+        _pendingHistoryItem = new PendingHistoryItem(historyItem, Ulid.NewUlid().ToString());
         Nav.NavigateTo(Nav.Uri, new NavigationOptions {
             ForceLoad = false,
             ReplaceHistoryEntry = false,
-            HistoryEntryState = MarkerPrefix + _pendingHistoryItem.Marker
+            HistoryEntryState = MarkerPrefix + _pendingHistoryItem.Marker,
         });
     }
 
@@ -131,54 +131,51 @@ public class HistoryUI
             move = isExistingHistoryItem ? HistoryMove.Forward : HistoryMove.Navigate;
         }
         else {
-            // history index has not changed
-            // navigation with replace happened
+            // History index hasn't changed -> navigation with replace happened
             move = HistoryMove.Navigate;
         }
 
-        HistoryItem? item = null;
+        HistoryItem? historyItem = null;
         if (move == HistoryMove.Navigate) {
             if (_pendingHistoryItem != null) {
-                var marker = !state.UserState.IsNullOrEmpty() && state.UserState.StartsWith(MarkerPrefix, StringComparison.Ordinal)
-                    ? state.UserState.Substring(MarkerPrefix.Length)
+                var marker = !state.UserState.IsNullOrEmpty() && state.UserState.OrdinalStartsWith(MarkerPrefix)
+                    ? state.UserState[MarkerPrefix.Length..]
                     : "";
-                var match = !marker.IsNullOrEmpty() && _pendingHistoryItem.Marker.Equals(marker);
-                if (match) {
-                    if (!OrdinalEquals(_pendingHistoryItem.HistoryItem.Uri, location))
-                        throw StandardError.Constraint("PendingHistoryItem is not consistent. Location is wrong.");
+                if (!marker.IsNullOrEmpty() && OrdinalEquals(_pendingHistoryItem.Marker, marker)) {
+                    if (!OrdinalEquals(_pendingHistoryItem.Prototype.Uri, location))
+                        throw StandardError.Internal("PendingHistoryItem is not consistent. Location is wrong.");
 
-                    var prototype = _pendingHistoryItem.HistoryItem;
-                    item = new HistoryItem(prototype.Uri, state.Id) {
+                    var prototype = _pendingHistoryItem.Prototype;
+                    historyItem = new HistoryItem(prototype.Uri, state.Id) {
                         OnForwardAction = prototype.OnForwardAction,
                         OnBackAction = prototype.OnBackAction,
                     };
                     _pendingHistoryItem = null;
                 }
             }
-            item ??= new HistoryItem(location, state.Id);
+            historyItem ??= new HistoryItem(location, state.Id);
             if (_history.Count < readPosition)
-                throw StandardError.Constraint("History is not consistent.");
+                throw StandardError.Internal("History is not consistent.");
             if (_history.Count > readPosition)
                 _history.RemoveRange(readPosition, _history.Count - readPosition);
-            _history.Add(item);
+            _history.Add(historyItem);
         }
         else if (move == HistoryMove.Forward) {
             if (_history.Count < readPosition + 1)
-                throw StandardError.Constraint("History does not contain forward item.");
-            item = _history[readPosition];
+                throw StandardError.Internal("History does not contain forward item.");
+            historyItem = _history[readPosition];
         }
         else {
             if (_history.Count < readPosition + 2)
-                throw StandardError.Constraint("History does not contain backward item.");
-            item = _history[readPosition + 1];
+                throw StandardError.Internal("History does not contain backward item.");
+            historyItem = _history[readPosition + 1];
         }
 
         _position = readPosition;
-
         if (move != HistoryMove.Backward)
-            item.OnForwardAction?.Invoke();
+            historyItem.OnForwardAction?.Invoke();
         else
-            item.OnBackAction?.Invoke();
+            historyItem.OnBackAction?.Invoke();
 
         AfterLocationChangedHandled?.Invoke(this, EventArgs.Empty);
     }
@@ -192,7 +189,9 @@ public class HistoryUI
  #pragma warning restore IL2026
     }
 
-    private record PendingHistoryItem(HistoryItemPrototype HistoryItem, string Marker);
+    private record PendingHistoryItem(
+        HistoryItemPrototype Prototype,
+        string Marker);
 
     private record HistoryItem(string Uri, string Id)
     {

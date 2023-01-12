@@ -17,8 +17,7 @@
 </ModalFrame>
 
 @code {
-    private CancellationTokenSource TokenSource { get; } = new();
-    private IAsyncDisposable? EscapeSubscription { get; set; }
+    private IAsyncDisposable? _escapeSubscription;
 
     [Inject] private Escapist Escapist { get; init; } = null!;
 
@@ -35,17 +34,12 @@
     [Parameter] public RenderFragment? Buttons { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender && HasEscapeHandler) {
-            EscapeSubscription = await Escapist.SubscribeAsync(
-                () => _ = ModalInstance.CloseAsync(),
-                TokenSource.Token).ConfigureAwait(false);
-        }
+        if (firstRender && HasEscapeHandler)
+            _escapeSubscription = await Escapist.Subscribe(() => _ = ModalInstance.CloseAsync());
     }
 
     public async ValueTask DisposeAsync() {
-        TokenSource.Cancel();
-        if (EscapeSubscription != null) {
-            await EscapeSubscription.DisposeAsync().AsTask().ConfigureAwait(false);
-        }
+        if (_escapeSubscription != null)
+            await _escapeSubscription.DisposeAsync().ConfigureAwait(false);
     }
 }

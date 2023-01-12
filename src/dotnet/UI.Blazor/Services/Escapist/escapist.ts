@@ -1,25 +1,36 @@
-import { Observable, Subject, finalize, filter } from 'rxjs';
-import keyboardDispatcher from './keyboard-dispatcher';
+import { Observable, Subscriber } from 'rxjs';
 
 export class Escapist {
-    public static escape$: Observable<KeyboardEvent>;
+    public static event$: Observable<KeyboardEvent>;
+    public static capturedEvent$: Observable<KeyboardEvent>;
 
     public static init(): void {
-        const subject = new Subject<KeyboardEvent>();
-        keyboardDispatcher.add(subject);
-        this.escape$ = subject.pipe(
-            filter((event) => this.isEscapeKey(event) && !this.hasModifierKey(event)),
-            finalize(() => keyboardDispatcher.remove(subject)),
-        );
+        this.event$ = this.createObservable(false);
+        this.capturedEvent$ = this.createObservable(true);
     }
 
-    private static hasModifierKey(event: KeyboardEvent): boolean {
-        return event.altKey || event.shiftKey || event.ctrlKey || event.metaKey;
+    private static createObservable(capture: boolean): Observable<KeyboardEvent> {
+        return Observable.create((subscriber: Subscriber<KeyboardEvent>) => {
+            const onKeyDown = (event: KeyboardEvent) => {
+                if (isEscapeKey(event) && !hasModifierKey(event))
+                    subscriber.next(event);
+            }
+            document.body.addEventListener('keydown', onKeyDown, { capture: capture });
+            return () => {
+                document.body.removeEventListener('keydown', onKeyDown, { capture: capture });
+            }
+        })
     }
+}
 
-    private static isEscapeKey(event: KeyboardEvent): boolean {
-        return event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc';
-    }
+// Helpers
+
+function hasModifierKey(event: KeyboardEvent): boolean {
+    return event.altKey || event.shiftKey || event.ctrlKey || event.metaKey;
+}
+
+function isEscapeKey(event: KeyboardEvent): boolean {
+    return event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc';
 }
 
 Escapist.init();
