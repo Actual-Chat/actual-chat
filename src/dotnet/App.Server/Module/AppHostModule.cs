@@ -110,7 +110,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         app.UseAuthentication();
         app.UseEndpoints(endpoints => {
             endpoints.MapAppHealth();
-            endpoints.MapPrometheusScrapingEndpoint();
+            endpoints.MapAppMetrics();
             endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
             endpoints.MapControllers();

@@ -18,4 +18,12 @@ public static class EndpointsExt
 
         return endpoints;
     }
+
+    public static IEndpointRouteBuilder MapAppMetrics(this IEndpointRouteBuilder endpoints, params string[] tags)
+    {
+        endpoints.MapPrometheusScrapingEndpoint()
+            .RequireHost("localhost");
+
+        return endpoints;
+    }
 }
