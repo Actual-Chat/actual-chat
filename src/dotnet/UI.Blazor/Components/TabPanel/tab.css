@@ -10,12 +10,12 @@
     @apply overflow-hidden;
 }
 .tab-panel-tabs .btn-group {
-    @apply justify-evenly w-full gap-x-1;
+    @apply justify-evenly w-full;
 }
 
 .tab-panel-tabs .btn.tab-btn {
-    @apply border-0 rounded-none min-w-2 px-2;
-    @apply text-02 text-caption-1 leading-tight tracking-wider;
+    @apply border-0 rounded-none min-w-2;
+    @apply text-02 text-caption-1 tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn {
     @apply border-transparent border-b-2;
@@ -25,6 +25,15 @@
 }
 .tab-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-02 text-primary;
+}
+.tab-panel-tabs .btn.tab-btn:hover .btn-content {
+    @apply bg-transparent;
+}
+.tab-panel-tabs .btn.tab-btn.on + .shape {
+    @apply bg-primary;
+}
+.tab-panel-tabs .btn.tab-btn:hover + .shape {
+    @apply bg-primary opacity-50;
 }
 
 .tab-panel .tab {

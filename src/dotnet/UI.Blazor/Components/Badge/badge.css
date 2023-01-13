@@ -1,6 +1,6 @@
 .badge {
     @apply relative;
     @apply flex-x justify-center items-center;
-    @apply min-w-8 mx-1;
+    @apply w-6 h-4.5 mx-1;
     @apply rounded-full text-04 text-sm;
 }

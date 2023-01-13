@@ -31,6 +31,9 @@
 .active-chats .message-counter-badge {
     @apply hidden;
 }
+.navbar-item .message-counter-badge {
+    @apply self-end;
+}
 .navbar-item:hover .message-counter-badge {
     @apply hidden;
 }

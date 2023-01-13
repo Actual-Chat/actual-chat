@@ -6,8 +6,8 @@
 
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
         @<Tab
-             Title="@tabTitle" Id="@tabId.ToString()"
-             Class="flex-y self-start relative overflow-y-visible md:overflow-y-auto custom-scrollbar h-full chats-tab">
+            Title="@tabTitle" Id="@tabId.ToString()"
+            Class="flex-y self-start relative overflow-y-visible md:overflow-y-auto custom-scrollbar h-full chats-tab">
             <TitleContent>
                 <span>@tabTitle</span>
                 <UnreadCount Value="@count" Click="@OnUnreadBadgeClick"/>
@@ -40,9 +40,14 @@
                 TabsClass="left-panel-tabs"
                 AdditionalButtonName="SortButton"
                 ActiveTabChanged="@OnActiveTabChanged">
-                @RenderTab(TabId.ByOwnActivity, "Recent")
-                @RenderTab(TabId.ByAnyActivity, "Updated")
-                @RenderTab(TabId.ByUnreadCount, "Unread")
+                <AdditionalButton>
+                    <ButtonRound Class="sort-btn btn-sm">
+                        <i class="icon-sort-by-recent text-xl"></i>
+                    </ButtonRound>
+                </AdditionalButton>
+                <ChildContent>
+                    @RenderTab(_activeTabId, title )
+                </ChildContent>
             </TabPanel>
         </div>
     </ChildContent>

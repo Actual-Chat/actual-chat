@@ -3,9 +3,9 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
-            <div class="relative btn-group">
-                @if (!AdditionalButtonName.IsNullOrEmpty()) {
-                    <RenderSlot Name="@AdditionalButtonName"/>
+            <div class="relative btn-group overflow-hidden">
+                @if (AdditionalButton != null) {
+                    @AdditionalButton
                 }
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
@@ -26,10 +26,14 @@
                             }
                         </Button>
                         @if (BottomHill) {
-                            var lineCls = isActive ? "bg-primary" : "bg-transparent";
-                            <div class="@lineCls shape"></div>
+                            <div class="shape"></div>
                         }
                     </div>
+                    @if (tab.SpecialContent != null) {
+                        <Button Class="btn-transparent self-center !min-w-6 !max-w-8 !mr-1 !-ml-1">
+                            @tab.SpecialContent
+                        </Button>
+                    }
                 }
             </div>
         </div>
@@ -45,7 +49,7 @@
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
     [Parameter] public bool BottomBorder { get; set; }
-    [Parameter] public string AdditionalButtonName { get; set; } = "";
+    [Parameter] public RenderFragment? AdditionalButton { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 

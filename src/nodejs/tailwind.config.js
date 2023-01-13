@@ -149,6 +149,7 @@ module.exports = {
         'logo-01': 'var(--logo-01)',
         'logo-02': 'var(--logo-02)',
         'logo-03': 'var(--logo-03)',
+        'badge': 'var(--badge)',
       },
       textColor: {
         '01': 'var(--text-01)',
