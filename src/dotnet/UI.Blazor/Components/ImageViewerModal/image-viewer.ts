@@ -30,6 +30,14 @@ export class ImageViewer {
         this.imageViewer.classList.add('bg-01');
     }
 
+    public dispose() {
+        window.removeEventListener('wheel', this.onImageZoom);
+        if (this.imageViewer != null) {
+            this.imageViewer.removeEventListener('mousedown', this.onImageCapture);
+        }
+        window.removeEventListener('mouseup', this.onImageMoveDisable);
+    }
+
     private round = (value: number) : number => {
         return Math.round(value);
     }
@@ -196,13 +204,5 @@ export class ImageViewer {
     private onImageMoveDisable = ((event: MouseEvent & { target: Element; }) => {
         window.removeEventListener('mousemove', this.onImageMove);
     });
-
-    public dispose() {
-        window.removeEventListener('wheel', this.onImageZoom);
-        if (this.imageViewer != null) {
-            this.imageViewer.removeEventListener('mousedown', this.onImageCapture);
-        }
-        window.removeEventListener('mouseup', this.onImageMoveDisable);
-    }
 }
 
