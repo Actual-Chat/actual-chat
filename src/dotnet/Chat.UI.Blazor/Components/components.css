@@ -135,7 +135,7 @@
     @apply border-b border-bg-04;
 }
 .left-panel-tabs .btn-group {
-    @apply min-h-14 justify-start px-4;
+    @apply min-h-14 justify-start px-4 gap-x-0;
 }
 .left-panel-tabs .btn-group .btn-group-container {
     @apply min-h-14 self-center;
@@ -165,11 +165,24 @@
     @apply h-full overflow-hidden;
 }
 .navbar-chats .sort-btn.btn {
-    @apply min-w-fit min-h-fit rounded-full;
+    @apply min-w-fit max-w-fit min-h-fit rounded-full;
 }
 .navbar-chats .sort-btn:hover .btn-content {
     @apply text-primary;
 }
+.navbar-chats .left-panel-tabs,
+.navbar-chats .left-panel-tabs .btn-group,
+.navbar-chats .left-panel-tabs .btn-group .btn-group-container,
+.navbar-chats .left-panel-tabs .btn-group .btn-group-container .btn.tab-btn {
+    @apply min-h-10 max-h-10;
+}
+.navbar-chats .left-panel-tabs .btn-group .btn-group-container .shape {
+    @apply min-h-1 -mt-1;
+}
+.navbar-chats .left-panel-tabs .message-counter-badge {
+    @apply h-4 w-6;
+}
+
 .tab-panel .chats-tab.tab .navbar-item,
 .tab-panel .contacts-tab.tab .navbar-item {
     @apply relative;

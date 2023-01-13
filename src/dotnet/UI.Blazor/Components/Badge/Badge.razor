@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
 <div class="@Class @Color badge" @onclick="Click">
-    <div class="p-0.5 rounded-full">
+    <div class="p-0.5">
             <span>@ChildContent</span>
     </div>
 </div>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string Color { get; set; } = "bg-primary";
+    [Parameter] public string Color { get; set; } = "bg-badge";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 }
