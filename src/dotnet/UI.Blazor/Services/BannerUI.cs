@@ -23,7 +23,9 @@ public class BannerUI
     {
         var componentType = MatchingTypeFinder.TryFind(bannerModel.GetType(), typeof(IBannerView<>))
             ?? throw StandardError.NotFound<TBannerModel>($"No banner view found for model {typeof(TBannerModel)}");
+ #pragma warning disable IL2072
         var instance = CreateInstance(bannerModel, componentType);
+ #pragma warning restore IL2072
 
         lock (_lock)
             _bannerInstances.Value = _bannerInstances.Value.Add(instance);
