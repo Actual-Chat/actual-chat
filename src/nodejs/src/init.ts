@@ -1,4 +1,4 @@
-import './long-press-event.js'
+import './long-press.ts'
 import SwiftClick from 'swiftclick';
 import { NextInteraction } from 'next-interaction';
 

@@ -1,4 +1,5 @@
 import { Log, LogLevel } from 'logging';
+import { PreciseTimeout, Timeout } from 'timeout';
 
 const LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -8,8 +9,7 @@ export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> 
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
 }
 
-export class AsyncLock
-{
+export class AsyncLock {
     private _promise: Promise<Unit>;
 
     constructor () {
@@ -29,9 +29,8 @@ export class AsyncLock
     }
 }
 
-class Unit
-{
-    static Instance = new Unit();
+class Unit {
+    static readonly Instance = new Unit();
 }
 
 export class PromiseSource<T> implements Promise<T> {
@@ -39,7 +38,7 @@ export class PromiseSource<T> implements Promise<T> {
     public reject: (any) => void;
 
     private readonly _promise: Promise<T>;
-    private _timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    private _timeout: Timeout = null;
     private _isCompleted = false;
 
     constructor() {
@@ -70,28 +69,44 @@ export class PromiseSource<T> implements Promise<T> {
         return this._isCompleted;
     }
 
-    public clearTimeout(): void {
-        if (this._timeoutHandle == null)
-            return;
-
-        clearTimeout(this._timeoutHandle);
-        this._timeoutHandle = null;
-    }
-
-    public setTimeout(timeout: number, handler?: () => void): void {
+    public setTimeout(timeoutMs: number | null, callback?: () => unknown): void {
         this.clearTimeout();
-        if (timeout == null)
+        if (timeoutMs == null)
             return;
 
-        this._timeoutHandle = setTimeout(() => {
-            this._timeoutHandle = null;
-            if (handler != null)
-                handler();
+        this._timeout = new Timeout(timeoutMs, () => {
+            this._timeout = null;
+            if (callback != null)
+                callback();
             else {
                 const error = new Error('The promise has timed out.');
                 this.reject(error);
             }
-        }, timeout)
+        })
+    }
+
+    public setPreciseTimeout(timeoutMs: number | null, callback?: () => unknown): void {
+        this.clearTimeout();
+        if (timeoutMs == null)
+            return;
+
+        this._timeout = new PreciseTimeout(timeoutMs, () => {
+            this._timeout = null;
+            if (callback != null)
+                callback();
+            else {
+                const error = new Error('The promise has timed out.');
+                this.reject(error);
+            }
+        })
+    }
+
+    public clearTimeout(): void {
+        if (this._timeout == null)
+            return;
+
+        this._timeout.clear();
+        this._timeout = null;
     }
 
     // PromiseLike<T> implementation
@@ -116,10 +131,19 @@ export class PromiseSource<T> implements Promise<T> {
     }
 }
 
-/** Async version of setTimeout */
-export function delayAsync(timeout: number): PromiseSource<void> {
+// Precise timeout (~ 8-16ms or so?) based on requestAnimationFrame
+
+// Async versions of setTimeout
+
+export function delayAsync(delayMs: number): PromiseSource<void> {
     const promise = new PromiseSource<void>();
-    promise.setTimeout(timeout, () => promise.resolve(undefined))
+    promise.setTimeout(delayMs, () => promise.resolve(undefined))
+    return promise;
+}
+
+export function preciseDelayAsync(delayMs: number): PromiseSource<void> {
+    const promise = new PromiseSource<void>();
+    promise.setPreciseTimeout(delayMs, () => promise.resolve(undefined))
     return promise;
 }
 
@@ -136,27 +160,6 @@ export function flexibleDelayAsync(getNextTimeout: () => number): PromiseSource<
     promise.setTimeout(getNextTimeout(), timeoutHandler);
     return promise;
 }
-
-// nextTick & nextTickAsync:
-// They're quite similar to polyfill of
-// [setImmediate](https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate),
-// which we don't use because it relies on setTimeout, which is throttled in background tabs.
-export function nextTick(callback: () => unknown) {
-    nextTickCallbacks.push(callback);
-    nextTickChannel.port2.postMessage(null);
-}
-
-export function nextTickAsync(): Promise<void> {
-    return new Promise<void>(resolve => nextTick(resolve));
-}
-
-const nextTickCallbacks: Array<() => unknown> = [];
-const nextTickChannel = new MessageChannel();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-nextTickChannel.port1.onmessage = _ => {
-    const callback = nextTickCallbacks.shift();
-    callback();
-};
 
 // Throttle & debounce
 

@@ -17,7 +17,7 @@ export class Vibration {
         if (!canVibrate)
             return;
 
-        debugLog.log('vibrate:', durationMs)
+        debugLog?.log('vibrate:', durationMs)
         window.navigator.vibrate(durationMs);
     }
 

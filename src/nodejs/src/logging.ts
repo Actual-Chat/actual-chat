@@ -45,7 +45,11 @@ export class Log {
             this.isInitialized = true;
             initLogging(this);
         }
-        const minLevel = this.minLevels.get(scope) ?? this.defaultMinLevel;
+
+        const minLevels = this.minLevels;
+        const minLevel = minLevels.get(scope)
+            ?? minLevels.get('default')
+            ?? this.defaultMinLevel;
         return level >= minLevel ? this.loggerFactory(scope, level) : null;
     }
 

@@ -20,7 +20,7 @@ export class KeepAwakeUI {
                 await noSleep.enable();
             }
             catch (e) {
-                errorLog.log(`setKeepAwake(true): error:`, e);
+                errorLog?.log(`setKeepAwake(true): error:`, e);
             }
         } else if (!mustKeepAwake && noSleep.isEnabled) {
             infoLog?.log(`setKeepAwake: disabling`);
@@ -28,7 +28,7 @@ export class KeepAwakeUI {
                 noSleep.disable();
             }
             catch (e) {
-                errorLog.log(`setKeepAwake(false): error:`, e);
+                errorLog?.log(`setKeepAwake(false): error:`, e);
             }
         }
     };

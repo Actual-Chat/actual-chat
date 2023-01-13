@@ -184,8 +184,10 @@
         Blazor.registerCustomEventType('longpress', {
             browserEventName: 'long-press',
             createEventArgs: (event) => {
-                const isTouch = (('ontouchstart' in window) || (navigator.MaxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
-                if (!isTouch)
+                const isTouchCapable = (('ontouchstart' in window)
+                    || (navigator.MaxTouchPoints > 0)
+                    || (navigator.msMaxTouchPoints > 0));
+                if (!isTouchCapable)
                     event.preventDefault();
                 return event;
             },

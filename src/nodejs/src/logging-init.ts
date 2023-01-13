@@ -31,10 +31,16 @@ export class LogMinLevels {
         persist(this.minLevels);
     }
 
-    public reset(mustPersist = true) {
+    public reset() {
         reset(this.minLevels);
-        if (mustPersist)
-            persist(this.minLevels)
+        persist(this.minLevels)
+    }
+
+    public clear(defaultLevel?: LogLevel) {
+        this.minLevels.clear();
+        if (defaultLevel !== undefined)
+            this.minLevels['default'] = defaultLevel;
+        persist(this.minLevels)
     }
 }
 
@@ -48,9 +54,10 @@ function restore(minLevels: Map<string, LogLevel>): boolean {
         return false;
 
     const readMinLevels = new Map(JSON.parse(readJson) as [string, LogLevel][]);
-    if (!readMinLevels.size || readMinLevels.size == 0)
+    if (!(typeof readMinLevels.size === 'number'))
         return false;
 
+    minLevels.clear();
     readMinLevels.forEach((value, key) => minLevels.set(key, value));
     return true;
 }
@@ -66,7 +73,11 @@ function persist(minLevels: Map<string, LogLevel>): boolean {
 
 function reset(minLevels: Map<string, LogLevel>): void {
     // Bumping up levels of noisy scopes
+    minLevels.set('LongPress', LogLevel.Info);
+    minLevels.set('ScreenSize', LogLevel.Info);
+    minLevels.set('Vibration', LogLevel.Info);
     minLevels.set('NextInteraction', LogLevel.Info);
+    minLevels.set('HistoryUI', LogLevel.Info);
     minLevels.set('InteractiveUI', LogLevel.Info);
     minLevels.set('on-device-awake', LogLevel.Info);
     minLevels.set('Rpc', LogLevel.Info);
@@ -88,6 +99,7 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('MenuHost', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
+    // minLevels.set('HistoryUI', LogLevel.Debug);
     minLevels.set('AudioContextLazy', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);

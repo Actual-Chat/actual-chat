@@ -15,7 +15,9 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { delayAsync, nextTick, nextTickAsync } from 'promises';
+import { Vector2D } from 'math';
+import { delayAsync } from 'promises';
+import { nextTick } from 'timeout';
 import { Log, LogLevel } from 'logging';
 
 import Escapist from '../../Services/Escapist/escapist';
@@ -27,11 +29,6 @@ const LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
-
-interface Vector2D {
-    x: number;
-    y: number;
-}
 
 enum MenuTriggers {
     None = 0,
@@ -345,7 +342,7 @@ export class MenuHost implements Disposable {
         }
 
         const position = isDesktopMode && event instanceof PointerEvent
-            ? { x: event.clientX, y: event.clientY }
+            ? new Vector2D(event.clientX, event.clientY)
             : null;
         const menu = this.create(menuRef, false, triggerElement, null, position);
         if (this.isShown(menu)) {
