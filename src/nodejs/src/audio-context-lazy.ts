@@ -59,12 +59,17 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
     };
     const node = new AudioWorkletNode(audioContext, 'warmUpWorklet', nodeOptions);
     node.connect(audioContext.destination);
+
     await new Promise<void>(resolve => {
         node.port.postMessage('stop');
         node.port.onmessage = (ev: MessageEvent<string>): void => {
             warnLog?.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
             resolve();
         };
+        delayAsync(1000).then(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            _ => resolve(),
+            reason => debugLog?.log('delay rejected', reason));
     });
     node.disconnect();
     node.port.onmessage = null;
