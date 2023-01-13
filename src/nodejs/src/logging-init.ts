@@ -76,9 +76,9 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('LongPress', LogLevel.Info);
     minLevels.set('ScreenSize', LogLevel.Info);
     minLevels.set('Vibration', LogLevel.Info);
-    minLevels.set('NextInteraction', LogLevel.Info);
+    minLevels.set('NextInteraction', LogLevel.Debug);
     minLevels.set('HistoryUI', LogLevel.Info);
-    minLevels.set('InteractiveUI', LogLevel.Info);
+    minLevels.set('InteractiveUI', LogLevel.Debug);
     minLevels.set('on-device-awake', LogLevel.Info);
     minLevels.set('Rpc', LogLevel.Info);
     minLevels.set('BrowserInfo', LogLevel.Info);
@@ -88,7 +88,7 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('ChatMessageEditor', LogLevel.Info);
     minLevels.set('WarmUpAudioWorkletProcessor', LogLevel.Info);
     minLevels.set('FeederProcessor', LogLevel.Info);
-    minLevels.set('OpusEncoderWorker', LogLevel.Info);
+    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Info);
     minLevels.set('OpusDecoder', LogLevel.Info);
     minLevels.set('OpusDecoderWorker', LogLevel.Info);

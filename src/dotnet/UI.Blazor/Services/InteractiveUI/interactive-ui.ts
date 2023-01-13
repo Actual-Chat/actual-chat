@@ -23,11 +23,13 @@ export class InteractiveUI {
         this.backendRef = backendRef;
         this.onAudioContextChanged = audioContextLazy.audioContextChanged.add(() => this.trySync());
         NextInteraction.start();
+        this.trySync();
     }
 
     public static trySync(): void {
-        const isInteractive = audioContextLazy.audioContext != null;
-        if (this.isInteractive == isInteractive)
+        const audioContext = audioContextLazy.audioContext;
+        const isInteractive = audioContext !== null && audioContext.state === 'running';
+        if (this.isInteractive === isInteractive)
             return;
 
         debugLog?.log(`isInteractive:`, isInteractive);
@@ -48,7 +50,7 @@ export class InteractiveUI {
         try {
             while (true) {
                 const isInteractive = this.isInteractive; // We need a stable copy here
-                if (isInteractive == this.backendIsInteractive)
+                if (isInteractive === this.backendIsInteractive)
                     break;
                 try {
                     debugLog?.log(`sync: calling IsInteractiveChanged(${isInteractive}) on backend`);

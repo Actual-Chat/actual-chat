@@ -97,6 +97,7 @@ export class AudioContextLazy implements Disposable {
     }
 
     public async get(): Promise<AudioContext> {
+        debugLog?.log(`-> get`);
         return this.asyncLock.lock(async () => {
             const audioContext = this.audioContext;
             if (audioContext) {
@@ -121,8 +122,10 @@ export class AudioContextLazy implements Disposable {
                     this.refreshAudioContextTask();
                     return this.audioContextTask;
                 }
+                debugLog?.log(`<- get`);
                 return audioContext;
             }
+            debugLog?.log(`<- get promise`);
             return this.audioContextTask;
         });
     }
@@ -137,11 +140,13 @@ export class AudioContextLazy implements Disposable {
     // private methods
 
     private async initContext(): Promise<void> {
+        debugLog?.log(`-> initContext`);
         if (this.initContextStarted)
             return;
         this.initContextStarted = true;
         try {
             const audioContext = await defaultFactory();
+            debugLog?.log(`<- initContext: audioContext.state =`, audioContext.state);
             this.setAudioContext(audioContext);
         } catch (error) {
             errorLog?.log(`initContext(), error:`, error);
@@ -194,3 +199,5 @@ export class AudioContextLazy implements Disposable {
 }
 
 export const audioContextLazy = new AudioContextLazy();
+window['audioContextLazy'] = audioContextLazy;
+
