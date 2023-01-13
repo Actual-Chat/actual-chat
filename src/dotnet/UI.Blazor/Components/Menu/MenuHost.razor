@@ -49,17 +49,17 @@
 
     public ValueTask Show(
         MenuRef menuRef,
-        string referenceElementId,
+        string triggerElementId,
         string? placement = null,
         bool isHoverMenu = false)
-        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, referenceElementId, placement);
+        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, triggerElementId, placement);
 
     public ValueTask Show(
         MenuRef menuRef,
-        ElementReference referenceElement,
+        ElementReference triggerElement,
         string? placement = null,
         bool isHoverMenu = false)
-        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, referenceElement, placement);
+        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, triggerElement, placement);
 
     public ValueTask Hide(IMenu menu)
         => _jsRef.InvokeVoidAsync("hideById", menu.Id);

@@ -43,7 +43,7 @@ enum MenuTriggers {
 interface Menu {
     id: string;
     menuRef: string;
-    referenceElement: HTMLElement;
+    triggerElement: HTMLElement;
     isHoverMenu: boolean;
     placement: Placement;
     position: Vector2D | null;
@@ -102,11 +102,11 @@ export class MenuHost implements Disposable {
     public showOrPosition(
         menuRef: string,
         isHoverMenu: boolean,
-        referenceElement: HTMLElement | string,
+        triggerElement: HTMLElement | string,
         placement?: Placement | null,
         position?: Vector2D | null,
     ): void {
-        let menu = this.create(menuRef, isHoverMenu, referenceElement, placement, position);
+        let menu = this.create(menuRef, isHoverMenu, triggerElement, placement, position);
         if (this.isShown(menu))
             void this.position(this.menu, menu);
         else
@@ -144,19 +144,19 @@ export class MenuHost implements Disposable {
     private create(
         menuRef: string,
         isHoverMenu: boolean,
-        referenceElement: HTMLElement | string,
+        triggerElement: HTMLElement | string,
         placement: Placement | null,
         position: Vector2D | null,
     ): Menu {
-        if (!(referenceElement instanceof HTMLElement)) {
-            const referenceElementId = referenceElement as string;
-            referenceElement = document.getElementById(referenceElementId);
+        if (!(triggerElement instanceof HTMLElement)) {
+            const triggerElementId = triggerElement as string;
+            triggerElement = document.getElementById(triggerElementId);
         }
-        placement = placement ?? getPlacement(referenceElement);
+        placement = placement ?? getPlacementFromAttributes(triggerElement);
         return {
             id: nextId(),
             menuRef: menuRef,
-            referenceElement: referenceElement,
+            triggerElement: triggerElement,
             isHoverMenu: isHoverMenu,
             placement: placement,
             position: position,
@@ -169,7 +169,7 @@ export class MenuHost implements Disposable {
         let m = this.menu;
         return m
             && m.menuRef === menu.menuRef
-            && m.referenceElement === menu.referenceElement
+            && m.triggerElement === menu.triggerElement
             && m.isHoverMenu === menu.isHoverMenu;
     }
 
@@ -250,10 +250,12 @@ export class MenuHost implements Disposable {
         const middleware: Middleware[] = [];
         const position = menu.position;
         if (menu.isHoverMenu) {
-            referenceElement = menu.referenceElement;
+            // Hover menu positioning
+            referenceElement = menu.triggerElement;
             middleware.push(offset({ mainAxis: -15, crossAxis: -10 }));
             middleware.push(flip());
-        } else if (position && menu.referenceElement.nodeName != 'BUTTON') {
+        } else if (position && !isButtonTrigger(menu.triggerElement)) {
+            // Pointer relative positioning
             referenceElement = {
                 getBoundingClientRect() {
                     return {
@@ -271,7 +273,8 @@ export class MenuHost implements Disposable {
             middleware.push(flip());
             middleware.push(shift({ padding: 5 }));
         } else {
-            referenceElement = menu.referenceElement;
+            // Trigger element relative positioning
+            referenceElement = menu.triggerElement;
             middleware.push(offset(6));
             middleware.push(flip());
             middleware.push(shift({ padding: 5 }));
@@ -317,7 +320,7 @@ export class MenuHost implements Disposable {
         if (trigger == MenuTriggers.RightClick && event.target.nodeName !== 'IMG')
             event.preventDefault();
 
-        let triggerElement = event.target.closest('[data-menu]');
+        let triggerElement = event.target.closest('[data-menu]') as HTMLElement;
         let menuRef = null;
         if ((triggerElement instanceof HTMLElement)) {
             const menuTrigger = triggerElement.dataset['menuTrigger'];
@@ -344,7 +347,7 @@ export class MenuHost implements Disposable {
         const position = isDesktopMode && event instanceof PointerEvent
             ? { x: event.clientX, y: event.clientY }
             : null;
-        const menu = this.create(menuRef, false, triggerElement as HTMLElement, null, position);
+        const menu = this.create(menuRef, false, triggerElement, null, position);
         if (this.isShown(menu)) {
             // Is it the second click on the same button that triggered the menu?
             if (triggerElement.nodeName == 'BUTTON')
@@ -374,7 +377,7 @@ export class MenuHost implements Disposable {
             return;
         }
 
-        const triggerElement = event.target.closest('[data-hover-menu]');
+        const triggerElement = event.target.closest('[data-hover-menu]') as HTMLElement;
         if (!(triggerElement instanceof HTMLElement)) {
             const isInsideHoverMenu = event.target.closest('.ac-menu-hover') != null;
             if (!isInsideHoverMenu)
@@ -401,7 +404,18 @@ function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
     return (Number(trigger) & triggers) === triggers;
 }
 
-function getPlacement(referenceElement: HTMLElement): Placement | null {
-    const placement = referenceElement.dataset['menuPlacement'];
+function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
+    const placement = triggerElement.dataset['menuPlacement'];
     return placement?.length > 0 ? placement as Placement : null;
+}
+
+function isButtonTrigger(triggerElement: HTMLElement | null): boolean {
+    if (!triggerElement)
+        return false;
+
+    if (!(triggerElement.closest('button') instanceof HTMLElement))
+        return false;
+
+    // Buttons inside menus aren't counted as triggers
+    return triggerElement.closest('.ac-menu, .ac-menu-hover') == null;
 }
