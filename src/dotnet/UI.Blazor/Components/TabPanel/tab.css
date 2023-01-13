@@ -5,8 +5,9 @@
     @apply hidden;
 }
 .tab-panel-tabs {
+    @apply flex-none flex-x;
     @apply mb-2.5 pb-1.5 items-center;
-    @apply flex-x;
+    @apply overflow-hidden;
 }
 .tab-panel-tabs .btn-group {
     @apply justify-evenly w-full gap-x-1;
