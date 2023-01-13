@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class BannerUI
 {
-    private readonly object _sync = new ();
+    private readonly object _lock = new ();
     private readonly IMutableState<ImmutableList<BannerInstance>> _bannerInstances;
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
@@ -25,7 +25,7 @@ public class BannerUI
             ?? throw StandardError.NotFound<TBannerModel>($"No banner view found for model {typeof(TBannerModel)}");
         var instance = CreateInstance(bannerModel, componentType);
 
-        lock (_sync)
+        lock (_lock)
             _bannerInstances.Value = _bannerInstances.Value.Add(instance);
 
         return instance;
@@ -61,7 +61,7 @@ public class BannerUI
 
     private void Close(BannerInstance bannerInstance)
     {
-        lock (_sync)
+        lock (_lock)
             _bannerInstances.Value = _bannerInstances.Value.Remove(bannerInstance);
     }
 }
