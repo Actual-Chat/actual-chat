@@ -81,9 +81,9 @@ export class ImageViewer {
             let windowHeight = window.innerHeight;
             let width = this.image.getBoundingClientRect().width;
             let height = this.image.getBoundingClientRect().height;
+            event.preventDefault();
             if (delta < 0) {
                 // up
-                event.preventDefault();
                 let newWidth = width * this.multiplier;
                 let newMaxWidth = width * this.multiplier;
                 let newMaxHeight = height * this.multiplier;
@@ -96,7 +96,6 @@ export class ImageViewer {
                 this.image.style.maxWidth = newMaxWidth + 'px';
             } else {
                 // down
-                event.preventDefault();
                 let newWidth = width / this.multiplier;
                 let newMaxWidth = width / this.multiplier;
                 let newMaxHeight = height / this.multiplier;
