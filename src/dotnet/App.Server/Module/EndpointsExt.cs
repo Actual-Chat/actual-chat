@@ -1,11 +1,12 @@
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-
 namespace ActualChat.App.Server.Module;
 
-public static class HealthChecksExt
+public static class EndpointsExt
 {
-    public const string PathPrefix = "/health";
+    public const string HealthPathPrefix = "/health";
+    public const string PrometheusPathPrefix = "/metrics";
+
     public static IEndpointRouteBuilder MapAppHealth(this IEndpointRouteBuilder endpoints, params string[] tags)
     {
         foreach (var tag in new[] { HealthTags.Live, HealthTags.Ready })
