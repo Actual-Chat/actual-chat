@@ -115,6 +115,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             endpoints.MapControllers();
             endpoints.MapFallbackToPage("/_Host");
         });
+        app.UseOpenTelemetryPrometheusScrapingEndpoint();
     }
 
     public override void InjectServices(IServiceCollection services)
@@ -232,70 +233,63 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         */
 
         // OpenTelemetry
+        services.AddSingleton<OtelMetrics>();
+        var otelBuilder = services.AddOpenTelemetry()
+            .WithMetrics(builder => builder
+                // gcloud exporter doesn't support some of metrics yet:
+                // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+                .AddAspNetCoreInstrumentation()
+                .AddMeter(AppMeter.Name)
+                .AddMeter(typeof(IComputed).GetMeter().Name) // Fusion meter
+                .AddMeter(typeof(ICommand).GetMeter().Name) // Commander meters
+                .AddMeter(MeterExt.Unknown.Name) // Unknown meter
+                .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
+                    cfg.ScrapeEndpointPath = "/metrics";
+                    cfg.ScrapeResponseCacheDurationMilliseconds = 300;
+                })
+            );
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-            services.AddSingleton<OtelMetrics>();
-            services.AddOpenTelemetry()
-                .WithMetrics(builder => builder
-                    // gcloud exporter doesn't support some of metrics yet:
-                    // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
-                    .AddAspNetCoreInstrumentation()
-                    .AddMeter(AppMeter.Name)
-                    .AddMeter(typeof(IComputed).GetMeter().Name) // Fusion meter
-                    .AddMeter(typeof(ICommand).GetMeter().Name) // Commander meters
-                    .AddMeter(MeterExt.Unknown.Name) // Unknown meter
-                    .AddOtlpExporter(cfg => {
-                        cfg.ExportProcessorType = ExportProcessorType.Batch;
-                        cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
-                            ExporterTimeoutMilliseconds = 10_000,
-                            MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
-                            MaxQueueSize = 1024,
-                            ScheduledDelayMilliseconds = 20_000,
-                        };
-                        cfg.Protocol = OtlpExportProtocol.Grpc;
-                        cfg.Endpoint = openTelemetryEndpointUri;
-                    })
-                )
-                .WithTracing(builder => builder
-                    .SetErrorStatusOnException()
-                    .AddSource(AppTrace.Name)
-                    .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
-                    .AddSource(typeof(ICommand).GetActivitySource().Name) // Commander trace
-                    .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
-                    .AddAspNetCoreInstrumentation(opt => {
-                        var excludedPaths = new PathString[] {
-                            "/favicon.ico",
-                            "/metrics",
-                            "/status",
-                            "/_blazor",
-                            "/_framework",
-                            "/healthz",
-                        };
-                        opt.Filter = httpContext =>
-                            !excludedPaths.Any(x
-                                => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
-                    })
-                    .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
-                    .AddGrpcClientInstrumentation()
-                    .AddNpgsql()
-                    .AddOtlpExporter(cfg => {
-                        cfg.ExportProcessorType = ExportProcessorType.Batch;
-                        cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
-                            ExporterTimeoutMilliseconds = 10_000,
-                            MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
-                            MaxQueueSize = 1024,
-                            ScheduledDelayMilliseconds = 20_000,
-                        };
-                        cfg.Protocol = OtlpExportProtocol.Grpc;
-                        cfg.Endpoint = openTelemetryEndpointUri;
-                    })
-                )
-                .ConfigureResource(builder => builder
-                    .AddService("App", "actualchat", AppVersion))
-                .StartWithHost();
+            otelBuilder = otelBuilder.WithTracing(builder => builder
+                .SetErrorStatusOnException()
+                .AddSource(AppTrace.Name)
+                .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
+                .AddSource(typeof(ICommand).GetActivitySource().Name) // Commander trace
+                .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
+                .AddAspNetCoreInstrumentation(opt => {
+                    var excludedPaths = new PathString[] {
+                        "/favicon.ico",
+                        "/metrics",
+                        "/status",
+                        "/_blazor",
+                        "/_framework",
+                        "/healthz",
+                    };
+                    opt.Filter = httpContext =>
+                        !excludedPaths.Any(x
+                            => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
+                })
+                .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
+                .AddGrpcClientInstrumentation()
+                .AddNpgsql()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = ExportProcessorType.Batch;
+                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                        ExporterTimeoutMilliseconds = 10_000,
+                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
+                        MaxQueueSize = 1024,
+                        ScheduledDelayMilliseconds = 20_000,
+                    };
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
+                    cfg.Endpoint = openTelemetryEndpointUri;
+                })
+            );
         }
+        otelBuilder.ConfigureResource(builder => builder
+                .AddService("App", "actualchat", AppVersion))
+            .StartWithHost();
     }
 }
