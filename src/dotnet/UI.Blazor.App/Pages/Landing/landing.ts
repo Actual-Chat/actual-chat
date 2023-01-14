@@ -1,10 +1,11 @@
-import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
-import { Log, LogLevel } from 'logging';
-import { endEvent } from '../../../../nodejs/src/event-handling';
+import { debounceTime, filter, fromEvent, map, merge, Subject, takeUntil } from 'rxjs';
+import { clamp } from 'math';
+import { hasModifierKey } from 'keyboard';
+import { endEvent } from 'event-handling';
+import { Timeout } from 'timeout';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
-import { Timeout } from '../../../../nodejs/src/timeout';
-import { clamp } from '../../../UI.Blazor/Components/VirtualList/ts/math';
 
+import { Log, LogLevel } from 'logging';
 const LogScope = 'Landing';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
@@ -19,6 +20,7 @@ export class Landing {
     private readonly disposed$ = new Subject<void>();
     private readonly menu: HTMLElement;
     private readonly header: HTMLElement;
+    private readonly scrollContainer: HTMLElement;
     private readonly links = new Array<HTMLElement>();
     private readonly pages = new Array<HTMLElement>();
     private lastPage0Top = 0;
@@ -37,12 +39,22 @@ export class Landing {
         this.menu = landing.querySelector('.landing-menu');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
         landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
+        this.scrollContainer = getScrollContainer(this.pages[0]);
 
         fromEvent(document, 'click')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onClick())
 
-        fromEvent(document.defaultView, 'scroll', { passive: true, capture: true })
+        fromEvent(document, 'keydown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
+
+        fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: WheelEvent) => this.onWheel(event));
+
+        // Scroll event bubbles only to document.defaultView
+        fromEvent(this.scrollContainer, 'scroll', { capture: true, passive: true })
             .pipe(
                 takeUntil(this.disposed$),
                 debounceTime(100),
@@ -80,31 +92,76 @@ export class Landing {
         this.header.classList.remove('hide-header');
     }
 
-    private getScrollAlignmentPage(isScrollingForward: boolean): HTMLElement | null {
-        debugLog?.log(`getScrollAlignmentPage(${isScrollingForward})`)
+    private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
+        const page = this.getCurrentPage();
+        if (page == null)
+            return;
+
+        if (isScrolling) {
+            const headerBottom = this.header.getBoundingClientRect().bottom;
+            const pageRect = page.getBoundingClientRect();
+            if (isScrolling && Math.abs(pageRect.top - headerBottom) < 0.1)
+                return; // < 1 means we're already aligned
+        }
+
+        const nextPage = this.getNextPage(page, isScrollDown, isScrolling);
+        if (nextPage == null)
+            return;
+
+        debugLog?.log(`autoScroll: starting`);
+        endEvent(event);
+        this.isAutoScrolling = true;
+        scrollWithOffset(nextPage, this.scrollContainer, this.header.getBoundingClientRect().height);
+    }
+
+    private getCurrentPage(): HTMLElement | null {
+        const headerBottom = this.header.getBoundingClientRect().bottom;
         for (let i = 0; i < this.pages.length; i++) {
             const page = this.pages[i];
             const pageRect = page.getBoundingClientRect();
-            const pageBreak = pageRect.bottom;
-            if (pageBreak > 0) {
-                if (Math.abs(pageRect.top) < 0.1)
-                    return null; // < 1 means we're already aligned
-
-                const nextPageOffset = isScrollingForward ? 1 : 0;
-                const nextPageIndex = clamp(i + nextPageOffset, 0, this.pages.length - 1);
-                debugLog?.log(`getScrollAlignmentPage: nextPageIndex = ${i} + ${nextPageOffset}`);
-                return this.pages[nextPageIndex];
-            }
+            const pageEnd = pageRect.bottom - 1;
+            if (pageEnd > headerBottom)
+                return this.pages[i];
         }
-        // Kinda impossible, but since we don't know how to align this...
         return null;
+    }
+
+    private getNextPage(page: HTMLElement, isScrollDown: boolean, isScrolling = false): HTMLElement | null {
+        if (page.classList.contains('no-auto-scroll'))
+            return null;
+
+        const pageIndex = this.pages.indexOf(page);
+        const nextPageOffset = isScrollDown ? 1 : isScrolling ? 0 : -1;
+        const nextPageIndex = clamp(pageIndex + nextPageOffset, 0, this.pages.length - 1);
+        debugLog?.log(`getNextPage: -> ${pageIndex} + ${nextPageOffset}`);
+        return this.pages[nextPageIndex];
     }
 
     // Event handlers
 
+    private onKeyDown(event: KeyboardEvent): void {
+        if (hasModifierKey(event))
+            return;
+        if (event.key == "ArrowDown" || event.key == "PageDown")
+            return this.autoScroll(true, event);
+        if (event.key == "ArrowUp" || event.key == "PageUp")
+            return this.autoScroll(false, event);
+    }
+
+    private onWheel(event: WheelEvent): void {
+        if (hasModifierKey(event))
+            return;
+        if (event.deltaY > 0)
+            return this.autoScroll(true, event);
+        if (event.deltaY < 0)
+            return this.autoScroll(false, event);
+    }
+
     private onScroll(isFinalCheck: boolean): void {
+        /*
         if (ScreenSize.isNarrow())
             return; // Don't align on mobile
+         */
 
         this.finalScrollCheckTimeout?.clear();
         this.finalScrollCheckTimeout = null;
@@ -133,13 +190,7 @@ export class Landing {
             return;
         }
 
-        const isScrollingForward = dPage0Top < 0;
-        const page = this.getScrollAlignmentPage(isScrollingForward);
-        if (page != null) {
-            debugLog?.log(`onScroll: starting auto-scroll`);
-            this.isAutoScrolling = true;
-            page.scrollIntoView({ behavior: 'smooth', block: ScrollBlock.start });
-        }
+        this.autoScroll(dPage0Top < 0, null, true);
     }
 
     private onClick() {
@@ -157,6 +208,26 @@ export class Landing {
 
 // Helpers
 
-function round(value: number): number {
-    return Math.round(value);
+function scrollWithOffset(
+    element: HTMLElement,
+    scrollingElement: HTMLElement,
+    offset: number,
+    behavior = 'smooth'
+) {
+    const dTop = element.getBoundingClientRect().top - offset - scrollingElement.getBoundingClientRect().top;
+    const options = {
+        behavior: behavior,
+        top: scrollingElement.scrollTop + dTop,
+    } as ScrollToOptions;
+    scrollingElement.scrollTo(options)
+}
+
+function getScrollContainer(element: HTMLElement): HTMLElement | null {
+    let parent = element.parentElement;
+    while (parent) {
+        if (parent.scrollHeight > parent.clientHeight) // = has vertical scroller
+            return parent;
+        parent = parent.parentElement;
+    }
+    return null;
 }

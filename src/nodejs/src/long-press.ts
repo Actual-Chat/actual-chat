@@ -37,13 +37,16 @@ export class LongPress {
         const mustCapture = { capture: true };
         document.addEventListener('click', this.onClick, mustCapture);
         document.addEventListener('contextmenu', this.onClick, mustCapture);
-        document.addEventListener('wheel', this.onAnyCancelling, mustCapture);
-        document.addEventListener('scroll', this.onAnyCancelling, mustCapture);
-        document.addEventListener(pointerDown, this.onPointerDown, mustCapture);
-        document.addEventListener(pointerMove, this.onPointerMove, mustCapture);
-        document.addEventListener(pointerUp, this.onPointerUp, mustCapture);
+
+        const mustCapturePassive = { capture: true, passive: true };
+        document.addEventListener('wheel', this.onAnyCancelling, mustCapturePassive);
+        // Scroll event bubbles only to document.defaultView
+        document.defaultView.addEventListener('scroll', this.onAnyCancelling, mustCapturePassive);
+        document.addEventListener(pointerDown, this.onPointerDown, mustCapturePassive);
+        document.addEventListener(pointerMove, this.onPointerMove, mustCapturePassive);
+        document.addEventListener(pointerUp, this.onPointerUp, mustCapturePassive);
         if (pointerCancel)
-            document.addEventListener(pointerCancel, this.onAnyCancelling, mustCapture);
+            document.addEventListener(pointerCancel, this.onAnyCancelling, mustCapturePassive);
     }
 
     private static fireLongPressEvent(element: HTMLElement, event: Event) {

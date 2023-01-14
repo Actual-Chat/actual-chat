@@ -1,15 +1,15 @@
 import { debounce, PromiseSource, serialize, throttle } from 'promises';
+import { clamp } from 'math';
+import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
 import { VirtualListDataQuery } from './ts/virtual-list-data-query';
-import { NumberRange, Range } from './ts/range';
+import { VirtualListItem } from './ts/virtual-list-item';
 import { VirtualListStatistics } from './ts/virtual-list-statistics';
-import { clamp } from './ts/math';
 import { Pivot } from './ts/pivot';
 
 import { Log, LogLevel } from 'logging';
-import { VirtualListItem } from './ts/virtual-list-item';
 
 const LogScope = 'VirtualList';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
