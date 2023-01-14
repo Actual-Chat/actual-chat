@@ -51,23 +51,19 @@ public abstract class StreamServerBase<TItem> : IDisposable
     }
 
     // do not wait for write completion - just register stream!
-    protected Task Write(Symbol streamId, IAsyncEnumerable<TItem> stream, CancellationToken cancellationToken)
+    protected async Task Write(Symbol streamId, IAsyncEnumerable<TItem> stream, CancellationToken cancellationToken)
     {
         StreamCounter?.Add(1);
         var entry = GetOrAddStream(streamId, WriteStreamExpiration);
         var memoizer = stream.Memoize(cancellationToken);
         TaskSource.For(entry.Value).SetResult(memoizer);
 
-        BackgroundTask.Run(async () => {
-                await memoizer.WriteTask.ConfigureAwait(false);
-                await Clocks.CpuClock.Delay(ReadStreamWaitDuration, CancellationToken.None).ConfigureAwait(false);
-                entry.Dispose();
-            },
-            Log,
-            $"{nameof(Write)} failed",
-            CancellationToken.None);
-
-        return Task.CompletedTask;
+        await memoizer.WriteTask.ConfigureAwait(false);
+        _ = Clocks.CpuClock
+            .Delay(ReadStreamWaitDuration, CancellationToken.None)
+            .ContinueWith(
+                _ => entry.Dispose(),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     // Private methods

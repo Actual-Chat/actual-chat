@@ -41,13 +41,15 @@ public class AudioHubBackendClient : HubClientBase,
     public async Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
     {
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
-        await connection.SendAsync("WriteAudioStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
+        // wait for stream upload completion
+        await connection.InvokeAsync("WriteAudioStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
     {
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
-        await connection.SendAsync("WriteTranscriptStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
+        // wait for stream upload completion
+        await connection.InvokeAsync("WriteTranscriptStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
