@@ -17,12 +17,12 @@
 }
 
 <div @ref="Ref" class="landing">
-    <LandingLeftMenu IsOpen="@m.IsMenuOpen" Signin="@(() => SignIn(googleScheme.Name))"/>
+    <LandingLeftMenu IsOpen="@_isMenuOpen" Signin="@(() => SignIn(googleScheme.Name))"/>
 
     @* Header *@
     <div class="landing-header blur-bg">
         @if (isMobile) {
-            <ButtonRound Class="menu-button" Click="@OnMenuHandle">
+            <ButtonRound Class="menu-button" Click="@OnMenuHandleClick">
                 <i class="icon-menu text-2xl"></i>
             </ButtonRound>
         }
@@ -496,6 +496,7 @@
 </div>
 
 @code {
+    private bool _isMenuOpen;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     private DotNetObjectReference<Landing> BlazorRef { get; set; } = null!;
@@ -522,7 +523,6 @@
                 Ref, BlazorRef
                 );
         }
-        await base.OnAfterRenderAsync(firstRender);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -535,22 +535,24 @@
         return new() {
             Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
             EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
-            IsMenuOpen = State.Value.IsMenuOpen,
         };
     }
 
     private void SignIn(string name)
         => ClientAuth.SignIn(name);
 
-    private void OnMenuHandle() {
-        var m = State.Value;
-        m.IsMenuOpen = !m.IsMenuOpen;
+    private void OnMenuHandleClick() {
+        _isMenuOpen = !_isMenuOpen;
         StateHasChanged();
     }
 
+    // JS API
+
     [JSInvokable]
-    public void CloseMenu()
-        => OnMenuHandle();
+    public void CloseMenu() {
+        _isMenuOpen = false;
+        StateHasChanged();
+    }
 
     // Nested types
 
@@ -559,6 +561,5 @@
 
         public AccountFull? Account { get; init; }
         public bool EnableIncompleteUI { get; init; }
-        public bool IsMenuOpen { get; set; }
     }
 }

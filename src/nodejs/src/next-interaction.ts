@@ -17,7 +17,7 @@ export class NextInteraction {
         if (this.isStarted)
             return;
 
-        const options = { passive: true };
+        const options = { capture: true, passive: true };
         document.addEventListener('click', this.onClick, options);
         document.addEventListener('doubleclick', this.onDoubleClick, options);
         document.addEventListener('onkeydown', this.onKeyDown, options);

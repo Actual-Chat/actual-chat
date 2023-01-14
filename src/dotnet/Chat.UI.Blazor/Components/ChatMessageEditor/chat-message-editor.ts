@@ -5,7 +5,7 @@ import {
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { Log, LogLevel } from 'logging';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
-import { throttle } from '../../../../nodejs/src/promises';
+import { throttle } from 'promises';
 
 const LogScope = 'MessageEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -222,6 +222,7 @@ export class ChatMessageEditor {
     });
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
+        debugger;
         for (const file of this.filePicker.files) {
             const added: boolean = await this.addAttachment(file);
             if (!added)

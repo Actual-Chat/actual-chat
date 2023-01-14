@@ -1,6 +1,7 @@
 import { Log, LogLevel } from 'logging';
 import { Timeout } from 'timeout';
 import { Vector2D } from 'math';
+import { endEvent } from 'event-handling';
 
 const LogScope = 'LongPress';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -137,7 +138,7 @@ export class LongPress {
         if (this.cancelNextClickEvent) {
             debugLog?.log('onClick: cancelling, event:', e);
             this.cancelNextClickEvent = false;
-            cancelEvent(e);
+            endEvent(e);
         }
     }
 }
@@ -166,12 +167,6 @@ function getNearestDataValue(e: HTMLElement, itemName: string): string | null {
         e = e.parentNode as HTMLElement;
     }
     return null;
-}
-
-function cancelEvent(event: Event) {
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    event.preventDefault();
 }
 
 LongPress.init();

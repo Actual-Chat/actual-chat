@@ -29,3 +29,7 @@ export class Vector2D {
         return this.x * this.x + this.y * this.y;
     }
 }
+
+export function clamp(n: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, n));
+}

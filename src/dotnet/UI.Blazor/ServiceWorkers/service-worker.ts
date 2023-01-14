@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 import { Log, LogLevel } from 'logging';
+import { endEvent } from 'event-handling';
 
 const LogScope = 'ServiceWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -38,7 +39,7 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 }, true);
 
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
-    event.stopImmediatePropagation();
+    endEvent(event);
     event.notification.close();
 
     const notificationUrl = event.notification?.data?.url;

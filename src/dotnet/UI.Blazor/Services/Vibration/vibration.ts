@@ -1,5 +1,5 @@
+import { delayAsync } from 'promises';
 import { Log, LogLevel } from 'logging';
-import { delayAsync } from '../../../../nodejs/src/promises';
 
 const LogScope = 'Vibration';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

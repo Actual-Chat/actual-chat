@@ -1,12 +1,12 @@
 // Please sort the imports alphabetically!
 export * from './Services/BrowserInfo/browser-info';
+export * from './Services/DataHrefHandler/data-href-handler'
 export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/HistoryUI/history-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
-export * from './Services/Navigator/navigator'
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';
 export * from './Services/ThemeUI/theme-ui'

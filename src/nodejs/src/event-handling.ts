@@ -72,3 +72,11 @@ export class EventHandlerSet<T> {
         return results;
     }
 }
+
+export function endEvent(event: Event, stopImmediatePropagation = true, preventDefault = true) : void {
+    event.stopPropagation();
+    if (stopImmediatePropagation)
+        event.stopImmediatePropagation();
+    if (preventDefault)
+        event.preventDefault();
+}

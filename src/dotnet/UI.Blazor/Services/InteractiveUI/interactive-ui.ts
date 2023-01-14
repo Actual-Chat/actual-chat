@@ -11,11 +11,11 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class InteractiveUI {
     private static backendRef: DotNet.DotNetObject = null;
-    private static backendIsInteractive: boolean = false;
-    private static isSyncing: boolean = false;
+    private static backendIsInteractive = false;
+    private static isSyncing = false;
     private static onAudioContextChanged: EventHandler<AudioContext | null> = null;
 
-    public static isInteractive: boolean = false;
+    public static isInteractive = false;
     public static isInteractiveChanged: EventHandlerSet<boolean> = new EventHandlerSet<boolean>();
 
     public static init(backendRef: DotNet.DotNetObject) {

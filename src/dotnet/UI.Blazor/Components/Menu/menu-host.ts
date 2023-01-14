@@ -15,6 +15,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
+import { endEvent } from 'event-handling';
 import { Vector2D } from 'math';
 import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
@@ -77,8 +78,7 @@ export class MenuHost implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: KeyboardEvent) => {
                 if (this.menu != null) {
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
+                    endEvent(event);
                     this.hide();
                 }
             });
@@ -336,8 +336,7 @@ export class MenuHost implements Disposable {
 
             // It's a click outside of any menu which doesn't trigger another menu
             this.hide({ isHoverMenu: false });
-            event.stopImmediatePropagation();
-            event.preventDefault();
+            endEvent(event);
             return;
         }
 
@@ -355,8 +354,7 @@ export class MenuHost implements Disposable {
         else
             this.render(menu);
 
-        event.stopImmediatePropagation();
-        event.preventDefault();
+        endEvent(event);
     }
 
     private async onMouseOver(event: Event): Promise<void> {
