@@ -22,9 +22,8 @@ export class Landing {
     private readonly links = new Array<HTMLElement>();
     private readonly pages = new Array<HTMLElement>();
     private lastPage0Top = 0;
-    private lastScrollDirection = 0;
-    private scrollCheckTimeout?: Timeout;
-    private scrollAlignTimeout?: Timeout;
+    private isAutoScrolling = false;
+    private finalScrollCheckTimeout?: Timeout;
 
     static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
         return new Landing(landing, blazorRef);
@@ -47,7 +46,7 @@ export class Landing {
             .pipe(
                 takeUntil(this.disposed$),
                 debounceTime(100),
-            ).subscribe(() => this.onScroll());
+            ).subscribe(() => this.onScroll(false));
     }
 
     public dispose() {
@@ -81,16 +80,17 @@ export class Landing {
         this.header.classList.remove('hide-header');
     }
 
-    private getScrollAlignmentPage(): HTMLElement | null {
+    private getScrollAlignmentPage(isScrollingForward: boolean): HTMLElement | null {
+        debugLog?.log(`getScrollAlignmentPage(${isScrollingForward})`)
         for (let i = 0; i < this.pages.length; i++) {
             const page = this.pages[i];
             const pageRect = page.getBoundingClientRect();
             const pageBreak = pageRect.bottom;
             if (pageBreak > 0) {
-                if (Math.abs(pageRect.top) < 1)
+                if (Math.abs(pageRect.top) < 0.1)
                     return null; // < 1 means we're already aligned
 
-                const nextPageOffset = this.lastScrollDirection > 0 ? 1 : 0;
+                const nextPageOffset = isScrollingForward ? 1 : 0;
                 const nextPageIndex = clamp(i + nextPageOffset, 0, this.pages.length - 1);
                 debugLog?.log(`getScrollAlignmentPage: nextPageIndex = ${i} + ${nextPageOffset}`);
                 return this.pages[nextPageIndex];
@@ -102,33 +102,44 @@ export class Landing {
 
     // Event handlers
 
-    private onScroll(): void {
+    private onScroll(isFinalCheck: boolean): void {
         if (ScreenSize.isNarrow())
             return; // Don't align on mobile
 
-        this.scrollCheckTimeout?.clear();
-        this.scrollAlignTimeout?.clear();
-        this.updateHeader();
+        this.finalScrollCheckTimeout?.clear();
+        this.finalScrollCheckTimeout = null;
 
+        this.updateHeader();
         const page0Top = this.pages[0].getBoundingClientRect().top;
         const dPage0Top = page0Top - this.lastPage0Top;
         this.lastPage0Top = page0Top;
-        debugLog?.log("scrollToPage: dPage0Top:", dPage0Top);
-        if (Math.abs(dPage0Top) > 1) {
-            // We're still scrolling, but since the dPage0Top may be < 1 even on scroll stop,
-            // we need to schedule a check that scroll really ended.
-            this.lastScrollDirection = -Math.sign(dPage0Top);
-            this.scrollCheckTimeout = new Timeout(200, () => this.onScroll());
+        debugLog?.log(`onScroll(${isFinalCheck}): dPage0Top:`, dPage0Top);
+
+        if (Math.abs(dPage0Top) < 0.1) {
+            // The scroll is stopped
+            debugLog?.log(`onScroll: scroll stopped`)
+            this.isAutoScrolling = false;
+            this.finalScrollCheckTimeout?.clear();
+            this.finalScrollCheckTimeout = null;
+            return;
+        }
+        if (this.isAutoScrolling) {
+            if (!isFinalCheck) {
+                // The very last scroll event may still report some dScrollTop, so...
+                debugLog?.log(`onScroll: scheduling final check`)
+                this.finalScrollCheckTimeout = new Timeout(100, () => this.onScroll(true));
+            }
+            // Still auto-scrolling
             return;
         }
 
-        this.scrollAlignTimeout = new Timeout(50, () => {
-            const page = this.getScrollAlignmentPage();
-            if (page != null) {
-                debugLog?.log(`scrollToPage: scrolling to page`, page)
-                page.scrollIntoView({ behavior: 'smooth', block: ScrollBlock.start })
-            }
-        })
+        const isScrollingForward = dPage0Top < 0;
+        const page = this.getScrollAlignmentPage(isScrollingForward);
+        if (page != null) {
+            debugLog?.log(`onScroll: starting auto-scroll`);
+            this.isAutoScrolling = true;
+            page.scrollIntoView({ behavior: 'smooth', block: ScrollBlock.start });
+        }
     }
 
     private onClick() {
