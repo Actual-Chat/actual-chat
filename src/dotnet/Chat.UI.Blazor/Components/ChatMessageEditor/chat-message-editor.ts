@@ -222,7 +222,6 @@ export class ChatMessageEditor {
     });
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
-        debugger;
         for (const file of this.filePicker.files) {
             const added: boolean = await this.addAttachment(file);
             if (!added)
