@@ -50,6 +50,10 @@
 
     public bool CanMoveBack => _currentStep != null && !IsFirst;
 
+    public int CurrentStepIndex => _currentStep != null ? _steps.IndexOf(_currentStep) + 1 : -1;
+
+    public int TotalSteps => _steps.Count;
+
     public async Task<bool> MoveForward() {
         if (_currentStep == null)
             return false;
