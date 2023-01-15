@@ -19,5 +19,6 @@
 @import './Components/CreationPanel/creation-panel.css';
 @import './Components/MentionList/mention-list.css';
 @import './Components/Onboarding/onboarding-modal.css';
+@import './Components/Onboarding/line-progress.css';
 
 @import './Pages/user-page.css';
