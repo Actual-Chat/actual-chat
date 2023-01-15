@@ -1,0 +1,20 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var cls = Kind == ChatEntryKind.Audio ? "icon-volume-up" : "icon-text";
+}
+
+<span class="chat-entry-kind-marker @cls"></span>
+
+@code {
+    private ChatEntryKind _lastKind;
+
+    [Parameter, EditorRequired] public ChatEntryKind Kind { get; set; }
+
+    protected override void OnParametersSet() {
+        if (_lastKind == Kind)
+            return;
+
+        _lastKind = Kind;
+        StateHasChanged();
+    }
+}
