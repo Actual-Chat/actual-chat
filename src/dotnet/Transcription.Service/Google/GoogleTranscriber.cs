@@ -200,8 +200,9 @@ public class GoogleTranscriber : ITranscriber
             ?? throw StandardError.Configuration(
                 $"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
         return (regionId, language.Code.Value) switch {
-            ("us-central1", "EN") => "us-central1",
-            ("us-central1", "ES") => "us-central1",
+            // region-specific recognizer endpoints are slow @ Jan 15, 2023
+            // ("us-central1", "EN") => "us-central1",
+            // ("us-central1", "ES") => "us-central1",
             _ => "us",
         };
     }
