@@ -29,6 +29,8 @@ export class TuneUI {
         'edit-message': [20],
         'reply-message': [20],
         'change-attachments': [20],
+        'select-primary-language': [50, 50, 50],
+        'select-secondary-language': [50],
     };
 
     public static play(tuneName: string): void {

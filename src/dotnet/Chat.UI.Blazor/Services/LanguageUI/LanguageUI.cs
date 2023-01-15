@@ -45,7 +45,11 @@ public class LanguageUI
         if (language == userChatSettings.Language)
             return language;
 
-        _ = TuneUI.Play("change-chat-language");
+        var tuneName = language == settings.Primary
+            ? "select-primary-language"
+            : "select-secondary-language";
+        _ = TuneUI.Play(tuneName);
+
         userChatSettings = userChatSettings with { Language = language };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
         return language;
