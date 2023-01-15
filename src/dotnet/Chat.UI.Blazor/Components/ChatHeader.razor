@@ -1,8 +1,15 @@
-<div class="flex-x justify-items-stretch items-center px-1 min-h-14 border-b border-bg-04">
-    <div class="flex-none self-start">
-        <NavbarButton/>
+@using ActualChat.Contacts
+@inherits FusionComponentBase
+@{
+    var canInvite = Chat.Rules.CanInvite();
+}
+<div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
+    <div>
+        <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
+            <i class="icon-arrow-left text-2xl"></i>
+        </ButtonRound>
     </div>
-    <div class="flex-auto flex-x justify-between items-center w-full gap-x-2 py-0.5 md:pl-2 overflow-auto">
+    <div class="flex-auto flex-x justify-between items-center w-full gap-x-2 py-0.5 md:pl-2 overflow-hidden">
         <ChatIcon Chat="Chat"/>
         <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
             <div class="flex-y self-center truncate">
@@ -16,21 +23,24 @@
         </div>
     </div>
     <div class="chat-header-control-panel mx-2">
-        <div class="hidden md:flex-x gap-x-1">
+        <div class="flex-x gap-x-1">
             <ChatSearch/>
-            <ButtonRound Click="OnInviteClick"
-                         Class="transparent"
-                         Tooltip="Add participants..."
-                         TooltipPosition="TooltipPosition.Bottom">
-                <i class="icon-person-add text-2xl ml-1"></i>
-            </ButtonRound>
+            @if(canInvite) {
+                <ButtonRound
+                    Click="OnInviteClick"
+                    Class="transparent"
+                    Tooltip="Add participants..."
+                    FloatingPosition="FloatingPosition.Bottom">
+                    <i class="icon-person-add text-2xl ml-1"></i>
+                </ButtonRound>
+            }
         </div>
         <ButtonRound
             Click="OnSwitchRightPanelClick"
             Class="transparent"
             Tooltip="Chat properties"
-            TooltipPosition="TooltipPosition.Bottom">
-            <i class="icon-more-vertical text-2xl"></i>
+            FloatingPosition="FloatingPosition.Bottom">
+            <i class="icon-layout text-2xl"></i>
         </ButtonRound>
     </div>
 </div>
@@ -38,14 +48,19 @@
 @code {
     private string _subTitle = " ";
 
+    [Inject] private Session Session { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnInviteClick()
-        => ModalUI.Show(new InviteChatAuthor.Model(Chat));
+        => ModalUI.Show(new InviteAuthor.Model(Chat));
 
     private void OnSwitchRightPanelClick()
-        => RightPanelUI.IsVisible.Value = !RightPanelUI.IsVisible.Value;
+        => RightPanelUI.Switch();
+
+    private void OnOpenLeftPanelClick()
+        => NavbarUI.ChangeVisibility(true);
 }

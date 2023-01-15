@@ -1,0 +1,16 @@
+.avatar-badge {
+    @apply flex-x items-center;
+}
+
+.avatar-name {
+    @apply whitespace-nowrap select-none;
+}
+
+.avatar-name > .c-anonymous {
+    @apply sup;
+}
+
+/* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */
+.avatar-name-spacing {
+    @apply w-10 w-11 w-12 w-14 w-16 w-20 w-24 w-28 w-32 w-36 w-40;
+}

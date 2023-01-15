@@ -1,44 +1,45 @@
 @page "/chat/{ChatId}"
+@page "/chat/"
 @using ActualChat.Notification.UI.Blazor
+@using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatPage.Model>
-@layout ChatLayout
+@layout ListViewLayout
 @{
-    var m = _lastRenderedModel = State.LatestNonErrorValue;
-    var error = State.Error;
+    var m = _rendered = State.Value;
     if (m.IsUnavailable) {
-        <RequireChat ChatId="@ChatId" />
+        <RequireChat ChatSid="@m.ChatId" />
         return;
     }
+    var error = State.Error; // AY: Add code displaying the error bar later
     var chat = m.Chat;
 }
 
-@if (error != null) {
-    <Error Title="Update error" Class="mb-3">@error.Message</Error>
-    return;
-}
+@* @key=... ensures child components are recreated on navigation to another chat *@
+
 @if (chat == null) {
-    <div>Loading...</div>
+    /* Chat isn't yet fetched, so nothing to render on the right side */
     return;
 }
 @if (!chat.IsPublic && !m.Account.IsActive()) {
     /* We check account here to avoid excessive render */
     <RequireAccount/>
 }
-@* @key=... ensures child components are recreated on navigation to another chat *@
+
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="chat">
         <ChatHeader/>
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubHeader" Order="-1000_000" Key="HistoricalPlaybackSubHeader">
-    <CascadingValue Value="chat">
-        <HistoricalPlaybackSubHeader/>
-    </CascadingValue>
-</RenderIntoStack>
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
     <CascadingValue Value="chat">
-        <UnreadMessagesSubHeader Click="@OnUnreadMessagesClick"/>
+        <UnreadCountSubHeader Click="@OnUnreadCountSubHeaderClick"/>
+    </CascadingValue>
+</RenderIntoStack>
+
+<RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
+    <CascadingValue Value="chat">
+        <Banners/>
     </CascadingValue>
 </RenderIntoStack>
 
@@ -48,13 +49,7 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="RecordingElsewhereSubHeader">
-    <CascadingValue Value="chat">
-        <RecordingElsewhereSubHeader/>
-    </CascadingValue>
-</RenderIntoStack>
-
-<RenderIntoSlot Name="MainRightPanel">
+<RenderIntoSlot Name="MainRightDrawer">
     <CascadingValue Value="chat">
         <ChatRightPanel/>
     </CascadingValue>
@@ -65,7 +60,7 @@
 </CascadingValue>
 
 @code {
-    private Model? _lastRenderedModel;
+    private Model? _rendered;
     private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -74,27 +69,14 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override async Task OnParametersSetAsync() {
-        var fullChatId = ChatId;
-        var chat = await Chats.Get(Session, ChatId, default);
-        if (chat != null)
-            fullChatId = chat.Id;
-        if (ChatUI.ActiveChatId.Value != fullChatId) {
-            ChatUI.ActiveChatId.Value = fullChatId;
-            ChatUI.LinkedChatEntry.Value = null;
-            UICommander.CancelUpdateDelays();
-        }
-        await base.OnParametersSetAsync();
-    }
-
     protected override bool ShouldRender()
-        => ReferenceEquals(_lastRenderedModel, null)
+        => ReferenceEquals(_rendered, null)
             || State.HasError
-            || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
+            || !ReferenceEquals(_rendered, State.Value);
 
     protected override Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
@@ -105,36 +87,43 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ChatId.IsNullOrEmpty()) {
-            Log.LogWarning("ChatId is null or empty");
-            return Model.Unavailable;
+        var chatId = new ChatId(ChatId, ParseOrNone.Option);
+        if (chatId.IsNone)
+            chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId.IsNone)
+            return Model.None;
+
+        if (ChatUI.SelectedChatId.Value != chatId) {
+            ChatUI.SelectChat(chatId);
+            if (ChatUI.RelatedChatEntry.Value != null)
+                ChatUI.HideRelatedEntry(false);
         }
 
-        var chat = await Chats.Get(Session, ChatId, cancellationToken);
-        if (chat == null)
-            return Model.Unavailable;
-
-        var account = await Accounts.Get(Session, cancellationToken);
-        var result = new Model(chat, account);
-        return result.IsSame(_lastRenderedModel) ? _lastRenderedModel! : result;
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        var result = new Model(chatId, chat, account);
+        return result.IsSame(_rendered) ? _rendered! : result;
     }
 
-    private void OnUnreadMessagesClick()
+    private void OnUnreadCountSubHeaderClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(Chat? Chat, Account? Account) {
-        public static Model None { get; } = new(null, null);
-        public static Model Unavailable { get; } = new(null, null) { IsUnavailable = true };
+    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account) {
+        public static Model None { get; } = new(default, null, AccountFull.None);
+        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
 
-        public bool IsUnavailable { get; init; }
+        public bool IsNone => ChatId.Id.IsEmpty;
+        public bool IsUnavailable => !IsNone && Chat is null;
 
         public bool IsSame(Model? other) {
             if (other == null)
                 return false;
-            return ReferenceEquals(Chat, other.Chat) && ReferenceEquals(Account, other.Account);
+            return ChatId == other.ChatId
+                && ReferenceEquals(Chat, other.Chat)
+                && ReferenceEquals(Account, other.Account);
         }
     }
 }

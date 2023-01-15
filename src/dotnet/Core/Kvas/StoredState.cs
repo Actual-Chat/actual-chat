@@ -7,14 +7,14 @@ public interface IStoredState<T> : IMutableState<T>
     Task WhenRead { get; }
 }
 
-public class StoredState<T> : MutableState<T>, IStoredState<T>
+public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 {
     private IStateSnapshot<T>? _snapshotOnSync;
     private ILogger? _log;
 
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-    protected Options Settings { get; }
-    protected TaskSource<Unit> WhenReadSource { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private Options Settings { get; }
+    private TaskSource<Unit> WhenReadSource { get; }
 
     public Task WhenRead => WhenReadSource.Task;
 

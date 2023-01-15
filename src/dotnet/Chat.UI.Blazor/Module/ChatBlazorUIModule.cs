@@ -1,16 +1,15 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
-using ActualChat.Kvas;
-using ActualChat.Search;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "chat";
@@ -28,42 +27,38 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
 
         // Singletons
-        services.TryAddSingleton<IChatMediaResolver, ChatMediaResolver>();
         fusion.AddComputeService<VirtualListTestService>();
-
-        // Transient
-        services.AddTransient<MarkupHub>();
-
-        // Navbar widgets
-        services.RegisterNavbarWidget<ChatListNavbarWidget>(navbarGroupId: ChatListNavbarWidget.NavbarGroupId);
-        services.RegisterNavbarWidget<ContactListNavbarWidget>(navbarGroupId: ContactListNavbarWidget.NavbarGroupId);
 
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
+        services.AddScoped<NavbarUI>(sp => new NavbarUI(sp));
+        services.AddScoped<AuthorUI>(sp => new AuthorUI(sp));
+        services.AddScoped<IAudioOutputController>(sp => new AudioOutputController(sp));
+        services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatUIStateSync>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<RecentChats>(ServiceLifetime.Scoped);
-        services.AddScoped<PlayableTextPaletteProvider>();
-        services.AddScoped<FrontendChatMentionResolverFactory>();
+        services.AddScoped<PlayableTextPaletteProvider>(sp => new PlayableTextPaletteProvider());
 
         // Chat activity
-        services.AddScoped<ChatActivity>();
-        services.AddScoped<UnreadMessagesFactory>();
+        services.AddScoped<ChatActivity>(sp => new ChatActivity(sp));
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
+
+        // Settings
+        services.AddScoped<LanguageUI>(sp => new LanguageUI(sp));
+        services.AddScoped<OnboardingUI>();
 
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }
 
     private void RegisterShowSettingsHandler(IServiceProvider services)
     {
-        var eventHub = services.GetRequiredService<UIEventHub>();
+        var eventHub = services.UIEventHub();
         eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
             var modalUI = services.GetRequiredService<ModalUI>();
-            modalUI.Show(new SettingsModal.Model(), "modal-full");
+            modalUI.Show(new SettingsModal.Model(), true);
             return Task.CompletedTask;
         });
     }

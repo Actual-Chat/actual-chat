@@ -10,6 +10,9 @@ public class MarkupParserTest : TestBase
         var m = Parse<PlainTextMarkup>("123 456", out var text);
         m.Text.Should().Be(text);
 
+        m = Parse<PlainTextMarkup>("123 _ 456", out text);
+        m.Text.Should().Be(text);
+
         m = Parse<PlainTextMarkup>(" ", out text);
         m.Text.Should().Be(text);
 
@@ -221,9 +224,9 @@ code
         Out.WriteLine($"  {simplified}");
         Out.WriteLine($"  Raw: {parsed}");
         var result = simplified.Should().BeOfType<TResult>().Subject;
-        var expectedMarkupText = text.Replace("\r\n", "\n");
-        var markupText1 = simplified.Format().Replace("\r\n", "\n");
-        var markupText2 = MarkupFormatter.Default.Format(simplified).Replace("\r\n", "\n");
+        var expectedMarkupText = text.OrdinalReplace("\r\n", "\n");
+        var markupText1 = simplified.Format().OrdinalReplace("\r\n", "\n");
+        var markupText2 = MarkupFormatter.Default.Format(simplified).OrdinalReplace("\r\n", "\n");
         markupText1.Should().Be(expectedMarkupText);
         markupText2.Should().Be(expectedMarkupText);
         return result;

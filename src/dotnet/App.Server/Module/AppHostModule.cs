@@ -1,14 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
+using System.IO.Compression;
 using System.Net;
-using System.Reflection;
+using ActualChat.Commands;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.OpenApi.Models;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
@@ -20,10 +20,13 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
+using Stl.Fusion.Server.Authentication;
+using Stl.Generators;
 using Stl.Plugins;
 
 namespace ActualChat.App.Server.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AppHostModule : HostModule<HostSettings>, IWebModule
 {
     public static string AppVersion { get; } =
@@ -43,6 +46,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
     public void ConfigureApp(IApplicationBuilder app)
     {
+        if (Settings.AssumeHttps) {
+            Log.LogWarning("AssumeHttps is on");
+            app.Use((context, next) => {
+                context.Request.Scheme = "https";
+                return next();
+            });
+        }
+
         // This server serves static content from Blazor Client,
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
@@ -66,38 +77,46 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
         // - https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-6.0
         app.UseForwardedHeaders();
+
         // And here we can modify httpContext.Request.Scheme & Host manually to whatever we like
-        if (!Settings.BaseUri.IsNullOrEmpty()) {
-            var baseUri = new Uri(Settings.BaseUri);
-            Log.LogInformation("Overriding request host to {BaseUri}", baseUri);
-            app.UseBaseUri(baseUri);
+        var baseUrl = Settings.BaseUrl;
+        if (!baseUrl.IsNullOrEmpty()) {
+            Log.LogInformation("Overriding request host to {BaseUrl}", baseUrl);
+            app.UseBaseUrl(baseUrl);
         }
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         });
-        app.UseFusionSession();
 
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
         app.UseStaticFiles();
+        /*
         app.UseSwagger();
         app.UseSwaggerUI(c => {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
         });
+        */
+
+        // Response compression
+        app.UseResponseCompression();
 
         // API controllers
+        app.UseFusionSession();
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
-        app.UseAuthorization();
         app.UseEndpoints(endpoints => {
+            endpoints.MapAppHealth();
+            endpoints.MapAppMetrics();
             endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
             endpoints.MapControllers();
             endpoints.MapFallbackToPage("/_Host");
         });
+        app.UseOpenTelemetryPrometheusScrapingEndpoint();
     }
 
     public override void InjectServices(IServiceCollection services)
@@ -106,32 +125,36 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        // UriMapper
-        services.AddSingleton(c => {
-            var baseUri = Settings.BaseUri;
-            if (!baseUri.IsNullOrEmpty())
-                return new UriMapper(baseUri);
-
-            var server = c.GetRequiredService<IServer>();
-            var serverAddressesFeature =
-                server.Features.Get<IServerAddressesFeature>()
-                ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
-            baseUri = serverAddressesFeature.Addresses.FirstOrDefault()
-                ?? throw StandardError.NotFound<IServerAddressesFeature>(
-                    "No server addresses found. Most likely you trying to use UriMapper before the server has started.");
-            return new UriMapper(baseUri);
+        // Host options
+        services.Configure<HostOptions>(o => {
+            o.ShutdownTimeout = Env.IsDevelopment()
+                ? TimeSpan.FromSeconds(1)
+                : TimeSpan.FromSeconds(30);
         });
-        services.AddSingleton<ContentUrlMapper>();
 
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);
 
+        // Queues
+        services.AddLocalCommandQueues();
+        services.AddCommandQueueScheduler(Queues.Default.Name);
+        services.AddCommandQueueScheduler(Queues.Users.Name);
+        services.AddCommandQueueScheduler(Queues.Chats.Name);
+
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
-        services.AddSingleton(new PublisherOptions { Id = hostName });
+        services.AddSingleton(new PublisherOptions {
+            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, Alphabet.AlphaNumeric)}",
+        });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
@@ -150,17 +173,45 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         services.AddCors(options => {
             options.AddPolicy("Default", builder => {
                 builder.AllowAnyOrigin().WithFusionHeaders();
-                builder.WithOrigins("https://0.0.0.0")
+                builder.WithOrigins(
+                        "http://0.0.0.0",
+                        "https://0.0.0.0",
+                        "app://0.0.0.0",
+                        "http://0.0.0.0:7080",
+                        "https://0.0.0.0:7080",
+                        "https://0.0.0.0:7081"
+                    )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
             });
         });
+        /*
+        services.Configure<HstsOptions>(options => {
+            options.ExcludedHosts.Add("local.actual.chat");
+            options.ExcludedHosts.Add("localhost");
+        });
+        */
         services.Configure<ForwardedHeadersOptions>(options => {
             options.ForwardedHeaders = ForwardedHeaders.All;
+            if (Settings.AssumeHttps)
+                options.ForwardedHeaders &= ~ForwardedHeaders.XForwardedProto;
             options.KnownNetworks.Clear();
             options.KnownProxies.Clear();
         });
+
+        // Compression
+        services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+        services.AddResponseCompression(o => {
+            o.EnableForHttps = true;
+            o.Providers.Add<BrotliCompressionProvider>();
+        });
+        services.AddSingleton(new WebSocketServer.Options() {
+            ConfigureWebSocket = () => new WebSocketAcceptContext() {
+                DangerousEnableCompression = true,
+            },
+        });
+
         services.AddRouting();
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
@@ -173,21 +224,19 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         fusionAuth.AddBlazor(); // Must follow services.AddServerSideBlazor()!
 
         // Swagger & debug tools
+        /*
         services.AddSwaggerGen(c => {
             c.SwaggerDoc("v1",
                 new OpenApiInfo {
                     Title = "ActualChat API", Version = "v1",
                 });
         });
+        */
 
         // OpenTelemetry
-        var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
-        if (!openTelemetryEndpoint.IsNullOrEmpty()) {
-            var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
-            var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
-            Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-            services.AddOpenTelemetryMetrics(builder => builder
-                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))
+        services.AddSingleton<OtelMetrics>();
+        var otelBuilder = services.AddOpenTelemetry()
+            .WithMetrics(builder => builder
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 .AddAspNetCoreInstrumentation()
@@ -195,20 +244,17 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddMeter(typeof(IComputed).GetMeter().Name) // Fusion meter
                 .AddMeter(typeof(ICommand).GetMeter().Name) // Commander meters
                 .AddMeter(MeterExt.Unknown.Name) // Unknown meter
-                .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Batch;
-                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
-                        ExporterTimeoutMilliseconds = 10_000,
-                        MaxExportBatchSize = 256,
-                        MaxQueueSize = 1024,
-                        ScheduledDelayMilliseconds = 20_000,
-                    };
-                    cfg.Protocol = OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = openTelemetryEndpointUri;
+                .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
+                    cfg.ScrapeEndpointPath = "/metrics";
+                    cfg.ScrapeResponseCacheDurationMilliseconds = 300;
                 })
             );
-            services.AddOpenTelemetryTracing(builder => builder
-                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))
+        var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
+        if (!openTelemetryEndpoint.IsNullOrEmpty()) {
+            var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
+            var openTelemetryEndpointUri = $"http://{host}:{port.Format()}".ToUri();
+            Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
+            otelBuilder = otelBuilder.WithTracing(builder => builder
                 .SetErrorStatusOnException()
                 .AddSource(AppTrace.Name)
                 .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
@@ -221,6 +267,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                         "/status",
                         "/_blazor",
                         "/_framework",
+                        "/healthz",
                     };
                     opt.Filter = httpContext =>
                         !excludedPaths.Any(x
@@ -233,7 +280,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
                     cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
                         ExporterTimeoutMilliseconds = 10_000,
-                        MaxExportBatchSize = 256,
+                        MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                         MaxQueueSize = 1024,
                         ScheduledDelayMilliseconds = 20_000,
                     };
@@ -242,5 +289,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 })
             );
         }
+        otelBuilder.ConfigureResource(builder => builder
+                .AddService("App", "actualchat", AppVersion))
+            .StartWithHost();
     }
 }

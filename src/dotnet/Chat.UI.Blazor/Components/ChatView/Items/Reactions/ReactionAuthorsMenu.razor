@@ -1,0 +1,31 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<ul>
+    @foreach (var authorId in _firstAuthorIds) {
+        <li class="reaction-authors-menu-item">
+            <AuthorBadge AuthorSid="@authorId" Size="SquareSize.Size5"/>
+            <EmojiIcon Id="@_emoji" class="reaction-authors-menu-item-emoji"/>
+        </li>
+    }
+</ul>
+
+@code {
+    private string _emoji = "";
+    private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
+
+    [Inject] private IReactions Reactions { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sEntryId, var emoji ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        var entryId = new TextEntryId(sEntryId);
+        var summaries = await Reactions.ListSummaries(Session, entryId, CancellationToken.None).ConfigureAwait(false);
+        var summary = summaries.FirstOrDefault(x => x.EmojiId == _emoji);
+
+        _emoji = emoji;
+        _firstAuthorIds = summary?.FirstAuthorIds ?? ImmutableList<AuthorId>.Empty;
+    }
+}

@@ -69,7 +69,7 @@ public sealed class Expiring<TKey, TValue> : IDisposable
     }
 
     public override string ToString()
-        => $"{GetType().Name}({Key}, {Value})";
+        => $"{GetType().GetName()}({Key}, {Value})";
 
     public Expiring<TKey, TValue> SetDisposer(Func<Expiring<TKey, TValue>, ValueTask> disposer)
     {

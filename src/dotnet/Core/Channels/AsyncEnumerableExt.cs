@@ -7,13 +7,13 @@ public static class AsyncEnumerableExt
     public static IAsyncEnumerable<T> AsEnumerableOnce<T>(this IAsyncEnumerator<T> enumerator, bool suppressDispose)
         => new AsyncEnumerableOnce<T>(enumerator, suppressDispose);
 
-    public static IAsyncEnumerable<T> Debounce<T>(this IAsyncEnumerable<T> source,
-        TimeSpan minUpdateDelay,
+    public static IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
+        TimeSpan minInterval,
         CancellationToken cancellationToken = default)
-        => source.Debounce(minUpdateDelay, MomentClockSet.Default.CpuClock, cancellationToken);
+        => source.Throttle(minInterval, MomentClockSet.Default.CpuClock, cancellationToken);
 
-    public static async IAsyncEnumerable<T> Debounce<T>(this IAsyncEnumerable<T> source,
-        TimeSpan minUpdateDelay,
+    public static async IAsyncEnumerable<T> Throttle<T>(this IAsyncEnumerable<T> source,
+        TimeSpan minInterval,
         IMomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -26,8 +26,8 @@ public static class AsyncEnumerableExt
         _ = source.CopyTo(c, ChannelCompletionMode.Full, cancellationToken);
         await foreach (var item in c.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
             yield return item;
-            if (minUpdateDelay > TimeSpan.Zero)
-                await clock.Delay(minUpdateDelay, cancellationToken).ConfigureAwait(false);
+            if (minInterval > TimeSpan.Zero)
+                await clock.Delay(minInterval, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -142,6 +142,12 @@ public static class AsyncEnumerableExt
         this IAsyncEnumerable<TSource> source,
         Func<TSource,bool> splitPredicate,
         CancellationToken cancellationToken)
+        => source.Split((_, s) => splitPredicate(s), cancellationToken);
+
+    public static (IAsyncEnumerable<TSource> Matched, IAsyncEnumerable<TSource> NotMatched) Split<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        Func<int,TSource,bool> splitPredicate,
+        CancellationToken cancellationToken)
     {
         var matched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
             SingleWriter = true,
@@ -155,8 +161,9 @@ public static class AsyncEnumerableExt
         _ = BackgroundTask.Run(async () => {
             Exception? error = null;
             try {
+                var i = 0;
                 await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
-                    if (splitPredicate(item))
+                    if (splitPredicate(i++, item))
                         await matched.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
                     else
                         await notMatched.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
@@ -171,6 +178,44 @@ public static class AsyncEnumerableExt
         }, cancellationToken);
 
         return (matched.Reader.ReadAllAsync(cancellationToken), notMatched.Reader.ReadAllAsync(cancellationToken));
+    }
+
+
+    public static (Task<TSource> HeadTask, IAsyncEnumerable<TSource> Tail) SplitHead<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        CancellationToken cancellationToken)
+    {
+        var headTaskSource = TaskSource.New<TSource>(true);
+        var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
+            SingleWriter = true,
+            SingleReader = true,
+        });
+
+        _ = BackgroundTask.Run(async () => {
+            Exception? error = null;
+            try {
+                bool isHead = true;
+                await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+                    if (isHead) {
+                        isHead = false;
+                        headTaskSource.SetResult(item);
+                    }
+                    else
+                        await notMatched.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                error = e;
+            }
+            finally {
+                if (error != null)
+                    headTaskSource.TrySetException(error);
+                else
+                    headTaskSource.TrySetCanceled();
+                notMatched.Writer.TryComplete(error);
+            }
+        }, cancellationToken);
+
+        return (headTaskSource.Task, notMatched.Reader.ReadAllAsync(cancellationToken));
     }
 
     public static async IAsyncEnumerable<List<TSource>> Chunk<TSource>(

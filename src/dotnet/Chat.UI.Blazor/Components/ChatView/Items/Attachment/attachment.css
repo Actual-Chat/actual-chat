@@ -1,0 +1,12 @@
+.image-attachment, .file-attachment {
+    @apply mt-1;
+}
+.file-attachment-name {
+    @apply text-blue-700 cursor-pointer overflow-hidden text-ellipsis hover:underline;
+}
+.file-attachment-size {
+    @apply text-03 text-xs;
+}
+.image-attachment img.skeleton {
+    @apply bg-skeleton rounded-md animate-pulse;
+}

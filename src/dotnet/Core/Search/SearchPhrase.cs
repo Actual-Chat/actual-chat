@@ -30,7 +30,7 @@ public sealed class SearchPhrase
     }
 
     public override string ToString()
-        => $"{GetType().Name}(\"{Text}\", re'{GetTermRegexString()}')";
+        => $"{GetType().GetName()}(\"{Text}\", re'{GetTermRegexString()}')";
 
     public string GetTermRegexString()
     {
@@ -109,8 +109,9 @@ public sealed class SearchPhrase
 
     private static string[] GetTerms(string text, bool addEndings)
     {
-        if (text.IsNullOrEmpty())
+        if (text.NullIfWhiteSpace() == null)
             return Array.Empty<string>();
+
         var parts = TermSplitRegex.Split(text);
         if (!addEndings)
             return parts;

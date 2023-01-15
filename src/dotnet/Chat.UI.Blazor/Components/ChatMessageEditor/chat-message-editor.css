@@ -1,17 +1,41 @@
 .chat-message-editor {
+    @apply relative;
     @apply bg-07 md:bg-01;
 }
-.message-input::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+.chat-message-editor.narrow {
+    background: transparent;
 }
-
-.message-input {
-    @apply flex-1 overflow-y-auto max-h-48 md:max-h-88 mx-2 md:ml-1 md:mr-4;
-    @apply break-all outline-none hover:cursor-text text-counter md:text-02 bg-07 md:bg-03;
+.post-panel-wrapper {
+    @apply -flex-y w-full overflow-x-hidden bg-transparent;
+}
+.chat-message-editor.narrow .post-panel-wrapper {
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 40%, rgba(68,68,68,1) 40%);
+}
+.chat-message-editor.narrow.narrow-panel .post-panel-wrapper {
+    @apply bg-07;
 }
 .post-panel {
-    @apply bg-07 md:bg-03 rounded-3xl min-h-12 items-center outline-none;
+    @apply flex-x justify-between items-center;
+    @apply w-full min-h-12;
+    @apply border-bg-01 outline-none bg-07 md:bg-03 md:rounded-3xl;
+}
+.post-panel .message-input {
+    @apply flex-1;
+    @apply max-h-48 md:max-h-88;
+    @apply mr-2 md:mr-4;
+    @apply break-words text-counter md:text-02 hover:cursor-text;
+    @apply outline-none bg-07 md:bg-03;
+    @apply overflow-y-auto overflow-x-hidden;
+}
+.post-panel .message-input .editor-content {
+    @apply ml-0;
+    /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
+       but flexbox ensures it never grows above what's allowed;
+       I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
+    @apply w-10;
+}
+.post-panel .message-input .editor-content::-webkit-scrollbar {
+    display: none;
 }
 
 .not-recording {
@@ -29,11 +53,11 @@
 /* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex flex-row-reverse right-2 h-12 w-12 bg-transparent;
+    @apply flex-none flex flex-row-reverse right-2 h-12 w-12 bg-transparent; /* -flex-x here somehow makes webpack fail */
 }
 .btn.btn-round.notify-call-toggle,
 .panel-closed .btn.btn-round.notify-call-toggle {
-    @apply flex self-end outline-none p-0 h-12 scale-100;
+    @apply flex-none flex-x self-end outline-none p-0 mx-1 md:mx-0 h-12 scale-100;
     @apply text-05 md:text-icons-01 bg-07 md:bg-03;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
@@ -50,7 +74,7 @@
     @apply text-04 md:text-03;
 }
 .notify-call-content .btn {
-    @apply rounded-full min-h-0 h-auto px-0 min-w-0;
+    @apply flex-none rounded-full min-h-0 h-auto px-0 min-w-0;
 }
 .notify-call-content .btn.notify-btn {
     @apply md:bg-04 md:border-bg-04 md:text-03;
@@ -103,37 +127,57 @@
     @apply disabled;
 }
 
+.attachment-list-wrapper {
+    @apply relative flex-y bg-01 px-2 border-y;
+}
 .attachment-list {
-    @apply flex justify-start mx-2 my-2 py-2 px-2 overflow-x-auto w-full;
-    @apply grid grid-flow-col auto-cols-auto divide-x-2 divide-bg-04 divide-dashed;
-    @apply border-4 border-primary rounded-xl;
+    @apply flex-x gap-x-4 w-full justify-start my-1 p-2 overflow-x-auto;
 }
-.clear-attachments-btn.btn.btn-round {
-    @apply relative min-w-12 self-center;
+.clear-attachments-btn.btn {
+    @apply min-h-6 max-h-6 border-transparent;
 }
-.clear-attachments-btn.btn.btn-round .btn-content {
-    @apply bg-error text-error-title min-w-full;
+.clear-attachments-btn.btn:hover {
+    @apply border-error;
+}
+.clear-attachments-btn.btn .btn-content {
+    @apply min-w-full text-error font-medium;
 }
 .post-attachments-btn.btn.btn-round {
-    @apply hidden md:flex relative min-w-12 self-center;
+    @apply relative min-w-12 self-center;
 }
 .post-attachments-btn.btn.btn-round .btn-content {
     @apply bg-primary text-primary-title min-w-full;
 }
 .attachment-wrapper {
-    @apply relative min-w-48 max-w-48 mr-2 pl-2 first:pl-0 last:mr-0;
+    @apply relative p-px bg-03 rounded-lg;
 }
 .attachment-item {
-    @apply relative grid min-h-40 max-h-48 p-3 rounded-none overflow-y-auto overflow-x-hidden;
+    @apply relative flex-y gap-x-1 justify-center mt-auto rounded-t-lg overflow-hidden;
+    @apply min-h-34 max-h-34 min-w-34 max-w-34;
 }
-.attachment-wrapper .btn.btn-round {
-    @apply w-8 h-8 text-04 m-0 self-center;
+.remove-attachment-btn.btn {
+    @apply absolute top-0 right-0 text-04;
+    @apply min-w-9 max-w-9 min-h-9 max-h-9 self-center;
 }
-.attachment-wrapper .btn.btn-round .btn-content {
-    @apply bg-primary;
+.remove-attachment-btn.btn .btn-content {
+    @apply justify-center;
+    background: rgba(0,0,0,0.4);
 }
-.attachment-wrapper .btn.btn-round:hover .btn-content {
-    @apply bg-error-ring;
+.remove-attachment-btn.btn .btn-content i {
+    @apply opacity-80;
+}
+.remove-attachment-btn.btn:hover .btn-content {
+    @apply bg-error opacity-80;
+}
+.attachment-filename {
+    @apply flex-1 w-full max-w-34 truncate self-center px-2 md:px-0.5 p-0.5 cursor-default;
+    @apply text-center text-03 text-xs font-medium bg-01 rounded-b-lg;
+}
+.add-attachment.btn .btn-content {
+    @apply bg-04;
+}
+.add-attachment.btn:hover .btn-content {
+    @apply bg-03;
 }
 .attach-btn.btn.btn-round {
     @apply self-start;
@@ -145,74 +189,21 @@
     @apply absolute bottom-2;
 }
 
-/* Desktop control panel */
-.recorder-panel {
-    @apply hidden md:-flex-x h-12;
-    @apply justify-center gap-x-2.5;
-    @apply bg-01 outline-none rounded-none;
-    @apply self-end;
+.related-chat-entry-panel {
+    @apply flex-x bg-03 w-full h-10 outline-none py-0;
 }
-.recorder-panel > div {
-    @apply flex flex-1 w-fit h-fit self-end rounded-full;
+.related-chat-entry {
+    @apply flex-x w-full items-center bg-03 md:py-2 px-2 text-base cursor-pointer;
 }
-.recorder-panel .desktop-button {
-    @apply flex rounded-full;
+.related-chat-entry .btn.btn-round {
+    @apply mx-1 md:mx-2 min-w-12 md:min-w-0;
 }
-.recorder-panel .recorder-wrapper {
-    @apply relative flex top-1 justify-center h-14 w-14 border border-primary;
+.related-chat-entry .btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
 }
-.recorder-panel .recorder-wrapper .btn {
-    @apply self-center m-0.5;
+.related-chat-entry-panel .btn.btn-round .btn-content {
+    @apply min-h-8 max-h-8;
 }
-.recorder-panel .recorder-wrapper .record-off-btn.btn .btn-content {
-    @apply bg-primary text-04;
-}
-.recorder-panel .recorder-wrapper .record-on-btn.btn .btn-content {
-    @apply bg-error text-04;
-}
-.recorder-panel .recorder-wrapper.record-off,
-.recorder-panel-control-panel .recorder-wrapper.record-on-to-off {
-    @apply border-primary transition-colors duration-300;
-}
-.recorder-panel .recorder-wrapper.record-on,
-.recorder-panel .recorder-wrapper.record-off-to-on {
-    @apply border-error transition-colors duration-300;
-}
-.recorder-panel .recorder-wrapper .record-on-btn.btn .btn-content {
-    @apply shadow-mobile-button shadow-error-hover;
-}
-.recorder-panel .recorder-wrapper .record-off-btn.btn .btn-content {
-    @apply shadow-lg shadow-secondary;
-}
-.recorder-panel .recorder-wrapper.record-off .record-on-btn.btn {
-    @apply absolute scale-0;
-}
-.recorder-panel .recorder-wrapper.record-off .record-off-btn.btn {
-    @apply scale-100;
-}
-.recorder-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
-    @apply absolute animate-scale-to-5 scale-0;
-}
-.recorder-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
-    @apply animate-scale-to-full scale-100;
-}
-.recorder-panel .recorder-wrapper.record-on .record-off-btn.btn {
-    @apply absolute scale-0;
-}
-.recorder-panel .recorder-wrapper.record-on .record-on-btn.btn {
-    @apply scale-100;
-}
-.recorder-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
-    @apply absolute animate-scale-to-5 scale-0;
-}
-.recorder-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
-    @apply animate-scale-to-full scale-100;
-}
-
-.btn.chat-language-toggle {
-    @apply font-semibold text-lg md:text-base text-icons-01;
-}
-
-.linked-message-panel {
-    @apply flex-x bg-03 w-full h-8 outline-none py-0;
+.related-chat-entry-panel .btn.btn-round:hover .btn-content {
+    @apply bg-transparent;
 }

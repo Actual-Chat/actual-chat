@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Blazored.Modal;
 using Blazored.Modal.Services;
 using Stl.Extensibility;
@@ -6,29 +7,62 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class ModalUI
 {
-    private IModalService ModalService { get; }
+    private BrowserInfo BrowserInfo { get; }
+    private HistoryUI HistoryUI { get; }
+    private ModalService ModalService { get; }
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
-    public ModalUI(IModalService modalService, IMatchingTypeFinder matchingTypeFinder)
+    public ModalUI(IServiceProvider services)
     {
-        ModalService = modalService;
-        MatchingTypeFinder = matchingTypeFinder;
+        BrowserInfo = services.GetRequiredService<BrowserInfo>();
+        HistoryUI = services.GetRequiredService<HistoryUI>();
+        ModalService = services.GetRequiredService<ModalService>();
+        MatchingTypeFinder = services.GetRequiredService<IMatchingTypeFinder>();
     }
 
-    public IModalReference Show<TModel>(TModel model, string cls = "")
+#pragma warning disable IL2072
+    public Task<IModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
         var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
         if (componentType == null)
             throw StandardError.NotFound<IModalView>(
-                $"No modal view component for '{model.GetType()}' model.");
+                $"No modal view component for '{model.GetType().GetName()}' model.");
 
-        var modalOptions = new ModalOptions {
-            Class = $"blazored-modal modal {cls}",
-            HideHeader = true,
-        };
-        var modalParameters = new ModalParameters();
-        modalParameters.Add(nameof(IModalView<TModel>.ModalModel), model);
-        return ModalService.Show(componentType, "", modalParameters, modalOptions);
+        IModalRef? modalReference = null;
+        var whenCompletedSource = TaskSource.New<IModalRef>(true);
+        HistoryUI.NavigateTo(
+            () => {
+                modalReference = ShowInternal(componentType, model, isFullScreen);
+                whenCompletedSource.TrySetResult(modalReference);
+                modalReference.ModalCloseRequest += (s, e) => {
+                    e.Handled = true;
+                    _ = HistoryUI.GoBack();
+                };
+            },
+            () => {
+                modalReference?.Close();
+            });
+        return whenCompletedSource.Task;
     }
+
+    private IModalRef ShowInternal<TModel>(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType,
+        TModel model,
+        bool isFullScreen)
+        where TModel : class
+    {
+        var modalOptions = new ModalOptions {
+            Class = "blazored-modal modal",
+        };
+        if (isFullScreen)
+            modalOptions.PositionCustomClass = "position-fullscreen";
+        var modalContent = new RenderFragment(builder => {
+            builder.OpenComponent(0, componentType);
+            builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
+            builder.CloseComponent();
+        });
+        return ModalService.Show(modalContent, modalOptions);
+    }
+#pragma warning restore IL2072
 }

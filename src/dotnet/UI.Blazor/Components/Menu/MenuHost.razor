@@ -1,0 +1,131 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@implements IAsyncDisposable
+@{
+    RenderFragment RenderMenu(MenuModel menu) =>
+        @<div
+             id="@menu.Id"
+             @key="menu.Id"
+             class="@(GetMenuCssClass(menu))">
+            <ul class="ac-menu-list">
+                <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
+            </ul>
+        </div>;
+    var menu = _menu;
+}
+
+<div class="ac-menu-host @(GetHostCssClass())">
+    <CascadingValue Value="@this" IsFixed="true">
+        @if (IsOverlayVisible()) {
+            <div class="ac-menu-overlay">
+                @if (menu != null) {
+                    @RenderMenu(menu);
+                }
+            </div>
+        } else {
+            @if (menu != null) {
+                @RenderMenu(menu);
+            }
+        }
+    </CascadingValue>
+</div>
+
+@code {
+    private MenuModel? _menu;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<MenuHost> _blazorRef = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+
+    public ValueTask Show(
+        MenuRef menuRef,
+        string triggerElementId,
+        string? placement = null,
+        bool isHoverMenu = false)
+        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, triggerElementId, placement);
+
+    public ValueTask Show(
+        MenuRef menuRef,
+        ElementReference triggerElement,
+        string? placement = null,
+        bool isHoverMenu = false)
+        => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, triggerElement, placement);
+
+    public ValueTask Hide(IMenu menu)
+        => _jsRef.InvokeVoidAsync("hideById", menu.Id);
+
+    public ValueTask Position(IMenu menu)
+        => _jsRef.InvokeVoidAsync("positionById", menu.Id);
+
+    // JS interface
+
+    [JSInvokable]
+    public Task OnRenderRequest(string id, string menuRef, bool isHoverMenu) {
+        if (_menu?.Id == id)
+            return Task.CompletedTask;
+
+        var parsedMenuRef = MenuRef.Parse(menuRef);
+        _menu = new MenuModel(
+            id,
+            parsedMenuRef.MenuType,
+            new Dictionary<string, object>() {
+                { nameof(IMenu.Id), id },
+                { nameof(IMenu.Arguments), parsedMenuRef.Arguments },
+            },
+            isHoverMenu);
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnHideRequest(string id) {
+        if (_menu?.Id != id)
+            return Task.CompletedTask;
+
+        _menu = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // Protected & private methods
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            var identifier = $"{BlazorUICoreModule.ImportName}.MenuHost.create";
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef);
+        }
+    }
+
+    private bool IsOverlayVisible()
+        => ScreenSize.IsNarrow() && _menu != null;
+
+    private string GetHostCssClass()
+        => IsOverlayVisible() ? "has-overlay" : "";
+
+    private string GetMenuCssClass(MenuModel menu) {
+        var cls = menu.IsHoverMenu
+            ? "ac-menu-hover"
+            : "ac-menu";
+        if (IsOverlayVisible())
+            cls += " !block";
+        return cls;
+    }
+
+    private sealed record MenuModel(
+        string Id,
+        Type Type,
+        Dictionary<string, object> Parameters,
+        bool IsHoverMenu);
+}

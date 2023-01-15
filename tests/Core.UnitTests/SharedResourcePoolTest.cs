@@ -64,7 +64,7 @@ public class SharedResourcePoolTest : TestBase
         var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
-            ResourceDisposeDelay = TimeSpan.FromSeconds(0.5),
+            ResourceDisposeDelay = TimeSpan.FromSeconds(0.2),
         };
 
         var l = await pool.Rent(10, cancellationToken);
@@ -85,15 +85,14 @@ public class SharedResourcePoolTest : TestBase
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
-            await testClock.Delay(1000, cancellationToken);
+            await testClock.Delay(500, cancellationToken);
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
         l.IsRented.Should().BeFalse();
 
-        await testClock.Delay(1000, cancellationToken);
+        await testClock.Delay(2000, cancellationToken);
         l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
-
     }
 
     [Fact (Timeout = 5000)]

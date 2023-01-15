@@ -4,6 +4,7 @@ public interface IModalView
 { }
 
 public interface IModalView<TModel> : IModalView
+    where TModel : class
 {
     TModel ModalModel { get; set; }
 }

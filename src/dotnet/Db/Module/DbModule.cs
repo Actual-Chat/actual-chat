@@ -1,5 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Configuration;
-using ActualChat.Db.MySql;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +12,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Db.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class DbModule : HostModule<DbSettings>
 {
     public DbModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -32,13 +33,14 @@ public class DbModule : HostModule<DbSettings>
 
         // Replacing variables
         var instance = Plugins.GetPlugins<CoreModule>().Single().Settings.Instance;
+        var contextName = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant();
         connectionString = Variables.Inject(connectionString,
             ("instance", instance),
             ("instance_", instance.IsNullOrEmpty() ? "" : $"{instance}_"),
             ("instance.", instance.IsNullOrEmpty() ? "" : $"{instance}."),
             ("_instance", instance.IsNullOrEmpty() ? "" : $"_{instance}"),
             (".instance", instance.IsNullOrEmpty() ? "" : $".{instance}"),
-            ("context", typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant()));
+            ("context", contextName));
 
         // Creating DbInfo<TDbContext>
         var (dbKind, connectionStringSuffix) = connectionString switch {
@@ -46,8 +48,6 @@ public class DbModule : HostModule<DbSettings>
                 => (DbKind.InMemory, suffix.Trim()),
             { } s when s.OrdinalHasPrefix("postgresql:", out var suffix)
                 => (DbKind.PostgreSql, suffix.Trim()),
-            { } s when s.OrdinalHasPrefix("mysql:", out var suffix)
-                => (DbKind.MySql, suffix.Trim()),
             _ => throw StandardError.Format("Unrecognized database connection string."),
         };
         var dbInfo = new DbInfo<TDbContext> {
@@ -59,11 +59,14 @@ public class DbModule : HostModule<DbSettings>
         };
 
         // Adding services
+        if (dbKind == DbKind.PostgreSql)
+            services.AddHealthChecks().AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", tags: new[] { HealthTags.Ready });
+
         services.AddSingleton(dbInfo);
         services.AddDbContextFactory<TDbContext>(builder => {
             switch (dbKind) {
             case DbKind.InMemory:
-                Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).Name);
+                Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).GetName());
                 builder.UseInMemoryDatabase(dbInfo.ConnectionString);
                 builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
                 break;
@@ -74,17 +77,6 @@ public class DbModule : HostModule<DbSettings>
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
                 builder.UseNpgsqlHintFormatter();
-                // To be enabled later (requires migrations):
-                // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
-                break;
-            case DbKind.MySql:
-                var serverVersion = ServerVersion.AutoDetect(dbInfo.ConnectionString);
-                builder.UseMySql(dbInfo.ConnectionString, serverVersion, mySql => {
-                    mySql.EnableRetryOnFailure(0);
-                    // mySql.MaxBatchSize(1);
-                    mySql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
-                });
-                builder.UseMySqlHintFormatter();
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;

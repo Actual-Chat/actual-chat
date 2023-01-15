@@ -11,7 +11,7 @@
     <label for="url">URL:</label>
     <input id="url" class="w-full mt-1 p-1 text-lg bg-gray-50 focus:outline-none border border-gray-200 rounded text-gray-600" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
 </div>
-<div class="mt-6 text-xl text-bold bg-green-50 p-3 rounded-2xl">
+<div class="text-xl text-bold bg-green-50 rounded-2xl">
     <p class="text-2xl text-bold mb-3 text-indigo-500">Our players:</p>
     <button class="py-1 px-3 bg-gray-900 text-yellow-600 rounded-md">CLICK HERE (to initialize audio context pool)</button>
     <p>IsPlaying: @_isPlaying</p>
@@ -20,15 +20,23 @@
     <p>[Blazor] from JS create() call to the end of first data(): @InitializeDuration ms</p>
     <p>[Js] from ctor to the play(): @StartPlayingDelay ms</p>
     @if (_isPlaying) {
-        <button onclick="@(() => OnToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700">Stop</button>
-        <button onclick="@(() => OnBlockMainThread(BlockMainThreadMs))" class="mt-3 px-4 py-1 text-gray-700 rounded-md bg-yellow-300">Block JS main thread for @BlockMainThreadMs ms</button>
-        <button onclick="@(() => OnPauseToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-blue-700">@(_isPaused ? "Resume" : "Paused")</button>
+        <button
+            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700"
+            @onclick="@OnToggleClick">Stop</button>
+        <button
+            class="mt-3 px-4 py-1 text-gray-700 rounded-md bg-yellow-300"
+            @onclick="@(() => OnBlockMainThread(BlockMainThreadMs))">Block JS main thread for @BlockMainThreadMs ms</button>
+        <button
+            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-blue-700"
+            @onclick="@OnPauseToggleClick">@(_isPaused ? "Resume" : "Paused")</button>
     } else {
-        <button onclick="@(() => OnToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700">@(_isPlaying ? "StopTask" : "AudioContext")</button>
+        <button
+            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700"
+            @onclick="@OnToggleClick" >@(_isPlaying ? "StopTask" : "AudioContext")</button>
     }
 </div>
 
-<div class="mt-6 bg-red-50 rounded-2xl p-3">
+<div class="bg-red-50 rounded-2xl">
     <p class="text-2xl text-bold text-indigo-500 mb-3">Default &lt;audio&gt; player:</p>
     <audio controls="" name="media">
         <source src="@_uri" type="audio/webm">

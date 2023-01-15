@@ -7,20 +7,19 @@
 
 .side-nav-right {
     @apply translate-x-full;
-    @apply z-60 left-0 md:w-auto;
+    @apply z-60 left-0;
+    @apply md:w-80;
 }
 
 .side-nav-left {
     @apply -translate-x-full;
-    @apply z-60 left-0 md:w-auto;
-}
-.side-nav-left .wide-left-panel {
-    @apply md:w-80;
+    @apply z-60 left-0;
+    @apply md:w-110;
 }
 
 .side-nav-drawer {
     @apply fixed;
-    @apply top-0 bottom-0 w-[15px];
+    @apply top-14 bottom-14 w-[15px];
     @apply bg-transparent;
 }
 
@@ -45,5 +44,5 @@
 }
 
 .side-nav-animate {
-    @apply transition-transform duration-250 ease-in-out;
+    @apply transition-transform duration-300 ease-in-out;
 }

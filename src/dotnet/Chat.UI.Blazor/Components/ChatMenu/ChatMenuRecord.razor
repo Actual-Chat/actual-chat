@@ -1,44 +1,28 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
-@inherits ComputedStateComponent<bool>
-
+@inherits FusionComponentBase
 @{
-    var isRecording = State.Value;
-    var cls = "context-menu-item important-item " + (isRecording ? "on" : "off");
+    var isRecording = ChatState.IsRecording;
+    var cls = "important-item " + (isRecording ? "on" : "off");
 }
 
 @if (isRecording) {
-    <Item OnClick="@(_ => ChatUI.SetRecordingState(Symbol.Empty))" CssClass="@cls">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-Stop-fill text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Stop talking
-            </div>
-        </div>
-    </Item>
+    <MenuEntry
+        Class="@cls"
+        Icon="icon-Stop-fill"
+        Text="Stop talking"
+        Click="@(_ => ChatUI.SetRecordingChatId(default))">
+    </MenuEntry>
 } else {
-    <Item OnClick="@(_ => ChatUI.SetRecordingState(Chat.Id))" CssClass="@cls">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-mic text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Start talking
-            </div>
-        </div>
-    </Item>
+    <MenuEntry
+        Class="@cls"
+        Icon="icon-mic"
+        Text="Start talking"
+        Click="@(_ => ChatUI.SetRecordingChatId(ChatState.Id))">
+    </MenuEntry>
 }
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
-
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsRecording(Chat.Id);
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 }

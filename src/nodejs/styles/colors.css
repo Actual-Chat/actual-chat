@@ -21,17 +21,23 @@
     --icons-03: #757D8A;
 
     --counter: #D0D0D0;
+    --counter-navgroup: #FF7070;
 
     /* Buttons */
     --disabled: #E7E7E7;
 
     --primary: #2970FF;
+    --reaction-own: rgba(41, 112, 255, 0.6);
     --primary-hover: #2569F1;
     --primary-title: #FFFFFF;
 
     --secondary: #E1EFFA;
     --secondary-hover: #C5D8FF;
     --secondary-title: #2970FF;
+
+    --cancel: #E7E7E7;
+    --cancel-hover: #E7E7E7;
+    --cancel-title: #444444;
 
     --outline: #FFFFFF;
     --outline-hover: #C5D8FF;
@@ -64,7 +70,17 @@
 
     /* Utils colors */
     --selected: #C5D8FF;
+    --hover: #F2F6FF;
     --online: #0AA489;
+    --banner-success: #E7FFED;
+    --banner-success-icon: #2FCB5B;
+    --banner-info: #007AFF1A;
+    --banner-info-icon: #007AFF;
+    --banner-warning: #FFC1231A;
+    --banner-warning-icon: #FFC123;
+    --banner-error: #FF38801A;
+    --banner-error-icon: #FF3880;
+    --away: #FFCC31;
     --unread: #93c5fd;
     --separator: #2b3641;
     --placeholder: #788ea5;
@@ -99,6 +115,10 @@
     --skeleton-border: #F9FAFB;
     --scrollbar: #B9B9B9;
     --quote: #d6dde4;
+    --place: #A98AFF;
+    --logo-01: #980492;
+    --logo-02: #2970FF;
+    --logo-03: #5645D4;
 
     --error-toast-header: #fd5757;
     --error-toast-body: #fd6a6a;

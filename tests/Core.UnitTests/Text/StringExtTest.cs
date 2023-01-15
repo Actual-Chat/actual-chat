@@ -24,6 +24,6 @@ public class StringExtTest
     public void EmptyHashCodeTest()
     {
         "".GetDjb2HashCode();
-        "".GetMD5HashCode();
+        "".GetSHA1HashCode();
     }
 }

@@ -7,10 +7,10 @@
     <DataAnnotationsValidator/>
     <DialogFrame Title="New chat">
         <Body>
-            <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
-                <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true"/>
+            <FormSection For="() => _form.Title" Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
+                <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Autofocus="true" Autocomplete="false"/>
             </FormSection>
-            <FormSection Class="flex h-12 md:h-8 justify-center">
+            <FormSection For="() => _form.IsPublic" Class="flex h-12 md:h-8 justify-center">
                 <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
             </FormSection>
         </Body>
@@ -43,18 +43,21 @@
 
     private async Task OnCreate()
     {
-        var cmd = new IChats.ChangeChatCommand(Session, "", null, new() {
+        var command = new IChats.ChangeCommand(Session, default, null, new() {
             Create = new ChatDiff() {
                 Title = _form.Title,
-                ChatType = ChatType.Group,
+                Kind = ChatKind.Group,
                 IsPublic = _form.IsPublic,
             },
         });
         try {
-            var chat = await UICommander.Call(cmd);
-            chat = chat.Require();
-            await ModalInstance.CancelAsync();
-            Nav.NavigateTo(Links.ChatPage(chat.Id));
+            var (chat, error) = await UICommander.Run(command);
+            if (error != null)
+                return;
+
+            chat.Require();
+            await ModalInstance.CloseAsync();
+            Nav.NavigateTo(Links.Chat(chat.Id));
         }
         catch {
             // Intended: command errors are shown in the UI anyway
@@ -62,7 +65,7 @@
     }
 
     private void OnCancel()
-        => ModalInstance.CancelAsync();
+        => ModalInstance.CloseAsync();
 
     public class FormModel
     {

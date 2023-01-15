@@ -1,0 +1,59 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification
+@inherits FusionComponentBase
+@implements IDisposable
+@{
+    _lastRenderTime = Clock.Now;
+    if (Value == 0 && !HasMentions)
+        return;
+
+    var text = HasMentions ? "@" : Value == 0 ? "" : Value.Format();
+    var isMuted = NotificationMode switch {
+        ChatNotificationMode.ImportantOnly => !HasMentions,
+        ChatNotificationMode.Muted => true
+        ,_ => false,
+        };
+    var bgColor = isMuted ? "bg-counter" : "bg-primary";
+    var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
+    var cssClass = $"message-counter-badge {cursorClass}";
+}
+
+<Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
+
+@code {
+    private CancellationTokenSource _disposeCts;
+    private CancellationToken _disposeToken;
+    private Moment _lastRenderTime;
+
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
+    [Parameter] public bool HasMentions { get; set; }
+    [Parameter] public ChatNotificationMode NotificationMode { get; set; }
+    [Parameter] public TimeSpan UpdateDelay { get; set; } = TimeSpan.FromSeconds(0.5);
+    [Parameter] public EventCallback Click { get; set; }
+
+    private IMomentClock Clock => Clocks.CoarseCpuClock;
+
+    public UnreadCount() {
+        _disposeCts = new();
+        _disposeToken = _disposeCts.Token;
+    }
+
+    public void Dispose()
+        => _disposeCts.CancelAndDisposeSilently();
+
+    protected override bool ShouldRender() {
+        var now = Clock.Now;
+        var delay = _lastRenderTime + UpdateDelay - now;
+        if (delay <= TimeSpan.Zero)
+            return true;
+
+        Clock.Delay(delay, _disposeToken).ContinueWith(_ => {
+            if (_disposeToken.IsCancellationRequested)
+                return;
+            this.StateHasChangedAsync();
+        }, TaskScheduler.Current);
+        return false;
+    }
+}

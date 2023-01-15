@@ -6,12 +6,13 @@ public sealed record Kube : IRequirementTarget
 {
     public static Requirement<Kube> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotSupported("This code can execute only within Kubernetes cluster.")),
-        (Kube? p) => p != null);
+        (Kube? k) => k != null);
 
     public static string HttpClientName { get; set; } = "Kube";
 
     public string Host { get; }
     public int Port { get; }
+    public string Url { get; }
     public Uri Uri { get; }
     public string PodIP { get; }
     public KubeToken Token { get; }
@@ -21,7 +22,8 @@ public sealed record Kube : IRequirementTarget
     {
         Host = host;
         Port = port;
-        Uri = new Uri($"https://{Host}:{Port}/");
+        Url = $"https://{Host}:{Port}/";
+        Uri = Url.ToUri();
         PodIP = podIP;
         Token = token;
         IsEmulated = token.IsEmulated;

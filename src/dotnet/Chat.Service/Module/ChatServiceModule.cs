@@ -1,19 +1,20 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
-using ActualChat.Chat.EventHandlers;
-using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Db.Module;
-using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Commands;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 using Stl.Redis;
 
 namespace ActualChat.Chat.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ChatServiceModule : HostModule<ChatSettings>
 {
     public ChatServiceModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -35,21 +36,26 @@ public class ChatServiceModule : HostModule<ChatSettings>
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
-            db.AddEntityResolver<string, DbChat>(_ => new() {
-                QueryTransformer = query => query.Include(chat => chat.Owners),
-            });
-            db.AddEntityResolver<string, DbChatAuthor>(_ => new() {
-                QueryTransformer = query => query.Include(a => a.Roles),
-            });
-            db.AddEntityResolver<string, DbChatRole>();
-            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatAuthors,
-                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
-            db.AddShardLocalIdGenerator(dbContext => dbContext.ChatRoles,
-                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            // DbChat
+            db.AddEntityResolver<string, DbChat>();
+
+            // DbChatEntry
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
                 dbContext => dbContext.ChatEntries,
-                (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
-                e => e.Id);
+                (e, shardKey) => e.ChatId == shardKey.ChatId && e.Kind == shardKey.Kind,
+                e => e.LocalId);
+
+            // DbAuthor
+            db.AddShardLocalIdGenerator(dbContext => dbContext.Authors,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddEntityResolver<string, DbAuthor>(_ => new() {
+                QueryTransformer = query => query.Include(a => a.Roles),
+            });
+
+            // DbRole
+            db.AddShardLocalIdGenerator(dbContext => dbContext.Roles,
+                (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            db.AddEntityResolver<string, DbRole>();
         });
 
         // Commander & Fusion
@@ -64,52 +70,44 @@ public class ChatServiceModule : HostModule<ChatSettings>
             // 2. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
             return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
-                || commandAssembly == typeof(IChatAuthors).Assembly // Chat.Contracts assembly
-                || commandAssembly == typeof(ChatAuthors).Assembly; // Chat.Service assembly
+                || commandAssembly == typeof(IAuthors).Assembly // Chat.Contracts assembly
+                || commandAssembly == typeof(Authors).Assembly // Chat.Service assembly
+                || commandType == typeof(NewUserEvent); // NewUserEvent is handled by Chat service - TODO(AK): abstraction leak!!
         });
         var fusion = services.AddFusion();
 
         // Chats
-        services.AddSingleton(c => {
-            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
-            return chatRedisDb.GetSequenceSet<ChatEntry>("seq." + nameof(ChatEntry));
-        });
         fusion.AddComputeService<IChats, Chats>();
         fusion.AddComputeService<IChatsBackend, ChatsBackend>();
+        commander.AddCommandService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
-        // ChatAuthors
-        services.AddSingleton(c => {
-            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
-            return chatRedisDb.GetSequenceSet<ChatAuthor>("seq." + nameof(ChatAuthor));
-        });
-        fusion.AddComputeService<IChatAuthors, ChatAuthors>();
-        fusion.AddComputeService<IChatAuthorsBackend, ChatAuthorsBackend>();
+        // Authors
+        fusion.AddComputeService<IAuthors, Authors>();
+        fusion.AddComputeService<IAuthorsBackend, AuthorsBackend>();
+        commander.AddCommandService<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
-        // ChatRoles
-        services.AddSingleton(c => {
-            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
-            return chatRedisDb.GetSequenceSet<ChatRole>("seq." + nameof(ChatRole));
-        });
-        fusion.AddComputeService<IChatRoles, ChatRoles>();
-        fusion.AddComputeService<IChatRolesBackend, ChatRolesBackend>();
+        // Roles
+        fusion.AddComputeService<IRoles, Roles>();
+        fusion.AddComputeService<IRolesBackend, RolesBackend>();
 
         // Mentions
         fusion.AddComputeService<IMentions, Mentions>();
         fusion.AddComputeService<IMentionsBackend, MentionsBackend>();
 
-        // ChatMentionResolver
-        services.AddSingleton<BackendChatMentionResolverFactory>();
+        // Reactions
+        fusion.AddComputeService<IReactions, Reactions>();
+        fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
 
         // ContentSaver
         services.AddResponseCaching();
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
-        // Events
-        services.AddEvent<NewChatEntryEvent>();
-        services.AddEventHandler<NewChatEntryEvent, NewChatEntryEventHandler>();
-        services.AddEventHandler<NewUserEvent, NewUserEventHandler>();
+        // ChatMarkupHub
+        services.AddSingleton(c =>
+            new CachingKeyedFactory<IBackendChatMarkupHub, ChatId, BackendChatMarkupHub>(c, 4096, true).ToGeneric());
 
-        // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        services.TryAddSingleton<OtelMetrics>();
     }
 }

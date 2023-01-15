@@ -1,10 +1,21 @@
-import './chat-message-editor.css';
-import { debounce } from 'debounce';
+import {
+    Subject,
+    takeUntil,
+} from 'rxjs';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
+import { Log, LogLevel } from 'logging';
+import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { throttle } from 'promises';
 
-const LogScope: string = 'MessageEditor';
+const LogScope = 'MessageEditor';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
+export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
+    private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private markupEditor: MarkupEditor;
@@ -12,14 +23,16 @@ export class ChatMessageEditor {
     private readonly filePicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
+    private attachmentList: HTMLDivElement;
+    private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
-    private readonly notifyPanelObserver : MutationObserver;
+    private readonly notifyPanelObserver: MutationObserver;
     private lastHeight: number;
     private lastWidth: number;
-    private isMobile: boolean = null; // Intended: updateLayout needs this on the first run
-    private isNarrowMode: boolean = null; // Intended: updateLayout needs this on the first run
-    private isTextMode: boolean = null; // Intended: updateTextMode needs this on the first run
-    private isPanelOpen: boolean = false;
+    private isNarrowScreen: boolean = null; // Intended: updateLayout needs this on the first run
+    private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
+    private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
+    private isNotifyPanelOpen: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
 
@@ -30,65 +43,103 @@ export class ChatMessageEditor {
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
-        this.input = this.editorDiv.querySelector(':scope div.post-panel div.message-input');
-        this.filePicker = this.editorDiv.querySelector(':scope div.post-panel input.files-picker');
-        this.postButton = this.editorDiv.querySelector(':scope div.post-panel .post-message');
+        this.input = this.editorDiv.querySelector(':scope .post-panel .message-input');
+        this.postButton = this.editorDiv.querySelector(':scope .post-panel .post-message');
         this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
-        this.notifyPanel = this.editorDiv.querySelector(':scope div.post-panel .notify-call-panel');
+        this.filePicker = this.editorDiv.querySelector(':scope .post-panel input.file-picker');
+        this.notifyPanel = this.editorDiv.querySelector(':scope .notify-call-panel');
 
         this.updateLayout();
-        this.updateTextMode();
+        this.updateHasContent();
 
         // Wiring up event listeners
-        window.visualViewport.addEventListener('resize', debounce(this.onWindowResize, 100));
+        ScreenSize.event$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => throttle(this.updateLayout, 250, 'delayHead'));
         this.input.addEventListener('paste', this.onInputPaste);
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
 
-        this.notifyPanelObserver = new MutationObserver(this.updateAttachDropdown);
+        this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
+        this.attachmentListObserver.observe(this.editorDiv, {
+            attributes: true,
+            childList: true,
+        });
+
+        this.notifyPanelObserver = new MutationObserver(this.updateNotifyPanelRelated);
         this.notifyPanelObserver.observe(this.notifyPanel, {
             attributes: true,
         });
     }
 
     public dispose() {
-        window.visualViewport.removeEventListener('resize', this.onWindowResize);
+        if (this.disposed$.isStopped)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
         this.input.removeEventListener('paste', this.onInputPaste);
         this.filePicker.removeEventListener('change', this.onFilePickerChange);
         this.attachButton.removeEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.removeEventListener('click', this.onNotifyPanelClick);
+        if (this.attachmentList != null) {
+            this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
+        }
         this.notifyPanelObserver.disconnect();
     }
 
     // Public methods
 
+    private updateAttachmentListState = (mutationsList, observer) => {
+        mutationsList.forEach(m => {
+            m.addedNodes.forEach(element => {
+                if (element.className == 'attachment-list-wrapper') {
+                    this.attachmentList = this.editorDiv.querySelector('.attachment-list')
+                    this.attachmentList.addEventListener('wheel', this.onHorizontalScroll);
+                }
+            });
+            m.removedNodes.forEach(element => {
+                if (element.className == 'attachment-list-wrapper') {
+                    if (this.attachmentList != null) {
+                        this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
+                    }
+                }
+            });
+        })
+    };
+
+    private onHorizontalScroll = ((event: WheelEvent & { target: Element; }) => {
+        event.preventDefault();
+        this.attachmentList.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
+    });
+
     public onMarkupEditorReady(markupEditor: MarkupEditor)
     {
         this.markupEditor = markupEditor;
-        markupEditor.changed = () => this.updateTextMode();
-        this.updateTextMode();
-        if (this.isMobile)
+        markupEditor.changed = () => this.updateHasContent();
+        this.updateHasContent();
+        if (this.isNarrowScreen)
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
     }
 
-    public post = async (chatId: string, text : string, repliedChatEntryId?: number): Promise<number> => {
+    public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
-        const attachmentsList = [];
+        const attachments = [];
         if (this.attachments.size > 0) {
             let i = 0;
             this.attachments.forEach(attachment => {
                 formData.append('files[' + i + ']', attachment.File);
-                attachmentsList.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
+                attachments.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
                 i++;
             });
         }
 
-        const payload = { 'text': text, 'attachments': attachmentsList, 'repliedChatEntryId': repliedChatEntryId };
+        const payload = { 'text': text, 'attachments': attachments, 'repliedChatEntryId': repliedChatEntryId };
         const payloadJson = JSON.stringify(payload);
         formData.append('payload_json', payloadJson);
 
-        console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
+        debugLog?.log(`post: sending request with ${attachments.length} attachment(s)`);
         let url = 'api/chats/' + chatId + '/message';
         // @ts-ignore
         const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
@@ -110,16 +161,6 @@ export class ChatMessageEditor {
         return Number(entryId);
     };
 
-    public onPosted = () => {
-        for (const attachment of this.attachments.values()) {
-            if (attachment.Url)
-                URL.revokeObjectURL(attachment.Url);
-        }
-        this.attachments.clear();
-        this.attachmentsIdSeed = 0;
-        this.updateTextMode();
-    };
-
     public showFilePicker = () => {
         this.filePicker.click();
     };
@@ -127,34 +168,34 @@ export class ChatMessageEditor {
     public removeAttachment(id: number) {
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
-        if (attachment && attachment.Url)
+        if (attachment?.Url)
             URL.revokeObjectURL(attachment.Url);
-        this.updateTextMode();
+        this.updateHasContent();
     }
 
     public clearAttachments() {
-        const attachments = this.attachments;
-        attachments.forEach(a => {
-            if (a && a.Url)
-                URL.revokeObjectURL(a.Url);
-        });
+        for (const attachment of this.attachments.values()) {
+            if (attachment?.Url)
+                URL.revokeObjectURL(attachment.Url);
+        }
         this.attachments.clear();
-        this.updateTextMode();
+        this.attachmentsIdSeed = 0;
+        this.updateHasContent();
     }
 
     // Event handlers
 
-    private onWindowResize = () => this.updateLayout()
-
     private onAttachButtonClick = ((event: Event & { target: Element; }) => {
-        if (this.isNarrowMode)
+        if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
+            this.updateHasContent();
+        }
     });
 
     private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
-        if (this.isNarrowMode) {
+        if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
-            this.updateTextMode();
+            this.updateHasContent();
         }
     });
 
@@ -182,7 +223,7 @@ export class ChatMessageEditor {
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
         for (const file of this.filePicker.files) {
-            const added : boolean = await this.addAttachment(file);
+            const added: boolean = await this.addAttachment(file);
             if (!added)
                 break;
         }
@@ -194,10 +235,10 @@ export class ChatMessageEditor {
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;
-        const isMobile = width < 1024;
+        const isNarrowScreen = width < 1024;
 
-        if (this.isMobile === isMobile) {
-            if (!isMobile)
+        if (this.isNarrowScreen === isNarrowScreen) {
+            if (!isNarrowScreen)
                 return; // Nothing to update in desktop mode
 
             if (width != this.lastWidth) {
@@ -213,13 +254,15 @@ export class ChatMessageEditor {
             const minHeight = Math.min(height, this.lastHeight);
             const maxHeight = Math.max(height, this.lastHeight);
             const keyboardHeight = maxHeight - minHeight;
-            console.debug(`${LogScope}.updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
+            debugLog?.log(`updateLayout: keyboardHeight:`, keyboardHeight, '/', maxHeight);
             if (keyboardHeight >= 0.2 * maxHeight) {
                 // Mobile keyboard pull-out / pull-in
-                const isNarrowMode = Math.abs(height - minHeight) < 0.01; // FP: height == minHeight
-                if (this.isNarrowMode !== isNarrowMode) {
-                    this.isNarrowMode = isNarrowMode;
-                    if (isNarrowMode)
+                const panelMode = Math.abs(height - minHeight) < 0.01 // FP: height == minHeight
+                    ? 'Narrow'
+                    : 'Normal';
+                if (this.panelModel !== panelMode) {
+                    this.panelModel = panelMode;
+                    if (panelMode == 'Narrow')
                         this.editorDiv.classList.add('narrow-panel');
                     else
                         this.editorDiv.classList.remove('narrow-panel');
@@ -229,22 +272,22 @@ export class ChatMessageEditor {
             return;
         }
 
-        this.isMobile = isMobile;
+        this.isNarrowScreen = isNarrowScreen;
         this.lastHeight = height;
         this.lastWidth = width;
-        const buttons = this.editorDiv.querySelectorAll(':scope div.mobile-control-panel .btn');
-        if (isMobile)
+        const buttons = this.editorDiv.querySelectorAll(':scope div.chat-audio-panel .btn');
+        if (isNarrowScreen)
             buttons.forEach(b => b.addEventListener('click', this.onReturnFocusOnInput));
         else
             buttons.forEach(b => b.removeEventListener('click', this.onReturnFocusOnInput));
     }
 
-    private updateTextMode() {
+    private updateHasContent() {
         const text = this.markupEditor?.getText() ?? '';
         const isTextMode = text != '' || this.attachments.size > 0;
-        if (this.isTextMode === isTextMode)
+        if (this.hasContent === isTextMode)
             return;
-        this.isTextMode = isTextMode;
+        this.hasContent = isTextMode;
         if (isTextMode)
             this.editorDiv.classList.add('text-mode');
         else
@@ -252,33 +295,34 @@ export class ChatMessageEditor {
         this.endAnimations();
     }
 
-    private updateAttachDropdown = () => {
-        const isPanelOpen = this.notifyPanel.classList.contains('panel-opening');
-        if (this.isPanelOpen === isPanelOpen)
+    private updateNotifyPanelRelated = () => {
+        const isNotifyPanelOpen = this.notifyPanel.classList.contains('panel-opening');
+        if (this.isNotifyPanelOpen === isNotifyPanelOpen)
             return;
-        this.isPanelOpen = isPanelOpen;
+
+        this.isNotifyPanelOpen = isNotifyPanelOpen;
         const attach = this.editorDiv.querySelector(':scope .attach-dropdown');
         const label = this.editorDiv.querySelector(':scope label');
-        if (isPanelOpen) {
-            setTimeout(() => {
+        if (isNotifyPanelOpen) {
+            self.setTimeout(() => {
                 attach.classList.add('hidden');
-                label.classList.add('w-0');
+                label.classList.add('hidden');
                 this.markupEditor.isEditable(false);
             }, 150);
         } else {
             attach.classList.remove('hidden');
-            label.classList.remove('w-0');
+            label.classList.remove('hidden');
             this.markupEditor.isEditable(true);
         }
 
         if (this.notifyPanel.classList.contains('panel-closing')) {
-            setTimeout(() => {
+            self.setTimeout(() => {
                 this.notifyPanel.classList.replace('panel-closing', 'panel-closed');
             }, 150);
         }
     };
 
-    private endAnimations() : void {
+    private endAnimations(): void {
         this.notifyPanel.classList.remove('panel-opening', 'panel-closing');
         const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
         if (!playbackWrapper)
@@ -291,7 +335,7 @@ export class ChatMessageEditor {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-        const added : boolean = await this.blazorRef.invokeMethodAsync(
+        const added: boolean = await this.blazorRef.invokeMethodAsync(
             'AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
         if (!added) {
             if (attachment.Url)
@@ -300,7 +344,7 @@ export class ChatMessageEditor {
         else {
             this.attachmentsIdSeed++;
             this.attachments.set(attachment.Id, attachment);
-            this.updateTextMode();
+            this.updateHasContent();
         }
         return added;
     }

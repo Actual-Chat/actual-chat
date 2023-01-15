@@ -1,9 +1,7 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public interface IMenu
+public interface IMenu : IHasId<string>
 {
-    string ItemClass { get; }
-    MenuTooltipPosition TooltipPosition { get; }
-
-    Task OnItemClick(MenuItem item);
+    string[] Arguments { get; set; }
+    MenuHost Host { get; set; }
 }

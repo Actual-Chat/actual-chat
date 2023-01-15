@@ -1,34 +1,29 @@
-@inherits ComputedStateComponent<ChatUserSettings?>
+@inherits ComputedStateComponent<Language>
 @{
-    var language = State.LatestNonErrorValue.LanguageOrDefault();
+    var m = State.ValueOrDefault.Or(Languages.Main);
 }
 
 <ButtonRound
-    Class="chat-language-toggle"
-    Click="OnClick">
+    Class="chat-language-toggle" Click="OnClick">
     <span class="w-8 h-8 m-1">
-        @language.Shortcut
+        @m.Code
     </span>
 </ButtonRound>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
+    protected override ComputedState<Language>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.Instant };
 
-    protected override Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
-        => ChatUserSettings.Get(Session, Chat.Id, cancellationToken);
+    protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
+        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
 
-    private async Task OnClick()
-    {
-        var settings = State.Value ?? new() { Language = LanguageId.Default };
-        settings = settings with { Language = settings.LanguageOrDefault().Next() };
-        var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
-        await UICommander.Run(command);
-    }
+    protected Task OnClick()
+        => LanguageUI.ChangeChatLanguage(Chat.Id);
 }

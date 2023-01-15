@@ -2,7 +2,7 @@
 @using Error = ActualChat.UI.Blazor.Components.Error
 @inherits ComputedStateComponent<AuthTestPage.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var error = State.Error;
     var usedAuthSchemas = m.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
@@ -17,6 +17,7 @@
 <h3 class="section border-0">Session</h3>
 <ul>
     <li><code>Session.Id</code>: <b><code>@Session.Id.Value</code></b></li>
+    <li><code>SessionInfo.GetGuestId()</code>: <b><code>@(m.SessionInfo.GetGuestId())</code></b></li>
     <li><code>SessionInfo</code>: <br/><pre>@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
 </ul>
 
@@ -47,20 +48,16 @@
 @if (m.Account.IsAdmin) {
     <div class="flex-x">
         <span>Status:</span>
-        <Dropdown>
-            <ButtonTemplate>
-                <div class="px-2 inline-flex">
-                    <span class="float-left text-secondary font-semibold chat-header-title">@m.Account.Status</span>
-                </div>
-            </ButtonTemplate>
-            <MenuTemplate>
-                <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left">
-                    @foreach (var value in Enum.GetValues<AccountStatus>()) {
-                        <MenuItem Title="@value.ToString()" Click="_ => OnStatusSelected(value)"></MenuItem>
-                    }
-                </Menu>
-            </MenuTemplate>
-        </Dropdown>
+        <Button
+            data-menu="@(MenuRef.New<AccountStatusMenu>().ToString())"
+            data-menu-trigger="@(MenuTriggers.Primary.Format())"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="px-2 inline-flex">
+                <span class="float-left text-secondary font-semibold chat-header-title">
+                    @m.Account.Status
+                </span>
+            </div>
+        </Button>
     </div>
 }
 
@@ -92,7 +89,9 @@
                         @if (session.IsCurrent) {
                             <span>Current</span>
                         } else {
-                            <Button Class="btn btn-sm" Click="_ => AuthHelper.Kick(Session, session.SessionHash)">Kick</Button>
+                            <Button
+                                Class="btn btn-sm"
+                                Click="@(_ => AuthHelper.Kick(Session, session.SessionHash))">Kick</Button>
                         }
                     </td>
                 </tr>
@@ -105,12 +104,12 @@
 @if (m.User.IsAuthenticated()) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
-        <Button Click="_ => ClientAuth.SignOut()">Sign out</Button>
-        <Button Click="_ => AuthHelper.SignOutEverywhere()">Sign out everywhere</Button>
+        <Button Click="@(_ => ClientAuth.SignOut())">Sign out</Button>
+        <Button Click="@(_ => AuthHelper.SignOutEverywhere())">Sign out everywhere</Button>
         @if (unusedAuthSchemas.Length != 0) {
             <span> or add account: </span>
             @foreach (var (name, displayName) in unusedAuthSchemas) {
-                <Button Click="_ => ClientAuth.SignIn(name)">@displayName</Button>
+                <Button Click="@(_ => ClientAuth.SignIn(name))">@displayName</Button>
             }
         }
     </FormButtons>
@@ -125,9 +124,7 @@
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -140,11 +137,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() { InitialValue = Model.Loading };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);
-        var account = await Accounts.Get(Session, cancellationToken) ?? Account.Guest;
+        var account = await Accounts.GetOwn(Session, cancellationToken);
         var sessions = await Auth.GetUserSessions(Session, cancellationToken);
         var sessionList = new List<SessionModel>();
 
@@ -167,12 +164,6 @@
         };
     }
 
-    private async Task OnStatusSelected(AccountStatus newStatus) {
-        var account = await Accounts.Get(Session, default).Require();
-        var updatedAccount = account with { Status = newStatus };
-        await UICommander.Run(new IAccounts.UpdateCommand(Session, updatedAccount));
-    }
-
     public sealed record SessionModel
     {
         public string SessionHash { get; init; } = "";
@@ -185,10 +176,11 @@
     }
 
     public sealed record Model {
-        public static Model None { get; } = new() { Account = Account.Guest };
+        public static Model None { get; } = new() { Account = AccountFull.None };
+        public static Model Loading { get; } = new() { Account = AccountFull.Loading }; // Should differ by ref. from None
 
         public SessionInfo? SessionInfo { get; init; }
-        public Account Account { get; init; } = null!;
+        public AccountFull Account { get; init; } = null!;
         public User User => Account.User;
         public ImmutableList<SessionModel> Sessions { get; init; } = ImmutableList<SessionModel>.Empty;
     }

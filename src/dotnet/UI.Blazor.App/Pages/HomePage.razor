@@ -1,39 +1,69 @@
 @page "/"
 @using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var account = m.Account;
-    if (account == null)
-        return; // Not yet computed
-    if (ReferenceEquals(account, Account.Guest)) { // Computed, account is null substituted to Account.Guest
-        <Welcome/>
+    if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
+        return;
+    if (account.IsGuest) { // Loaded, but user doesn't have an account
+        <Landing/>
+        return;
     }
-    else if (!m.DefaultChatId.IsEmpty) {
-        Nav.NavigateTo(Links.ChatPage(m.DefaultChatId));
+
+    // Logged in
+    if (!m.Link.IsNullOrEmpty() && !_navigated) {
+        _navigated = true; // prevents multiple calls
+        // Do automatic redirect on first load.
+        Nav.NavigateTo(m.Link, false, true);
     }
 }
 
 @code {
+    private bool _navigated;
+    private bool _enableIncompleteUI;
+
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private RecentChats RecentChats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    protected override Task OnInitializedAsync() => ChatUI.ActiveChatId.WhenRead;
+    protected override Task OnInitializedAsync()
+        => ChatUI.WhenLoaded;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() { InitialValue = new Model(null, Symbol.Empty) };
+        return new() { InitialValue = Model.Loading };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.Get(Session, CancellationToken.None).ConfigureAwait(false) ?? Account.Guest;
-        var chat = await RecentChats.GetActiveChatOrDefault(cancellationToken).ConfigureAwait(false);
-        return new(account, chat?.Id ?? Symbol.Empty);
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
+        var link = "";
+        if (BrowserInfo.ScreenSize.Value.IsNarrow())
+            link = Links.Chat(default);
+        else {
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+            link = Links.Chat(selectedChat != null ? selectedChatId : Constants.Chat.AnnouncementsChatId);
+        }
+        return new(account, link);
     }
 
-    public record Model(Account? Account, Symbol DefaultChatId);
+    protected override void OnAfterRender(bool firstRender) {
+        var m = State.Value;
+        var account = m.Account;
+        if (!ReferenceEquals(account, AccountFull.Loading))
+            LoadingUI.MarkLoaded();
+    }
+
+    public record Model(AccountFull Account, string Link) {
+        public static Model Loading { get; } = new(AccountFull.Loading, ""); // Should differ by ref. from None
+    }
 }

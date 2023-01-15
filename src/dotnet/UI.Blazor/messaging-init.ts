@@ -1,8 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
-import { addInteractionHandler } from 'first-interaction';
+import { NextInteraction } from 'next-interaction';
+import { Log, LogLevel } from 'logging';
+import { BrowserInfo } from './Services/BrowserInfo/browser-info';
 
 const LogScope = 'MessagingInit';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const infoLog = Log.get(LogScope, LogLevel.Info);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export async function getDeviceToken(): Promise<string | null> {
     try {
@@ -13,7 +19,7 @@ export async function getDeviceToken(): Promise<string | null> {
             const app = initializeApp(config);
             const messaging = getMessaging(app);
             onMessage(messaging, (payload) => {
-                console.info(`${LogScope}: Message received. `, payload);
+                debugLog?.log(`onMessage: payload:`, payload);
             });
 
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
@@ -22,7 +28,7 @@ export async function getDeviceToken(): Promise<string | null> {
 
             const workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/', updateViaCache: 'all' });
             workerRegistration.addEventListener('updatefound', ev => {
-                console.info(`${LogScope}: fresher service-worker detected`);
+                warnLog?.log(`updateFound: updated service worker detected`);
             });
 
             const tokenOptions: GetTokenOptions = {
@@ -31,19 +37,19 @@ export async function getDeviceToken(): Promise<string | null> {
             };
             return await getToken(messaging, tokenOptions);
         } else {
-            console.warn(`${LogScope}: Unable to initialize messaging subscription. Status: ${response.status}`)
+            warnLog?.log(`getDeviceToken: unable to initialize messaging subscription, status: ${response.status}`)
         }
         return null;
     }
-    catch(e) {
-        console.error(`${LogScope}: failed to obtain device token for notifications`, e);
+    catch (error) {
+        errorLog?.log(`getDeviceToken: failed to obtain device token for notifications, error:`, error);
     }
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
     // Let's check if the browser supports notifications
     if (!('Notification' in window)) {
-        console.info(`${LogScope}: This browser does not support notifications.`);
+        warnLog?.log(`requestNotificationPermission: this browser doesn't support notifications`);
     } else {
         if (hasPromiseBasedNotificationApi()) {
             const permission = await Notification.requestPermission();
@@ -73,7 +79,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
     baseLayoutRef = blazorRef;
     if (!isAlreadyRegistered) {
         navigator.serviceWorker.addEventListener('message', async (evt: MessageEvent) => {
-            console.info(`${LogScope}: message event from service worker`, evt);
+            debugLog?.log(`navigator.serviceWorker.message:`, evt);
             if (evt.origin !== window.location.origin)
                 return;
             if (evt.type !== 'message' && evt.data?.type !== 'NOTIFICATION_CLICK')
@@ -89,7 +95,7 @@ export function registerNotificationHandler(blazorRef: DotNet.DotNetObject): voi
 function storeNotificationPermission(permission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
-        console.info(`${LogScope}: storing notification permission`, permission);
+        debugLog?.log(`storeNotificationPermission, permission:`, permission);
         // @ts-ignore readonly property
         Notification['permission'] = permission;
     }
@@ -104,16 +110,11 @@ function hasPromiseBasedNotificationApi(): boolean {
     }
 }
 
-addInteractionHandler(LogScope, async () => {
+NextInteraction.addHandler(async () => {
+    if (BrowserInfo.appKind == 'Maui')
+        return;
+
     const isGranted = await requestNotificationPermission();
     if (!isGranted)
-        throw `${LogScope}: Notifications are disabled.`;
-
-    // Notification permissions are granted on touchend
-    // that follows scroll, but this isn't what considered
-    // "user interaction" w/ AudioContext, so we always
-    // return false here.
-    // Only AudioContextLazy returns true when it
-    // completes the initialization.
-    return false;
+        errorLog?.log(`Notification permission isn't granted`);
 });

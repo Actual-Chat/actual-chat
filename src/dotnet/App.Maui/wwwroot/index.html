@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Actual Chat</title>
     <base href="/" />
-    <link href="_content/Blazor.ContextMenu/blazorContextMenu.min.css" rel="stylesheet" />
-    <link href="_content/Blazored.Modal/blazored-modal.css" rel="stylesheet" />
     <link href="/dist/bundle.css" rel="stylesheet" />
 
     <script>
@@ -63,6 +61,9 @@
                 console.log(e);
             }
         });
+
+        // clear state in case page reload was invoked
+        history.replaceState(null, /* ignored title */ '');
     </script>
 </head>
 
@@ -102,11 +103,9 @@
     </div>
 
 
-    <div id="app" class="flex flex-col h-full">Loading...</div>
+    <div id="app" class="flex flex-col h-full">MAUI index. App is loading...</div>
 
     <script src="/dist/bundle.js"></script>
-    <script src="_content/Blazored.Modal/blazored.modal.js"></script>
-    <script src="_content/Blazor.ContextMenu/blazorContextMenu.min.js"></script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 </body>
 

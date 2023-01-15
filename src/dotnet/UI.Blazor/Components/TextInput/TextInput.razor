@@ -1,0 +1,77 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
+@implements IAsyncDisposable
+
+<input
+    @ref="ElementRef"
+    type="text"
+    class="@Class"
+    placeholder="@Placeholder"
+    maxlength="@MaxLength"
+    tabindex="@TabIndex"
+    @onkeyup="OnKeyUp"/>
+
+@code {
+    private bool NeedsRender { get; set; } = true;
+    private ElementReference ElementRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<TextInput> BlazorRef { get; set; } = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private FocusUI FocusUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public int Debounce { get; set; } = 300;
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string TabIndex { get; set; } = "";
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> KeyUp { get; set; }
+
+    protected override bool ShouldRender() {
+        if (!NeedsRender)
+            return false;
+        NeedsRender = false;
+        return true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            var identifier = $"{BlazorUICoreModule.ImportName}.{nameof(TextInput)}.create";
+            var options = new TextInputOptions {
+                Text = Text,
+                Debounce = Debounce,
+            };
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                identifier,
+                ElementRef,
+                BlazorRef,
+                options);
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    public ValueTask Focus()
+        => ElementRef.FocusAsync();
+
+    public ValueTask Clear()
+        => JSRef.InvokeVoidAsync("clear");
+
+    [JSInvokable]
+    public Task OnTextChanged(string text) {
+        Text = text;
+        return TextChanged.InvokeAsync(text);
+    }
+
+    private Task OnKeyUp(KeyboardEventArgs e)
+        => KeyUp.InvokeAsync(e);
+}

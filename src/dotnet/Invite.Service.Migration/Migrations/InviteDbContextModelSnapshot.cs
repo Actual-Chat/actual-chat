@@ -17,10 +17,22 @@ namespace ActualChat.Invite.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.5")
+                .HasAnnotation("ProductVersion", "7.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("ActualChat.Invite.Db.DbActivationKey", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invite_activation_keys");
+
+                    b.ToTable("invite_activation_keys");
+                });
 
             modelBuilder.Entity("ActualChat.Invite.Db.DbInvite", b =>
                 {
@@ -38,6 +50,7 @@ namespace ActualChat.Invite.Migrations
                         .HasColumnName("created_by");
 
                     b.Property<string>("DetailsJson")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("details_json");
 

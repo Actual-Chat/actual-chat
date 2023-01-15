@@ -1,10 +1,16 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
+import { Log, LogLevel } from 'logging';
+import { endEvent } from 'event-handling';
 
-const LogScope = 'MessagingServiceWorker';
+const LogScope = 'ServiceWorker';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const infoLog = Log.get(LogScope, LogLevel.Info);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 // @ts-ignore
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
-
 const configBase64 = new URL(location.href).searchParams.get('config');
 const configString = atob(configBase64);
 const config = JSON.parse(configString);
@@ -19,12 +25,12 @@ interface NotificationEvent extends ExtendableEvent {
 }
 
 sw.addEventListener('install', (event: ExtendableEvent) => {
-    console.info(`${LogScope}: making fresh installed service worker active`);
+    infoLog?.log(`install: installing updated service worker`);
     void sw.skipWaiting();
 });
 
 sw.addEventListener('activate', (event: ExtendableEvent) => {
-    console.info(`${LogScope}: forcing fresh activated service worker to start controlling pages`);
+    infoLog?.log(`activate: activating updated service worker`);
     event.waitUntil(sw.clients.claim());
 });
 
@@ -33,7 +39,7 @@ sw.addEventListener('notificationclick', (event: NotificationEvent) => {
 }, true);
 
 const onNotificationClick = async function(event: NotificationEvent): Promise<any> {
-    event.stopImmediatePropagation();
+    endEvent(event);
     event.notification.close();
 
     const notificationUrl = event.notification?.data?.url;
@@ -66,12 +72,12 @@ const onNotificationClick = async function(event: NotificationEvent): Promise<an
 
 const app = initializeApp(config);
 const messaging = getMessaging(app);
-console.info(`${LogScope}: Subscribing on fcm background message`);
+debugLog?.log(`Subscribing to FCM background messages`);
 onBackgroundMessage(messaging, async payload => {
-    console.info(`${LogScope}: Received background message `, payload);
-    const chatId = payload.data.chatId;
+    debugLog?.log(`onBackgroundMessage: got FCM background message, payload:`, payload);
+    const tag = payload.data.tag;
     const options: NotificationOptions = {
-        tag: chatId.toString(),
+        tag: tag.toString(),
         icon: payload.data.icon,
         body: payload.notification.body,
         data: {
@@ -79,7 +85,7 @@ onBackgroundMessage(messaging, async payload => {
         },
     };
     // silly hack because notifications get lost or suppressed
-    const notificationsToClose = await sw.registration.getNotifications({tag: chatId});
+    const notificationsToClose = await sw.registration.getNotifications({tag: tag});
     for (let toClose of notificationsToClose) {
         toClose.close();
     }

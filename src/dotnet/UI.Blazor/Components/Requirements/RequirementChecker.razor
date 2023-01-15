@@ -1,38 +1,48 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<FailedRequirementSet>
 
-@if (Failures.Count == 0) {
-    <CascadingValue Value="this">
-        @ChildContent
-    </CascadingValue>
-} else {
-    @ErrorContent(Failures)
-}
+<CascadingValue Value="this">
+    @(Failures.Count == 0 ? Success : Failure(Failures))
+</CascadingValue>
 
 @code {
-    protected MutableDictionary<RequirementComponent, Unit> Requirements { get; private set; } = new();
+    private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
+    private MutableDictionary<RequirementComponent, Unit> _requirements = new();
 
-    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter] public RenderFragment<FailedRequirementSet> ErrorContent { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [Parameter, EditorRequired] public RenderFragment Success { get; set; } = null!;
+    [Parameter, EditorRequired] public RenderFragment<FailedRequirementSet> Failure { get; set; } = null!;
 
     public FailedRequirementSet Failures => State.Value;
 
-    public virtual void Add(RequirementComponent requirement) {
-        if (Requirements.ContainsKey(requirement)) return;
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _onLocationChanged = OnLocationChanged;
+        Nav.LocationChanged += _onLocationChanged;
+    }
 
-        Requirements.Add(requirement, default);
+    public override ValueTask DisposeAsync() {
+        Nav.LocationChanged -= _onLocationChanged;
+        return base.DisposeAsync();
+    }
+
+    public virtual void Add(RequirementComponent requirement) {
+        if (_requirements.ContainsKey(requirement)) return;
+
+        _requirements.Add(requirement, default);
         State.Invalidate();
     }
 
     public virtual void Remove(RequirementComponent requirement) {
-        if (!Requirements.ContainsKey(requirement)) return;
+        if (!_requirements.ContainsKey(requirement)) return;
 
-        Requirements.Remove(requirement);
+        _requirements.Remove(requirement);
         State.Invalidate();
     }
 
     public virtual void Reset() {
-        Requirements.Clear();
+        _requirements.Clear();
         State.Invalidate();
     }
 
@@ -45,7 +55,7 @@
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {
         var failures = ImmutableDictionary<RequirementComponent, Exception>.Empty;
         var recoveredRequirements = ImmutableList<RequirementComponent>.Empty;
-        foreach (var requirement in Requirements.Keys) {
+        foreach (var requirement in _requirements.Keys) {
             try {
                 await requirement.Require(cancellationToken);
                 recoveredRequirements = recoveredRequirements.Add(requirement);
@@ -55,10 +65,13 @@
             }
         }
         foreach (var requirement in recoveredRequirements)
-            Requirements.Remove(requirement);
+            _requirements.Remove(requirement);
 
         return failures.Any() ? new FailedRequirementSet(failures) : FailedRequirementSet.Empty;
     }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => Reset();
 }
 
 

@@ -10,8 +10,10 @@ import {
     ResumeNodeMessage,
     StopNodeMessage,
 } from './feeder-audio-worklet-message';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'FeederNode';
+const LogScope = 'FeederNode';
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
@@ -102,7 +104,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
             }
         }
         catch (error) {
-            console.error(error);
+            errorLog?.log(`onProcessMessage: unhandled error:`, error);
         }
     };
 
@@ -157,7 +159,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     }
 
     private onProcessorError = (ev: Event) => {
-        console.error(`${LogScope}: Unhandled feeder processor error:`, ev);
+        errorLog?.log(`onProcessorError: unhandled error:`, ev);
     };
 }
 

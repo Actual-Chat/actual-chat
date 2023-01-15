@@ -1,0 +1,109 @@
+.creation-modal.modal-frame {
+    @apply gap-y-0 p-0 md:rounded-lg min-w-full min-h-full max-h-full;
+    @apply md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
+}
+.creation-modal.modal-frame .dialog-body {
+    @apply px-2;
+}
+.creation-modal.modal-frame .dialog-buttons {
+    @apply px-4 py-2 min-h-16;
+}
+.creation-panel {
+    @apply flex-y left-0 bottom-0 w-full bg-01;
+}
+.creation-modal.modal-frame .dialog-buttons.creation-panel-01 {
+    @apply hidden;
+}
+.creation-modal.modal-frame .tab-panel .tab.contacts-tab {
+    @apply h-auto;
+}
+
+.creation-panel .header {
+    @apply flex-x min-h-14 max-h-14 items-center border-b border-bg-04;
+}
+.creation-panel .header .btn,
+.creation-panel .header .btn .btn-content {
+    @apply min-w-8 max-w-8 min-h-8 max-h-8;
+}
+.creation-panel .header .btn.btn-round.transparent:hover,
+.creation-panel .header .btn.btn-round.transparent:hover .btn-content {
+    @apply bg-transparent md:bg-round-hover;
+}
+
+.creation-panel .header.add-members {
+    @apply border-transparent;
+}
+
+.creation-panel .creation-buttons {
+    @apply flex-y py-2;
+}
+.creation-btn {
+    @apply flex-x items-center min-h-12 rounded-md cursor-pointer;
+}
+.creation-btn * {
+    @apply text-primary cursor-pointer;
+}
+.creation-btn:hover {
+    @apply bg-secondary;
+}
+.creation-modal .contacts {
+    @apply border-t border-bg-04;
+}
+.creation-modal .btn-group {
+    @apply py-2 w-full max-w-none overflow-hidden;
+}
+.creation-modal .btn-group .btn {
+    @apply min-w-0 max-w-none;
+}
+
+.creation-panel .navbar-item-ending {
+    @apply hidden;
+}
+
+.creation-panel .navbar-item,
+.creation-panel .navbar-item * {
+    @apply cursor-pointer;
+}
+.creation-panel .tab-panel {
+    @apply mb-2;
+}
+
+.creation-panel-contact-list {
+    @apply flex-y custom-scrollbar;
+}
+.creation-panel-contact-item {
+    @apply flex-x items-center px-2 py-1 rounded-md;
+}
+.creation-panel-contact-item,
+.creation-panel-contact-item * {
+    @apply cursor-pointer;
+}
+.creation-panel-contact-item.unfocusable,
+.creation-panel-contact-item.unfocusable * {
+    @apply cursor-default;
+}
+.creation-panel-contact-item:hover {
+    @apply bg-secondary;
+}
+.creation-panel-contact-item.unfocusable:hover {
+    @apply bg-transparent;
+}
+.selected-contact {
+    @apply flex-x items-center my-0.5 bg-03 rounded-full;
+}
+.selected-contact,
+.selected-contact * {
+    @apply cursor-pointer;
+}
+.remove-contact-icon {
+    @apply items-center rounded-full bg-transparent w-6 h-6 hidden;
+}
+.selected-contact:hover {
+    @apply bg-error text-04;
+}
+.selected-contact:hover .remove-contact-icon {
+    @apply flex;
+}
+.selected-contact:hover .author-avatar-badge {
+    @apply hidden;
+}

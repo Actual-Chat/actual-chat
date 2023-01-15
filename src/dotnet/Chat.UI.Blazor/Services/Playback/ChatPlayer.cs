@@ -20,16 +20,16 @@ public abstract class ChatPlayer : ProcessorBase
     protected ILogger Log { get; }
     protected MomentClockSet Clocks { get; }
     protected IServiceProvider Services { get; }
-    protected IChatAuthors ChatAuthors { get; }
+    protected IAuthors Authors { get; }
     protected IChats Chats { get; }
 
     public Session Session { get; }
-    public Symbol ChatId { get; }
+    public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
     public Task? WhenPlaying => _whenPlaying;
 
-    protected ChatPlayer(Session session, Symbol chatId, IServiceProvider services)
+    protected ChatPlayer(Session session, ChatId chatId, IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
@@ -39,7 +39,7 @@ public abstract class ChatPlayer : ProcessorBase
         Session = session;
 
         Playback = services.GetRequiredService<IPlaybackFactory>().Create();
-        ChatAuthors = services.GetRequiredService<IChatAuthors>();
+        Authors = services.GetRequiredService<IAuthors>();
         Chats = services.GetRequiredService<IChats>();
     }
 
@@ -76,18 +76,18 @@ public abstract class ChatPlayer : ProcessorBase
         }
 
         _ = BackgroundTask.Run(async () => {
-            var entrySequencePlayer = new ChatEntryPlayer(Session, ChatId, Playback, Services, playToken);
+            var chatEntryPlayer = new ChatEntryPlayer(Session, ChatId, Playback, Services, playToken);
             try {
-                await Play(entrySequencePlayer, startAt, playToken).ConfigureAwait(false);
+                await Play(chatEntryPlayer, startAt, playToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 if (e is not OperationCanceledException)
                     Log.LogError(e, "Playback (reader part) failed in chat #{ChatId}", ChatId);
-                entrySequencePlayer.Abort();
+                chatEntryPlayer.Abort();
             }
             finally {
                 // We should wait for playback completion first
-                await entrySequencePlayer.DisposeAsync().ConfigureAwait(false);
+                await chatEntryPlayer.DisposeAsync().ConfigureAwait(false);
                 playTokenSource.CancelAndDisposeSilently();
                 whenPlayingSource.TrySetResult(default);
                 lock (Lock)

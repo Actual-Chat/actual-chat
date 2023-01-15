@@ -7,7 +7,7 @@ namespace ActualChat.Invite;
 public class InviteDbContextContextFactory : IDesignTimeDbContextFactory<InviteDbContext>
 {
     public string ConnectionString =
-        "Server=localhost;Database=ac_dev_invite;Port=5432;User Id=postgres;Password=postgres";
+        "Server=localhost;Database=ac_dev_invite;Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True";
 
     public InviteDbContext CreateDbContext(string[] args)
     {

@@ -1,8 +1,7 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Components.SideNav
-@using System.Text.RegularExpressions
+@using ActualChat.Hosting
 @implements IDisposable
 @implements IBaseLayoutBackend
 @{
@@ -10,17 +9,8 @@
 }
 
 <div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
-    <input id="navbar-button" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
-    <SideNav Direction="SideNavDirection.LeftToRight"
-             Opened="() => NavbarUI.IsVisible = true"
-             Closed="() => NavbarUI.IsVisible = false"
-             IsOpen="@NavbarUI.IsVisible">
-        <div class="h-full w-full overflow-hidden bg-04">
-            <LeftPanel/>
-        </div>
-    </SideNav>
     <div class="base-layout-body">
-        <div class="bg-01 flex-1 overflow-y-auto">
+        <div class="bg-01 flex-1 overflow-hidden">
             @if (failures.Count != 0) {
                 <div class="error-container custom-scrollbar">
                     <div class="relative flex-y gap-y-1 h-full overflow-y-auto custom-scrollbar">
@@ -41,8 +31,9 @@
     </div>
 </div>
 
-@if (ScreenSize.IsDesktop()) {
-    <Tooltip />
+<MenuHost />
+@if (ScreenSize.IsWide()) {
+    <TooltipHost />
 }
 
 @code {
@@ -50,9 +41,10 @@
     private DotNetObjectReference<IBaseLayoutBackend> BlazorRef { get; set; } = null!;
 
     [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private NotificationNavigationHandler NotificationHandler { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -65,7 +57,8 @@
     protected override async Task OnInitializedAsync() {
         if (BlazorModeHelper.IsServerSideBlazor)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
-        await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).ConfigureAwait(false);
+        if (HostInfo.AppKind != AppKind.Maui)
+            await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.registerNotificationHandler", BlazorRef).ConfigureAwait(false);
     }
 
     public void Dispose() {
@@ -74,26 +67,11 @@
     }
 
     [JSInvokable]
-    public Task HandleNotificationNavigation(string url) {
-        var origin = Nav.BaseUri.TrimEnd('/');
-        if (url.IsNullOrEmpty() || !url.StartsWith(origin))
-            return Task.CompletedTask;
-
-        var chatPageRe = new Regex($"^{origin}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
-        var match = chatPageRe.Match(url);
-        if (!match.Success)
-            return Task.CompletedTask;
-
-        var chatIdGroup = match.Groups["chatid"];
-        if (chatIdGroup.Success) {
-            Nav.NavigateTo(url, new NavigationOptions{ ForceLoad = false, ReplaceHistoryEntry = false });
-        }
-        return Task.CompletedTask;
-    }
+    public Task HandleNotificationNavigation(string url)
+        => NotificationHandler.Handle(url);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
         UIActionFailureTracker.Clear();
-        NavbarUI.IsVisible = false;
         StateHasChanged();
     }
 

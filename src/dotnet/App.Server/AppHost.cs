@@ -65,10 +65,12 @@ public class AppHost : IDisposable
 
         async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
         {
+            DbInitializer.Current = dbInitializer;
+            var dbInitializerName = dbInitializer.GetType().GetName();
             try {
-                log.LogInformation("{DbInitializer} started", dbInitializer.GetType().Name);
+                log.LogInformation("{DbInitializer} started", dbInitializerName);
                 await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
-                log.LogInformation("{DbInitializer} completed", dbInitializer.GetType().Name);
+                log.LogInformation("{DbInitializer} completed", dbInitializerName);
                 taskSource.TrySetResult(default);
             }
             catch (OperationCanceledException) {
@@ -76,14 +78,17 @@ public class AppHost : IDisposable
                 throw;
             }
             catch (Exception e) {
-                log.LogError(e, "{DbInitializer} failed", dbInitializer.GetType());
+                log.LogError(e, "{DbInitializer} failed", dbInitializerName);
                 taskSource.TrySetException(e);
                 throw;
+            }
+            finally {
+                DbInitializer.Current = null;
             }
         }
 
         var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
-            .ToDictionary(i => i, i => TaskSource.New<bool>(true));
+            .ToDictionary(i => i, _ => TaskSource.New<bool>(true));
         var initializeTasks = initializeTaskSources
             .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
         foreach (var (dbInitializer, _) in initializeTasks)
@@ -111,7 +116,7 @@ public class AppHost : IDisposable
         // Looks like there is no better way to set _default_ URL
         cfg.Sources.Insert(0,
             new MemoryConfigurationSource {
-                InitialData = new Dictionary<string, string>(StringComparer.Ordinal) {
+                InitialData = new Dictionary<string, string?>(StringComparer.Ordinal) {
                     { WebHostDefaults.ServerUrlsKey, ServerUrls },
                 },
             });
@@ -128,7 +133,7 @@ public class AppHost : IDisposable
         var jsonProviders = appBuilder.Sources.OfType<JsonConfigurationSource>().Where(j => j.ReloadOnChange).ToArray();
         foreach (var item in jsonProviders) {
             appBuilder.Sources.Remove(item);
-            appBuilder.AddJsonFile(item.Path, item.Optional, reloadOnChange: false);
+            appBuilder.AddJsonFile(item.Path!, item.Optional, reloadOnChange: false);
         }
         appBuilder.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
         appBuilder.AddEnvironmentVariables();

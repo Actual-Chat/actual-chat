@@ -1,10 +1,12 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using ActualChat.Web.Internal;
 using Microsoft.AspNetCore.Builder;
 using Stl.Plugins;
 
 namespace ActualChat.Web.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class WebModule : HostModule, IWebModule
 {
     public WebModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -16,10 +18,11 @@ public class WebModule : HostModule, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // Controllers, etc.
         services.AddMvcCore(options => {
-            options.ModelBinderProviders.Insert(1, new IdentifierModelBinderProvider());
+            options.ModelBinderProviders.Add(new ModelBinderProvider());
+            options.ModelMetadataDetailsProviders.Add(new ValidationMetadataProvider());
         });
-
     }
 
     public void ConfigureApp(IApplicationBuilder app)

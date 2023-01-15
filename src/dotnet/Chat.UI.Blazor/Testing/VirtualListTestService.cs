@@ -25,7 +25,7 @@ public class VirtualListTestService
         var start = range.Start;
         var end = range.End;
         if (!query.IsNone) {
-            var queryRange = query.InclusiveRange;
+            var queryRange = query.KeyRange;
             start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
             if (query.ExpandStartBy > 0)
                 start -= (int)query.ExpandStartBy;

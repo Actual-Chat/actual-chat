@@ -2,11 +2,11 @@
 @using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
-@implements IModalView<ChatSettingsModal.ModalInput>
-@inherits ComputedStateComponent<ChatSettingsModal.Model>
-@attribute [MatchFor(typeof(ModalInput), typeof(IModalView))]
+@implements IModalView<ChatSettingsModal.Model>
+@inherits ComputedStateComponent<ChatSettingsModal.ComputedModel>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
@@ -18,8 +18,8 @@
                     <DataAnnotationsValidator/>
 
                     <div class="pb-2 mb-4 border-b border-bg-03">
-                        <FormSection>
-                            <ChatMuteToggle ChatId="@ModalModel.Chat.Id" />
+                        <FormSection For="() => ModalModel.Chat">
+                            <ChatMuteToggle Chat="@ModalModel.Chat" />
                         </FormSection>
                     </div>
 
@@ -31,18 +31,18 @@
                         ContentId="@_form.Picture">
                     </PicUpload>
 
-                    <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
+                    <FormSection For="() => _form.Title" Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
                         <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" Autofocus="true" Class="right-panel-input"/>
                     </FormSection>
 
-                    <FormSection Class="flex h-12 md:h-8 justify-center">
+                    <FormSection For="() => _form.IsPublic" Class="flex h-12 md:h-8 justify-center">
                         <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
                     </FormSection>
                 }
                 @if (_form.IsPublic) {
-                    @if (m.PublicUrl != null) {
+                    @if (m.Link is { } publicUrl) {
                         <h4 class="section">Public join link</h4>
-                        <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl.CopyLink.ToString()"/>
+                        <CopyToClipboard Text="@publicUrl.ShortLocalUrl" CopyText="@publicUrl.AbsoluteUrl"/>
                     }
                 } else {
                     @if (m.Rules.CanInvite()) {
@@ -76,21 +76,20 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
-    [Parameter] public ModalInput ModalModel { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = ComputedModel.None,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
@@ -103,7 +102,7 @@
         _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var rules = await Chats.GetRules(Session, ModalModel.Chat.Id, cancellationToken);
         var invites = await Invites.ListChatInvites(Session, ModalModel.Chat.Id, cancellationToken);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
@@ -111,16 +110,16 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
-        var publicUrl = LinkInfoBuilder.GetFrom(Links.ChatPage(ModalModel.Chat.Id));
+        var link = Links.Chat(ModalModel.Chat.Id).ToDisplayUrl(UrlMapper);
         return new() {
             Rules = rules,
-            PublicUrl = publicUrl,
+            Link = link,
             Invites = invites,
         };
     }
 
     private void OnCancel()
-        => ModalInstance.CancelAsync();
+        => _ = ModalInstance.CloseAsync();
 
     private async Task OnSave() {
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
@@ -129,11 +128,24 @@
             IsPublic = _form.IsPublic,
             Picture = _form.Picture,
         };
-        var cmd = new IChats.ChangeChatCommand(Session, chat.Id, chat.Version, new() {
+        var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await UICommander.Run(cmd);
+        await UICommander.Run(command);
         await ModalInstance.CloseAsync();
+    }
+
+    private void OnImagePicked(string contentId) {
+        _form.Picture = contentId;
+        StateHasChanged();
+    }
+
+    private async Task OnNewInviteClick() {
+        var invite = new Invite {
+            Remaining = 10, // TODO: make it configurable
+            Details = new ChatInviteOption(ModalModel.Chat.Id),
+        };
+        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
     }
 
     public sealed class FormModel
@@ -157,26 +169,13 @@
         }
     }
 
-    private void OnImagePicked(string contentId) {
-        _form.Picture = contentId;
-        StateHasChanged();
-    }
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new();
 
-    private async Task OnNewInviteClick() {
-        var invite = new Invite {
-            Details = new InviteDetails { Chat = new(ModalModel.Chat.Id) },
-            Remaining = 10, // TODO: configurable
-        };
-        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
-    }
-
-    public sealed record ModalInput(Chat Chat);
-
-    public sealed record Model {
-        public static Model None { get; } = new();
-
-        public ChatAuthorRules? Rules { get; init; }
-        public LinkInfo? PublicUrl { get; init; }
+        public AuthorRules? Rules { get; init; }
+        public DisplayUrl? Link { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
     }
+
+    public sealed record Model(Chat Chat);
 }

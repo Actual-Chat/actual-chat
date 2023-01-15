@@ -11,6 +11,8 @@ public sealed record PlayerState
 
     // TODO: do we need this?
     // This record relies on referential equality
-    public bool Equals(PlayerState? other) => ReferenceEquals(this, other);
-    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public bool Equals(PlayerState? other)
+        => ReferenceEquals(this, other);
+    public override int GetHashCode()
+        => RuntimeHelpers.GetHashCode(this);
 }

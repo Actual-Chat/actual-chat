@@ -2,26 +2,26 @@
 
 public interface INotifications : IComputeService
 {
-    [ComputeMethod]
-    Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task SetStatus(SetStatusCommand command, CancellationToken cancellationToken);
-
+    Task Handle(HandleCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task RegisterDevice(RegisterDeviceCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record RegisterDeviceCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string DeviceId,
+        [property: DataMember] Symbol DeviceId,
         [property: DataMember] DeviceType DeviceType
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public sealed record SetStatusCommand(
+    public sealed record HandleCommand(
         [property: DataMember] Session Session,
-        [property: DataMember] string ChatId,
-        [property: DataMember] bool IsMuted
-        ) : ISessionCommand<Unit>;
+        [property: DataMember] NotificationId NotificationId
+    ) : ISessionCommand<Unit>;
 }

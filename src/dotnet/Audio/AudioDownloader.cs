@@ -4,9 +4,9 @@ public class AudioDownloader
 {
     protected static readonly byte[] ActualOpusStreamHeader = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53 }; // A_OPUS_S
     protected static readonly byte[] WebMHeader = { 0x1A, 0x45, 0xDF, 0xA3 };
-    protected IServiceProvider Services { get; init; }
-    protected IHttpClientFactory HttpClientFactory { get; init; }
-    protected ILogger Log { get; init; }
+    protected IServiceProvider Services { get; }
+    protected IHttpClientFactory HttpClientFactory { get; }
+    protected ILogger Log { get; }
 
     public AudioDownloader(IServiceProvider services)
     {
@@ -16,14 +16,13 @@ public class AudioDownloader
     }
 
     public virtual async Task<AudioSource> Download(
-        Uri audioUri,
+        string audioBlobUrl,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var byteStream = HttpClientFactory.DownloadByteStream(audioUri, Log, cancellationToken);
+        var byteStream = HttpClientFactory.DownloadByteStream(audioBlobUrl.ToUri(), Log, cancellationToken);
         var audio = await ReadFromByteStream(byteStream, cancellationToken).ConfigureAwait(false);
         var skipped = audio.SkipTo(skipTo, cancellationToken);
-        await skipped.WhenFormatAvailable.ConfigureAwait(false);
         return skipped;
     }
 
@@ -35,12 +34,13 @@ public class AudioDownloader
         if (head.Length < 8)
             throw new InvalidOperationException("Downloaded audio stream is empty.");
 
+        var clocks = Services.Clocks();
         var audioLog = Services.LogFor<AudioSource>();
         IAudioStreamAdapter streamAdapter;
         if (head.StartsWith(WebMHeader))
-            streamAdapter = new WebMStreamAdapter(audioLog);
+            streamAdapter = new WebMStreamAdapter(clocks, audioLog);
         else if (head.StartsWith(ActualOpusStreamHeader))
-            streamAdapter = new ActualOpusStreamAdapter(audioLog);
+            streamAdapter = new ActualOpusStreamAdapter(clocks, audioLog);
         else
             throw new InvalidOperationException("Unsupported audio stream container.");
 

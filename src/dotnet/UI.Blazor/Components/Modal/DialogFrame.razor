@@ -2,41 +2,45 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
-<ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
-    <div class="dialog-body custom-scrollbar overflow-y-auto md:overflow-y-hidden">
+<ModalFrame
+    Class="@Class" Title="@Title"
+    CloseButtonClass="@CloseButtonClass"
+    HasHeader="HasHeader"
+    HasCloseButton="HasCloseButton"
+    NoNarrowHeader="@NoNarrowHeader">
+    <div class="dialog-body">
         @Body
     </div>
-    <div class="dialog-buttons">
+    <div class="dialog-buttons @ButtonsClass">
         @Buttons
     </div>
 </ModalFrame>
 
 @code {
-    [Inject] private Escapist Escapist { get; init; } = null!;
+    private IAsyncDisposable? _escapeSubscription;
 
-    private CancellationTokenSource TokenSource { get; } = new();
-    private IAsyncDisposable? EscapeSubscription { get; set; }
+    [Inject] private Escapist Escapist { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonsClass { get; set; } = "";
+    [Parameter] public string CloseButtonClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
-    [Parameter] public bool HasCloseButton { get; set; } = false;
+    [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public bool NoNarrowHeader { get; set; }
+    [Parameter] public bool HasEscapeHandler { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
+    [Parameter] public ElementReference? Ref { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            EscapeSubscription = await Escapist.SubscribeAsync(
-                () => ModalInstance.CancelAsync(),
-                TokenSource.Token).ConfigureAwait(false);
-        }
+        if (firstRender && HasEscapeHandler)
+            _escapeSubscription = await Escapist.Subscribe(() => _ = ModalInstance.CloseAsync());
     }
 
     public async ValueTask DisposeAsync() {
-        TokenSource.Cancel();
-        if (EscapeSubscription != null) {
-            await EscapeSubscription.DisposeAsync().AsTask().ConfigureAwait(false);
-        }
+        if (_escapeSubscription != null)
+            await _escapeSubscription.DisposeAsync().ConfigureAwait(false);
     }
 }

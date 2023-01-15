@@ -1,25 +1,20 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
+@inherits FusionComponentBase
 
-<Item OnClick="OnLeaveChatClick" CssClass="context-menu-item warning-item">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-trash02 text-2xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Leave chat
-        </div>
-    </div>
-</Item>
-
+<MenuEntrySeparator />
+<MenuEntry
+    Class="warning-item"
+    Icon="icon-trash03"
+    Text="Leave chat"
+    Click="@OnLeaveChatClick">
+</MenuEntry>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnLeaveChatClick() {
-        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(Chat));
+        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
     }
 }

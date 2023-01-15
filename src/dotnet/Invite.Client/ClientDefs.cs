@@ -1,6 +1,6 @@
 ﻿using RestEase;
 
-namespace ActualChat.Invite.Client;
+namespace ActualChat.Invite;
 
 [BasePath("invites")]
 public interface IInvitesClientDef
@@ -9,7 +9,7 @@ public interface IInvitesClientDef
     Task<ImmutableArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken);
 
     [Get(nameof(ListChatInvites))]
-    Task<ImmutableArray<Invite>> ListChatInvites(Session session, string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Generate))]
     Task<Invite> Generate([Body] IInvites.GenerateCommand command, CancellationToken cancellationToken);

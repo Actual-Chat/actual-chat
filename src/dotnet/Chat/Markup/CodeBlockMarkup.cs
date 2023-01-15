@@ -14,7 +14,12 @@ public sealed record CodeBlockMarkup(
 
     protected override bool PrintMembers(StringBuilder builder)
     {
-        builder.Append(Invariant($"{nameof(Code)} = ```{Language}\r\n{Code}```"));
+        builder.Append(nameof(Code));
+        builder.Append(" = ```");
+        builder.Append(Language);
+        builder.Append("\r\n");
+        builder.Append(Code);
+        builder.Append("```");
         return true; // Indicates there is no comma / tail "}" must be prefixed with space
     }
 }

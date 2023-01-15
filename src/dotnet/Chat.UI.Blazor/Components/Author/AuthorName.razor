@@ -1,0 +1,27 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits AuthorBadgeBase
+@{
+    var m = State.Value;
+    var author = m.Author;
+}
+
+@if (ShowDetailsOnClick) {
+    <AvatarName
+        Avatar="@author.Avatar"
+        Class="@Class"
+        IsAnonymous="@author.IsAnonymous"
+        Click="@(_ => AuthorUI.Show(author.Id))"/>
+}
+else {
+    <AvatarName
+        Avatar="@author.Avatar"
+        IsAnonymous="@author.IsAnonymous"
+        Class="@Class"/>
+}
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
+}

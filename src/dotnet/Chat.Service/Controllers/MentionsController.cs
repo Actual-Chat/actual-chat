@@ -7,15 +7,15 @@ namespace ActualChat.Chat.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class MentionsController : ControllerBase, IMentions
 {
-    private readonly IMentions _service;
+    private IMentions Service { get; }
 
     public MentionsController(IMentions service)
-        => _service = service;
+        => Service = service;
 
     [HttpGet, Publish]
-    public Task<Mention?> GetLast(
+    public Task<Mention?> GetLastOwn(
         Session session,
-        Symbol chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
-        => _service.GetLast(session, chatId, cancellationToken);
+        => Service.GetLastOwn(session, chatId, cancellationToken);
 }

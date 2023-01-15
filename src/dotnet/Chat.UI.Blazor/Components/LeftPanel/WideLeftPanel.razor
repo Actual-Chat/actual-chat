@@ -1,0 +1,65 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Chat.UI.Blazor.Events
+
+<div class="wide-left-panel -flex-y md:flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
+    <div class="flex-x justify-center items-center min-h-14 border-b border-t border-bg-04 px-2 gap-x-1">
+        <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
+        <SearchBox
+            @ref="_searchBoxRef"
+            Placeholder="Find chat..."
+            TextChanged="OnSearchBoxTextChanged"/>
+    </div>
+    <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full ">
+        <NavbarContent/>
+    </div>
+    @if (ScreenSize.IsNarrow()) {
+        <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 pr-2 pl-4 gap-x-1">
+            <div class="text-02 text-title-1">@NavbarUI.ActiveGroupTitle</div>
+            <div class="flex grow"></div>
+            <div class="flex">
+                <ButtonRound Click="OnHideLeftPanelClick" Class="transparent">
+                    <i class="icon-arrow-right text-2xl"></i>
+                </ButtonRound>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    SearchBox? _searchBoxRef = null;
+
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    protected override void OnInitialized() {
+        NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;
+    }
+
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= OnNavbarActiveGroupChanged;
+
+    private void OnClick() {
+        if (NavbarUI.AddButtonAction.TryGetValue(NavbarUI.ActiveGroupId, out var addAction))
+            addAction();
+    }
+
+    private void OnHideLeftPanelClick()
+        => NavbarUI.ChangeVisibility(false);
+
+    private void OnSearchBoxTextChanged(string text)
+        => SearchUI.Text.Value = text;
+
+    private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
+        if (_searchBoxRef != null) {
+            await _searchBoxRef.Cancel();
+        }
+    }
+}

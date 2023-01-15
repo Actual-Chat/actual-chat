@@ -4,14 +4,17 @@
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"
-    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="1000"
-    SkeletonCount="50" DelaySkeletonRendering="false"
     DataSource="this"
     KeyComparer="LongAsStringKeyComparer.Default"
-    VisibleKeysState="VisibleKeys">
+    ItemVisibilityChanged="OnItemVisibilityChanged">
     <Item>
         <ChatMessage Message="@context" />
     </Item>
+    <Empty>
+        @if (Chat.Id != Constants.Chat.AnnouncementsChatId) {
+            <EmptyChatContent/>
+        }
+    </Empty>
     <Skeleton>
         @{
             var rnd = new Random(Random.Shared.Next());
@@ -20,7 +23,7 @@
         <div class="flex mx-1.5 opacity-75 hover:opacity-100 animate-pulse truncate">
             @if (showHeader) {
                 <div class="m-2">
-                    <AuthorCircle Author="Author.None"/>
+                    <AvatarCircle Avatar="Avatar.Loading"/>
                 </div>
             } else {
                 <div class="w-9 m-2 mt-1"></div>
@@ -29,7 +32,7 @@
             <div class="flex flex-col grow overflow-hidden m-1">
                 @if (showHeader) {
                     <div class="flex inline-flex-x">
-                        <AuthorName Author="Author.None"/>
+                        <AvatarName Avatar="@Avatar.Loading" Class="flex"/>
                         <span class="bg-skeleton rounded-md border-skeleton-border opacity-75 border-2 w-32 h-4"></span>
                     </div>
                 }
@@ -39,4 +42,7 @@
         </div>
     </Skeleton>
 </VirtualList>
-<MessageMenu/>
+
+<RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
+    <NavigateToEnd ChatSid="@Chat.Id" IsVisible="@(!ItemVisibility.Value.IsEndAnchorVisible)"/>
+</RenderIntoStack>

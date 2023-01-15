@@ -1,67 +1,54 @@
 using ActualChat.Kvas;
 using RestEase;
 
-namespace ActualChat.Users.Client;
+namespace ActualChat.Users;
 
 [BasePath("accounts")]
 public interface IAccountsClientDef
 {
+    [Get(nameof(GetOwn))]
+    Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken);
     [Get(nameof(Get))]
-    Task<Account?> Get(Session session, CancellationToken cancellationToken);
-    [Get(nameof(GetByUserId))]
-    Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken);
-    [Get(nameof(GetUserAuthor))]
-    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
+    Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken);
+    [Get(nameof(GetFull))]
+    Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
     Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(InvalidateEverything))]
+    Task InvalidateEverything([Body] IAccounts.InvalidateEverythingCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userPresences")]
 public interface IUserPresencesClientDef
 {
     [Get(nameof(Get))]
-    Task<Presence> Get(string userId, CancellationToken cancellationToken);
+    Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
 }
 
-[BasePath("userAvatars")]
-public interface IUserAvatarsClientDef
+[BasePath("avatars")]
+public interface IAvatarsClientDef
 {
+    [Get(nameof(GetOwn))]
+    Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken);
     [Get(nameof(Get))]
-    Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
-    [Get(nameof(GetDefaultAvatarId))]
-    Task<Symbol> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
-    [Get(nameof(ListAvatarIds))]
-    Task<ImmutableArray<Symbol>> ListAvatarIds(Session session, CancellationToken cancellationToken);
+    Task<Avatar?> Get(Session session, Symbol avatarId, CancellationToken cancellationToken);
+    [Get(nameof(ListOwnAvatarIds))]
+    Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);
 
-    [Post(nameof(Create))]
-    Task<UserAvatar> Create([Body] IUserAvatars.CreateCommand command, CancellationToken cancellationToken);
-    [Post(nameof(Update))]
-    Task Update([Body] IUserAvatars.UpdateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Change))]
+    Task<AvatarFull> Change([Body] IAvatars.ChangeCommand command, CancellationToken cancellationToken);
     [Post(nameof(SetDefault))]
-    Task SetDefault([Body] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
+    Task SetDefault([Body] IAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("recentEntries")]
-public interface IRecentEntriesClientDef
+[BasePath("readPositions")]
+public interface IReadPositionsClientDef
 {
-    [Get(nameof(List))]
-    Task<ImmutableArray<RecentEntry>> List(
-        Session session,
-        RecencyScope scope,
-        int limit,
-        CancellationToken cancellationToken);
-    [Post(nameof(Update))]
-    Task<RecentEntry?> Update([Body] IRecentEntries.UpdateCommand command, CancellationToken cancellationToken);
-}
-
-[BasePath("chatReadPositions")]
-public interface IChatReadPositionsClientDef
-{
-    [Get(nameof(Get))]
-    public Task<long?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetOwn))]
+    public Task<long?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Set))]
-    public Task Set([Body] IChatReadPositions.SetReadPositionCommand command, CancellationToken cancellationToken);
+    public Task Set([Body] IReadPositions.SetCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("serverKvas")]
@@ -74,13 +61,6 @@ public interface IServerKvasClientDef
     Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
     [Post(nameof(SetMany))]
     Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
-}
-
-[BasePath("userContacts")]
-public interface IUserContactsClientDef
-{
-    [Get(nameof(List))]
-    Task<ImmutableArray<UserContact>> List(Session session, CancellationToken cancellationToken);
-    [Post(nameof(Change))]
-    Task<UserContact?> Change([Body] IUserContacts.ChangeCommand command, CancellationToken cancellationToken);
+    [Post(nameof(MigrateGuestKeys))]
+    Task MigrateGuestKeys([Body] IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default);
 }

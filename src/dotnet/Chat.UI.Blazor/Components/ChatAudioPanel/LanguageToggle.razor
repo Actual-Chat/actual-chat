@@ -1,0 +1,14 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+@using Stl.CommandR.Internal
+@inherits ChatLanguageToggle
+@{
+    var m = State.ValueOrDefault.Or(Languages.Main);
+}
+
+<ButtonRound
+    Class="chat-language-toggle" Click="OnClick">
+    <span class="w-6 h-6 m-1 font-sans">
+        @m.Code
+    </span>
+</ButtonRound>

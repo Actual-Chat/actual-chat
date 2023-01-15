@@ -1,0 +1,67 @@
+@using ActualChat.Notification
+@inherits ComputedStateComponent<NotificationStack.Model>
+@{
+    var model = State.Value;
+    var notifications = model.Notifications;
+}
+
+<div class="flex-y space-y-3 z-90 fixed bottom-16 right-0 min-w-[16%] max-w-[16%] overflow-y-auto custom-scrollbar max-h-[100%]"
+    @onmouseover="MouseOver"
+    @onmouseout="MouseOut">
+    @foreach (var notification in notifications.OrderBy(n => n.HandledAt)) {
+        var notificationId = notification.Id;
+        <NotificationEntry
+            @key="@notificationId.Value"
+            Notification="@notification"
+            AutoCloseDelay="@(_isHovered ? null : TimeSpan.FromSeconds(5))"
+            AnimationTime="@(TimeSpan.FromSeconds(1))"
+            Closed="@(_ => OnClose(notificationId))"/>
+    }
+</div>
+
+@code {
+    private bool _isHovered;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; set; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() => new () {
+        InitialValue = Model.None,
+        UpdateDelayer = FixedDelayer.Instant,
+    };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
+        var notifications = new List<ActualChat.Notification.Notification>();
+        foreach (var notificationId in notificationIds) {
+            var notification = await Notifications.Get(Session, notificationId, cancellationToken);
+            notifications.Add(notification);
+        }
+
+        return new () {
+            Notifications = notifications.ToImmutableArray(),
+        };
+    }
+
+    private async Task OnClose(NotificationId notificationId) {
+        var command = new INotifications.HandleCommand(Session, notificationId);
+        await UICommander.Run(command);
+    }
+
+    private void MouseOver() {
+        _isHovered = true;
+        StateHasChanged();
+    }
+
+    private void MouseOut() {
+        _isHovered = false;
+        StateHasChanged();
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public ImmutableArray<ActualChat.Notification.Notification> Notifications { get; init; } = ImmutableArray<ActualChat.Notification.Notification>.Empty;
+    }
+}

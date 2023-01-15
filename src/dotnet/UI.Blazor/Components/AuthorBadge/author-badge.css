@@ -1,8 +1,0 @@
-.author-badge {
-    @apply flex-x items-center;
-}
-
-/* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */
-.author-name-spacings {
-    @apply w-10 w-11 w-12 w-14 w-16 w-20 w-24 w-28 w-32 w-36 w-40;
-}

@@ -5,36 +5,45 @@ namespace ActualChat.Users;
 
 public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
 {
-    private readonly IAuth _auth;
-    private readonly IAccountsBackend _backend;
-    private readonly ICommander _commander;
+    private IAuth Auth { get; }
+    private IAccountsBackend Backend { get; }
 
     public Accounts(IServiceProvider services) : base(services)
     {
-        _auth = services.GetRequiredService<IAuth>();
-        _backend = services.GetRequiredService<IAccountsBackend>();
-        _commander = services.GetRequiredService<ICommander>();
+        Auth = services.GetRequiredService<IAuth>();
+        Backend = services.GetRequiredService<IAccountsBackend>();
     }
 
     // [ComputeMethod]
-    public virtual async Task<Account?> Get(Session session, CancellationToken cancellationToken)
+    public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return null;
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        UserId userId;
+        if (user == null) {
+            var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+            userId = sessionInfo.GetGuestId();
+        }
+        else
+            userId = new UserId(user.Id);
 
-        return await _backend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-    }
-
-    public virtual async Task<Account?> GetByUserId(Session session, string userId, CancellationToken cancellationToken)
-    {
-        var account = await _backend.Get(userId, cancellationToken).ConfigureAwait(false);
-        await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);
+        var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
         return account;
     }
 
-    public virtual Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
-        => _backend.GetUserAuthor(userId, cancellationToken);
+    // [ComputeMethod]
+    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        return account.ToAccount();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);
+        return account;
+    }
 
     // [CommandHandler]
     public virtual async Task Update(IAccounts.UpdateCommand command, CancellationToken cancellationToken)
@@ -42,10 +51,35 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, account) = command;
+        var (session, account, expectedVersion) = command;
 
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        await _commander.Call(new IAccountsBackend.UpdateCommand(command.Account), cancellationToken)
+        await Commander.Call(new IAccountsBackend.UpdateCommand(account, expectedVersion), cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task InvalidateEverything(
+        IAccounts.InvalidateEverythingCommand command,
+        CancellationToken cancellationToken)
+    {
+        var (session, everywhere) = command;
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            // It should happen inside this block to make sure it runs on every node
+            var agentInfo = Services.GetRequiredService<AgentInfo>();
+            var operation = context.Operation();
+            if (everywhere || operation.AgentId == agentInfo.Id)
+                ComputedRegistry.Instance.InvalidateEverything();
+            return;
+        }
+
+        var account = await GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeAdmin);
+
+        // We must call CreateCommandDbContext to make sure this operation is logged in the Users DB
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
     }
 }

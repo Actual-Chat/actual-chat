@@ -1,0 +1,69 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Events
+@inherits FusionComponentBase
+@{
+    var entry = Entry;
+    var colorCls = IsOwn ? "text-06 " : "text-primary ";
+    var fontCls = "text-base leading-4 md:leading-6 ";
+    var authorNameCls = colorCls + fontCls + "font-medium max-w-full md:max-w-64 pl-2";
+}
+
+<div class="related-chat-entry" @onclick="@OnQuoteClick">
+    @if (Kind == RelatedEntryKind.Reply) {
+        <div class="flex-x w-full max-h-10 md:max-h-8 items-center">
+            <i class="icon-reply text-xl @colorCls"></i>
+            <div class="flex-y md:flex-x w-full overflow-hidden">
+                <div class="flex-x">
+                    <AuthorName AuthorSid="@entry.AuthorId" Class="@authorNameCls"/>
+                    <span class="@colorCls @fontCls pr-1">:&nbsp</span>
+                </div>
+                <div class="flex-1 truncate px-2 md:px-0 text-sm md:text-base">@_text</div>
+            </div>
+            <RenderSlot Name="QuoteCloseButton"/>
+        </div>
+    } else {
+        <div class="flex-x w-full max-h-8 items-center gap-x-4">
+            <i class="icon-edit text-2xl text-icons-01"></i>
+            <div class="flex-x w-full overflow-hidden">
+                <div class="truncate font-medium">@_text</div>
+            </div>
+            <RenderSlot Name="QuoteCloseButton"/>
+        </div>
+    }
+    <RenderIntoSlot Name="QuoteCloseButton">
+        <ButtonRound Class="blackout" Click="OnCancelClick" tabindex="-1" aria-label="close">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
+    </RenderIntoSlot>
+</div>
+
+@code {
+    private IChatMarkupHub _chatMarkupHub = null!;
+    private string _text = null!;
+
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
+    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public RelatedEntryKind Kind { get; set; }
+    [Parameter, EditorRequired] public bool IsOwn { get; set; }
+
+    // Shortcuts
+    private ChatId ChatId => Entry.ChatId;
+
+    protected override void OnParametersSet() {
+        _chatMarkupHub = ChatMarkupHubFactory[ChatId];
+        var markup = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.QuoteView);
+        _text = markup.ToReadableText(MarkupConsumer.QuoteView);
+    }
+
+    private void OnQuoteClick()
+        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
+
+    private void OnCancelClick()
+        => UIEventHub.Publish<CancelChatMessageEditEvent>();
+}

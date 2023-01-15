@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<SingleChatPlaybackState>
+@inherits ComputedStateComponent<ChatMediaState>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
 }
@@ -11,20 +11,19 @@
 </ButtonRound>
 
 @code {
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
-    private void OnListenClick()
-        => _ = ChatUI.SetListeningState(ChatId, !State.LatestNonErrorValue.IsListening);
-
-    protected override ComputedState<SingleChatPlaybackState>.Options GetStateOptions()
+    protected override ComputedState<ChatMediaState>.Options GetStateOptions()
         => new() {
-            InitialValue = SingleChatPlaybackState.None,
+            InitialValue = ChatMediaState.None,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override Task<SingleChatPlaybackState> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetPlaybackState(ChatId, cancellationToken);
+    protected override Task<ChatMediaState> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.GetMediaState(ChatId);
+
+    private void OnListenClick()
+        => _ = ChatUI.SetListeningState(ChatId, !State.Value.IsListening);
 }

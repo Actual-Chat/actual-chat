@@ -1,22 +1,25 @@
-import { debounce, Debounced } from '../../../../nodejs/src/debounce';
+import { throttle, ResettableFunc } from 'promises';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'UndoStack';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class UndoStack<T> {
     private items: Array<T> = new Array<T>();
     private position: number = 0;
     private isPushEnabled: boolean = true;
     public maxSize: number = 200;
-    public pushDebounced: Debounced<() => void>
+    public pushThrottled: ResettableFunc<() => void>
 
     public constructor(
         public reader: () => T,
         public writer: (T) => void,
         public equalityComparer: (first: T, second: T) => boolean,
-        public pushDebounceDelay: number = 500,
-        private debug: boolean = false,
+        public pushThrottleInterval: number,
     ) {
-        this.pushDebounced = debounce(this.push, pushDebounceDelay)
+        this.pushThrottled = throttle(this.push, pushThrottleInterval)
         this.clear();
 
         // Replacing writer so it temporary disables push.
@@ -41,14 +44,12 @@ export class UndoStack<T> {
 
         // Checking if next redo is the same
         if (this.position < this.items.length && this.equalityComparer(value, this.items[this.position])) {
-            if (this.debug)
-                console.debug(`${LogScope}.push: skipping (matching redo)`);
+            debugLog?.log(`push: skipping (matching redo)`);
             return;
         }
         // Checking if prev. undo is the same
         if (this.equalityComparer(value, this.items[this.position - 1])) {
-            if (this.debug)
-                console.debug(`${LogScope}.push: skipping (matching undo)`);
+            debugLog?.log(`push: skipping (matching undo)`);
             return;
         }
 
@@ -57,13 +58,11 @@ export class UndoStack<T> {
         while (this.items.length > this.maxSize)
             this.items.splice(0, 1);
         this.position = this.items.length;
-
-        if (this.debug)
-            console.debug(`${LogScope}.push: items:`, this.items, `, position: `, this.position);
+        debugLog?.log(`push: items:`, this.items, `, position: `, this.position);
     }
 
     public undo() {
-        this.pushDebounced.cancel();
+        this.pushThrottled.reset();
         this.push();
 
         try {
@@ -79,13 +78,12 @@ export class UndoStack<T> {
             }
         }
         finally {
-            if (this.debug)
-                console.debug(`${LogScope}.undo: items:`, this.items, `, position: `, this.position);
+            debugLog?.log(`undo: items:`, this.items, `, position: `, this.position);
         }
     }
 
     public redo() {
-        this.pushDebounced.cancel();
+        this.pushThrottled.reset();
         this.push();
 
         try {
@@ -103,25 +101,20 @@ export class UndoStack<T> {
             }
         }
         finally {
-            if (this.debug)
-                console.debug(`${LogScope}.redo: items:`, this.items, `, position: `, this.position);
+            debugLog?.log(`redo: items:`, this.items, `, position: `, this.position);
         }
     }
 
     public clearRedo() {
         this.items.splice(this.position);
-
-        if (this.debug)
-            console.debug(`${LogScope}.clearRedo:`, this.items, `, position: `, this.position);
+        debugLog?.log(`clearRedo:`, this.items, `, position: `, this.position);
     }
 
     public clear() {
-        this.pushDebounced.cancel();
+        this.pushThrottled.reset();
         this.items.splice(0);
         this.items.push(this.reader())
         this.position = 1;
-
-        if (this.debug)
-            console.debug(`${LogScope}.clear:`, this.items, `, position: `, this.position);
+        debugLog?.log(`clear:`, this.items, `, position: `, this.position);
     }
 }

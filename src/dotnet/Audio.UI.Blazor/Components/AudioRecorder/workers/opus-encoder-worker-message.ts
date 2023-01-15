@@ -1,6 +1,6 @@
 export interface EncoderMessage {
     type: 'create' | 'init' | 'end';
-    callbackId: number;
+    rpcResultId: number;
 }
 
 export interface CreateEncoderMessage extends EncoderMessage {
@@ -10,8 +10,6 @@ export interface CreateEncoderMessage extends EncoderMessage {
 
 export interface InitEncoderMessage extends EncoderMessage {
     type: 'init';
-    channelCount: number;
-    bitsPerSecond: number;
     sessionId: string;
     chatId: string;
 }

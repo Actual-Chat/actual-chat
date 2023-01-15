@@ -1,4 +1,7 @@
 using ActualChat.App.Server;
+using ActualChat.Commands;
+using ActualChat.Commands.Internal;
+using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Playwright;
@@ -8,13 +11,13 @@ namespace ActualChat.Testing.Host;
 
 public static class TestAuthExt
 {
-    public static Task<User> SignIn(
+    public static Task<AccountFull> SignIn(
         this IWebTester tester,
         User user,
         CancellationToken cancellationToken = default)
         => tester.AppHost.SignIn(tester.Session, user, cancellationToken);
 
-    public static async Task<User> SignIn(
+    public static async Task<AccountFull> SignIn(
         this AppHost appHost,
         Session session,
         User user,
@@ -26,20 +29,23 @@ public static class TestAuthExt
 
         var services = appHost.Services;
         var commander = services.Commander();
-        var auth = services.GetRequiredService<IAuth>();
-        var authBackend = services.GetRequiredService<IAuthBackend>();
+        var accounts = services.GetRequiredService<IAccounts>();
 
         var command = new SignInCommand(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken)
-            .Require(SessionInfo.MustBeAuthenticated)
+        // Wait till the authentication happens
+        var cAccount = await Computed.Capture(() => accounts.GetOwn(session, cancellationToken)).ConfigureAwait(false);
+        cAccount = await cAccount
+            .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
+            .FirstAsync(c => !(c.ValueOrDefault?.IsGuest ?? true), cancellationToken).AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
-        user = (await authBackend.GetUser(default, sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
+        var account = cAccount.Value;
 
-        // Let's wait a bit to ensure all invalidations go through
-        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
-        return user;
+        // Just in case
+        await Task.Delay(TimeSpan.FromSeconds(0.1)).ConfigureAwait(false);
+        return account;
     }
 
     public static Task SignOut(
@@ -80,7 +86,7 @@ public static class TestAuthExt
                 await HandleGoogleSignInPopup(user, password, page);
                 break;
             case MicrosoftAccountDefaults.AuthenticationScheme:
-                throw new NotImplementedException();
+                throw new NotSupportedException();
             default:
                 throw new ArgumentOutOfRangeException(nameof(authScheme));
         }
@@ -90,13 +96,9 @@ public static class TestAuthExt
 
     private static async Task StartClientSignInWith(string scheme, IPage page)
     {
-        var signInButton = await page.WaitForSelectorAsync("button :text(\"Sign in\")");
-        signInButton.Should().NotBeNull();
-        await signInButton!.ClickAsync();
-
-        var signInWithBtn = await page.WaitForSelectorAsync($"button :text(\"Sign in with {scheme}\")");
-        signInWithBtn.Should().NotBeNull();
-        await signInWithBtn!.ClickAsync();
+        var continueWithGoogleBtn = await page.WaitForSelectorAsync("button :text(\"Continue with Google\")");
+        continueWithGoogleBtn.Should().NotBeNull();
+        await continueWithGoogleBtn!.ClickAsync();
     }
 
     private static async Task HandleGoogleSignInPopup(string user, string password, IPage page)

@@ -1,5 +1,3 @@
-using Stl.OS;
-
 namespace ActualChat.Collections;
 
 public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>
@@ -8,18 +6,18 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
     private readonly int _cacheIndexMask;
     private readonly LruCache<TKey, TValue>[] _caches;
 
-    public ConcurrentLruCache(int capacity, int cacheCount = 0)
+    public ConcurrentLruCache(int capacity, int cacheCount = 0, IEqualityComparer<TKey>? comparer = null)
     {
         if (cacheCount <= 0)
             cacheCount = HardwareInfo.ProcessorCountPo2;
         if (!Bits.IsPowerOf2((ulong)cacheCount))
             throw new ArgumentOutOfRangeException(nameof(cacheCount));
 
-        var capacityPerCache = capacity / cacheCount;
+        var capacityPerCache = Math.Max(1, capacity / cacheCount);
         _caches = new LruCache<TKey, TValue>[cacheCount];
         _cacheIndexMask = cacheCount - 1;
         for (var i = 0; i < _caches.Length; i++)
-            _caches[i] = new LruCache<TKey, TValue>(capacityPerCache);
+            _caches[i] = new LruCache<TKey, TValue>(capacityPerCache, comparer);
     }
 
     public int Capacity

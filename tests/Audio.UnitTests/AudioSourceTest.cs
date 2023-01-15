@@ -4,10 +4,10 @@ namespace ActualChat.Audio.UnitTests;
 
 public class AudioSourceTest
 {
-    private readonly ILogger _log;
+    private ILogger Log { get; }
 
     public AudioSourceTest(ILogger log)
-        => _log = log;
+        => Log = log;
 
     [Fact]
     public async Task ExtractFromFile()
@@ -101,11 +101,10 @@ public class AudioSourceTest
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken);
         var streamAdapter = webMStream
-            ? new WebMStreamAdapter(_log)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_log);
+            ? new WebMStreamAdapter(MomentClockSet.Default, Log)
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var audio = await streamAdapter.Read(byteStream, cancellationToken);
         var skipped = audio.SkipTo(skipTo, cancellationToken);
-        await skipped.WhenFormatAvailable.ConfigureAwait(false);
         return skipped;
     }
 
@@ -118,8 +117,8 @@ public class AudioSourceTest
     {
         var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
         var streamAdapter = webMStream
-            ? new WebMStreamAdapter(_log)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_log);
+            ? new WebMStreamAdapter(MomentClockSet.Default, Log)
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         return stream.WriteByteStream(streamAdapter.Write(source, CancellationToken.None),true);
     }
 }

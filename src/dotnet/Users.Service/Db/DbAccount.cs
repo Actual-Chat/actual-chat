@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
@@ -11,22 +13,56 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     [Column(TypeName = "smallint")]
     public AccountStatus Status { get; set; }
+    public string Email { get; set; } = "";
+    public string Phone { get; set; } = "";
+    public bool SyncContacts { get; set; }
+    public string Name { get; set; } = "";
+    public string LastName { get; set; } = "";
+    public string Username { get; set; } = "";
+    public string? UsernameNormalized { get; set; }
 
-    public string AvatarId { get; set; } = "";
-
-    public Account ToModel(Account model)
-        => model with {
-            Id = Id,
-            Status = Status,
-            AvatarId = AvatarId,
-            Version = Version,
-        };
-
-    public void UpdateFrom(Account model)
+    public AccountFull ToModel(User user)
     {
-        Id = model.Id;
+        if (user.Id != Id)
+            throw new ArgumentOutOfRangeException(nameof(user));
+
+        return new (user, Version) {
+            Status = Status,
+            Email = Email,
+            Phone = Phone,
+            SyncContacts = SyncContacts,
+            Name = Name,
+            LastName = LastName,
+            Username = Username,
+        };
+    }
+
+    public void UpdateFrom(AccountFull model)
+    {
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+        model.RequireSomeVersion();
+
+        Id = id;
         Version = model.Version;
         Status = model.Status;
-        AvatarId = model.AvatarId;
+        Phone = model.Phone;
+        SyncContacts = model.SyncContacts;
+        Email = model.Email;
+        Name = model.Name;
+        LastName = model.LastName;
+        Username = model.Username;
+        if (!model.Username.IsNullOrEmpty())
+            UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbAccount>
+    {
+        public void Configure(EntityTypeBuilder<DbAccount> builder) {
+            builder.Property(a => a.Id).IsRequired();
+            builder.HasIndex(a => a.UsernameNormalized)
+                .HasFilter("username_normalized is not null")
+                .IsUnique();
+        }
     }
 }

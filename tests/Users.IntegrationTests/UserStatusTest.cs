@@ -22,7 +22,7 @@ public class UserStatusTest : AppHostTestBase
             builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
-        _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
+        _sessionFactory = _appHost.Services.SessionFactory();
         _adminSession = _sessionFactory.CreateSession();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
@@ -42,7 +42,7 @@ public class UserStatusTest : AppHostTestBase
         await _tester.SignIn(new User("Bob"));
 
         // act
-        var account = await RequireAccount();
+        var account = await GetOwnAccount();
 
         // assert
         account.Status.Should().Be(NewAccountStatus);
@@ -55,14 +55,14 @@ public class UserStatusTest : AppHostTestBase
         };
         foreach (var newStatus in newStatuses) {
             var newAccount = account with { Status = newStatus };
-            await _tester.Commander.Call(new IAccounts.UpdateCommand(_adminSession, newAccount));
+            await _tester.Commander.Call(new IAccounts.UpdateCommand(_adminSession, newAccount, account.Version));
 
             // assert
-            account = await RequireAccount();
+            account = await GetOwnAccount();
             account.Status.Should().Be(newStatus);
         }
     }
 
-    private Task<Account> RequireAccount()
-        => _accounts.Get(_tester.Session, default).Require();
+    private Task<AccountFull> GetOwnAccount()
+        => _accounts.GetOwn(_tester.Session, default);
 }

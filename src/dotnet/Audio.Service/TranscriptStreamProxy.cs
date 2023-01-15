@@ -46,7 +46,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
 
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
         using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
-        var serviceEndpoints = endpointState.LatestNonErrorValue;
+        var serviceEndpoints = endpointState.Value;
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Read({Stream}): empty address ring!", streamName);
@@ -85,7 +85,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
 
         var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
         using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
-        var serviceEndpoints = endpointState.LatestNonErrorValue;
+        var serviceEndpoints = endpointState.Value;
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Write({Stream}): empty address ring, writing locally!", streamName);

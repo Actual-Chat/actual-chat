@@ -1,18 +1,27 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
+@inherits MenuBase
 
-<RenderIntoStack Name="@ContextMenuContainer.RenderStackName" Key="@MenuId">
-    <ContextMenu Id="@MenuId">
-        <ChildContent>
-            @if (context.Data is ChatMessageModel chatMessageModel) {
-                <CascadingValue Value="@chatMessageModel">
-                    <MessageMenuContent/>
-                </CascadingValue>
-            }
-        </ChildContent>
-    </ContextMenu>
-</RenderIntoStack>
+@if (_chatMessageModel != null) {
+    <MessageMenuContent
+        ChatMessageModel="_chatMessageModel"
+        ClickedLinkUrl="@_link">
+    </MessageMenuContent>
+}
 
-@code{
-    public const string MenuId = "menu-MessageMenu";
+@code {
+    private ChatMessageModel? _chatMessageModel;
+    private string? _link;
+
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sEntryId, var link ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        var entryId = new TextEntryId(sEntryId);
+        var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
+        _chatMessageModel = entry != null ? new ChatMessageModel(entry) : null;
+        _link = link.NullIfEmpty();
+    }
 }

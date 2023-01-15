@@ -1,15 +1,23 @@
+using System.Buffers;
+
 namespace ActualChat.Audio;
 
 public class AudioStreamer : IAudioStreamer
 {
     private IAudioStreamServer AudioStreamServer { get; }
+    private OtelMetrics Metrics { get; }
     private ILogger<AudioStreamer> Log { get; }
     private ILogger<AudioSource> AudioSourceLog { get; }
 
     // ReSharper disable once ContextualLoggerProblem
-    public AudioStreamer(IAudioStreamServer audioStreamServer, ILogger<AudioStreamer> log, ILogger<AudioSource> audioSourceLog)
+    public AudioStreamer(
+        IAudioStreamServer audioStreamServer,
+        OtelMetrics metrics,
+        ILogger<AudioStreamer> log,
+        ILogger<AudioSource> audioSourceLog)
     {
         AudioStreamServer = audioStreamServer;
+        Metrics = metrics;
         Log = log;
         AudioSourceLog = audioSourceLog;
     }
@@ -20,16 +28,29 @@ public class AudioStreamer : IAudioStreamer
         CancellationToken cancellationToken)
     {
         var audioStream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        var frameStream = audioStream
+        var (headerDataTask, dataStream) = audioStream.SplitHead(cancellationToken);
+        var frameStream = dataStream
             .Select((data, i) => new AudioFrame {
                 Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
+
+        var headerData = await headerDataTask.ConfigureAwait(false);
+        var headerDataSequence = new ReadOnlySequence<byte>(headerData);
+        var header = ActualOpusStreamHeader.Parse(ref headerDataSequence);
+
         return new AudioSource(
-            Task.FromResult(AudioSource.DefaultFormat),
+            header.CreatedAt,
+            header.Format,
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
+    }
+
+    public Task ReportLatency(TimeSpan latency,  CancellationToken cancellationToken)
+    {
+        Metrics.AudioLatency.Record(latency.Ticks / 10000f);
+        return Task.CompletedTask;
     }
 }

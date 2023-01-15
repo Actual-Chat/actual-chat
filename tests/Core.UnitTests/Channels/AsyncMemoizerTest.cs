@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace ActualChat.Core.UnitTests.Channels;
 
 public class AsyncMemoizerTest : TestBase

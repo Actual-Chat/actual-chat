@@ -1,0 +1,79 @@
+// nextTick & nextTickAsync are quite similar to polyfill of
+// [setImmediate](https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate),
+// which we don't use because it relies on setTimeout, which is throttled in background tabs.
+export function nextTick(callback: () => unknown) {
+    nextTickCallbacks.push(callback);
+    nextTickChannel.port2.postMessage(null);
+}
+
+export function nextTickAsync(): Promise<void> {
+    return new Promise<void>(resolve => nextTick(resolve));
+}
+
+const nextTickCallbacks: Array<() => unknown> = [];
+const nextTickChannel = new MessageChannel();
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+nextTickChannel.port1.onmessage = _ => {
+    const callback = nextTickCallbacks.shift();
+    callback();
+};
+
+// Timeout: a nicer wrapper around setTimeout
+
+export class Timeout {
+    protected handle: number | null = null;
+
+    static start(isPrecise: boolean, timeoutMs: number, callback: () => unknown): Timeout {
+        return isPrecise
+            ? new PreciseTimeout(timeoutMs, callback)
+            : new Timeout(timeoutMs, callback);
+    }
+
+    static startRegular(timeoutMs: number, callback: () => unknown): Timeout {
+        return new Timeout(timeoutMs, callback);
+    }
+
+    static startPrecise(timeoutMs: number, callback: () => unknown): PreciseTimeout {
+        return new PreciseTimeout(timeoutMs, callback);
+    }
+
+    constructor(timeoutMs?: number, callback?: () => unknown, handle?: number) {
+        if (handle) {
+            this.handle = handle;
+            return;
+        }
+
+        this.handle = setTimeout(callback, timeoutMs) as unknown as number;
+        return;
+    }
+
+    public clear(): void {
+        if (this.handle) {
+            clearTimeout(this.handle)
+            this.handle = null;
+        }
+    }
+}
+
+// Precise timeout (5-16ms?) based on requestAnimationFrame
+
+export class PreciseTimeout extends Timeout {
+    constructor(timeoutMs: number, callback: () => unknown,) {
+        // Precise timeout handling
+        const endsAt = Date.now() + timeoutMs;
+        const loop = () => {
+            if (Date.now() >= endsAt)
+                callback();
+            else
+                this.handle = requestAnimationFrame(loop);
+        };
+        super(undefined, undefined, requestAnimationFrame(loop));
+    }
+
+    public clear(): void {
+        if (this.handle) {
+            cancelAnimationFrame(this.handle);
+            this.handle = null;
+        }
+    }
+}

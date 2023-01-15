@@ -7,25 +7,28 @@ namespace ActualChat.Notification.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class NotificationsController : ControllerBase, INotifications
 {
-    private readonly INotifications _service;
-    private readonly ICommander _commander;
+    private INotifications Service { get; }
+    private ICommander Commander { get; }
 
     public NotificationsController(INotifications service, ICommander commander)
     {
-        _service = service;
-        _commander = commander;
+        Service = service;
+        Commander = commander;
     }
 
-    [HttpGet]
-    [Publish]
-    public Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetStatus(session, chatId, cancellationToken);
+    [HttpGet, Publish]
+    public Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken)
+        => Service.Get(session, notificationId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
+        => Service.ListRecentNotificationIds(session, cancellationToken);
 
     [HttpPost]
     public Task RegisterDevice([FromBody] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task SetStatus([FromBody] INotifications.SetStatusCommand command, CancellationToken cancellationToken)
-        => _commander.Call(command, cancellationToken);
+    public Task Handle([FromBody] INotifications.HandleCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
 }

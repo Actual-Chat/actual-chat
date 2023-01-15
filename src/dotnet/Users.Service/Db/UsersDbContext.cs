@@ -8,23 +8,22 @@ namespace ActualChat.Users.Db;
 
 public class UsersDbContext : DbContextBase
 {
-    public DbSet<DbAccount> Accounts { get; protected set; } = null!;
-    public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
-    public DbSet<DbUserAvatar> UserAvatars { get; protected set; } = null!;
-    public DbSet<DbUserContact> UserContacts { get; protected set; } = null!;
-    public DbSet<DbChatUserSettings> ChatUserSettings { get; protected set; } = null!;
-    public DbSet<DbChatReadPosition> ChatReadPositions { get; protected set; } = null!;
     public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;
+    public DbSet<DbAccount> Accounts { get; protected set; } = null!;
+    public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
+    public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
+    public DbSet<DbReadPosition> ReadPositions { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbUser> Users { get; protected set; } = null!;
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
-    public DbSet<DbRecentEntry> RecentEntries { get; protected set; } = null!;
 
     public UsersDbContext(DbContextOptions options) : base(options) { }
 
+#pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+#pragma warning restore IL2026
 }

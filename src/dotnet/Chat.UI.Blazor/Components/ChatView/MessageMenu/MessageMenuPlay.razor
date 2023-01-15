@@ -1,0 +1,126 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<MessageMenuPlay.Model>
+@{
+    var m = State.ValueOrDefault ?? Model.NotPlaying;
+    var canPlay = m.CanPlay;
+}
+
+@if (canPlay) {
+    @if (IsMenu) {
+        <MenuEntry
+            Icon="icon-play-fill"
+            Class="important-item"
+            Text="Play"
+            Click="@OnPlay">
+</MenuEntry>
+    } else {
+        <ButtonRound
+            Class="play-btn"
+            Tooltip="Play"
+            FloatingPosition="FloatingPosition.Top"
+            Click="@OnPlay">
+            <i class="icon-play-fill text-xl text-primary"></i>
+        </ButtonRound>
+    }
+} else {
+    @if (IsMenu) {
+        <MenuEntry
+            Icon="icon-Stop-fill"
+            Class="important-item"
+            Text="Stop"
+            Click="@OnStop">
+        </MenuEntry>
+    } else {
+        <ButtonRound
+            Click="OnStop"
+            Class="play-btn"
+            Tooltip="Stop"
+            FloatingPosition="FloatingPosition.Top">
+            <i class="icon-Stop-fill text-xl text-error"></i>
+        </ButtonRound>
+    }
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+
+    [Parameter] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public bool IsMenu { get; set; } = false;
+
+    private ILogger? _log;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+    => new() {
+        InitialValue = Model.NotPlaying,
+        UpdateDelayer = FixedDelayer.Instant,
+    };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);
+        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
+            return Model.NotPlaying;
+
+        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
+        var historicalChatPlayer = player as HistoricalChatPlayer;
+        var playback = historicalChatPlayer?.Playback;
+        if (playback == null)
+            return State.ValueOrDefault ?? Model.NotPlaying;
+
+        var isPaused = await playback.IsPaused.Use(cancellationToken);
+        var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
+        Moment? playingAt = null;
+        var canPlay = true;
+        foreach (var playingTrack in playingTracks) {
+            var trackInfo = playingTrack.TrackInfo;
+            if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
+                var audioEntry = chatAudioTrackInfo.AudioEntry;
+                if (audioEntry.ChatId != Entry.ChatId)
+                    continue;
+                if (audioEntry.LocalId == Entry.AudioEntryId) {
+                    if (isPaused || playingTrack.State.IsStarted) {
+                        canPlay = false;
+                    }
+                }
+            }
+        }
+        if (!playingAt.HasValue && State.ValueOrDefault != null) {
+            // Try to keep last state to avoid blinks
+            var m = State.Value;
+            if (m.CanPlay == canPlay)
+                return m;
+        }
+
+        return new Model {
+            CanPlay = canPlay,
+        };
+    }
+
+    private Task OnStop() {
+        ChatPlayers.StopPlayback();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnPlay() {
+        var entry = Entry;
+        var chatId = entry.ChatId;
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
+        var audioEntry = await Chats.GetEntry(Session, audioEntryId);
+        if (audioEntry == null) {
+            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            return; // We can't do much in this case
+        }
+
+        var startAt = audioEntry.BeginsAt;
+        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
+        chatPlayers.StartHistoricalPlayback(chatId, startAt);
+    }
+
+    public sealed record Model
+    {
+        public static Model NotPlaying { get; } = new();
+        public bool CanPlay { get; init; } = true;
+    }
+}

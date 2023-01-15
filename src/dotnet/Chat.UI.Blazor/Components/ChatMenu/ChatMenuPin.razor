@@ -1,46 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
-@inherits ComputedStateComponent<bool>
+@inherits FusionComponentBase
 
-@{
-    var isPinned = State.ValueOrDefault;
-}
-
-@if (!isPinned) {
-    <Item OnClick="@Toggle">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-pin text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Pin
-            </div>
-        </div>
-    </Item>
-} else {
-    <Item OnClick="@Toggle">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-pin text-2xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Unpin
-            </div>
-        </div>
-    </Item>
-}
+<MenuEntry
+    Icon="icon-pin"
+    Text="@(ChatState.Contact.IsPinned ? "Unpin" : "Pin")"
+    Click="@Toggle">
+</MenuEntry>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
-
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.IsPinned(Chat.Id);
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void Toggle()
-        => _ = ChatUI.SetPinState(Chat.Id, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(ChatState.Id, !ChatState.Contact.IsPinned);
 }

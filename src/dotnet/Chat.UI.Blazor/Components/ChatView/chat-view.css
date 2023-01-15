@@ -1,11 +1,12 @@
 .message-wrapper {
-    @apply flex-x relative w-full;
+    @apply flex-x relative w-full select-none md:select-auto;
     @apply border-l-2 border-bg-01;
+    transform: translateZ(0);
 }
 .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
 }
-.message-wrapper:hover .author-badge {
+.message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
 }
 
@@ -15,59 +16,19 @@
     @apply text-current break-words;
 }
 
-.author-name {
+.chat-message-author-name {
     @apply font-bold text-03 cursor-pointer hover:opacity-80;
+    @apply overflow-y-hidden truncate max-h-6;
 }
 .message-wrapper.own-message .author-name {
     @apply text-06;
 }
 
-.chat-message-modal .chat-message:hover {
-    @apply bg-01;
-}
-.chat-message-modal .chat-message:hover .author-badge {
-    @apply bg-01;
-}
-
-.chat-message-modal .message-attachment-file a {
-    @apply cursor-default pointer-events-none;
-}
-
-.chat-message-modal .message-attachment-file a svg {
-    @apply hidden;
-}
-
-.chat-message-modal .message-attachment-image a {
-    @apply cursor-default pointer-events-none;
-}
-
-.chat-quote {
-    @apply flex-x w-full bg-03 py-2 px-2 text-base;
-}
-.close-reply.btn.btn-round .btn-content {
-    @apply bg-transparent min-w-8 max-w-8 min-h-8 max-h-8;
-}
-.chat-quote .btn.btn-square:hover .btn-content {
-    @apply bg-transparent;
-}
-
-.quoted-message {
-    @apply px-1.5 w-full h-12;
-    @apply flex-x items-center;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-03 cursor-pointer;
-}
-
-.chat-message-quoted {
-    height: 100%;
-    border-left: 4px solid;
-    @apply border-bg-03 cursor-pointer;
-}
 .chat-message-highlighted {
     @apply animate-highlight;
 }
 
-.message-wrapper:hover .author-badge {
+.message-wrapper:hover .avatar-badge {
     @apply bg-inherit;
 }
 
@@ -101,10 +62,15 @@
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
-.chat-message-menu .menu-item {
-    @apply h-8 text-left w-full;
+body.narrow .message-menu .reaction-select {
+    @apply gap-4;
 }
-
+body.narrow .message-menu .reaction-select-reaction-emoji {
+    @apply w-6 h-6;
+}
+.chat-message:hover .message-reactions-add {
+    @apply visible;
+}
 .chat-message-transcript {
     @apply text-02 whitespace-normal;
 }
@@ -128,14 +94,15 @@
     @apply bg-04 text-02 rounded-md;
 }
 
+.message-hover-menu-placement {
+    @apply absolute z-20 right-2 -mt-6;
+    @apply w-px h-px; /* we need to have non-zero size, otherwise hit test will indicate that element is not visible */
+}
+
 .message-hover-menu {
-    @apply absolute z-20 right-2 -mt-6 p-1 mx-0 flex-x gap-x-0.5;
     @apply rounded-full bg-01 border border-bg-03;
-    @apply invisible;
 }
-.message-wrapper:hover .message-hover-menu {
-    @apply invisible md:visible;
-}
+
 .message-hover-menu .btn.btn-round .btn-content {
     @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;
 }
@@ -143,7 +110,21 @@
     @apply bg-round-hover;
 }
 
-.message-attachment-image img.skeleton {
-    @apply bg-skeleton rounded-md animate-pulse;
+.system-entry .message-content {
+    @apply flex-x justify-center items-center;
+}
+.system-entry .message-content .avatar-name {
+    @apply font-bold text-03;
+    @apply cursor-pointer;
+    @apply hover:opacity-80;
 }
 
+.chat-message-quote {
+    @apply px-1.5 w-full h-12;
+    @apply flex-x items-center;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply text-03 cursor-pointer;
+}
+.chat-message-quote-removed {
+    @apply italic h-6 cursor-default;
+}

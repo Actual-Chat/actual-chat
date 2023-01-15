@@ -1,0 +1,53 @@
+@namespace ActualChat.UI.Blazor.App
+@{
+    var cls = IsOpen ? "open" : "closed";
+}
+
+<div class="landing-menu @cls">
+    <div class="left-line">
+        <div class="flex-x w-full min-h-14 justify-center items-center">
+            <div class="min-w-8 max-w-8 min-h-8 max-h-8">
+                <img src="/landing/ac-icon-dark.svg" alt="icon">
+            </div>
+            <div class="px-2 self-center max-w-40">
+                <img src="/landing/ac-title-dark.svg" alt="brand">
+            </div>
+        </div>
+        <div class="menu-content">
+            <button onclick="@Signin">
+                Sign in
+            </button>
+            <button>
+                For Business
+            </button>
+            <button>
+                API
+            </button>
+            <button>
+                Apps
+            </button>
+            <button>
+                FAQ
+            </button>
+        </div>
+        <div class="menu-footer">
+            <ButtonRound>
+                <img src="/landing/facebook-gray.svg" alt="facebook">
+            </ButtonRound>
+            <ButtonRound>
+                <img src="/landing/telegram-gray.svg" alt="telegram">
+            </ButtonRound>
+            <ButtonRound>
+                <img src="/landing/github-gray.svg" alt="github">
+            </ButtonRound>
+            <ButtonRound>
+                <img src="/landing/medium-gray.svg" alt="medium">
+            </ButtonRound>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback Signin { get; set; }
+}

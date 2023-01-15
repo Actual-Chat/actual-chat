@@ -3,9 +3,11 @@ namespace ActualChat.Invite.Backend;
 public interface IInvitesBackend : IComputeService
 {
     [ComputeMethod]
+    Task<Invite?> Get(string id, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Invite?> Get(string id, CancellationToken cancellationToken);
+    Task<bool> IsValid(string activationKey, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> Generate(GenerateCommand command, CancellationToken cancellationToken);

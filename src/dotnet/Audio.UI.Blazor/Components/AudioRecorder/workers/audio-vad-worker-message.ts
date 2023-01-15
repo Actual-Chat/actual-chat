@@ -1,3 +1,3 @@
 export interface VadMessage {
-    type: 'create' | 'init';
+    type: 'create' | 'reset';
 }

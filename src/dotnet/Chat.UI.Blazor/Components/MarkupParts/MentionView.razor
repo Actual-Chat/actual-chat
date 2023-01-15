@@ -2,36 +2,32 @@
 @inherits MarkupViewBase<MentionMarkup>
 @attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
-<ChatAuthorBadgeTemplate AuthorId="@_authorId">
-    @if (context.Author.Id.IsEmpty) {
+<AuthorBadgeTemplate AuthorSid="@_authorId">
+    @if (context.Author.Id.IsNone) {
         <div class="mention-markup mention-markup-invalid">@Markup.NameOrNotAvailable</div>
         return;
     }
 
-    <div class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
-         @onclick="OnChatAuthorClick">
-        <div class="flex-x items-center">
-            <i class="icon-at text-md"></i>
-            @context.Author.Name
+    <div
+        class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
+        @onclick="@(_ => AuthorUI.Show(_authorId))">
+        <div class="truncate">
+            <i class="absolute icon-at text-lg"></i>
+            <span class="ml-5">
+                @context.Author.Avatar.Name
+            </span>
         </div>
     </div>
-</ChatAuthorBadgeTemplate>
+</AuthorBadgeTemplate>
 
 @code {
-    private string _authorId = "";
+    private AuthorId _authorId;
 
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private MarkupHub MarkupHub { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
 
     protected override void OnParametersSet() {
-        MarkupHub.ChatId = Entry.ChatId;
         var id = Markup.Id;
-        if (!id.OrdinalHasPrefix("a:", out _authorId))
-            _authorId = id;
+        if (id.OrdinalHasPrefix("a:", out var authorId))
+            AuthorId.TryParse(authorId, out _authorId);
     }
-
-    private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorModal(_authorId);
 }

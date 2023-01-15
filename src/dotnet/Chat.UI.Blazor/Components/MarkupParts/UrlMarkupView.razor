@@ -7,17 +7,28 @@
 
 @switch (_kind) {
 case MarkupUrlKind.Chat:
-    <a class="@cls" href="@Markup.Url" @onclick="OnClick" @onclick:preventDefault="true">
+    <a class="@cls"
+       href="@(_chatUrl!.Value)"
+       @onclick="@OnClick"
+       @onclick:preventDefault="true"
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))"
+       data-menu-trigger="@MenuTriggers.Secondary.Format()">
         @Markup.Url
     </a>
     break;
 case MarkupUrlKind.Image:
-    <a class="@cls" href="@Markup.Url" role="button" @onclick="OnClick" @onclick:preventDefault="true">
+    <a class="@cls"
+       href="@Markup.Url"
+       role="button"
+       @onclick="OnClick"
+       @onclick:preventDefault="true">
         <img src="@Markup.Url" alt="@Markup.Url"/>
     </a>
     break;
 default:
-    <a class="@cls" href="@Markup.Url" target="_blank">
+    <a class="@cls" href="@Markup.Url" target="_blank"
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))"
+       data-menu-trigger="@MenuTriggers.Secondary.Format()">
         @Markup.Url
     </a>
     break;
@@ -25,19 +36,37 @@ default:
 
 @code {
     private MarkupUrlKind _kind;
+    private ChatMessageModel _message = null!;
+    private LocalUrl? _chatUrl;
 
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     protected override void OnParametersSet() {
+        _message = new ChatMessageModel(Entry);
         _kind = Markup.IsImage
             ? MarkupUrlKind.Image
-            : Markup.Url.StartsWith(Nav.BaseUri) ? MarkupUrlKind.Chat : MarkupUrlKind.Other;
+            : IsLocalUrl(Markup.Url, out _chatUrl) ? MarkupUrlKind.Chat : MarkupUrlKind.Other;
     }
 
-    private void OnClick() {
+    private bool IsLocalUrl(string url, out LocalUrl? localUrl)
+    {
+        if (Markup.Url.StartsWith(Nav.BaseUri)) {
+            localUrl = new LocalUrl(Nav.ToBaseRelativePath(url));
+            return true;
+        }
+        if (Markup.Url.StartsWith(UrlMapper.BaseUrl)) {
+            localUrl = new LocalUrl(UrlMapper.ToBaseRelativePath(url));
+            return true;
+        }
+        localUrl = null;
+        return false;
+    }
+
+    private async Task OnClick() {
         if (_kind == MarkupUrlKind.Image)
-            ImagePreviewUI.Show(Markup.Url);
+            await ImageViewerUI.Show(Markup.Url);
         else
             Nav.NavigateTo(Markup.Url);
     }

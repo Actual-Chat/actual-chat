@@ -1,4 +1,4 @@
-import { clamp } from './math';
+import { clamp } from 'math';
 
 const DefaultItemSize: number = 30;
 const MinItemSize: number = 8;

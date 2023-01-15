@@ -17,7 +17,7 @@ namespace ActualChat.Notification.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.6")
+                .HasAnnotation("ProductVersion", "7.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -59,52 +59,50 @@ namespace ActualChat.Notification.Migrations
                     b.ToTable("devices");
                 });
 
-            modelBuilder.Entity("ActualChat.Notification.Db.DbMessage", b =>
+            modelBuilder.Entity("ActualChat.Notification.Db.DbNotification", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<DateTime?>("AccessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("accessed_at");
-
-                    b.Property<long?>("ChatEntryId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("chat_entry_id");
+                    b.Property<string>("AuthorId")
+                        .HasColumnType("text")
+                        .HasColumnName("author_id");
 
                     b.Property<string>("ChatId")
                         .HasColumnType("text")
                         .HasColumnName("chat_id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("DeviceId")
+                    b.Property<DateTime?>("HandledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("handled_at");
+
+                    b.Property<string>("IconUrl")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("device_id");
+                        .HasColumnName("icon_url");
 
-                    b.HasKey("Id")
-                        .HasName("pk_messages");
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
 
-                    b.HasIndex("DeviceId")
-                        .HasDatabaseName("ix_messages_device_id");
+                    b.Property<long?>("TextEntryLocalId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("text_entry_local_id");
 
-                    b.ToTable("messages");
-                });
-
-            modelBuilder.Entity("ActualChat.Notification.Db.DbMutedChatSubscription", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ChatId")
+                    b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("chat_id");
+                        .HasColumnName("title");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -117,12 +115,12 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_muted_chat_subscriptions");
+                        .HasName("pk_notifications");
 
-                    b.HasIndex("UserId", "ChatId")
-                        .HasDatabaseName("ix_muted_chat_subscriptions_user_id_chat_id");
+                    b.HasIndex("UserId", "Id")
+                        .HasDatabaseName("ix_notifications_user_id_id");
 
-                    b.ToTable("muted_chat_subscriptions");
+                    b.ToTable("notifications");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>

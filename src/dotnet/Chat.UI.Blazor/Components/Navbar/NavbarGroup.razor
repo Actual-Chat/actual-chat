@@ -1,0 +1,37 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
+@{
+    var isVisible = NavbarUI.ActiveGroupId == Id;
+}
+
+@if (!isVisible) {
+    return;
+}
+<div class="@Class flex-y navbar-group flex space-y-1">
+    @ChildContent
+</div>
+
+@code{
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    private EventHandler? _onActiveGroupChanged;
+
+    [Parameter] public string? Class { get; set; } = "";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? Icons { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public Action? AddClick { get; set; }
+
+    protected override void OnInitialized() {
+        _onActiveGroupChanged = (s, e) => StateHasChanged();
+        if (AddClick != null)
+            NavbarUI.AddButtonAction.Add(Id, AddClick);
+        NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
+    }
+
+    public void Dispose() {
+        NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+        NavbarUI.AddButtonAction.Remove(Id);
+    }
+}

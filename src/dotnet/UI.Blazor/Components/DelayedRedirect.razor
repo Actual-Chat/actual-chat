@@ -1,0 +1,41 @@
+@implements IDisposable
+
+<span class="delayed-redirect">
+    Redirecting to
+    <a href="@_url.LocalUrl">@_url.ShortLocalUrl</a>
+    in
+    <LiveTimeDeltaSeconds Moment="_redirectAt"/>...
+</span>
+
+@code {
+    private Task? _delayTask;
+    private Moment _redirectAt;
+    private DisplayUrl _url;
+
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string To { get; set; } = "";
+    [Parameter] public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(3);
+
+    public void Dispose() {
+        _delayTask = null;
+    }
+
+    protected override void OnParametersSet() {
+        var clock = Clocks.SystemClock; // Coz they're used by ILiveTime
+        _url = new LocalUrl(To).ToDisplayUrl(UrlMapper);
+        _redirectAt = clock.Now + Delay;
+        _delayTask = clock.Delay(Delay);
+        _ = Redirect(_delayTask);
+    }
+
+    private async Task Redirect(Task delayTask) {
+        await delayTask;
+        if (_delayTask != delayTask)
+            return;
+
+        Nav.NavigateTo(_url.LocalUrl);
+    }
+}

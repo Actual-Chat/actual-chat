@@ -1,20 +1,21 @@
-using ActualChat.SignalR.Client;
+using System.Buffers;
+using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace ActualChat.Audio.Client;
+namespace ActualChat.Audio;
 
 public class AudioClient : HubClientBase,
     IAudioStreamer,
     ITranscriptStreamer
 {
-    private const int StreamBufferSize = 64;
-
     private ILogger AudioSourceLog { get; }
+
+    public int StreamBufferSize { get; init; } = 64;
 
     public AudioClient(IServiceProvider services)
         : base("api/hub/audio", services)
-        => AudioSourceLog = Services.LogFor<AudioSource>();
+        => AudioSourceLog = services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(
         Symbol streamId,
@@ -22,23 +23,37 @@ public class AudioClient : HubClientBase,
         CancellationToken cancellationToken)
     {
         Log.LogDebug("GetAudio: StreamId = {StreamId}, SkipTo = {SkipTo}", streamId.Value, skipTo.ToShortString());
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var audioStream = connection
             .StreamAsync<byte[]>("GetAudioStream", streamId.Value, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        var frameStream = audioStream
-            .Select((packet, i) => new AudioFrame {
-                Data = packet,
+
+        var (headerDataTask, dataStream) = audioStream.SplitHead(cancellationToken);
+        var frameStream = dataStream
+            .Select((data, i) => new AudioFrame {
+                Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        var audio = new AudioSource(Task.FromResult(AudioSource.DefaultFormat),
+
+        var headerData = await headerDataTask.ConfigureAwait(false);
+        var headerDataSequence = new ReadOnlySequence<byte>(headerData);
+        var header = ActualOpusStreamHeader.Parse(ref headerDataSequence);
+
+        var audio = new AudioSource(
+            header.CreatedAt,
+            header.Format,
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
-        await audio.WhenFormatAvailable.ConfigureAwait(false);
         Log.LogDebug("GetAudio: Exited; StreamId = {StreamId}, SkipTo = {SkipTo}", streamId.Value, skipTo.ToShortString());
         return audio;
+    }
+
+    public async Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
+    {
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
+        await connection.SendAsync("ReportLatency", latency, cancellationToken).ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
@@ -46,7 +61,7 @@ public class AudioClient : HubClientBase,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId.Value);
-        var connection = await GetHubConnection(cancellationToken).ConfigureAwait(false);
+        var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var updates = connection
             .StreamAsync<Transcript>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);

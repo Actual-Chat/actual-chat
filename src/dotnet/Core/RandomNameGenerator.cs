@@ -1,17 +1,10 @@
+using Cysharp.Text;
+using Microsoft.Toolkit.HighPerformance;
+using Stl.Mathematics.Internal;
 
 namespace ActualChat;
 
-public interface IRandomNameGenerator
-{
-    /// <summary>
-    /// Must generate a readable random name that's a sequence of words
-    /// separated by <paramref name="wordDelimiter"/>.
-    /// </summary>
-    /// <returns>New name.</returns>
-    string Generate(char wordDelimiter = ' ', bool lowerCase = false);
-}
-
-public class RandomNameGenerator : IRandomNameGenerator
+public sealed record RandomNameGenerator
 {
     private static readonly string[] Prefixes = {
         "Professor",
@@ -65,13 +58,21 @@ public class RandomNameGenerator : IRandomNameGenerator
         "Helehana",
     };
 
-    public string Generate(char wordDelimiter = ' ', bool lowerCase = false)
+    public static RandomNameGenerator Default { get; } = new();
+
+    public char WordDelimiter { get; init; } = ' ';
+
+    public string Generate() => Generate(Random.Shared.Next());
+    public string Generate(string seed) => Generate(seed.GetDjb2HashCode());
+    public string Generate(int seed)
     {
-        var prefix = Prefixes[Random.Shared.Next(0, Prefixes.Length)];
-        var suffix = Suffixes[Random.Shared.Next(0, Suffixes.Length)];
-        var name = prefix + wordDelimiter + suffix + wordDelimiter + Random.Shared.Next(0, 100).ToString(CultureInfo.InvariantCulture);
-        if (lowerCase)
-            name = name.ToLowerInvariant();
+        var prefixIndex = IntArithmetics.Default.Mod(seed, Prefixes.Length);
+        var suffixIndex = IntArithmetics.Default.Mod(seed * 1019, Suffixes.Length);
+        var extraIndex = IntArithmetics.Default.Mod(seed * 353, 10);
+        var name = ZString.Concat(
+            Prefixes[prefixIndex], WordDelimiter,
+            Suffixes[suffixIndex], WordDelimiter,
+            extraIndex.ToString(CultureInfo.InvariantCulture));
         return name;
     }
 }

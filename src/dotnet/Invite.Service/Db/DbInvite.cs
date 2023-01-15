@@ -1,14 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using Stl.Generators;
 using Stl.Versioning;
 
 namespace ActualChat.Invite.Db;
 
 [Table("Invites")]
 [Index(nameof(SearchKey), nameof(Remaining))]
-public class DbInvite : IHasId<string>, IHasVersion<long>
+public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<InviteDetails>();
 
@@ -35,30 +37,32 @@ public class DbInvite : IHasId<string>, IHasVersion<long>
         set => _expiresOn = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public string? DetailsJson { get; set; }
+    public string DetailsJson { get; set; } = "";
 
     public Invite ToModel()
-        => new() {
-            Id = Id,
-            Version = Version,
+        => new(Id, Version) {
             Remaining = Remaining,
             ExpiresOn = ExpiresOn,
             CreatedAt = CreatedAt,
             CreatedBy = CreatedBy,
-            Details = DetailsJson.IsNullOrEmpty() ? null : DetailsSerializer.Read(DetailsJson),
+            Details = DetailsJson.IsNullOrEmpty() ? new() : DetailsSerializer.Read(DetailsJson),
         };
 
     public void UpdateFrom(Invite model)
     {
-        Id = model.Id;
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id);
+        model.RequireSomeVersion();
+
+        Id = id;
         Version = model.Version;
         Remaining = model.Remaining;
         ExpiresOn = model.ExpiresOn;
         CreatedAt = model.CreatedAt;
         CreatedBy = model.CreatedBy;
 
-        var details = model.Details;
-        SearchKey = details?.GetSearchKey() ?? "";
-        DetailsJson = details == null ? null : DetailsSerializer.Write(details);
+        var details = model.Details.Require();
+        SearchKey = details.Option.Require().GetSearchKey();
+        DetailsJson = DetailsSerializer.Write(details);
     }
 }

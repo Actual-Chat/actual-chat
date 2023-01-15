@@ -1,31 +1,43 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Notification
-@inherits ComputedStateComponent<ChatNotificationStatus>
+@inherits ComputedStateComponent<ChatNotificationMode>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
-<Toggle Id="@(_id ??= ComponentIdGenerator.Next("chat-mute"))"
-        Label="@Label"
-        Value="@(!m.IsSubscribed)" ValueChanged="OnValueChanged" />
+<Toggle
+    Id="@(_id ??= ComponentIdGenerator.Next("chat-mute"))"
+    Label="@Label"
+    Value="@(m == ChatNotificationMode.Muted)"
+    ValueChanged="OnValueChanged"/>
 
 @code {
     private string? _id;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private INotifications Notifications { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    private bool IsLoading => !Chat.Id.IsNone;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
-    protected override ComputedState<ChatNotificationStatus>.Options GetStateOptions()
-        => new() { InitialValue = ChatNotificationStatus.NotSubscribed };
+    protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()
+        => new() { InitialValue = ChatNotificationMode.Default };
 
-    protected override Task<ChatNotificationStatus> ComputeState(CancellationToken cancellationToken)
-        => Notifications.GetStatus(Session, ChatId, cancellationToken);
+    protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
+        var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
+        return userChatSettings.NotificationMode;
+    }
 
     private Task OnValueChanged(bool isMuted)
-        => UICommander.Run(new INotifications.SetStatusCommand(Session, ChatId, !isMuted));
+        => UICommander.RunLocal(async cancellationToken => {
+            var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
+            userChatSettings = userChatSettings with {
+                NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
+            };
+            await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
+        });
 }

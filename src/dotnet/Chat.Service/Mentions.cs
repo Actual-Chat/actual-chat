@@ -5,21 +5,21 @@ namespace ActualChat.Chat;
 
 internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
     private IMentionsBackend Backend { get; }
-    private IChatAuthors ChatAuthors { get; }
+    private IAuthors Authors { get; }
 
-    public Mentions(IServiceProvider services, IMentionsBackend backend, IChatAuthors chatAuthors) : base(services)
+    public Mentions(IServiceProvider services, IMentionsBackend backend, IAuthors authors) : base(services)
     {
         Backend = backend;
-        ChatAuthors = chatAuthors;
+        Authors = authors;
     }
 
     // [ComputeMethod]
-    public virtual async Task<Mention?> GetLast(
+    public virtual async Task<Mention?> GetLastOwn(
         Session session,
-        Symbol chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var author = await ChatAuthors.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
 

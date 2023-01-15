@@ -12,7 +12,7 @@
         <img class="pic-image @sizeClass @cursorClass"
              alt=""
              src="@_pictureUrl"
-             @onclick="OnPictureClick"
+             @onclick="@OnPictureClick"
              @onclick:preventDefault="true"/>
     } else if(NoPicture != null) {
         @NoPicture
@@ -29,8 +29,8 @@
     private string _pictureUrl = "";
     private bool _hasPicture;
 
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string ContentId { get; set; } = "";
@@ -42,8 +42,8 @@
     protected override void OnParametersSet() {
         _hasPicture = !ContentId.IsNullOrEmpty();
         if (_hasPicture) {
-            var contentUrl = ContentUrlMapper.ContentUrl(ContentId);
-            _pictureUrl = ContentUrlMapper.PicturePreviewUrl(contentUrl);
+            var contentUrl = UrlMapper.ContentUrl(ContentId);
+            _pictureUrl = UrlMapper.ImagePreview128Url(contentUrl);
         } else if(NoPicture == null) {
             _picStyle = $"background-color: {GenerateColor()}";
             _pictureUrl = "";
@@ -60,8 +60,8 @@
         await Click.InvokeAsync(arg).ConfigureAwait(false);
 
         if (EnableImagePreview) {
-            var url = ContentUrlMapper.ContentUrl(ContentId);
-            await ImagePreviewUI.Show(url);
+            var url = UrlMapper.ContentUrl(ContentId);
+            await ImageViewerUI.Show(url);
         }
     }
 }

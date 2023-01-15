@@ -115,6 +115,21 @@ public class TranscriptUpdateTests : TestBase
     }
 
     [Fact]
+    public void TranscriberUnstableTest()
+    {
+        var extractor = new TranscriberState();
+        var t = new Transcript();
+        _ = extractor.AppendAlternative("1", 1);
+        Dump(extractor.LastStable);
+        t = extractor.AppendAlternative(" 2", 2);
+        Dump(extractor.LastStable);
+        t.IsStable.Should().BeFalse();
+        t = extractor.Complete();
+        t.IsStable.Should().BeTrue();
+        t.TextToTimeMap.Length.Should().Be(2);
+    }
+
+    [Fact]
     public void RandomTranscriberStateTest()
     {
         var extractor = new TranscriberState();

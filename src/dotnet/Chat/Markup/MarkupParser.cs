@@ -20,6 +20,16 @@ public class MarkupParser : IMarkupParser
         return markup;
     }
 
+    public static Markup ParseRaw(string text, bool useUnparsedTextMarkup = false)
+    {
+        if (text.IsNullOrEmpty())
+            return Markup.Empty;
+
+        var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
+        var result = parser.Parse(text);
+        return result.Success ? result.Value : Markup.Empty;
+    }
+
     // Character classes
 
     private static readonly Parser<char, char> FirstUrlChar =
@@ -46,7 +56,7 @@ public class MarkupParser : IMarkupParser
     private static readonly Parser<char, char> SpecialChar =
         Token(c => c is '*' or '`' or '@').Labelled("'*', '`', or '@'");
     private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
-        Token(c => !(char.IsWhiteSpace(c) || c is '_' or '*' or '`' or '@'))
+        Token(c => !(char.IsWhiteSpace(c) || c is '*' or '`' or '@'))
             .Labelled("not whitespace, line separator, '_', '*', '`', or '@'");
 
     // Tokens
@@ -185,11 +195,4 @@ public class MarkupParser : IMarkupParser
         SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextBlock).ManyMarkup();
     private static readonly Parser<char, Markup> FullMarkup =
         SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
-
-    public static Markup ParseRaw(string text, bool useUnparsedTextMarkup = false)
-    {
-        var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
-        var result = parser.Parse(text);
-        return result.Success ? result.Value : Markup.Empty;
-    }
 }

@@ -1,10 +1,17 @@
-import { addInteractionHandler } from 'first-interaction';
 import { Disposable } from 'disposable';
-import { delayAsync } from 'delay';
+import { AsyncLock, delayAsync, PromiseSource } from 'promises';
+import { onDeviceAwake } from 'on-device-awake';
+import { EventHandlerSet } from 'event-handling';
+import { NextInteraction } from 'next-interaction';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'AudioContextLazy';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
-async function defaultFactory() : Promise<AudioContext> {
+async function defaultFactory(): Promise<AudioContext> {
     const audioContext = new AudioContext({
         latencyHint: 'interactive',
         sampleRate: 48000,
@@ -12,35 +19,35 @@ async function defaultFactory() : Promise<AudioContext> {
 
     // Resume must be called during the sync part of this async flow,
     // i.e. it must be the very first async call
-    await resume(audioContext);
+    const resumedAudioContext = await resume(audioContext);
 
     await Promise.all([
-        audioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
-        audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
-        audioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
+        resumedAudioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
+        resumedAudioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
+        resumedAudioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
     ]);
 
-    await warmup(audioContext);
+    await warmup(resumedAudioContext);
 
-    return audioContext;
+    return resumedAudioContext;
 }
 
-async function resume(audioContext: AudioContext) : Promise<AudioContext> {
-    console.debug(`${LogScope}.resume start: audioContext.state =`, audioContext.state);
-    if (audioContext.state !== 'running' && audioContext.state !== 'closed') {
-        const resumeTask = audioContext.resume().then(() => true);
-        const delayTask = delayAsync(250).then(() => false);
-        const result = await Promise.race([resumeTask, delayTask]);
-        if (!result)
-            throw `${LogScope}: Couldn't resume AudioContext.`;
-    }
+async function resume(audioContext: AudioContext): Promise<AudioContext> {
+    debugLog?.log(`-> resume: audioContext.state =`, audioContext.state);
 
-    console.debug(`${LogScope}.resume end: audioContext.state =`, audioContext.state);
+    if (audioContext.state === 'closed') {
+        return await defaultFactory();
+    }
+    // if state is 'running' or 'suspended'
+    // should be performed during user interaction! - no awaits or callbacks
+    await audioContext.resume();
+
+    debugLog?.log(`<- resume: audioContext.state =`, audioContext.state);
     return audioContext;
 }
 
 async function warmup(audioContext: AudioContext): Promise<AudioContext> {
-    console.debug(`${LogScope}.warmup: starting...`);
+    debugLog?.log(`-> warmup`);
 
     await audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
     const nodeOptions: AudioWorkletNodeOptions = {
@@ -52,43 +59,150 @@ async function warmup(audioContext: AudioContext): Promise<AudioContext> {
     };
     const node = new AudioWorkletNode(audioContext, 'warmUpWorklet', nodeOptions);
     node.connect(audioContext.destination);
+
     await new Promise<void>(resolve => {
         node.port.postMessage('stop');
         node.port.onmessage = (ev: MessageEvent<string>): void => {
-            console.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
+            warnLog?.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
             resolve();
         };
+        delayAsync(1000).then(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            _ => resolve(),
+            reason => debugLog?.log('delay rejected', reason));
     });
     node.disconnect();
     node.port.onmessage = null;
     node.port.close();
 
-    console.debug(`${LogScope}.warmup: done`);
+    debugLog?.log(`<- warmup`);
     return audioContext;
 }
 
 export class AudioContextLazy implements Disposable {
-    private readonly audioContextTask: Promise<AudioContext> = null;
-    private firstInteractionDisposable?: Disposable = null;
+    private audioContextTask?: PromiseSource<AudioContext> = null;
+    private nextInteractionHandler?: Disposable = null;
+    private requireInteraction = true;
+    private initContextStarted = false;
+    private asyncLock: AsyncLock;
 
-    constructor(factory: (() => Promise<AudioContext>) = null) {
-        factory ??= defaultFactory;
-        this.audioContextTask = new Promise<AudioContext>(resolve => {
-            this.firstInteractionDisposable = addInteractionHandler(LogScope, async () => {
-                const audioContext = await factory();
-                resolve(audioContext);
-                return true;
-            });
-        })
+    public audioContext: AudioContext | null = null;
+    public audioContextChanged: EventHandlerSet<AudioContext | null> = new EventHandlerSet<AudioContext | null>();
+
+    constructor() {
+        this.asyncLock = new AsyncLock();
+        this.audioContextTask = new PromiseSource<AudioContext>();
+        this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+            await this.initContext();
+        });
     }
 
     public dispose(): void {
-        this.firstInteractionDisposable?.dispose();
+        this.nextInteractionHandler?.dispose();
     }
 
-    public get(): Promise<AudioContext> {
-        return this.audioContextTask;
+    public async get(): Promise<AudioContext> {
+        debugLog?.log(`-> get`);
+        return this.asyncLock.lock(async () => {
+            const audioContext = this.audioContext;
+            if (audioContext) {
+                let lastContextTime = audioContext['lastTime'] as number;
+                let currentContextTime = audioContext.currentTime;
+                if (lastContextTime == currentContextTime) {
+                    if (audioContext.state === 'suspended') {
+                        const resumedAudioContext = await resume(audioContext);
+                        if (resumedAudioContext.state === 'running')
+                            // if we are lucky enough to have user interaction now...
+                            return resumedAudioContext;
+                    }
+                } else {
+                    audioContext['lastTime'] = audioContext.currentTime;
+                }
+                // The context might stuck after wake up
+                await delayAsync(20);
+                lastContextTime = audioContext['lastTime'] as number;
+                currentContextTime = audioContext.currentTime;
+                if (lastContextTime == currentContextTime) {
+                    // We can't resume it - user gesture context has already been lost
+                    this.refreshAudioContextTask();
+                    return this.audioContextTask;
+                }
+                debugLog?.log(`<- get`);
+                return audioContext;
+            }
+            debugLog?.log(`<- get promise`);
+            return this.audioContextTask;
+        });
+    }
+
+    public skipWaitForNextInteraction(): void {
+        this.requireInteraction = false;
+        this.nextInteractionHandler?.dispose();
+        this.nextInteractionHandler = null;
+        void this.initContext();
+    }
+
+    // private methods
+
+    private async initContext(): Promise<void> {
+        debugLog?.log(`-> initContext`);
+        if (this.initContextStarted)
+            return;
+        this.initContextStarted = true;
+        try {
+            const audioContext = await defaultFactory();
+            debugLog?.log(`<- initContext: audioContext.state =`, audioContext.state);
+            this.setAudioContext(audioContext);
+        } catch (error) {
+            errorLog?.log(`initContext(), error:`, error);
+            this.audioContextTask.reject(error);
+            return;
+        }
+        onDeviceAwake(() => this.wakeUp());
+    }
+
+    private setAudioContext(audioContext: AudioContext): void {
+        audioContext['lastTime'] = audioContext.currentTime;
+        this.audioContext = audioContext;
+        this.audioContextTask.resolve(audioContext);
+        this.audioContextChanged.triggerSilently(audioContext);
+    }
+
+    private refreshAudioContextTask(): void {
+        const audioContext = this.audioContext;
+        this.nextInteractionHandler?.dispose();
+        this.nextInteractionHandler = null;
+        this.audioContext = null;
+        this.audioContextTask = new PromiseSource<AudioContext>();
+        this.audioContextChanged.triggerSilently(null);
+        if (this.requireInteraction) {
+            this.nextInteractionHandler = NextInteraction.addHandler(async () => {
+                await this.refreshAudioContext(audioContext);
+            });
+        } else {
+            void this.refreshAudioContext(audioContext);
+        }
+    }
+
+    private async refreshAudioContext(audioContext: AudioContext): Promise<void> {
+        try {
+            await resume(audioContext);
+            this.setAudioContext(audioContext)
+        }
+        catch (error) {
+            errorLog?.log(`refreshAudioContext(), error:`, error);
+            this.audioContextTask.reject(error);
+        }
+    }
+
+    private wakeUp(): void {
+        if (this.audioContext === null)
+            return;
+
+        this.refreshAudioContextTask();
     }
 }
 
 export const audioContextLazy = new AudioContextLazy();
+window['audioContextLazy'] = audioContextLazy;
+

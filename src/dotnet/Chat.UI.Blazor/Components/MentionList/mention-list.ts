@@ -1,9 +1,9 @@
-const LogScope: string = 'MentionList';
+const LogScope = 'MentionList';
 
 export class MentionList {
     private blazorRef: DotNet.DotNetObject;
     private readonly mentionList: HTMLElement;
-    private mentionListObserver : MutationObserver;
+    private mentionListObserver: MutationObserver;
 
     static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
         return new MentionList(mentionList, blazorRef);
@@ -12,7 +12,7 @@ export class MentionList {
     constructor(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.mentionList = mentionList;
         this.blazorRef = blazorRef;
-        this.mentionListObserver = new MutationObserver(this.scrollAtCurrentItem);
+        this.mentionListObserver = new MutationObserver(this.scrollToCurrentItem);
         this.mentionListObserver.observe(this.mentionList, {
             attributes: true,
             childList: true,
@@ -20,8 +20,8 @@ export class MentionList {
         })
     }
 
-    private scrollAtCurrentItem = (mutationsList, observer) => {
-        for(const mutation of mutationsList) {
+    private scrollToCurrentItem = (mutationsList, observer) => {
+        for (const mutation of mutationsList) {
             if (mutation.type === 'attributes' && mutation.target.classList.contains('selected')) {
                 const item = mutation.target as HTMLElement;
                 const rect = item.getBoundingClientRect();

@@ -1,6 +1,12 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { BufferVadWorkletMessage, VadWorkletMessage } from './audio-vad-worklet-message';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'VadAudioWorkletProcessor';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const SAMPLES_PER_WINDOW = 768;
 
@@ -61,7 +67,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
                     };
                     this.workerPort.postMessage(bufferMessage, [vadArrayBuffer]);
                 } else {
-                    console.log('worklet port is still undefined');
+                    warnLog?.log('process: worklet port is still undefined!');
                 }
             } else {
                 this.bufferDeque.unshift(vadArrayBuffer);
@@ -84,7 +90,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         catch (error) {
-            console.error(error);
+            errorLog?.log(`onWorkerMessage: unhandled error:`, error);
         }
     };
 
@@ -103,7 +109,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         catch (error) {
-            console.error(error);
+            errorLog?.log(`onRecorderMessage: unhandled error:`, error);
         }
     }
 }

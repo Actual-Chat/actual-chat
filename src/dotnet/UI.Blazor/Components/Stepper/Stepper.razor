@@ -1,0 +1,79 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="stepper">
+    <CascadingValue Value="@this" IsFixed="true">
+        @if (HeaderContent != null) {
+            <div class="stepper-header">
+                @HeaderContent.Invoke(this)
+            </div>
+        }
+        <div class="stepper-body">
+            @if (ChildContent != null) {
+                <div class="stepper-content">
+                    @ChildContent.Invoke(this)
+                </div>
+            }
+            @if (FooterContent != null) {
+                <div class="stepper-footer">
+                    @FooterContent.Invoke(this)
+                </div>
+            }
+        </div>
+    </CascadingValue>
+</div>
+
+@code {
+    private readonly List<Step> _steps = new();
+    private Step? _currentStep;
+
+    [Parameter] public RenderFragment<Stepper>? HeaderContent { get; set; }
+    [Parameter] public RenderFragment<Stepper>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<Stepper>? FooterContent { get; set; }
+
+    internal Step? CurrentStep => _currentStep;
+
+    public void AddStep(Step step) {
+        _steps.Add(step);
+        if (_steps.Count == 1) {
+            _currentStep = step;
+        }
+        StateHasChanged();
+    }
+
+    public bool IsLast
+        => _currentStep != null && _steps.IndexOf(_currentStep) == _steps.Count - 1;
+
+    public bool IsFirst
+        => _currentStep != null && _steps.IndexOf(_currentStep) == 0;
+
+    public bool CanMoveForward => _currentStep != null && !IsLast;
+
+    public bool CanMoveBack => _currentStep != null && !IsFirst;
+
+    public async Task<bool> MoveForward() {
+        if (_currentStep == null)
+            return false;
+
+        var isStepCompleted = await _currentStep.Complete();
+        if (!isStepCompleted)
+            return false;
+
+        var index = _steps.IndexOf(_currentStep);
+        var previousStep = _currentStep;
+        _currentStep = _steps.ElementAtOrDefault(index + 1);
+        previousStep.Refresh();
+        _currentStep?.Refresh();
+        return true;
+    }
+
+    public void MoveBack() {
+        if (_currentStep == null)
+            return;
+
+        var index = _steps.IndexOf(_currentStep);
+        var previousStep = _currentStep;
+        _currentStep = _steps.ElementAtOrDefault(index - 1);
+        previousStep.Refresh();
+        _currentStep?.Refresh();
+    }
+}

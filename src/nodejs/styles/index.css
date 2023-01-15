@@ -1,0 +1,12 @@
+@import '../styles/tailwind.css';
+@import '../styles/colors.css';
+@import '../styles/scrollbars.css';
+@import '../styles/spinkit.css';
+@import '../styles/blazor.css';
+@import '../styles/main.css';
+
+@import '../../dotnet/UI.Blazor/styles.css';
+@import '../../dotnet/Audio.UI.Blazor/styles.css';
+@import '../../dotnet/Chat.UI.Blazor/styles.css';
+@import '../../dotnet/Users.UI.Blazor/styles.css';
+@import '../../dotnet/UI.Blazor.App/styles.css';

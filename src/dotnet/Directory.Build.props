@@ -3,20 +3,6 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
 
-  <PropertyGroup>
-    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
-    <!-- Include the PDB and xmldoc in the built .nupkg -->
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <IncludeSymbols>false</IncludeSymbols>
-    <IsPackable>False</IsPackable>
-    <IsPublishable>False</IsPublishable>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
-  </PropertyGroup>
-
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
   </ItemGroup>
@@ -43,9 +29,11 @@
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
+    <Using Include="ActualChat.StaticImports" Static="true" />
     <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Channels" />
     <Using Include="ActualChat.Collections" />
+    <Using Include="ActualChat.DependencyInjection" />
     <Using Include="ActualChat.Diagnostics" />
     <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
     <Using Include="ActualChat.Diff" />
@@ -58,6 +46,7 @@
     <Using Include="System.Globalization" />
     <Using Include="System.FormattableString" Static="True" />
     <Using Include="System.Linq" />
+    <Using Include="System.Reflection" />
     <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
@@ -73,6 +62,8 @@
     <Using Include="Stl.DependencyInjection" />
     <Using Include="Stl.Mathematics" />
     <Using Include="Stl.Serialization" />
+    <Using Include="Stl.OS" />
+    <Using Include="Stl.Reflection" />
     <Using Include="Stl.Text" />
     <Using Include="Stl.Time" />
     <Using Include="Stl.Fusion" />

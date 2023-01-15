@@ -1,10 +1,13 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Users.Client.Module;
+namespace ActualChat.Users.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersClientModule : HostModule
 {
     public UsersClientModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -18,14 +21,18 @@ public class UsersClientModule : HostModule
 
         var fusion = services.AddFusion();
         var fusionClient = services.AddFusion().AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
         var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
 
-        fusionClient.AddReplicaService<IUserContacts, IUserContactsClientDef>();
-        fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
-        fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IUserAvatars, IUserAvatarsClientDef>();
-        fusionClient.AddReplicaService<IChatReadPositions, IChatReadPositionsClientDef>();
         fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
-        fusionClient.AddReplicaService<IRecentEntries, IRecentEntriesClientDef>();
+        fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
+        fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
+        fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
+        fusionClient.AddReplicaService<IReadPositions, IReadPositionsClientDef>();
     }
 }

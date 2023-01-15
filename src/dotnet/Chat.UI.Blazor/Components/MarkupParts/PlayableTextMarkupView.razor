@@ -3,48 +3,76 @@
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
 @attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
-    var m = _lastRenderedModel = State.LatestNonErrorValue;
+    var m = _rendered = State.Value;
     var colorCls = m.Color switch {
         PlayableTextColor.Blue => "playable-text-color-blue",
         PlayableTextColor.Purple => "playable-text-color-purple",
         PlayableTextColor.Cyan => "playable-text-color-cyan",
         PlayableTextColor.Green => "playable-text-color-green",
         null => "",
-        _ => throw new ArgumentOutOfRangeException(m.Color.ToString())
+        _ => throw StandardError.Internal("Invalid Model.Color value."),
         };
+    var playOnClickIsEnabled = !ScreenSize.IsNarrow();
+    var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
-<span class="playable-text-markup @colorCls">
+<span class="@containerCls @colorCls">
     @for (var i = 0; i < Markup.Words.Length; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
         var cls = GetPlayingClass(status);
-        <span class="@cls" @onclick="_ => OnClick(word.TextRange.Start)">@word.Value</span>
+        @if (!playOnClickIsEnabled) {
+            <span class="@cls">@word.Value</span>
+        } else {
+            <span
+                class="@cls"
+                @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
+        }
     }
 </span>
 
 @code {
     private ILogger? _log;
     private ILogger Log => _log ??= Services.LogFor(GetType());
-    private Model? _lastRenderedModel;
+    private Model? _rendered;
 
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var model = await InnerComputeState(cancellationToken);
+        if (_rendered is not { Map: { } })
+            return model; // Never rendered
+
+        var colorLease = ActualizeColorLease(model, _rendered);
+        var map = EnrichMapWithPlayedStatus(model.Map, _rendered.Map);
+        return new Model {
+            Map = map,
+            ColorLease = colorLease,
+            Color = colorLease?.Color ?? _rendered.Color,
+        };
+    }
 
     private async Task OnClick(int startIndex) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var markup = Markup;
         var entry = Entry;
         var chatId = entry.ChatId;
-        var audioEntryId = entry.AudioEntryId.GetValueOrDefault(); // It's there for sure, otherwise click won't work
 
         var startTimeOpt = markup.TextToTimeMap.TryMap(startIndex);
         if (startTimeOpt is not { } startTime)
             return;
 
+        // We resolve some of the services lazily here, coz they're supposed to be used quite rarely
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
-        var audioEntry = await chatEntryReader.Get(audioEntryId, default);
+
+        var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);
+        var audioEntry = await chats.GetEntry(session, audioEntryId);
         if (audioEntry == null) {
             Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case
@@ -53,22 +81,6 @@
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
         chatPlayers.StartHistoricalPlayback(chatId, startAt);
-    }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var model = await InnerComputeState(cancellationToken);
-        if (_lastRenderedModel == null || _lastRenderedModel.Map == null)
-            return model;
-        var colorLease = ActualizeColorLease(model, _lastRenderedModel);
-        var map = EnrichMapWithPlayedStatus(model.Map, _lastRenderedModel.Map);
-        return new Model {
-            Map = map,
-            ColorLease = colorLease,
-            Color = colorLease?.Color ?? _lastRenderedModel.Color
-        };
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)
@@ -107,7 +119,7 @@
         if (hasActivePlaying) {
             colorLease ??= PaletteProvider
                 .GetPalette(Entry.ChatId)
-                .RentColor(Entry.AuthorId, Entry.Id);
+                .RentColor(Entry.AuthorId, Entry.LocalId);
         }
         else {
             if (colorLease != null) {
@@ -197,7 +209,7 @@
     }
 
     public override ValueTask DisposeAsync() {
-        var m = State.LatestNonErrorValue;
+        var m = State.Value;
         m.ColorLease?.Release();
         return base.DisposeAsync();
     }

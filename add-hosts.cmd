@@ -23,7 +23,7 @@
     set wd=%~dp0
     certutil -addstore -f "ROOT" "%wd%.config\local.actual.chat\ssl\local.actual.chat.crt"
 
-    REM dotnet dev certs
+    echo installing dotnet dev certs
     dotnet dev-certs https -ep $env:USERPROFILE\.aspnet\https\aspnetapp.pfx -p crypticpassword
     dotnet dev-certs https --trust
 
@@ -59,10 +59,11 @@ trustCertificate() {
     esac
 }
 
-echo patching hosts
+echo patching hosts...
 appendIfNotExists "127.0.0.1  local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
-echo hosts file patched
 
-echo trusting certificate
+echo trusting actual.chat certificate...
 trustCertificate
-echo trusted certificate
+
+echo installing dotnet dev certs...
+dotnet dev-certs https --trust

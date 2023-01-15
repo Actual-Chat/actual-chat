@@ -20,19 +20,35 @@ public static class UIFeatures
 
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
-            var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
-            return account?.IsAdmin == true;
+            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            return account.IsAdmin;
         }
     }
 
-    public class EnableChatMessageSearchUI : FeatureDef<bool>, IClientFeatureDef
+    public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
     {
+        private static readonly HashSet<string> FocusGroupEmails = new(StringComparer.Ordinal) { "grigory.yakushev@gmail.com" };
+
         public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
         {
+            var hostInfo = services.GetRequiredService<HostInfo>();
+            if (hostInfo.IsDevelopmentInstance)
+                return true;
+
             var session = services.GetRequiredService<Session>();
             var accounts = services.GetRequiredService<IAccounts>();
-            var account = await accounts.Get(session, cancellationToken).ConfigureAwait(false);
-            return account?.IsAdmin == true;
+            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (!account.IsActive())
+                return false;
+
+            if (account.IsAdmin)
+                return true;
+
+            var email = account.User.GetEmail();
+            return !email.IsNullOrEmpty() && FocusGroupEmails.Contains(email);
         }
     }
+
+    public class EnableChatMessageSearchUI : ExperimentalFeature
+    { }
 }

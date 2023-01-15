@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App
+
+<div class="timeline-item">
+    <TimelineItemLeft
+        IconClass="@IconClass"
+        IsLeft="@IsLeft"
+        IsMobile="@IsMobile"
+        TextTop="@TextTop"
+        TextBottom="@TextBottom">
+        <ChildContent>
+            @if (IsLeft) {
+                @ContentIcon
+            }
+        </ChildContent>
+    </TimelineItemLeft>
+    <TimelineItemRight
+        IconClass="@IconClass"
+        IsLeft="@IsLeft"
+        IsMobile="@IsMobile"
+        TextTop="@TextTop"
+        TextBottom="@TextBottom">
+        <ChildContent>
+            @if (!IsLeft) {
+                @ContentIcon
+            }
+        </ChildContent>
+    </TimelineItemRight>
+
+</div>
+
+@code {
+    [Parameter] public bool IsLeft { get; set; }
+    [Parameter] public RenderFragment? ContentIcon { get; set; }
+    [Parameter] public string TextTop { get; set; } = "";
+    [Parameter] public string TextBottom { get; set; } = "";
+    [Parameter] public string IconClass { get; set; } = "";
+    [Parameter] public bool IsMobile { get; set; }
+}

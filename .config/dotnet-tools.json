@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "dotnet-ef": {
-      "version": "6.0.6",
+      "version": "7.0.0",
       "commands": [
         "dotnet-ef"
       ]
@@ -18,6 +18,12 @@
       "version": "3.4.244",
       "commands": [
         "nbgv"
+      ]
+    },
+    "redth.net.maui.check": {
+      "version": "1.0.0",
+      "commands": [
+        "maui-check"
       ]
     }
   }

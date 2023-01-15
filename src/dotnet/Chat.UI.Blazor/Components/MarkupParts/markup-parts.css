@@ -1,10 +1,11 @@
-.chat-entry-type-marker {
+.chat-entry-kind-marker {
     @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
 }
 
 .mention-markup {
     @apply inline-block align-middle my-[1px] px-1.5 pb-0.5 rounded-full select-none cursor-pointer;
     @apply bg-mention-other text-mention-other-text font-medium;
+    max-width: 12rem;
 }
 .mention-markup.mention-markup-invalid {
     @apply bg-mention-invalid text-mention-invalid-text;
@@ -32,7 +33,7 @@
     @apply whitespace-break-spaces;
 }
 .playable-text-markup > span {
-    @apply inline-block cursor-pointer;
+    @apply inline-block;
 }
 .playable-text-markup > span:hover {
 }

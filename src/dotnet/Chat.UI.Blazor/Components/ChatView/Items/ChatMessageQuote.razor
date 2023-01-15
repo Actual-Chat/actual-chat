@@ -1,0 +1,53 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
+@{
+    var authorNameCls = IsOwn ? "text-06 " : "text-02 ";
+    authorNameCls += "font-bold text-base";
+}
+
+@if (Entry.IsRemoved) {
+    <div class="chat-message-quote chat-message-quote-removed">
+        <LeftLine Class="h-5"/>
+        The message was deleted.
+    </div>
+} else {
+    <div class="chat-message-quote" @onclick="@OnQuoteClick">
+        <LeftLine Class="h-10"/>
+        <div class="flex-y w-full px-2 opacity-90">
+            <div class="grid pl-0.5">
+                <AuthorName AuthorSid="@Entry.AuthorId" Class="@authorNameCls"/>
+            </div>
+            <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
+                <div class="flex-x w-full overflow-hidden">
+                    <div class="truncate font-medium pointer-cursor text-base text-03">@_text</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IChatMarkupHub _chatMarkupHub = null!;
+    private string _text = "";
+
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsOwn { get; set; }
+
+    // Shortcuts
+    private ChatId ChatId => Entry.ChatId;
+
+    protected override void OnParametersSet() {
+        _chatMarkupHub = ChatMarkupHubFactory[ChatId];
+        var markup = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.QuoteView);
+        _text = markup.ToReadableText(MarkupConsumer.QuoteView);
+    }
+
+    private void OnQuoteClick()
+        => ChatUI.HighlightEntry(Entry.Id, navigate: true);
+}

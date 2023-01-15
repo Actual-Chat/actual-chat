@@ -1,11 +1,15 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BlazorUIAppModule : HostModule, IBlazorUIModule
 {
+    public static string ImportName => "blazorApp";
+
     public BlazorUIAppModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
     public BlazorUIAppModule(IPluginHost plugins) : base(plugins) { }
@@ -16,7 +20,7 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
             return; // Blazor UI only module
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
         if (!isServerSideBlazor) {
-            services.AddScoped<SignOutReloader>();
+            services.AddScoped<SignOutReloader>(sp => new SignOutReloader(sp));
             services.ConfigureUILifetimeEvents(events => {
                 events.OnAppInitialized += c => {
                     var signOutReloader = c.GetRequiredService<SignOutReloader>();
@@ -24,5 +28,11 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
                 };
             });
         }
+
+        var fusion = services.AddFusion();
+        fusion.AddComputeService<AppPresenceReporter>(ServiceLifetime.Scoped);
+        services.AddSingleton(_ => new AppPresenceReporter.Options {
+            AwayTimeout = Constants.Presence.AwayTimeout,
+        });
     }
 }

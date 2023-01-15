@@ -15,10 +15,10 @@
                 <div class="flex-1">
                     <div class="ml-1 flex-x py-2">
                         <div class="">
-                            <ChatMessageAuthorCircle AuthorId="@m.Entry.AuthorId"/>
+                            <ChatMessageAuthorCircle AuthorSid="@m.Entry.AuthorId"/>
                         </div>
                         <div class="flex-y float-left px-2">
-                            <ChatAuthorName AuthorId="@m.Entry.AuthorId" Class="font-bold text-03"/>
+                            <AuthorName AuthorSid="@m.Entry.AuthorId" Class="font-bold text-03"/>
                             <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
                         </div>
                     </div>
@@ -55,7 +55,7 @@
 
     private TextEntryAttachment? FirstAttachment { get; set; }
     private Markup Markup { get; set; } = Markup.Empty;
-    private ChatEntry ChatEntry => ModalModel.MessageModel.Entry;
+    private ChatEntry Entry => ModalModel.MessageModel.Entry; // Shortcut
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -63,21 +63,18 @@
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
 
-        FirstAttachment = ChatEntry.HasAttachments
-            ? await Chats.NewEntryReader(Session, ChatEntry.ChatId, ChatEntryType.Text)
-                .GetFirstAttachment(ChatEntry.Id, CancellationToken.None)
-            : null;
-        Markup = ChatEntry.AudioEntryId == null
-            ? MarkupParser.Parse(ChatEntry.Content)
-            : new PlayableTextMarkup(ChatEntry.Content, ChatEntry.TextToTimeMap);
+        FirstAttachment = Entry.Attachments.FirstOrDefault();
+        Markup = Entry.AudioEntryId == null
+            ? MarkupParser.Parse(Entry.Content)
+            : new PlayableTextMarkup(Entry.Content, Entry.TextToTimeMap);
     }
 
     private void OnCancel()
-        => ModalInstance.CloseAsync(ModalResult.Cancel());
+        => _ = ModalInstance.CloseAsync();
 
     private async Task OnDelete() {
-        await ModalInstance.CloseAsync(ModalResult.Cancel());
-        var command = new IChats.RemoveTextEntryCommand(Session, ChatEntry.ChatId, ModalModel.MessageModel.Entry.Id);
+        await ModalInstance.CloseAsync();
+        var command = new IChats.RemoveTextEntryCommand(Session, Entry.ChatId, ModalModel.MessageModel.Entry.LocalId);
         await UICommander.Run(command);
     }
 

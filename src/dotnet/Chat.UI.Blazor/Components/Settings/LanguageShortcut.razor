@@ -1,3 +1,12 @@
+@inherits ComputedStateComponent<UserLanguageSettings>
+
 <div class="text-primary text-sm">
-    English
+    @State.ValueOrDefault?.Primary.Title
 </div>
+
+@code{
+    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+
+    protected override Task<UserLanguageSettings> ComputeState(CancellationToken cancellationToken)
+        => LanguageUI.Settings.Use(cancellationToken).AsTask();
+}

@@ -1,4 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="RestEase" />
+    <PackageReference Include="RestEase.SourceGenerator" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Notification.Contracts\Notification.Contracts.csproj" />
   </ItemGroup>

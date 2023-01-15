@@ -8,8 +8,19 @@
                     var isActive = tab == ActiveTab;
                     var cls = $"tab-btn {tab.ButtonClass} {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")}";
                     <div class="flex-y btn-group-container">
-                        <Button Class="@cls" Click="_ => ActiveTab = tab" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                            @tab.Title
+                        <Button
+                            data-tab-id="@tab.Id"
+                            role="tab"
+                            aria-selected="@isActive"
+                            Class="@cls"
+                            ContentClass="items-center"
+                            Click="@(_ => ActiveTab = tab)">
+
+                            @if (tab.TitleContent != null) {
+                                @tab.TitleContent
+                            } else {
+                                @tab.Title
+                            }
                         </Button>
                         @if (BottomHill) {
                             var lineCls = isActive ? "bg-primary" : "bg-transparent";
@@ -34,9 +45,8 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<Tab?> ActiveTabChanged { get; set; }
 
-    public IReadOnlyList<Tab> Tabs => _tabs;
-    [Parameter]
-    public Tab? ActiveTab {
+#pragma warning disable BL0007
+    [Parameter] public Tab? ActiveTab {
         get => _activeTab;
         set {
             if (_activeTab == value)
@@ -47,6 +57,9 @@
             ActiveTabChanged.InvokeAsync(value);
         }
     }
+#pragma warning restore BL0007
+
+    public IReadOnlyList<Tab> Tabs => _tabs;
 
     internal void RegisterTab(Tab tab) {
         var indexToInsert = -1;

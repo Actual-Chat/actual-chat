@@ -7,19 +7,22 @@
     const string flexClass = $"{flexBase} flex-col";
     const string invFlexClass = $"{flexBase} flex-col-reverse";
 
-    var isLoaded = State.Snapshot.UpdateCount != 0;
     var renderIndex = RenderIndex++;
-    var spacerSize = Data.HasVeryFirstItem ? 0 : SpacerSize;
+    var spacerSize = Data.HasVeryFirstItem
+        ? 0
+        : renderIndex == 0
+            ? 1000 // initial spacer size to cover all list area on first load
+            : SpacerSize;
     var endSpacerSize = Data.HasVeryLastItem
         ? 0
         : renderIndex == 0
             ? 0
             : SpacerSize;
     var startExpansion = Data.Items
-        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.Start) < 0)
+        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
         .Sum(i => i.CountAs);
     var endExpansion = Data.Items
-        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.InclusiveRange.End) <= 0)
+        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
         .Sum(i => i.CountAs);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
@@ -32,12 +35,12 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
-    var visibleKeys = (VisibleKeysState?.LatestNonErrorValue ?? new List<string>()).ToHashSet();
+    var visibleKeys = LastReportedItemVisibility.VisibleKeys;
     var items = Data.Items;
     LastData = Data;
     var itemClassBase = Data.Query.IsNone
-        ? "item flex-none"
-        : "item flex-none new";
+        ? "item"
+        : "item new";
 }
 
 <div @ref="Ref"
@@ -54,43 +57,46 @@
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
+    <div @key="VirtualListSpecialKeys.EndAnchor"
+         class="@flexClass min-h-22 md:min-h-1 end-anchor">
+        &nbsp;
+    </div>
+
     <div @key="VirtualListSpecialKeys.EndSpacer"
          class="@flexClass flex-none spacer spacer-end overflow-y-hidden"
          style="height: @(endSpacerSize)px">
-        @if (isLoaded || !DelaySkeletonRendering) {
-            <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
-        }
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="VirtualListSpecialKeys.Container"
         class="@flexClass virtual-container">
         @foreach (var item in items) {
             var itemClass = visibleKeys.Contains(item.Key)
-                ? "item flex-none"
+                ? "item"
                 : itemClassBase;
-
             @if (item.CountAs != 1) {
-                <li @key="item.Key"
+                <li id="@item.Key"
+                    @key="item.Key"
                     class="@itemClass"
-                    data-key="@item.Key"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
-                <li @key="item.Key"
-                    class="@itemClass"
-                    data-key="@item.Key">
+                <li id="@item.Key"
+                    @key="item.Key"
+                    class="@itemClass">
                     @Item(item)
                 </li>
             }
+        }
+        @if (items.Count == 0 && Data != VirtualListData<TItem>.None) {
+            @Empty
         }
     </ul>
 
     <div @key="VirtualListSpecialKeys.Spacer"
          class="@invFlexClass flex-none spacer spacer-start overflow-y-hidden"
          style="height: @(spacerSize)px">
-        @if (isLoaded || !DelaySkeletonRendering) {
-            <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
-        }
+        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 </div>

@@ -8,6 +8,7 @@ public sealed record MentionMarkup(
     [property: DataMember] string Name = ""
     ) : Markup
 {
+    public static readonly string NotAvailableName = "(n/a)";
     public static readonly Func<MentionMarkup, string> DefaultFormatter = m => m.Format();
     public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
     public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
@@ -15,7 +16,7 @@ public sealed record MentionMarkup(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string QuotedName => Quote(Name);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public string NameOrNotAvailable => Name.NullIfEmpty() ?? "(n/a)";
+    public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string NameOrId => Name.NullIfEmpty() ?? Id;
 

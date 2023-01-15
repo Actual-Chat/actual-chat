@@ -3,8 +3,8 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 @{
-    var m = State.ValueOrDefault;
-    if (m?.RecordingChat == null)
+    var m = State.Value;
+    if (m.RecordingChat == null)
         return;
 }
 
@@ -14,9 +14,9 @@
             <i class="icon-mic text-2xl"></i>
         </div>
         <div class="c-text shrink-0">
-            Recording is on in
+            Recording in
         </div>
-        <a class="inline-block c-text truncate" href="@m.RecordingChatUrl">"@(m.RecordingChat.Title)"</a>
+        <a class="inline-block c-text truncate" href="@m.RecordingChatUrl">@(m.RecordingChat.Title)</a>
         <div class="c-text">chat!</div>
     </div>
 </div>
@@ -27,8 +27,6 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
@@ -36,33 +34,32 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (await ChatUI.IsRecording(Chat.Id))
+        var recordingChatId = await ChatUI.GetRecordingChatId();
+        if (recordingChatId.IsNone)
             return Model.None;
 
-        var recordingChatId = await ChatUI.RecordingChatId.Use(cancellationToken);
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        if (selectedChatId == recordingChatId)
+            return Model.None;
+
         var recordingChat = await Chats.Get(Session, recordingChatId, cancellationToken);
         if (recordingChat == null)
             return Model.None;
 
-        if (recordingChat.ChatType == ChatType.Group)
+        if (recordingChat.Kind == ChatKind.Group)
             return new Model {
                 RecordingChat = recordingChat,
-                RecordingChatUrl = Links.ChatPage(recordingChat.Id),
+                RecordingChatUrl = Links.Chat(recordingChat.Id),
             };
 
-        var account = await Accounts.Get(Session, cancellationToken);
-        if (account == null)
-            return Model.None;
-
-        var parsedChatId = new ParsedChatId(recordingChat.Id);
         return new Model {
             RecordingChat = recordingChat,
-            RecordingChatUrl = Links.ChatPage(parsedChatId.Shorten(account.Id)),
+            RecordingChatUrl = Links.Chat(recordingChatId),
         };
     }
 
     private void OnStop()
-        => _ = ChatUI.SetRecordingState(Symbol.Empty);
+        => _ = ChatUI.SetRecordingChatId(default);
 
     public sealed record Model {
         public static Model None { get; } = new();

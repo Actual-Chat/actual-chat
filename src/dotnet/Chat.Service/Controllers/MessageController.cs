@@ -2,8 +2,9 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Primitives;
-using Npgsql.Replication.PgOutput.Messages;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
+using SixLabors.ImageSharp.Processing;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -24,7 +25,7 @@ public class MessageController : ControllerBase
     [HttpPost]
     [DisableFormValueModelBinding]
     [Route("api/chats/{chatId}/message")]
-    public async Task<ActionResult<long>> PostMessage(string chatId)
+    public async Task<ActionResult<long>> PostMessage(ChatId chatId)
     {
         var request = HttpContext.Request;
         //var cancellationToken = HttpContext.RequestAborted;
@@ -91,19 +92,24 @@ public class MessageController : ControllerBase
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
 
-        var command = new IChats.UpsertTextEntryCommand(_sessionResolver.Session, chatId, null, post.Payload!.Text)
-            { RepliedChatEntryId = post.Payload!.RepliedChatEntryId };
+        var command = new IChats.UpsertTextEntryCommand(
+            _sessionResolver.Session,
+            chatId,
+            null,
+            post.Payload!.Text.Trim(),
+            post.Payload!.RepliedChatEntryId
+        );
         if (post.Files.Count > 0) {
             var uploads = new List<TextEntryAttachmentUpload>();
             foreach (var file in post.Files) {
                 var attributes = post.Payload.Attachments.First(c => c.Id == file.Id);
                 var fileName = attributes.FileName.IsNullOrEmpty() ? file.FileName : attributes.FileName;
                 var description = attributes.Description ?? "";
-                var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
-                var upload = new TextEntryAttachmentUpload(fileName, file.Content, file.ContentType) {
+                var (processedFile, imageSize) = await ProcessFile(file).ConfigureAwait(false);
+                var upload = new TextEntryAttachmentUpload(fileName, processedFile.Content, processedFile.ContentType) {
                     Description = description,
-                    Width = imageInfo?.Width ?? 0,
-                    Height = imageInfo?.Height ?? 0,
+                    Width = imageSize?.Width ?? 0,
+                    Height = imageSize?.Height ?? 0,
                 };
                 uploads.Add(upload);
             }
@@ -112,25 +118,63 @@ public class MessageController : ControllerBase
 
         try {
             var chatEntry = await _commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-            return chatEntry.Id;
+            return chatEntry.LocalId;
         }
         catch {
             return BadRequest("Failed to process command");
         }
     }
 
-    private async Task<IImageInfo?> GetImageInfo(FileInfo file)
+    private async Task<ProcessedFileInfo> ProcessFile(FileInfo file)
     {
         if (!file.ContentType.OrdinalIgnoreCaseContains("image"))
-            return null;
+            return new ProcessedFileInfo(file, null);
 
+        var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
+        if (imageInfo == null)
+            return new ProcessedFileInfo(file with { ContentType = System.Net.Mime.MediaTypeNames.Application.Octet }, null);
+
+        const int sizeLimit = 1920;
+        var resizeRequired = imageInfo.Height > sizeLimit || imageInfo.Width > sizeLimit;
+        // Sometimes we can see that image preview is distorted.
+        // This happens because image EXIF metadata contains information about image rotation
+        // which is automatically applied by modern image viewers and browsers.
+        // So we need to switch width and height to get appropriate size for image preview.
+        var imageProcessingRequired = imageInfo.Metadata.ExifProfile != null || resizeRequired;
+        if (!imageProcessingRequired)
+            return new ProcessedFileInfo(file, imageInfo.Size());
+
+        Size imageSize;
+        byte[] content;
+        var targetStream = new MemoryStream(file.Content.Length);
+        await using (var _ = targetStream.ConfigureAwait(false))
+        using (Image image = Image.Load(SixLabors.ImageSharp.Configuration.Default, file.Content, out var imageFormat)) {
+            image.Mutate(img => {
+                // https://github.com/SixLabors/ImageSharp/issues/790#issuecomment-447581798
+                img.AutoOrient();
+                if (resizeRequired)
+                    img.Resize(new ResizeOptions {Mode = ResizeMode.Max, Size = new Size(sizeLimit)});
+            });
+            image.Metadata.ExifProfile = null;
+            imageSize = image.Size();
+            await image.SaveAsync(targetStream, imageFormat).ConfigureAwait(false);
+            targetStream.Position = 0;
+            content = targetStream.ToArray();
+        }
+
+        return new ProcessedFileInfo(file with { Content = content }, imageSize);
+    }
+
+    private async Task<IImageInfo?> GetImageInfo(FileInfo file)
+    {
         try {
             using var stream = new MemoryStream(file.Content);
-            return await Image.IdentifyAsync(stream).ConfigureAwait(false);
+            var imageInfo = await Image.IdentifyAsync(stream).ConfigureAwait(false);
+            return imageInfo;
         }
         catch (Exception exc) {
-            _log.LogError(exc, "Failed to extract image info from '{FileName}'", file.FileName);
-            throw;
+            _log.LogWarning(exc, "Failed to extract image info from '{FileName}'", file.FileName);
+            return null;
         }
     }
 
@@ -230,6 +274,8 @@ public class MessageController : ControllerBase
     }
 
     // Nested types
+
+    private sealed record ProcessedFileInfo(FileInfo File, Size? Size);
 
     private sealed record FileInfo(int Id, byte[] Content)
     {

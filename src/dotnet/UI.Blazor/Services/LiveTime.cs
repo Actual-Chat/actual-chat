@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public interface ILiveTime
+public interface ILiveTime : IComputeService
 {
     [ComputeMethod]
     Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);

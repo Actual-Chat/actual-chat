@@ -1,8 +1,10 @@
-﻿using ActualChat.Db.Module;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
 using ActualChat.Redis.Module;
+using ActualChat.Commands;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Stl.Fusion.EntityFramework.Operations;
@@ -10,6 +12,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Notification.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class NotificationModule : HostModule<NotificationSettings>
 {
     public NotificationModule(IPluginInfoProvider.Query _) : base(_)
@@ -34,7 +37,8 @@ public class NotificationModule : HostModule<NotificationSettings>
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
-        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db);
+        dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db,
+            db => db.AddEntityResolver<string, DbNotification>());
 
         // Commander & Fusion
         var commander = services.AddCommander();
@@ -60,8 +64,9 @@ public class NotificationModule : HostModule<NotificationSettings>
         var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
         var firebaseMessaging = FirebaseMessaging.GetMessaging(firebaseApp);
         services.AddSingleton(firebaseMessaging);
+        services.AddSingleton<FirebaseMessagingClient>();
 
-        // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

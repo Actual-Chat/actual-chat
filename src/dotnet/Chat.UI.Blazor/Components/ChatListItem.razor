@@ -1,97 +1,94 @@
-@using BlazorContextMenu
 @using ActualChat.Search
-@inherits ComputedStateComponent<ChatListItem.Model>
+@inherits ComputedStateComponent<ChatState>
 @{
-    var m = _lastRenderedModel = State.LatestNonErrorValue;
-    var isVisibleMenu = m.IsListening || m.IsRecording;
-    var cls = isVisibleMenu ? "visible-menu" : "invisible-menu";
+    var m = _rendered = State.Value;
+    var chat = m.Chat;
+    var info = m.Info;
+    var lastTextEntry = info.LastTextEntry;
+    var mediaState = m.MediaState;
+    var canWrite = chat.Rules.CanWrite();
+    var isMenuVisible = m.IsListening || m.IsRecording;
+    var cls = isMenuVisible ? "visible-menu" : "invisible-menu";
 }
 
-<ContextMenuTrigger MouseButtonTrigger="MouseButtonTrigger.Right" MenuId="@ChatMenu.MenuId" Data="@Chat" CssClass="flex-x items-center gap-x-2">
-    <NavbarItem Url="@($"/chat/{Chat.Id}")" IsActive="@m.IsActive">
-        <ChildContent>
-            <div class="flex-x items-center gap-x-2">
-                <ChatIcon Chat="Chat"/>
-                <span class="text-ellipsis whitespace-nowrap overflow-hidden">
-                    <FoundText Text="@Chat.Title"/>
+<NavbarItem
+    Url="@($"/chat/{chat.Id}")"
+    IsSelected="@m.IsSelected"
+    data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
+    data-menu-trigger="@(MenuTriggers.Secondary.Format())"
+    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+    <ChildContent>
+        <div class="flex-x items-center gap-x-2">
+            <ChatIcon Chat="m.Chat"/>
+            <div class="grid justify-start items-start">
+                <span class="text-headline-1 text-02 truncate">
+                    <SearchUIHighlighter Text="@m.Chat.Title"/>
                 </span>
-            </div>
-        </ChildContent>
-        <Ending>
-            <div class="@cls">
-                @if (ListKind == ChatListKind.Listening) {
-                    @if (m.CanRecord) {
-                        <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
-                    }
-                    <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
-                    <ActiveChatRemoveButton ChatId="@Chat.Id" Class="chat-menu-btn"/>
-                } else {
-                    @if (m.CanRecord) {
-                        <ChatListRecordingToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
-                    }
-                    <ChatListListenToggle ChatId="@Chat.Id" Class="chat-menu-btn blackout"/>
-                    <ContextMenuToggleTrigger MenuId="@ChatMenu.MenuId" Data="@Chat">
-                        <div class="flex">
-                            <ButtonRound
-                                Class="chat-menu-btn blackout">
-                                <i class="icon-more-vertical text-2xl"></i>
-                            </ButtonRound>
-                            <div class="relative">
-                                <div class="placement">
-                                </div>
-                            </div>
-                        </div>
-                    </ContextMenuToggleTrigger>
+                @if (lastTextEntry != null) {
+                    <div class="text-xs text-03 truncate">
+                        @if (m.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                            <span>
+                                <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                            </span>
+                        }
+                        @info.LastTextEntryText
+                    </div>
                 }
             </div>
-            <UnreadMessageCounter ChatId="@Chat.Id"/>
-        </Ending>
-    </NavbarItem>
-</ContextMenuTrigger>
+        </div>
+    </ChildContent>
+    <Ending>
+        <div class="@cls">
+            @if (ListKind == ChatListKind.Active) {
+                if (canWrite) {
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
+                }
+                <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
+                <ActiveChatRemoveButton Chat="@chat" Class="chat-menu-btn"/>
+            } else {
+                @if (canWrite) {
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
+                }
+                <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
+                <div class="flex"
+                     data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
+                     data-menu-trigger="@(MenuTriggers.Primary.Format())"
+                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+                    <ButtonRound
+                        ContentClass="!bg-transparent"
+                        Class="chat-menu-btn blackout">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                    <div class="relative">
+                        <div class="placement">
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <UnreadCount Value="@m.Info.UnreadCount" NotificationMode="@m.Info.UserSettings.NotificationMode"/>
+    </Ending>
+</NavbarItem>
 
 @code {
-    private Model? _lastRenderedModel;
+    private ChatState? _rendered = null;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public Chat Chat { get; init; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
-    public ChatListKind ListKind { get; init; }
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Parameter, EditorRequired] public ChatInfo ChatInfo { get; init; } = null!;
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; }
 
     protected override bool ShouldRender()
-        => ReferenceEquals(_lastRenderedModel, null)
-           || State.HasError
-           || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
+        => State.HasError || !ReferenceEquals(_rendered, State.Value);
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new ComputedState<Model>.Options {
-            InitialValue = Model.None,
+    protected override ComputedState<ChatState>.Options GetStateOptions()
+        => new() {
+            InitialValue = new ChatState(ChatInfo, new ChatMediaState(ChatInfo.Id)),
         };
-    }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken)
     {
-        var (rules, isListening, isRecording, isActive) =
-            await Chats.GetRules(Session, Chat.Id, cancellationToken)
-                .Join(
-                    ChatUI.IsListening(Chat.Id),
-                    ChatUI.IsRecording(Chat.Id),
-                    ChatUI.IsActive(Chat.Id)
-                ).ConfigureAwait(false);
-        return new(rules.CanWrite(), isListening, isRecording, isActive);
-    }
-
-    public record Model(
-        bool CanRecord,
-        bool IsListening,
-        bool IsRecording,
-        bool IsActive) {
-        public static readonly Model None = new(false, false, false, false);
+        var chatState = await ChatUI.GetState(ChatInfo.Id, false, cancellationToken).ConfigureAwait(false);
+        return chatState ?? ChatState.None;
     }
 }

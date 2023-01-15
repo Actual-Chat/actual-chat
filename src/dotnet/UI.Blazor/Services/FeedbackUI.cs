@@ -8,13 +8,13 @@ public class FeedbackUI
     private readonly Session _session;
     private readonly ModalUI _modalUI;
     private readonly UICommander _uiCommander;
-    private IModalReference? _modal;
+    private IModalRef? _modal;
 
-    public FeedbackUI(Session session, ModalUI modalUI, UICommander uiCommander)
+    public FeedbackUI(IServiceProvider services)
     {
-        _session = session;
-        _modalUI = modalUI;
-        _uiCommander = uiCommander;
+        _session = services.GetRequiredService<Session>();
+        _modalUI = services.GetRequiredService<ModalUI>();
+        _uiCommander = services.GetRequiredService<UICommander>();
     }
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
@@ -23,10 +23,11 @@ public class FeedbackUI
             return;
 
         var model = new FeatureRequestModal.Model { FeatureTitle = featureTitle };
-        _modal = _modalUI.Show(model);
-        var result = await _modal.Result.ConfigureAwait(false);
+        _modal = await _modalUI.Show(model).ConfigureAwait(true);
+        await _modal.WhenClosed.ConfigureAwait(false);
+        var hasSubmitted = model.HasSubmitted;
         _modal = null;
-        if (result.Cancelled)
+        if (!hasSubmitted)
             return;
 
         var command = new IFeedbacks.FeatureRequestCommand(_session, feature) {

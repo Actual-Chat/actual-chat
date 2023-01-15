@@ -1,21 +1,26 @@
-import './markup-editor.css';
-import { debounce } from '../../../../nodejs/src/debounce';
+import { throttle } from 'promises';
 import { UndoStack } from './undo-stack';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'MarkupEditor';
-const MentionListId = '@';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
+const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
 const CrlfRe = /\r\n/g
+const PrefixLfRe = /^(\s*\n)+/g
+const SuffixLfRe = /(\n\s*)+$/g
 
 export class MarkupEditor {
     static create(
         editorDiv: HTMLDivElement,
         blazorRef: DotNet.DotNetObject,
         autofocus: boolean,
-        debug: boolean) {
-        return new MarkupEditor(editorDiv, blazorRef, autofocus, debug);
+    ) {
+        return new MarkupEditor(editorDiv, blazorRef, autofocus);
     }
 
     public readonly contentDiv: HTMLDivElement;
@@ -33,10 +38,8 @@ export class MarkupEditor {
         public readonly editorDiv: HTMLDivElement,
         public readonly blazorRef: DotNet.DotNetObject,
         private readonly autofocus: boolean,
-        private readonly debug: boolean)
-    {
-        if (debug)
-            console.debug(`${LogScope}.ctor`);
+    ) {
+        debugLog?.log(`constructor`);
 
         this.contentDiv = editorDiv.querySelector(":scope > .editor-content") as HTMLDivElement;
         this.listHandlers = [new MentionListHandler(this)]
@@ -64,6 +67,7 @@ export class MarkupEditor {
         this.contentDiv.addEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.addEventListener("input", this.onInput);
         document.addEventListener("selectionchange", this.onSelectionChange);
+        document.addEventListener("click", this.onDocumentClick);
 
         if (autofocus)
             this.focus();
@@ -79,6 +83,7 @@ export class MarkupEditor {
         this.contentDiv.removeEventListener("beforeinput", this.onBeforeInput);
         this.contentDiv.removeEventListener("input", this.onInput);
         document.removeEventListener("selectionchange", this.onSelectionChange);
+        document.removeEventListener("click", this.onDocumentClick);
     }
 
     public transaction(action: () => void): void {
@@ -104,7 +109,7 @@ export class MarkupEditor {
         this.fixVirtualKeyboard();
     }
 
-    public isEditable(isEditable: boolean = null) : boolean {
+    public isEditable(isEditable: boolean = null): boolean {
         if (isEditable !== null)
             this.contentDiv.setAttribute('contenteditable', isEditable ? 'true' : 'false');
         return this.contentDiv.isContentEditable;
@@ -119,7 +124,10 @@ export class MarkupEditor {
             this.contentDiv.innerHTML = html;
             this.fixEverything();
         })
-        this.moveCursorToTheEnd();
+        // Moving cursor to the end, brings focus to the editor.
+        // Will do it only when html is not empty or focus is requested explicitly.
+        if (html !== "" || mustFocus)
+            this.moveCursorToTheEnd();
         if (clearUndoStack)
             this.undoStack.clear();
     }
@@ -162,20 +170,20 @@ export class MarkupEditor {
 
     // Backend method invokers
 
-    private async onPost() : Promise<void> {
+    private async onPost(): Promise<void> {
         await this.blazorRef.invokeMethodAsync("OnPost", this.getText());
     }
 
-    private async onCancel() : Promise<void> {
+    private async onCancel(): Promise<void> {
         await this.blazorRef.invokeMethodAsync("OnCancel");
     }
 
-    private async onOpenPrevious() : Promise<void> {
+    private async onOpenPrevious(): Promise<void> {
         await this.blazorRef.invokeMethodAsync("OnOpenPrevious");
     }
 
-    private async onListCommand(listId: string, command: ListCommand) : Promise<void> {
-        // console.debug(`${LogScope}.onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
+    private async onListCommand(listId: string, command: ListCommand): Promise<void> {
+        debugLog?.log(`onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
         await this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
     }
 
@@ -196,7 +204,7 @@ export class MarkupEditor {
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
-        // console.debug(`${LogScope}.onKeyDown: code = "${e.code}"`)
+        // debugLog?.log(`onKeyDown: code = "${e.code}"`)
 
         const ok = () => e.preventDefault();
 
@@ -211,7 +219,7 @@ export class MarkupEditor {
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.GoToNextItem));
                 return ok();
             }
-            if (e.code === 'Enter') {
+            if (e.code === 'Enter' || e.code === 'NumpadEnter') {
                 e.preventDefault();
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem));
                 return ok();
@@ -239,7 +247,7 @@ export class MarkupEditor {
     }
 
     private onKeyPress = (e: KeyboardEvent) => {
-        // console.debug(`${LogScope}.onKeyPress: code = "${e.code}"`)
+        // debugLog?.log(`onKeyPress: code = "${e.code}"`)
 
         const ok = () => e.preventDefault();
 
@@ -251,7 +259,7 @@ export class MarkupEditor {
         }
 
         // Post + fix the new line insertion when cursor is in the end of the document
-        if (e.code === 'Enter') {
+        if (e.code === 'Enter' || e.code === 'NumpadEnter') {
             const isPost = e.ctrlKey || e.metaKey || e.altKey || !e.shiftKey;
             if (isPost) {
                 void this.onPost()
@@ -279,7 +287,7 @@ export class MarkupEditor {
         const data = e.clipboardData;
         const text = cleanPastedText(data.getData('text'));
 
-        // console.debug(`${LogScope}.onPaste: text:`, text)
+        // debugLog?.log(`onPaste: text:`, text)
         this.transaction(() => {
             document.execCommand('insertText', false, text);
         });
@@ -288,7 +296,19 @@ export class MarkupEditor {
 
     private onSelectionChange = () => {
         this.fixSelection();
-        this.updateListUIDebounced();
+        this.updateListUIThrottled();
+    };
+
+    private onDocumentClick = (event: Event): void => {
+        if (!(event.target instanceof Element))
+            return;
+        const closestElement = event.target.closest('[data-editor-trigger]');
+        if (!(closestElement instanceof HTMLElement))
+            return;
+        const trigger = closestElement.dataset['editorTrigger'];
+        if (trigger !== 'True')
+            return;
+        focusAndOpenKeyboard(this.editorDiv, 300);
     };
 
     private onBeforeInput = (e: InputEvent) => {
@@ -296,11 +316,9 @@ export class MarkupEditor {
 
         switch (e.inputType) {
             case "historyUndo":
-                console.debug(this.contentDiv.innerHTML);
                 this.undoStack.undo();
                 return ok();
             case "historyRedo": {
-                console.debug(this.contentDiv.innerHTML);
                 this.undoStack.redo();
                 return ok();
             }
@@ -311,16 +329,15 @@ export class MarkupEditor {
 
     private onInput = (e: InputEvent) => {
         this.fixContent();
-        this.undoStack.pushDebounced();
-        this.updateListUIDebounced();
+        this.undoStack.pushThrottled();
+        this.updateListUIThrottled();
     }
 
     // List UI (lists, etc.) support
 
-    private updateListUIDebounced = debounce(() => this.updateListUI(), 100);
-
+    private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
     private updateListUI() {
-        // console.debug(`${LogScope}.updateListUI()`)
+        // debugLog?.log(`updateListUI`)
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
             void this.closeListUI();
@@ -347,7 +364,7 @@ export class MarkupEditor {
 
     // Helpers
 
-    private tryUseListHandler(listHandler: ListHandler, cursorRange: Range) : boolean {
+    private tryUseListHandler(listHandler: ListHandler, cursorRange: Range): boolean {
         const matchText = listHandler.getMatchText(cursorRange);
         const isActive = listHandler == this.listHandler;
         if (!matchText) {
@@ -392,11 +409,11 @@ export class MarkupEditor {
             selection.addRange(this.lastSelectedRange);
         }
         catch (e) {
-            console.error(`${LogScope}.restoreSelection: error`, e);
+            errorLog?.log(`restoreSelection: unhandled error:`, e);
         }
     }
 
-    private expandSelection(listHandler: ListHandler) : boolean {
+    private expandSelection(listHandler: ListHandler): boolean {
         const cursorRange = this.getCursorRange();
         if (!cursorRange)
             return false;
@@ -624,11 +641,11 @@ enum ListCommandKind {
 
 // Helpers
 
-function asHTMLElement(node: Node) : HTMLElement | null {
+function asHTMLElement(node: Node): HTMLElement | null {
     return castNode<HTMLElement>(node, Node.ELEMENT_NODE);
 }
 
-function asText(node: Node) : Text | null {
+function asText(node: Node): Text | null {
     return castNode<Text>(node, Node.TEXT_NODE);
 }
 
@@ -640,10 +657,28 @@ function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | nul
     return node as unknown as TNode;
 }
 
-function cleanPastedText(text: string) {
-    return text.replace(ZeroWidthSpaceRe, '');
+function cleanPastedText(text: string): string {
+    text = text.replace(ZeroWidthSpaceRe, '');
+    text = normalize(text);
+    return text;
 }
 
-function normalize(text: string) {
+function normalize(text: string): string {
     return text.normalize().replace(CrlfRe, "\n");
+}
+
+function focusAndOpenKeyboard(el: HTMLDivElement, timeout: number) {
+    const tempElement = document.createElement('input');
+    tempElement.style.position = 'absolute';
+    tempElement.style.top = (el.offsetTop + 7) + 'px';
+    tempElement.style.left = el.offsetLeft + 'px';
+    tempElement.style.height = '0';
+    tempElement.style.opacity = '0';
+    document.body.appendChild(tempElement);
+    tempElement.focus();
+    setTimeout(function() {
+        el.focus();
+        el.click();
+        document.body.removeChild(tempElement);
+    }, timeout);
 }

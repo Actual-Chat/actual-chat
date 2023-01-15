@@ -3,24 +3,33 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath>$(RepoRoot)artifacts\tests\$(MSBuildProjectName)</OutputPath>
-    <!-- CA1034 - Do not nest type -->
-    <!-- CA1822	- Member can be marked as static -->
-    <!-- RCS1090: Call 'ConfigureAwait(false)' -->
-    <!-- CS8604:  Possible null reference argument -->
-    <NoWarn>1701;1702;CA1034;CA1822;RCS1090;CS8604;</NoWarn>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-    <IsPackable>false</IsPackable>
-    <IsPublishable>false</IsPublishable>
     <!-- Copy all references to output folder (important for coverage tools) -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <!-- Also we will copy all pdb from nupkg, it will help with debugging -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <AllowedReferenceRelatedFileExtensions>$(AllowedReferenceRelatedFileExtensions);.pdb</AllowedReferenceRelatedFileExtensions>
+
+    <!-- xunit -->
     <UseDefaultStartup>true</UseDefaultStartup>
     <XunitStartupAssembly>$(BaseName).Testing</XunitStartupAssembly>
     <XunitStartupFullName>$(BaseName).Testing.DefaultStartup</XunitStartupFullName>
+
+    <!-- Suppressed warnings (please sort alphabetically!) -->
+    <!-- CA1034: Do not nest type -->
+    <!-- CA1822:	Member can be marked as static -->
+    <!-- CS8604: Possible null reference argument -->
+    <!-- IL2070: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
+    <!-- IL2075: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
+    <!-- MA0002: Use an overload that has a IEqualityComparer<string> or IComparer<string> parameter -->
+    <!-- MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed' -->
+    <!-- MA0006: Use string.Equals instead of Equals operator -->
+    <!-- MA0011: Use an overload of 'Parse' that has a 'System.IFormatProvider' parameter -->
+    <!-- MA0074: Use an overload of 'Replace' that has a StringComparison parameter -->
+    <!-- RCS1090: Call 'ConfigureAwait(false)' -->
+    <!-- VSTHRD002: .Wait() deadlock -->
+    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;MA0074;RCS1090;VSTHRD002;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -48,6 +57,7 @@
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Immutable" />
     <Using Include="System.Linq" />
+    <Using Include="System.Reflection" />
     <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
@@ -61,6 +71,8 @@
     <Using Include="Stl.Collections" />
     <Using Include="Stl.DependencyInjection" />
     <Using Include="Stl.Serialization" />
+    <Using Include="Stl.OS" />
+    <Using Include="Stl.Reflection" />
     <Using Include="Stl.Text" />
     <Using Include="Stl.Time" />
     <Using Include="Stl.Fusion" />

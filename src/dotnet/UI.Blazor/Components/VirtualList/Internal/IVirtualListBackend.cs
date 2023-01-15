@@ -5,7 +5,6 @@ public interface IVirtualListBackend
 {
     [JSInvokable]
     Task RequestData(VirtualListDataQuery query);
-
     [JSInvokable]
-    Task UpdateVisibleKeys(string[] visibleKeys);
+    Task UpdateItemVisibility(HashSet<string> visibleKeys, bool isIsEndAnchorVisible);
 }

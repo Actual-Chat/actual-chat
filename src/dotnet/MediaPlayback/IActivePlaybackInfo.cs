@@ -1,6 +1,6 @@
 namespace ActualChat.MediaPlayback;
 
-public interface IActivePlaybackInfo
+public interface IActivePlaybackInfo : IComputeService
 {
     [ComputeMethod]
     Task<PlayerState?> GetTrackPlaybackState(

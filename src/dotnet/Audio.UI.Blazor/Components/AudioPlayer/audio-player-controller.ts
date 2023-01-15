@@ -3,8 +3,12 @@ import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDeco
 import { Resettable } from 'object-pool';
 import { audioContextLazy } from 'audio-context-lazy';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
+import { Log, LogLevel } from 'logging';
 
-const LogScope: string = 'AudioPlayerController';
+const LogScope = 'AudioPlayerController';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const worker = new Worker('/dist/opusDecoderWorker.js');
 const workerCallbacks = new Map<number, () => void>();
@@ -23,7 +27,7 @@ worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.worker.onmessage error:`, error);
+        errorLog?.log(`worker.onmessage: unhandled error:`, error);
     }
 };
 
@@ -52,7 +56,7 @@ export class AudioPlayerController implements Resettable {
 
     private constructor() {
         this.id = lastControllerId++;
-        console.warn(`${LogScope}.ctor: #${this.id}`);
+        debugLog?.log(`constructor: #${this.id}`);
     }
 
     /**
@@ -121,13 +125,13 @@ export class AudioPlayerController implements Resettable {
 
         // recreating nodes due to memory leaks in not disconnected nodes
         if (isAecWorkaroundNeeded()) {
-            console.debug(`${LogScope}.init: isAecWorkaroundNeeded == true`);
+            debugLog?.log(`init: isAecWorkaroundNeeded() == true`);
             this.destinationNode = this.audioContext.createMediaStreamDestination();
             feederNode.connect(this.destinationNode);
             this.cleanup = await enableChromiumAec(this.destinationNode.stream);
         }
         else {
-            console.debug(`${LogScope}.init: isAecWorkaroundNeeded == false`);
+            debugLog?.log(`init(): isAecWorkaroundNeeded == false`);
             feederNode.connect(audioContext.destination);
         }
         await this.initWorker();
@@ -166,12 +170,12 @@ export class AudioPlayerController implements Resettable {
     }
 
     public async getState(): Promise<PlaybackState> {
-        console.assert(this.feederNode !== null, `${LogScope}.getState: feederNode isn't created yet. Lifetime error.`);
+        warnLog?.assert(this.feederNode !== null, `getState: feederNode isn't created yet. Lifetime error.`);
         return this.feederNode.getState();
     }
 
     public stop(): void {
-        console.assert(this.feederNode !== null, `${LogScope}.stop: feederNode isn't created yet. Lifetime error.`);
+        warnLog?.assert(this.feederNode !== null, `stop: feederNode isn't created yet. Lifetime error.`);
         const workerMsg: StopDecoderMessage = {
             type: 'stop',
             controllerId: this.id,
@@ -182,12 +186,12 @@ export class AudioPlayerController implements Resettable {
     }
 
     public pause(): void {
-        console.assert(this.feederNode !== null, `${LogScope}.pause: feederNode isn't created yet. Lifetime error.`);
+        warnLog?.assert(this.feederNode !== null, `pause: feederNode isn't created yet. Lifetime error.`);
         this.feederNode.pause();
     }
 
     public resume(): void {
-        console.assert(this.feederNode !== null, `${LogScope}.resume: feederNode isn't created yet. Lifetime error.`);
+        warnLog?.assert(this.feederNode !== null, `resume: feederNode isn't created yet. Lifetime error.`);
         this.feederNode.resume();
     }
 

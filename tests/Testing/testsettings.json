@@ -1,10 +1,19 @@
 {
+  "HostSettings": {
+    "AppKind": "TestServer"
+  },
+  "CoreSettings": {
+    "Instance": "dev",
+    "GoogleStorageBucket": "",
+    "GoogleProjectId": "",
+    "GoogleRegionId": "us-central1"
+  },
   "RedisSettings": {
     "DefaultRedis": "localhost|test_{instance.}{context}"
   },
   "DbSettings": {
     // "DefaultDb": "mysql:Server=localhost;Database=ac_{instance_}{context};Port=3306;User=root;Password=mariadb",
-    "DefaultDb": "postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
+    "DefaultDb": "postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres;Include Error Detail=True",
     // "DefaultDb": "memory:ac_{instance_}{context}",
     "OverrideDb": "",
     // OverrideDb": "memory:ac_{instance_}{context}",
@@ -30,10 +39,11 @@
   },
   "Logging": {
     "LogLevel": {
-      "Default": "Information",
+      "Default": "Trace",
       "Microsoft": "Warning",
       "Microsoft.AspNetCore.SignalR.Internal": "Warning",
       "Microsoft.EntityFrameworkCore.Database": "Warning",
+      // "Microsoft.EntityFrameworkCore.Database.Command": "Debug",
       "Stl": "Warning",
       "Microsoft.Hosting.Lifetime": "Warning"
     }

@@ -1,16 +1,10 @@
 namespace ActualChat.Chat;
 
-public interface IMentionsBackend
+public interface IMentionsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Mention?> GetLast(
-        Symbol chatId,
-        Symbol authorId,
+        ChatId chatId,
+        Symbol mentionId,
         CancellationToken cancellationToken);
-
-    [CommandHandler]
-    Task Update(UpdateCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record UpdateCommand([property: DataMember] ChatEntry Entry) : ICommand<Unit>, IBackendCommand;
 }

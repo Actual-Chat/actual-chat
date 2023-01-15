@@ -1,18 +1,27 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
+@inherits ComputedMenuBase<ChatState?>
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
 
-<RenderIntoStack Name="@ContextMenuContainer.RenderStackName" Key="@MenuId">
-    <ContextMenu Id="@MenuId">
-        <ChildContent>
-            @if (context.Data is Chat chat) {
-                <CascadingValue Value="@chat">
-                    <ChatMenuContent />
-                </CascadingValue>
-            }
-        </ChildContent>
-    </ContextMenu>
-</RenderIntoStack>
+    var rules = m.Chat.Rules;
+}
+
+<CascadingValue Value="m">
+    @if (rules.CanWrite()) {
+        <ChatMenuRecord/>
+    }
+    <ChatMenuPin/>
+    <ChatMenuListen/>
+    @if (rules.CanLeave()) {
+        <ChatMenuLeave/>
+    }
+</CascadingValue>
 
 @code{
-    public const string MenuId = "menu-ChatMenu";
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    protected override Task<ChatState?> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.GetState(new ChatId(Arguments[0]), false, cancellationToken);
 }

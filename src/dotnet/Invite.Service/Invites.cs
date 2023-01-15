@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.Chat;
 using ActualChat.Invite.Backend;
 using ActualChat.Users;
@@ -7,24 +6,20 @@ namespace ActualChat.Invite;
 
 internal class Invites : IInvites
 {
-    private readonly IInvitesBackend _backend;
-    private readonly ICommander _commander;
-    private readonly IAuth _auth;
-    private readonly IAccounts _accounts;
-    private readonly IChats _chats;
+    private IChats? _chats;
 
-    public Invites(
-        IInvitesBackend backend,
-        ICommander commander,
-        IAuth auth,
-        IChats chats,
-        IAccounts accounts)
+    private IServiceProvider Services { get; }
+    private IAccounts Accounts { get; }
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private ICommander Commander { get; }
+    private IInvitesBackend Backend { get; }
+
+    public Invites(IServiceProvider services)
     {
-        _backend = backend;
-        _commander = commander;
-        _auth = auth;
-        _chats = chats;
-        _accounts = accounts;
+        Services = services;
+        Accounts = services.GetRequiredService<IAccounts>();
+        Commander = services.Commander();
+        Backend = services.GetRequiredService<IInvitesBackend>();
     }
 
     // [ComputeMethod]
@@ -34,20 +29,20 @@ internal class Invites : IInvites
     {
         await AssertCanListUserInvites(session, cancellationToken).ConfigureAwait(false);
 
-        var details = new InviteDetails() { User = new UserInviteDetails() };
-        return await _backend.GetAll(details.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
+        var searchKey = new UserInviteOption().GetSearchKey();
+        return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<ImmutableArray<Invite>> ListChatInvites(
         Session session,
-        string chatId,
+        ChatId chatId,
         CancellationToken cancellationToken)
     {
         await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var details = new InviteDetails() { Chat = new ChatInviteDetails(chatId) };
-        return await _backend.GetAll(details.GetSearchKey(), 1, cancellationToken).ConfigureAwait(false);
+        var searchKey = new ChatInviteOption(chatId).GetSearchKey();
+        return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -60,7 +55,7 @@ internal class Invites : IInvites
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
         invite = command.Invite with { CreatedBy = account.Id };
-        return await _commander.Call(new IInvitesBackend.GenerateCommand(invite), cancellationToken)
+        return await Commander.Call(new IInvitesBackend.GenerateCommand(invite), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -70,43 +65,49 @@ internal class Invites : IInvites
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return null!;
+            return default!;
 
-        var cmd = new IInvitesBackend.UseCommand(command.Session, command.InviteId);
-        var invite = await _commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(Account.MustNotBeGuest);
+
+        var useCommand = new IInvitesBackend.UseCommand(command.Session, command.InviteId);
+        var invite = await Commander.Call(useCommand, cancellationToken).ConfigureAwait(false);
         return invite.Mask();
     }
 
     // Assertions
 
-    private Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
-        => _accounts.Get(session, cancellationToken)
-            .Require(Account.MustBeAdmin);
-
-    private async Task AssertCanListChatInvites(Session session, string chatId, CancellationToken cancellationToken)
+    private async Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
     {
-        var rules = await _chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeAdmin);
+    }
+
+    private async Task AssertCanListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Invite);
     }
 
-    private async Task<Account> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
+    private async Task<AccountFull> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
-        var account = await _accounts.Get(session, cancellationToken)
-            .Require(Account.MustBeActive)
-            .ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(Account.MustNotBeGuest);
+        account.Require(AccountFull.MustBeActive);
 
-        var userInviteDetails = invite.Details?.User;
-        if (userInviteDetails != null) {
+        switch (invite.Details.Option) {
+        case UserInviteOption:
             if (!account.IsAdmin)
                 throw StandardError.Unauthorized("Only admins can generate user invites.");
-        }
-
-        var chatInviteDetails = invite.Details?.Chat;
-        if (chatInviteDetails != null) {
-            var rules = await _chats
-                .GetRules(session, chatInviteDetails.ChatId, cancellationToken)
+            break;
+        case ChatInviteOption chatInvite:
+            var rules = await Chats
+                .GetRules(session, chatInvite.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             rules.Require(ChatPermissions.Invite);
+            break;
+        default:
+            throw StandardError.Format<Invite>();
         }
 
         return account;

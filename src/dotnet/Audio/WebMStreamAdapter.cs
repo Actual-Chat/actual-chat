@@ -6,18 +6,21 @@ namespace ActualChat.Audio;
 
 public sealed class WebMStreamAdapter : IAudioStreamAdapter
 {
-    private readonly ILogger _log;
     private readonly string _writingApp;
     private readonly ulong? _trackUid;
 
-    public WebMStreamAdapter(ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
+    private MomentClockSet Clocks { get; }
+    private ILogger Log { get; }
+
+    public WebMStreamAdapter(MomentClockSet clocks, ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
     {
-        _log = log;
+        Clocks = clocks;
+        Log = log;
         _writingApp = writingApp;
         _trackUid = trackUid;
     }
 
-    public Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
     {
         var formatTask = TaskSource.New<AudioFormat>(true).Task;
         var formatTaskSource = TaskSource.For(formatTask);
@@ -32,12 +35,13 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
-        var target = Channel.CreateBounded<AudioFrame>(new BoundedChannelOptions(128) {
-            SingleWriter = true,
-            SingleReader = true,
-            AllowSynchronousContinuations = true,
-            FullMode = BoundedChannelFullMode.Wait,
-        });
+        var target = Channel.CreateBounded<AudioFrame>(
+            new BoundedChannelOptions(Constants.Queues.WebMStreamAdapterQueueSize) {
+                SingleWriter = true,
+                SingleReader = true,
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
 
         _ = BackgroundTask.Run(async () => {
             try {
@@ -66,7 +70,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
                 throw;
             }
             catch (Exception e) {
-                _log.LogError(e, "Parse failed");
+                Log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
                 throw;
@@ -78,12 +82,15 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             }
         }, CancellationToken.None);
 
-        var audioSource = new AudioSource(formatTask,
+        var format = await formatTask.ConfigureAwait(false);
+        var audioSource = new AudioSource(
+            Clocks.SystemClock.Now,
+            format,
             target.Reader.ReadAllAsync(cancellationToken),
             TimeSpan.Zero,
-            _log,
+            Log,
             cancellationToken);
-        return Task.FromResult(audioSource);
+        return audioSource;
     }
 
     public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -98,10 +105,11 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             EBMLMaxIDLength = 4,
             EBMLMaxSizeLength = 8,
             DocType = "webm",
-            DocTypeVersion = 2,
+            DocTypeVersion = 4,
             DocTypeReadVersion = 2,
         };
         position += WriteModel(header, buffer.Span[position..]);
+        var preSkipFrames = source.Format.PreSkipFrames;
         var segment = new Segment {
             Info = new Info {
                 TimestampScale = 1000000,
@@ -117,14 +125,23 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
                         CodecID = "A_OPUS",
                         CodecPrivate = new byte[] {
                             0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64,
-                            0x01, 0x01, 0x00, 0x00, 0x80, 0xBB, 0x00, 0x00,
+                            0x01, 0x01,
+                            (byte)(0xFF & preSkipFrames),
+                            (byte)(0xFF & (preSkipFrames >> 8)),
+                            0x80, 0xBB, 0x00, 0x00,
                             0x00, 0x00, 0x00,
                         },
                         Audio = new WebM.Models.Audio {
-                            SamplingFrequency = 48000,
+                            SamplingFrequency = 48_000,
                             Channels = 1,
                             BitDepth = 32,
                         },
+                        CodecDelay = preSkipFrames == 0
+                            ? null
+                            :((ulong)preSkipFrames) * 1_000_000_000 / 48_000,
+                        SeekPreRoll = preSkipFrames == 0
+                            ? 0UL
+                            : 80000000UL,
                     },
                 },
             },
@@ -187,6 +204,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         remainder.CopyTo(buffer.Span);
         data.CopyTo(buffer.Span[remainder.Length..]);
     }
+
     private WebMReader.State FillFrameBuffer(
         WebMReader webMReader,
         TaskSource<AudioFormat> formatTaskSource,
@@ -264,14 +282,14 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             ?? throw new InvalidOperationException("Track doesn't contain Audio entry.");
 
         return new AudioFormat {
-            ChannelCount = (int) audio.Channels,
+            ChannelCount = (short) audio.Channels,
             CodecKind = trackEntry.CodecID switch {
                 "A_OPUS" => AudioCodecKind.Opus,
                 _ => throw new NotSupportedException($"Unsupported CodecID: {trackEntry.CodecID}."),
             },
             SampleRate = (int) audio.SamplingFrequency,
             CodecSettings = Convert.ToBase64String(rawHeader),
+            PreSkipFrames = (int)(trackEntry.CodecDelay ?? 0),
         };
     }
-
 }

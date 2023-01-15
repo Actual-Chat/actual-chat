@@ -8,24 +8,28 @@ namespace ActualChat.Users.Controllers;
 [ApiController, JsonifyErrors, UseDefaultSession]
 public class ServerKvasController : ControllerBase, IServerKvas
 {
-    private readonly IServerKvas _service;
-    private readonly ICommander _commander;
+    private IServerKvas Service { get; }
+    private ICommander Commander { get; }
 
     public ServerKvasController(IServerKvas service, ICommander commander)
     {
-        _service = service;
-        _commander = commander;
+        Service = service;
+        Commander = commander;
     }
 
     [HttpGet, Publish]
     public Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default)
-        => _service.Get(session, key, cancellationToken);
+        => Service.Get(session, key, cancellationToken);
 
     [HttpPost]
     public Task Set([FromBody] IServerKvas.SetCommand command, CancellationToken cancellationToken = default)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
 
     [HttpPost]
     public Task SetMany([FromBody] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default)
-        => _commander.Call(command, cancellationToken);
+        => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task MigrateGuestKeys([FromBody] IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default)
+        => Commander.Call(command, cancellationToken);
 }

@@ -1,10 +1,11 @@
-﻿namespace ActualChat.Audio;
+﻿using System;
 
-public class AudioSettings
+namespace ActualChat.Audio;
+
+public sealed class AudioSettings
 {
     public string Redis { get; set; } = "";
     public string ServiceName { get; set; } = "actual-chat-app-service";
     public string Namespace { get; set; } = "default";
     public TimeSpan IdleRecordingTimeout { get; set; } = TimeSpan.FromMinutes(2);
-    public TimeSpan StreamExpirationPeriod { get; set; } = 2 * Constants.Chat.MaxEntryDuration;
 }

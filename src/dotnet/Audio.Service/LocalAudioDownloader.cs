@@ -10,26 +10,35 @@ public class LocalAudioDownloader : AudioDownloader
     private IBlobStorageProvider Blobs { get; init; }
 
     public LocalAudioDownloader(IServiceProvider services) : base(services)
-        => Blobs = Services.GetRequiredService<IBlobStorageProvider>();
+        => Blobs = services.GetRequiredService<IBlobStorageProvider>();
 
     public override async Task<AudioSource> Download(
-        Uri audioUri,
+        string audioBlobUrl,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var match = AudioBlobIdRegex.Match(audioUri.ToString());
+        var match = AudioBlobIdRegex.Match(audioBlobUrl);
         if (!match.Success)
-            return await base.Download(audioUri, skipTo, cancellationToken).ConfigureAwait(false);
+            return await base.Download(audioBlobUrl, skipTo, cancellationToken).ConfigureAwait(false);
 
         var blobId = match.Groups["blobId"].Value;
         Log.LogDebug("Fetching blob #{BlobId}", blobId);
         var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        var stream = await blobStorage.OpenReadAsync(blobId, cancellationToken).ConfigureAwait(false);
+        var stream = await blobStorage.Read(blobId, cancellationToken).ConfigureAwait(false);
+        if (stream == null) {
+            Log.LogWarning("Blob #{BlobId} is not found", blobId);
+            var clocks = Services.Clocks();
+            return new AudioSource(
+                clocks.SystemClock.Now,
+                AudioSource.DefaultFormat,
+                AsyncEnumerable.Empty<AudioFrame>(),
+                TimeSpan.Zero,
+                Services.LogFor<AudioSource>(),
+                cancellationToken);
+        }
         var byteStream = stream.ReadByteStream(true, cancellationToken);
-
         var audio = await ReadFromByteStream(byteStream, cancellationToken).ConfigureAwait(false);
         var skipped = audio.SkipTo(skipTo, cancellationToken);
-        await skipped.WhenFormatAvailable.ConfigureAwait(false);
         return skipped;
     }
 }

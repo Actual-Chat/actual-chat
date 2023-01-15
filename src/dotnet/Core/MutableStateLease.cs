@@ -37,8 +37,8 @@ public class MutableStateLease<T, TKey, TState, TResource> : IMutableStateLease<
     public bool HasValue => State.HasValue;
     public bool HasError => State.HasError;
 
-    object? IState.LatestNonErrorValue => ((IState)State).LatestNonErrorValue;
-    public T LatestNonErrorValue => State.LatestNonErrorValue;
+    object? IState.LatestNonErrorValue => ((IState)State).LatestNonErrorValue; // Intended use of LatestNonErrorValue
+    public T LatestNonErrorValue => State.LatestNonErrorValue; // Intended use of LatestNonErrorValue
 
     IStateSnapshot IState.Snapshot => ((IState)State).Snapshot;
     public StateSnapshot<T> Snapshot => State.Snapshot;

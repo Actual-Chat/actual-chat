@@ -1,5 +1,11 @@
 import { Disposable } from 'disposable';
 import { Subject, takeUntil, debounceTime, fromEvent } from 'rxjs';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'TextBox';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class TextBox implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
@@ -12,16 +18,14 @@ export class TextBox implements Disposable {
     constructor(input: HTMLInputElement) {
         this.input = input;
         fromEvent(input, 'input')
-            .pipe(takeUntil(this.disposed$))
-            .pipe(debounceTime(800))
+            .pipe(
+                takeUntil(this.disposed$),
+                debounceTime(800),
+            )
             .subscribe(() => {
-                console.log("text-box, emit on change. value: " + input.value);
+                debugLog?.log(`input handler, value:`, input.value);
                 input.dispatchEvent(new Event('change'));
             });
-    }
-
-    public focus() {
-        this.input.focus();
     }
 
     public dispose() {
@@ -30,5 +34,9 @@ export class TextBox implements Disposable {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    public focus() {
+        this.input.focus();
     }
 }

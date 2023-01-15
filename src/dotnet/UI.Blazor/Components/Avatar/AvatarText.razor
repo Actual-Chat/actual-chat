@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits FusionComponentBase
+
+<div class="@_sizeClass flex-x justify-center items-center
+            rounded-full bg-avatar
+            text-center text-04 select-none">
+    <div>@Text</div>
+</div>
+
+@code {
+    private string _sizeClass = "";
+
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
+
+    protected override void OnParametersSet()
+        => _sizeClass = GetSizeClass();
+
+    private string GetSizeClass() {
+        var size = (int) Size;
+        return $"h-{size} w-{size}";
+    }
+}

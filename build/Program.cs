@@ -1,16 +1,10 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
@@ -241,6 +235,7 @@ internal static class Program
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+            #pragma warning disable IL2026
             var nbgv = JsonSerializer.Deserialize<NbgvModel>(cmd.StandardOutput ?? throw new WithoutStackException("nbgv returned null"));
 
             if (nbgv == null)
@@ -364,6 +359,38 @@ internal static class Program
             }
         });
 
+        Target("maui", DependsOn("clean-dist", "npm-install"), async () => {
+            var npm = TryFindCommandPath("npm")
+                ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
+
+            // if one of process exits then close another on Cancel()
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var token = cts.Token;
+            try {
+                var dotnetTask = Cli
+                    .Wrap(dotnet)
+                    .WithArguments($"build -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
+                    .WithWorkingDirectory(Path.Combine("src", "dotnet", "App.Maui"))
+                    .ToConsole(Green("dotnet: "))
+                    .ExecuteAsync(token).Task;
+
+                var npmTask = Cli
+                    .Wrap(npm)
+                    .WithArguments($"run build:{configuration}")
+                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
+                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
+                    .ToConsole(Blue("webpack: "))
+                    .ExecuteAsync(token).Task;
+
+                await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
+            }
+            finally {
+                if (!cts.IsCancellationRequested)
+                    cts.Cancel();
+                cts.Dispose();
+            }
+        });
+
         Target("restore-tools", async () => {
             await Cli.Wrap(dotnet).WithArguments("tool restore")
                 .ToConsole()
@@ -407,7 +434,7 @@ internal static class Program
 
         try {
             /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
-            await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException || ex is WithoutStackException).ConfigureAwait(false);
+            await RunTargetsWithoutExitingAsync(targets:arguments, options, messageOnly:ex => ex is OperationCanceledException || ex is WithoutStackException).ConfigureAwait(false);
             return 0;
         }
         catch (TargetFailedException targetException) {

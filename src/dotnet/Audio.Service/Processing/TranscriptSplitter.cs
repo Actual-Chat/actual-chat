@@ -5,10 +5,10 @@ namespace ActualChat.Audio.Processing;
 
 public class TranscriptSplitter : TranscriptionProcessorBase
 {
-    public static TimeSpan TextEntryWaitDelay { get; set; } = TimeSpan.FromSeconds(0.2);
-    public static float QuickSplitPauseDuration { get; set; } = 0.1f;
-    public static float SplitPauseDuration { get; set; } = 0.75f;
-    public static float SplitOverlap { get; set; } = 0.25f;
+    public static TimeSpan TextEntryWaitDelay { get; } = TimeSpan.FromSeconds(0.2);
+    public static float QuickSplitPauseDuration => 0.1f;
+    public static float SplitPauseDuration => 0.75f;
+    public static float SplitOverlap => 0.25f;
 
     protected IChatsBackend ChatsBackend { get; }
 
@@ -22,14 +22,6 @@ public class TranscriptSplitter : TranscriptionProcessorBase
     {
         var cpuClock = Clocks.CpuClock;
         var chatId = audioSegment.AudioRecord.ChatId;
-
-        async Task<long> GetMaxTextId(bool delay)
-        {
-            if (delay)
-                await cpuClock.Delay(TextEntryWaitDelay, cancellationToken).ConfigureAwait(false);
-            var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryType.Text, cancellationToken).ConfigureAwait(false);
-            return idRange.End;
-        }
 
         var segmentTextId = 0L;
         TranscriptSegment? segment = null;
@@ -88,6 +80,14 @@ public class TranscriptSplitter : TranscriptionProcessorBase
         finally {
             // The error will be thrown anyway, but the last produced segment must be completed
             segment?.Suffixes.Writer.TryComplete();
+        }
+
+        async Task<long> GetMaxTextId(bool delay)
+        {
+            if (delay)
+                await cpuClock.Delay(TextEntryWaitDelay, cancellationToken).ConfigureAwait(false);
+            var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+            return idRange.End;
         }
     }
 }

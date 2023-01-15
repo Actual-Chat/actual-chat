@@ -5,12 +5,9 @@
 <#@ Assembly Name="System.Xml.Linq.dll" #>
 <#@ import namespace="System" #>
 <#@ import namespace="System.IO" #>
-<#@ import namespace="System.Diagnostics" #>
-<#@ import namespace="System.Reflection" #>
-<#@ import namespace="System.Linq" #>
-<#@ import namespace="System.Collections" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ import namespace="System.Xml.Linq" #>
+<#@ import namespace="System.Linq" #>
 <#
     string XmlFile = "ebml.xml";
     string MatroskaXmlFile = "ebml_matroska.xml";
@@ -70,7 +67,7 @@ namespace ActualChat.Audio.WebM
 
     var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), XmlFile)).Elements()
         .Select(e => new
-        { 
+        {
             Name = e.Attribute("name").Value.Replace("CRC-32", "CRC32"),
             Path = e.Attribute("path").Value,
             Id = e.Attribute("id").Value,
@@ -83,7 +80,7 @@ namespace ActualChat.Audio.WebM
 
     var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), MatroskaXmlFile)).Elements()
         .Select(e => new
-        { 
+        {
             Name = e.Attribute("name").Value,
             Path = e.Attribute("path").Value,
             Id = e.Attribute("id").Value,
@@ -97,7 +94,7 @@ namespace ActualChat.Audio.WebM
     var elements = elementsEbml.Union(elementsMatroska).Concat(new []
     {
         new
-        { 
+        {
             Name = "Unknown",
             Path = string.Empty,
             Id = "0x7FFF",
@@ -106,7 +103,7 @@ namespace ActualChat.Audio.WebM
             DefaultValue = (string)null,
             Required = false,
             Documentation = "Unknown element"
-        } 
+        }
     }).OrderBy(e => e.Path).ToList();
 #>
         private static readonly Dictionary<VInt, EbmlElementDescriptor> _elementDescriptorsByVInt = new(<#=elements.Count#>);

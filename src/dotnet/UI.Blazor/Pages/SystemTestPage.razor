@@ -1,20 +1,35 @@
 @page "/test/system"
+@using ActualChat.Hosting
+@using ActualChat.Users
 
 <MainHeader>System Test Page</MainHeader>
 
-<div class="flex-y justify-start gap-y-1">
-    <div class="flex-1">
-        <Button Click="OnInvalidateEverythingClick">Invalidate Everything</Button>
-    </div>
-    <div class="flex-1">
-        <Button Click="OnGCCollectClick">GC.Collect() x 3</Button>
-    </div>
-</div>
+<p>AgentId: <b>@(AgentInfo.Id)</b></p>
+<p>Required service scopes: <b>@(HostInfo.RequiredServiceScopes.ToDelimitedString())</b></p>
+
+<p>Invalidate everything:
+    <Button Click="@OnInvalidateEverythingLocallyClick">Locally</Button>
+    <Button Click="@(_ => OnInvalidateEverythingClick(false))">On this front-end</Button>
+    <Button Click="@(_ => OnInvalidateEverythingClick(true))">Everywhere</Button>
+</p>
+<p>Garbage collection:
+    <Button Click="@OnGCCollectClick">GC.Collect() x 3</Button>
+</p>
 
 @code {
-    private Task OnInvalidateEverythingClick() {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AgentInfo AgentInfo { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    private Task OnInvalidateEverythingLocallyClick() {
         ComputedRegistry.Instance.InvalidateEverything();
         return Task.CompletedTask;
+    }
+
+    private async Task OnInvalidateEverythingClick(bool everywhere) {
+        var command = new IAccounts.InvalidateEverythingCommand(Session, everywhere);
+        await UICommander.Run(command);
     }
 
     private async Task OnGCCollectClick() {
@@ -24,4 +39,6 @@
             GC.Collect();
         }
     }
+
+
 }

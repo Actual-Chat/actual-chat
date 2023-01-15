@@ -1,5 +1,3 @@
-using Storage.NetCore.Blobs;
-
 namespace ActualChat.Blobs;
 
 public interface IBlobStorageProvider

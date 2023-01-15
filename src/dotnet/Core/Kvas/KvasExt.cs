@@ -1,5 +1,3 @@
-using Stl.Reflection;
-
 namespace ActualChat.Kvas;
 
 public static class KvasExt
@@ -14,19 +12,19 @@ public static class KvasExt
         return data is null ? Option<T>.None : Serializer.Read<T>(data);
     }
 
-    public static Task Set<T>(this IKvas kvas, string key, T value)
+    public static Task Set<T>(this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)
     {
         var data = Serializer.Write(value);
-        return kvas.Set(key, data);
+        return kvas.Set(key, data, cancellationToken);
     }
 
-    public static Task Set<T>(this IKvas kvas, string key, Option<T> value)
+    public static Task Set<T>(this IKvas kvas, string key, Option<T> value, CancellationToken cancellationToken = default)
         => value.IsSome(out var v)
-            ? kvas.Set(key, v)
-            : kvas.Remove(key);
+            ? kvas.Set(key, v, cancellationToken)
+            : kvas.Remove(key, cancellationToken);
 
-    public static Task Remove(this IKvas kvas, string key)
-        => kvas.Set(key, null);
+    public static Task Remove(this IKvas kvas, string key, CancellationToken cancellationToken = default)
+        => kvas.Set(key, null, cancellationToken);
 
     // WithXxx
 

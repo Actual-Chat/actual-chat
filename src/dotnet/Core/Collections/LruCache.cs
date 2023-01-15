@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Collections;
 
 public interface ILruCache<in TKey, TValue>
@@ -45,12 +47,12 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
         }
     }
 
-    public LruCache(int capacity)
+    public LruCache(int capacity, IEqualityComparer<TKey>? comparer = null)
     {
         if (capacity < 1)
             throw new ArgumentOutOfRangeException(nameof(capacity));
         Capacity = capacity;
-        _dictionary = new Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>>(capacity);
+        _dictionary = new Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>>(capacity, comparer);
         _list = new LinkedList<KeyValuePair<TKey, TValue>>();
     }
 
@@ -85,7 +87,7 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     {
         if (!TryAdd(key, value))
             throw new ArgumentException(
-                $"The same key already exists in the {GetType().Name}.",
+                $"The same key already exists in the {GetType().GetName()}.",
                 nameof(value));
     }
 

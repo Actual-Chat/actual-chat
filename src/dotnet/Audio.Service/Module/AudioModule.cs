@@ -1,4 +1,5 @@
-﻿using ActualChat.Audio.Db;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -10,6 +11,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AudioModule : HostModule<AudioSettings>, IWebModule
 {
     public AudioModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -52,6 +54,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddSingleton<AudioProcessor>();
         services.AddTransient<IAudioProcessor>(c => c.GetRequiredService<AudioProcessor>());
 
+        services.TryAddSingleton<OtelMetrics>();
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
         services.AddSingleton<AudioStreamer>();

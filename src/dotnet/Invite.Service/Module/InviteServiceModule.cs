@@ -1,14 +1,16 @@
+using System.Diagnostics.CodeAnalysis;
+using ActualChat.Commands;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
 using ActualChat.Redis.Module;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 
 namespace ActualChat.Invite.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class InviteServiceModule : HostModule<InviteSettings>
 {
     public InviteServiceModule(IPluginInfoProvider.Query _) : base(_)
@@ -31,7 +33,11 @@ public class InviteServiceModule : HostModule<InviteSettings>
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         services.AddSingleton<IDbInitializer, InviteDbInitializer>();
-        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db);
+        dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db, db => {
+            // DbInvite
+            db.AddEntityResolver<string, DbInvite>();
+            db.AddEntityResolver<string, DbActivationKey>();
+        });
 
         // Commander & Fusion
         var commander = services.AddCommander();
@@ -54,7 +60,7 @@ public class InviteServiceModule : HostModule<InviteSettings>
         fusion.AddComputeService<IInvitesBackend, InvitesBackend>();
         // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
 
-        // API controllers
-        services.AddMvc().AddApplicationPart(GetType().Assembly);
+        // Controllers, etc.
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

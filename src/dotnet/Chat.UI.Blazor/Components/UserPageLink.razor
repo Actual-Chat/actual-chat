@@ -1,27 +1,27 @@
-@inherits ComputedStateComponent<User?>
+@inherits ComputedStateComponent<AccountFull>
 @{
-    var user = State.LatestNonErrorValue;
-    if (user == null)
+    var account = State.Value;
+    if (ReferenceEquals(account, AccountFull.Loading))
         return;
-    var relativeUri = Links.UserPage(user.Id);
-    var linkInfo = LinkInfoBuilder.GetFrom(relativeUri);
+
+    var link = Links.User(account.Id).ToDisplayUrl(UrlMapper);
 }
 
 <div class="user-page-link flex-x justify-start items-center gap-x-1">
     <div class="flex-none text-02">
-        <a href="@linkInfo.NavigateLink">@linkInfo.DisplayLink</a>
+        <a href="@link.AbsoluteUrl">@link.ShortAbsoluteUrl</a>
     </div>
-    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" Text="@linkInfo.CopyLink.ToString()"/>
+    <CopyToClipboard Class="flex-none text-03" InputClass="hidden" CopyText="@link.AbsoluteUrl"/>
 </div>
 
 @code {
-    [Inject] public Session Session { get; init; } = null!;
-    [Inject] public IAuth Auth { get; init; } = null!;
-    [Inject] private LinkInfoBuilder LinkInfoBuilder { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    protected override ComputedState<User?>.Options GetStateOptions()
-    => new() { UpdateDelayer = FixedDelayer.Instant };
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() { InitialValue = AccountFull.Loading };
 
-    protected override Task<User?> ComputeState(CancellationToken cancellationToken)
-        => Auth.GetUser(Session, default);
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
 }

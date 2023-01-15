@@ -1,0 +1,38 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<ul class="reaction-select">
+    @foreach (var emoji in _emojis) {
+        <MenuEntry
+            Class="reaction-select-reaction"
+            Click="@(_ => React(emoji.Id))">
+            <IconContent>
+                <EmojiIcon Id="@emoji.Id" class="reaction-select-reaction-emoji"/>
+            </IconContent>
+        </MenuEntry>
+    }
+</ul>
+
+@code {
+    private const int MaxReactionCount = 7;
+    private Emoji[] _emojis = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public bool ShowDefaultReaction { get; set; } = true;
+
+    protected override void OnParametersSet() {
+        var skipCount = ShowDefaultReaction ? 0 : 1;
+        _emojis = Emoji.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
+    }
+
+    private Task React(Symbol emojiId) {
+        var command = new IReactions.ReactCommand(Session, new Reaction {
+            EntryId = Entry.Id.ToTextEntryId(),
+            EmojiId = emojiId,
+        });
+        return UICommander.Run(command);
+    }
+}

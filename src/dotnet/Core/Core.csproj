@@ -6,33 +6,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Microsoft.Extensions.ObjectPool" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
+    <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="Stl.Fusion.Client" />
     <PackageReference Include="Stl.Plugins" />
-    <PackageReference Include="Storage.NetCore" />
-    <PackageReference Include="Storage.NetCore.Gcp.CloudStorage" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="Identifiers\StringIdentifiers.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>StringIdentifiers.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Identifiers\StringIdentifiers.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>StringIdentifiers.tt</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Kvas\Internal" />
   </ItemGroup>
 </Project>

@@ -8,6 +8,7 @@ public class MarkupView : MarkupViewBase<Markup>
 {
     [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; init; } = null!;
 
+#pragma warning disable IL2072
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         var componentType =
@@ -18,4 +19,5 @@ public class MarkupView : MarkupViewBase<Markup>
         builder.AddAttribute(1, nameof(IMarkupView.Markup), Markup);
         builder.CloseComponent();
     }
+#pragma warning restore IL2072
 }

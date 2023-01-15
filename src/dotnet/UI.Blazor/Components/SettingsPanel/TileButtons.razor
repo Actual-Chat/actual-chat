@@ -1,0 +1,48 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<bool>
+@{
+    var m = State.Value;
+    var cls = m ? "text-primary" : "text-icons-01";
+}
+
+@if (!HideSetDefaultButton) {
+    <ButtonRound
+        Class="btn-sm transparent"
+        Tooltip="Set default"
+        FloatingPosition="FloatingPosition.Top"
+        Click="@OnSetDefaultClick">
+        <i class="icon-star text-xl @cls"></i>
+    </ButtonRound>
+}
+<ButtonRound
+    Class="btn-sm transparent tile-btn"
+    Tooltip="Edit"
+    FloatingPosition="FloatingPosition.Top"
+    Click="OnEditClick">
+    <i class="icon-edit text-xl"></i>
+</ButtonRound>
+
+@code{
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [Parameter] public bool HideSetDefaultButton { get; set; }
+    [Parameter] public AvatarFull Avatar { get; set; } = AvatarFull.None;
+    [Parameter] public EventCallback OnEditClick { get; set; }
+    [Parameter] public EventCallback OnSetDefaultClick { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken);
+        var defaultAvatarId = accountSettings.DefaultAvatarId;
+        if (defaultAvatarId.IsEmpty)
+            defaultAvatarId = accountSettings.AvatarIds.FirstOrDefault();
+        return Avatar.Id == defaultAvatarId;
+    }
+
+}

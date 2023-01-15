@@ -5,26 +5,29 @@ namespace ActualChat.Chat;
 public class BackendChatMentionResolver : IChatMentionResolver
 {
     private IAccountsBackend AccountsBackend { get; }
-    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; }
 
-    public Symbol ChatId { get; set; }
+    public ChatId ChatId { get; }
 
-    public BackendChatMentionResolver(IServiceProvider services)
+    public BackendChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        ChatId = chatId;
     }
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        var targetId = mention.Id;
-        if (targetId.OrdinalHasPrefix("u:", out var userId))
-            return await AccountsBackend.GetUserAuthor(userId, cancellationToken).ConfigureAwait(false);
-        if (!targetId.OrdinalHasPrefix("a:", out var authorId))
-            authorId = targetId;
-        return await ChatAuthorsBackend.Get(ChatId, authorId, true, cancellationToken).ConfigureAwait(false);
+        if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
+            return null;
+
+        var authorId = new AuthorId(sAuthorId, ParseOrNone.Option);
+        if (authorId.IsNone)
+            return null;
+
+        return await AuthorsBackend.Get(ChatId, authorId, cancellationToken).ConfigureAwait(false);
     }
 
     ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
@@ -32,6 +35,6 @@ public class BackendChatMentionResolver : IChatMentionResolver
     public async ValueTask<string?> ResolveName(MentionMarkup mention, CancellationToken cancellationToken)
     {
         var author = await ResolveAuthor(mention, cancellationToken).ConfigureAwait(false);
-        return author?.Name;
+        return author?.Avatar.Name;
     }
 }

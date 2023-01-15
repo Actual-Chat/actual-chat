@@ -1,8 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.Users.UI.Blazor.Services;
 using Stl.Plugins;
 
 namespace ActualChat.Users.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "users";
@@ -13,9 +16,12 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        // Presence
-        services.AddSingleton(_ => new PresenceService.Options() {
-            UpdatePeriod = Constants.Presence.CheckInPeriod,
-        });
+        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+            return; // Blazor UI only module
+
+        var fusion = services.AddFusion();
+
+        // Account UI
+        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
     }
 }

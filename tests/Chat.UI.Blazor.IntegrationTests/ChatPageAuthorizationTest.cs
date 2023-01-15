@@ -24,7 +24,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
         _testSettings = _appHost.Services.GetRequiredService<TestSettings>();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _tester = _appHost.NewPlaywrightTester();
-        _sessionFactory = _appHost.Services.GetRequiredService<ISessionFactory>();
+        _sessionFactory = _appHost.Services.SessionFactory();
         _adminSession = _sessionFactory.CreateSession();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
@@ -76,8 +76,12 @@ public class ChatPageAuthorizationTest : AppHostTestBase
 
     private async Task UpdateStatus(AccountStatus newStatus)
     {
-        var account = await _accounts.Get(_tester.Session, default).Require();
-        account = account with { Status = newStatus };
-        await _accounts.GetCommander().Call(new IAccounts.UpdateCommand(_adminSession, account));
+        var account = await _accounts.GetOwn(_tester.Session, default);
+
+        var command = new IAccounts.UpdateCommand(
+            _adminSession,
+            account with { Status = newStatus },
+            account.Version);
+        await _accounts.GetCommander().Call(command);
     }
 }

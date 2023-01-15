@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
@@ -39,8 +40,8 @@ public static class StringExt
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
 
-    public static string EnsureEndsWith(this string source, string suffix, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
-        => source.EndsWith(suffix, comparison) ? source : source + suffix;
+    public static string EnsureSuffix(this string source, string suffix)
+        => source.OrdinalEndsWith(suffix) ? source : source + suffix;
 
     public static string Truncate(this string source, int maxLength)
         => source.Length <= maxLength ? source : source[..maxLength];
@@ -71,6 +72,10 @@ public static class StringExt
             index = match.Index + match.Length;
         }
     }
+
+    [return: NotNullIfNotNull("url")]
+    public static Uri? ToUri(this string? url)
+        => url == null ? null : new Uri(url);
 
     public static string UrlEncode(this string input)
         => WebUtility.UrlEncode(input);
@@ -124,5 +129,14 @@ public static class StringExt
 
         port = portValue;
         return true;
+    }
+
+    // ReSharper disable once InconsistentNaming
+    public static string GetSHA1HashCode(this string input)
+    {
+        using var sha1 = System.Security.Cryptography.SHA1.Create();
+        var inputBytes = Encoding.ASCII.GetBytes(input);
+        var hashBytes = sha1.ComputeHash(inputBytes);
+        return Convert.ToHexString(hashBytes);
     }
 }

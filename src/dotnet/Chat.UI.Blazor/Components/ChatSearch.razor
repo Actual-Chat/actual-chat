@@ -1,11 +1,14 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
 @if (!_isSearchEnabled) {
     return;
 }
 
-<SearchBox
+<ChatSearchBox
     Placeholder="Search in this chat..."
-    IsCompact="true"
-    IsProgressEnabled="true"
+    IsCollapsed="true"
+    ShowSpinner="true"
+    ShowClose="true"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     Triggered="OnSearchTriggered"
     Cancelled="OnSearchCancelled"/>
@@ -28,14 +31,14 @@
 
     private async Task OnSearchTriggered(string text) {
         var chatId = Chat.Id;
-        var nextEntry = await Chats.FindNext(Session, chatId, _lastFoundEntry?.Id, text, CancellationToken.None);
+        var nextEntry = await Chats.FindNext(Session, chatId, _lastFoundEntry?.LocalId, text, CancellationToken.None);
         if (nextEntry == null)
             return;
 
-        await UIEventHub.Publish(new NavigateToChatEntryEvent(nextEntry.Id));
-        ChatUI.HighlightedChatEntryId.Value = nextEntry.Id;
+        ChatUI.HighlightEntry(nextEntry.Id, navigate: true);
         _lastFoundEntry = nextEntry;
     }
 
-    private void OnSearchCancelled() => _lastFoundEntry = null;
+    private void OnSearchCancelled()
+        => _lastFoundEntry = null;
 }

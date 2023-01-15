@@ -1,10 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using ActualChat.Hosting;
-using ActualChat.Users;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Chat.Client.Module;
+namespace ActualChat.Chat.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ChatClientModule : HostModule
 {
     public ChatClientModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -18,10 +20,16 @@ public class ChatClientModule : HostModule
             return; // Client-side only module
 
         var fusionClient = services.AddFusion().AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
         fusionClient.AddReplicaService<IChats, IChatsClientDef>();
-        fusionClient.AddReplicaService<IChatAuthors, IChatAuthorsClientDef>();
-        fusionClient.AddReplicaService<IChatRoles, IChatRolesClientDef>();
-        fusionClient.AddReplicaService<IChatUserSettings, IChatUserSettingsClientDef>();
+        fusionClient.AddReplicaService<IAuthors, IAuthorsClientDef>();
+        fusionClient.AddReplicaService<IRoles, IRolesClientDef>();
         fusionClient.AddReplicaService<IMentions, IMentionsClientDef>();
+        fusionClient.AddReplicaService<IReactions, IReactionsClientDef>();
     }
 }

@@ -1,0 +1,41 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<RelatedChatEntryPanel.Model?>
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+}
+
+<div class="related-chat-entry-panel">
+    <RelatedChatEntry Entry="@m.Entry" Kind="@m.Kind" IsOwn="@m.IsOwn"/>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var relatedChatEntry = await ChatUI.RelatedChatEntry.Use(cancellationToken);
+        if (relatedChatEntry is not { } vRelatedChatEntry)
+            return null;
+
+        var entryId = vRelatedChatEntry.Id;
+        var chatId = entryId.ChatId;
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
+        var entry = await Chats.GetEntry(Session, entryId, cancellationToken);
+        if (entry == null) {
+            // The entry was removed
+            ChatUI.HideRelatedEntry();
+            return null;
+        }
+
+        return new (entry, vRelatedChatEntry.Kind, ownAuthor?.Id == entry.AuthorId);
+    }
+
+    public record Model(
+        ChatEntry Entry,
+        RelatedEntryKind Kind,
+        bool IsOwn);
+}

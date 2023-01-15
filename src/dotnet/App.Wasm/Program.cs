@@ -1,18 +1,25 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualChat.UI.Blazor.App;
+using Stl.Interception.Interceptors;
 
 namespace ActualChat.App.Wasm;
 
 public static class Program
 {
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<,>))]
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
-        await ConfigureServices(builder.Services, builder.Configuration, baseUri).ConfigureAwait(false);
+        var baseUrl = builder.HostEnvironment.BaseAddress;
+        await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
 
         var host = builder.Build();
         Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
@@ -26,7 +33,7 @@ public static class Program
     public static async Task ConfigureServices(
         IServiceCollection services,
         IConfiguration configuration,
-        Uri baseUri)
+        string baseUrl)
     {
         // Logging
         services.AddLogging(logging => logging
@@ -46,16 +53,12 @@ public static class Program
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
         services.AddSingleton(c => new HostInfo() {
-            HostKind = HostKind.Blazor,
-            RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
-                .Add(ServiceScope.Client)
-                .Add(ServiceScope.BlazorUI),
+            AppKind = AppKind.Wasm,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
+            BaseUrl = baseUrl,
         });
 
-        await AppConfigurator
-            .ConfigureServices(services, baseUri)
-            .ConfigureAwait(false);
+        await AppStartup.ConfigureServices(services).ConfigureAwait(false);
     }
 }

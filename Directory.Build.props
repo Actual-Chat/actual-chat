@@ -2,7 +2,7 @@
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework Condition ="!$(MSBuildProjectName.Contains('.Maui'))">net7.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -16,8 +16,9 @@
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
-    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service.Migration'))">$(AssemblyName.Replace('.Service.Migration',''))</RootNamespace>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service'))">$(AssemblyName.Replace('.Service',''))</RootNamespace>
+    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service.Migration'))">$(AssemblyName.Replace('.Service.Migration',''))</RootNamespace>
+    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Client'))">$(AssemblyName.Replace('.Client',''))</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
 
     <!-- C# / language settings -->
@@ -34,6 +35,7 @@
 
     <!-- Generators -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
 
     <!-- Resources -->
     <DefaultLanguage>en-US</DefaultLanguage>
@@ -43,8 +45,16 @@
     <!-- Output -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
+
+    <!-- NuGet -->
     <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <!-- Include the PDB and xmldoc in the built .nupkg -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <IncludeSymbols>false</IncludeSymbols>
 
     <!-- Debug info -->
     <DebugType>portable</DebugType>

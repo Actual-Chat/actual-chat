@@ -16,7 +16,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 {
     protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
-    public int QueueSize { get; init; } = 128;
+    public int QueueSize { get; init; } = Constants.Queues.MessageProcessorQueueDefaultSize;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
     public bool UseMessageProcessingWrapper { get; init; } = false;
 

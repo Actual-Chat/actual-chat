@@ -2,14 +2,9 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button class="@Class btn"
-        name="@Name"
         type="@GetButtonType()"
-        disabled="@IsDisabled"
-        autofocus="@IsAutofocused"
-        data-tooltip="@Tooltip"
-        data-tooltip-position="@(TooltipPosition.ToStringPosition())"
-        @attributes="@AdditionalAttributes"
-        @onclick="Click">
+        @attributes="@GetAttributes()"
+        @onclick="@Click">
     <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
     </div>
@@ -20,7 +15,8 @@
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public TooltipPosition TooltipPosition { get; set; }
+    [Parameter] public string FormId { get; set; } = "";
+    [Parameter] public FloatingPosition FloatingPosition { get; set; }
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool IsAutofocused { get; set; }
@@ -32,4 +28,29 @@
 
     private string GetButtonType()
         => Type.ToString().ToLower();
+
+    private IReadOnlyDictionary<string, object> GetAttributes() {
+        var attributes = AdditionalAttributes == null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(AdditionalAttributes);
+        if (!FormId.IsNullOrEmpty()) {
+            attributes.Add("form", FormId);
+        }
+        if (IsAutofocused) {
+            attributes.Add("autofocus", IsAutofocused);
+        }
+        if (!Name.IsNullOrEmpty()) {
+            attributes.Add("name", Name);
+        }
+        if (IsDisabled) {
+            attributes.Add("disabled", IsDisabled);
+        }
+        if (!Tooltip.IsNullOrEmpty()) {
+            attributes.Add("data-tooltip", Tooltip);
+        }
+        if (FloatingPosition != FloatingPosition.None) {
+            attributes.Add("data-tooltip-position", FloatingPosition.ToPositionString());
+        }
+        return attributes;
+    }
 }

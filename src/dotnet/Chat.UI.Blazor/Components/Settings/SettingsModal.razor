@@ -1,8 +1,9 @@
 @using Stl.Extensibility
+@using LanguageSettings = ActualChat.Chat.UI.Blazor.Components.LanguageSettings
 @implements IModalView<SettingsModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame Title="Settings">
+<DialogFrame Title="Settings" NoNarrowHeader="true">
     <Body>
         <ButtonRound Click="OnCloseClick" Class="modal-close-btn">
             <i class="icon-close text-2xl"></i>
@@ -10,7 +11,7 @@
         <div class="flex-x justify-center w-full h-full">
             <SettingsPanel Title="Settings" OnCloseModalClick="OnCloseClick">
                 <SettingsTab Title="My account" Id="myAccount" IconTitle="person">
-                    <UserSettings/>
+                    <MyAccount/>
                 </SettingsTab>
 
                 @if (_enableIncompleteUI) {
@@ -18,22 +19,24 @@
                         <ChildContent>
                         </ChildContent>
                     </SettingsTab>
-                <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
-                    <ChildContent>
-                    </ChildContent>
-                </SettingsTab>
-                    <SettingsTab Title="Language" Id="language" IconTitle="language">
-                        <TitleContent>
-                            <LanguageShortcut/>
-                        </TitleContent>
+                    <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
                         <ChildContent>
                         </ChildContent>
                     </SettingsTab>
                 }
 
+                <SettingsTab Title="Language" Id="language" IconTitle="language">
+                    <TitleContent>
+                        <LanguageShortcut/>
+                    </TitleContent>
+                    <ChildContent>
+                        <LanguageSettings/>
+                    </ChildContent>
+                </SettingsTab>
+
                 <SettingsTab Title="Dark theme" Separator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
                     <TitleContent>
-                        <NightModeToggle/>
+                        <ThemeToggle/>
                     </TitleContent>
                 </SettingsTab>
                 <SettingsTab Title="Log out" Id="logOut" IconTitle="log-out">

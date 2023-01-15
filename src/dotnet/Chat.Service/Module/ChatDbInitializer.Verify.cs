@@ -1,13 +1,15 @@
-using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Module;
 
 public partial class ChatDbInitializer
 {
-    private async Task Verify(ChatDbContext dbContext, CancellationToken cancellationToken)
+    protected override async Task VerifyData(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Verifying DB...");
+        Log.LogInformation("Verifying data...");
+
+        var dbContext = DbHub.CreateDbContext(true);
+        await using var _ = dbContext.ConfigureAwait(false);
 
         var chatIds = await dbContext.Chats
             .Select(c => c.Id)
@@ -17,7 +19,7 @@ public partial class ChatDbInitializer
             var thisChatEntries = dbContext.ChatEntries.Where(e => e.ChatId == chatId);
             var duplicateEntries = await (
                 from e in thisChatEntries
-                let count = thisChatEntries.Count(e1 => e1.Id == e.Id && e1.Type == e.Type)
+                let count = thisChatEntries.Count(e1 => e1.LocalId == e.LocalId && e1.Kind == e.Kind)
                 where count > 1
                 select e
                 ).ToListAsync(cancellationToken)
@@ -29,9 +31,9 @@ public partial class ChatDbInitializer
             foreach (var e in duplicateEntries)
                 Log.LogCritical(
                     "- Entry w/ CompositeId = {CompositeId}, Id = {Id}, Type = {Type}, '{Content}'",
-                    e.CompositeId,
                     e.Id,
-                    e.Type,
+                    e.LocalId,
+                    e.Kind,
                     e.Content);
         }
     }

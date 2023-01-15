@@ -1,5 +1,7 @@
-﻿using ActualChat.Notification.Backend;
+﻿using ActualChat.Commands;
+using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -7,54 +9,74 @@ namespace ActualChat.Notification;
 
 public class Notifications : DbServiceBase<NotificationDbContext>, INotifications
 {
-    private IAuth Auth { get; }
+    private IAccounts Accounts { get; }
     private INotificationsBackend Backend { get; }
 
-    public Notifications(IAuth auth, INotificationsBackend backend, IServiceProvider serviceProvider) : base(serviceProvider)
+    public Notifications(IServiceProvider services)
+        : base(services)
     {
-        Auth = auth;
-        Backend = backend;
+        Accounts = services.GetRequiredService<IAccounts>();
+        Backend = services.GetRequiredService<INotificationsBackend>();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(
+        Session session, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return ChatNotificationStatus.NotSubscribed;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListRecentNotificationIds(account.Id, cancellationToken).ConfigureAwait(false);
+    }
 
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
+    // [ComputeMethod]
+    public virtual async Task<Notification> Get(
+        Session session, NotificationId notificationId, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (notificationId.UserId != account.Id)
+            throw Unauthorized();
 
-        string userId = user.Id;
-        var isDisabledSubscription = await dbContext.MutedChatSubscriptions
-            .AnyAsync(d => d.UserId == userId && d.ChatId == chatId, cancellationToken)
-            .ConfigureAwait(false);
-        return isDisabledSubscription ? ChatNotificationStatus.NotSubscribed : ChatNotificationStatus.Subscribed;
+        return await Backend.Get(notificationId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task Handle(
+        INotifications.HandleCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, notificationId) = command;
+        var notification = await Get(session, notificationId, cancellationToken).ConfigureAwait(false);
+        if (notification.HandledAt.HasValue)
+            return;
+
+        notification = notification with {
+            HandledAt = Clocks.SystemClock.Now,
+        };
+        var upsertCommand = new INotificationsBackend.UpsertCommand(notification);
+        await Commander.Run(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
     public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
             var device = context.Operation().Items.Get<DbDevice>();
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
-                _ = Backend.ListDevices(device.UserId, default);
+                _ = Backend.ListDevices(new UserId(device.UserId), default);
             return;
         }
 
         var (session, deviceId, deviceType) = command;
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var existingDbDevice = await dbContext.Devices
-            .ForUpdate()
-            .SingleOrDefaultAsync(d => d.Id == deviceId, cancellationToken)
+        var existingDbDevice = await dbContext.Devices.ForUpdate()
+            .FirstOrDefaultAsync(d => d.Id == deviceId.Value, cancellationToken)
             .ConfigureAwait(false);
 
         var dbDevice = existingDbDevice;
@@ -62,7 +84,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
-                UserId = user.Id,
+                UserId = account.Id,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -76,51 +98,8 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         context.Operation().Items.Set(existingDbDevice == null);
     }
 
-    // [CommandHandler]
-    public virtual async Task SetStatus(INotifications.SetStatusCommand command, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        var (session, chatId, mustSubscribe) = command;
-        if (Computed.IsInvalidating()) {
-            var invWasMuted = context.Operation().Items.GetOrDefault(false);
-            if (invWasMuted == mustSubscribe) {
-                _ = GetStatus(session, chatId, default);
-                _ = Backend.ListSubscriberIds(chatId, default);
-            }
-            return;
-        }
+    // Private methods
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (user == null)
-            return;
-
-        string userId = user.Id;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbMutedSubscription = await dbContext.MutedChatSubscriptions
-            .ForUpdate()
-            .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
-            .ConfigureAwait(false);
-
-        var isMutedSubscription = dbMutedSubscription != null;
-        context.Operation().Items.Set(isMutedSubscription);
-        if (isMutedSubscription != mustSubscribe)
-            return;
-
-        if (mustSubscribe) {
-            dbContext.Remove(dbMutedSubscription!);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-        else {
-            dbMutedSubscription = new DbMutedChatSubscription {
-                Id = Ulid.NewUlid().ToString(),
-                UserId = userId,
-                ChatId = chatId,
-                Version = VersionGenerator.NextVersion(),
-            };
-            dbContext.Add(dbMutedSubscription);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
+    private static Exception Unauthorized()
+        => StandardError.Unauthorized("You can access only your own notifications.");
 }

@@ -1,10 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Transcription
+@inherits FusionComponentBase
 @implements IAsyncDisposable
+@using ActualChat.Transcription
 
 <p class="@Class chat-message-transcript">
-    @if (ShowEntryType) {
-        <span class="chat-entry-type-marker icon-volume-up"></span>
+    @if (ShowEntryKind) {
+        <span class="chat-entry-kind-marker icon-volume-up"></span>
     }@*
     *@<span class="retained">@RetainedPart</span>@*
     *@<span class="changes">@ChangedPart</span>
@@ -15,18 +16,14 @@
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; init; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
 
+    [Parameter, EditorRequired] public ChatMessageModel Model { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public ChatMessageModel Model { get; set; } = null!;
-    [Parameter] public bool ShowEntryType { get; set; }
+    [Parameter] public bool ShowEntryKind { get; set; }
 
     private CancellationTokenSource? RestartCts { get; set; }
     private Transcript Transcript { get; set; } = new();
     private string RetainedPart { get; set; } = "";
     private string ChangedPart { get; set; } = "";
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     public ValueTask DisposeAsync() {
         RestartCts?.CancelAndDisposeSilently();

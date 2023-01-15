@@ -1,18 +1,32 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedStateComponent<AccountFull>
+@{
+    var account = State.Value;
+    if (ReferenceEquals(account, AccountFull.Loading))
+        return;
 
-@if (User != null) {
-    <SignedInMenu/>
-} else {
-    <SignInMenu ButtonType="SignInMenu.MenuButton.Round" ContentPositionClass="bottom-14"/>
+    if (!account.IsGuest) {
+        <button class="account-btn btn-square" @onclick="@OnSettingsClick">
+            <AccountView/>
+        </button>
+    } else {
+        <SignInMenu ButtonType="SignInMenu.MenuButton.Round" />
+    }
 }
 
-@code{
-    private User? User { get; set; }
+@code {
+    [Inject] Session Session { get; init; } = null!;
+    [Inject] IAccounts Accounts { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    [CascadingParameter] public Task<AuthState> AuthStateTask { get; set; } = null!;
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() { InitialValue = AccountFull.Loading };
 
-    protected override async Task OnParametersSetAsync() {
-        User = (await AuthStateTask).User;
-        StateHasChanged();
-    }
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
+
+    private void OnSettingsClick()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }

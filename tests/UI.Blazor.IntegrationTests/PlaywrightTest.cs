@@ -22,7 +22,7 @@ public class PlaywrightTest : AppHostTestBase
         const float timeout = 20_000f;
         using var appHost = await NewAppHost().ConfigureAwait(false);
         using var tester = appHost.NewPlaywrightTester();
-        var user = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
+        var account = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
         var (page, _) = await tester.NewPage("chat/the-actual-one").ConfigureAwait(false);
         await page.WaitForLoadStateAsync(LoadState.Load,
             new PageWaitForLoadStateOptions() { Timeout = timeout }).ConfigureAwait(false);
@@ -30,7 +30,7 @@ public class PlaywrightTest : AppHostTestBase
 
         await Task.Delay(2000).ConfigureAwait(false);
 
-        var chatPage = await page.QuerySelectorAsync(".chat-layout").ConfigureAwait(false);
+        var chatPage = await page.QuerySelectorAsync(".list-view-layout").ConfigureAwait(false);
         chatPage.Should().NotBeNull();
         var input = await page.QuerySelectorAsync("[role='textbox']").ConfigureAwait(false);
         input.Should().NotBeNull();
@@ -49,11 +49,11 @@ public class PlaywrightTest : AppHostTestBase
         lastMessage = await GetLastMessage(messages).ConfigureAwait(false);
         lastMessage.Should().Be("Test-123");
 
-        static async Task<IReadOnlyList<IElementHandle>> WaitNewMessages(TimeSpan timeout, IPage page, int oldMessagesCount)
+        static async Task<IReadOnlyList<IElementHandle>> WaitNewMessages(TimeSpan timeout, IPage page, int oldMessageCount)
         {
             var stopTime = DateTime.Now + timeout;
             var newMessages = await GetMessages(page).ConfigureAwait(false);
-            while (newMessages.Count == oldMessagesCount) {
+            while (newMessages.Count == oldMessageCount) {
                 await Task.Delay(500).ConfigureAwait(false);
                 newMessages = await GetMessages(page).ConfigureAwait(false);
                 if (DateTime.Now >= stopTime) {
@@ -64,7 +64,7 @@ public class PlaywrightTest : AppHostTestBase
         }
 
         static async Task<IReadOnlyList<IElementHandle>> GetMessages(IPage page)
-            => await page.QuerySelectorAllAsync(".chat-layout .content");
+            => await page.QuerySelectorAllAsync(".list-view-layout .content");
 
         static async Task<string?> GetLastMessage(IEnumerable<IElementHandle> messages)
             => await messages.Last().TextContentAsync().ConfigureAwait(false);
@@ -75,12 +75,13 @@ public class PlaywrightTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         using var tester = appHost.NewPlaywrightTester();
-        var user = await tester.SignIn(new User("", "ChatPageTester"));
+        var account = await tester.SignIn(new User(Symbol.Empty, "ChatPageTester"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
+
         await Task.Delay(1000);
-        user.Id.Value.Should().NotBeNullOrEmpty();
-        user.Name.Should().Be("ChatPageTester");
-        var messages = await page.QuerySelectorAllAsync(".chat-layout .content");
+        account.Id.Value.Should().NotBeNullOrEmpty();
+        account.User.Name.Should().Be("ChatPageTester");
+        var messages = await page.QuerySelectorAllAsync(".list-view-layout .content");
         messages.Count.Should().BeGreaterThan(0);
         await Task.Delay(200);
     }

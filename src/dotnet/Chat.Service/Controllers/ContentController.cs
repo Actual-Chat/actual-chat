@@ -14,14 +14,16 @@ public class ContentController : ControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {
+        if (blobId.IsNullOrEmpty())
+            return NotFound();
+
         var blobStorage = _blobs.GetBlobStorage(BlobScope.ContentRecord);
-        var byteStream = await blobStorage.OpenReadAsync(blobId, cancellationToken).ConfigureAwait(false);
+        var byteStream = await blobStorage.Read(blobId, cancellationToken).ConfigureAwait(false);
         if (byteStream == null)
             return NotFound();
-        var blob = (await blobStorage.GetBlobsAsync(new[] {blobId}, cancellationToken).ConfigureAwait(false)).Single();
-        string contentType = MediaTypeNames.Application.Octet;
-        if (blob != null && blob.IsFile && blob.Metadata.TryGetValue(Constants.Headers.ContentType, out var metadataContentType))
-            contentType = metadataContentType;
-        return File(byteStream, contentType);
+
+        var contentType = await blobStorage.GetContentType(blobId, cancellationToken).ConfigureAwait(false);
+        // stream will be disposed by the asp.net framework
+        return File(byteStream, contentType ?? MediaTypeNames.Application.Octet);
     }
 }

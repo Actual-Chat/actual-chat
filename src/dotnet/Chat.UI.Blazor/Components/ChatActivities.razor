@@ -1,17 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatActivities.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
-<ChatAuthorCirclesGroup
+<AuthorCircleGroup
     Class="chat-activity-panel"
     MaxIconCount="@MaxIconCount"
     Size="SquareSize.Size6"
-    AuthorIds="@m.RecordingAuthorIds" />
+    AuthorSids="@m.RecordingAuthorSids" />
 
 @code {
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private ChatActivity ChatActivity { get; init; } = null!;
 
     private IChatRecordingActivity? ChatRecordingActivity { get; set; }
@@ -39,12 +39,13 @@
 
         var authorIds = await ChatRecordingActivity.GetActiveAuthorIds(cancellationToken);
         return new() {
-            RecordingAuthorIds = authorIds,
+            RecordingAuthorSids = authorIds.Select(id => id.Value).ToImmutableArray(),
         };
     }
 
     public sealed class Model {
         public static Model None { get; } = new();
-        public ImmutableArray<Symbol> RecordingAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
+
+        public ImmutableArray<string> RecordingAuthorSids { get; init; } = ImmutableArray<string>.Empty;
     }
 }

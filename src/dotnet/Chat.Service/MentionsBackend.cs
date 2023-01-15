@@ -1,4 +1,6 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Events;
+using ActualChat.Commands;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -13,15 +15,15 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
 
     // [ComputeMethod]
     public virtual async Task<Mention?> GetLast(
-        Symbol chatId,
-        Symbol authorId,
+        ChatId chatId,
+        Symbol mentionId,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbMention = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId.Value && x.AuthorId == authorId.Value)
+            .Where(x => x.ChatId == chatId && x.MentionId == mentionId.Value)
             .OrderByDescending(x => x.EntryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -29,15 +31,20 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         return dbMention?.ToModel();
     }
 
-    // [CommandHandler]
-    public virtual async Task Update(IMentionsBackend.UpdateCommand command, CancellationToken cancellationToken)
+    // Events
+
+    [EventHandler]
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var entry = command.Entry;
-        string chatId = entry.ChatId;
+        var (entry, author, changeKind) = eventCommand;
         var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
-            foreach (var authorId in context.Operation().Items.Get<string[]>() ?? Array.Empty<string>())
-                _ = GetLast(chatId, authorId, default);
+            var invChangedMentionIds = context.Operation().Items.Get<HashSet<Symbol>>();
+            if (invChangedMentionIds != null) {
+                foreach (var mentionId in invChangedMentionIds)
+                    _ = GetLast(entry.ChatId, mentionId, default);
+            }
             return;
         }
 
@@ -45,36 +52,38 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var markup = MarkupParser.Parse(entry.Content);
-        var authorIds = new MentionsExtractor().ExtractAuthorIds(markup);
+        var mentionIds = new MentionExtractor().GetMentionIds(markup);
         var existingMentions = await dbContext.Mentions
-            .Where(x => x.ChatId == chatId && x.EntryId == entry.Id)
+            .Where(x => x.ChatId == entry.ChatId && x.EntryId == entry.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        string[] changes;
 
-        if (entry.IsRemoved) {
+        var changedMentionIds = new HashSet<Symbol>();
+        if (changeKind is ChangeKind.Remove) {
             dbContext.Mentions.RemoveRange(existingMentions);
-            changes = existingMentions.Select(x => x.AuthorId).ToArray();
+            changedMentionIds.AddRange(existingMentions.Select(m => (Symbol)m.MentionId));
         }
         else {
-            var toRemove = existingMentions.ExceptBy(authorIds, x => x.Id).ToList();
+            var toRemove = existingMentions.ExceptBy(mentionIds, x => (Symbol)x.Id).ToList();
             dbContext.Mentions.RemoveRange(toRemove);
 
-            var toAdd = authorIds.Except(existingMentions.Select(x => x.AuthorId), StringComparer.Ordinal)
-                .Select(authorId => new DbMention {
-                    Id = DbMention.ComposeId(chatId, entry.Id, authorId),
-                    AuthorId = authorId,
-                    ChatId = chatId,
-                    EntryId = entry.Id,
+            var toAdd = mentionIds
+                .Except(existingMentions.Select(x => (Symbol)x.MentionId))
+                .Select(mentionId => new DbMention {
+                    Id = DbMention.ComposeId(entry.Id, mentionId),
+                    MentionId = mentionId,
+                    EntryId = entry.LocalId,
                 }).ToList();
             dbContext.Mentions.AddRange(toAdd);
 
-            changes = toRemove.Select(x => x.AuthorId).Concat(toAdd.Select(x => x.AuthorId)).ToArray();
+            changedMentionIds.AddRange(toRemove.Select(m => (Symbol)m.MentionId));
+            changedMentionIds.AddRange(toAdd.Select(m => (Symbol)m.MentionId));
         }
 
-        if (changes.Length == 0)
+        if (changedMentionIds.Count == 0)
             return;
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(changes);
+        context.Operation().Items.Set(changedMentionIds);
     }
 }

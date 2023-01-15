@@ -1,0 +1,77 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Components.Notifications
+@inherits ComputedStateComponent<LanguageSettings.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var languages = m.Languages;
+}
+
+<fieldset class="language-settings" id="language-settings-primary">
+    <legend>Your primary language:</legend>
+    @foreach (var language in Languages.All) {
+        <div class="language-settings-item">
+            <Radio Id="@($"language-settings-primary-{language}")" Name="language-settings-primary"
+                   Value="@language" IsChecked="@(language == languages.Primary)"
+                   Title="@language.Title"
+                   Change="@(_ => SetPrimary(language))" />
+        </div>
+    }
+</fieldset>
+
+<fieldset class="language-settings" id="language-settings-secondary">
+    <legend>Your secondary language:</legend>
+    <div class="language-settings-item">
+        <Radio
+            Id="language-settings-secondary-none" Name="language-settings-secondary"
+            Title="None"
+            Value=""
+            IsChecked="@(languages.Secondary == null)"
+            Change="@(_ => SetSecondary(null))"/>
+    </div>
+    @foreach (var language in Languages.All.Where(x => x != languages.Primary)) {
+        <div class="language-settings-item">
+            <Radio
+                Id="@($"language-settings-secondary-{language}")" Name="language-settings-secondary"
+                Title="@language.Title"
+                Value="@language"
+                IsChecked="@(language == languages.Secondary)"
+                Change="@(_ => SetSecondary(language))"/>
+            @* Disabled="@(language == languages.Primary)"/> *@
+        </div>
+    }
+</fieldset>
+
+@code {
+    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+
+    private void SetPrimary(Language language) {
+        var languages = State.Value.Languages;
+        if (languages.Secondary == language)
+            languages = languages with { Secondary = languages.Primary };
+
+        LanguageUI.Settings.Value = languages with { Primary = language };
+    }
+
+    private void SetSecondary(Language? language) {
+        var languages = State.Value.Languages;
+        if (languages.Primary == language && languages.Secondary != null)
+            languages = languages with { Primary = languages.Secondary.Value };
+
+        LanguageUI.Settings.Value = languages with { Secondary = language };
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.Loading };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var languages = await LanguageUI.Settings.Use(cancellationToken);
+        return new(languages);
+    }
+
+    public sealed record Model(UserLanguageSettings Languages) {
+        public static Model Loading { get; } = new(new UserLanguageSettings());
+    }
+}

@@ -1,104 +1,84 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using BlazorContextMenu
 @using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<MessageMenuContent.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var entry = ChatMessageModel.Entry;
+    var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
 }
 
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("reaction", "Reactions"); })" CssClass="context-menu-item">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-heart-fill text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Reaction
-        </div>
-    </div>
-</Item>
-@if (m.CanReply) {
-    <Item OnClick="@(() => Reply(entry))" CssClass="context-menu-item">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-reply text-xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Reply
-            </div>
-        </div>
-    </Item>
-}
-<Item OnClick="@(() => { _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"); })" CssClass="context-menu-item">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-hash-fill text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Create thread
-        </div>
-    </div>
-</Item>
-<Item OnClick="@(() => CopyLink(entry))" CssClass="context-menu-item">
-    <div class="context-menu-content">
-        <div class="context-menu-icon">
-            <i class="icon-link-2 text-xl"></i>
-        </div>
-        <div class="context-menu-text">
-            Copy link
-        </div>
-    </div>
-</Item>
-@if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
-    <Item OnClick="@(() => Edit(entry))" CssClass="context-menu-item">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-edit text-xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Edit
-            </div>
-        </div>
-    </Item>
-}
-@if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming) {
-    <Seperator/>
-
-    <Item OnClick="@(() => ChatUI.ShowDeleteMessageModal(ChatMessageModel))" CssClass="context-menu-item warning-item">
-        <div class="context-menu-content">
-            <div class="context-menu-icon">
-                <i class="icon-trash text-xl"></i>
-            </div>
-            <div class="context-menu-text">
-                Delete message
-            </div>
-        </div>
-    </Item>
-}
+<div class="message-menu">
+    <ReactionSelect Entry="@entry"/>
+    @if (showPlayButton) {
+        <MessageMenuPlay Entry="@entry" IsMenu="true"/>
+    }
+    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
+        <MenuEntry
+            Icon="icon-edit"
+            Class="important-item"
+            TriggerEditor="true"
+            Text="Edit"
+            Click="@(() => Edit(entry))">
+        </MenuEntry>
+    }
+    @if (m.CanReply) {
+        <MenuEntry
+            Icon="icon-reply"
+            TriggerEditor="true"
+            Text="Reply"
+            Click="@(() => Reply(entry))">
+        </MenuEntry>
+    }
+    <MenuEntry
+        Icon="icon-hash-fill"
+        Text="Create thread"
+        Click="@(() => _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"))">
+    </MenuEntry>
+    @if (!ClickedLinkUrl.IsNullOrEmpty()) {
+        <MenuEntry
+            Icon="icon-copy"
+            Text="Copy link"
+            Click="@OnCopyLinkClick">
+        </MenuEntry>
+    }
+    <MenuEntry
+        Icon="icon-link-2"
+        Text="Copy message link"
+        Click="@(() => CopyMessageLink(entry))">
+    </MenuEntry>
+    @if (m is { IsJoined: true, IsEntryAuthor: true } && !entry.IsStreaming) {
+        <MenuEntrySeparator />
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-trash03"
+            Text="Delete message"
+            Click="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))">
+        </MenuEntry>
+    }
+</div>
 
 @code{
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    [CascadingParameter] public ChatMessageModel ChatMessageModel { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessageModel ChatMessageModel { get; set; } = null!;
+    [Parameter] public string? ClickedLinkUrl { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new ComputedState<Model>.Options {
-            InitialValue = Model.None
-        };
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
         var chatEntry = ChatMessageModel.Entry;
         var chatId = chatEntry.ChatId;
-        var requestAuthor = await ChatAuthors.Get(Session, chatId, CancellationToken.None);
+        var requestAuthor = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         // Default scheduler is used from here
         var сanReply = rules.CanWrite();
@@ -110,19 +90,19 @@
         };
     }
 
-    private async Task Reply(ChatEntry chatEntry) {
-        ChatUI.LinkedChatEntry.Value = new (ChatEntryLinkType.Reply, chatEntry);
-        await UIEventHub.Publish<FocusChatMessageEditorEvent>();
-    }
+    private void Reply(ChatEntry chatEntry)
+        => ChatUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
-    private async Task CopyLink(ChatEntry chatEntry) {
-        var url = $"{Nav.BaseUri}chat/{chatEntry.ChatId.Value}#{chatEntry.Id}";
+    private async Task CopyMessageLink(ChatEntry chatEntry) {
+        var url = UrlMapper.BaseUri + Links.Chat(chatEntry.Id);
         await ClipboardUI.WriteText(url);
     }
 
-    private Task Edit(ChatEntry chatEntry) {
-        return UIEventHub.Publish(new EditChatMessageEvent(chatEntry));
-    }
+    private async Task OnCopyLinkClick()
+        => await ClipboardUI.WriteText(ClickedLinkUrl!);
+
+    private Task Edit(ChatEntry chatEntry)
+        => UIEventHub.Publish(new EditChatMessageEvent(chatEntry));
 
     public sealed record Model {
         public static readonly Model None = new();

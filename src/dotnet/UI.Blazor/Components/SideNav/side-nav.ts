@@ -37,7 +37,7 @@ export class SideNav implements Disposable {
             return;
         }
 
-        fromEvent(this.element, 'transitionstart')
+        fromEvent(this.element, 'transitionend')
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
                 if (element.classList.contains('side-nav-open')){
@@ -47,7 +47,7 @@ export class SideNav implements Disposable {
                 }
             });
 
-        fromEvent(this.element, 'touchstart')
+        fromEvent(this.element, 'touchstart', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: TouchEvent) => {
                 element.classList.remove('side-nav-animate');
@@ -55,7 +55,7 @@ export class SideNav implements Disposable {
                 this.touchStartY = e.touches[0].clientY;
             });
 
-        fromEvent(this.element, 'touchmove')
+        fromEvent(this.element, 'touchmove', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: TouchEvent) => {
                 if (this.touchStartX === null || this.touchStartY === null) {
@@ -71,13 +71,15 @@ export class SideNav implements Disposable {
                     return;
                 }
 
+                const speed = 7;
+
                 if (this.options.direction == SideNavDirection.LeftToRight) {
                     if (this.diffX > 0) {
                         // closing <-
-                        this.translate = element.clientWidth / 100 * this.diffX * -1 / 10;
+                        this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
                     } else {
                         // opening ->
-                        this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / 10;
+                        this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / speed;
                     }
 
                     if (this.translate >= -100 && this.translate <= 0) {
@@ -86,10 +88,10 @@ export class SideNav implements Disposable {
                 } else {
                     if (this.diffX > 0) {
                         // opening <-
-                        this.translate = 100 - element.clientWidth / 100 * this.diffX / 10;
+                        this.translate = 100 - element.clientWidth / 100 * this.diffX / speed;
                     } else {
                         // closing ->
-                        this.translate = element.clientWidth / 100 * this.diffX * -1 / 10;
+                        this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
                     }
 
                     if (this.translate >= 0 && this.translate <= 100) {
@@ -98,7 +100,7 @@ export class SideNav implements Disposable {
                 }
             });
 
-        fromEvent(this.element, 'touchend')
+        fromEvent(this.element, 'touchend', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
                 element.classList.add('side-nav-animate');

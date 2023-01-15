@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Google.Cloud.Speech.V1P1Beta1;
+using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
 
 namespace ActualChat.Transcription.UnitTests;
@@ -22,12 +22,14 @@ public static class GoogleTranscriptReader
 
         foreach (var response in responses!) {
             var googleResponse = new StreamingRecognizeResponse {
-                TotalBilledTime = response.TotalBilledTime.FromString(),
+                Metadata = new RecognitionResponseMetadata {
+                    TotalBilledDuration = response.TotalBilledTime.FromString(),
+                },
                 Results = { response.Results.Select(r =>
                     new StreamingRecognitionResult {
                         IsFinal = r.IsFinal,
                         Stability = r.Stability,
-                        ResultEndTime = r.ResultEndTime.FromString(),
+                        ResultEndOffset = r.ResultEndOffset.FromString(),
                         Alternatives = {
                             r.Alternatives.Select(a =>
                                 new SpeechRecognitionAlternative {
@@ -37,9 +39,9 @@ public static class GoogleTranscriptReader
                                         a.Words == null ? Array.Empty<WordInfo>() : a.Words.Select(w =>
                                             new WordInfo {
                                                 Word = w.Word,
-                                                StartTime = w.StartTime.FromString(),
-                                                EndTime = w.EndTime.FromString(),
-                                                SpeakerTag = w.SpeakerTag
+                                                StartOffset = w.StartOffset.FromString(),
+                                                EndOffset = w.EndOffset.FromString(),
+                                                SpeakerLabel = w.SpeakerLabel,
                                             }),
                                     },
                                 }
@@ -73,7 +75,7 @@ public class Result
     public List<Alternative> Alternatives { get; set; } = null!;
     public float Stability { get; set; }
     public bool IsFinal { get; set; }
-    public string ResultEndTime { get; set; } = null!;
+    public string ResultEndOffset { get; set; } = null!;
 }
 
 public class Alternative
@@ -85,8 +87,8 @@ public class Alternative
 
 public class WordN
 {
-    public string StartTime { get; set; } = null!;
-    public string EndTime { get; set; } = null!;
+    public string StartOffset { get; set; } = null!;
+    public string EndOffset { get; set; } = null!;
     public string Word { get; set; } = null!;
-    public int SpeakerTag { get; set; }
+    public string SpeakerLabel { get; set; } = null!;
 }

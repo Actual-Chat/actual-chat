@@ -8,7 +8,7 @@ namespace ActualChat.Notification.Db;
 
 [Table("Devices")]
 [Index(nameof(UserId))]
-public class DbDevice : IHasId<string>, IHasVersion<long>
+public class DbDevice : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
     private DateTime _accessedAt;

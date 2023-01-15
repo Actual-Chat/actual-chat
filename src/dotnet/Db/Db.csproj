@@ -3,24 +3,19 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="EFCore.CheckConstraints" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
-    <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
     <PackageReference Include="Pipelines.Sockets.Unofficial" />
     <PackageReference Include="Stl.Fusion.Server" />
     <PackageReference Include="Stl.Fusion.EntityFramework" />
     <PackageReference Include="Stl.Fusion.EntityFramework.Npgsql" />
     <PackageReference Include="Stl.Fusion.EntityFramework.Redis" />
     <PackageReference Include="Ulid" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal" />
   </ItemGroup>
 
 </Project>

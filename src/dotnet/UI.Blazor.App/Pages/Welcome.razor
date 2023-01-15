@@ -1,13 +1,11 @@
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@using System.Security.Cryptography
 @inherits ComputedStateComponent<Welcome.Model>
 @layout NoLayout
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var account = m.Account;
-    var user = account?.User.OrGuest();
-    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var user = account.User;
+    var usedAuthSchemas = user.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
 }
@@ -96,7 +94,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
         => new() {
-            Account = await Accounts.Get(Session, cancellationToken).ConfigureAwait(false),
+            Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
             EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
         };
 
@@ -108,7 +106,7 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public Account? Account { get; init; }
+        public AccountFull Account { get; init; } = AccountFull.None;
         public bool EnableIncompleteUI { get; init; }
     }
 }

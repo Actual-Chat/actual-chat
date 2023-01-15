@@ -13,17 +13,17 @@ public class PlayableTextPalette
     private readonly List<PaletteColorLease> _leasingHistory = new (HistoryLength);
     private readonly Dictionary<PlayableTextColor, PaletteColorLease> _activeLeases = new ();
 
-    public IPlayableTextColorLease RentColor(Symbol chatAuthorId, long entryId)
+    public IPlayableTextColorLease RentColor(Symbol authorId, long entryId)
     {
         lock (_activeLeases) {
             var lease = _activeLeases
-                .Where(c => c.Value.ChatAuthorId == chatAuthorId)
+                .Where(c => c.Value.AuthorId == authorId.Value)
                 .Select(c => c.Value)
                 .FirstOrDefault();
             if (lease == null) {
-                var assignedColor = PeekColor(chatAuthorId);
+                var assignedColor = PeekColor(authorId);
                 if (assignedColor.HasValue) {
-                    lease = new PaletteColorLease(this, assignedColor.Value, chatAuthorId);
+                    lease = new PaletteColorLease(this, assignedColor.Value, authorId);
                     _activeLeases.Add(assignedColor.Value, lease);
                     _leasingHistory.Insert(0, lease);
                     while (_leasingHistory.Count > HistoryLength)
@@ -49,9 +49,9 @@ public class PlayableTextPalette
         }
     }
 
-    private PlayableTextColor? PeekColor(Symbol chatAuthorId)
+    private PlayableTextColor? PeekColor(Symbol authorId)
     {
-        foreach (var oldLease in _leasingHistory.Where(c => c.ChatAuthorId == chatAuthorId)) {
+        foreach (var oldLease in _leasingHistory.Where(c => c.AuthorId == authorId.Value)) {
             if (!_activeLeases.ContainsKey(oldLease.Color))
                 return oldLease.Color;
         }

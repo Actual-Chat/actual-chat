@@ -1,0 +1,9 @@
+.avatar-select-modal {
+    @apply bg-02 w-auto;
+}
+.avatar-select {
+    @apply flex-y gap-y-2 w-full md:w-80;
+}
+.avatar-select-item, .avatar-select-item *   {
+    @apply cursor-pointer;
+}

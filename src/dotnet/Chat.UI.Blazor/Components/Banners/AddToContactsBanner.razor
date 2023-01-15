@@ -1,0 +1,42 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<AddToContactsBanner.Model>
+@{
+    var m = State.Value;
+}
+<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning">
+    <Body>
+    This user is not in your contact list
+    </Body>
+    <Buttons>
+        <Button Class="btn-transparent on" Click="@OnAddClick">Add to contacts</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var contact = await Contacts.GetForChat(Session, Chat.Id, cancellationToken);
+        return new(contact);
+    }
+
+    private async Task OnAddClick() {
+        var contact = State.Value.Contact!;
+        var command = new IContacts.ChangeCommand(Session, contact.Id, null, new Change<Contact> {
+            Create = contact,
+        });
+        await UICommander.Run(command);
+    }
+
+    public sealed record Model(Contact? Contact = null) {
+        public  static readonly Model None = new();
+        public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+    }
+}

@@ -37,7 +37,7 @@ public sealed class PlaywrightTester : WebClientTester
     {
         var browser = await GetBrowser();
         var context = await browser.NewContextAsync(new () {
-            BaseURL = UriMapper.BaseUri.ToString(),
+            BaseURL = UrlMapper.BaseUri.ToString(),
             BypassCSP = true,
         });
         await context.AddCookiesAsync(new[] {
@@ -57,7 +57,7 @@ public sealed class PlaywrightTester : WebClientTester
     {
         var context = await NewContext();
         var page = await context.NewPageAsync();
-        var response = await page.GotoAsync(UriMapper.ToAbsolute(relativeUri).ToString());
+        var response = await page.GotoAsync(UrlMapper.ToAbsolute(relativeUri).ToString());
         return (page, response);
     }
 }

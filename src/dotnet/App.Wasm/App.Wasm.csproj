@@ -3,13 +3,21 @@
   <!-- Publish & runtime properties -->
   <PropertyGroup>
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>link</TrimMode>
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <TrimMode>partial</TrimMode>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <!--<RunAOTCompilation>true</RunAOTCompilation>-->
     <InvariantGlobalization>true</InvariantGlobalization>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
   <ItemGroup>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
     <!-- <workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
     <ProjectCapability Include="AspNetCore" />
     <!-- </workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
@@ -17,6 +25,22 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="wwwroot\dist\config\firebase.config.js" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\codec.wasm" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\ort-wasm-simd-threaded.wasm" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\ort-wasm-simd.wasm" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\ort-wasm-threaded.wasm" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\ort-wasm.wasm" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\soxr_wasm.wasm" />
+    <_ContentIncludedByDefault Remove="wwwroot\dist\wasm\vad.bin" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\dist" />
+    <Folder Include="wwwroot\landing" />
   </ItemGroup>
 
 </Project>

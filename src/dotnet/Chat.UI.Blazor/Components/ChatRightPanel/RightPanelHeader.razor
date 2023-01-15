@@ -1,20 +1,20 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatAuthorRules>
+@inherits ComputedStateComponent<AuthorRules>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
 }
 
 <div class="flex-x px-2 md:pl-5 md:pr-2 min-h-14 border-b border-bg-04">
     <ButtonRound Click="OnHideRightPanelClick" Class="md:!hidden transparent">
         <i class="icon-arrow-left text-2xl"></i>
     </ButtonRound>
-    <div class="flex grow text-03 font-medium self-center">Chat Settings</div>
+    <div class="flex grow text-02 text-title-1 self-center">Chat Settings</div>
     @if (m.CanEditProperties()) {
         <ButtonRound
             Class="transparent"
             Click="@OnEditChatSettingsClick"
             Tooltip="Edit"
-            TooltipPosition="TooltipPosition.Bottom">
+            FloatingPosition="FloatingPosition.Bottom">
             <i class="icon-edit text-2xl"></i>
         </ButtonRound>
     }
@@ -29,18 +29,18 @@
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void OnHideRightPanelClick()
-        => RightPanelUI.IsVisible.Value = false;
-
-    private void OnEditChatSettingsClick()
-        => ModalUI.Show(new ChatSettingsModal.ModalInput(Chat));
-
-    protected override ComputedState<ChatAuthorRules>.Options GetStateOptions()
+    protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {
-            InitialValue = ChatAuthorRules.None(Chat.Id),
+            InitialValue = AuthorRules.None(Chat.Id),
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override Task<ChatAuthorRules> ComputeState(CancellationToken cancellationToken)
+    protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)
         => Chats.GetRules(Session, Chat.Id, default);
+
+    private void OnHideRightPanelClick()
+        => RightPanelUI.ChangeVisibility(false);
+
+    private void OnEditChatSettingsClick()
+        => ModalUI.Show(new ChatSettingsModal.Model(Chat));
 }

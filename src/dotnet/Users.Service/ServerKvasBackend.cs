@@ -14,17 +14,52 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     // [ComputeMethod]
     public virtual async Task<string?> Get(string prefix, string key, CancellationToken cancellationToken = default)
     {
+        if (prefix.IsNullOrEmpty())
+            return null;
+
         var dbKvasEntry = await DbKvasEntryResolver.Get(prefix + key, cancellationToken).ConfigureAwait(false);
         return dbKvasEntry?.Value;
     }
+
+    // [ComputeMethod]
+    public virtual async Task<ImmutableList<(string Key, string Value)>> List(string prefix, CancellationToken cancellationToken = default)
+    {
+        if (prefix.IsNullOrEmpty())
+            return ImmutableList<(string Key, string Value)>.Empty;
+
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbKvasEntryList = await dbContext.KvasEntries
+            .Where(e => e.Key.StartsWith(prefix))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], e.Value)).ToImmutableList();
+    }
+
+    public string GetUserPrefix(UserId userId)
+    {
+        if (userId.IsNone)
+            return "";
+
+        return userId.IsGuestId
+            ? $"g/{userId}/"
+            : $"u/{userId}/";
+    }
+
+    // Command handlers
 
     // [CommandHandler]
     public virtual async Task SetMany(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
     {
         var prefix = command.Prefix;
+        if (prefix.IsNullOrEmpty())
+            return;
+
         if (Computed.IsInvalidating()) {
             foreach (var (key, _) in command.Items)
                 _ = Get(prefix, key, default);
+            _ = List(prefix, default);
             return;
         }
 
@@ -32,7 +67,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         await using var __ = dbContext.ConfigureAwait(false);
 
         var keys = command.Items.Select(i => prefix + i.Key).ToHashSet(StringComparer.Ordinal);
-        var dbKvasEntryList = await dbContext.KvasEntries
+        var dbKvasEntryList = await dbContext.KvasEntries.ForUpdate()
             .Where(e => keys.Contains(e.Key))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -1,0 +1,12 @@
+<Button Class="btn-w-full add-avatar-btn" Click="OnClick">
+    <div class="flex min-w-10 items-center justify-center">
+        <i class="icon-plus text-xl text-primary"></i>
+    </div>
+    <div class="text-primary">
+        Add avatar
+    </div>
+</Button>
+
+@code{
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+}

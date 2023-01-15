@@ -4,14 +4,11 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class KeepAwakeUI
 {
-    private readonly IJSRuntime _js;
+    private IJSRuntime JS { get; }
 
     public KeepAwakeUI(IJSRuntime js)
-        => _js = js;
+        => JS = js;
 
-    public ValueTask SetKeepAwake(bool value, CancellationToken cancellationToken)
-        => _js.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.KeepAwakeUI.setKeepAwake",
-            cancellationToken,
-            value);
+    public ValueTask SetKeepAwake(bool value)
+        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.KeepAwakeUI.setKeepAwake", value);
 }

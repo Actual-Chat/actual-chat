@@ -1,0 +1,51 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="thin-left-panel">
+    <div class="thin-left-panel-space"></div>
+    <div class="thin-left-panel-content">
+        <div class="flex w-full py-3 justify-center">
+            <img class="w-8 h-8 fill-current" alt="Actual Chat" src="/favicon.svg"/>
+        </div>
+        <div class="flex-y w-full grow items-center gap-y-3 md:gap-y-2">
+            <ButtonSquare
+                Click="OnShowCreationModal"
+                ContentClass="navbar-navigation-button-content"
+                Tooltip="Create"
+                FloatingPosition="FloatingPosition.Right">
+                <i class="icon-plus text-2xl font-medium"></i>
+            </ButtonSquare>
+            <NavbarGroupToggles/>
+            @if (_enableIncompleteUI) {
+                <ButtonSquare
+                    Click="OnShowOnboardingModal"
+                    ContentClass="navbar-navigation-button-content"
+                    Tooltip="Onboarding"
+                    FloatingPosition="FloatingPosition.Right">
+                    <i class="icon-settings text-2xl font-medium"></i>
+                </ButtonSquare>
+            }
+        </div>
+        <div class="flex w-full py-2 justify-center">
+            <AccountDropdown/>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _enableIncompleteUI;
+
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+    }
+
+    private void OnShowCreationModal()
+        => ModalUI.Show(new CreationModal.Model());
+
+    private void OnShowOnboardingModal()
+        => OnboardingUI.Show();
+}

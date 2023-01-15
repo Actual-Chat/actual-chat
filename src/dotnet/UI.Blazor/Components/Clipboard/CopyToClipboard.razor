@@ -2,15 +2,26 @@
 @using ActualChat.UI.Blazor.Services
 
 <div class="@Class copy-to-clipboard">
-    <input @ref="InputRef" class="@InputClass" type="text" value="@Text" onclick="@OnClick"/>
-    <ButtonSquare Click="OnClick" ContentClass="flex-x gap-x-1">
-        <i class="fa fa-files-o py-0.5" aria-hidden="true"></i>
-        @if (OrdinalEquals(_lastCopiedText, Text)) {
+    <input
+        @ref="InputRef"
+        class="@InputClass"
+        type="text"
+        value="@Text"
+        @onclick="@OnClick"/>
+    <ButtonRound
+        Click="OnClick"
+        ContentClass="flex-x gap-x-1"
+        Class="@ButtonClass"
+        Tooltip="Copy"
+        FloatingPosition="FloatingPosition.Top">
+        @if (OrdinalEquals(_lastCopiedText, GetCopyText()) && !HideCopiedTag) {
             <div class="c-copied">
                 copied!
             </div>
+        } else {
+            <i class="icon-copy text-xl" aria-hidden="true"></i>
         }
-    </ButtonSquare>
+    </ButtonRound>
 </div>
 
 @code {
@@ -21,13 +32,19 @@
     private ElementReference InputRef { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string? CopyText { get; set; }
+    [Parameter] public bool HideCopiedTag { get; set; }
 
     private async Task OnClick() {
-        await ClipboardUI.CopyTextFrom(InputRef, CopyText ?? Text);
-        _lastCopiedText = Text;
+        var copyText = GetCopyText();
+        await ClipboardUI.CopyTextFrom(InputRef, copyText);
+        _lastCopiedText = copyText;
     }
+
+    private string GetCopyText()
+        => CopyText ?? Text;
 }
 

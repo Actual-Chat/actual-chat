@@ -1,0 +1,12 @@
+.stepper {
+    @apply flex-y grow;
+}
+.stepper-header {
+    @apply flex-x min-h-14 max-h-14 px-2 gap-x-2 items-center;
+}
+.stepper-body {
+    @apply flex-y grow px-6 justify-center;
+}
+.stepper-footer {
+    @apply mt-8;
+}

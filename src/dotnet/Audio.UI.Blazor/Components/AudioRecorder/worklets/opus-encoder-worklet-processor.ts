@@ -1,6 +1,12 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { BufferEncoderWorkletMessage, EncoderWorkletMessage } from './opus-encoder-worklet-message';
+import { Log, LogLevel } from 'logging';
+
+const LogScope = 'OpusEncoderWorkletProcessor';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const SAMPLES_PER_MS = 48;
 
@@ -70,7 +76,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
                         };
                         this.workerPort.postMessage(bufferMessage, [audioArrayBuffer]);
                     } else {
-                        console.log('worklet port is still undefined');
+                        warnLog?.log('process: worklet port is still undefined!');
                     }
                 } else {
                     this.bufferDeque.unshift(audioArrayBuffer);
@@ -78,7 +84,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         catch (error) {
-            console.log(error);
+            errorLog?.log(`process: unhandled error:`, error);
         }
 
         return true;
@@ -97,7 +103,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         catch (error) {
-            console.error(error);
+            errorLog?.log(`onWorkerMessage: unhandled error:`, error);
         }
     }
 
@@ -115,7 +121,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         catch (error) {
-            console.error(error);
+            errorLog?.log(`onRecorderMessage: unhandled error:`, error);
         }
     }
 }

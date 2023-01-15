@@ -1,31 +1,35 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using ActualChat.Spans;
 
 namespace ActualChat.Audio;
 
 public class ActualOpusStreamAdapter : IAudioStreamAdapter
 {
-    private static readonly byte[] ActualOpusStreamHeader = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53 }; // A_OPUS_S
-    private static readonly byte[] ActualOpusStreamFormat = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x01 }; // A_OPUS_S + version = 1
-    private readonly ILogger _log;
+    private MomentClockSet Clocks { get; }
+    private ILogger Log { get; }
 
-    public ActualOpusStreamAdapter(ILogger log)
-        => _log = log;
-
-    public Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public ActualOpusStreamAdapter(MomentClockSet clocks, ILogger log)
     {
-        var formatTask = TaskSource.New<AudioFormat>(true).Task;
-        var formatTaskSource = TaskSource.For(formatTask);
+        Clocks = clocks;
+        Log = log;
+    }
+
+    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    {
+        var headerTask = TaskSource.New<ActualOpusStreamHeader>(true).Task;
+        var formatTaskSource = TaskSource.For(headerTask);
 
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
-        var target = Channel.CreateBounded<AudioFrame>(new BoundedChannelOptions(128) {
-            SingleWriter = true,
-            SingleReader = true,
-            AllowSynchronousContinuations = true,
-            FullMode = BoundedChannelFullMode.Wait,
-        });
+        var target = Channel.CreateBounded<AudioFrame>(
+            new BoundedChannelOptions(Constants.Queues.OpusStreamAdapterQueueSize) {
+                SingleWriter = true,
+                SingleReader = true,
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
 
         var _ = BackgroundTask.Run(async () => {
             try {
@@ -34,11 +38,12 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                 var sequence = new ReadOnlySequence<byte>();
                 await foreach (var data in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     sequence = sequence.Append(data);
-                    if (!formatTask.IsCompleted) {
-                        if (sequence.Length < ActualOpusStreamHeader.Length + 1)
+
+                    if (!headerTask.IsCompleted) {
+                        if (sequence.Length < ActualOpusStreamHeader.Prefix.Length + 1)
                             continue;
 
-                        ReadFormat(ref sequence, ref formatTaskSource);
+                        ReadHeader(ref sequence, ref formatTaskSource);
                     }
 
                     ReadFrames(ref sequence, audioFrames, ref offsetMs);
@@ -46,19 +51,10 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                         await target.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                     audioFrames.Clear();
 
-                    static void ReadFormat(ref ReadOnlySequence<byte> sequence, ref TaskSource<AudioFormat> formatTaskSource)
+                    static void ReadHeader(ref ReadOnlySequence<byte> sequence, ref TaskSource<ActualOpusStreamHeader> formatTaskSource)
                     {
-                        Span<byte> buffer = stackalloc byte[ActualOpusStreamHeader.Length + 1];
-                        sequence.Slice(0, ActualOpusStreamHeader.Length + 1).CopyTo(buffer);
-                        if (!buffer.StartsWith(ActualOpusStreamHeader))
-                            throw new InvalidOperationException("Actual Opus stream header is invalid.");
-
-                        var version = buffer[ActualOpusStreamHeader.Length];
-                        if (version != 1)
-                            throw new NotSupportedException($"Actual Opus stream version is invalid - ${version}. Only version 1 is supported.");
-
-                        formatTaskSource.SetResult(AudioSource.DefaultFormat);
-                        sequence = sequence.Slice(ActualOpusStreamHeader.Length + 1);
+                        var header = ActualOpusStreamHeader.Parse(ref sequence);
+                        formatTaskSource.SetResult(header);
                     }
 
                     static void ReadFrames(ref ReadOnlySequence<byte> sequence, List<AudioFrame> frames1, ref int offsetMs)
@@ -103,38 +99,38 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                 throw;
             }
             catch (Exception e) {
-                _log.LogError(e, "Actual Opus stream Parse failed");
+                Log.LogError(e, "Actual Opus stream Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
                 throw;
             }
             finally {
                 target.Writer.TryComplete();
-                if (!formatTask.IsCompleted)
+                if (!headerTask.IsCompleted)
                     formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
             }
         }, CancellationToken.None);
 
-        var audioSource = new AudioSource(formatTask,
+        var (createdAt, format) = await headerTask.ConfigureAwait(false);
+        var audioSource = new AudioSource(
+            createdAt,
+            format,
             target.Reader.ReadAllAsync(cancellationToken),
             TimeSpan.Zero,
-            _log,
+            Log,
             cancellationToken);
-        return Task.FromResult(audioSource);
+        return audioSource;
     }
 
     public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
         var buffer = bufferLease.Memory;
-        yield return ActualOpusStreamFormat;
+        yield return WriteHeader(source);
 
         var position = 0;
         await foreach (var frame in source.GetFrames(cancellationToken).ConfigureAwait(false)) {
             position += WriteFrame(frame.Data, buffer.Span[position..]);
-            if (position <= 1024)
-                continue;
-
             yield return buffer.Span[..position].ToArray();
             position = 0;
         }
@@ -146,5 +142,8 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
             frame.CopyTo(span[2..]);
             return 2 + frame.Length;
         }
+
+        byte[] WriteHeader(AudioSource audioSource)
+            => new ActualOpusStreamHeader(audioSource.CreatedAt, audioSource.Format).Serialize();
     }
 }

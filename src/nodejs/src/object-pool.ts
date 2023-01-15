@@ -1,5 +1,4 @@
 import Denque from 'denque';
-import { isPromise } from 'is-promise';
 
 /** Object that can be reused after reset() call (for example for object pooling). */
 export interface Resettable {
@@ -11,33 +10,28 @@ export function isResettable<T>(obj: T | Resettable): obj is Resettable {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['reset'] === 'function';
 }
 
-/** Usage: new ObjectPool<Foo, [number, number]>((arg1, arg2) => new Foo(arg1, arg2)); can be async. */
-export class ObjectPool<T, AllocArgs extends any[] = any[]>
+/** Usage: new ObjectPool<Foo>() => new Foo()); can be async. */
+export class ObjectPool<T>
 {
-    private pool = new Denque<T>();
-    private factory: (...args: AllocArgs) => T | PromiseLike<T>;
+    private readonly pool = new Denque<T>();
+    private readonly factory: () => T | PromiseLike<T>;
 
-    constructor(factory: (...args: AllocArgs) => T | PromiseLike<T>) {
+    constructor(factory: () => T | PromiseLike<T>) {
         this.factory = factory;
     }
 
     /** Creates an object (with support of async initialization) or returns it from the pool */
-    public async get(...args: AllocArgs): Promise<T> {
-        const item = this.pool.pop();
-        if (item === undefined) {
-            const created = this.factory(...args);
-            return isPromise(created) ? await created : created;
-        }
+    public async get(): Promise<T> {
+        let item = this.pool.pop();
+        if (item === undefined)
+            item = await this.factory();
         return item;
     }
 
     /** Calls reset() (and await it) on a Resettable object and returns it to the pool */
     public async release(obj: T): Promise<void> {
-        if (isResettable(obj)) {
-            const result = obj.reset();
-            if (isPromise(result))
-                await result;
-        }
+        if (isResettable(obj))
+            await obj.reset();
         this.pool.push(obj);
     }
 }

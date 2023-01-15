@@ -1,4 +1,3 @@
-using System.Reflection;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
@@ -80,11 +79,10 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
                     _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                                CancellationToken.None,
-                                _blazorRef,
-                                DebugLog != null,
-                                _id);
+                        $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                        CancellationToken.None,
+                        _blazorRef,
+                        _id);
                     break;
                 case PauseCommand:
                     if (!_isStopSent) {
@@ -166,7 +164,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
                     }
                 }
-            ));
+            ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });

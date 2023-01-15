@@ -6,15 +6,15 @@ namespace ActualChat.Audio.UnitTests;
 
 public class WebMStreamAdapterTest
 {
-    private readonly ILogger _log;
+    private ILogger Log { get; }
 
     public WebMStreamAdapterTest(ILogger log)
-        => _log = log;
+        => Log = log;
 
     [Fact]
     public async Task WrittenStreamIsValid()
     {
-        var streamAdapter = new WebMStreamAdapter(_log);
+        var streamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024);
         var audio = await streamAdapter.Read(byteStream, default);
@@ -35,7 +35,7 @@ public class WebMStreamAdapterTest
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var streamAdapter = new WebMStreamAdapter(_log, "opus-media-recorder", 0x00B6F555106DDDC8);
+        var streamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log, "opus-media-recorder", 0x00B6F555106DDDC8);
         var byteStreamMemoized = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024)
             .Memoize();
@@ -43,13 +43,14 @@ public class WebMStreamAdapterTest
         var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
         var inList = await byteStreamMemoized.Replay().ToListAsync();
         var outList = await outByteStream.ToListAsync();
+        outList[0][31] = 2; // revert doc version to 2 as before
         outList.SelectMany(chunk => chunk).Should().StartWith(inList.SelectMany(chunk => chunk));
     }
 
     [Fact]
     public async Task OneByteSequenceCanBeRead()
     {
-        var streamAdapter = new WebMStreamAdapter(_log);
+        var streamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1);
         var audio = await streamAdapter.Read(byteStream, default);

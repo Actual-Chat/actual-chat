@@ -1,0 +1,40 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<li
+    class="ac-menu-item @Class"
+    data-tooltip="@Tooltip"
+    data-editor-trigger="@(TriggerEditor.ToString())"
+    data-tooltip-position="@(FloatingPosition.ToPositionString())"
+    @onclick="@Click"
+    @ontouchend="@Click">
+    <div class="ac-menu-content">
+        <div class="ac-menu-icon">
+            @if (IconContent == null ) {
+                <i class="@Icon"></i>
+            } else {
+                @IconContent
+            }
+        </div>
+        @if (TextContent != null || !Text.IsNullOrEmpty()) {
+            <div class="ac-menu-text">
+                @if (TextContent == null) {
+                    @Text
+                } else {
+                    @TextContent
+                }
+            </div>
+        }
+    </div>
+</li>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? IconContent { get; set; }
+    [Parameter] public RenderFragment? TextContent { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public FloatingPosition FloatingPosition { get; set; }
+    [Parameter] public bool TriggerEditor { get; set; } = false;
+    [Parameter] public EventCallback Click { get; set; }
+}

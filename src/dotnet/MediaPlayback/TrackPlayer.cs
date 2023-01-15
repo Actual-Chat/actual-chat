@@ -29,12 +29,13 @@ public abstract class TrackPlayer : ProcessorBase
         Log = log;
         Source = source;
         _whenCompletedSource = TaskSource.New<Unit>(true);
-        _commandsQueue = Channel.CreateBounded<IPlayerCommand>(new BoundedChannelOptions(10) {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = true,
-            SingleWriter = false,
-            AllowSynchronousContinuations = false
-        });
+        _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
+            new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+                SingleWriter = false,
+                AllowSynchronousContinuations = false
+            });
     }
 
     protected override Task DisposeAsyncCore()

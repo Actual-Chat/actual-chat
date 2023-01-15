@@ -1,8 +1,0 @@
-@using ActualChat.UI.Blazor.Services
-@namespace ActualChat.UI.Blazor.Components
-
-<Button Class="btn-outline" Click="_ => ClientAuth.SignOut()">Sign out</Button>
-
-@code {
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
-}

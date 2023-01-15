@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.Hosting
+@using Stl.Reflection
+@inherits FusionComponentBase
+@{
+    var showTrySignInBlock = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
+}
+
+<LayoutView Layout="@typeof(DefaultLayout)">
+    <MainHeader>Error!</MainHeader>
+    @foreach (var (requirement, error) in Failures.Items) {
+        var title = HostInfo.IsDevelopmentInstance
+            ? $"Error ({error.GetType().GetName()}):"
+            : "Error:";
+        <Error @key="requirement"
+               Title="@title"
+               Dismissed="@(_ => RequirementChecker.Remove(requirement))">@error.Message</Error>
+    }
+    @if (showTrySignInBlock) {
+        <div>
+            @if (Account.IsGuest) {
+                <span>You can try to <SignInDropdown/> to resolve it.</span>
+            } else {
+                <span>You can try to <SignOutButton/> and sign in with another account to resolve it.</span>
+            }
+        </div>
+    }
+</LayoutView>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
+    [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = AccountFull.Loading;
+}

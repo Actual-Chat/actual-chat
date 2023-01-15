@@ -13,15 +13,15 @@ public class TranscriberState
         return Last;
     }
 
-    public Transcript AppendAlternative(string suffix, float suffixEndTime)
+    public Transcript AppendAlternative(string suffix, float? suffixEndTime)
         => Update(LastStable.WithSuffix(suffix, suffixEndTime, false));
 
-    public Transcript AppendStable(string suffix, float suffixEndTime)
+    public Transcript AppendStable(string suffix, float? suffixEndTime)
         => Update(LastStable.WithSuffix(suffix, suffixEndTime, true));
 
     public Transcript AppendStable(string suffix, LinearMap suffixTextToTimeMap)
         => Update(LastStable.WithSuffix(suffix, suffixTextToTimeMap, true));
 
     public Transcript Complete()
-        => Update(LastStable);
+        => Update(Last.WithFlags(TranscriptFlags.Stable));
 }

@@ -1,0 +1,28 @@
+.message-reactions {
+    @apply flex-x gap-1 items-center h-6 md:h-5 ml-1 mt-0.5;
+}
+.message-reactions-reaction {
+    @apply flex-x bg-04 text-primary text-base md:text-sm justify-center items-center cursor-pointer px-2.5 md:px-2 gap-1.5 md:gap-1 rounded-xl md:rounded-xl h-6 md:h-5;
+}
+.message-reactions-reaction-emoji {
+    @apply w-5 md:w-4.5 h-5 md:h-4.5;
+}
+.message-reactions-reaction-own {
+    @apply bg-reaction-own text-primary-title;
+}
+.message-reactions-reaction-count {
+    @apply font-semibold;
+}
+.message-reactions-add {
+    @apply self-center invisible cursor-pointer h-5 w-5 rounded-full hover:bg-round-focus text-icons-03;
+}
+.message-reactions-add-icon {
+    @apply fill-current w-5 h-5;
+}
+
+.reaction-authors-menu-item {
+    @apply flex-x justify-between items-center gap-2 mx-1;
+}
+.reaction-authors-menu-item-emoji {
+    @apply h-5 w-5;
+}

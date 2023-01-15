@@ -7,7 +7,7 @@ public interface ISyncedState<T> : IMutableState<T>, IDisposable
     Task WhenFirstTimeRead { get; }
 }
 
-public class SyncedState<T> : MutableState<T>, ISyncedState<T>
+public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 {
     private volatile IUpdateDelayer _updateDelayer;
     private volatile Task? _whenDisposed;
@@ -16,10 +16,9 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
     private IComputed? _lastReadComputed;
     private ILogger? _log;
 
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-    protected Options Settings { get; }
-
-    protected TaskSource<Unit> WhenFirstTimeReadSource { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private Options Settings { get; }
+    private TaskSource<Unit> WhenFirstTimeReadSource { get; }
 
     public Task WhenFirstTimeRead => WhenFirstTimeReadSource.Task;
     public IUpdateDelayer UpdateDelayer {
@@ -38,7 +37,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
         WhenFirstTimeReadSource = TaskSource.New<Unit>(true);
-        _updateDelayer = options.UpdateDelayer ?? Services.GetRequiredService<IUpdateDelayer>();
+        _updateDelayer = options.UpdateDelayer ?? services.GetRequiredService<IUpdateDelayer>();
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);
@@ -55,7 +54,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
         SyncCycleTask = BackgroundTask.Run(SyncCycle, CancellationToken.None);
     }
 
-    public virtual void Dispose()
+    public void Dispose()
     {
         if (_whenDisposed != null)
             return;
@@ -63,12 +62,11 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
             if (_whenDisposed != null)
                 return;
             _whenDisposed = SyncCycleTask ?? Task.CompletedTask;
-            GC.SuppressFinalize(this);
             _disposeTokenSource.CancelAndDisposeSilently();
         }
     }
 
-    protected virtual async Task SyncCycle()
+    private async Task SyncCycle()
     {
         var cancellationToken = DisposeToken;
         try {
@@ -105,7 +103,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
         }
     }
 
-    protected async Task Sync(CancellationToken cancellationToken)
+    private async Task Sync(CancellationToken cancellationToken)
     {
         var readResult = default(Result<T>);
         var readComputed = await Stl.Fusion.Computed.Capture(
@@ -126,16 +124,22 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
             lock (Lock) {
                 var snapshot = Snapshot;
                 if (snapshot != null!) {
+                    // First or subsequent read is completed at this point. So if:
+                    // - we have just our first snapshot (initial value)
+                    // - or last read computed has changed (it's a subsequent read)
                     if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
-                        // Read sync
+                        // Applying read result
                         Set(readResult);
-                        if (!WhenFirstTimeRead.IsCompleted)
+                        if (!WhenFirstTimeRead.IsCompleted) {
+                            // It's the very first read
                             WhenFirstTimeReadSource.TrySetResult(default);
+                            mustWrite = Settings.MustWriteInitialValue;
+                        }
                         _lastReadComputed = readComputed;
                         _lastWrittenSnapshot = Snapshot;
                     }
                     else if (snapshot.UpdateCount > 0 && snapshot != _lastWrittenSnapshot) {
-                        // Write sync
+                        // Triggering write
                         _lastWrittenSnapshot = snapshot;
                         mustWrite = true;
                     }
@@ -155,6 +159,7 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
         public bool ExposeReadErrors { get; init; }
+        public bool MustWriteInitialValue { get; init; }
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
@@ -178,16 +183,25 @@ public class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
         public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
+        public Func<CancellationToken, ValueTask<T>>? MissingValueFactory { get; init; }
 
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
             var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
-            if (data == null)
-                return InitialValue;
-            var value = Serializer.Read(data);
-            if (Corrector != null)
-                value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
-            return value;
+            if (data == null) {
+                if (MissingValueFactory == null)
+                    return InitialValue;
+
+                var value = await MissingValueFactory(cancellationToken).ConfigureAwait(false);
+                await Write(value, cancellationToken).ConfigureAwait(false);
+                return value;
+            }
+            else {
+                var value = Serializer.Read(data);
+                if (Corrector != null)
+                    value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
+                return value;
+            }
         }
 
         internal override Task Write(T value, CancellationToken cancellationToken)

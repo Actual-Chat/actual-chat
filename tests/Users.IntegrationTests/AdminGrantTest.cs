@@ -37,12 +37,11 @@ public class AdminGrantTest : AppHostTestBase
             .WithClaim(ClaimTypes.Email, "bob@actual.chat");
 
         // act
-        user = await _tester.SignIn(user);
-        var account = await _accounts.Get(user.Id, CancellationToken.None);
+        var account = await _tester.SignIn(user);
 
         // assert
         user.Should().NotBeNull();
-        account!.IsAdmin.Should().BeTrue();
+        account.IsAdmin.Should().BeTrue();
     }
 
     [Fact]
@@ -54,12 +53,11 @@ public class AdminGrantTest : AppHostTestBase
             .WithClaim(ClaimTypes.Email, "jack@actual.chat");
 
         // act
-        user = await _tester.SignIn(user);
-        var account = await _accounts.Get(user.Id, CancellationToken.None);
+        var account = await _tester.SignIn(user);
 
         // assert
         user.Should().NotBeNull();
-        account!.IsAdmin.Should().BeFalse();
+        account.IsAdmin.Should().BeFalse();
     }
 
     [Fact]
@@ -69,11 +67,10 @@ public class AdminGrantTest : AppHostTestBase
         var user = new User("", "AnnNotAdmin").WithIdentity(GoogleDefaults.AuthenticationScheme);
 
         // act
-        user = await _tester.SignIn(user);
-        var account = await _accounts.Get(user.Id, CancellationToken.None);
+        var account = await _tester.SignIn(user);
 
         // assert
         user.Should().NotBeNull();
-        account!.IsAdmin.Should().BeFalse();
+        account.IsAdmin.Should().BeFalse();
     }
 }

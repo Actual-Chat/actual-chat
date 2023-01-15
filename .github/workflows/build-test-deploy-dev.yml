@@ -48,6 +48,12 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Install dotnet 7.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'
+          dotnet-quality: 'ga'
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
@@ -62,7 +68,7 @@ jobs:
 
       - name: Generate version variables
         id: nbgv
-        uses: dotnet/nbgv@main
+        uses: dotnet/nbgv@master
         with:
           setAllVars: true
 
@@ -106,6 +112,12 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Install dotnet 7.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'
+          dotnet-quality: 'ga'
+
       - name: Debug Build for tests
         run: |-
           dotnet run --project build --configuration Release -- restore
@@ -143,7 +155,7 @@ jobs:
           # Maps port 6379 on service container to the host
           - 6379:6379
       postgres:
-        image: postgres:14.0-alpine3.14
+        image: postgres:15.1-alpine
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
@@ -159,12 +171,36 @@ jobs:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
     steps:
+      - name: Install postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: "Set some postgres settings"
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} bash << EOF
+          sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+          sed -i -e 's/shared_buffers = 128MB/shared_buffers = 256MB/' /var/lib/postgresql/data/postgresql.conf
+          cat /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 ${{ job.services.postgres.id }}
+          sleep 5
+
+      - name: Show max connections
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
           lfs: true
+
+      - name: Install dotnet 7.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.x'
+          dotnet-quality: 'ga'
 
       - name: Debug Build for tests
         run: |-
@@ -185,6 +221,7 @@ jobs:
           TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
           RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
           DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
+          CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
@@ -249,7 +286,6 @@ jobs:
         with:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
           dst: |
-            us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{needs.build.outputs.semver2}}
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-app:${{needs.build.outputs.semver2}}
 
   deploy-prod:

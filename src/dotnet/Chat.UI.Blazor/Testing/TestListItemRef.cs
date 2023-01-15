@@ -1,5 +1,6 @@
 namespace ActualChat.Chat.UI.Blazor.Testing;
 
+[ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed class TestListItemRef : IVirtualListItem
 {
     public int Id { get; }
@@ -13,7 +14,7 @@ public sealed class TestListItemRef : IVirtualListItem
     public TestListItemRef(int id, int rangeSeed, int? contentSeed)
     {
         Id = id;
-        Key = id.ToString(CultureInfo.InvariantCulture);
+        Key = id.Format();
         RangeSeed = rangeSeed;
         ContentSeed = contentSeed;
     }

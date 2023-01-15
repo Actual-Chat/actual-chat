@@ -1,5 +1,5 @@
 name: Create release branch
-on: 
+on:
   workflow_dispatch:
     ref: dev
     inputs:
@@ -34,7 +34,7 @@ jobs:
 
       - name: ⚙️ Generate version variables
         id: nbgv
-        uses: dotnet/nbgv@main
+        uses: dotnet/nbgv@master
         with:
           setAllVars: true
       

@@ -1,0 +1,16 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="@Class flex-x justify-start items-center gap-x-1 w-full navbar-subgroup">
+    <div class="navbar-subgroup-content">
+        @ChildContent
+    </div>
+    <div class="navbar-subgroup-ending">
+        @Ending
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Ending { get; set; }
+}

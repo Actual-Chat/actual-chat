@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
-using Stl.Reflection;
 
 namespace ActualChat.App.Server.Controllers;
 
@@ -15,7 +14,7 @@ public class ServerFeaturesController : ControllerBase, IServerFeatures
     public ServerFeaturesController(IServiceProvider services)
     {
         Services = services;
-        Service = Services.GetRequiredService<IServerFeatures>();
+        Service = services.GetRequiredService<IServerFeatures>();
     }
 
     [HttpGet]

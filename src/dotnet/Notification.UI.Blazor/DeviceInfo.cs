@@ -1,20 +1,18 @@
-using ActualChat.UI.Blazor.Module;
-
 namespace ActualChat.Notification.UI.Blazor;
 
 public class DeviceInfo
 {
     private readonly object _lock = new();
-    private readonly IJSRuntime _js;
+    private readonly IDeviceTokenRetriever _deviceTokenRetriever;
     private readonly Session _session;
     private readonly UICommander _uiCommander;
 
     private string? _deviceId;
 
-    public DeviceInfo(Session session, IJSRuntime js, UICommander uiCommander)
+    public DeviceInfo(Session session, IDeviceTokenRetriever deviceTokenRetriever, UICommander uiCommander)
     {
         _session = session;
-        _js = js;
+        _deviceTokenRetriever = deviceTokenRetriever;
         _uiCommander = uiCommander;
     }
 
@@ -41,7 +39,7 @@ public class DeviceInfo
             if (_deviceId != null)
                 return;
 
-        var deviceId = await _js.InvokeAsync<string?>($"{BlazorUICoreModule.ImportName}.getDeviceToken", cancellationToken);
+        var deviceId = await _deviceTokenRetriever.GetDeviceToken(cancellationToken);
         if (deviceId != null)
             _ = RegisterDevice(deviceId, cancellationToken);
     }

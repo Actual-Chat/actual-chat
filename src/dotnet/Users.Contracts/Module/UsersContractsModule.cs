@@ -1,8 +1,10 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hosting;
 using Stl.Plugins;
 
 namespace ActualChat.Users.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class UsersContractsModule : HostModule
 {
     public UsersContractsModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -13,10 +15,10 @@ public class UsersContractsModule : HostModule
     {
         // Overrides default requirements for User type
         User.MustExist = Requirement.New(
-            new(() => StandardError.Account.None()),
+            new(() => StandardError.Account.Guest()),
             (User? u) => u != null);
         User.MustBeAuthenticated = Requirement.New(
-            new(() => StandardError.Account.None()),
+            new(() => StandardError.Account.Guest()),
             (User? u) => u?.IsAuthenticated() == true);
 
         // Any AccountException isn't a transient error

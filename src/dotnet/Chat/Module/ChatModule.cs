@@ -1,9 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using Stl.OS;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class ChatModule : HostModule
 {
     public ChatModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -12,8 +13,8 @@ public class ChatModule : HostModule
     public ChatModule(IPluginHost plugins) : base(plugins) { }
     public override void InjectServices(IServiceCollection services)
     {
-        if (HostInfo.HostKind == HostKind.WebServer) {
-            var rawParser = new MarkupParser();
+        var rawParser = new MarkupParser();
+        if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server)) {
             var sharedCache = new ConcurrentLruCache<string, Markup>(16384, HardwareInfo.GetProcessorCountPo2Factor(4));
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
@@ -23,8 +24,7 @@ public class ChatModule : HostModule
                 return scopedParser;
             });
         }
-        else { // WASM host and MAUI host
-            var rawParser = new MarkupParser();
+        else { // WASM and MAUI apps
             var sharedCache = new ThreadSafeLruCache<string, Markup>(4096);
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);

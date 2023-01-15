@@ -1,23 +1,22 @@
 @inherits ComputedStateComponent<ActiveChatsNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
+    var title = "Recently active" + (m.IsSearchModeOn ? " — filtered on search" : "");
+    var titleClass = "text-sm font-medium px-2 pb-2";
 }
 
 @if (m.Chats.Count > 0) {
     <div class="active-chats">
-        <div class="flex-x h-5 px-2 text-sm font-medium my-1 items-center gap-x-4">
-            <div>Active chats</div>
-        </div>
+        <div class="@titleClass" data-tooltip="Your active or recently used chats (up to 3)">@title</div>
 
-        <ChatList Kind="ChatListKind.Listening" Chats="@m.Chats"/>
+        <ChatList Kind="ChatListKind.Active" Chats="@m.Chats"/>
     </div>
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -26,22 +25,46 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activeChatIds = await ChatUI.ActiveChatIds.Use(cancellationToken);
-        var chats = (await activeChatIds
-            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
+        var activeChats = await ChatUI.ActiveChats.Use(cancellationToken);
+        var chats = (await activeChats
+            .OrderByDescending(c => c.Recency)
+            .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
             .Collect()
             ).SkipNullItems()
-            .Reverse()
             .ToList();
+
+        // Make sure selected chat is either in the normal chat list or here chats
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chats.All(c => c.Id != selectedChatId)) {
+            var allChats = await ChatUI.ListUnordered(cancellationToken).ConfigureAwait(false);
+            if (!allChats.ContainsKey(selectedChatId)) {
+                var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+                if (selectedChat != null)
+                    chats.Insert(0, selectedChat);
+            }
+        }
+
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        if (!searchPhrase.IsEmpty) {
+            chats = (
+                from c in chats
+                let rank = searchPhrase.GetMatchRank(c.Chat.Title)
+                where rank > 0 || c.Chat.Id == selectedChatId
+                orderby c.Contact.IsPinned descending, rank descending
+                select c
+                ).ToList();
+        }
 
         return new Model {
             Chats = chats,
+            IsSearchModeOn = !searchPhrase.IsEmpty,
         };
     }
 
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public List<Chat> Chats { get; init; } = new ();
+        public List<ChatInfo> Chats { get; init; } = new ();
+        public bool IsSearchModeOn { get; init; }
     }
 }

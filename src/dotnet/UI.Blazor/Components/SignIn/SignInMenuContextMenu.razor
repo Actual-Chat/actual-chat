@@ -1,0 +1,47 @@
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedMenuBase<AccountFull?>
+@{
+    if (!CanBeRendered())
+        return;
+
+    var usedAuthSchemas = State.Value!.User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas!.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+}
+
+@foreach (var (name, displayName) in unusedAuthSchemas) {
+    var title = "Sign in with " + displayName;
+    <MenuEntry Text="@title" Click="@(_ => SignIn(name))"/>
+}
+
+@code {
+    private static readonly HashSet<string> NoAuthSchemas = new();
+    private (string Name, string DisplayName)[]? AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
+
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken)!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            AuthSchemas = await ClientAuth.GetSchemas();
+            StateHasChanged();
+            return;
+        }
+        if (CanBeRendered())
+            await Host.Position(this);
+    }
+
+    private bool CanBeRendered()
+        => State.Value?.IsGuest == true && AuthSchemas != null;
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
+}

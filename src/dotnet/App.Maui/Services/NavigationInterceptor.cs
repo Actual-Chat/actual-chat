@@ -1,25 +1,26 @@
 using Microsoft.AspNetCore.Components;
+
 namespace ActualChat.App.Maui.Services;
 
 public class NavigationInterceptor
 {
-    private NavigationManager? _nav;
-    private readonly Uri _baseUri;
+    private UrlMapper UrlMapper { get; }
 
-    public NavigationInterceptor(ClientAppSettings appSettings)
-        => _baseUri = new Uri(appSettings.BaseUri);
-
-    internal void Initialize(NavigationManager nav)
-        => _nav = nav;
+    public NavigationInterceptor(IServiceProvider services)
+        => UrlMapper = services.GetRequiredService<UrlMapper>();
 
     internal bool TryIntercept(Uri uri)
     {
-        if (_nav == null)
+        var nav = ScopedServicesAccessor.IsInitialized
+            ? ScopedServicesAccessor.ScopedServices.GetRequiredService<NavigationManager>()
+            : null;
+        if (nav == null)
             return false;
 
-        if (_baseUri.IsBaseOf(uri)) {
-            var relativeUri = _baseUri.MakeRelativeUri(uri);
-            _nav.NavigateTo(relativeUri.ToString());
+        var baseUri = UrlMapper.BaseUri;
+        if (baseUri.IsBaseOf(uri)) {
+            var relativeUri = baseUri.MakeRelativeUri(uri);
+            nav.NavigateTo(relativeUri.ToString());
             return true;
         }
         return false;

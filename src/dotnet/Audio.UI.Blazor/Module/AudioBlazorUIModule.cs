@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
@@ -5,6 +6,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Audio.UI.Blazor.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AudioBlazorUIModule: HostModule, IBlazorUIModule
 {
     public static string ImportName => "audio";

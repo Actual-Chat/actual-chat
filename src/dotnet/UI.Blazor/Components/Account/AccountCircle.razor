@@ -1,0 +1,11 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@inherits AccountBadgeBase
+@{
+    var m = State.Value;
+}
+
+<AvatarCircle Avatar="@m.Account.Avatar" Size="@Size" Presence="@m.Presence" />
+
+@code {
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+}

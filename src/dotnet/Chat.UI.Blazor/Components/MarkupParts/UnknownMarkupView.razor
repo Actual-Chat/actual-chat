@@ -3,5 +3,5 @@
 @attribute [MatchFor(typeof(Markup), typeof(IMarkupView))]
 
 <span class="unknown-markup">
-    [<span class="fa fa-exclamation-triangle"></span> No view for '@(Markup.GetType().Name)']
+    [<span class="fa fa-exclamation-triangle"></span> No view for '@(Markup.GetType().GetName())']
 </span>

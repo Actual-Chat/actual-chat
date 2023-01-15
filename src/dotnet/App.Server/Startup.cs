@@ -1,6 +1,8 @@
 using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Console;
 using Stl.Plugins;
@@ -35,13 +37,38 @@ public class Startup
         });
 
         // HostInfo
-        services.AddSingleton(new HostInfo() {
-            HostKind = HostKind.WebServer,
-            RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
-                .Add(ServiceScope.Server)
-                .Add(ServiceScope.BlazorUI),
-            Environment = Env.EnvironmentName,
-            Configuration = Cfg,
+        services.AddSingleton(c => {
+            var hostSettings = Cfg.GetSettings<HostSettings>();
+            var baseUrl = hostSettings.BaseUrl;
+            Func<string>? baseUrlProvider = null;
+            if (baseUrl.IsNullOrEmpty()) {
+                var server = c.GetRequiredService<IServer>();
+                var serverAddressesFeature =
+                    server.Features.Get<IServerAddressesFeature>()
+                    ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
+                baseUrl = serverAddressesFeature.Addresses.FirstOrDefault();
+                if (baseUrl.IsNullOrEmpty()) {
+                    // If we can't figure out base url at the moment,
+                    // lets define a base url provider to resolve base url later on demand.
+                    string? resolvedBaseUrl = null;
+                    baseUrlProvider = () => {
+                        if (resolvedBaseUrl.IsNullOrEmpty()) {
+                            resolvedBaseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
+                                ?? throw StandardError.NotFound<IServerAddressesFeature>(
+                                    "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
+                        }
+                        return resolvedBaseUrl;
+                    };
+                }
+            }
+
+            return new HostInfo() {
+                AppKind = hostSettings.AppKind ?? AppKind.WebServer,
+                Environment = Env.EnvironmentName,
+                Configuration = Cfg,
+                BaseUrl = baseUrl ?? "",
+                BaseUrlProvider = baseUrlProvider,
+            };
         });
 
         // Commander - it must be added first to make sure its options are set

@@ -1,10 +1,13 @@
-﻿using ActualChat.Hosting;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using ActualChat.Hosting;
 using ActualChat.Transcription;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Audio.Client.Module;
+namespace ActualChat.Audio.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AudioClientModule : HostModule
 {
     public AudioClientModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -17,10 +20,16 @@ public class AudioClientModule : HostModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
             return; // Client-side only module
 
-        services.AddFusion().AddRestEaseClient();
+        var fusionClient = services.AddFusion().AddRestEaseClient();
+        fusionClient.ConfigureHttpClient((c, name, o) => {
+            o.HttpClientActions.Add(client => {
+                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            });
+        });
 
-        services.AddScoped<AudioDownloader>();
-        services.AddScoped<AudioClient>();
+        services.AddScoped<AudioDownloader>(sp => new AudioDownloader(sp));
+        services.AddScoped<AudioClient>(sp => new AudioClient(sp));
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
     }

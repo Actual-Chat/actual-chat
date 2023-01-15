@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Internal;
 
 namespace ActualChat.Users;
 
@@ -13,7 +13,7 @@ public class AppServerAuthHelper : ServerAuthHelper
     public AppServerAuthHelper(Options settings, IServiceProvider services)
         : base(settings, services)
     {
-        ClaimMapper = Services.GetRequiredService<ClaimMapper>();
+        ClaimMapper = services.GetRequiredService<ClaimMapper>();
         _closeWindowAppRequestPath = Settings.CloseWindowRequestPath + "-app";
     }
 

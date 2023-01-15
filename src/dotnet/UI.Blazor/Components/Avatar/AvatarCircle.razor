@@ -1,0 +1,50 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using Microsoft.Toolkit.HighPerformance
+@inherits FusionComponentBase
+@{
+    var title = HasTooltip ? Avatar.Name : "";
+}
+
+<div class="author-avatar-badge flex-x items-center rounded-full">
+    <div class="relative overflow-hidden">
+        @if (ReferenceEquals(Avatar, Avatar.Loading)) {
+            <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
+        } else {
+            <img class="@_avatarClass @Class rounded-full block"
+                 src="@_avatarPictureUrl" alt="avatar" title="@title"
+                 @onclick="@Click"/>
+        }
+
+        <PresenceIndicator Presence="@Presence"/>
+    </div>
+</div>
+
+@code {
+    private string _avatarClass = "";
+    private string _avatarPictureUrl = "";
+
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
+    [Parameter] public Presence Presence { get; set; }
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HasTooltip { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    protected override void OnParametersSet() {
+        _avatarClass = GetSizeClass();
+        if (Click.HasDelegate)
+            _avatarClass += " cursor-pointer";
+        var avatarPicture = Avatar.Picture.IsNullOrEmpty()
+            ? DefaultUserPicture.GetAvataaar(Avatar.Id.ToString().GetDjb2HashCode().ToString())
+            : Avatar.Picture;
+        _avatarPictureUrl = UrlMapper.ContentUrl(avatarPicture);
+    }
+
+    private string GetSizeClass() {
+        var size = (int) Size;
+        return $"pic-size-{size}";
+    }
+}

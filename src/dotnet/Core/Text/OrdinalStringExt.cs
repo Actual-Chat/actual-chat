@@ -14,6 +14,9 @@ public static class OrdinalStringExt
     public static bool OrdinalEquals(string x, Symbol y)
         => y.Value.Equals(x, StringComparison.Ordinal);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool OrdinalEquals(Symbol x, Symbol y)
+        => x.Value.Equals(y.Value, StringComparison.Ordinal);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool OrdinalEquals(StringSegment x, string y)
         => x.Equals(new StringSegment(y), StringComparison.Ordinal);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

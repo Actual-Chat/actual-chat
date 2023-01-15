@@ -8,7 +8,7 @@ export class AudioPlayerTestPage {
     };
 
     public static blockMainThread(milliseconds: number) {
-        console.warn(`Block main thread for ${milliseconds}`);
+        console.warn(`Blocking main thread for ${milliseconds}`);
         const start = new Date().getTime();
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -16,11 +16,11 @@ export class AudioPlayerTestPage {
                 break;
             }
         }
-        console.warn('Unblock main thread');
+        console.warn('Main thread unblocked');
     }
 
     public static async create(blazorRef: DotNet.DotNetObject): Promise<AudioPlayerTestPage> {
-        const player = await AudioPlayer.create(blazorRef, true, '0');
+        const player = await AudioPlayer.create(blazorRef, '0');
         return new AudioPlayerTestPage(blazorRef, player);
     }
 
@@ -31,7 +31,7 @@ export class AudioPlayerTestPage {
         this.player = player;
         this.player.onStartPlaying = () => {
             this.stats.playingStartTime = new Date().getTime();
-            console.warn('onStartPlaying called', this.stats);
+            console.warn('onStartPlaying, stats:', this.stats);
             void blazorRef.invokeMethodAsync('OnStartPlaying', this.getStats());
         };
         this.stats.constructorEndTime = new Date().getTime();

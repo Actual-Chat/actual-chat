@@ -1,11 +1,17 @@
 using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Maui.Platform;
+using AWebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
 
 public partial class MainPage
 {
+    /// <summary>
+    /// Gets the <see cref="AWebView"/> instance that was initialized.
+    /// </summary>
+    public AWebView? PlatformWebView { get; private set; }
+
     // Example to control permissions in browser is taken from the comment
     // https://github.com/dotnet/maui/issues/4768#issuecomment-1137906982
     // https://github.com/MackinnonBuck/MauiBlazorPermissionsExample
@@ -24,6 +30,8 @@ public partial class MainPage
 
     private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
+        PlatformWebView = e.WebView;
+
         if (e.WebView.Context?.GetActivity() is not ComponentActivity activity)
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
@@ -31,6 +39,7 @@ public partial class MainPage
         e.WebView.Settings.JavaScriptEnabled = true;
         e.WebView.Settings.AllowFileAccess = true;
         e.WebView.Settings.MediaPlaybackRequiresUserGesture = false;
+        e.WebView.Settings.EnableSmoothTransition();
         //e.WebView.Settings.SetGeolocationEnabled(true);
         //e.WebView.Settings.SetGeolocationDatabasePath(e.WebView.Context?.FilesDir?.Path);
         e.WebView.SetWebChromeClient(new PermissionManagingBlazorWebChromeClient(e.WebView.WebChromeClient!, activity));

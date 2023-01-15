@@ -1,19 +1,18 @@
-
-using ActualChat.Users;
+using ActualChat.Chat;
 
 namespace ActualChat.Audio.Processing;
 
 public sealed class OpenAudioSegment
 {
     public static string GetStreamId(string audioRecordId, int index)
-        => $"{audioRecordId}-{index:D4}";
+        => $"{audioRecordId}-{index.ToString("D4", CultureInfo.InvariantCulture)}";
 
     public int Index { get; }
     public string StreamId { get; }
     public AudioRecord AudioRecord { get; }
     public AudioSource Audio { get; }
     public Author Author { get; }
-    public ImmutableArray<LanguageId> Languages { get; }
+    public ImmutableArray<Language> Languages { get; }
     public Task<Moment?> RecordedAtTask { get; }
     public Task<TimeSpan> AudibleDurationTask { get; }
     public Task<ClosedAudioSegment> ClosedSegmentTask { get; }
@@ -24,7 +23,7 @@ public sealed class OpenAudioSegment
         AudioRecord audioRecord,
         AudioSource audio,
         Author author,
-        ImmutableArray<LanguageId> languages,
+        ImmutableArray<Language> languages,
         ILogger log)
     {
         Log = log;

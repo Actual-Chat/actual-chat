@@ -1,0 +1,22 @@
+@using Stl.Extensibility
+@implements IModalView<DemandUserInteractionModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<ModalChrome Class="max-w-sm">
+    <div class="p-4">
+        <p>Starting @ModalModel.Operation.</p>
+    </div>
+    <div class="p-4 pt-1 flex justify-center">
+        <Button Click="OnContinueClick">Continue</Button>
+    </div>
+</ModalChrome>
+
+@code {
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnContinueClick()
+        => _ = ModalInstance.CloseAsync();
+
+    public record Model(string Operation);
+}

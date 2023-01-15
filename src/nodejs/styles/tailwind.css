@@ -3,8 +3,84 @@
 @tailwind utilities;
 
 @layer base {
-    /* Base classes, don't use @apply here! */
+    * {
+        font-family: 'TT Commons Pro', sans-serif;
+    }
 
+    html {
+        height: 100%;
+        @apply text-base;
+        @apply antialiased sm:subpixel-antialiased md:antialiased;
+    }
+
+    body {
+        height: 100%;
+    }
+
+    *:focus {
+        @apply outline-none;
+    }
+
+    input,
+    textarea,
+    button,
+    select,
+    a {
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    }
+    a {
+        @apply bg-inherit text-02;
+    }
+    a:focus {
+        @apply outline-none underline underline-offset-1 decoration-primary;
+    }
+    a.unfocusable:focus {
+        @apply outline-none no-underline;
+    }
+
+    input,
+    textarea {
+        @apply bg-01 text-02 border-bg-03;
+    }
+    input {
+        @apply h-12 md:h-8;
+    }
+
+    input:focus {
+        @apply bg-03;
+        @apply rounded-sm border-0 outline-none;
+        @apply ring-1 ring-secondary;
+    }
+    input:focus[type="text"]::selection {
+        @apply bg-selection text-02;
+    }
+
+    label {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    code {
+        @apply rounded-sm border border-bg-03;
+        @apply px-0.5;
+        @apply bg-01;
+        @apply font-mono;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-semibold leading-loose;
+    }
+    h1 {
+        @apply text-2xl;
+    }
+    h2 {
+        @apply text-xl;
+    }
+    h3 {
+        @apply text-lg;
+    }
+}
+
+@layer components {
     .whitespace-break-spaces {
         white-space: break-spaces;
     }
@@ -15,9 +91,7 @@
     .no-highlight {
         -webkit-tap-highlight-color: transparent;
     }
-}
 
-@layer components {
     /* Flex shortcuts */
 
     .flex-x {
@@ -52,5 +126,50 @@
 
     .disabled {
         @apply pointer-events-none opacity-70;
+    }
+
+    .sub, .sup {
+        font-size: 75%;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+    }
+    .sup {
+        top: -0.20em;
+        vertical-align: super;
+    }
+    .sub {
+        bottom: -0.20em;
+        vertical-align: sub;
+    }
+
+    /* Custom scrollbars */
+
+    /* Webkit */
+    .custom-scrollbar::-webkit-scrollbar {
+        @apply w-1.5;
+    }
+    .custom-scrollbar-hide::-webkit-scrollbar {
+        @apply w-0;
+    }
+    .custom-scrollbar-x::-webkit-scrollbar {
+        @apply h-1.5;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track,
+    .custom-scrollbar-x::-webkit-scrollbar-track {
+        @apply bg-transparent rounded-full;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb,
+    .custom-scrollbar-x::-webkit-scrollbar-thumb {
+        @apply bg-scrollbar rounded-full;
+        @apply border border-scrollbar;
+        @apply shadow-inner shadow-scrollbar;
+    }
+
+    /* Mozilla */
+    .custom-scrollbar, .custom-scrollbar-x {
+        scrollbar-width: 2px;
+        scrollbar-color: #e2e7ec #F9FAFB;
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
@@ -7,6 +8,7 @@ using Stl.Redis;
 
 namespace ActualChat.Redis.Module;
 
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class RedisModule : HostModule<RedisSettings>
 {
     public RedisModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -36,7 +38,7 @@ public class RedisModule : HostModule<RedisSettings>
         var configuration = parts.FirstOrDefault() ?? "";
         var keyPrefix = parts.Skip(1).SingleOrDefault() ?? "";
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
-            typeof(TContext).Name, configuration, keyPrefix);
+            typeof(TContext).GetName(), configuration, keyPrefix);
 
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;

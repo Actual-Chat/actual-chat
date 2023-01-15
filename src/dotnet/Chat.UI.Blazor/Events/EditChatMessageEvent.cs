@@ -1,3 +1,3 @@
 namespace ActualChat.Chat.UI.Blazor.Events;
 
-public record EditChatMessageEvent(ChatEntry ChatEntry) : IUIEvent;
+public record EditChatMessageEvent(ChatEntry Entry) : IUIEvent;

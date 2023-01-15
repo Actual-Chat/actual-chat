@@ -14,7 +14,7 @@ public class BlazorTester : TestContext, IWebTester
     public IAuth Auth => AppServices.GetRequiredService<IAuth>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
-    public UriMapper UriMapper => AppServices.UriMapper();
+    public UrlMapper UrlMapper => AppServices.UrlMapper();
 
     public BlazorTester(AppHost appHost)
     {
@@ -22,7 +22,7 @@ public class BlazorTester : TestContext, IWebTester
         _serviceScope = AppServices.CreateScope();
         Services.AddFallbackServiceProvider(ScopedAppServices);
 
-        var sessionFactory = AppServices.GetRequiredService<ISessionFactory>();
+        var sessionFactory = AppServices.SessionFactory();
         Session = sessionFactory.CreateSession();
         var sessionProvider = ScopedAppServices.GetRequiredService<ISessionProvider>();
         sessionProvider.Session = Session;

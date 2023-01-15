@@ -7,8 +7,9 @@ module.exports = (api) => {
   return {
     plugins: [
       require('./postcss-watch-plugin.js'),
+      require('postcss-import'),
       require('tailwindcss'),
-      require('autoprefixer'),
+      require('autoprefixer')({ overrideBrowserslist: ['last 2 versions', '>0.2%'] }),
       ...(api.mode === 'production' ? [require('cssnano')({ preset: 'default' })] : [])
     ]
   };

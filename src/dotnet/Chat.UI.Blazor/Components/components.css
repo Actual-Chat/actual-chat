@@ -1,7 +1,3 @@
-.chat-playback-toggles .btn.btn-square {
-    @apply block;
-}
-
 /* DeleteMessageModal */
 
 .delete-message-modal .message-content {
@@ -15,13 +11,16 @@
 /* Sub-headers */
 
 .historical-playback-sub-header {
-    @apply relative flex-x z-20 py-1 px-2;
+    @apply relative flex-x py-1 px-2;
     @apply bg-01 shadow-lg text-02;
     @apply border-b border-bg-04;
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
     @apply flex-x w-full items-center;
+}
+.historical-playback-sub-header-content .c-chat-title {
+    @apply font-semibold;
 }
 .historical-playback-sub-header-content .c-text {
     @apply font-light;
@@ -34,20 +33,20 @@
 }
 
 .unread-messages-sub-header {
-    @apply relative z-10 mx-4 px-2 pb-0.5;
+    @apply relative mx-4 px-2 pb-0.5;
     @apply bg-unread rounded-b-lg shadow;
     @apply text-04 font-semibold;
     @apply animate-display-from-top-slow hover:cursor-pointer;
 }
 
 .recording-elsewhere-sub-header {
-    @apply relative z-20 p-0.5 md:mx-4 rounded-t-lg;
-    @apply flex flex-row items-center justify-center;
+    @apply relative p-0.25 md:mx-4 rounded-t-lg;
+    @apply flex-x items-center justify-center;
     @apply bg-error text-04 shadow-lg opacity-75;
     @apply animate-display-from-bottom-slow;
 }
 .recording-elsewhere-sub-header-content {
-    @apply flex-x flex-1 items-center justify-center gap-x-2 px-4 w-full;
+    @apply flex-1 flex-x items-center justify-center gap-x-2 px-4 w-full;
 }
 .recording-elsewhere-sub-header-content .c-text {
     @apply font-light;
@@ -109,21 +108,19 @@
     @apply m-0;
 }
 
-.invite-chat-author-modal .dialog-body input:not([type='checkbox']) {
-    @apply w-full pl-8 py-2;
-}
-.people-tab .author-badge {
+.people-tab .avatar-badge {
     @apply p-0.5 mr-1 rounded-xl cursor-pointer;
 }
-.people-tab .author-badge .author-avatar-badge {
+.people-tab .avatar-badge .author-avatar-badge {
     @apply m-0.5;
 }
-.people-tab .author-badge:hover {
+.people-tab .avatar-badge:hover {
     @apply bg-round-hover;
 }
 
 .left-panel-tabs {
-    @apply relative top-0 pb-0 mb-0 border-b border-bg-04;
+    @apply p-0 m-0;
+    @apply border-b border-bg-04;
 }
 .left-panel-tabs .btn-group {
     @apply min-h-14 justify-start px-4;
@@ -135,7 +132,7 @@
     @apply min-w-0 min-h-0 p-0 rounded-lg;
 }
 .left-panel-tabs .btn.tab-btn.on .btn-content {
-    @apply text-03;
+    @apply text-02;
 }
 .left-panel-tabs .tab-btn:hover .btn-content {
     @apply bg-round-hover text-primary;
@@ -148,7 +145,7 @@
 }
 
 .wide-left-panel-tabs .btn-group {
-    @apply min-h-14 justify-evenly px-4 overflow-x-hidden;
+    @apply min-h-14 justify-between px-4 overflow-x-hidden;
 }
 
 .navbar-chats,
@@ -199,8 +196,7 @@
 }
 
 .active-chats {
-    @apply relative flex-y bottom-0 p-2 pt-0;
-    @apply bg-02 border-t border-bg-04;
+    @apply relative flex-y bottom-0 p-2;
 }
 .active-chats .navbar-item.active {
     @apply bg-selected;
@@ -208,9 +204,23 @@
 .active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
+.all-chats .navbar-item.active {
+    @apply bg-transparent;
+}
+.all-chats .navbar-item:hover,
+.all-chats .navbar-item.active:hover {
+    @apply bg-round-hover;
+}
+
+.writable-chat-footer {
+    @apply relative bg-transparent md:bg-transparent;
+}
+.writable-chat-footer.narrow {
+    background: transparent;
+}
 
 .chat-footer {
-    @apply flex justify-center w-full bg-01;
+    @apply flex justify-center items-center w-full h-full bg-01;
     @apply py-0 md:py-1.5 px-2;
 }
 .signin-footer {
@@ -230,13 +240,12 @@
     @apply min-h-10 min-w-10;
 }
 
-.mention-list {
-    @apply overflow-y-auto max-h-48 md:max-h-64 w-full;
-    @apply border-y-2 border-bg-04 bg-01;
+.language-settings {
+    @apply flex-y mb-2;
 }
-.mention-list-item {
-    @apply cursor-pointer;
+.language-settings legend {
+    @apply text-xl;
 }
-.mention-list-item.selected {
-    @apply bg-mention-list-item-selected;
+.language-settings-item {
+    @apply flex-x items-center my-1;
 }

@@ -4,11 +4,8 @@ public abstract class ComputedMarkupViewBase<TMarkup, TState> : ComputedStateCom
     where TMarkup : Markup
 {
     [CascadingParameter] public ChatEntry Entry { get; set; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByRefParameterComparer))]
     public TMarkup Markup { get; set; } = null!;
 
     Markup IMarkupView.Markup => Markup;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 }

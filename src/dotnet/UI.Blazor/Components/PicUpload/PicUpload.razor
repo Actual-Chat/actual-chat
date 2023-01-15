@@ -5,9 +5,13 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
+@{
+    var sizeClass = $"pic-size-{(int)Size}";
+}
+
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
     <Pic Title="@Title" Size="@Size" ContentId="@ContentId" Click="PictureClick" NoPicture="NoPicture"/>
-    <div class="pic-upload-picker">
+    <div class="pic-upload-picker @(sizeClass)">
         <FileUpload id="@_inputId"
                     UploadUrl="@ImageUploadUrl"
                     Uploaded="OnUploaded"
@@ -17,7 +21,7 @@
         </FileUpload>
         <label for="@_inputId"
                class="pic-upload-input-file-label">
-            <i class="fa fa-camera" aria-hidden="true"></i>
+            <i class="icon-image text-5xl text-04" aria-hidden="true"></i>
         </label>
     </div>
 </div>
@@ -28,7 +32,7 @@
     private IJSObjectReference _jsRef = null!;
 
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";

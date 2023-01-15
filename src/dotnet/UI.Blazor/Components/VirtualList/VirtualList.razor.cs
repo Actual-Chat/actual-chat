@@ -18,8 +18,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     private VirtualListDataQuery LastQuery { get; set; } = VirtualListDataQuery.None;
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
-    private VirtualListData<TItem> Data => State.LatestNonErrorValue;
+    private VirtualListData<TItem> Data => State.Value;
     private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
+    private VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
 
     private int RenderIndex { get; set; } = 0;
 
@@ -30,16 +31,14 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public IVirtualListDataSource<TItem> DataSource { get; set; } = VirtualListDataSource<TItem>.Empty;
     [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
     public RenderFragment<TItem> Item { get; set; } = null!;
-
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
-    [Parameter] public int SkeletonCount { get; set; } = 16;
-    [Parameter] public double SpacerSize { get; set; } = 200;
-    [Parameter] public double LoadZoneSize { get; set; } = 2160;
-    [Parameter] public double BufferZoneSize { get; set; } = 4320;
-    [Parameter] public long MaxExpandBy { get; set; } = 256;
-    [Parameter] public bool DelaySkeletonRendering { get; set; } = true;
-    [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
+    [Parameter] public RenderFragment? Empty { get; set; }
+    [Parameter] public int SkeletonCount { get; set; } = 50;
+    [Parameter] public double SpacerSize { get; set; } = 300;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
+    // This event is intentionally Action vs EventCallback, coz normally it shouldn't
+    // trigger StateHasChanged on parent component.
+    [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
 
     [JSInvokable]
     public Task RequestData(VirtualListDataQuery query)
@@ -50,25 +49,30 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     [JSInvokable]
-    public Task UpdateVisibleKeys(string?[] visibleKeys)
+    public Task UpdateItemVisibility(HashSet<string> visibleKeys, bool isEndAnchorVisible)
     {
-        if (visibleKeys?.Length > 0 && VisibleKeysState != null)
-            VisibleKeysState.Value = visibleKeys.ToList()!;
+        if (JSRef == null!) // The component is disposed
+            return Task.CompletedTask;
 
+        LastReportedItemVisibility = new VirtualListItemVisibility(visibleKeys, isEndAnchorVisible);
+        ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
         return Task.CompletedTask;
     }
 
     public override async ValueTask DisposeAsync()
     {
-        await base.DisposeAsync();
-        await JSRef.DisposeSilentlyAsync("dispose");
+        var jsRef = JSRef;
+        var blazorRef = BlazorRef;
         JSRef = null!;
-        BlazorRef.DisposeSilently();
         BlazorRef = null!;
+
+        await base.DisposeAsync();
+        await jsRef.DisposeSilentlyAsync("dispose");
+        blazorRef.DisposeSilently();
     }
 
     protected override bool ShouldRender()
-        => !ReferenceEquals(Data, LastData) || RenderIndex == 0;
+        => !ReferenceEquals(Data, LastData) || RenderIndex == 0 || (Data.Items.Count > 0 && LastReportedItemVisibility.IsEmpty);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -80,18 +84,14 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                 Ref,
-                BlazorRef,
-                LoadZoneSize,
-                BufferZoneSize,
-                DebugMode);
-            VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
+                BlazorRef);
         }
     }
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
         => new () {
-            UpdateDelayer = FixedDelayer.Instant,
             InitialValue = VirtualListData<TItem>.None,
+            UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)

@@ -5,34 +5,41 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Chat.Db;
 
 [Table("Mentions")]
-[Index(nameof(ChatId), nameof(EntryId), nameof(AuthorId))]
-[Index(nameof(ChatId), nameof(AuthorId), nameof(EntryId))]
-public class DbMention : IHasId<string>
+[Index(nameof(ChatId), nameof(EntryId), nameof(MentionId))]
+[Index(nameof(ChatId), nameof(MentionId), nameof(EntryId))]
+public class DbMention : IHasId<string>, IRequirementTarget
 {
+    [Key] public string Id { get; set; } = null!;
+    public string ChatId { get; set; } = "";
+    public string MentionId { get; set; } = "";
+    public long EntryId { get; set; }
+
     public DbMention() { }
     public DbMention(Mention model) => UpdateFrom(model);
 
-    [Key] public string Id { get; set; } = null!;
-    public string AuthorId { get; set; } = "";
-    public string ChatId { get; set; } = "";
-    public long EntryId { get; set; }
+    public static string ComposeId(ChatEntryId entryId, string authorId)
+    {
+        if (entryId.Kind != ChatEntryKind.Text)
+            throw new ArgumentOutOfRangeException(nameof(entryId), "Only text entries support mentions.");
+
+        return $"{entryId}:{authorId}";
+    }
 
     public Mention ToModel()
         => new() {
             Id = Id,
-            AuthorId = AuthorId,
-            ChatId = ChatId,
-            EntryId = EntryId,
+            MentionId = MentionId,
+            EntryId = new ChatEntryId(new ChatId(ChatId), ChatEntryKind.Text, EntryId, AssumeValid.Option),
         };
 
     public void UpdateFrom(Mention model)
     {
-        Id = ComposeId(model.ChatId, model.EntryId, model.AuthorId);
-        AuthorId = model.AuthorId;
-        ChatId = model.ChatId;
-        EntryId = model.EntryId;
-    }
+        var id = ComposeId(model.EntryId, model.MentionId);
+        this.RequireSameOrEmptyId(id);
 
-    public static string ComposeId(string chatId, long entryId, string authorId)
-        => $"{chatId}:{entryId.ToString(CultureInfo.InvariantCulture)}:{authorId}";
+        Id = id;
+        ChatId = model.ChatId;
+        MentionId = model.MentionId;
+        EntryId = model.EntryId.LocalId;
+    }
 }

@@ -1,30 +1,60 @@
 using ActualChat.Audio;
+using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Transcription.Google;
+using Microsoft.Extensions.Configuration;
 using Stl.IO;
+using Stl.Testing.Output;
+using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
 public class GoogleTranscriberTest : TestBase
 {
     private ILogger<GoogleTranscriber> Log { get; }
+    private CoreSettings CoreSettings { get; }
 
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
-        => Log = log;
-
-    [Theory]
-    [InlineData("file.webm")]
-    // [InlineData("large-file.webm")]
-    public async Task TranscribeTest(string fileName)
+    public GoogleTranscriberTest(IConfiguration configuration, ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
     {
-        var transcriber = new GoogleTranscriber(Log);
+        Log = log;
+        CoreSettings = configuration.GetSettings<CoreSettings>();
+    }
+
+    [Theory(Skip = "Manual")]
+    [InlineData("file.webm", false)]
+    [InlineData("file.webm", true)]
+    [InlineData("0002-AK.opuss", true)]
+    // [InlineData("0003-AK.opuss", true)] - fails as too short???
+    public async Task TranscribeWorks(string fileName, bool withDelay)
+    {
+        // Global - Google Speech v2 doesnt work with Http/3!
+        // GlobalHttpSettings.SocketsHttpHandler.AllowHttp3
+        // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
+        AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
+        var services = CreateServices();
+        var transcriber = new GoogleTranscriber(services);
         var options = new TranscriptionOptions {
             Language = "ru-RU",
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
         };
-        var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
+        var audio = await GetAudio(fileName, withDelay: withDelay);
+
+        // helper to save webm format
+        // await using (var outputStream = new FileStream(
+        //     Path.Combine(Environment.CurrentDirectory, "data", file-name),
+        //     FileMode.OpenOrCreate,
+        //     FileAccess.ReadWrite)) {
+        //     var webMAdapter = new WebMStreamAdapter(Log);
+        //     var byteStream = webMAdapter.Write(audio, CancellationToken.None);
+        //     await foreach (var data in byteStream) {
+        //         await outputStream.WriteAsync(data, CancellationToken.None);
+        //     }
+        //     await outputStream.FlushAsync();
+        // };
+
+        // using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
+        // var writeBuffer = writeBufferLease.Memory;
+
+        var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());
@@ -36,15 +66,13 @@ public class GoogleTranscriberTest : TestBase
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";
-        var transcriber = new GoogleTranscriber(Log);
-        var options = new TranscriptionOptions() {
+        var services = CreateServices();
+        var transcriber = new GoogleTranscriber(services);
+        var options = new TranscriptionOptions {
             Language = "ru-RU",
-            IsDiarizationEnabled = false,
-            IsPunctuationEnabled = true,
-            MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
+        var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());
@@ -52,17 +80,49 @@ public class GoogleTranscriberTest : TestBase
         Out.WriteLine(transcript.ToString());
     }
 
-    private async Task<AudioSource> GetAudio(FilePath fileName, bool webMStream = true)
+    private async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
-        var streamAdapter = webMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(Log)
-            : new ActualOpusStreamAdapter(Log);
+        var isWebMStream = webMStream ?? fileName.Extension == ".webm";
+        var streamAdapter = isWebMStream
+            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, Log)
+            : new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
-        await audio.WhenFormatAvailable.ConfigureAwait(false);
-        return audio;
+        if (!withDelay)
+            return audio;
+
+        var delayedFrames = audio.GetFrames(CancellationToken.None)
+            .SelectAwait(async f => {
+                await Task.Delay(20);
+                return f;
+            });
+        var delayedAudio = new AudioSource(
+            MomentClockSet.Default.SystemClock.Now,
+            audio.Format,
+            delayedFrames,
+            TimeSpan.Zero,
+            Log,
+            CancellationToken.None);
+
+        return delayedAudio;
     }
 
     private static FilePath GetAudioFilePath(FilePath fileName)
         => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
+
+    private IServiceProvider CreateServices()
+        => new ServiceCollection()
+            .AddSingleton(CoreSettings)
+            .AddLogging(logging => {
+                logging.ClearProviders();
+                logging.SetMinimumLevel(LogLevel.Debug);
+                logging.AddDebug();
+                // XUnit logging requires weird setup b/c otherwise it filters out
+                // everything below LogLevel.Information
+                logging.AddProvider(
+                    new XunitTestOutputLoggerProvider(
+                        new TestOutputHelperAccessor(Out),
+                        (_, _) => true));
+            })
+            .BuildServiceProvider();
 }

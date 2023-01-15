@@ -1,9 +1,11 @@
+using System.Diagnostics.Metrics;
+
 namespace ActualChat.Audio;
 
 public abstract class StreamServerBase<TItem> : IDisposable
 {
-    private readonly ConcurrentDictionary<Symbol, Expiring<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new();
-    private readonly CancellationTokenSource _disposeCts = new();
+    private readonly CancellationTokenSource _disposeCts = new ();
+    private readonly ConcurrentDictionary<Symbol, Expiring<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
     protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(600);
@@ -13,14 +15,22 @@ public abstract class StreamServerBase<TItem> : IDisposable
 
     protected IServiceProvider Services { get; }
     protected MomentClockSet Clocks { get; }
+    protected OtelMetrics Metrics { get; }
     protected ILogger Log { get; }
+
+    protected UpDownCounter<int>? StreamCounter =>
+        this is AudioStreamServer
+            ? Metrics.AudioStreamCount
+            : null;
 
     protected StreamServerBase(IServiceProvider services)
     {
         Services = services;
-        Clocks = services.Clocks();
         Log = services.LogFor(GetType());
+        Clocks = services.Clocks();
+        Metrics = services.GetRequiredService<OtelMetrics>();
     }
+
 
     public void Dispose()
         => _disposeCts.CancelAndDisposeSilently();
@@ -40,11 +50,14 @@ public abstract class StreamServerBase<TItem> : IDisposable
         }
     }
 
+    // do not wait for write completion - just register stream!
     protected async Task Write(Symbol streamId, IAsyncEnumerable<TItem> stream, CancellationToken cancellationToken)
     {
+        StreamCounter?.Add(1);
         var entry = GetOrAddStream(streamId, WriteStreamExpiration);
         var memoizer = stream.Memoize(cancellationToken);
         TaskSource.For(entry.Value).SetResult(memoizer);
+
         await memoizer.WriteTask.ConfigureAwait(false);
         _ = Clocks.CpuClock
             .Delay(ReadStreamWaitDuration, CancellationToken.None)
@@ -58,13 +71,17 @@ public abstract class StreamServerBase<TItem> : IDisposable
     private Expiring<Symbol, Task<AsyncMemoizer<TItem>>> GetOrAddStream(Symbol streamId, TimeSpan expiresIn)
     {
         var entry = _streams.GetOrAdd(streamId,
-            static (streamId1, state) => {
-                var (self, expiresIn) = state;
+            static (streamId1, arg) => {
+                var (self, expiresIn) = arg;
                 var memoizerTask = TaskSource.New<AsyncMemoizer<TItem>>(true).Task;
                 var disposeTokenSource = self._disposeCts.Token.CreateLinkedTokenSource();
                 var entry = Expiring
                     .New(self._streams, streamId1, memoizerTask, disposeTokenSource)
-                    .SetDisposer(e => TaskSource.For(e.Value).TrySetCanceled())
+                    .SetDisposer(e => {
+                        if (memoizerTask.IsCompleted)
+                            self.StreamCounter?.Add(-1);
+                        TaskSource.For(e.Value).TrySetCanceled();
+                    })
                     .BumpExpiresAt(expiresIn, self.Clocks.CpuClock)
                     .BeginExpire();
                 return entry;

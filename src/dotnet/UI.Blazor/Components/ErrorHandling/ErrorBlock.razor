@@ -1,0 +1,46 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.Hosting
+@using Stl.Reflection
+@inherits ComputedStateComponent<AccountFull>
+@{
+    var account = State.ValueOrDefault ?? AccountFull.Loading;
+    if (ReferenceEquals(account, AccountFull.Loading))
+        return;
+}
+
+@if (Failures.Errors.Any(e => e is GuestAccountException)) {
+    <SignInBlock/>
+} else if (Failures.Errors.Any(e => e is SuspendedAccountException)) {
+    <SignOutBlock>
+        <b>Your account is suspended.</b><br/>
+        Please feel free to contact us &ndash; we'll try to help.
+    </SignOutBlock>
+} else if (Failures.Errors.Any(e => e is InactiveAccountException)) {
+    <SignOutBlock>
+        You're successfully signed in, but your account is inactive.<br/>
+        We activate new accounts when we're ready to onboard more people.<br/>
+        If you have an invite code, you can use it now.
+    </SignOutBlock>
+} else if (Failures.Errors.Any(e => e is NonAdminAccountException)) {
+    <SignOutBlock>
+        Sorry, but only service administrators can perform this action.
+    </SignOutBlock>
+} else {
+    <RequirementFailureBlock Failures="@Failures" Account="@account"/>
+}
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
+    [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
+
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() { InitialValue = AccountFull.Loading };
+
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
+}

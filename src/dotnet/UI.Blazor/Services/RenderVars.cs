@@ -24,7 +24,7 @@ public sealed class RenderVars
         if (name.Length == 0)
             throw new ArgumentOutOfRangeException(nameof(name));
         return (IMutableState<T>)_vars.GetOrAdd(name,
-            static (_, x) => x.Self._stateFactory.NewMutable(x.Default),
+            static (_, arg) => arg.Self._stateFactory.NewMutable(arg.Default),
             (Self: this, Default: @default));
     }
 }

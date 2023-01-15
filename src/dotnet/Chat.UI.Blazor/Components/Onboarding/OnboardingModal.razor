@@ -1,0 +1,59 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using Stl.Extensibility
+@implements IModalView<OnboardingModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame
+    Class="onboarding-modal"
+    NoNarrowHeader="true"
+    HasHeader="false"
+    HasEscapeHandler="false">
+    <Body>
+    <Stepper Context="stepper">
+        <HeaderContent>
+            @if (stepper.CanMoveBack) {
+                <ButtonRound
+                    Class="transparent"
+                    Click="stepper.MoveBack">
+                    <i class="icon-arrow-left text-2xl"></i>
+                </ButtonRound>
+                <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
+            }
+        </HeaderContent>
+        <ChildContent>
+            <PhoneStep/>
+            <AvatarStep/>
+        </ChildContent>
+        <FooterContent>
+            @if (stepper.IsLast) {
+                <Button
+                    Class="btn-primary btn-w-full"
+                    Click="() => OnLastStepComplete(stepper)">
+                    Start messaging
+                </Button>
+            } else if (stepper.CanMoveForward) {
+                <Button
+                    Class="btn-primary btn-w-full"
+                    Click="stepper.MoveForward">
+                    Next
+                </Button>
+            }
+        </FooterContent>
+    </Stepper>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnLastStepComplete(Stepper stepper) {
+        var stepCompleted = await stepper.MoveForward();
+        if (!stepCompleted)
+            return;
+
+        await ModalInstance.CloseAsync();
+    }
+
+    public sealed record Model;
+}
