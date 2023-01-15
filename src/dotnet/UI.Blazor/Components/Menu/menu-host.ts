@@ -335,9 +335,12 @@ export class MenuHost implements Disposable {
             }
 
             // It's a click outside of any menu which doesn't trigger another menu
-            this.hide({ isHoverMenu: false });
-            endEvent(event);
-            return;
+            if (!this.menu || this.menu.isHoverMenu)
+                return; // There are no visible menu (unless it's a hover menu)
+
+            // Non-hover menu is visible, so we need to hide it on this click
+            this.hide();
+            return endEvent(event);
         }
 
         const position = isDesktopMode && event instanceof PointerEvent
