@@ -108,8 +108,16 @@
         }
     }
 
+    protected override void OnParametersSet() {
+        if (ScreenSize.IsNarrow() && _menu?.IsHoverMenu == true) {
+            _jsRef.InvokeVoidAsync("hideById", _menu.Id);
+            _menu = null;
+        }
+        StateHasChanged();
+    }
+
     private bool IsOverlayVisible()
-        => ScreenSize.IsNarrow() && _menu != null;
+        => ScreenSize.IsNarrow() && _menu?.IsHoverMenu == false;
 
     private string GetHostCssClass()
         => IsOverlayVisible() ? "has-overlay" : "";

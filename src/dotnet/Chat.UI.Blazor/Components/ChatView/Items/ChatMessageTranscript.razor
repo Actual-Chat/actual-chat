@@ -5,7 +5,7 @@
 
 <p class="@Class chat-message-transcript">
     @if (ShowEntryKind) {
-        <span class="chat-entry-kind-marker icon-volume-up"></span>
+        <ChatEntryKindView Kind="@ChatEntryKind.Audio"/>
     }@*
     *@<span class="retained">@RetainedPart</span>@*
     *@<span class="changes">@ChangedPart</span>

@@ -44,11 +44,11 @@ public partial class ChatUI : WorkerBase
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AccountSettings AccountSettings { get; }
     private LocalSettings LocalSettings { get; }
-    private Vibration Vibration { get; }
     private AccountUI AccountUI { get; }
     private LanguageUI LanguageUI { get; }
     private InteractiveUI InteractiveUI { get; }
     private KeepAwakeUI KeepAwakeUI { get; }
+    private TuneUI TuneUI { get; }
     private ModalUI ModalUI { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
@@ -79,11 +79,11 @@ public partial class ChatUI : WorkerBase
         Mentions = services.GetRequiredService<IMentions>();
         AccountSettings = services.AccountSettings();
         LocalSettings = services.LocalSettings();
-        Vibration = services.GetRequiredService<Vibration>();
         AccountUI = services.GetRequiredService<AccountUI>();
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
         KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
+        TuneUI = services.GetRequiredService<TuneUI>();
         ModalUI = services.GetRequiredService<ModalUI>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
@@ -287,6 +287,7 @@ public partial class ChatUI : WorkerBase
         var command = new IContacts.ChangeCommand(Session, contact.Id, contact.Version, new Change<Contact>() {
             Update = contact with { IsPinned = mustPin },
         });
+        _ = TuneUI.Play("pin-unpin-chat");
         await UICommander.Run(command).ConfigureAwait(false);
     }
 
@@ -325,10 +326,10 @@ public partial class ChatUI : WorkerBase
             if (!chatId.IsNone) {
                 var newChat = new ActiveChat(chatId, true, true, Now);
                 activeChats = activeChats.AddOrUpdate(newChat);
-                _ = Vibration.Play("beginRecording");
+                TuneUI.Play("begin-recording");
             }
             else
-                Vibration.Play("endRecording");
+                TuneUI.Play("end-recording");
 
             UICommander.RunNothing();
             return activeChats;
@@ -344,6 +345,7 @@ public partial class ChatUI : WorkerBase
 
             _selectedChatId.Value = chatId;
         }
+        _ = TuneUI.Play("select-chat");
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
         UICommander.RunNothing();
     }
@@ -361,6 +363,14 @@ public partial class ChatUI : WorkerBase
             _ = UIEventHub.Publish<FocusChatMessageEditorEvent>();
         if (updateUI)
             UICommander.RunNothing();
+
+        var tuneName = kind switch {
+            RelatedEntryKind.Reply => "reply-message",
+            RelatedEntryKind.Edit => "edit-message",
+            _ => "",
+        };
+        if (!tuneName.IsNullOrEmpty())
+            TuneUI.Play(tuneName);
     }
 
     public void HideRelatedEntry(bool updateUI = true)
@@ -373,6 +383,7 @@ public partial class ChatUI : WorkerBase
         }
         if (updateUI)
             UICommander.RunNothing();
+        TuneUI.Play("cancel");
     }
 
     public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)

@@ -2,11 +2,13 @@ import {
     Subject,
     takeUntil,
 } from 'rxjs';
-import { MarkupEditor } from '../MarkupEditor/markup-editor';
-import { Log, LogLevel } from 'logging';
-import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { endEvent } from 'event-handling';
 import { throttle } from 'promises';
+import { MarkupEditor } from '../MarkupEditor/markup-editor';
+import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 
+import { Log, LogLevel } from 'logging';
 const LogScope = 'MessageEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
@@ -162,10 +164,12 @@ export class ChatMessageEditor {
     };
 
     public showFilePicker = () => {
+        TuneUI.play('change-attachments');
         this.filePicker.click();
     };
 
     public removeAttachment(id: number) {
+        TuneUI.play('change-attachments');
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
         if (attachment?.Url)
@@ -174,6 +178,8 @@ export class ChatMessageEditor {
     }
 
     public clearAttachments() {
+        if (this.attachments.size != 0)
+            TuneUI.play('change-attachments');
         for (const attachment of this.attachments.values()) {
             if (attachment?.Url)
                 URL.revokeObjectURL(attachment.Url);
@@ -186,6 +192,7 @@ export class ChatMessageEditor {
     // Event handlers
 
     private onAttachButtonClick = ((event: Event & { target: Element; }) => {
+        this.showFilePicker();
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
             this.updateHasContent();
@@ -207,24 +214,27 @@ export class ChatMessageEditor {
         }
     });
 
-    private onInputPaste = ((event: ClipboardEvent & { target: Element; }) => {
+    private onInputPaste = async (event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
         // We need to handle only files pasting.
         // Text pasting is controlled by markup editor.
         const clipboardData = event.clipboardData;
+        let isAdding = false;
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
+                if (!isAdding)
+                    event.preventDefault(); // We can do it only in the sync part of async handler
+                isAdding = true;
                 const file = item.getAsFile();
-                void this.addAttachment(file);
-                event.preventDefault();
+                await this.addAttachment(file);
             }
         }
-    });
+    };
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
         for (const file of this.filePicker.files) {
-            const added: boolean = await this.addAttachment(file);
-            if (!added)
+            const isAdded = await this.addAttachment(file);
+            if (!isAdded)
                 break;
         }
         this.filePicker.value = '';
@@ -335,9 +345,9 @@ export class ChatMessageEditor {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-        const added: boolean = await this.blazorRef.invokeMethodAsync(
+        const isAdded: boolean = await this.blazorRef.invokeMethodAsync(
             'AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
-        if (!added) {
+        if (!isAdded) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
         }
@@ -345,8 +355,9 @@ export class ChatMessageEditor {
             this.attachmentsIdSeed++;
             this.attachments.set(attachment.Id, attachment);
             this.updateHasContent();
+            TuneUI.play('change-attachments');
         }
-        return added;
+        return isAdded;
     }
 }
 

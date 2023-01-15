@@ -17,7 +17,7 @@
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
-    var marginClass = message.IsBlockEnd ? "mb-3" : "mb-0";
+    var marginClass = message.IsBlockEnd ? "mb-2" : "mb-0";
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
@@ -37,7 +37,7 @@
             <div class="chat-message group px-1.5 py-1 relative">
                 <div class="flex-1 overflow-hidden">
                     <div class="message-content rounded-sm">
-                        <p class="chat-message-markup mx-1">
+                        <p class="chat-message-markup">
                             <CascadingValue Value="@entry" IsFixed="true">
                                 <MarkupView Markup="@markup"/>
                             </CascadingValue>
@@ -50,63 +50,64 @@
     return;
 }
 
-<div class="@cls"
+<div class="flex-y w-full @cls"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
      data-menu-trigger="@(MenuTriggers.Secondary.Format())"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-    <div class="flex-y w-full">
-        <div class="chat-message group px-1.5 py-1 relative">
+    <div class="chat-message relative group flex-none flex-x gap-x-1 w-full px-1.5 py-1">
+        @if (showAuthor) {
+            <div class="flex-none p-1.5">
+                <ChatMessageAuthorCircle
+                    AuthorSid="@entry.AuthorId"
+                    Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
+            </div>
+        } else {
+            var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+            <div class="flex-none w-8 mx-2">
+                <span class="chat-message-timestamp-on-hover">@timestamp</span>
+            </div>
+        }
+        <div class="flex-1 flex-y">
             @if (showAuthor) {
-                <div class="m-1.5">
-                    <ChatMessageAuthorCircle
-                        AuthorSid="@entry.AuthorId"
-                        Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
-                </div>
-            } else {
-                var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
-                <div class="w-10 mr-2 mt-1">
-                    <span class="chat-message-timestamp-on-hover">@timestamp</span>
+                <div class="flex-none flex-x items-baseline header chat-message-header">
+                    <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name" />
+                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
+                    @* &nbsp; *@
+                    @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
                 </div>
             }
-            <div class="flex-1 overflow-hidden">
-                @if (showAuthor) {
-                    <div class="flex-x items-baseline header chat-message-header ml-1">
-                        <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name" />
-                        <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
-                        @* &nbsp; *@
-                        @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
-                    </div>
+            <div class="flex-1 message-content">
+                @if (isReply) {
+                    <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
-                <div class="message-content rounded-sm">
-                    @if (isReply) {
-                        <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
-                    }
-                    @if (entry.IsStreaming) {
-                        <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryKind="@Message.ShowEntryKind" />
-                    } else {
-                        <p class="chat-message-markup mx-1">
-                            <CascadingValue Value="@entry" IsFixed="true">
-                                <MarkupView Markup="@_markup"/>
-                            </CascadingValue>
-                        </p>
-                    }
-                </div>
-                @if (entry.Attachments.Length > 0) {
-                    <div class="message-attachments mx-1">
-                        @foreach (var attachment in entry.Attachments) {
-                            @if (attachment.IsImage()) {
-                                <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
-                            } else {
-                                <FileAttachment Attachment="@attachment"/>
-                            }
+                @if (entry.IsStreaming) {
+                    <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryKind="@Message.ShowEntryKind" />
+                } else {
+                    <p class="chat-message-markup">
+                        @if (message.ShowEntryKind) {
+                            <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
                         }
-                    </div>
-                }
-                @if (entry.HasReactions) {
-                    <MessageReactions Entry="@entry" />
+                        <CascadingValue Value="@entry" IsFixed="true">
+                            <MarkupView Markup="@_markup"/>
+                        </CascadingValue>
+                    </p>
                 }
             </div>
+            @if (entry.Attachments.Length > 0) {
+                <div class="message-attachments mx-1">
+                    @foreach (var attachment in entry.Attachments) {
+                        @if (attachment.IsImage()) {
+                            <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                        } else {
+                            <FileAttachment Attachment="@attachment"/>
+                        }
+                    }
+                </div>
+            }
+            @if (entry.HasReactions) {
+                <MessageReactions Entry="@entry" />
+            }
         </div>
     </div>
 

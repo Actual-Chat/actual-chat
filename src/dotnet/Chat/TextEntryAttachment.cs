@@ -1,7 +1,9 @@
-﻿using Stl.Versioning;
+﻿using Stl.Fusion.Blazor;
+using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
+[ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract]
 public sealed record TextEntryAttachment(
     [property: DataMember] Symbol Id,

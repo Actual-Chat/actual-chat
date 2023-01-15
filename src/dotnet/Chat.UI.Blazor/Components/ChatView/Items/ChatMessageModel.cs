@@ -43,6 +43,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
             && IsFirstUnread == other.IsFirstUnread
+            && ShowEntryKind == other.ShowEntryKind
             && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
     }
 

@@ -28,7 +28,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
-        services.AddScoped<ModalService>(_ => new ModalService());
+        services.AddScoped<ModalService>(c => new ModalService(c));
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
         ComputedStateComponent.DefaultOptions =
@@ -42,83 +42,84 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Authentication
         fusion.AddAuthentication();
-        services.AddScoped<ClientAuthHelper>(sp => new ClientAuthHelper(
-            sp.GetRequiredService<IAuth>(),
-            sp.GetRequiredService<ISessionResolver>(),
-            sp.GetRequiredService<ICommander>(),
-            sp.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(
+            c.GetRequiredService<IAuth>(),
+            c.GetRequiredService<ISessionResolver>(),
+            c.GetRequiredService<ICommander>(),
+            c.GetRequiredService<IJSRuntime>()));
         services.RemoveAll<PresenceReporter>(); // We replace it with our own one further
 
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
-        services.AddScoped<AppBlazorCircuitContext>(sp => new AppBlazorCircuitContext(sp));
+        services.AddScoped<AppBlazorCircuitContext>(c => new AppBlazorCircuitContext(c));
         services.AddScoped(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
         services.AddScoped(c => c.GetRequiredService<BlazorCircuitContext>().Dispatcher);
 
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
         services.AddScoped<DisposeMonitor>(_ => new DisposeMonitor());
-        services.AddScoped<BrowserInfo>(sp => new BrowserInfo(sp));
+        services.AddScoped<BrowserInfo>(c => new BrowserInfo(c));
 
         // Settings
         services.AddSingleton<LocalSettings.Options>(_ => new LocalSettings.Options());
-        services.AddScoped<LocalSettingsBackend>(sp => new LocalSettingsBackend(sp));
-        services.AddScoped<LocalSettings>(sp => new LocalSettings(
-            sp.GetRequiredService<LocalSettings.Options>(),
-            sp.GetRequiredService<LocalSettingsBackend>(),
-            sp.GetRequiredService<ILogger<LocalSettings>>()));
-        services.AddScoped<AccountSettings>(sp => new AccountSettings(
-            sp.GetRequiredService<IServerKvas>(),
-            sp.GetRequiredService<Session>()));
+        services.AddScoped<LocalSettingsBackend>(c => new LocalSettingsBackend(c));
+        services.AddScoped<LocalSettings>(c => new LocalSettings(
+            c.GetRequiredService<LocalSettings.Options>(),
+            c.GetRequiredService<LocalSettingsBackend>(),
+            c.GetRequiredService<ILogger<LocalSettings>>()));
+        services.AddScoped<AccountSettings>(c => new AccountSettings(
+            c.GetRequiredService<IServerKvas>(),
+            c.GetRequiredService<Session>()));
         if (isServerSideBlazor)
-            services.AddScoped<TimeZoneConverter>(sp => new ServerSideTimeZoneConverter(sp));
+            services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
         else
-            services.AddScoped<TimeZoneConverter>(sp => new ClientSizeTimeZoneConverter(sp)); // WASM
+            services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
         services.AddScoped<ComponentIdGenerator>(_ => new ComponentIdGenerator());
-        services.AddScoped<RenderVars>(sp => new RenderVars(
-            sp.GetRequiredService<IStateFactory>()));
+        services.AddScoped<RenderVars>(c => new RenderVars(
+            c.GetRequiredService<IStateFactory>()));
 
         // UI events
-        services.AddScoped<LoadingUI>(sp => new LoadingUI(
-            sp.GetRequiredService<ILogger<LoadingUI>>()));
-        services.AddScoped<UILifetimeEvents>(sp => new UILifetimeEvents(
-            sp.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
-        services.AddScoped<UIEventHub>(sp => new UIEventHub(sp));
+        services.AddScoped<LoadingUI>(c => new LoadingUI(
+            c.GetRequiredService<ILogger<LoadingUI>>()));
+        services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
+            c.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
+        services.AddScoped<UIEventHub>(c => new UIEventHub(c));
 
         // General UI services
-        services.AddScoped<ClipboardUI>(sp => new ClipboardUI(
-            sp.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<InteractiveUI>(sp => new InteractiveUI(sp));
-        services.AddScoped<ErrorUI>(sp => new ErrorUI(
-            sp.GetRequiredService<UIActionTracker>()));
-        services.AddScoped<HistoryUI>(sp => new HistoryUI(sp));
-        services.AddScoped<ModalUI>(sp => new ModalUI(sp));
-        services.AddScoped<BannerUI>(sp => new BannerUI(sp));
-        services.AddScoped<FocusUI>(sp => new FocusUI(
-            sp.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<KeepAwakeUI>(sp => new KeepAwakeUI(
-            sp.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<UserActivityUI>(sp => new UserActivityUI(sp));
-        services.AddScoped<Escapist>(sp => new Escapist(
-            sp.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<Vibration>(sp => new Vibration(sp));
+        services.AddScoped<ClipboardUI>(c => new ClipboardUI(
+            c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<InteractiveUI>(c => new InteractiveUI(c));
+        services.AddScoped<ErrorUI>(c => new ErrorUI(
+            c.GetRequiredService<UIActionTracker>()));
+        services.AddScoped<HistoryUI>(c => new HistoryUI(c));
+        services.AddScoped<ModalUI>(c => new ModalUI(c));
+        services.AddScoped<BannerUI>(c => new BannerUI(c));
+        services.AddScoped<FocusUI>(c => new FocusUI(
+            c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<KeepAwakeUI>(c => new KeepAwakeUI(
+            c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<UserActivityUI>(c => new UserActivityUI(c));
+        services.AddScoped<Escapist>(c => new Escapist(
+            c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<TuneUI>(c => new TuneUI(c));
+        services.AddScoped<VibrationUI>(c => new VibrationUI(c));
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
         // Actual.chat-specific UI services
-        services.AddScoped<ThemeUI>(sp => new ThemeUI(sp));
-        services.AddScoped<FeedbackUI>(sp => new FeedbackUI(sp));
-        services.AddScoped<ImageViewerUI>(sp => new ImageViewerUI(
-            sp.GetRequiredService<ModalUI>()));
+        services.AddScoped<ThemeUI>(c => new ThemeUI(c));
+        services.AddScoped<FeedbackUI>(c => new FeedbackUI(c));
+        services.AddScoped<ImageViewerUI>(c => new ImageViewerUI(
+            c.GetRequiredService<ModalUI>()));
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
         // Misc. helpers
-        services.AddScoped<NotificationNavigationHandler>(sp => new NotificationNavigationHandler(sp));
+        services.AddScoped<NotificationNavigationHandler>(c => new NotificationNavigationHandler(c));
 
         // Host-specific services
-        services.TryAddScoped<IClientAuth>(sp => new WebClientAuth(
-            sp.GetRequiredService<ClientAuthHelper>()));
+        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(
+            c.GetRequiredService<ClientAuthHelper>()));
 
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += InitializeHistoryUI);
     }

@@ -1,7 +1,7 @@
 /* DeleteMessageModal */
 
 .delete-message-modal .message-content {
-    @apply max-h-48 rounded-sm p-1 ml-1;
+    @apply max-h-48;
     @apply overflow-y-auto break-words;
 }
 .delete-message-modal .message-content > * {

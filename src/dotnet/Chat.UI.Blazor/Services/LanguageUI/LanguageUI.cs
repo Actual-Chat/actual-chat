@@ -7,6 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class LanguageUI
 {
+    private TuneUI TuneUI { get; }
     private AccountSettings AccountSettings { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
@@ -19,6 +20,7 @@ public class LanguageUI
         JS = services.GetRequiredService<IJSRuntime>();
 
         var stateFactory = services.StateFactory();
+        TuneUI = services.GetRequiredService<TuneUI>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
         Settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
@@ -42,6 +44,11 @@ public class LanguageUI
         language = settings.Next(language);
         if (language == userChatSettings.Language)
             return language;
+
+        var tuneName = language == settings.Primary
+            ? "select-primary-language"
+            : "select-secondary-language";
+        _ = TuneUI.Play(tuneName);
 
         userChatSettings = userChatSettings with { Language = language };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);

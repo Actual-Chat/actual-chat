@@ -11,7 +11,7 @@
 }
 
 .chat-message {
-    @apply flex items-start;
+    @apply flex-x items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-current break-words;
 }
@@ -45,7 +45,7 @@
     @apply text-03 text-xs;
 }
 .chat-message-timestamp-on-hover {
-    @apply invisible float-right mr-1 mt-0.5;
+    @apply invisible;
     @apply text-03 text-xs;
 }
 .chat-message:hover .chat-message-timestamp-on-hover {
@@ -108,6 +108,10 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 .message-hover-menu .btn.btn-round:hover .btn-content {
     @apply bg-round-hover;
+}
+
+.message-content {
+    @apply rounded-sm;
 }
 
 .system-entry .message-content {
