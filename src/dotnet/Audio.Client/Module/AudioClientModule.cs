@@ -28,8 +28,8 @@ public class AudioClientModule : HostModule
             });
         });
 
-        services.AddScoped<AudioDownloader>(sp => new AudioDownloader(sp));
-        services.AddScoped<AudioClient>(sp => new AudioClient(sp));
+        services.AddScoped<AudioDownloader>(c => new AudioDownloader(c));
+        services.AddScoped<AudioClient>(c => new AudioClient(c));
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
     }

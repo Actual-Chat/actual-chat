@@ -209,36 +209,36 @@ public static class MauiProgram
         // HttpClient
 #if !WINDOWS
         services.RemoveAll<IHttpClientFactory>();
-        services.AddSingleton<NativeHttpClientFactory>(sp => new NativeHttpClientFactory(sp));
-        services.TryAddSingleton<IHttpClientFactory>(serviceProvider => serviceProvider.GetRequiredService<NativeHttpClientFactory>());
-        services.TryAddSingleton<IHttpMessageHandlerFactory>(serviceProvider => serviceProvider.GetRequiredService<NativeHttpClientFactory>());
+        services.AddSingleton<NativeHttpClientFactory>(c => new NativeHttpClientFactory(c));
+        services.TryAddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
+        services.TryAddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
         AppStartup.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
-        services.AddScoped<IClientAuth>(sp => new MauiClientAuth(sp));
-        services.AddTransient<MobileAuthClient>(sp => new MobileAuthClient(sp));
+        services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
+        services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(c));
 
         // UI
-        services.AddSingleton<NavigationInterceptor>(sp => new NavigationInterceptor(sp));
+        services.AddSingleton<NavigationInterceptor>(c => new NavigationInterceptor(c));
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new AndroidDeviceTokenRetriever(sp));
-        services.AddScoped<IAudioOutputController>(sp => new AndroidAudioOutputController(sp));
-        services.AddScoped<ClipboardUI>(sp => new AndroidClipboardUI(
-            sp.GetRequiredService<IJSRuntime>()));
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
+        services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
+        services.AddScoped<ClipboardUI>(c => new AndroidClipboardUI(
+            c.GetRequiredService<IJSRuntime>()));
 #elif IOS
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(sp => new IOSDeviceTokenRetriever());
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(_ => new IOSDeviceTokenRetriever());
 #elif MACCATALYST
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, MacDeviceTokenRetriever>(sp => new MacDeviceTokenRetriever());
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
 #elif WINDOWS
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(sp => new WindowsDeviceTokenRetriever());
+        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
 #endif
 
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
-        services.AddScoped<DisposeTracer>(sp => new DisposeTracer(sp));
+        services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
     }
 
     private static Symbol GetSessionId()

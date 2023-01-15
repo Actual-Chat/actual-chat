@@ -1,9 +1,16 @@
-﻿namespace Blazored.Modal.Services;
+﻿using ActualChat.UI.Blazor.Services;
+
+namespace Blazored.Modal.Services;
 
 public class ModalService
 {
     internal event Func<ModalRef, Task>? OnModalInstanceAdded;
     internal event Func<ModalRef, Task>? OnModalCloseRequested;
+
+    private TuneUI TuneUI { get; }
+
+    public ModalService(IServiceProvider services)
+        => TuneUI = services.GetRequiredService<TuneUI>();
 
     /// <summary>
     /// Shows the modal.
@@ -12,6 +19,7 @@ public class ModalService
     /// <param name="options">Options to configure the modal.</param>
     public IModalRef Show(RenderFragment modalContent, ModalOptions options)
     {
+        TuneUI.Play("open-modal");
         ModalRef? modalReference = null;
         var modalInstanceId = Guid.NewGuid();
         var modalInstance = new RenderFragment(builder => {
@@ -29,5 +37,8 @@ public class ModalService
     }
 
     internal void Close(ModalRef modal)
-        => OnModalCloseRequested?.Invoke(modal);
+    {
+        TuneUI.Play("close-modal");
+        OnModalCloseRequested?.Invoke(modal);
+    }
 }

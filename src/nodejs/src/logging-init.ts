@@ -75,10 +75,11 @@ function reset(minLevels: Map<string, LogLevel>): void {
     // Bumping up levels of noisy scopes
     minLevels.set('LongPress', LogLevel.Info);
     minLevels.set('ScreenSize', LogLevel.Info);
-    minLevels.set('Vibration', LogLevel.Info);
     minLevels.set('NextInteraction', LogLevel.Info);
     minLevels.set('HistoryUI', LogLevel.Info);
     minLevels.set('InteractiveUI', LogLevel.Info);
+    minLevels.set('TuneUI', LogLevel.Info);
+    minLevels.set('VibrationUI', LogLevel.Info);
     minLevels.set('on-device-awake', LogLevel.Info);
     minLevels.set('Rpc', LogLevel.Info);
     minLevels.set('BrowserInfo', LogLevel.Info);
@@ -102,6 +103,7 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('AudioContextLazy', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
+    // minLevels.set('TuneUI', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('HistoryUI', LogLevel.Debug);
 

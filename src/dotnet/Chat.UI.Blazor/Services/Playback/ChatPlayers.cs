@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatPlayers : WorkerBase
@@ -11,6 +13,8 @@ public class ChatPlayers : WorkerBase
     private IAudioOutputController AudioOutputController { get;}
     private MomentClockSet Clocks { get; }
     private ChatUI ChatUI { get; }
+    private TuneUI TuneUI { get; }
+
     public IMutableState<PlaybackState?> PlaybackState { get; }
 
     public ChatPlayers(IServiceProvider services)
@@ -19,6 +23,7 @@ public class ChatPlayers : WorkerBase
         AudioOutputController = services.GetRequiredService<IAudioOutputController>();
         Clocks = services.Clocks();
         ChatUI = services.GetRequiredService<ChatUI>();
+        TuneUI = services.GetRequiredService<TuneUI>();
 
         var stateFactory = services.StateFactory();
         PlaybackState = stateFactory.NewMutable<PlaybackState?>();
@@ -118,6 +123,7 @@ public class ChatPlayers : WorkerBase
         {
             await AudioOutputController.ToggleAudio(state != null).ConfigureAwait(false);
             if (state is HistoricalPlaybackState historical) {
+                _ = TuneUI.Play("start-historical-playback", CancellationToken.None);
                 var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await startTask.ConfigureAwait(false);
@@ -129,6 +135,7 @@ public class ChatPlayers : WorkerBase
                 await startTask.ConfigureAwait(false);
             }
             if (state is RealtimePlaybackState realtime) {
+                _ = TuneUI.Play("start-realtime-playback", CancellationToken.None);
                 var resumeTask = ResumeRealtimePlayback(realtime.ChatIds, ct);
                 await resumeTask.ConfigureAwait(false);
             }
@@ -137,10 +144,13 @@ public class ChatPlayers : WorkerBase
         async Task ExitState(PlaybackState? state, CancellationToken ct)
         {
             if (state is HistoricalPlaybackState historical) {
+                _ = TuneUI.Play("stop-historical-playback", CancellationToken.None);
                 await Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
             }
-            else if (state is RealtimePlaybackState realtime)
+            else if (state is RealtimePlaybackState realtime) {
+                _ = TuneUI.Play("stop-realtime-playback", CancellationToken.None);
                 await Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
+            }
         }
     }
 

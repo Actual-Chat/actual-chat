@@ -36,18 +36,18 @@ public class CoreModule : HostModule<CoreSettings>
         // Common services
         services.AddSingleton<StaticImportsInitializer>();
         services.AddHostedService<StaticImportsInitializer>();
-        services.AddSingleton<UrlMapper>(sp => new UrlMapper(
-            sp.GetRequiredService<HostInfo>()));
+        services.AddSingleton<UrlMapper>(c => new UrlMapper(
+            c.GetRequiredService<HostInfo>()));
 
         // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options {
             ScannedAssemblies = pluginAssemblies,
         });
-        services.AddSingleton<IMatchingTypeFinder>(sp => new MatchingTypeFinder(
-            sp.GetRequiredService<MatchingTypeFinder.Options>()));
+        services.AddSingleton<IMatchingTypeFinder>(c => new MatchingTypeFinder(
+            c.GetRequiredService<MatchingTypeFinder.Options>()));
 
         // DiffEngine
-        services.AddSingleton<DiffEngine>(sp => new DiffEngine(sp));
+        services.AddSingleton<DiffEngine>(c => new DiffEngine(c));
 
         // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
@@ -63,7 +63,7 @@ public class CoreModule : HostModule<CoreSettings>
         fusion.AddFusionTime();
 
         // Features
-        services.AddScoped<Features>(sp => new Features(sp));
+        services.AddScoped<Features>(c => new Features(c));
         fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
@@ -80,7 +80,7 @@ public class CoreModule : HostModule<CoreSettings>
         if (storageBucket.IsNullOrEmpty()) {
             services.TryAddSingleton<IContentTypeProvider>(sp
                 => sp.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
-            services.AddSingleton<IBlobStorageProvider>(sp => new TempFolderBlobStorageProvider(sp));
+            services.AddSingleton<IBlobStorageProvider>(c => new TempFolderBlobStorageProvider(c));
         }
         else
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));

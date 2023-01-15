@@ -24,7 +24,7 @@ import { Log, LogLevel } from 'logging';
 import Escapist from '../../Services/Escapist/escapist';
 import { HistoryUI } from '../../Services/HistoryUI/history-ui';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
-import { Vibration } from '../../Services/Vibration/vibration';
+import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
 
 const LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -189,7 +189,7 @@ export class MenuHost implements Disposable {
 
         this.blazorRef.invokeMethodAsync('OnRenderRequest', menu.id, menu.menuRef, menu.isHoverMenu);
         if (ScreenSize.isNarrow())
-            Vibration.vibrate();
+            VibrationUI.vibrate();
     }
 
     private hide(options?: {

@@ -37,7 +37,7 @@
                 <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
                     <div class="post-panel flex-auto">
                         <div class="flex-x attach-dropdown">
-                            <ButtonRound Class="attach-btn" Click="@(() => ShowFilePicker())">
+                            <ButtonRound Class="attach-btn">
                                 <i class="icon-attach-2 text-2xl"></i>
                             </ButtonRound>
                             <input class="file-picker" type="file" hidden multiple/>
@@ -97,6 +97,7 @@
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -163,6 +164,7 @@
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
+        _ = TuneUI.Play("send-message");
         try {
             AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
             _ = MarkupEditorRef.Clear();
