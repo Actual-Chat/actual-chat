@@ -11,7 +11,7 @@
 }
 
 .chat-message {
-    @apply flex items-start;
+    @apply flex-x items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-current break-words;
 }
@@ -111,6 +111,7 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 
 .message-content {
+    @apply rounded-sm;
 }
 
 .system-entry .message-content {
