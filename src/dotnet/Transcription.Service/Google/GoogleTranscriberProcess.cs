@@ -144,8 +144,10 @@ public class GoogleTranscriberProcess : WorkerBase
             var wordEndTime = (float)word.EndOffset.ToTimeSpan().TotalSeconds;
             var wordEnd = wordStart + word.Word.Length;
 
-            mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTime));
-            mapPoints.Add(new Vector2(lastStableTextLength + wordEnd, wordEndTime));
+            var wordStartTimeAdjusted = (float)Math.Round(Math.Max(0, wordStartTime - 2.000f), 2, MidpointRounding.AwayFromZero); // 2s prepended silence length
+            var wordEndTimeAdjusted = (float)Math.Round(Math.Max(0, wordEndTime - 2.000f), 2, MidpointRounding.AwayFromZero); // 2s prepended silence length
+            mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTimeAdjusted));
+            mapPoints.Add(new Vector2(lastStableTextLength + wordEnd, wordEndTimeAdjusted));
 
             parsedDuration = wordStartTime;
             parsedOffset = wordStart + word.Word.Length;
