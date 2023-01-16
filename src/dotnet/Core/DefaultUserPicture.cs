@@ -13,6 +13,9 @@ public static class DefaultUserPicture
     public static string GetAvataaar(string hash)
         => $"https://avatars.dicebear.com/api/avataaars/{hash.UrlEncode()}.svg";
 
+    public static string GetBoringAvatar(string hash)
+        => $"https://source.boringavatars.com/beam/{DefaultSize}/{hash.UrlEncode()}?colors=FFDBA0,BBBEFF,9294E1,FF9BC0,0F2FE8";
+
     public static string? GetGravatar(User? user, int size = DefaultSize)
         => GetGravatar(GetEmail(user), size);
 
