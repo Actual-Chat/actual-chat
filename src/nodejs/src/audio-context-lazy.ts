@@ -124,7 +124,7 @@ export class AudioContextLazy implements Disposable {
                 currentContextTime = audioContext.currentTime;
                 if (lastContextTime == currentContextTime) {
                     // We can't resume it - user gesture context has already been lost
-                    this.refreshAudioContextTask();
+                    await this.refreshAudioContextTask();
                     return this.audioContextTask;
                 }
                 debugLog?.log(`<- get`);
@@ -168,13 +168,17 @@ export class AudioContextLazy implements Disposable {
         this.audioContextChanged.triggerSilently(audioContext);
     }
 
-    private refreshAudioContextTask(): void {
-        const audioContext = this.audioContext;
+    private async refreshAudioContextTask(): Promise<void> {
+        let audioContext = this.audioContext;
         this.nextInteractionHandler?.dispose();
         this.nextInteractionHandler = null;
         this.audioContext = null;
         this.audioContextTask = new PromiseSource<AudioContext>();
         this.audioContextChanged.triggerSilently(null);
+        if (audioContext)
+            await audioContext.suspend();
+        else
+            audioContext = await defaultFactory();
         if (this.requireInteraction) {
             this.nextInteractionHandler = NextInteraction.addHandler(async () => {
                 await this.refreshAudioContext(audioContext);
@@ -184,7 +188,7 @@ export class AudioContextLazy implements Disposable {
         }
     }
 
-    private async refreshAudioContext(audioContext: AudioContext): Promise<void> {
+    private async refreshAudioContext(audioContext: AudioContext | null): Promise<void> {
         try {
             await resume(audioContext);
             this.setAudioContext(audioContext)
@@ -199,7 +203,7 @@ export class AudioContextLazy implements Disposable {
         if (this.audioContext === null)
             return;
 
-        this.refreshAudioContextTask();
+        void this.refreshAudioContextTask();
     }
 }
 
