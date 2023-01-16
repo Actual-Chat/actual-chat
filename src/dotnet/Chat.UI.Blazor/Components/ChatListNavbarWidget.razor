@@ -3,6 +3,12 @@
 @{
     var m = State.Value;
     var count = m.AllChats.Select(c => c.UnreadCount).Sum();
+    var (title, icon) = _activeTabId switch
+    {
+        TabId.ByUnreadCount => ("Unread", "icon-sort-by-message"),
+        TabId.ByOwnActivity => ("Recent", "icon-sort-by-recent"),
+        _ => ("Updated", "icon-sort-by-alphabet"),
+        };
 
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
         @<Tab
@@ -23,12 +29,7 @@
         </Tab>;
 }
 
-<RenderIntoSlot Name="SortButton">
-    <ButtonRound Class="sort-btn">
-        <i class="icon-menu text-2xl text-icons-01"></i>
-    </ButtonRound>
-</RenderIntoSlot>
-
+<OnUIEvent TEvent="@SelectSortingTypeEvent" Handler="OnSelectSortingTypeEvent" />
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y w-full h-full overflow-y-auto md:overflow-y-visible custom-scrollbar">
@@ -38,14 +39,13 @@
                 BottomHill="true"
                 Class="md:overflow-y-hidden"
                 TabsClass="left-panel-tabs"
-                AdditionalButtonName="SortButton"
                 ActiveTabChanged="@OnActiveTabChanged">
                 <AdditionalButton>
                     <ButtonRound Class="sort-btn btn-sm"
                                  data-menu="@(MenuRef.New<SortMenu>())"
                                  data-menu-trigger="@(MenuTriggers.Primary.Format())"
                                  data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-                        <i class="icon-sort-by-recent text-xl"></i>
+                        <i class="@icon text-2xl"></i>
                     </ButtonRound>
                 </AdditionalButton>
                 <ChildContent>
@@ -126,6 +126,12 @@
             return;
 
         Nav.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));
+    }
+
+    private async Task OnSelectSortingTypeEvent(SelectSortingTypeEvent @event, CancellationToken cancellationToken) {
+        var tabId = @event.TabId;
+        _activeTabId = tabId;
+        await State.Recompute(cancellationToken);
     }
 
     public enum TabId {
