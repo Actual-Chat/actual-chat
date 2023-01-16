@@ -41,7 +41,10 @@
                 AdditionalButtonName="SortButton"
                 ActiveTabChanged="@OnActiveTabChanged">
                 <AdditionalButton>
-                    <ButtonRound Class="sort-btn btn-sm">
+                    <ButtonRound Class="sort-btn btn-sm"
+                                 data-menu="@(MenuRef.New<SortMenu>())"
+                                 data-menu-trigger="@(MenuTriggers.Primary.Format())"
+                                 data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                         <i class="icon-sort-by-recent text-xl"></i>
                     </ButtonRound>
                 </AdditionalButton>

@@ -1,0 +1,24 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<div class="sort-menu">
+    <MenuEntry
+        Icon="icon-sort-by-recent"
+        Text="Recent"
+        Click="@OnClick">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-sort-by-alphabet"
+        Text="Alphabet"
+        Click="@OnClick">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-sort-by-message"
+        Text="Message"
+        Click="@OnClick">
+    </MenuEntry>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClick { get; set; }
+}
