@@ -38,7 +38,7 @@
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
         var avatarPicture = Avatar.Picture.IsNullOrEmpty()
-            ? DefaultUserPicture.GetAvataaar(Avatar.Id.ToString().GetDjb2HashCode().ToString())
+            ? DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString())
             : Avatar.Picture;
         _avatarPictureUrl = UrlMapper.ContentUrl(avatarPicture);
     }
