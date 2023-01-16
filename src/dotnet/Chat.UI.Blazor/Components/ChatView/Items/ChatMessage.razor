@@ -33,16 +33,14 @@
 }
 @if (isSystem) {
     <div class="@cls">
-        <div class="flex-y w-full">
-            <div class="chat-message group px-1.5 py-1 relative">
-                <div class="flex-1 overflow-hidden">
-                    <div class="message-content rounded-sm">
-                        <p class="chat-message-markup">
-                            <CascadingValue Value="@entry" IsFixed="true">
-                                <MarkupView Markup="@markup"/>
-                            </CascadingValue>
-                        </p>
-                    </div>
+        <div class="chat-message group @cls">
+            <div class="c-content">
+                <div class="message-content">
+                    <p class="chat-message-markup">
+                        <CascadingValue Value="@entry" IsFixed="true">
+                            <MarkupView Markup="@markup"/>
+                        </CascadingValue>
+                    </p>
                 </div>
             </div>
         </div>
@@ -50,39 +48,40 @@
     return;
 }
 
-<div class="flex-y w-full @cls"
+<div class="@cls"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
      data-menu-trigger="@(MenuTriggers.Secondary.Format())"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-    <div class="chat-message relative group flex-none flex-x gap-x-1 w-full px-1.5 py-1">
-        @if (showAuthor) {
-            <div class="flex-none p-1.5">
-                <ChatMessageAuthorCircle
-                    AuthorSid="@entry.AuthorId"
-                    Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
-            </div>
-        } else {
-            var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
-            <div class="flex-none w-8 mx-2">
-                <span class="chat-message-timestamp-on-hover">@timestamp</span>
-            </div>
-        }
-        <div class="flex-1 flex-y">
+    <div class="chat-message group">
+        <div class="c-author-badge">
             @if (showAuthor) {
-                <div class="flex-none flex-x items-baseline header chat-message-header">
-                    <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name" />
-                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit px-2" Moment="@entry.BeginsAt"/>
-                    @* &nbsp; *@
-                    @* <span class="text-02 opacity-20 text-xxs">id=@entry.Id</span> *@
+                <div class="m-1.5">
+                    <ChatMessageAuthorCircle
+                        AuthorSid="@entry.AuthorId"
+                        Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
+                </div>
+            } else {
+                var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                <div class="w-8 mx-2">
+                    <span class="chat-message-timestamp-on-hover">@timestamp</span>
                 </div>
             }
-            <div class="flex-1 message-content">
+        </div>
+        <div class="c-content">
+            @if (showAuthor) {
+                <div class="c-author-header">
+                    <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
+                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
+                    @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
+                </div>
+            }
+            <div class="message-content">
                 @if (isReply) {
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@message" Class="mx-1" ShowEntryKind="@Message.ShowEntryKind" />
+                    <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.ShowEntryKind"/>
                 } else {
                     <p class="chat-message-markup">
                         @if (message.ShowEntryKind) {
@@ -106,12 +105,10 @@
                 </div>
             }
             @if (entry.HasReactions) {
-                <MessageReactions Entry="@entry" />
+                <MessageReactions Entry="@entry"/>
             }
         </div>
     </div>
-
-    <div class="message-hover-menu-placement placement"></div>
 </div>
 
 @code {

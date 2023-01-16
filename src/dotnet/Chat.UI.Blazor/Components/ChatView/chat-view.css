@@ -1,6 +1,7 @@
 .message-wrapper {
-    @apply flex-x relative w-full select-none md:select-auto;
+    @apply relative flex-y;
     @apply border-l-2 border-bg-01;
+    @apply select-none md:select-auto;
     transform: translateZ(0);
 }
 .message-wrapper:hover {
@@ -11,14 +12,32 @@
 }
 
 .chat-message {
-    @apply flex-x items-start;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply relative;
+    @apply flex-1 flex-x items-stretch gap-x-1 overflow-hidden;
+    @apply px-1 py-1;
     @apply text-current break-words;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+}
+
+.chat-message > .c-author-badge {
+    @apply flex-none;
+    @apply overflow-hidden;
+}
+
+.chat-message > .c-content {
+    @apply flex-1 flex-y;
+    @apply overflow-hidden;
+}
+
+.chat-message > .c-content > .c-author-header {
+    @apply flex-none flex-x items-baseline gap-x-2 min-w-0;
 }
 
 .chat-message-author-name {
-    @apply font-bold text-03 cursor-pointer hover:opacity-80;
-    @apply overflow-y-hidden truncate max-h-6;
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-bold text-03;
+    @apply hover:opacity-80;
+    @apply cursor-pointer;
 }
 .message-wrapper.own-message .author-name {
     @apply text-06;
@@ -111,6 +130,7 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 
 .message-content {
+    @apply flex-1 overflow-hidden;
     @apply rounded-sm;
 }
 
@@ -124,11 +144,23 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 
 .chat-message-quote {
-    @apply px-1.5 w-full h-12;
-    @apply flex-x items-center;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply flex-x items-stretch;
     @apply text-03 cursor-pointer;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
-.chat-message-quote-removed {
-    @apply italic h-6 cursor-default;
+.chat-message-quote.removed {
+    @apply italic cursor-default;
+}
+.chat-message-quote > .c-content {
+    @apply flex-1 flex-y;
+    @apply overflow-hidden;
+}
+.chat-message-quote > .c-content > .c-author {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply opacity-90;
+}
+.chat-message-quote > .c-content > .c-text {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-medium text-base text-03;
+    @apply pointer-events-none;
 }

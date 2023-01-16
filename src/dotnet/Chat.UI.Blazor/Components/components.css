@@ -1,10 +1,22 @@
 /* DeleteMessageModal */
 
-.delete-message-modal .message-content {
-    @apply max-h-48;
-    @apply overflow-y-auto break-words;
+.delete-message-modal .c-question {
+    @apply flex-none overflow-hidden mb-4;
 }
-.delete-message-modal .message-content > * {
+.delete-message-modal .c-message {
+    @apply flex-initial flex-y;
+    @apply overflow-hidden;
+    @apply rounded-lg border border-bg-04 bg-01;
+}
+.delete-message-modal .chat-message {
+    @apply md:max-h-48;
+    @apply overflow-auto custom-scrollbar; /* This is what we scroll */
+}
+.delete-message-modal .message-content {
+    @apply min-h-fit;
+    overflow: visible; /* This cancels overflow-hidden @ .chat-message */
+}
+.delete-message-modal .message-content * {
     @apply pointer-events-none;
 }
 

@@ -6,22 +6,20 @@
 }
 
 @if (Entry.IsRemoved) {
-    <div class="chat-message-quote chat-message-quote-removed">
-        <LeftLine Class="h-5"/>
-        The message was deleted.
+    <div class="chat-message-quote removed">
+        <LeftLine/>
+        <div class="c-content">
+            <div class="c-text">The message was deleted.</div>
+        </div>
     </div>
 } else {
     <div class="chat-message-quote" @onclick="@OnQuoteClick">
-        <LeftLine Class="h-10"/>
-        <div class="flex-y w-full px-2 opacity-90">
-            <div class="grid pl-0.5">
+        <LeftLine/>
+        <div class="c-content">
+            <div class="c-author">
                 <AuthorName AuthorSid="@Entry.AuthorId" Class="@authorNameCls"/>
             </div>
-            <div class="flex-x w-full pl-0.5 items-center pointer-events-none overflow-hidden">
-                <div class="flex-x w-full overflow-hidden">
-                    <div class="truncate font-medium pointer-cursor text-base text-03">@_text</div>
-                </div>
-            </div>
+            <div class="c-text">@_text</div>
         </div>
     </div>
 }

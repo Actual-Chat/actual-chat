@@ -37,13 +37,16 @@
     @apply z-10;
 }
 .modal-frame {
-    @apply flex-y gap-y-4 p-0 md:p-4 pb-4;
+    @apply flex-y items-stretch gap-y-4 p-0 md:p-4 pb-4 overflow-hidden;
     @apply h-full w-full md:h-auto md:w-modal;
     @apply md:rounded-2xl rounded-none font-medium;
 }
 .modal-frame .dialog-body,
 .modal-frame .dialog-buttons {
     @apply px-4 md:px-1 overflow-hidden;
+}
+.modal-frame .dialog-buttons {
+    @apply flex-none;
 }
 .dialog-body .validation-errors {
     @apply rounded-md mb-2;
@@ -70,7 +73,7 @@
 }
 .modal-header {
     @apply flex-none flex-x justify-between items-center gap-x-2;
-    @apply max-h-10;
+    @apply max-h-10 overflow-hidden;
 }
 .modal-mobile-header {
     @apply flex-x justify-start items-center gap-x-2;
@@ -84,9 +87,8 @@
 }
 
 .dialog-body {
-    @apply flex-y grow;
-    @apply overflow-y-auto;
-    @apply custom-scrollbar;
+    @apply flex-1 flex-y items-stretch overflow-hidden;
+    /*@apply overflow-y-auto custom-scrollbar;*/
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply border rounded-md outline-none p-1 px-2;
@@ -104,6 +106,7 @@
 
 .dialog-buttons {
     @apply flex flex-row justify-end;
+    @apply overflow-hidden;
 }
 .dialog-buttons .btn,
 .dialog-buttons .btn * {
