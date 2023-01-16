@@ -10,11 +10,14 @@
     @apply overflow-hidden;
 }
 .tab-panel-tabs .btn-group {
-    @apply justify-evenly w-full;
+    @apply w-full justify-evenly;
+}
+.tab-panel-tabs .btn-group-container {
+    @apply flex-y mr-2;
 }
 
 .tab-panel-tabs .btn.tab-btn {
-    @apply border-0 rounded-none min-w-2;
+    @apply min-w-2 border-0 rounded-none;
     @apply text-02 text-caption-1 tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn {
