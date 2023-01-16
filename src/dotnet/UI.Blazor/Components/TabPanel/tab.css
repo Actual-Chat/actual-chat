@@ -26,16 +26,9 @@
 .tab-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-02 text-primary;
 }
-.tab-panel-tabs .btn.tab-btn:hover .btn-content {
-    @apply bg-transparent;
-}
 .tab-panel-tabs .btn.tab-btn.on + .shape {
     @apply bg-primary;
 }
-.tab-panel-tabs .btn.tab-btn:hover + .shape {
-    @apply bg-primary opacity-50;
-}
-
 .tab-panel .tab {
     @apply grow w-full max-w-full;
 }

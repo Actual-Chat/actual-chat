@@ -131,7 +131,7 @@
 }
 
 .left-panel-tabs {
-    @apply p-0 m-0;
+    @apply max-h-14 p-0 m-0;
     @apply border-b border-bg-04;
 }
 .left-panel-tabs .btn-group {
@@ -153,7 +153,10 @@
     @apply bg-transparent cursor-default;
 }
 .left-panel-tabs .tab-btn .btn-content {
-    @apply p-1.5 rounded-xl;
+    @apply py-1.5 px-2 rounded-xl;
+}
+.left-panel-tabs .tab-btn .btn-content .message-counter-badge {
+    @apply ml-1;
 }
 
 .wide-left-panel-tabs .btn-group {
