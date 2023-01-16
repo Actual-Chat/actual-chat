@@ -3,14 +3,14 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
-            <div class="relative btn-group overflow-hidden">
+            <div class="relative btn-group">
                 @if (AdditionalButton != null) {
                     @AdditionalButton
                 }
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
                     var cls = $"tab-btn {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
-                    <div class="flex-y btn-group-container mr-2">
+                    <div class="btn-group-container">
                         <Button
                             data-tab-id="@tab.Id"
                             role="tab"
