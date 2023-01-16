@@ -48,6 +48,11 @@ trim_trailing_whitespace = false
 indent_size = 4
 insert_final_newline = true
 
+# tailwind.config.js
+[tailwind.config.js]
+indent_size = 2
+tab_width = 2
+
 [{*.cs, *.razor}]
 # ReSharper properties
 resharper_csharp_keep_existing_attribute_arrangement = true
