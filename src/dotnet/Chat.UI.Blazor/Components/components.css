@@ -158,6 +158,9 @@
 .left-panel-tabs .tab-btn .btn-content .message-counter-badge {
     @apply ml-1;
 }
+.sort-btn .btn-content {
+    @apply -mb-1;
+}
 
 .wide-left-panel-tabs .btn-group {
     @apply min-h-14 justify-between px-4 overflow-x-hidden;
