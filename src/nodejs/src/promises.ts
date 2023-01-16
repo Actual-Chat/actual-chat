@@ -10,13 +10,18 @@ export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> 
 }
 
 export class AsyncLock {
-    private _promise: Promise<Unit>;
+    private _promise: PromiseSource<Unit>;
 
     constructor () {
-        this._promise = Promise.resolve(Unit.Instance);
+        this._promise = new PromiseSource<Unit>();
+        this._promise.resolve(Unit.Instance);
     }
 
-    public async lock<T>(job: () => Promise<T>): Promise<T> {
+    public async lock<T>(job: () => Promise<T>, timeoutMs: number | null = null): Promise<T> {
+        if (timeoutMs && !this._promise.isResolved() && !this._promise.hasTimeout()) {
+            const existingTask = this._promise;
+            existingTask.setTimeout(timeoutMs, () => existingTask.resolve(Unit.Instance));
+        }
         await this._promise;
         const task = new PromiseSource<Unit>();
         this._promise = task;
@@ -67,6 +72,10 @@ export class PromiseSource<T> implements Promise<T> {
 
     public isCompleted(): boolean {
         return this._isCompleted;
+    }
+
+    public hasTimeout(): boolean {
+        return this._timeout != null;
     }
 
     public setTimeout(timeoutMs: number | null, callback?: () => unknown): void {

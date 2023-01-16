@@ -11,6 +11,8 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
+const MAX_LOCK_WAIT = 3000;
+
 async function defaultFactory(): Promise<AudioContext> {
     const audioContext = new AudioContext({
         latencyHint: 'interactive',
@@ -132,7 +134,8 @@ export class AudioContextLazy implements Disposable {
             }
             debugLog?.log(`<- get promise`);
             return this.audioContextTask;
-        });
+        },
+        MAX_LOCK_WAIT);
     }
 
     public skipWaitForNextInteraction(): void {

@@ -172,6 +172,9 @@ public partial class ChatUI
 
         async ValueTask<bool> IsRecordingLanguageChanged()
         {
+            if (recorderChatId.IsNone)
+                return false;
+
             var language = await LanguageUI.GetChatLanguage(recorderChatId, cancellationToken).ConfigureAwait(false);
             var isLanguageChanged = _lastRecordingLanguage.HasValue && language != _lastRecordingLanguage;
             _lastRecordingLanguage = language;
@@ -251,7 +254,7 @@ public partial class ChatUI
                 lastChatEntry = cLastChatEntry.Value;
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested) {
-                await UpdateRecorderState(true, default, cancellationToken).ConfigureAwait(false);
+                _ = UpdateRecorderState(true, default, cancellationToken).ConfigureAwait(false);
             }
         }
     }
