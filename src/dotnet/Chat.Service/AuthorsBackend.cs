@@ -317,7 +317,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     private AvatarFull GetDefaultAvatar(AuthorFull author)
         => new() {
             Name = RandomNameGenerator.Default.Generate(author.Id),
-            Picture = DefaultUserPicture.GetAvataaar(author.Id),
+            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
             Bio = "",
         };
 
