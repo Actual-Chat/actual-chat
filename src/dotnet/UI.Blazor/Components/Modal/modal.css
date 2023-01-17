@@ -71,10 +71,23 @@
 .btn.btn-square.modal-close:hover > .btn-content {
     @apply bg-transparent opacity-90;
 }
+
 .modal-header {
     @apply flex-none flex-x justify-between items-center gap-x-2;
-    @apply max-h-10 overflow-hidden;
+    @apply min-h-10 max-h-10;
+    @apply overflow-visible;
 }
+.modal-header .modal-title {
+    @apply flex-1;
+    @apply text-xl md:text-lg font-semibold md:font-medium truncate;
+}
+.modal-header .modal-close {
+    @apply flex-none;
+    @apply -mr-0.5;
+    @apply overflow-visible;
+    @apply invisible md:visible;
+}
+
 .modal-mobile-header {
     @apply flex-x justify-start items-center gap-x-2;
     @apply min-h-14 px-2;
@@ -116,7 +129,7 @@
     @apply min-w-full;
 }
 .dialog-buttons.full-width .form-buttons {
-    @apply gap-x-4 justify-center my-1;
+    @apply gap-x-4 justify-center;
 }
 .dialog-buttons.full-width .btn {
     @apply max-w-full grow;

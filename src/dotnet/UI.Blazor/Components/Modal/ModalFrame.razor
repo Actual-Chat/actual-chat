@@ -2,17 +2,16 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = $"modal-frame {Class}";
-    var closeBtnCls = $"modal-close {CloseButtonClass}";
 }
 
 <ModalChrome Class="@cls">
     @if (HasHeader) {
         @if (ScreenSize.IsWide()) {
             <div class="modal-header">
-                <h3 class="modal-title flex-1 text-xl md:text-lg font-semibold md:font-medium truncate">@Title</h3>
+                <h3 class="modal-title">@Title</h3>
                 @if (HasCloseButton) {
-                    <div class="flex-none my-1 invisible md:visible">
-                        <ButtonRound Class="@closeBtnCls" Click="OnCloseClick" tabindex="-1" aria-label="close">
+                    <div class="modal-close">
+                        <ButtonRound Class="@CloseButtonClass" Click="OnCloseClick" tabindex="-1" aria-label="close">
                             <i class="icon-close text-2xl font-medium"></i>
                         </ButtonRound>
                     </div>
