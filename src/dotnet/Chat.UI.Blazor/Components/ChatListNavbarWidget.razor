@@ -13,7 +13,7 @@
     RenderFragment RenderTab(TabId tabId, string tabTitle) =>
         @<Tab
             Title="@tabTitle" Id="@tabId.ToString()"
-            Class="flex-y self-start relative overflow-y-visible md:overflow-y-auto custom-scrollbar h-full chats-tab">
+            Class="chats-tab">
             <TitleContent>
                 <span>@tabTitle</span>
                 <UnreadCount Value="@count" Click="@OnUnreadBadgeClick"/>
@@ -49,6 +49,9 @@
                     </ButtonRound>
                 </AdditionalButton>
                 <ChildContent>
+                    @RenderTab(_activeTabId, title )
+                    @RenderTab(_activeTabId, title )
+                    @RenderTab(_activeTabId, title )
                     @RenderTab(_activeTabId, title )
                 </ChildContent>
             </TabPanel>
