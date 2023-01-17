@@ -50,9 +50,6 @@
                 </AdditionalButton>
                 <ChildContent>
                     @RenderTab(_activeTabId, title )
-                    @RenderTab(_activeTabId, title )
-                    @RenderTab(_activeTabId, title )
-                    @RenderTab(_activeTabId, title )
                 </ChildContent>
             </TabPanel>
         </div>
@@ -152,5 +149,4 @@
         public List<ChatInfo> UnpinnedChats { get; init; } = _emptyList;
         public IEnumerable<ChatInfo> AllChats => PinnedChats.Concat(UnpinnedChats);
     }
-
 }
