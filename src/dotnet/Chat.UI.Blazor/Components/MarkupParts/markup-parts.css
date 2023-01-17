@@ -86,13 +86,14 @@
 }
 
 .code-block-markup {
-    @apply flex-y items-stretch;
+    @apply flex-y items-stretch overflow-hidden;
     @apply mr-2;
-    @apply overflow-y-visible overflow-x-auto custom-scrollbar-x;
 }
 .code-block-markup code {
-    @apply block border-0 border-l-4 rounded-l bg-02;
+    @apply block;
     @apply p-1 px-1.5;
+    @apply rounded-l border-0 border-l-4 bg-02;
+    @apply overflow-y-hidden overflow-x-auto custom-scrollbar-x
     /*@apply whitespace-pre-wrap;*/
 }
 

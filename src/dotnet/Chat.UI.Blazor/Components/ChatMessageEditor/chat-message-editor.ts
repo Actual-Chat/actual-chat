@@ -57,7 +57,7 @@ export class ChatMessageEditor {
         // Wiring up event listeners
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
-            .subscribe(() => throttle(this.updateLayout, 250, 'delayHead'));
+            .subscribe(this.updateLayoutThrottled);
         this.input.addEventListener('paste', this.onInputPaste);
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
@@ -242,6 +242,7 @@ export class ChatMessageEditor {
 
     // Private methods
 
+    private updateLayoutThrottled = throttle(() => this.updateLayout(), 250, 'delayHead');
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;
@@ -297,6 +298,7 @@ export class ChatMessageEditor {
         const isTextMode = text != '' || this.attachments.size > 0;
         if (this.hasContent === isTextMode)
             return;
+
         this.hasContent = isTextMode;
         if (isTextMode)
             this.editorDiv.classList.add('text-mode');
