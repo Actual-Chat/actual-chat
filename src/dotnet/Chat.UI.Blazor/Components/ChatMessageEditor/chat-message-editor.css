@@ -128,10 +128,13 @@
 }
 
 .attachment-list-wrapper {
-    @apply relative flex-y bg-01 px-2 border-y;
+    @apply relative flex-y;
+    @apply px-2;
+    @apply border-y bg-01;
 }
 .attachment-list {
-    @apply flex-x gap-x-4 w-full justify-start my-1 p-2 overflow-x-auto;
+    @apply flex-1 flex-x gap-x-4 justify-start;
+    @apply w-full my-1 p-2 overflow-x-auto;
 }
 .clear-attachments-btn.btn {
     @apply min-h-6 max-h-6 border-transparent;

@@ -7,10 +7,6 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class NextInteraction {
     private static readonly event: EventHandlerSet<Event> = new EventHandlerSet<Event>();
-    private static readonly onClick = (event: Event) => NextInteraction.onEventThrottled(event);
-    private static readonly onDoubleClick = (event: Event) => NextInteraction.onEventThrottled(event);
-    private static readonly onKeyDown = (event: Event) => NextInteraction.onEventThrottled(event);
-    private static readonly onTouchEnd = (event: Event) => NextInteraction.onEventThrottled(event);
     public static isStarted: boolean;
 
     public static start(): void {
@@ -18,10 +14,10 @@ export class NextInteraction {
             return;
 
         const options = { capture: true, passive: true };
-        document.addEventListener('click', this.onClick, options);
-        document.addEventListener('doubleclick', this.onDoubleClick, options);
-        document.addEventListener('onkeydown', this.onKeyDown, options);
-        document.addEventListener('touchend', this.onTouchEnd, options);
+        document.addEventListener('click', this.onEventThrottled, options);
+        document.addEventListener('doubleclick', this.onEventThrottled, options);
+        document.addEventListener('onkeydown', this.onEventThrottled, options);
+        document.addEventListener('touchend', this.onEventThrottled, options);
         this.isStarted = true;
         debugLog?.log(`start`);
     }
@@ -30,10 +26,10 @@ export class NextInteraction {
         if (!this.isStarted)
             return;
 
-        document.removeEventListener('click', this.onClick);
-        document.removeEventListener('doubleclick', this.onDoubleClick);
-        document.removeEventListener('onkeydown', this.onKeyDown);
-        document.removeEventListener('touchend', this.onTouchEnd);
+        document.removeEventListener('click', this.onEventThrottled);
+        document.removeEventListener('doubleclick', this.onEventThrottled);
+        document.removeEventListener('onkeydown', this.onEventThrottled);
+        document.removeEventListener('touchend', this.onEventThrottled);
         this.isStarted = false;
         debugLog?.log(`stop`);
     }
@@ -44,7 +40,7 @@ export class NextInteraction {
 
     // Private methods
 
-    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 500, 'skip');
+    private static readonly onEventThrottled = throttle((e: Event) => NextInteraction.onEvent(e), 200, 'skip');
     private static onEvent(event: Event): void {
         debugLog?.log(`onEvent, event:`, event);
         this.event.triggerSilently(event);

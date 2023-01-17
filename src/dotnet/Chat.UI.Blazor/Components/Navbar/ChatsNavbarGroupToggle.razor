@@ -3,10 +3,13 @@
 @inherits ComputedStateComponent<ChatsNavbarGroupToggle.Model>
 @{
     var m = State.ValueOrDefault ?? new();
-    var showBadge = m.Count.Value != 0;
 }
 <NavbarGroupToggle
-    Title="Chats" Id="@NavbarGroupIds.Chats" Tooltip="Chats" FloatingPosition="FloatingPosition.Right" ShowBadge="@showBadge">
+    Id="@NavbarGroupIds.Chats"
+    Title="Chats"
+    Tooltip="Chats"
+    TooltipPosition="FloatingPosition.Right"
+    ShowBadge="@(m.Count != 0)">
     <ChildContent>
         <i class="icon-message-ellipse text-2xl font-medium"></i>
     </ChildContent>

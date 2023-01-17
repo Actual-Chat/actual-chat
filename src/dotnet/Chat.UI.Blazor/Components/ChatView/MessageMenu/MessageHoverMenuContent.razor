@@ -8,13 +8,13 @@
 }
 <div class="flex-x gap-x-1">
     <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
-        <EmojiIcon Id="@Emoji.ThumbsUp.Id" class="w-5 h-5"/>
+        <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply) {
         <ButtonRound
             Click="@(() => Reply(Message.Entry))"
             Tooltip="Reply"
-            FloatingPosition="FloatingPosition.Top">
+            TooltipPosition="FloatingPosition.Top">
             <i class="icon-reply text-xl text-icon-01"></i>
         </ButtonRound>
     }

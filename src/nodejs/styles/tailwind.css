@@ -146,14 +146,14 @@
     /* Custom scrollbars */
 
     /* Webkit */
-    .custom-scrollbar::-webkit-scrollbar {
+    .custom-scrollbar::-webkit-scrollbar,
+    .custom-scrollbar-x::-webkit-scrollbar {
         @apply w-1.5;
+        @apply h-1.5;
     }
     .custom-scrollbar-hide::-webkit-scrollbar {
         @apply w-0;
-    }
-    .custom-scrollbar-x::-webkit-scrollbar {
-        @apply h-1.5;
+        @apply h-0;
     }
 
     .custom-scrollbar::-webkit-scrollbar-track,

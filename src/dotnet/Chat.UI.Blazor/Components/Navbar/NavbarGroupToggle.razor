@@ -3,26 +3,25 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @{
-    var isActive = NavbarUI.ActiveGroupId == Id;
-    var cls = isActive ? "on" : "";
-    var btnClass = $"{cls} {Class}";
-    var lineClass = isActive ? "h-8" : "invisible";
+    var isSelected = NavbarUI.SelectedGroupId == Id;
+    var selectedClass = isSelected ? "selected" : "";
+    var buttonClass = $"{(isSelected ? "on" : "")} {Class}";
 }
 
-<div class="flex-x relative">
-    <LeftLine Class="@lineClass"/>
+<div class="navbar-group-toggle @selectedClass @Class">
+    <LeftLine/>
     <ButtonSquare
         Click="@OnClick"
-        Class="@btnClass"
+        Class="@buttonClass"
         Tooltip="@Tooltip"
         ContentClass="navbar-navigation-button-content"
-        FloatingPosition="@FloatingPosition">
+        TooltipPosition="@TooltipPosition">
         @ChildContent
     </ButtonSquare>
     <div class="w-[5px]">
     </div>
-    @if (ShowBadge) {
-        <Badge Class="navbar-group-toggle-chats-badge">@BadgeContent</Badge>
+    @if (ShowBadge && BadgeContent != null) {
+        <Badge>@BadgeContent</Badge>
     }
 </div>
 
@@ -30,27 +29,25 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    [Parameter] public string? Class { get; set; } = "";
-    [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
-    [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
-    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public FloatingPosition FloatingPosition { get; set; }
-    [Parameter] public bool ShowBadge { get; set; }
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter] public bool ShowBadge { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public FloatingPosition TooltipPosition { get; set; }
 
-    protected override void OnInitialized() {
-        NavbarUI.ActiveGroupChanged += OnNavbarActiveGroupChanged;
-    }
+    protected override void OnInitialized()
+        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
 
     public void Dispose()
-        => NavbarUI.ActiveGroupChanged -= OnNavbarActiveGroupChanged;
+        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
 
-    private void OnClick() {
-        NavbarUI.ActivateGroup(Id, Title);
-    }
+    private void OnClick()
+        => NavbarUI.SelectGroup(Id, Title);
 
-    private void OnNavbarActiveGroupChanged(object? s, EventArgs e)
-        => InvokeAsync(StateHasChanged);
+    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
+        => StateHasChanged();
 }

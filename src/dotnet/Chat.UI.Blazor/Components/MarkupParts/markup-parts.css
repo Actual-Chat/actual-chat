@@ -86,12 +86,14 @@
 }
 
 .code-block-markup {
-    @apply my-1 max-w-[95%];
+    @apply flex-y items-stretch;
+    @apply mr-2;
+    @apply overflow-y-visible overflow-x-auto custom-scrollbar-x;
 }
 .code-block-markup code {
     @apply block border-0 border-l-4 rounded-l bg-02;
     @apply p-1 px-1.5;
-    @apply whitespace-pre-wrap;
+    /*@apply whitespace-pre-wrap;*/
 }
 
 .unknown-markup {

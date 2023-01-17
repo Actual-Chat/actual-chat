@@ -16,7 +16,7 @@
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public string FormId { get; set; } = "";
-    [Parameter] public FloatingPosition FloatingPosition { get; set; }
+    [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool IsAutofocused { get; set; }
@@ -45,11 +45,9 @@
         if (IsDisabled) {
             attributes.Add("disabled", IsDisabled);
         }
-        if (!Tooltip.IsNullOrEmpty()) {
+        if (!Tooltip.IsNullOrEmpty() && TooltipPosition != FloatingPosition.None) {
             attributes.Add("data-tooltip", Tooltip);
-        }
-        if (FloatingPosition != FloatingPosition.None) {
-            attributes.Add("data-tooltip-position", FloatingPosition.ToPositionString());
+            attributes.Add("data-tooltip-position", TooltipPosition.ToPositionString());
         }
         return attributes;
     }

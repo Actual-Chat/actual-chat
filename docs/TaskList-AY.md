@@ -1,5 +1,5 @@
 Fix:
-- Clicking on your own author produces an error in AuthorModal.razor:line 65
+- Unify TriggerEditor / focusAndOpenKeyboard
 
 Add helper calling UICommander.RunNothing + get rid of UpdateDelayer.Instant:
 - RelatedChatEntry.Value + RelatedChatEntryPanel

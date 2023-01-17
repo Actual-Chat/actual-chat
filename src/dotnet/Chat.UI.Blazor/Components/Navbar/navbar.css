@@ -5,8 +5,23 @@
     @apply w-10 md:w-12 h-10 md:h-12 bg-white;
 }
 
-.navbar-group-toggle-chats-badge {
-    @apply absolute  bg-counter-navgroup text-[10px] min-w-4 min-h-4 w-4 h-4 -right-0.5 -top-0.5;
+.navbar-group-toggle {
+    @apply relative;
+    @apply flex-none flex-x items-stretch;
+}
+
+.navbar-group-toggle .left-line {
+    @apply self-center h-8;
+}
+.navbar-group-toggle:not(.selected) .left-line {
+    @apply invisible;
+}
+
+.navbar-group-toggle .badge {
+    @apply absolute -right-0.5 -top-0.5;
+    @apply min-w-4 min-h-4 w-4 h-4;
+    @apply text-[10px];
+    @apply bg-counter-navgroup;
 }
 
 .first-pinned.btn .btn-content {

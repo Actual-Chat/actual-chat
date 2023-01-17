@@ -1,6 +1,6 @@
 .left-line {
     @apply flex-none self-stretch flex-x items-stretch;
-    @apply pr-2;
+    @apply pr-0.5;
 }
 .left-line > div {
     @apply w-0.5 min-w-0.5 max-w-0.5;

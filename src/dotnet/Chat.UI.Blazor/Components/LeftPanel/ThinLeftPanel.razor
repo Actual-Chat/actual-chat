@@ -8,19 +8,19 @@
         </div>
         <div class="flex-y w-full grow items-center gap-y-3 md:gap-y-2">
             <ButtonSquare
-                Click="OnShowCreationModal"
+                Click="OnCreateButtonClick"
                 ContentClass="navbar-navigation-button-content"
                 Tooltip="Create"
-                FloatingPosition="FloatingPosition.Right">
+                TooltipPosition="FloatingPosition.Right">
                 <i class="icon-plus text-2xl font-medium"></i>
             </ButtonSquare>
             <NavbarGroupToggles/>
             @if (_enableIncompleteUI) {
                 <ButtonSquare
-                    Click="OnShowOnboardingModal"
+                    Click="OnOnboardingButtonClick"
                     ContentClass="navbar-navigation-button-content"
                     Tooltip="Onboarding"
-                    FloatingPosition="FloatingPosition.Right">
+                    TooltipPosition="FloatingPosition.Right">
                     <i class="icon-settings text-2xl font-medium"></i>
                 </ButtonSquare>
             }
@@ -43,9 +43,9 @@
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
-    private void OnShowCreationModal()
+    private void OnCreateButtonClick()
         => ModalUI.Show(new CreationModal.Model());
 
-    private void OnShowOnboardingModal()
+    private void OnOnboardingButtonClick()
         => OnboardingUI.Show();
 }

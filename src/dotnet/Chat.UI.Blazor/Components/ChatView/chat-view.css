@@ -144,7 +144,7 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 
 .chat-message-quote {
-    @apply flex-x items-stretch;
+    @apply flex-x gap-x-2;
     @apply text-03 cursor-pointer;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }

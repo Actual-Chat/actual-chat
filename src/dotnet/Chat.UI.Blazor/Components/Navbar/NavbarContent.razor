@@ -7,7 +7,7 @@
     var m = State.Value;
 }
 
-@if (NavbarUI.ActiveGroupId == NavbarGroupIds.Chats) {
+@if (NavbarUI.SelectedGroupId == NavbarGroupIds.Chats) {
     <ChatListNavbarWidget />
 }
 
@@ -39,16 +39,16 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override void OnInitialized() {
-        NavbarUI.ActiveGroupChanged += NavbarUIOnActiveGroupChanged;
+        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
         base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
-        NavbarUI.ActiveGroupChanged -= NavbarUIOnActiveGroupChanged;
+        NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
         return base.DisposeAsync();
     }
 
-    private void NavbarUIOnActiveGroupChanged(object? sender, EventArgs e) {
+    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e) {
         StateHasChanged();
     }
 }

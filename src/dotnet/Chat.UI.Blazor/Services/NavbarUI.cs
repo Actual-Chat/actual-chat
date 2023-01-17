@@ -4,38 +4,39 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    private BrowserInfo BrowserInfo { get; }
     private ChatUI ChatUI { get; }
     private HistoryUI HistoryUI { get; }
     private NavigationManager Nav { get; }
+    private BrowserInfo BrowserInfo { get; }
 
     public bool IsVisible { get; private set; }
-    public string ActiveGroupId { get; private set; } = "chats";
-    public string ActiveGroupTitle { get; private set; } = "Chats";
-    public Dictionary<string, Action> AddButtonAction { get; } = new (StringComparer.Ordinal);
-    public event EventHandler? ActiveGroupChanged;
+    public string SelectedGroupId { get; private set; } = "chats";
+    public string SelectedGroupTitle { get; private set; } = "Chats";
+    public event EventHandler? SelectedGroupChanged;
     public event EventHandler? VisibilityChanged;
 
     public NavbarUI(IServiceProvider services)
     {
-        BrowserInfo = services.GetRequiredService<BrowserInfo>();
         ChatUI = services.GetRequiredService<ChatUI>();
         HistoryUI = services.GetRequiredService<HistoryUI>();
         Nav = services.GetRequiredService<NavigationManager>();
+        BrowserInfo = services.GetRequiredService<BrowserInfo>();
 
         HistoryUI.AfterLocationChangedHandled += OnAfterLocationChangedHandled;
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            IsVisible = ShouldShowNavbar();
+            IsVisible = ShouldBeVisible();
     }
 
-    public void ActivateGroup(string id, string title)
+    // NOTE(AY): Any public member of this type can be used only from Blazor Dispatcher's thread
+
+    public void SelectGroup(string id, string title)
     {
-        if (OrdinalEquals(id, ActiveGroupId))
+        if (OrdinalEquals(id, SelectedGroupId))
             return;
 
-        ActiveGroupId = id;
-        ActiveGroupTitle = title;
-        ActiveGroupChanged?.Invoke(this, EventArgs.Empty);
+        SelectedGroupId = id;
+        SelectedGroupTitle = title;
+        SelectedGroupChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void ChangeVisibility(bool visible)
@@ -45,7 +46,7 @@ public class NavbarUI
 
         var screenSize = BrowserInfo.ScreenSize.Value;
         if (!screenSize.IsNarrow()) {
-            ChangeVisibilityInternal(visible);
+            SetIsVisible(visible);
             return;
         }
 
@@ -58,22 +59,27 @@ public class NavbarUI
         }
     }
 
-    private void OnAfterLocationChangedHandled(object? sender, EventArgs e)
-    {
-        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
-            return;
-        ChangeVisibilityInternal(ShouldShowNavbar());
-    }
+    // Private methods
 
-    private bool ShouldShowNavbar()
+    private bool ShouldBeVisible()
     {
         var navUrl = Nav.GetLocalUrl();
         return navUrl == Links.Chat(default);
     }
 
-    private void ChangeVisibilityInternal(bool visible)
+    private void SetIsVisible(bool visible)
     {
         IsVisible = visible;
         VisibilityChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // Event handlers
+
+    private void OnAfterLocationChangedHandled(object? sender, EventArgs e)
+    {
+        if (!BrowserInfo.ScreenSize.Value.IsNarrow())
+            return;
+
+        SetIsVisible(ShouldBeVisible());
     }
 }

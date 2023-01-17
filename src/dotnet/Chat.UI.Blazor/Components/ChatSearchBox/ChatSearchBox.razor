@@ -5,7 +5,7 @@
         Click="OnExpandClick"
         Class="transparent"
         Tooltip="@Placeholder"
-        FloatingPosition="FloatingPosition.Bottom">
+        TooltipPosition="FloatingPosition.Bottom">
         <i class="icon-search text-2xl"></i>
     </ButtonRound>
 } else {
@@ -16,7 +16,7 @@
                 Click="OnSearchButtonClick"
                 IsDisabled="!CanBeTriggered"
                 Tooltip="@Placeholder"
-                FloatingPosition="FloatingPosition.Bottom">
+                TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-search text-2xl font-medium"></i>
             </ButtonRound>
             <TextInput
@@ -38,7 +38,7 @@
                         Class="cancel-button"
                         Click="@Cancel"
                         Tooltip="Close"
-                        FloatingPosition="FloatingPosition.Bottom">
+                        TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-close text-2xl"></i>
                     </ButtonRound>
                 }

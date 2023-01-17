@@ -4,7 +4,7 @@
     class="ac-menu-item @Class"
     data-tooltip="@Tooltip"
     data-editor-trigger="@(TriggerEditor.ToString())"
-    data-tooltip-position="@(FloatingPosition.ToPositionString())"
+    data-tooltip-position="@(TooltipPosition.ToPositionString())"
     @onclick="@Click"
     @ontouchend="@Click">
     <div class="ac-menu-content">
@@ -33,8 +33,8 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? IconContent { get; set; }
     [Parameter] public RenderFragment? TextContent { get; set; }
-    [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public FloatingPosition FloatingPosition { get; set; }
     [Parameter] public bool TriggerEditor { get; set; } = false;
     [Parameter] public EventCallback Click { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public FloatingPosition TooltipPosition { get; set; }
 }

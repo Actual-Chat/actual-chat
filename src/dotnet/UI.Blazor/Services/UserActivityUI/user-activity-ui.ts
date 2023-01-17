@@ -10,6 +10,7 @@ export class UserActivityUI {
     private readonly _handler: EventHandler<Event>;
     private _lastActiveAt: Date = new Date();
     private _shouldNotify: boolean;
+
     public static create(blazorRef: DotNet.DotNetObject) {
         return new UserActivityUI(blazorRef);
     }
@@ -34,10 +35,11 @@ export class UserActivityUI {
     private async onInteracted() {
         debugLog?.log(`onInteracted: user interaction happened`);
         this._lastActiveAt = new Date();
-        if (this._shouldNotify) {
-            debugLog?.log(`onInteracted: notifying server about user activity`);
-            await this._blazorRef.invokeMethodAsync('OnInteracted');
-            this._shouldNotify = false;
-        }
+        if (!this._shouldNotify)
+            return;
+
+        debugLog?.log(`onInteracted: notifying server about user activity`);
+        await this._blazorRef.invokeMethodAsync('OnInteracted');
+        this._shouldNotify = false;
     }
 }

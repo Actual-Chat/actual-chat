@@ -6,8 +6,8 @@
 @code {
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Name { get; set; } = "";
-    [Parameter] public string? Class { get; set; }
-    [Parameter] public string? LabelClass { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool IsChecked { get; set; }
     [Parameter, EditorRequired] public string Value { get; set; } = "";

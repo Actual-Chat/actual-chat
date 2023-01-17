@@ -40,6 +40,9 @@ export class LongPress {
 
         const mustCapturePassive = { capture: true, passive: true };
         document.addEventListener('wheel', this.onAnyCancelling, mustCapturePassive);
+        // Scroll event bubbles only to document.defaultView;
+        // Scroll might be important to process too, coz clicks on scrollbar might trigger long clicks.
+        // document.defaultView.addEventListener('scroll', this.onAnyCancelling, mustCapturePassive);
         document.addEventListener(pointerDown, this.onPointerDown, mustCapturePassive);
         document.addEventListener(pointerMove, this.onPointerMove, mustCapturePassive);
         document.addEventListener(pointerUp, this.onPointerUp, mustCapturePassive);

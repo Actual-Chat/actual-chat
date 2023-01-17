@@ -13,7 +13,7 @@
         ContentClass="!bg-transparent"
         Click="@(_ => ChatUI.SetRecordingChatId(default))"
         Tooltip="Stop"
-        FloatingPosition="FloatingPosition.Top">
+        TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
     </ButtonRound>
 } else {
@@ -22,7 +22,7 @@
         ContentClass="!bg-transparent"
         Click="@(_ => ChatUI.SetRecordingChatId(Chat.Id))"
         Tooltip="Start"
-        FloatingPosition="FloatingPosition.Top">
+        TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
     </ButtonRound>
 }

@@ -23,7 +23,7 @@
         </Tab>;
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats" AddClick="OnCreateNewChatClick">
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y w-full h-full overflow-y-auto md:overflow-y-visible custom-scrollbar">
             <ActiveChatsNavbarWidget/>
@@ -97,9 +97,6 @@
             TabId.ByUnreadCount => ChatUI.List(ChatListOrder.ByUnreadCount),
             _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
         };
-
-    private void OnCreateNewChatClick()
-        => ModalUI.Show(new NewChatModal.Model());
 
     private void OnActiveTabChanged(Tab? tab) {
         if (!Enum.TryParse(tab?.Id ?? "", out _activeTabId))

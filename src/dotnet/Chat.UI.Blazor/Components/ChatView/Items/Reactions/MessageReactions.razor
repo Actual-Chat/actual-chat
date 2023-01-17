@@ -15,7 +15,7 @@
             data-menu-trigger="@MenuTriggers.Secondary.Format()"
             data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@(_ => ToggleReaction(reaction.Emoji))">
-            <EmojiIcon Id="@reaction.Emoji.Id" class="message-reactions-reaction-emoji"/>
+            <EmojiIcon Id="@reaction.Emoji.Id" Class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
@@ -24,7 +24,7 @@
         data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
         data-menu-trigger="@MenuTriggers.Primary.Format()"
         data-menu-placement="@(FloatingPosition.Right.ToPositionString())">
-        <AddReactionIcon class="message-reactions-add-icon"/>
+        <AddReactionIcon Class="message-reactions-add-icon"/>
     </li>
 </ul>
 
