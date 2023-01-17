@@ -3,8 +3,11 @@
 
 <Button
     Class="btn-outline"
-    Click="@(_ => ClientAuth.SignOut())">Sign out</Button>
+    Click="@OnClick">Sign out</Button>
 
 @code {
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    private void OnClick()
+        => Nav.NavigateTo(Links.SignOut);
 }

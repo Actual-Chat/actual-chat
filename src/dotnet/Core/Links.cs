@@ -1,8 +1,12 @@
+using Microsoft.AspNetCore.Http;
+
 namespace ActualChat;
 
 public static class Links
 {
     public static LocalUrl Home { get; } = default;
+    public static LocalUrl SignIn { get; } = "/signIn";
+    public static LocalUrl SignOut { get; } = "/signOut";
 
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone
