@@ -23,7 +23,7 @@
     @apply min-w-8 max-w-8 min-h-8 max-h-8 rounded-full;
 }
 .landing .title-text {
-    @apply text-center text-7xl font-semibold;
+    @apply text-start text-7xl font-semibold;
 }
 .landing .title-text.highlight {
     @apply font-bold;
@@ -47,6 +47,9 @@ body.narrow .landing-header {
 .landing-header .dark-icon {
     @apply min-w-10 min-h-10 max-h-10;
 }
+.landing-header .dark-icon {
+    @apply absolute top-3;
+}
 body.narrow .landing-header .light-icon,
 body.narrow .landing-header .dark-icon {
     @apply min-w-8 min-h-8 max-h-8;
@@ -55,24 +58,39 @@ body.narrow .landing-header .dark-icon {
 .landing-header .dark-title {
     @apply min-h-6 max-h-6;
 }
+.landing-header .dark-title {
+    @apply absolute top-4;
+}
+.landing-header .dark-alpha {
+    @apply absolute max-w-9 top-2.5;
+}
 body.narrow .landing-header .light-title,
 body.narrow .landing-header .dark-title {
-    @apply min-h-8 max-h-8 top-3;
+    @apply min-h-8 max-h-8 max-w-32 top-2;
 }
-body.narrow .landing-header .dark-title {
-    @apply max-w-40;
+body.narrow .landing-header .light-alpha,
+body.narrow .landing-header .dark-alpha {
+    @apply min-h-8 max-h-8;
+}
+body.narrow .landing-header .dark-alpha {
+    @apply max-w-9 top-0.5;
+}
+body.narrow .landing-header .light-alpha {
+    @apply -mt-2;
 }
 .landing-header .light-icon,
-.landing-header .light-title {
+.landing-header .light-title,
+.landing-header .light-alpha {
     @apply opacity-100 transition-all ease-in-out duration-200;
 }
 
 .landing-header .dark-icon,
-.landing-header .dark-title {
+.landing-header .dark-title,
+.landing-header .dark-alpha {
     @apply opacity-0 transition-all ease-in-out duration-200;
 }
 .landing-header .header-text {
-    @apply flex-x gap-x-4 min-w-fit w-2/5 items-center justify-center px-4 font-medium;
+    @apply flex-x gap-x-4 min-w-fit w-fit items-center justify-center px-4 font-medium;
     @apply text-04 transition-all ease-in-out duration-100;
 }
 body.narrow .landing-header .header-text {
@@ -80,11 +98,13 @@ body.narrow .landing-header .header-text {
 }
 
 .landing-header.filled .light-icon,
-.landing-header.filled .light-title {
+.landing-header.filled .light-title,
+.landing-header.filled .light-alpha {
     @apply opacity-0 transition-all ease-in-out duration-100;
 }
 .landing-header.filled .dark-icon,
-.landing-header.filled .dark-title {
+.landing-header.filled .dark-title,
+.landing-header.filled .dark-alpha {
     @apply opacity-100 transition-all ease-in-out duration-100;
 }
 .landing-header.filled .header-text {
@@ -150,7 +170,7 @@ body.narrow .landing .page-1 .main-text {
 .landing .page-1 .signin-button-group {
     @apply flex-x gap-x-4 items-center;
     @apply h-12 py-1 pl-4 pr-2;
-    @apply rounded-full border border-primary bg-01;
+    @apply rounded-full bg-01;
     @apply text-01 font-semibold;
 }
 body.narrow .landing .page-1 .signin-button-group {
