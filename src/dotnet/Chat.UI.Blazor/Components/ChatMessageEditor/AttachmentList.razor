@@ -20,7 +20,7 @@
                                 <i class="icon-trash03 text-2xl font-thin text-04"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
-                                <img class="min-h-34" src="@attachment.Url" alt="image"/>
+                                <img src="@attachment.Url" alt="image"/>
                             } else {
                                 <div class="flex items-center justify-center p-3">
                                     <img src="/dist/images/attachment.svg" alt="attachment" class="h-12">
