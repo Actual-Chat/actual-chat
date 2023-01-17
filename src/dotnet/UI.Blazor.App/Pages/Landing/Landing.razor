@@ -29,11 +29,17 @@
         <div class="flex-x w-full @(isNarrow ? "justify-center" : "")">
             <div class="min-w-fit">
                 <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
-                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon absolute top-3">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
-            <div class="px-2 self-center @(!isNarrow ? "w-full mb-2" : "max-w-40")">
-                <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
-                <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title absolute top-4">
+            <div class="flex-x w-full">
+                <div class="px-2 self-center -mt-1.5 @(!isNarrow ? "min-w-fit" : "max-w-40")">
+                    <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-0.5 -ml-1">
+                    <img src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
             </div>
             <div class="header-text">
                 @if (!isNarrow) {
