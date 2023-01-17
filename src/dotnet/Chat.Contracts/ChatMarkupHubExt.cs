@@ -99,9 +99,12 @@ public static class ChatMarkupHubExt
             return new PlainTextMarkup("Click to see attachment");
 
         var imageCount = 0;
+        TextEntryAttachment? firstFile = null;
         foreach (var x in attachments) // No LINQ to avoid boxing allocation
             if (x.IsImage())
                 imageCount++;
+            else if (firstFile is null)
+                firstFile = x;
         var fileCount = attachments.Length - imageCount;
 
         var imageText = imageCount switch {
@@ -111,8 +114,8 @@ public static class ChatMarkupHubExt
         };
         var fileText = fileCount switch {
             0 => "",
-            1 => attachments[0].FileName,
-            _ => $"{attachments.Length.Format()} files",
+            1 => firstFile!.FileName,
+            _ => $"{fileCount.Format()} files",
         };
         var text = (imageText.Length, fileText.Length) switch {
             (0, _) => fileText,
