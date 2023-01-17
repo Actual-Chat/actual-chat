@@ -246,12 +246,25 @@ public static class MauiProgram
             Symbol sessionId = Symbol.Empty;
             const string sessionIdStorageKey = "Fusion.SessionId";
             var storage = SecureStorage.Default;
-            var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(storedSessionId))
-                sessionId = storedSessionId;
+            try {
+                var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(storedSessionId))
+                    sessionId = storedSessionId;
+            }
+            catch (Exception) {
+                // ignored
+                // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                // TODO: configure selective backup, to prevent app crashes after re-installing
+                // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
+            }
             if (sessionId.IsEmpty) {
                 sessionId = new SessionFactory().CreateSession().Id;
-                await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                try {
+                    await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                }
+                catch (Exception) {
+                    // ignored
+                }
             }
             return sessionId;
         }).Result;
