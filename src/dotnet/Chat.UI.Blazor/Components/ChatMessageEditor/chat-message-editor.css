@@ -160,6 +160,9 @@
     @apply relative flex-y gap-x-1 justify-center mt-auto rounded-t-lg overflow-hidden;
     @apply min-h-34 max-h-34 min-w-34 max-w-34;
 }
+.attachment-item > img {
+    @apply min-h-34 object-contain;
+}
 .remove-attachment-btn.btn {
     @apply absolute top-0 right-0 text-04;
     @apply min-w-9 max-w-9 min-h-9 max-h-9 self-center;
