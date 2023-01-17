@@ -88,6 +88,7 @@ export class HistoryUI {
     }
 
     private static onPopState = (event: PopStateEvent) => {
+        debugLog?.log(`onPopState. State: '${event.state ? JSON.stringify(event.state) : ''}'`);
         const oldPosition = this.position;
         this.position = this.getPosition(event.state) ?? 0;
         if (oldPosition === this.position)
@@ -118,23 +119,15 @@ export class HistoryUI {
         return position;
     }
 
-    private static enrichUserState(data: any)
-    {
-        return JSON.stringify({
-            ...data,
-            _id: uuid(),
-            userState: data?.userState,
-        });
-    };
-
     private static navigate(replace: boolean, dataOriginal: any, unused: string, url?: string | URL | null)
     {
         const stepIndex = replace ? this.position : ++this.position;
         const data = {
             ...dataOriginal,
             _stepIndex: stepIndex,
-            userState: this.enrichUserState(dataOriginal),
+            _id: uuid(),
         };
+        data.userState = JSON.stringify(data);
         debugLog?.log(`onNavigate:`, replace, data, url);
         this.steps[stepIndex] = {
             id: nextStepId(),

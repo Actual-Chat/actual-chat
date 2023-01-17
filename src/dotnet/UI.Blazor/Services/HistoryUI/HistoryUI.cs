@@ -41,7 +41,7 @@ public class HistoryUI
             var uri = Nav.Uri;
             _initialLocation = Nav.GetLocalUrl();
             _position = 0;
-            _history.Add(new HistoryItem(uri, ""));
+            _history.Add(new HistoryItem(uri, new State()));
             Log.LogDebug("Initial location: '{Location}'", uri);
 
             // HistoryUI is initialized upon BlazorCircuitContext is created.
@@ -74,6 +74,7 @@ public class HistoryUI
         if (_isTestServer)
             return Task.CompletedTask;
 
+        Log.LogDebug("About to go back");
         return JS.InvokeVoidAsync("eval", "history.back()").AsTask();
     }
 
@@ -98,7 +99,8 @@ public class HistoryUI
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        Log.LogDebug("Location changed: '{Location}', State: '{State}'", e.Location, e.HistoryEntryState);
+        Log.LogDebug("Location changed: '{Location}'. State: '{State}'. History.Count: {Count}, Position: {Position}.",
+            e.Location, e.HistoryEntryState, _history.Count, _position);
 
         if (_rewriteInitialLocation) {
             _rewriteInitialLocation = false;
@@ -118,25 +120,30 @@ public class HistoryUI
 
         var state = GetState(e.HistoryEntryState);
         OnLocationChanged(e.Location, state);
+
+        Log.LogDebug("Location changed completed. History.Count: {Count}. Position: {Position}.",
+            _history.Count, _position);
     }
 
     private void OnLocationChanged(string location, State state)
     {
         HistoryMove move;
-        var readPosition = state.Index;
+        var readPosition = state.StepIndex;
         if (readPosition < _position)
             move = HistoryMove.Backward;
         else if (readPosition > _position) {
-            var isExistingHistoryItem = _history.Any(c => OrdinalEquals(c.Id, state.Id));
+            var isExistingHistoryItem = _history.Any(c => OrdinalEquals(c.State.Id, state.Id));
             move = isExistingHistoryItem ? HistoryMove.Forward : HistoryMove.Navigate;
         }
         else {
             // History index hasn't changed -> navigation with replace happened
-            move = HistoryMove.Navigate;
+            move = HistoryMove.NavigateWithReplace;
         }
 
+        Log.LogDebug("Move '{Move}' evaluated", move);
+
         HistoryItem? historyItem = null;
-        if (move == HistoryMove.Navigate) {
+        if (move == HistoryMove.Navigate || move == HistoryMove.NavigateWithReplace) {
             if (_pendingHistoryItem != null) {
                 var marker = !state.UserState.IsNullOrEmpty() && state.UserState.OrdinalStartsWith(MarkerPrefix)
                     ? state.UserState[MarkerPrefix.Length..]
@@ -146,14 +153,14 @@ public class HistoryUI
                         throw StandardError.Internal("PendingHistoryItem is not consistent. Location is wrong.");
 
                     var prototype = _pendingHistoryItem.Prototype;
-                    historyItem = new HistoryItem(prototype.Uri, state.Id) {
+                    historyItem = new HistoryItem(prototype.Uri, state) {
                         OnForwardAction = prototype.OnForwardAction,
                         OnBackAction = prototype.OnBackAction,
                     };
                     _pendingHistoryItem = null;
                 }
             }
-            historyItem ??= new HistoryItem(location, state.Id);
+            historyItem ??= new HistoryItem(location, state);
             if (_history.Count < readPosition)
                 throw StandardError.Internal("History is not consistent.");
             if (_history.Count > readPosition)
@@ -168,7 +175,10 @@ public class HistoryUI
         else {
             if (_history.Count < readPosition + 2)
                 throw StandardError.Internal("History does not contain backward item.");
-            historyItem = _history[readPosition + 1];
+            // When going backward, we need to get data from last history item.
+            // Of even from all previous items as well till readPosition,
+            // but we need to check if associated components are closed already or not.
+            historyItem = _history[_position];
         }
 
         _position = readPosition;
@@ -193,7 +203,7 @@ public class HistoryUI
         HistoryItemPrototype Prototype,
         string Marker);
 
-    private record HistoryItem(string Uri, string Id)
+    private record HistoryItem(string Uri, State State)
     {
         public Action? OnForwardAction { get; init; }
         public Action? OnBackAction { get; init; }
@@ -205,12 +215,14 @@ public class HistoryUI
         public Action? OnBackAction { get; init; }
     }
 
-    private enum HistoryMove { Navigate, Forward, Backward }
+    private enum HistoryMove { Navigate, NavigateWithReplace, Forward, Backward }
 
     public record State
     {
         [JsonPropertyName("_index")]
         public int Index { get; init; }
+        [JsonPropertyName("_stepIndex")]
+        public int StepIndex { get; init; }
         [JsonPropertyName("_id")]
         public string Id { get; init; } = "";
         [JsonPropertyName("userState")]
