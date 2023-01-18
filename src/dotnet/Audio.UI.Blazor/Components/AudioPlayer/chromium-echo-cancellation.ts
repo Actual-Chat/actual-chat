@@ -163,6 +163,7 @@ export function isAecWorkaroundNeeded(): boolean {
         return force;
     if (isAecWorkaroundNeededCached !== null)
         return isAecWorkaroundNeededCached;
+
     const navigatorUAData: { mobile: boolean; } = self.navigator['userAgentData'] as { mobile: boolean; };
     // mobile phones have a good echoCancellation by default, we don't need anything to do
     if (navigatorUAData != null && navigatorUAData.mobile != null && navigatorUAData.mobile === true) {
