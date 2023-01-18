@@ -210,6 +210,29 @@ public class ChatOperationsTest : AppHostTestBase
         }
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Bob")]
+    public async Task ShouldNotAllowJoinOrLeaveAnnouncementsChat(string userName)
+    {
+        // arrange
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var session = tester.Session;
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        await tester.SignOut();
+        if (!userName.IsNullOrEmpty())
+            await tester.SignIn(new User(userName).WithIdentity("no-admin"));
+
+        // act
+        var rules = await chats.GetRules(session, chatId, default);
+
+        //assert
+        rules.CanJoin().Should().BeFalse();
+        rules.CanLeave().Should().BeFalse();
+    }
+
     private static async Task AssertJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var chats = services.GetRequiredService<IChats>();
