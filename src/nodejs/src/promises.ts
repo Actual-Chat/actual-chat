@@ -1,5 +1,6 @@
 import { Log, LogLevel } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
+import { Disposable } from 'disposable';
 
 const LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -9,58 +10,32 @@ export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> 
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
 }
 
-export class AsyncLock {
-    private _promise: PromiseSource<Unit>;
-
-    constructor () {
-        this._promise = new PromiseSource<Unit>();
-        this._promise.resolve(Unit.Instance);
-    }
-
-    public async lock<T>(job: () => Promise<T>, timeoutMs: number | null = null): Promise<T> {
-        if (timeoutMs && !this._promise.isResolved() && !this._promise.hasTimeout()) {
-            const existingTask = this._promise;
-            existingTask.setTimeout(timeoutMs, () => existingTask.resolve(Unit.Instance));
-        }
-        await this._promise;
-        const task = new PromiseSource<Unit>();
-        this._promise = task;
-        try {
-            return await job();
-        }
-        finally {
-            task.resolve(Unit.Instance);
-        }
-    }
-}
-
-class Unit {
-    static readonly Instance = new Unit();
-}
-
 export class PromiseSource<T> implements Promise<T> {
     public resolve: (T) => void;
     public reject: (any) => void;
 
     private readonly _promise: Promise<T>;
-    private _timeout: Timeout = null;
     private _isCompleted = false;
 
-    constructor() {
+    constructor(resolve?: ((value: T) => void), reject?: ((reason?: unknown) => void)) {
         this._promise = new Promise<T>((resolve1, reject1) => {
             this.resolve = (value: T) => {
                 if (this._isCompleted)
                     return;
+
                 this._isCompleted = true;
-                this.clearTimeout();
                 resolve1(value);
+                if (resolve)
+                    resolve(value);
             };
             this.reject = (reason: unknown) => {
                 if (this._isCompleted)
                     return;
+
                 this._isCompleted = true;
-                this.clearTimeout();
                 reject1(reason);
+                if (reject)
+                    reject(reason);
             };
         })
         this[Symbol.toStringTag] = this._promise[Symbol.toStringTag];
@@ -72,6 +47,45 @@ export class PromiseSource<T> implements Promise<T> {
 
     public isCompleted(): boolean {
         return this._isCompleted;
+    }
+
+    // PromiseLike<T> implementation
+
+    readonly [Symbol.toStringTag]: string;
+
+    then<TResult1 = T, TResult2 = never>(
+        onfulfilled?: ((value: T) => (PromiseLike<TResult1> | TResult1)) | undefined | null,
+        onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null
+    ): Promise<TResult1 | TResult2> {
+        return this._promise.then(onfulfilled, onrejected);
+    }
+
+    catch<TResult = never>(
+        onrejected?: ((reason: any) => (PromiseLike<TResult> | TResult)) | undefined | null
+    ): Promise<T | TResult> {
+        return this._promise.catch(onrejected);
+    }
+
+    finally(onfinally?: (() => void) | undefined | null): Promise<T> {
+        return this._promise.finally(onfinally);
+    }
+}
+
+export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
+    private _timeout: Timeout = null;
+
+    constructor(resolve?: ((value: T) => void), reject?: ((reason?: unknown) => void)) {
+        const newResolve = (value: T) => {
+            this.clearTimeout();
+            if (resolve)
+                resolve(value);
+        }
+        const newReject = (reason: unknown) => {
+            this.clearTimeout();
+            if (reject)
+                reject(reason);
+        }
+        super(newResolve, newReject);
     }
 
     public hasTimeout(): boolean {
@@ -117,48 +131,25 @@ export class PromiseSource<T> implements Promise<T> {
         this._timeout.clear();
         this._timeout = null;
     }
-
-    // PromiseLike<T> implementation
-
-    readonly [Symbol.toStringTag]: string;
-
-    then<TResult1 = T, TResult2 = never>(
-        onfulfilled?: ((value: T) => (PromiseLike<TResult1> | TResult1)) | undefined | null,
-        onrejected?: ((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null
-    ): Promise<TResult1 | TResult2> {
-        return this._promise.then(onfulfilled, onrejected);
-    }
-
-    catch<TResult = never>(
-        onrejected?: ((reason: any) => (PromiseLike<TResult> | TResult)) | undefined | null
-    ): Promise<T | TResult> {
-        return this._promise.catch(onrejected);
-    }
-
-    finally(onfinally?: (() => void) | undefined | null): Promise<T> {
-        return this._promise.finally(onfinally);
-    }
 }
-
-// Precise timeout (~ 8-16ms or so?) based on requestAnimationFrame
 
 // Async versions of setTimeout
 
-export function delayAsync(delayMs: number): PromiseSource<void> {
-    const promise = new PromiseSource<void>();
+export function delayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
+    const promise = new PromiseSourceWithTimeout<void>();
     promise.setTimeout(delayMs, () => promise.resolve(undefined))
     return promise;
 }
 
-export function preciseDelayAsync(delayMs: number): PromiseSource<void> {
-    const promise = new PromiseSource<void>();
+export function preciseDelayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
+    const promise = new PromiseSourceWithTimeout<void>();
     promise.setPreciseTimeout(delayMs, () => promise.resolve(undefined))
     return promise;
 }
 
-export function flexibleDelayAsync(getNextTimeout: () => number): PromiseSource<void> {
+export function flexibleDelayAsync(getNextTimeout: () => number): PromiseSourceWithTimeout<void> {
     // eslint-disable-next-line no-constant-condition
-    const promise = new PromiseSource<void>();
+    const promise = new PromiseSourceWithTimeout<void>();
     const timeoutHandler = () => {
         const timeout = getNextTimeout();
         if (timeout <= 0)
@@ -255,7 +246,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastCallTime = 0;
-    let timeoutPromise: PromiseSource<void> | null = null;
+    let timeoutPromise: PromiseSourceWithTimeout<void> | null = null;
 
     const reset = (newLastCallTime: number) => {
         timeoutPromise?.clearTimeout();
@@ -313,3 +304,49 @@ export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>
         })();
     }
 }
+
+export class AsyncLockReleaser implements Disposable {
+    private readonly _whenReleased: PromiseSource<void>;
+    constructor(public readonly asyncLock: AsyncLock) {
+        if (asyncLock.releaser != null)
+            throw `${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`;
+
+        asyncLock.releaser = this;
+        this._whenReleased = new PromiseSource<void>(
+            () => {
+                if (asyncLock.releaser != this)
+                    throw `${LogScope}.AsyncLockReleaser is associated with another releaser.`;
+
+                asyncLock.releaser = null;
+                return;
+            },
+            () => `${LogScope}.AsyncLockReleaser.released cannot be rejected.`);
+    }
+
+    public whenReleased(): Promise<void> {
+        return this._whenReleased;
+    }
+
+    dispose(): void {
+        this._whenReleased.resolve(undefined);
+    }
+}
+
+export class AsyncLock {
+    public releaser: AsyncLockReleaser = null;
+
+    public async lock(): Promise<AsyncLockReleaser> {
+        if (this.releaser != null)
+            await this.releaser.whenReleased();
+        return new AsyncLockReleaser(this);
+    }
+}
+
+export class ResolvedPromise {
+    public static readonly Void = new PromiseSource<void>();
+    public static readonly True = new PromiseSource<boolean>();
+    public static readonly False = new PromiseSource<boolean>();
+}
+ResolvedPromise.Void.resolve(undefined);
+ResolvedPromise.True.resolve(true);
+ResolvedPromise.False.resolve(false);

@@ -1,4 +1,4 @@
-import { PromiseSource } from 'promises';
+import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { Log, LogLevel } from 'logging';
 
 const LogScope = 'Rpc';
@@ -54,7 +54,7 @@ export function rpcErrorResultMessage(rpcResultId: number, error: unknown): RpcR
 const results = new Map<number, RpcResult<unknown>>();
 let lastResultId = 0;
 
-export class RpcResult<T> extends PromiseSource<T> {
+export class RpcResult<T> extends PromiseSourceWithTimeout<T> {
     public readonly id: number;
 
     constructor(id?: number) {

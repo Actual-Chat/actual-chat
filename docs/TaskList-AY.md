@@ -1,5 +1,6 @@
 Fix:
 - Unify TriggerEditor / focusAndOpenKeyboard
+  MarkupEditor.focusAndOpenKeyboard - disable on Chrome / non-iOS
 
 Add helper calling UICommander.RunNothing + get rid of UpdateDelayer.Instant:
 - RelatedChatEntry.Value + RelatedChatEntryPanel

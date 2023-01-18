@@ -100,7 +100,7 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('MenuHost', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
-    minLevels.set('AudioContextLazy', LogLevel.Debug);
+    minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);

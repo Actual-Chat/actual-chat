@@ -1,7 +1,7 @@
 import { PromiseSource } from 'promises';
 import { Log, LogLevel } from 'logging';
-import { audioContextLazy } from 'audio-context-lazy';
 import { ScreenSize } from '../ScreenSize/screen-size';
+import { InteractiveUI } from '../InteractiveUI/interactive-ui';
 
 const LogScope = 'BrowserInfo';
 const log = Log.get(LogScope, LogLevel.Info);
@@ -52,9 +52,8 @@ export class BrowserInfo {
         this.whenReady.resolve(undefined);
 
         ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
-        if (this.appKind == 'Maui') {
-            audioContextLazy.skipWaitForNextInteraction();
-        }
+        if (this.appKind == 'Maui')
+            InteractiveUI.isAlwaysInteractive = true;
     }
 
     // Backend methods

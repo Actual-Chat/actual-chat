@@ -12,6 +12,7 @@ const noSleep = new NoSleep();
 
 export class KeepAwakeUI {
     private static _mustKeepAwake: boolean;
+
     public static async setKeepAwake(mustKeepAwake: boolean) {
         this._mustKeepAwake = mustKeepAwake;
         if (mustKeepAwake && !noSleep.isEnabled) {
@@ -32,7 +33,9 @@ export class KeepAwakeUI {
             }
         }
     };
+
     public static async warmup() {
+        debugLog?.log(`warmup`);
         if (!noSleep.isEnabled) {
             await noSleep.enable();
         }
@@ -42,7 +45,4 @@ export class KeepAwakeUI {
     }
 }
 
-NextInteraction.addHandler(async () => {
-    debugLog?.log(`warming up noSleep`);
-    await KeepAwakeUI.warmup();
-});
+NextInteraction.addHandler(KeepAwakeUI.warmup);

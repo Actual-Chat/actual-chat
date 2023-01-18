@@ -7,7 +7,7 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 export class EventHandler<T> implements Disposable {
     constructor(
         private readonly event: EventHandlerSet<T>,
-        private readonly handler: (T) => unknown,
+        private readonly handler: (T) => void,
         private readonly justOnce: boolean = false,
     ) { }
 
@@ -15,7 +15,7 @@ export class EventHandler<T> implements Disposable {
         this.event.remove(this);
     }
 
-    public trigger(argument: T): unknown {
+    public trigger(argument: T): void {
         try {
             return this.handler(argument);
         }
@@ -25,7 +25,7 @@ export class EventHandler<T> implements Disposable {
         }
     }
 
-    public triggerSilently(argument: T): unknown {
+    public triggerSilently(argument: T): void {
         try {
             return this.handler(argument);
         }
@@ -41,35 +41,44 @@ export class EventHandler<T> implements Disposable {
 }
 
 export class EventHandlerSet<T> {
-    private handlers?: Set<EventHandler<T>>;
+    private readonly handlers = new Set<EventHandler<T>>;
 
-    public add(handler: (T) => unknown, justOnce = false): EventHandler<T> {
+    constructor(private readonly handlersChanged?: ((handlers: Set<EventHandler<T>>) => void)) {
+    }
+
+    public add(handler: (value: T) => void, justOnce = false): EventHandler<T> {
         const eventHandler = new EventHandler<T>(this, handler, justOnce);
-        this.handlers ??= new Set<EventHandler<T>>();
         this.handlers.add(eventHandler);
+        if (this.handlersChanged)
+            this.handlersChanged(this.handlers);
         return eventHandler;
     }
 
     public remove(handler: EventHandler<T>): boolean {
-        return this.handlers?.delete(handler) ?? false;
+        if (!this.handlers.delete(handler))
+            return false;
+
+        if (this.handlersChanged)
+            this.handlersChanged(this.handlers);
+        return true;
     }
 
-    public trigger(argument: T): unknown[] | null {
-        if (!this.handlers)
-            return null;
-        const results = new Array<unknown>();
-        for (const handler of this.handlers)
-            results.push(handler.trigger(argument));
-        return results;
+    public whenNext(): Promise<T> {
+        return new Promise<T>(resolve => this.add(value => resolve(value), true))
     }
 
-    public triggerSilently(argument: T): unknown[] | null {
-        if (!this.handlers)
-            return null;
-        const results = new Array<unknown>();
+    public whenNextVoid(): Promise<void> {
+        return new Promise<void>(resolve => this.add(() => resolve(undefined), true))
+    }
+
+    public trigger(argument: T): void {
         for (const handler of this.handlers)
-            results.push(handler.triggerSilently(argument));
-        return results;
+            handler.trigger(argument);
+    }
+
+    public triggerSilently(argument: T): void {
+        for (const handler of this.handlers)
+            handler.triggerSilently(argument);
     }
 }
 

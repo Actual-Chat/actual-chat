@@ -57,8 +57,15 @@ export class Timeout {
 
 // Precise timeout (5-16ms?) based on requestAnimationFrame
 
+const disablePreciseTimeout = false;
+
 export class PreciseTimeout extends Timeout {
     constructor(timeoutMs: number, callback: () => unknown,) {
+        if (disablePreciseTimeout) {
+            super(timeoutMs, callback);
+            return;
+        }
+
         // Precise timeout handling
         const endsAt = Date.now() + timeoutMs;
         const loop = () => {
@@ -71,6 +78,9 @@ export class PreciseTimeout extends Timeout {
     }
 
     public clear(): void {
+        if (disablePreciseTimeout)
+            return super.clear();
+
         if (this.handle) {
             cancelAnimationFrame(this.handle);
             this.handle = null;

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { completeRpc, RpcResultMessage, rpc } from 'rpc';
-import { audioContextLazy } from 'audio-context-lazy';
+import { audioContextSource } from 'audio-context-source';
 
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
@@ -154,7 +154,7 @@ export class OpusMediaRecorder {
     }
 
     private async init(): Promise<void> {
-        const context = await audioContextLazy.get();
+        const context = await audioContextSource.get();
         if (context.sampleRate !== 48000)
             throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
 
