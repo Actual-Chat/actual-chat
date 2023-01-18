@@ -598,6 +598,7 @@ export class VirtualList {
             return;
 
         const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
+        debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, this._isEndAnchorVisible);
         await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', visibleItems, this._isEndAnchorVisible);
     }, 2);
 

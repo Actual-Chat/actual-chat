@@ -32,14 +32,14 @@ export class InteractiveUI {
 
             try {
                 debugLog?.log(`sync: calling IsInteractiveChanged(${isInteractive}) on backend`);
-                this._backendIsInteractive = await this.backendRef
-                    .invokeMethodAsync("IsInteractiveChanged", isInteractive);
+                await this.backendRef.invokeMethodAsync("IsInteractiveChanged", isInteractive);
+                this._backendIsInteractive = isInteractive;
             }
             catch (error) {
                 errorLog?.log(`sync: failed to reach the backend, error:`, error);
                 await delayAsync(1000);
             }
         }
-        this._isSyncing = true;
+        this._isSyncing = false;
     }
 }
