@@ -101,6 +101,7 @@ export class AudioContextSource implements Disposable {
             catch (e) {
                 if (this._isDisposed)
                     return;
+
                 warnLog?.log(`run: error:`, e);
             }
             finally {
