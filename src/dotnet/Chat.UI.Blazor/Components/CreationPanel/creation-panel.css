@@ -21,14 +21,6 @@
 .creation-panel .header {
     @apply flex-x min-h-14 max-h-14 items-center border-b border-bg-04;
 }
-.creation-panel .header .btn,
-.creation-panel .header .btn .btn-content {
-    @apply min-w-8 max-w-8 min-h-8 max-h-8;
-}
-.creation-panel .header .btn.btn-round.transparent:hover,
-.creation-panel .header .btn.btn-round.transparent:hover .btn-content {
-    @apply bg-transparent md:bg-round-hover;
-}
 
 .creation-panel .header.add-members {
     @apply border-transparent;
