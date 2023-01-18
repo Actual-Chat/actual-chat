@@ -44,11 +44,32 @@
                 </Button>
             }
             <div class="mt-6"></div>
-            <LineProgress
-                TotalSteps="stepper.TotalSteps"
-                CurrentStep="stepper.CurrentStepIndex"
-                Decoration="LineProgress.LineProgressDecoration.Blue">
-            </LineProgress>
+                <LineProgress
+                    TotalSteps="stepper.TotalSteps"
+                    CurrentStep="stepper.CurrentStepIndex"
+                    Decoration="LineProgress.LineProgressDecoration.Blue">
+                </LineProgress>
+            @* RoundProgress example *@
+            @* <div class="flex w-full justify-center mt-6"> *@
+            @*     <RoundProgress *@
+            @*         TotalSteps="stepper.TotalSteps" *@
+            @*         CurrentStep="stepper.CurrentStepIndex"> *@
+            @*         @if (stepper.IsLast) { *@
+            @*             <ButtonRound *@
+            @*                 Class="absolute text-xl" *@
+            @*                 ContentClass="!bg-08" *@
+            @*                 Click="() => OnLastStepComplete(stepper)"> *@
+            @*                 <i class="icon-arrow-right text-2xl text-04"></i> *@
+            @*             </ButtonRound> *@
+            @*         } else if (stepper.CanMoveForward) { *@
+            @*             <ButtonRound *@
+            @*                 Class="transparent absolute text-xl" *@
+            @*                 Click="stepper.MoveForward"> *@
+            @*                 <i class="icon-arrow-right text-2xl text-primary"></i> *@
+            @*             </ButtonRound> *@
+            @*         } *@
+            @*     </RoundProgress> *@
+            @* </div> *@
         </FooterContent>
     </Stepper>
     </Body>
