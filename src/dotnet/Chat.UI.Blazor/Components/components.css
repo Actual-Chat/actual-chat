@@ -58,7 +58,7 @@
     @apply animate-display-from-bottom-slow;
 }
 .recording-elsewhere-sub-header-content {
-    @apply flex-1 flex-x items-center justify-center gap-x-2 px-4 w-full;
+    @apply flex-1 flex-x items-center justify-center gap-x-2 px-4 w-full flex-wrap md:flex-nowrap;
 }
 .recording-elsewhere-sub-header-content .c-text {
     @apply font-light;

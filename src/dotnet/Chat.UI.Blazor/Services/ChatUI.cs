@@ -1,12 +1,9 @@
-using ActualChat.Audio;
-using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using ActualChat.Users.UI.Blazor.Services;
 using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -14,7 +11,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class ChatUI : WorkerBase
 {
-    public const int MaxUnreadChatCount = 100;
     public const int MaxActiveChatCount = 3;
 
     private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _readStates;
@@ -26,25 +22,19 @@ public partial class ChatUI : WorkerBase
     private readonly object _lock = new();
 
     private ChatPlayers? _chatPlayers;
-    private AudioRecorder? _audioRecorder;
-    private AudioSettings? _audioSettings;
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private Session Session { get; }
-    private IAccounts Accounts { get; }
     private IUserPresences UserPresences { get; }
     private IChats Chats { get; }
     private IContacts Contacts { get; }
     private IReadPositions ReadPositions { get; }
     private IMentions Mentions { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AccountSettings AccountSettings { get; }
     private LocalSettings LocalSettings { get; }
-    private AccountUI AccountUI { get; }
     private LanguageUI LanguageUI { get; }
     private InteractiveUI InteractiveUI { get; }
     private KeepAwakeUI KeepAwakeUI { get; }
@@ -71,7 +61,6 @@ public partial class ChatUI : WorkerBase
         ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();
 
         Session = services.GetRequiredService<Session>();
-        Accounts = services.GetRequiredService<IAccounts>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         Chats = services.GetRequiredService<IChats>();
         Contacts = services.GetRequiredService<IContacts>();
@@ -79,7 +68,6 @@ public partial class ChatUI : WorkerBase
         Mentions = services.GetRequiredService<IMentions>();
         AccountSettings = services.AccountSettings();
         LocalSettings = services.LocalSettings();
-        AccountUI = services.GetRequiredService<AccountUI>();
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
         KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
@@ -101,6 +89,7 @@ public partial class ChatUI : WorkerBase
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateReadState);
+        _stopRecordingAt = services.StateFactory().NewMutable<Moment?>();
         Start();
     }
 
@@ -241,10 +230,6 @@ public partial class ChatUI : WorkerBase
     }
 
     [ComputeMethod] // Synced
-    public virtual Task<ChatId> GetRecordingChatId()
-        => Task.FromResult(ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
-
-    [ComputeMethod] // Synced
     public virtual Task<ImmutableHashSet<ChatId>> GetListeningChatIds()
         => Task.FromResult(ActiveChats.Value.Where(c => c.IsListening).Select(c => c.ChatId).ToImmutableHashSet());
 
@@ -311,29 +296,6 @@ public partial class ChatUI : WorkerBase
             return activeChats;
         });
     }
-
-    public ValueTask SetRecordingChatId(ChatId chatId)
-        => UpdateActiveChats(activeChats => {
-            var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            if (oldChat.ChatId == chatId)
-                return activeChats;
-
-            if (!oldChat.ChatId.IsNone)
-                activeChats = activeChats.AddOrUpdate(oldChat with {
-                    IsRecording = false,
-                    Recency = Now,
-                });
-            if (!chatId.IsNone) {
-                var newChat = new ActiveChat(chatId, true, true, Now);
-                activeChats = activeChats.AddOrUpdate(newChat);
-                TuneUI.Play("begin-recording");
-            }
-            else
-                TuneUI.Play("end-recording");
-
-            UICommander.RunNothing();
-            return activeChats;
-        });
 
     // Helpers
 
