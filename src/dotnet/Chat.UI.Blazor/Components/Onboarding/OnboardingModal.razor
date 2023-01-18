@@ -21,7 +21,7 @@
             <div class="grow"></div>
             <ButtonRound
                 Class="transparent"
-                Click="OnCloseClick">
+                Click="ModalInstance.CloseAsync">
                 <i class="icon-close text-2xl font-medium"></i>
             </ButtonRound>
         </HeaderContent>
@@ -85,10 +85,6 @@
         if (!stepCompleted)
             return;
 
-        await ModalInstance.CloseAsync();
-    }
-
-    private async Task OnCloseClick() {
         await ModalInstance.CloseAsync();
     }
 

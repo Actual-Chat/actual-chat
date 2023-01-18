@@ -12,7 +12,7 @@
             cy="@Center"/>
         <circle
             class="text-icons-04"
-            stroke-width="2"
+            stroke-width="@StrokeWidth"
             stroke-dasharray="@Circumference"
             stroke-dashoffset="@Offset"
             transform="rotate(-90,@Center,@Center)"
@@ -32,9 +32,10 @@
     [Parameter] public double Diameter { get; set; } = 58;
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    private double StrokeWidth => 2;
     private double Center => Diameter / 2;
-    private double Radius => Diameter / 2 - 2;
+    private double Radius => Diameter / 2 - StrokeWidth;
     private double Circumference => 2 * Math.PI * Radius;
-    private double ProgressPercent => TotalSteps == 0 ? 0 : CurrentStep / ((double)TotalSteps / 100);
-    private double Offset => Circumference - ProgressPercent / 100 * Circumference;
+    private double Progress => TotalSteps == 0 ? 0 : CurrentStep / (double)TotalSteps;
+    private double Offset => Circumference - Progress * Circumference;
 }
