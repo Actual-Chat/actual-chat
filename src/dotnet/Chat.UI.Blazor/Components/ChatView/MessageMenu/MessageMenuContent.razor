@@ -86,7 +86,7 @@
         return new Model {
             CanReply = сanReply,
             IsJoined = requestAuthor != null,
-            IsEntryAuthor = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId
+            IsEntryAuthor = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
         };
     }
 
@@ -94,7 +94,7 @@
         => ChatUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private async Task CopyMessageLink(ChatEntry chatEntry) {
-        var url = UrlMapper.BaseUri + Links.Chat(chatEntry.Id);
+        var url = Links.Chat(chatEntry.Id).ToAbsolute(UrlMapper);
         await ClipboardUI.WriteText(url);
     }
 
