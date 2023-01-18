@@ -6,8 +6,7 @@
 <DialogFrame
     Class="onboarding-modal"
     NoNarrowHeader="true"
-    HasHeader="false"
-    HasEscapeHandler="false">
+    HasHeader="false">
     <Body>
     <Stepper Context="stepper">
         <HeaderContent>
@@ -19,6 +18,12 @@
                 </ButtonRound>
                 <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
             }
+            <div class="grow"></div>
+            <ButtonRound
+                Class="transparent"
+                Click="OnCloseClick">
+                <i class="icon-close text-2xl font-medium"></i>
+            </ButtonRound>
         </HeaderContent>
         <ChildContent>
             <PhoneStep/>
@@ -58,6 +63,10 @@
         if (!stepCompleted)
             return;
 
+        await ModalInstance.CloseAsync();
+    }
+
+    private async Task OnCloseClick() {
         await ModalInstance.CloseAsync();
     }
 
