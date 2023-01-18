@@ -668,7 +668,12 @@ function normalize(text: string): string {
     return text.normalize().replace(CrlfRe, "\n");
 }
 
+const isChromium = window.navigator.userAgent.indexOf('Chrome') !== -1;
+
 function focusAndOpenKeyboard(el: HTMLDivElement, timeout: number) {
+    if (isChromium)
+        return;
+
     const tempElement = document.createElement('input');
     tempElement.style.position = 'absolute';
     tempElement.style.top = (el.offsetTop + 7) + 'px';
