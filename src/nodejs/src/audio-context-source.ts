@@ -75,10 +75,10 @@ export class AudioContextSource implements Disposable {
                 await this.warmup(audioContext);
                 if (this._isDisposed) return;
 
-                for (;;) { // Fix loop
-                    await this.test(audioContext);
-                    if (this._isDisposed) return;
+                await this.test(audioContext);
+                if (this._isDisposed) return;
 
+                for (;;) { // Fix loop
                     this._whenAudioContextReady.resolve(audioContext);
                     await this._breakEvents.whenNext();
                     if (this._isDisposed) return;
@@ -97,6 +97,9 @@ export class AudioContextSource implements Disposable {
                     }
 
                     await this.fix(audioContext);
+                    if (this._isDisposed) return;
+
+                    await this.test(audioContext);
                     if (this._isDisposed) return;
                 }
             }
