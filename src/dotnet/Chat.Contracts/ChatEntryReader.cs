@@ -87,12 +87,16 @@ public sealed class ChatEntryReader
         return null;
     }
 
-    public async ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+    public ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+        => GetLastWhile(idRange, filter, x => x.SkippedCount < filterLimit, cancellationToken);
+
+    public async ValueTask<ChatEntry?> GetLastWhile(Range<long> idRange, Func<ChatEntry, bool> filter, Predicate<(ChatEntry ChatEntry, int SkippedCount)> @while, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
             var tile = await Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken).ConfigureAwait(false);
+            var skippedCount = 0;
             for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
@@ -100,7 +104,8 @@ public sealed class ChatEntryReader
                 if (entry.LocalId < maxIdExclusive) {
                     if (filter(entry))
                         return entry;
-                    if (--filterLimit < 0)
+
+                    if (!@while((entry, ++skippedCount)))
                         break;
                 }
             }
