@@ -1,6 +1,6 @@
 import { delayAsync } from 'promises';
+import { Interactive } from 'interactive';
 import { Log, LogLevel } from 'logging';
-import { InteractiveUI } from '../InteractiveUI/interactive-ui';
 
 const LogScope = 'VibrationUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -15,8 +15,8 @@ export class VibrationUI {
             return;
         }
 
-        if (!InteractiveUI.isInteractive) {
-            debugLog?.log(`vibrate(${durationMs}ms): suppressed by InteractiveUI`)
+        if (!Interactive.isInteractive) {
+            debugLog?.log(`vibrate(${durationMs}ms): suppressed (non-interactive yet)`)
             return;
         }
 

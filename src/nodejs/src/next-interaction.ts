@@ -7,6 +7,8 @@ const LogScope = 'NextInteraction';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class NextInteraction {
+    private static _isInitialized = false;
+
     public static readonly events: EventHandlerSet<Event> = new EventHandlerSet<Event>();
     public static readonly event$ = new Observable<Event>(subject => {
         const handler = this.events.add(value => subject.next(value));
@@ -14,6 +16,10 @@ export class NextInteraction {
     })
 
     public static init(): void {
+        if (this._isInitialized)
+            return;
+
+        this._isInitialized = true;
         debugLog?.log(`init`);
         const options = { capture: true, passive: true };
         document.addEventListener('click', this.onEventThrottled, options);

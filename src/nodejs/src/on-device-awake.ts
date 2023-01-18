@@ -2,7 +2,7 @@ import { Observable } from 'rxjs';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Log, LogLevel } from 'logging';
 
-const LogScope = 'on-device-awake';
+const LogScope = 'OnDeviceAwake';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -17,8 +17,8 @@ export class OnDeviceAwake {
 
 let worker: Worker = null;
 
-const onWorkerMessage = () => {
-    debugLog?.log(`onWorkerMessage`);
+const onWakeUp = () => {
+    debugLog?.log(`onWakeUp`);
     OnDeviceAwake.events.triggerSilently();
 };
 
@@ -28,7 +28,7 @@ const onWorkerError = (error: ErrorEvent) => {
 
 const createWorker = () => {
     const worker = new Worker('/dist/onDeviceAwakeWorker.js');
-    worker.onmessage = onWorkerMessage;
+    worker.onmessage = onWakeUp;
     worker.onerror = onWorkerError;
     return worker;
 }

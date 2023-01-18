@@ -1,9 +1,10 @@
 import { Disposable } from 'disposable';
 import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
-import { InteractiveUI } from '../../dotnet/UI.Blazor/Services/InteractiveUI/interactive-ui';
+import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { Log, LogLevel } from 'logging';
+import { Timeout } from 'timeout';
 
 const LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -12,27 +13,20 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const MaxWarmupTimeMs = 1000;
-const CheckTimeMs = 40;
+const MaxResumeTimeMs = 1000;
+const WakeUpDetectionIntervalMs = 300;
+const TestIntervalMs = 40;
 
 export class AudioContextSource implements Disposable {
     private _isDisposed = false;
     private _onDeviceAwakeHandler?: EventHandler<void>;
+    private _deviceWokeUpAt: number;
     private _breakEvents = new EventHandlerSet<void>();
     private _whenAudioContextReady = new PromiseSource<AudioContext>();
     private readonly _whenDisposed: Promise<void>;
 
-    public whenInteractive: () => Promise<void>;
-
-    constructor(whenInteractive?: () => Promise<void>) {
-        if (!whenInteractive) {
-            // Weird init logic here due to some issues w/ how Rider "sees" this;
-            // straight assignment somehow doesn't work.
-            const interactiveUI = InteractiveUI as { whenInteractive: () => Promise<void>};
-            whenInteractive ??= () => interactiveUI.whenInteractive();
-        }
-
-        this.whenInteractive = whenInteractive;
-        this._onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.markBroken());
+    constructor() {
+        this._onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
         this._whenDisposed = this.maintainUnbroken();
     }
 
@@ -94,7 +88,6 @@ export class AudioContextSource implements Disposable {
                     }
 
                     await this.fix(audioContext);
-                    await this.test(audioContext);
                     this.throwIfDisposed();
                 }
             }
@@ -119,7 +112,7 @@ export class AudioContextSource implements Disposable {
             sampleRate: 48000,
         });
 
-        await this.whenInteractive();
+        await Interactive.whenInteractive();
         await audioContext.resume();
         if (audioContext.state !== 'running') {
             await this.close(audioContext);
@@ -175,7 +168,7 @@ export class AudioContextSource implements Disposable {
             throw `${LogScope}.test: AudioContext isn't running.`;
 
         const now = audioContext.currentTime;
-        await delayAsync(CheckTimeMs);
+        await delayAsync(TestIntervalMs);
         if (audioContext.state !== 'running')
             throw `${LogScope}.test: AudioContext isn't running.`;
         if (audioContext.currentTime == now) // AudioContext isn't running
@@ -184,9 +177,38 @@ export class AudioContextSource implements Disposable {
 
     protected async fix(audioContext: AudioContext): Promise<void> {
         debugLog?.log(`fix(): AudioContext:`, audioContext);
-        await audioContext.suspend();
-        await this.whenInteractive();
-        await audioContext.resume();
+        const isWakeUpCall = (Date.now() - this._deviceWokeUpAt) <= WakeUpDetectionIntervalMs;
+
+        const tryResume: () => Promise<boolean> = async () => {
+            try {
+                if (audioContext.state !== 'suspended')
+                    await audioContext.suspend();
+                await Interactive.whenInteractive();
+                const resumeTask = audioContext.resume().then(() => true);
+                const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
+                if (!await Promise.race([resumeTask, timerTask])) {
+                    warnLog?.log(`fix: tryResume timed out`);
+                    return false;
+                }
+
+                await this.test(audioContext);
+            }
+            catch (e) {
+                warnLog?.log(`fix: tryResume failed:`, e);
+                return false;
+            }
+        }
+
+        if (await tryResume())
+            return;
+
+        if (isWakeUpCall && !Interactive.isAlwaysInteractive) {
+            Interactive.isInteractive = false;
+            if (await tryResume())
+                return;
+        }
+
+        throw `${LogScope}.fix: couldn't resume AudioContext.`;
     }
 
     protected async close(audioContext?: AudioContext): Promise<void> {
@@ -207,6 +229,13 @@ export class AudioContextSource implements Disposable {
     private throwIfDisposed() {
         if (this._isDisposed)
             throw `${LogScope}.throwIfDisposed: already disposed.`;
+    }
+
+    // Event handlers
+
+    private onDeviceAwake() {
+        this._deviceWokeUpAt = Date.now();
+        this.markBroken();
     }
 }
 

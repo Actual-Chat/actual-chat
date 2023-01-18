@@ -76,6 +76,8 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('LongPress', LogLevel.Info);
     minLevels.set('ScreenSize', LogLevel.Info);
     minLevels.set('NextInteraction', LogLevel.Info);
+    minLevels.set('Interactive', LogLevel.Info);
+    minLevels.set('OnDeviceAwake', LogLevel.Info);
     minLevels.set('HistoryUI', LogLevel.Info);
     minLevels.set('InteractiveUI', LogLevel.Info);
     minLevels.set('TuneUI', LogLevel.Info);
@@ -100,6 +102,8 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('MenuHost', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
+    minLevels.set('Interactive', LogLevel.Debug);
+    minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);

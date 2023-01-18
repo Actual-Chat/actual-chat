@@ -1,7 +1,7 @@
 import { PromiseSource } from 'promises';
-import { Log, LogLevel } from 'logging';
+import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
-import { InteractiveUI } from '../InteractiveUI/interactive-ui';
+import { Log, LogLevel } from 'logging';
 
 const LogScope = 'BrowserInfo';
 const log = Log.get(LogScope, LogLevel.Info);
@@ -53,7 +53,7 @@ export class BrowserInfo {
 
         ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
         if (this.appKind == 'Maui')
-            InteractiveUI.isAlwaysInteractive = true;
+            Interactive.isAlwaysInteractive = true;
     }
 
     // Backend methods
