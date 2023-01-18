@@ -23,7 +23,7 @@
 
         var entryId = new TextEntryId(sEntryId);
         var summaries = await Reactions.ListSummaries(Session, entryId, CancellationToken.None).ConfigureAwait(false);
-        var summary = summaries.FirstOrDefault(x => x.EmojiId == _emoji);
+        var summary = summaries.FirstOrDefault(x => x.EmojiId == emoji);
 
         _emoji = emoji;
         _firstAuthorIds = summary?.FirstAuthorIds ?? ImmutableList<AuthorId>.Empty;
