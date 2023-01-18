@@ -51,9 +51,7 @@ export class AudioContextSource implements Disposable {
     }
 
     public get(): Promise<AudioContext> {
-        if (this._isDisposed)
-            throw `${LogScope}.get: already disposed.`;
-
+        this.throwIfDisposed();
         return this._whenAudioContextReady;
     }
 
@@ -67,28 +65,27 @@ export class AudioContextSource implements Disposable {
     protected async maintainUnbroken(): Promise<void> {
         let audioContext: AudioContext = null;
         for (;;) { // Renew loop
-            if (this._isDisposed) return;
             try {
+                this.throwIfDisposed();
+
                 audioContext = await this.create();
-                if (this._isDisposed) return;
+                this.throwIfDisposed();
 
                 await this.warmup(audioContext);
-                if (this._isDisposed) return;
-
                 await this.test(audioContext);
-                if (this._isDisposed) return;
+                this.throwIfDisposed();
 
                 for (;;) { // Fix loop
                     this._whenAudioContextReady.resolve(audioContext);
                     await this._breakEvents.whenNext();
-                    if (this._isDisposed) return;
+                    this.throwIfDisposed();
 
                     // Let's try to fix broken AudioContext
                     debugLog?.log(`run: AudioContext is marked as broken`);
                     this._whenAudioContextReady = new PromiseSource<AudioContext>();
                     try {
                         await this.test(audioContext);
-                        if (this._isDisposed) return;
+                        this.throwIfDisposed();
 
                         continue; // Test passed, we're fine to expose it
                     }
@@ -97,14 +94,14 @@ export class AudioContextSource implements Disposable {
                     }
 
                     await this.fix(audioContext);
-                    if (this._isDisposed) return;
-
                     await this.test(audioContext);
-                    if (this._isDisposed) return;
+                    this.throwIfDisposed();
                 }
             }
             catch (e) {
                 warnLog?.log(`run: error:`, e);
+                if (this._isDisposed)
+                    return;
             }
             finally {
                 await this.close(audioContext);
@@ -204,6 +201,11 @@ export class AudioContextSource implements Disposable {
         catch (e) {
             warnLog?.log(`close: failed to close AudioContext:`, e)
         }
+    }
+
+    private throwIfDisposed() {
+        if (this._isDisposed)
+            throw `${LogScope}.throwIfDisposed: already disposed.`;
     }
 }
 
