@@ -137,13 +137,9 @@ body.narrow .landing-header .header-text {
 .landing-header.filled .menu-button.btn .btn-content {
     @apply text-01;
 }
-
-.landing-header .signin-buttons {
-    @apply flex-x items-center gap-x-3;
-    @apply rounded-full border border-bg-04;
-    @apply h-10 pl-4 pr-1 py-1;
-    @apply font-semibold;
-    @apply text-04;
+.landing-header .signin-button-group {
+    @apply h-10 px-1;
+    @apply border border-bg-04 text-04 bg-transparent;
 }
 
 /* Page 1 styles */
@@ -167,13 +163,12 @@ body.narrow .landing .page-1 .page-1-wrapper {
 body.narrow .landing .page-1 .main-text {
     @apply flex-y w-full justify-center;
 }
-.landing .page-1 .signin-button-group {
-    @apply flex-x gap-x-4 items-center;
-    @apply h-12 py-1 pl-4 pr-2;
+.signin-button-group {
+    @apply flex-x h-12 px-2 items-center;
     @apply rounded-full bg-01;
     @apply text-01 font-semibold;
 }
-body.narrow .landing .page-1 .signin-button-group {
+body.narrow .signin-button-group {
     @apply my-12 pr-1;
     @apply text-xl;
 }
@@ -281,4 +276,50 @@ body.narrow .landing .landing-menu.open {
 }
 body.narrow .landing-links {
     @apply flex-y p-4;
+}
+
+/* Docs */
+.docs-left-panel {
+    @apply flex-y h-full w-110 pl-24 pr-4;
+    @apply bg-03 border-r border-bg-04;
+}
+.docs-left-panel .c-header {
+    @apply flex-x min-h-14 items-center py-2;
+}
+.docs-left-panel .navbar-item {
+    @apply cursor-pointer;
+}
+.docs-left-panel .navbar-item .c-title {
+    @apply text-caption-3 font-medium;
+}
+.docs-left-panel .navbar-item.active .unfocusable {
+    @apply text-primary;
+}
+.docs-left-panel .navbar-item.inactive:hover {
+    @apply bg-secondary;
+}
+.docs-left-panel .unfocusable {
+    @apply flex-x gap-x-4 items-center mx-2;
+}
+.docs-left-panel .navbar-item-content {
+    @apply grow;
+}
+.docs-left-panel .navbar-item-ending {
+    @apply hidden;
+}
+.docs-header {
+    @apply flex min-h-14 items-center px-8;
+    @apply bg-01 text-3xl font-semibold;
+}
+.docs-right-panel {
+    @apply flex-y w-full md:w-80 h-full bg-01;
+}
+.docs-right-panel .c-header {
+    @apply flex min-h-14 items-center justify-end px-4 bg-01;
+}
+.docs-right-panel .signin-button-group {
+    @apply h-10 border border-text-01;
+}
+.docs-content {
+    @apply flex-y flex-1 gap-y-4 px-4;
 }

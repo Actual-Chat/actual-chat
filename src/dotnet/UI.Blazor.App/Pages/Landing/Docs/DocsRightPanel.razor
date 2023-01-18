@@ -1,0 +1,25 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.UI.Blazor.Components.SideNav
+@using ActualChat.Chat.UI.Blazor.Services
+
+<SideNav
+    Direction="SideNavDirection.RightToLeft"
+    Opened="@(() => RightPanelUI.ChangeVisibility(true))"
+    Closed="@(() => RightPanelUI.ChangeVisibility(false))"
+    IsOpen="@true">
+    <div class="docs-right-panel">
+        <DocsRightPanelHeader/>
+        <div class="flex flex-col overflow-y-auto custom-scrollbar">
+            <div class="flex flex-col">
+
+            </div>
+        </div>
+    </div>
+</SideNav>
+
+@code {
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}

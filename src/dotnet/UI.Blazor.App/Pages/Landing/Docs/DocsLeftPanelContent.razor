@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.App
+
+<NavbarItem
+    Url="/docs/privacy"
+    Class="my-0.5"
+    IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Privacy)">
+    <i class="icon-file-text text-xl"></i>
+    <span class="c-title">
+        Privacy Policy
+    </span>
+</NavbarItem>
+<NavbarItem
+    Url="/docs/terms"
+    Class="my-0.5"
+    IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Terms)">
+    <i class="icon-list text-xl"></i>
+    <span class="c-title">
+        Terms & Conditions
+    </span>
+</NavbarItem>
+@if (_enableIncompleteUI) {
+    <NavbarItem
+        Url="/docs/faq"
+        Class="my-0.5"
+        IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Faq)">
+        <i class="icon-info text-xl"></i>
+        <span class="c-title">
+            FAQ
+        </span>
+    </NavbarItem>
+}
+
+@code {
+    private bool _enableIncompleteUI;
+
+    [Inject] private Features Features { get; init; } = null!;
+
+    [CascadingParameter] public DocsCommonLayout.DocsPage ActivePage { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+    }
+}

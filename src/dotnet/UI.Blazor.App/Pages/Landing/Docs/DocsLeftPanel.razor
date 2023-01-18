@@ -1,0 +1,51 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.UI.Blazor.Components.SideNav
+@using ActualChat.Chat.UI.Blazor.Services
+@implements IDisposable
+
+@{
+    var isNarrow = ScreenSize.IsNarrow();
+}
+
+<SideNav Direction="SideNavDirection.LeftToRight"
+         Opened="@(_ => NavbarUI.ChangeVisibility(true))"
+         Closed="@(_ => NavbarUI.ChangeVisibility(false))"
+         IsOpen="@NavbarUI.IsVisible">
+    <div class="docs-left-panel">
+        <div class="c-header">
+            <div class="max-w-fit">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+            </div>
+            <div class="flex-x">
+                <div class="px-2 self-center -mt-1.5 @(!isNarrow ? "min-w-fit" : "max-w-40")">
+                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-2 -ml-1">
+                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
+            </div>
+        </div>
+        <div class="h-full py-2">
+            <div class="text-headline-1 m-2">Docs</div>
+            <DocsLeftPanelContent/>
+        </div>
+    </div>
+</SideNav>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public DocsCommonLayout.DocsPage ActivePage { get; set; }
+
+    protected override void OnInitialized() {
+        NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;
+    }
+
+    public void Dispose() {
+        NavbarUI.VisibilityChanged -= OnNavbarVisibilityChanged;
+    }
+
+    private void OnNavbarVisibilityChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+}

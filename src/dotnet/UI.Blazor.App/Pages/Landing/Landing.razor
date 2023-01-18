@@ -48,22 +48,17 @@
                             For business
                         </div>
                     }
-                    <div class="signin-buttons">
-                        <div class="signin-text">
-                            Sign in with:
-                        </div>
-                        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
+                    <SigninButtonGroup>
+                        <GoogleIcon>
                             <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
-                        </ButtonRound>
-                        @if (m.EnableIncompleteUI) {
-                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                                <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
-                            </ButtonRound>
-                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                                <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
-                            </ButtonRound>
-                        }
-                    </div>
+                        </GoogleIcon>
+                        <FacebookIcon>
+                            <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
+                        </FacebookIcon>
+                        <AppleIcon>
+                            <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
+                        </AppleIcon>
+                    </SigninButtonGroup>
                 }
             </div>
         </div>
@@ -89,22 +84,17 @@
                         </div>
                     </div>
                     <div class="flex @(isNarrow ? "justify-center" : "")">
-                        <div class="signin-button-group">
-                            <div>
-                                Sign in with:
-                            </div>
-                            <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
+                        <SigninButtonGroup>
+                            <GoogleIcon>
                                 <img src="/dist/images/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
-                            </ButtonRound>
-                            @if (m.EnableIncompleteUI) {
-                                <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-                                    <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
-                                </ButtonRound>
-                                <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-                                    <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
-                                </ButtonRound>
-                            }
-                        </div>
+                            </GoogleIcon>
+                            <FacebookIcon>
+                                <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                            </FacebookIcon>
+                            <AppleIcon>
+                                <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                            </AppleIcon>
+                        </SigninButtonGroup>
                     </div>
                 </div>
                 <div class="flex w-2/5 justify-center @(isNarrow ? "hidden" : "")">
