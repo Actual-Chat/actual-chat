@@ -227,12 +227,12 @@
 }
 .pinned-chats,
 .pinned-contacts {
-    @apply flex-y pb-2 px-2 gap-y-0.5;
+    @apply flex-none flex-y pb-2 px-2 gap-y-0.5;
 }
 
 .unpinned-chats,
 .unpinned-contacts {
-    @apply flex-y h-full px-2 gap-y-0.5;
+    @apply flex-1 flex-y px-2 gap-y-0.5;
 }
 
 .active-chats {

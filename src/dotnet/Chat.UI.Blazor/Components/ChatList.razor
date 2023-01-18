@@ -21,8 +21,8 @@
     private string GetCss(ChatListKind kind)
         => kind switch {
             ChatListKind.Pinned => "pinned-chats",
-            ChatListKind.Unpinned => "unpinned-chats custom-scrollbar",
-            ChatListKind.Active => "flex-y gap-y-0.5",
+            ChatListKind.Unpinned => "unpinned-chats",
+            ChatListKind.Active => "flex-1 flex-y gap-y-0.5",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
             };
 }
