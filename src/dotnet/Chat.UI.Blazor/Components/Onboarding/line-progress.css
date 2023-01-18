@@ -1,5 +1,5 @@
 .line-progress {
-    @apply flex-x w-full gap-x-3 justify-center;
+    @apply flex-x gap-x-3;
 }
 .line-progress-item {
     @apply w-3 h-3 rounded-full;
