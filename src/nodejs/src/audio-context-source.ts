@@ -99,9 +99,9 @@ export class AudioContextSource implements Disposable {
                 }
             }
             catch (e) {
-                warnLog?.log(`run: error:`, e);
                 if (this._isDisposed)
                     return;
+                warnLog?.log(`run: error:`, e);
             }
             finally {
                 await this.close(audioContext);
