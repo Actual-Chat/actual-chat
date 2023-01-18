@@ -41,7 +41,7 @@ export class EventHandler<T> implements Disposable {
 }
 
 export class EventHandlerSet<T> {
-    private readonly handlers = new Set<EventHandler<T>>;
+    private readonly handlers = new Set<EventHandler<T>>();
 
     constructor(private readonly handlersChanged?: ((handlers: Set<EventHandler<T>>) => void)) {
     }

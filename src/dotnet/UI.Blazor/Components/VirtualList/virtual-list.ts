@@ -1,4 +1,4 @@
-import { debounce, PromiseSource, serialize, throttle } from 'promises';
+import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
 import { clamp } from 'math';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -891,7 +891,7 @@ export class VirtualList {
         if (whenUpdateCompleted && !whenUpdateCompleted.isCompleted())
             return;
 
-        const newWhenUpdateCompleted = new PromiseSource<void>();
+        const newWhenUpdateCompleted = new PromiseSourceWithTimeout<void>();
         newWhenUpdateCompleted.setTimeout(UpdateTimeout, () => {
             newWhenUpdateCompleted.resolve(undefined);
             // to request data again after timeout

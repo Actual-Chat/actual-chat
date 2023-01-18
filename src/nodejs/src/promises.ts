@@ -75,17 +75,15 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
     private _timeout: Timeout = null;
 
     constructor(resolve?: ((value: T) => void), reject?: ((reason?: unknown) => void)) {
-        const newResolve = (value: T) => {
+        super((value: T) => {
             this.clearTimeout();
             if (resolve)
                 resolve(value);
-        }
-        const newReject = (reason: unknown) => {
+        }, (reason: unknown) => {
             this.clearTimeout();
             if (reject)
                 reject(reason);
-        }
-        super(newResolve, newReject);
+        });
     }
 
     public hasTimeout(): boolean {
