@@ -94,6 +94,13 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsAvatarStepCompleted;
+
+    protected override void SetCompleted() {
+        OnboardingUI.Settings.Value = OnboardingUI.Settings.Value with { IsAvatarStepCompleted = true };
+    }
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);

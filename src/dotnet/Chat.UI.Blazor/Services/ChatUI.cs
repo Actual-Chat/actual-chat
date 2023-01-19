@@ -36,6 +36,7 @@ public partial class ChatUI : WorkerBase
     private AccountSettings AccountSettings { get; }
     private LocalSettings LocalSettings { get; }
     private LanguageUI LanguageUI { get; }
+    private OnboardingUI OnboardingUI { get; }
     private InteractiveUI InteractiveUI { get; }
     private KeepAwakeUI KeepAwakeUI { get; }
     private TuneUI TuneUI { get; }
@@ -69,6 +70,7 @@ public partial class ChatUI : WorkerBase
         AccountSettings = services.AccountSettings();
         LocalSettings = services.LocalSettings();
         LanguageUI = services.GetRequiredService<LanguageUI>();
+        OnboardingUI = services.GetRequiredService<OnboardingUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
         KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
         TuneUI = services.GetRequiredService<TuneUI>();
