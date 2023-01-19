@@ -21,5 +21,6 @@
 @import './Components/Onboarding/onboarding-modal.css';
 @import './Components/Onboarding/line-progress.css';
 @import './Components/Onboarding/round-progress.css';
+@import './Components/RecordingSubFooter/recording-sub-footer.css';
 
 @import './Pages/user-page.css';

@@ -1,3 +1,4 @@
+
 /* DeleteMessageModal */
 
 .delete-message-modal .c-question {
@@ -49,22 +50,6 @@
     @apply bg-unread rounded-b-lg shadow;
     @apply text-04 font-semibold;
     @apply animate-display-from-top-slow hover:cursor-pointer;
-}
-
-.recording-elsewhere-sub-header {
-    @apply relative p-0.25 md:mx-4 rounded-t-lg;
-    @apply flex-x items-center justify-center;
-    @apply bg-error text-04 shadow-lg opacity-75;
-    @apply animate-display-from-bottom-slow;
-}
-.recording-elsewhere-sub-header-content {
-    @apply flex-1 flex-x items-center justify-center gap-x-2 px-4 w-full flex-wrap md:flex-nowrap;
-}
-.recording-elsewhere-sub-header-content .c-text {
-    @apply font-light;
-}
-.recording-elsewhere-sub-header-content a {
-    @apply font-semibold underline;
 }
 
 .btn-round.attach-btn {
