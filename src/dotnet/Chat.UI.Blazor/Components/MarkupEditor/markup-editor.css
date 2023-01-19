@@ -3,8 +3,8 @@
 }
 .markup-editor .editor-content {
     @apply relative inline-block overflow-auto;
-    @apply min-w-full max-w-full w-full m-2;
     @apply text-base;
+    @apply truncate;
     @apply whitespace-pre-wrap;
     word-wrap: break-word;
 }

@@ -34,7 +34,7 @@
         <RelatedChatEntryPanel />
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="post-panel-wrapper">
-                <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
+                <div class="flex-x py-1 md:py-0 bg-07 md:bg-01">
                     <div class="post-panel flex-auto">
                         <div class="flex-x attach-dropdown">
                             <ButtonRound Class="attach-btn">
@@ -65,7 +65,9 @@
                     </div>
                 </div>
                 @if (ScreenSize.IsNarrow()) {
-                    <ChatAudioPanel/>
+                    <div class="audio-panel-wrapper">
+                        <ChatAudioPanel/>
+                    </div>
                 }
             </div>
             @if (ScreenSize.IsWide()) {

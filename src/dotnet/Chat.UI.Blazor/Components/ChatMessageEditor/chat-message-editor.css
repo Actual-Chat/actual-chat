@@ -7,34 +7,45 @@
 }
 .post-panel-wrapper {
     @apply -flex-y;
-    @apply w-full overflow-x-hidden;
+    @apply w-full;
+    @apply overflow-x-hidden;
     @apply bg-transparent;
 }
 .chat-message-editor.narrow .post-panel-wrapper {
-    background: linear-gradient(to bottom, rgba(255,255,255,0) 40%, rgba(68,68,68,1) 40%);
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 45%, rgba(68,68,68,1) 30%);
+}
+.narrow .audio-panel-wrapper {
+    @apply -mb-0.5;
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 70%, rgba(68,68,68,1) 0%);
 }
 .chat-message-editor.narrow.narrow-panel .post-panel-wrapper {
     @apply bg-07;
 }
 .post-panel {
-    @apply flex-x justify-between items-center;
+    @apply flex-x;
     @apply w-full min-h-12;
-    @apply border-bg-01 outline-none bg-07 md:bg-03 md:rounded-3xl;
+    @apply justify-between items-center;
+    @apply border-bg-01  md:rounded-3xl outline-none;
+    @apply bg-07 md:bg-03;
+    @apply overflow-hidden;
+    @apply break-all;
 }
 .post-panel .message-input {
     @apply flex-1;
     @apply max-h-48 md:max-h-88;
-    @apply mr-2 md:mr-4;
-    @apply break-words text-counter md:text-02 hover:cursor-text;
-    @apply outline-none bg-07 md:bg-03;
     @apply overflow-y-auto overflow-x-hidden;
+    @apply outline-none;
+    @apply break-words;
+    @apply text-counter md:text-02;
+    @apply bg-07 md:bg-03;
+    @apply hover:cursor-text;
+
 }
 .post-panel .message-input .editor-content {
-    @apply ml-0;
+    @apply mr-0 md:mr-4;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
-    @apply w-10;
 }
 .post-panel .message-input .editor-content::-webkit-scrollbar {
     display: none;
@@ -49,50 +60,84 @@
 }
 
 [contenteditable=true]:empty:not(:focus):before {
-    @apply text-placeholder truncate text-base;
+    @apply truncate;
+    @apply text-placeholder text-base;
     content:attr(data-text)
 }
 /* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex-none flex flex-row-reverse right-2 h-12 w-12 bg-transparent; /* -flex-x here somehow makes webpack fail */
+    @apply flex-none flex-row-reverse;
+    @apply h-12 w-12; /* -flex-x here somehow makes webpack fail */
+    @apply right-2;
+    @apply bg-transparent;
 }
 .btn.btn-round.notify-call-toggle,
 .panel-closed .btn.btn-round.notify-call-toggle {
-    @apply flex-none flex-x self-end outline-none p-0 mx-1 md:mx-0 h-12 scale-100;
-    @apply text-05 md:text-icons-01 bg-07 md:bg-03;
+    @apply flex-none flex-x;
+    @apply h-12;
+    @apply self-end;
+    @apply p-0;
+    @apply outline-none;
+    @apply scale-100;
+    @apply bg-07 md:bg-03;
+    @apply text-05 md:text-icons-01;
 }
 .btn.btn-round.notify-call-toggle .btn-content {
-    @apply rounded-full bg-transparent;
     @apply min-w-12 min-h-12;
+    @apply rounded-full;
+    @apply bg-transparent;
+
 }
 .notify-call-content,
 .panel-closed .notify-call-content {
-    @apply flex-x gap-x-0 justify-end items-center cursor-text;
-    @apply w-0 scale-0 translate-x-full;
+    @apply flex-x;
+    @apply w-0;
+    @apply justify-end items-center;
+    @apply gap-x-0;
+    @apply scale-0;
+    @apply cursor-text;
+    @apply translate-x-full;
 }
 .notify-call-content .actions {
-    @apply flex-x items-center gap-x-2 max-h-12 md:mr-4;
+    @apply flex-x;
+    @apply max-h-12;
+    @apply items-center;
+    @apply gap-x-2;
+    @apply md:mr-4;
     @apply text-04 md:text-03;
 }
 .notify-call-content .btn {
-    @apply flex-none rounded-full min-h-0 h-auto px-0 min-w-0;
+    @apply flex-none;
+    @apply min-w-0 min-h-0 h-auto;
+    @apply px-0;
+    @apply rounded-full;
 }
 .notify-call-content .btn.notify-btn {
-    @apply md:bg-04 md:border-bg-04 md:text-03;
-    @apply bg-06 text-04 border-bg-06;
+    @apply bg-06 md:bg-04;
+    @apply border-bg-06 md:border-bg-04;
+    @apply text-04 md:text-03;
 }
 .notify-call-content .btn .btn-content {
-    @apply rounded-full mx-0 -my-1 px-2 items-center;
+    @apply items-center;
+    @apply mx-0 -my-1 px-2;
+    @apply rounded-full;
 }
 .notify-call-content .btn.close-btn {
-    @apply flex self-end p-0 h-12 w-12;
-    @apply outline-none text-04 md:text-icons-01;
+    @apply flex;
+    @apply h-12 w-12;
+    @apply self-end;
+    @apply p-0;
+    @apply outline-none;
+    @apply text-04 md:text-icons-01;
     @apply bg-transparent;
 }
 .notify-call-content .btn.close-btn .btn-content{
-    @apply rounded-full mx-0 items-center bg-transparent;
     @apply min-w-8 min-h-12;
+    @apply items-center;
+    @apply mx-0;
+    @apply rounded-full;
+    @apply bg-transparent;
 }
 .text-mode .notify-call-panel {
     @apply hidden;
@@ -100,29 +145,42 @@
 
 /* Opening panel */
 .panel-opening.notify-call-panel {
-    @apply bg-07 md:bg-transparent w-full;
+    @apply w-full;
+    @apply bg-07 md:bg-transparent;
 }
 .panel-opening .btn.btn-round.notify-call-toggle {
-    @apply animate-notify-toggle-hide scale-0 w-0;
+    @apply w-0;
+    @apply scale-0;
+    @apply animate-notify-toggle-hide;
 }
 .panel-opening .notify-call-content {
-    @apply scale-100 w-full translate-x-0 transition duration-300 ease-in-out;
+    @apply w-full;
+    @apply scale-100;
+    @apply translate-x-0 transition duration-300 ease-in-out;
 }
 
 /* Closing panel */
 .panel-closing .btn.btn-round.notify-call-toggle {
-    @apply scale-100 animate-notify-toggle-show;
+    @apply scale-100;
+    @apply animate-notify-toggle-show;
 }
 .panel-closing .notify-call-content {
-    @apply scale-0 animate-notify-panel-closing;
+    @apply scale-0;
+    @apply animate-notify-panel-closing;
 }
 
 .btn.btn-round.post-message {
-    @apply sticky self-end outline-none text-04 md:text-05 p-2 mr-0 md:mr-2 hidden;
+    @apply hidden flex-none;
+    @apply w-12;
+    @apply self-end;
+    @apply p-2;
+    @apply outline-none;
+    @apply text-04;
 }
 
 .text-mode .btn.btn-round.post-message {
-    @apply flex md:hidden animate-display-from-left md:animate-none;
+    @apply flex md:hidden;
+    @apply animate-display-from-left;
 }
 
 .text-mode .recorder-buttons .btn {
@@ -135,37 +193,59 @@
     @apply border-y bg-01;
 }
 .attachment-list {
-    @apply flex-1 flex-x gap-x-4 justify-start;
-    @apply w-full my-1 p-2 overflow-x-auto;
+    @apply flex-1 flex-x;
+    @apply w-full;
+    @apply justify-start;
+    @apply gap-x-4;
+    @apply my-1 p-2;
+    @apply overflow-x-auto;
 }
 .clear-attachments-btn.btn {
-    @apply min-h-6 max-h-6 border-transparent;
+    @apply min-h-6 max-h-6;
+    @apply border-transparent;
 }
 .clear-attachments-btn.btn:hover {
     @apply border-error;
 }
 .clear-attachments-btn.btn .btn-content {
-    @apply min-w-full text-error font-medium;
+    @apply min-w-full;
+    @apply text-error font-medium;
 }
 .post-attachments-btn.btn.btn-round {
-    @apply relative min-w-12 self-center;
+    @apply relative;
+    @apply min-w-12;
+    @apply self-center;
 }
 .post-attachments-btn.btn.btn-round .btn-content {
-    @apply bg-primary text-primary-title min-w-full;
+    @apply min-w-full;
+    @apply bg-primary;
+    @apply text-primary-title;
 }
 .attachment-wrapper {
-    @apply relative p-px bg-03 rounded-lg;
+    @apply relative;
+    @apply p-px;
+    @apply rounded-lg;
+    @apply bg-03;
 }
 .attachment-item {
-    @apply relative flex-y gap-x-1 justify-center mt-auto rounded-t-lg overflow-hidden;
+    @apply relative flex-y;
     @apply min-h-34 max-h-34 min-w-34 max-w-34;
+    @apply justify-center;
+    @apply gap-x-1;
+    @apply mt-auto;
+    @apply rounded-t-lg;
+    @apply overflow-hidden;
 }
 .attachment-item > img {
-    @apply min-h-34 object-contain;
+    @apply min-h-34;
+    @apply object-contain;
 }
 .remove-attachment-btn.btn {
-    @apply absolute top-0 right-0 text-04;
-    @apply min-w-9 max-w-9 min-h-9 max-h-9 self-center;
+    @apply absolute;
+    @apply min-w-9 max-w-9 min-h-9 max-h-9;
+    @apply top-0 right-0;
+    @apply self-center;
+    @apply text-04;
 }
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
@@ -178,8 +258,15 @@
     @apply bg-error opacity-80;
 }
 .attachment-filename {
-    @apply flex-1 w-full max-w-34 truncate self-center px-2 md:px-0.5 p-0.5 cursor-default;
-    @apply text-center text-03 text-xs font-medium bg-01 rounded-b-lg;
+    @apply flex-1;
+    @apply w-full max-w-34;
+    @apply self-center text-center;
+    @apply truncate;
+    @apply px-2 md:px-0.5 py-0.5;
+    @apply rounded-b-lg;
+    @apply cursor-default;
+    @apply bg-01;
+    @apply text-03 text-xs font-medium;
 }
 .add-attachment.btn .btn-content {
     @apply bg-04;
@@ -191,20 +278,33 @@
     @apply self-start;
 }
 .attach-btn.btn.btn-round .btn-content {
-    @apply bg-07 md:bg-03 text-05 md:text-icons-01;
+    @apply bg-07 md:bg-03;
+    @apply text-05 md:text-icons-01;
 }
 .attach-dropdown-menu {
-    @apply absolute bottom-2;
+    @apply absolute;
+    @apply bottom-2;
 }
 
 .related-chat-entry-panel {
-    @apply flex-x bg-03 w-full h-10 outline-none py-0;
+    @apply flex-x;
+    @apply w-full h-10;
+    @apply py-0;
+    @apply outline-none;
+    @apply bg-03;
 }
 .related-chat-entry {
-    @apply flex-x w-full items-center bg-03 md:py-2 px-2 text-base cursor-pointer;
+    @apply flex-x;
+    @apply w-full;
+    @apply items-center;
+    @apply px-2 md:py-2;
+    @apply bg-03;
+    @apply text-base;
+    @apply cursor-pointer;
 }
 .related-chat-entry .btn.btn-round {
-    @apply mx-1 md:mx-2 min-w-12 md:min-w-0;
+    @apply min-w-12 md:min-w-0;
+    @apply mx-1 md:mx-2;
 }
 .related-chat-entry .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
