@@ -1,10 +1,12 @@
 Fix:
 - Unify TriggerEditor / focusAndOpenKeyboard
-  MarkupEditor.focusAndOpenKeyboard - disable on Chrome / non-iOS
+- LongPress - route to contextmenu + disable in Chrome?
+- throttle - check its code for possible bugs / see how it is used in VirtualList
 
-Add helper calling UICommander.RunNothing + get rid of UpdateDelayer.Instant:
-- RelatedChatEntry.Value + RelatedChatEntryPanel
-- RightPanelUI.IsVisible.Value + ChatRightPanel
+Chat list:
+- Remove tabs, leave "All" tab
+- Add "Personal" tab
+- Fix sorting menu - should sort order be per-tab?
 
 Implement common variants of ErrorBoundary (timeout + reload, just show an error, etc.) + add it for:
 - Pages
