@@ -107,10 +107,9 @@ public partial class ChatUI
         if (startFrom != null)
             idRange = (startFrom.Value, idRange.End);
         var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
-        var filterLimit = startFrom != null ? 100 : 1000;
         return await reader.GetLastWhile(idRange,
             x => x.HasAudioEntry || x.IsStreaming,
-            x => GetEndsAt(x.ChatEntry) >= minEndsAt && x.SkippedCount < filterLimit,
+            x => GetEndsAt(x.ChatEntry) >= minEndsAt && x.SkippedCount < 100,
             cancellationToken);
     }
 
