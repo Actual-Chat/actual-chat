@@ -156,7 +156,7 @@
 
 .navbar-chats,
 .navbar-contacts {
-    @apply h-full overflow-hidden;
+    @apply overflow-auto custom-scrollbar;
 }
 .navbar-chats .sort-btn.btn {
     @apply min-w-fit max-w-fit min-h-fit rounded-full;
