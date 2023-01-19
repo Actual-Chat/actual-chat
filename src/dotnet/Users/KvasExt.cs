@@ -36,4 +36,15 @@ public static class KvasExt
 
     public static Task SetUserLanguageSettings(this IKvas kvas, UserLanguageSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserLanguageSettings.KvasKey, value, cancellationToken);
+
+    // UserOnboardingSettings
+
+    public static async ValueTask<UserOnboardingSettings> GetOnboardingSettings(this IKvas kvas, CancellationToken cancellationToken)
+    {
+        var valueOpt = await kvas.Get<UserOnboardingSettings>(UserOnboardingSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        return valueOpt.IsSome(out var value) ? value : new();
+    }
+
+    public static Task SetOnboardingSettings(this IKvas kvas, UserOnboardingSettings value, CancellationToken cancellationToken)
+        => kvas.Set(UserOnboardingSettings.KvasKey, value, cancellationToken);
 }
