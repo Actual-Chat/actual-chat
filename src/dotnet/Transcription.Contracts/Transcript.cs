@@ -154,12 +154,19 @@ public sealed class Transcript
         commonMapPrefixLength = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength + textRangeStart);
         if (commonMapPrefixLength <= 0)
             return this;
+
         // Here commonMapPrefixLength points to a map point that lies before commonTextPrefixLength,
         // and moreover, commonMapPrefixLength lies in the common part of the map too
-
         var mapPrefix = baseMap[..commonMapPrefixLength];
         if (mapPrefix.IsEmpty)
             return this;
+
+        // Strip spaces for prefix - diffs should start with spaces instead of prefixes
+        // otherwise the text map will not match the text
+        while (commonTextPrefixLength > 0
+               && baseText.Length > commonTextPrefixLength
+               && baseText[commonTextPrefixLength - 1] == ' ')
+            commonTextPrefixLength--;
         var textPrefix = baseText[..commonTextPrefixLength];
 
         var textSuffix = text[textPrefix.Length..];

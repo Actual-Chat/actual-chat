@@ -264,49 +264,52 @@ public sealed class AudioProcessor : IAudioProcessor
         ChatEntry? textEntry = null;
         IChatsBackend.UpsertEntryCommand? command;
 
-        await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (transcript != null) {
-                transcript = transcript.WithDiff(diff);
-                if (textEntry != null)
+        try {
+            await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                if (transcript != null) {
+                    transcript = transcript.WithDiff(diff);
+                    if (textEntry != null)
+                        continue;
+                }
+                transcript = diff;
+                if (EmptyRegex.IsMatch(transcript.Text))
                     continue;
+
+                // Got first non-empty transcript -> create text entry
+                chatAudioEntry ??= await audioEntryTask.ConfigureAwait(false);
+                var entryId = new ChatEntryId(chatAudioEntry.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+                textEntry = new ChatEntry(entryId) {
+                    AuthorId = chatAudioEntry.AuthorId,
+                    Content = "",
+                    StreamId = transcriptStreamId,
+                    BeginsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
+                };
+                command = new IChatsBackend.UpsertEntryCommand(textEntry);
+                textEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+                DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
+                    textEntry.Id,
+                    textEntry.ChatId);
             }
-            transcript = diff;
-            if (EmptyRegex.IsMatch(transcript.Text))
-                continue;
-
-            // Got first non-empty transcript -> create text entry
-            chatAudioEntry ??= await audioEntryTask.ConfigureAwait(false);
-            var entryId = new ChatEntryId(chatAudioEntry.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-            textEntry = new ChatEntry(entryId) {
-                AuthorId = chatAudioEntry.AuthorId,
-                Content = "",
-                StreamId = transcriptStreamId,
-                BeginsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
-            };
-            command = new IChatsBackend.UpsertEntryCommand(textEntry);
-            textEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-            DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
-                textEntry.Id,
-                textEntry.ChatId);
         }
-        if (transcript == null || textEntry == null)
+        finally {
+            if (transcript != null && textEntry != null) {
+                var textToTimeMap = transcript.TextToTimeMap.Move(-transcript.TextRange.Start, 0);
+                textEntry = textEntry with {
+                    Content = transcript.Text,
+                    StreamId = Symbol.Empty,
+                    AudioEntryId = chatAudioEntry!.LocalId,
+                    EndsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.End),
+                    TextToTimeMap = textToTimeMap,
+                };
+                if (EmptyRegex.IsMatch(textEntry.Content)) {
+                    // Final transcript is empty -> remove text entry
+                    // TODO(AY): Maybe publish [Audio: ...] markup here
+                    textEntry = textEntry with { IsRemoved = true };
+                }
+                command = new IChatsBackend.UpsertEntryCommand(textEntry);
+                await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+            }
             // TODO(AY): Maybe publish [Audio: ...] markup here
-            return;
-
-        var textToTimeMap = transcript.TextToTimeMap.Move(-transcript.TextRange.Start, 0);
-        textEntry = textEntry with {
-            Content = transcript.Text,
-            StreamId = Symbol.Empty,
-            AudioEntryId = chatAudioEntry!.LocalId,
-            EndsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.End),
-            TextToTimeMap = textToTimeMap,
-        };
-        if (EmptyRegex.IsMatch(transcript.Text)) {
-            // Final transcript is empty -> remove text entry
-            // TODO(AY): Maybe publish [Audio: ...] markup here
-            textEntry = textEntry with { IsRemoved = true };
         }
-        command = new IChatsBackend.UpsertEntryCommand(textEntry);
-        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 }
