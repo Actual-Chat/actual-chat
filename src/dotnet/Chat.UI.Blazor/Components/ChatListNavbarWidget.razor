@@ -20,7 +20,7 @@
             </TitleContent>
             <ChildContent>
                 @if (_activeTabId == tabId) {
-                    <div class="h-full flex-y my-2">
+                    <div class="flex-y my-2">
                         <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
                         <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
                     </div>
@@ -32,7 +32,7 @@
 <OnUIEvent TEvent="@SelectSortingTypeEvent" Handler="OnSelectSortingTypeEvent" />
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
-        <div class="flex-y overflow-y-auto md:overflow-y-visible custom-scrollbar">
+        <div class="flex-y overflow-y-auto">
             <ActiveChatsNavbarWidget/>
             <div class="border-t-4 border-bg-04"></div>
             <TabPanel

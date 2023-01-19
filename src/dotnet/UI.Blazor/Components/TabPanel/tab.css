@@ -34,6 +34,7 @@
 }
 .tab-panel .tab {
     @apply grow w-full max-w-full;
+    @apply overflow-y-auto custom-scrollbar;
 }
 
 .shape {
