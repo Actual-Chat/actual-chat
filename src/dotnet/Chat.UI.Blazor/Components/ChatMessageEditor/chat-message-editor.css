@@ -35,10 +35,10 @@
     @apply max-h-48 md:max-h-88;
     @apply overflow-y-auto overflow-x-hidden;
     @apply outline-none;
-    @apply break-words;
     @apply text-counter md:text-02;
     @apply bg-07 md:bg-03;
     @apply hover:cursor-text;
+    word-break: break-word;
 
 }
 .post-panel .message-input .editor-content {
