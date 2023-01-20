@@ -182,6 +182,7 @@ class ContextMenuOrDataHrefGesture extends Gesture {
                     const event = new CustomEvent('contextmenu', {
                         bubbles: true,
                         cancelable: true,
+                        detail: e.detail,
                     });
                     Object.assign(event, {
                         isCustom: true,
