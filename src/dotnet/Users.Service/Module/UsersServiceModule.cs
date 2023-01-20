@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Commands;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Authentication.Commands;
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
@@ -36,8 +38,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddAuthentication(options => {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         }).AddCookie(options => {
-            options.LoginPath = Links.SignIn.Value;
-            options.LogoutPath = Links.SignOut.Value;
+            options.LoginPath = "/signIn";
+            options.LogoutPath = "/signOut";
             if (IsDevelopmentInstance)
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
             // This controls the expiration time stored in the cookie itself
