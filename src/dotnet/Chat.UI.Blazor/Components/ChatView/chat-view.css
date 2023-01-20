@@ -26,6 +26,7 @@
 
 .chat-message > .c-content {
     @apply flex-1 flex-y;
+    @apply mr-4 md:mr-8;
     @apply overflow-hidden;
 }
 
