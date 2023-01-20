@@ -2,6 +2,7 @@ import { PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { Log, LogLevel } from 'logging';
+import { DeviceInfo } from '../../../../nodejs/src/device-info';
 
 const LogScope = 'BrowserInfo';
 const log = Log.get(LogScope, LogLevel.Info);
@@ -16,8 +17,6 @@ export class BrowserInfo {
 
     public static appKind: AppKind;
     public static utcOffset: number;
-    public static isMobile: boolean;
-    public static isTouchCapable: boolean;
     public static windowId: string = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
@@ -25,26 +24,18 @@ export class BrowserInfo {
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
-        // @ts-ignore
-        this.windowId = window.App.windowId;
-
-        const userAgentData: { mobile?: boolean; } = self.navigator['userAgentData'] as { mobile?: boolean; };
-        this.isMobile = userAgentData?.mobile
-            // Additional check for browsers which don't support userAgentData
-            ?? /Android|Mobile|Phone|webOS|iPhone|iPad|iPod|BlackBerry/i.test(self.navigator.userAgent);
-        this.isTouchCapable =
-            ( 'ontouchstart' in window )
-            || ( navigator.maxTouchPoints > 0 )
-            // @ts-ignore
-            || ( navigator.msMaxTouchPoints > 0 );
+        this.windowId = (window['App'] as { windowId: string }).windowId;
         this.initBodyClasses();
 
         // Call OnInitialized
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
             utcOffset: this.utcOffset,
-            isMobile: this.isMobile,
-            isTouchCapable: this.isTouchCapable,
+            isMobile: DeviceInfo.isMobile,
+            isAndroid: DeviceInfo.isAndroid,
+            isIos: DeviceInfo.isIos,
+            isChrome: DeviceInfo.isChrome,
+            isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
         log?.log(`init:`, initResult);
@@ -80,12 +71,19 @@ export class BrowserInfo {
             break;
         }
 
-        if (this.isMobile)
+        if (DeviceInfo.isMobile)
             classList.add('device-mobile');
         else
             classList.add('device-desktop');
 
-        if (this.isTouchCapable)
+        if (DeviceInfo.isAndroid)
+            classList.add('device-android');
+        if (DeviceInfo.isIos)
+            classList.add('device-ios');
+        if (DeviceInfo.isChrome)
+            classList.add('device-chrome');
+
+        if (DeviceInfo.isTouchCapable)
             classList.add('device-touch-capable');
     }
 }
@@ -94,6 +92,9 @@ export interface InitResult {
     screenSizeText: string;
     utcOffset: number;
     isMobile: boolean;
+    isAndroid: boolean;
+    isIos: boolean;
+    isChrome: boolean;
     isTouchCapable: boolean;
     windowId: string;
 }

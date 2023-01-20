@@ -15,7 +15,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { endEvent } from 'event-handling';
+import { DocumentEvents, endEvent } from 'event-handling';
 import { Vector2D } from 'math';
 import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
@@ -25,17 +25,17 @@ import Escapist from '../../Services/Escapist/escapist';
 import { HistoryUI } from '../../Services/HistoryUI/history-ui';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
+import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
 const LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-enum MenuTriggers {
+enum MenuTrigger {
     None = 0,
-    LeftClick = 1,
-    RightClick = 2,
-    LongClick = 4,
+    Primary = 1,
+    Secondary = 2,
 }
 
 interface Menu {
@@ -63,16 +63,15 @@ export class MenuHost implements Disposable {
     constructor(private readonly blazorRef: DotNet.DotNetObject) {
         debugLog?.log('constructor')
         merge(
-            fromEvent(document, 'click'),
-            fromEvent(document, 'long-press'),
-            fromEvent(document, 'contextmenu')
+            DocumentEvents.active.click$,
+            DocumentEvents.active.contextmenu$,
             )
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event) => this.onClick(event));
+            .subscribe((event: MouseEvent) => this.onClick(event));
 
-        fromEvent(document, 'mouseover')
+        DocumentEvents.passive.pointerOver$
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event) => this.onMouseOver(event));
+            .subscribe((event: PointerEvent) => this.onPointerOver(event));
 
         Escapist.event$
             .pipe(takeUntil(this.disposed$))
@@ -292,37 +291,29 @@ export class MenuHost implements Disposable {
     // Event handlers
 
     private onClick(event: Event): void {
-        let trigger = MenuTriggers.None
+        let trigger = MenuTrigger.None
         if (event.type == 'click')
-            trigger = MenuTriggers.LeftClick;
-        if (event.type == 'long-press')
-            trigger = MenuTriggers.LongClick;
+            trigger = MenuTrigger.Primary;
         if (event.type == 'contextmenu')
-            trigger = MenuTriggers.RightClick;
+            trigger = MenuTrigger.Secondary;
         debugLog?.log('onClick, event:', event, ', trigger:', trigger);
 
         let isDesktopMode = this.isDesktopMode;
 
         // Ignore clicks which definitely aren't "ours"
-        if (trigger == MenuTriggers.None)
+        if (trigger == MenuTrigger.None)
             return;
         if (!(event.target instanceof Element))
             return;
 
-        // Ignore long clicks on desktop: they don't provide pointer position -> menu can't be properly positioned
-        if (trigger == MenuTriggers.LongClick && isDesktopMode)
-            return;
-
-        // Suppress browser context menu anywhere but on images
-        if (trigger == MenuTriggers.RightClick && event.target.nodeName !== 'IMG')
-            event.preventDefault();
-
-        let triggerElement = event.target.closest('[data-menu]') as HTMLElement;
-        let menuRef = null;
-        if ((triggerElement instanceof HTMLElement)) {
-            const menuTrigger = triggerElement.dataset['menuTrigger'];
-            if (menuTrigger && hasTrigger(menuTrigger, trigger))
-                menuRef = triggerElement.dataset['menu'];
+        let [triggerElement, menuRef] = getOrInheritData(event.target, 'menu');
+        if (triggerElement && menuRef) {
+            const menuTrigger = MenuTrigger[triggerElement.dataset['menuTrigger'] ?? 'Secondary'];
+            if (trigger !== menuTrigger) {
+                const altMenuTrigger = menuTrigger == MenuTrigger.Primary ? MenuTrigger.Secondary : MenuTrigger.None;
+                if (!isDesktopMode || trigger != altMenuTrigger)
+                    menuRef = null;
+            }
         }
 
         if (!menuRef) {
@@ -360,7 +351,7 @@ export class MenuHost implements Disposable {
         endEvent(event);
     }
 
-    private async onMouseOver(event: Event): Promise<void> {
+    private async onPointerOver(event: Event): Promise<void> {
         // Hover menus work only in desktop mode
         if (!this.isDesktopMode)
             return;
@@ -375,15 +366,14 @@ export class MenuHost implements Disposable {
             return;
         }
 
-        const triggerElement = event.target.closest('[data-hover-menu]') as HTMLElement;
-        if (!(triggerElement instanceof HTMLElement)) {
+        const [triggerElement, menuRef] = getOrInheritData(event.target, 'hoverMenu');
+        if (!menuRef) {
             const isInsideHoverMenu = event.target.closest('.ac-menu-hover') != null;
             if (!isInsideHoverMenu)
                 this.hide({ isHoverMenu: true });
             return;
         }
 
-        const menuRef = triggerElement.dataset['hoverMenu'];
         const menu = this.create(menuRef, true, triggerElement, "top-end", null);
         if (this.isShown(menu))
             return;
@@ -397,10 +387,6 @@ export class MenuHost implements Disposable {
 let _nextId = 1;
 // Menu Ids are used as HTML element Ids, so they need to have unique prefix
 let nextId = () => 'menu:' + (_nextId++).toString();
-
-function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
-    return (Number(trigger) & triggers) === triggers;
-}
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset['menuPlacement'];

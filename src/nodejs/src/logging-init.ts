@@ -73,11 +73,11 @@ function persist(minLevels: Map<string, LogLevel>): boolean {
 
 function reset(minLevels: Map<string, LogLevel>): void {
     // Bumping up levels of noisy scopes
-    minLevels.set('LongPress', LogLevel.Info);
     minLevels.set('ScreenSize', LogLevel.Info);
     minLevels.set('NextInteraction', LogLevel.Info);
     minLevels.set('Interactive', LogLevel.Info);
     minLevels.set('OnDeviceAwake', LogLevel.Info);
+    minLevels.set('Gestures', LogLevel.Info);
     minLevels.set('HistoryUI', LogLevel.Info);
     minLevels.set('InteractiveUI', LogLevel.Info);
     minLevels.set('TuneUI', LogLevel.Info);
@@ -102,13 +102,14 @@ function reset(minLevels: Map<string, LogLevel>): void {
     minLevels.set('MenuHost', LogLevel.Info);
 
     // Bumping down levels of in-dev scopes
+    minLevels.set('Gestures', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
+    minLevels.set('MenuHost', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
-    // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('HistoryUI', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)

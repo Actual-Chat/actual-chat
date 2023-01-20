@@ -19,18 +19,16 @@
     <div class="@wrapperCls recorder-wrapper">
         <ButtonRound Class="record-off-btn"
                      Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
+                     @onpointerup="OnPointerUp"
+                     @oncontextmenu="OnContextMenu"
+                     data-context-menu-delay="200">
                 <img src="/dist/images/logo-white.svg" alt="logo" class="recorder-icon">
         </ButtonRound>
         <ButtonRound Class="record-on-btn"
                      Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
+                     @onpointerup="OnPointerUp"
+                     @oncontextmenu="OnContextMenu"
+                     data-context-menu-delay="200">
             <i class="icon-Stop-fill text-2xl"></i>
         </ButtonRound>
     </div>
@@ -56,7 +54,7 @@
     private bool CanRecord => _canRecord ?? true;
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsRecording => !IsLoading && State.Value.IsRecording;
-    private bool IsLongPressOn { get; set; } = false;
+    private bool IsForcePush { get; set; } = false;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
@@ -90,8 +88,8 @@
         }
     }
 
-    private async Task OnLongPressStart() {
-        if (IsLongPressOn)
+    private async Task OnContextMenu() {
+        if (IsForcePush)
             return;
 
         if (_canRecord == null) {
@@ -101,15 +99,15 @@
         if (!CanRecord || IsLoading)
             return;
 
-        IsLongPressOn = true;
+        IsForcePush = true;
         _ = ChatUI.SetRecordingChatId(Chat.Id);
     }
 
-    private void OnLongPressStop() {
-        if (!IsLongPressOn)
+    private void OnPointerUp() {
+        if (!IsForcePush)
             return;
 
-        IsLongPressOn = false;
+        IsForcePush = false;
         _ = ChatUI.SetRecordingChatId(default);
     }
 

@@ -1,6 +1,8 @@
 // nextTick & nextTickAsync are quite similar to polyfill of
 // [setImmediate](https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate),
 // which we don't use because it relies on setTimeout, which is throttled in background tabs.
+import { Disposable } from 'disposable';
+
 export function nextTick(callback: () => unknown) {
     nextTickCallbacks.push(callback);
     nextTickChannel.port2.postMessage(null);
@@ -20,7 +22,7 @@ nextTickChannel.port1.onmessage = _ => {
 
 // Timeout: a nicer wrapper around setTimeout
 
-export class Timeout {
+export class Timeout implements Disposable {
     protected handle: number | null = null;
 
     static start(isPrecise: boolean, timeoutMs: number, callback: () => unknown): Timeout {
@@ -45,6 +47,10 @@ export class Timeout {
 
         this.handle = setTimeout(callback, timeoutMs) as unknown as number;
         return;
+    }
+
+    public dispose(): void {
+        this.clear();
     }
 
     public clear(): void {

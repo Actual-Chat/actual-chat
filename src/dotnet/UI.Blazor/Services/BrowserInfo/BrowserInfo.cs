@@ -18,6 +18,9 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     public IState<ScreenSize> ScreenSize => _screenSize;
     public TimeSpan UtcOffset { get; private set; }
     public bool IsMobile { get; private set; }
+    public bool IsAndroid { get; private set; }
+    public bool IsIos { get; private set; }
+    public bool IsChrome { get; private set; }
     public bool IsTouchCapable { get; private set; }
     public string WindowId { get; private set; } = "";
     public Task WhenReady => _whenReadySource.Task;
@@ -52,6 +55,9 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         SetScreenSize(initResult.ScreenSizeText);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
+        IsAndroid = initResult.IsAndroid;
+        IsIos = initResult.IsIos;
+        IsChrome = initResult.IsChrome;
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
         _whenReadySource.SetResult(default);

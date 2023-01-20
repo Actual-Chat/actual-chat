@@ -1,6 +1,7 @@
 import { throttle } from 'promises';
 import { UndoStack } from './undo-stack';
 import { Log, LogLevel } from 'logging';
+import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
 const LogScope = 'MarkupEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -302,11 +303,9 @@ export class MarkupEditor {
     private onDocumentClick = (event: Event): void => {
         if (!(event.target instanceof Element))
             return;
-        const closestElement = event.target.closest('[data-editor-trigger]');
-        if (!(closestElement instanceof HTMLElement))
-            return;
-        const trigger = closestElement.dataset['editorTrigger'];
-        if (trigger.toLowerCase() !== 'true')
+
+        const [_, trigger] = getOrInheritData(event.target, 'editorTrigger');
+        if (trigger?.toLowerCase() !== 'true')
             return;
 
         focusAndOpenKeyboard(this.editorDiv, 300);

@@ -12,7 +12,6 @@
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
         <li class="message-reactions-reaction @ownReactionClass"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, reaction.Emoji))"
-            data-menu-trigger="@MenuTriggers.Secondary.Format()"
             data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@(_ => ToggleReaction(reaction.Emoji))">
             <EmojiIcon Id="@reaction.Emoji.Id" Class="message-reactions-reaction-emoji"/>
@@ -22,7 +21,7 @@
 
     <li class="message-reactions-add"
         data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
-        data-menu-trigger="@MenuTriggers.Primary.Format()"
+        data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.Right.ToPositionString())">
         <AddReactionIcon Class="message-reactions-add-icon"/>
     </li>

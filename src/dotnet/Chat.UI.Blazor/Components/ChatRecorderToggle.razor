@@ -18,18 +18,16 @@
     <div class="@wrapperCls recorder-wrapper">
         <ButtonRound Class="record-off-btn"
                      Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
+                     @onpointerup="OnPointerUp"
+                     @oncontextmenu="OnLongPressStart"
+                     data-context-menu-delay="200">
             <i class="icon-mic text-2xl"></i>
         </ButtonRound>
         <ButtonRound Class="record-on-btn"
                      Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
+                     @onpointerup="OnPointerUp"
+                     @oncontextmenu="OnLongPressStart"
+                     data-context-menu-delay="200">
                <i class="icon-Stop-fill text-2xl"></i>
         </ButtonRound>
     </div>
@@ -58,7 +56,7 @@
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
-    private bool IsLongPress { get; set; }
+    private bool IsForcePush { get; set; }
     private bool CanRecord { get; set; } = true;
 
     protected override async Task OnInitializedAsync() {
@@ -109,21 +107,23 @@
     }
 
     private async Task OnLongPressStart() {
-        if (IsLongPress)
+        if (IsForcePush)
             return;
+
         CanRecord = await AudioRecorder.CanRecord();
         if (!CanRecord) {
             StateHasChanged();
             return;
         }
-        IsLongPress = true;
+        IsForcePush = true;
         _ = ChatUI.SetRecordingChatId(ChatId);
     }
 
-    private void OnLongPressStop() {
-        if (!IsLongPress)
+    private void OnPointerUp() {
+        if (!IsForcePush)
             return;
-        IsLongPress = false;
+
+        IsForcePush = false;
         _ = ChatUI.SetRecordingChatId(default);
     }
 

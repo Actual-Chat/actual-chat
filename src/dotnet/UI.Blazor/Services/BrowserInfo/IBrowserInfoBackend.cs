@@ -10,6 +10,9 @@ public interface IBrowserInfoBackend
         string ScreenSizeText,
         double UtcOffset,
         bool IsMobile,
+        bool IsAndroid,
+        bool IsIos,
+        bool IsChrome,
         bool IsTouchCapable,
         string WindowId);
 }

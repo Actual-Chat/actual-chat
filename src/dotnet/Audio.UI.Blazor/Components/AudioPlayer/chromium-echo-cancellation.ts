@@ -1,4 +1,5 @@
 import { Log, LogLevel } from 'logging';
+import { DeviceInfo } from '../../../../nodejs/src/device-info';
 
 const LogScope = 'ChromiumEchoCancellation';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -154,32 +155,12 @@ function delayedReconnect(cleanup: () => void, stream: MediaStream): void {
     }, 10000);
 }
 
-let isAecWorkaroundNeededCached: boolean | null = null;
-
 /** Chromium browsers don't apply echoCancellation to a Web Audio pipeline */
 export function isAecWorkaroundNeeded(): boolean {
     const force = self['forceEchoCancellation'] as boolean;
     if (force !== null && force !== undefined)
         return force;
-    if (isAecWorkaroundNeededCached !== null)
-        return isAecWorkaroundNeededCached;
+    // Mobile phones have a good echoCancellation by default, we don't need anything to do
+    return !(DeviceInfo.isMobile || DeviceInfo.isChrome);
 
-    const navigatorUAData: { mobile: boolean; } = self.navigator['userAgentData'] as { mobile: boolean; };
-    // mobile phones have a good echoCancellation by default, we don't need anything to do
-    if (navigatorUAData != null && navigatorUAData.mobile != null && navigatorUAData.mobile === true) {
-        isAecWorkaroundNeededCached = false;
-        return isAecWorkaroundNeededCached;
-    }
-    const isChromium = window.navigator.userAgent.indexOf('Chrome') !== -1;
-    if (!isChromium) {
-        isAecWorkaroundNeededCached = false;
-        return isAecWorkaroundNeededCached;
-    }
-    // additional checks for mobile phones + chrome, that don't support userAgentData yet
-    if (/Android|Mobile|Phone|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
-        isAecWorkaroundNeededCached = false;
-        return isAecWorkaroundNeededCached;
-    }
-    isAecWorkaroundNeededCached = true;
-    return isAecWorkaroundNeededCached;
 }

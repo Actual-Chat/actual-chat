@@ -9,6 +9,7 @@ import {
     arrow,
 } from '@floating-ui/dom';
 import { Log, LogLevel } from 'logging';
+import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
 const LogScope = 'TooltipHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -49,32 +50,32 @@ export class TooltipHost implements Disposable {
     }
 
     private listenForMouseOverEvent(): void {
-        let currentElement: HTMLElement | undefined = undefined;
+        let activeTooltipElement: HTMLElement | null = null;
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
                 map((event: Event) => {
-                    if (!(event.target instanceof HTMLElement))
-                        return undefined;
-                    const closestElement = event.target.closest('[data-tooltip]');
-                    if (closestElement == currentElement)
-                        return undefined;
-                    if (!closestElement && currentElement) {
-                        currentElement = undefined;
+                    const [tooltipElement, _] = getOrInheritData(event.target, 'tooltip');
+                    if (tooltipElement === activeTooltipElement)
+                        return null;
+
+                    if (!tooltipElement && activeTooltipElement) {
+                        activeTooltipElement = null;
                         this.hideTooltip();
-                        return undefined;
+                        return null;
                     }
-                    if (!(closestElement instanceof HTMLElement))
-                        return undefined;
-                    return closestElement;
+                    if (tooltipElement == null)
+                        return null;
+
+                    return tooltipElement;
                 }),
-                switchMap((htmlElement: HTMLElement | undefined) => {
-                    return htmlElement ? of(htmlElement).pipe(delay(300)) : empty();
+                switchMap((tooltipElement: HTMLElement | null) => {
+                    return tooltipElement ? of(tooltipElement).pipe(delay(300)) : empty();
                 }),
             )
-            .subscribe((closestElement: HTMLElement) => {
-                currentElement = closestElement;
-                this.showTooltip(currentElement);
+            .subscribe((tooltipElement: HTMLElement) => {
+                activeTooltipElement = tooltipElement;
+                this.showTooltip(activeTooltipElement);
             });
     }
 
@@ -82,6 +83,7 @@ export class TooltipHost implements Disposable {
         const tooltipText = triggerRef.dataset['tooltip'];
         if (!tooltipText)
             return;
+
         this.tooltipTextRef.textContent = tooltipText;
         this.tooltipRef.style.display = 'block';
         this.updatePosition(triggerRef);
@@ -93,9 +95,7 @@ export class TooltipHost implements Disposable {
 
     private getPlacement(triggerRef: HTMLElement): Placement {
         const placement = triggerRef.dataset['tooltipPosition'];
-        if (placement)
-            return placement as Placement;
-        return 'top';
+        return placement ? placement as Placement : 'top';
     }
 
     private updatePosition(triggerRef: HTMLElement): void {

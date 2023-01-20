@@ -2,6 +2,8 @@ Fix:
 - Unify TriggerEditor / focusAndOpenKeyboard
 - LongPress - route to contextmenu + disable in Chrome?
 - throttle - check its code for possible bugs / see how it is used in VirtualList
+- serialize - remove limit
+- updateVisibleKeysThrottled, updateViewportThrottled - remove limit, add timeout
 
 Chat list:
 - Remove tabs, leave "All" tab

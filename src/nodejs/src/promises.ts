@@ -289,6 +289,7 @@ export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>
     return function(...callArgs: Parameters<T>): Promise<TResult> {
         if (limit != null && queueSize >= limit)
             return lastCall;
+
         queueSize++;
         const prevCall = lastCall;
         return lastCall = (async () => {
