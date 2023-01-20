@@ -1,0 +1,46 @@
+@namespace ActualChat.UI.Blazor.App
+@implements IDisposable
+
+@{
+    var absoluteUrl = $"docs/{PageUrl}/";
+}
+@foreach(var link in Links) {
+    <a
+        href="@(absoluteUrl + "#" + link.url)"
+        class="c-title @(_activeAnchor == link.url ? "active" : "")">
+        @link.title
+    </a>
+}
+
+@code {
+    private string _activeAnchor = "";
+
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IJSRuntime JSRuntime { get; init; } = null!;
+
+    [Parameter, EditorRequired] public (string title, string url)[] Links { get; set; } = null!;
+    [Parameter, EditorRequired] public string PageUrl { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => Nav.LocationChanged += OnLocationChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+        => await GetActiveAnchor();
+
+    public void Dispose()
+        => Nav.LocationChanged -= OnLocationChanged;
+
+    private async void OnLocationChanged(object sender, LocationChangedEventArgs e)
+        => await GetActiveAnchor();
+
+    private async Task GetActiveAnchor()
+    {
+        var uri = new Uri(Nav.Uri, UriKind.Absolute);
+        var fragment = uri.Fragment;
+        if (fragment.StartsWith('#')) {
+            _activeAnchor = fragment[1..];
+            StateHasChanged();
+        }
+        await Task.CompletedTask;
+    }
+}

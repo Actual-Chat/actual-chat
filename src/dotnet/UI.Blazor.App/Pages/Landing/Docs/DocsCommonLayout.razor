@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App
 
 <RenderIntoSlot Name="MainLeftDrawer">
-    <CascadingValue Value="@ActivePage">
+    <CascadingValue Value="@Page">
         <DocsLeftPanel/>
     </CascadingValue>
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    <DocsRightPanel/>
+    <DocsRightPanel Page="@Page"/>
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainHeader">
@@ -17,7 +17,7 @@
 </RenderIntoSlot>
 
 @code {
-    [Parameter] public DocsPage ActivePage { get; set; } = DocsPage.Privacy;
+    [Parameter] public DocsPage Page { get; set; } = DocsPage.Privacy;
 
     public enum DocsPage {
         Privacy,

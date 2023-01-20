@@ -3,10 +3,10 @@
 @inherits LayoutComponentBase
 @layout DefaultLayout
 
-<DocsCommonLayout ActivePage="@DocsCommonLayout.DocsPage.Privacy"/>
+<DocsCommonLayout Page="@DocsCommonLayout.DocsPage.Privacy"/>
 
 <div class="docs-content">
-    <h1>Privacy Policy</h1>
+    <h1 id="introduction">Privacy Policy</h1>
     <p>Last updated: January 1, 2023</p>
     <p>
         This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your
@@ -16,7 +16,7 @@
         We use Your Personal data to provide and improve the Service. By using the Service, You agree to the collection
         and use of information in accordance with this Privacy Policy.
     </p>
-    <h1>Interpretation and Definitions</h1>
+    <h1 id="definitions">Interpretation and Definitions</h1>
     <h2>Interpretation</h2>
     <p>
         The words of which the initial letter is capitalized have meanings defined under the following conditions.
@@ -156,7 +156,7 @@
             </p>
         </li>
     </ul>
-    <h1>Collecting and Using Your Personal Data</h1>
+    <h1 id="personal-data">Collecting and Using Your Personal Data</h1>
     <h2>Types of Data Collected</h2>
     <h3>Personal Data</h3>
     <p>
@@ -426,7 +426,7 @@
         Internet, or method of electronic storage is 100% secure. While We strive to use commercially acceptable means
         to protect Your Personal Data, We cannot guarantee its absolute security.
     </p>
-    <h1>GDPR Privacy</h1>
+    <h1 id="gdpr">GDPR Privacy</h1>
     <h2>Legal Basis for Processing Personal Data under GDPR</h2>
     <p>We may process Personal Data under the following conditions:</p>
     <ul>
@@ -511,7 +511,7 @@
         Data. For more information, if You are in the European Economic Area (EEA), please contact Your local data
         protection authority in the EEA.
     </p>
-    <h1>CCPA Privacy</h1>
+    <h1 id="ccpa">CCPA Privacy</h1>
     <p>
         This privacy notice section for California residents supplements the information contained in Our Privacy
         Policy and it applies solely to all visitors, users, and others who reside in the State of California.
@@ -935,7 +935,7 @@
         consumer request from You, we will stop selling Your personal information. To exercise Your right to opt-out,
         please contact Us.
     </p>
-    <h1>"Do Not Track" Policy as Required by California Online Privacy Protection Act (CalOPPA)</h1>
+    <h1 id="caloppa">"Do Not Track" Policy as Required by California Online Privacy Protection Act (CalOPPA)</h1>
     <p>Our Service does not respond to Do Not Track signals.</p>
     <p>
         However, some third party websites do keep track of Your browsing activities. If You are visiting such websites,
@@ -1009,6 +1009,4 @@
     <div id="rememberry__extension__root" style="all: unset;"></div>
 </div>
 
-@code {
-
-}
+<AnchorNavigation/>
