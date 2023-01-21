@@ -1,8 +1,8 @@
 import { NextInteraction } from 'next-interaction';
 import { EventHandler } from 'event-handling';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'UserActivityUI';
+const LogScope: LogScope = 'UserActivityUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class UserActivityUI {

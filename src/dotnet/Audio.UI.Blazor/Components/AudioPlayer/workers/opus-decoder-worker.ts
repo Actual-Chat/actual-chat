@@ -5,10 +5,10 @@
 
 import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
 import { OpusDecoder } from './opus-decoder';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
 
-const LogScope = 'OpusDecoderWorker'
+const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 const debug = debugLog != null;

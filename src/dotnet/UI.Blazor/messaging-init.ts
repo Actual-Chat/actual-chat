@@ -1,10 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { NextInteraction } from 'next-interaction';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { BrowserInfo } from './Services/BrowserInfo/browser-info';
 
-const LogScope = 'MessagingInit';
+const LogScope: LogScope = 'MessagingInit';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const infoLog = Log.get(LogScope, LogLevel.Info);
 const warnLog = Log.get(LogScope, LogLevel.Warn);

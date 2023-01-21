@@ -8,8 +8,8 @@ import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 
-import { Log, LogLevel } from 'logging';
-const LogScope = 'MessageEditor';
+import { Log, LogLevel, LogScope } from 'logging';
+const LogScope: LogScope = 'MessageEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

@@ -1,4 +1,6 @@
-const LogScope = 'MentionList';
+import { LogScope } from 'logging';
+
+const LogScope: LogScope = 'MentionList';
 
 export class MentionList {
     private blazorRef: DotNet.DotNetObject;

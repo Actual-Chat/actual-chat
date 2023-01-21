@@ -19,7 +19,7 @@ import { DocumentEvents, endEvent } from 'event-handling';
 import { Vector2D } from 'math';
 import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
 import Escapist from '../../Services/Escapist/escapist';
 import { HistoryUI } from '../../Services/HistoryUI/history-ui';
@@ -27,7 +27,7 @@ import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
 import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
-const LogScope = 'MenuHost';
+const LogScope: LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

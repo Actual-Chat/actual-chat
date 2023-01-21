@@ -1,9 +1,9 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { BufferEncoderWorkletMessage, EncoderWorkletMessage } from './opus-encoder-worklet-message';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'OpusEncoderWorkletProcessor';
+const LogScope: LogScope = 'OpusEncoderWorkletProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

@@ -1,8 +1,8 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
 
-const LogScope = 'promises';
+const LogScope: LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

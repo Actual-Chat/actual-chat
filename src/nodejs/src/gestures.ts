@@ -6,10 +6,10 @@ import { getOrInheritData } from 'dom-helpers';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
 import { Vector2D } from 'math';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 
-const LogScope = 'Gestures';
+const LogScope: LogScope = 'Gestures';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 

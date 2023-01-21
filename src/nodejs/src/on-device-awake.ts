@@ -1,8 +1,8 @@
 import { Observable } from 'rxjs';
 import { EventHandler, EventHandlerSet } from 'event-handling';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'OnDeviceAwake';
+const LogScope: LogScope = 'OnDeviceAwake';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

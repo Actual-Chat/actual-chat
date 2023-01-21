@@ -1,22 +1,17 @@
-import { initLogging } from 'logging-init';
+import { initLogging, LogScope, LogLevel } from 'logging-init';
 import 'logging-init';
 
-export enum LogLevel {
-    Debug = 1,
-    Info,
-    Warn,
-    Error,
-    None = 1000,
-}
+export { LogLevel } from './logging-init';
+export type { LogScope } from './logging-init';
 
 export class Log {
-    public static readonly minLevels: Map<string, LogLevel> = new Map<string, LogLevel>();
+    public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
     public static defaultMinLevel = LogLevel.Error;
     private static isInitialized = false;
     public log: (...data: unknown[]) => void;
 
     constructor(
-        public readonly scope: string,
+        public readonly scope: LogScope,
         public readonly level: LogLevel,
     ) {
         const prefix = `[${scope}]`;
@@ -38,9 +33,9 @@ export class Log {
         }
     }
 
-    public static loggerFactory = (scope: string, level: LogLevel) => new Log(scope, level);
+    public static loggerFactory = (scope: LogScope, level: LogLevel) => new Log(scope, level);
 
-    public static get(scope: string, level = LogLevel.Info): Log | null {
+    public static get(scope: LogScope, level = LogLevel.Info): Log | null {
         if (!this.isInitialized) {
             this.isInitialized = true;
             initLogging(this);
