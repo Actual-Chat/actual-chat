@@ -1,9 +1,9 @@
 import { throttle } from 'promises';
 import { UndoStack } from './undo-stack';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
-const LogScope = 'MarkupEditor';
+const LogScope: LogScope = 'MarkupEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

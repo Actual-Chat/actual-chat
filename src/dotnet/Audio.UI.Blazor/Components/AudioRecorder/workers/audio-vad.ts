@@ -4,8 +4,9 @@ import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
 import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
 import wasmSimdPath from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
+import { LogScope } from 'logging';
 
-const LogScope = 'AudioVad';
+const LogScope: LogScope = 'AudioVad';
 
 export type VoiceActivityKind = 'start' | 'end';
 

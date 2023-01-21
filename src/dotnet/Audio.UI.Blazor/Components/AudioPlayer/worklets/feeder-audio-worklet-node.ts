@@ -10,9 +10,9 @@ import {
     ResumeNodeMessage,
     StopNodeMessage,
 } from './feeder-audio-worklet-message';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'FeederNode';
+const LogScope: LogScope = 'FeederNode';
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */

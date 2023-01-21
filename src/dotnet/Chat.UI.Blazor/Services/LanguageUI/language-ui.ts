@@ -1,6 +1,6 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'LanguageUI';
+const LogScope: LogScope = 'LanguageUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

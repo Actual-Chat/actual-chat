@@ -1,6 +1,6 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'ThemeUI';
+const LogScope: LogScope = 'ThemeUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 

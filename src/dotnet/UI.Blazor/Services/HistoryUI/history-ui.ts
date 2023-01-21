@@ -1,4 +1,4 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { v4 as uuid } from 'uuid';
 
 const LogScope: string = 'HistoryUI';

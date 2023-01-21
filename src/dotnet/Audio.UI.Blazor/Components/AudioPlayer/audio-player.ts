@@ -1,9 +1,9 @@
 import { ObjectPool } from 'object-pool';
 import { AudioPlayerController } from './audio-player-controller';
 import { PlaybackState } from './worklets/feeder-audio-worklet-node';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'AudioPlayer';
+const LogScope: LogScope = 'AudioPlayer';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

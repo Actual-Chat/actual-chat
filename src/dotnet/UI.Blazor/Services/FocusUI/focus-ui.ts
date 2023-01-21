@@ -1,6 +1,6 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'FocusUI';
+const LogScope: LogScope = 'FocusUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class FocusUI {

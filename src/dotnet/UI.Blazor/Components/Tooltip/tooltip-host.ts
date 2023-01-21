@@ -8,10 +8,10 @@ import {
     offset,
     arrow,
 } from '@floating-ui/dom';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
-const LogScope = 'TooltipHost';
+const LogScope: LogScope = 'TooltipHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

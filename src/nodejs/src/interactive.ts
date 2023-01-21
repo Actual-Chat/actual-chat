@@ -2,9 +2,9 @@ import { Observable } from 'rxjs';
 import { ResolvedPromise } from 'promises';
 import { EventHandlerSet } from 'event-handling';
 import { NextInteraction } from 'next-interaction';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'Interactive';
+const LogScope: LogScope = 'Interactive';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

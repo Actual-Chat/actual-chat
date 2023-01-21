@@ -6,9 +6,9 @@ import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'AudioVadWorker';
+const LogScope: LogScope = 'AudioVadWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

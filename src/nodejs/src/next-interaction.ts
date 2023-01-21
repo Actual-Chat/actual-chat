@@ -1,9 +1,9 @@
 import { Observable } from 'rxjs';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { throttle } from 'promises';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'NextInteraction';
+const LogScope: LogScope = 'NextInteraction';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class NextInteraction {

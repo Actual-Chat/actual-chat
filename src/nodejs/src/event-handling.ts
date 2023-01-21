@@ -1,8 +1,8 @@
 import { fromEvent, merge, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'event-handling';
+const LogScope: LogScope = 'event-handling';
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class EventHandler<T> implements Disposable {

@@ -17,9 +17,9 @@ import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './opus-encoder-worker-message';
 import { PromiseSource } from 'promises';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'OpusEncoderWorker';
+const LogScope: LogScope = 'OpusEncoderWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

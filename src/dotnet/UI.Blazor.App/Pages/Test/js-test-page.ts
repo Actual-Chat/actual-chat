@@ -1,6 +1,7 @@
+import { LogScope } from 'logging';
 import { debounce, delayAsync, ResettableFunc, serialize, throttle } from 'promises';
 
-const LogScope = 'JSTestPage';
+const LogScope: LogScope = 'JSTestPage';
 
 export class JSTestPage {
     private static serialized: () => Promise<void>;

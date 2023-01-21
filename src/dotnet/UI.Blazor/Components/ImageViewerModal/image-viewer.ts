@@ -1,4 +1,6 @@
-const LogScope = 'ImageViewer';
+import { LogScope } from 'logging';
+
+const LogScope: LogScope = 'ImageViewer';
 
 export class ImageViewer {
     private readonly overlay: HTMLElement;

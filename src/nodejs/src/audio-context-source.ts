@@ -3,10 +3,10 @@ import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { Timeout } from 'timeout';
 
-const LogScope = 'AudioContextSource';
+const LogScope: LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

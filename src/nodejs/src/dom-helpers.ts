@@ -1,6 +1,6 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'dom-helpers';
+const LogScope: LogScope = 'dom-helpers';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export function getOrInheritData(target: unknown, dataName: string): [HTMLElement | null, string | null] {

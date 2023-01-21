@@ -8,10 +8,10 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
 
-const LogScope = 'OpusDecoder';
+const LogScope: LogScope = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

@@ -7,7 +7,7 @@ import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
 import { VadMessage } from './workers/audio-vad-worker-message';
 import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './workers/opus-encoder-worker-message';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -33,7 +33,7 @@ import { Log, LogLevel } from 'logging';
                                    └─────────────┘
  */
 
-const LogScope = 'OpusMediaRecorder';
+const LogScope: LogScope = 'OpusMediaRecorder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);

@@ -1,8 +1,8 @@
 import { default as NoSleep } from 'nosleep.js';
 import { NextInteraction } from 'next-interaction';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'KeepAwakeUI';
+const LogScope: LogScope = 'KeepAwakeUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const infoLog = Log.get(LogScope, LogLevel.Info);
 const warnLog = Log.get(LogScope, LogLevel.Warn);

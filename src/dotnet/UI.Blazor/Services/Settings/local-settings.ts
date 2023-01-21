@@ -1,6 +1,6 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'LocalSettings';
+const LogScope: LogScope = 'LocalSettings';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const infoLog = Log.get(LogScope, LogLevel.Info);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
