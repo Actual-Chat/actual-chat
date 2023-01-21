@@ -5,7 +5,7 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export function getOrInheritData(target: unknown, dataName: string): [HTMLElement | null, string | null] {
     if (!(target instanceof HTMLElement))
-        return null;
+        return [null, null];
 
     const rootElement = document.documentElement;
     let element = target;
