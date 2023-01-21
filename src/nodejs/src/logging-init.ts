@@ -33,14 +33,14 @@ export class LogMinLevels {
 
     public reset() {
         reset(this.minLevels);
-        persist(this.minLevels)
+        persist(this.minLevels);
     }
 
     public clear(defaultLevel?: LogLevel) {
         this.minLevels.clear();
         if (defaultLevel !== undefined)
             this.minLevels['default'] = defaultLevel;
-        persist(this.minLevels)
+        persist(this.minLevels);
     }
 }
 
