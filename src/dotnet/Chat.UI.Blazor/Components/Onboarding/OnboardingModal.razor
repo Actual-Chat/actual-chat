@@ -19,11 +19,7 @@
                 <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
             }
             <div class="grow"></div>
-            <ButtonRound
-                Class="transparent"
-                Click="ModalInstance.CloseAsync">
-                <i class="icon-close text-2xl font-medium"></i>
-            </ButtonRound>
+            <ButtonX Click="@ModalInstance.CloseAsync"/>
         </HeaderContent>
         <ChildContent>
             <PhoneStep/>

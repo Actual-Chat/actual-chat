@@ -13,9 +13,10 @@
     <legend>Your primary language:</legend>
     @foreach (var language in Languages.All) {
         <div class="language-settings-item">
-            <Radio Id="@($"language-settings-primary-{language}")" Name="language-settings-primary"
+            <Radio Id="@($"language-settings-primary-{language}")"
+                   Name="language-settings-primary"
                    Value="@language" IsChecked="@(language == languages.Primary)"
-                   Title="@language.Title"
+                   Label="@language.Title"
                    Change="@(_ => SetPrimary(language))" />
         </div>
     }
@@ -25,8 +26,9 @@
     <legend>Your secondary language:</legend>
     <div class="language-settings-item">
         <Radio
-            Id="language-settings-secondary-none" Name="language-settings-secondary"
-            Title="None"
+            Id="language-settings-secondary-none"
+            Name="language-settings-secondary"
+            Label="None"
             Value=""
             IsChecked="@(languages.Secondary == null)"
             Change="@(_ => SetSecondary(null))"/>
@@ -34,8 +36,9 @@
     @foreach (var language in Languages.All.Where(x => x != languages.Primary)) {
         <div class="language-settings-item">
             <Radio
-                Id="@($"language-settings-secondary-{language}")" Name="language-settings-secondary"
-                Title="@language.Title"
+                Id="@($"language-settings-secondary-{language}")"
+                Name="language-settings-secondary"
+                Label="@language.Title"
                 Value="@language"
                 IsChecked="@(language == languages.Secondary)"
                 Change="@(_ => SetSecondary(language))"/>

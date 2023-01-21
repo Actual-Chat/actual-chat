@@ -1,120 +1,74 @@
-.form-toggle {
-    @apply flex flex-row items-center gap-x-2;
+.toggle {
+    @apply flex-1 flex-x items-center gap-x-2 overflow-hidden;
+}
+.toggle input {
+    /* The actual input is hidden */
+    @apply absolute z-minus;
+    @apply flex-none w-0 h-0 overflow-hidden invisible;
+}
+.toggle > .c-label {
+    @apply flex-1 flex-x items-center overflow-hidden;
+}
+.toggle > .c-label > .c-text {
+    @apply flex-1 overflow-hidden truncate;
 }
 
-.form-toggle-label {
-    @apply text-03;
-}
-
-.form-toggle .form-toggle-input {
-    @apply appearance-none ring-0;
-    @apply w-9 h-5;
-    @apply rounded-full bg-no-repeat bg-contain bg-gray-300 focus:outline-none cursor-pointer shadow-sm;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E");
-    background-position: 0;
-    transition: background-position .1s ease-in-out
-}
-.form-toggle .form-toggle-input:focus {
-    @apply ring-2 ring-offset-1 ring-primary outline-none border-0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E")
-}
-.form-toggle .form-toggle-input:checked {
-    @apply ring-0 bg-toggle-on;
-    background-position: 100%;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%223%22 fill=%22%23fff%22/%3E%3C/svg%3E")
-}
-.form-toggle .form-toggle-input:checked[type=checkbox] {
-    @apply ring-0;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e")
-}
-.form-toggle .form-toggle-input:checked:focus[type=checkbox] {
-    @apply ring-2 ring-offset-1 ring-primary outline-none border-0;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e")
-}
-.form-toggle .form-toggle-input:checked[type=radio] {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-4 -4 8 8%22%3E%3Ccircle r=%222%22 fill=%22%23fff%22/%3E%3C/svg%3E")
-}
-.form-toggle .form-toggle-input[type=checkbox]:indeterminate {
-    background-color: #0d6efd;
-    @apply ring-0;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e")
-}
-.form-toggle-input:disabled {
-    pointer-events: none;
-    filter: none;
-    opacity: .5;
-}
-
-@media(prefers-reduced-motion:reduce) {
-    .form-toggle-input {
-        transition: none;
-    }
-}
-
-.checkbox-x {
-    @apply flex-x items-center justify-items-start;
-}
-.checkbox-y {
-    @apply flex-y;
-    place-items: flex-start;
-}
-
-/* Custom checkbox */
-.checkbox {
-    @apply inline-block relative align-middle select-none text-sm mr-2.5 mt-0.5 leading-7 h-7;
-}
-.toggle-sm .checkbox {
-    @apply mr-0;
-}
-form label.checkbox-label {
-    @apply font-normal;
-}
-.checkbox .checkbox-switch {
-    @apply inline-block relative h-3.5 w-8 rounded-3xl top-1.5 align-top bg-icons-02;
+/* "Dash" and "O" styling */
+.toggle > .dash {
+    @apply self-start flex-none relative;
+    @apply my-2 h-3.5 w-8;
+    @apply rounded-3xl bg-icons-02;
+    @apply text-sm;
     transition: .2s;
 }
-.toggle-sm .checkbox-switch {
-    @apply h-2.5 w-6 top-2;
-}
-.checkbox .checkbox-switch:before {
-    @apply inline-block absolute w-5 h-5 -left-px bg-01 border border-icons-02 rounded-full;
-    content: '';
-    top: -3px;
+.toggle > .dash > .o {
+    @apply absolute -left-0 -top-[3px];
+    @apply w-5 h-5;
+    @apply bg-01 border-[1.5px] border-icons-02 rounded-full;
     transition: .15s;
 }
-.toggle-sm .checkbox-switch:before {
-    @apply h-4 w-4;
-}
-.checkbox input[type=checkbox] {
-    @apply block w-0 h-0 absolute opacity-0 z-minus;
-}
-.checkbox input[type=checkbox]:checked + .checkbox-switch {
+
+.toggle:has(input:checked) > .dash {
     @apply bg-primary;
 }
-.checkbox input[type=checkbox]:checked + .checkbox-switch:before {
-    @apply bg-01 border border-primary translate-x-3.5;
+.toggle:has(input:checked) > .dash > .o {
+    @apply bg-01 border-primary;
+    @apply translate-x-3;
 }
 
 /* Hover */
-.checkbox input[type="checkbox"]:not(:disabled) + .checkbox-switch {
+.toggle:has(input:not(:disabled)) > .dash > .o {
     @apply cursor-pointer;
 }
 
 /* Active/Focus */
-.checkbox input[type="checkbox"]:not(:disabled):active + .checkbox-switch:before,
-.checkbox input[type="checkbox"]:not(:disabled):focus + .checkbox-switch:before {
+.toggle:has(input:not(:disabled):active) > .dash > .o,
+.toggle:has(input:not(:disabled):focus) > .dash > .o {
     @apply animate-checkbox-active-on;
 }
-.checkbox input[type="checkbox"]:not(:disabled):checked:active + .checkbox-switch:before,
-.checkbox input[type="checkbox"]:not(:disabled):checked:focus + .checkbox-switch:before {
+.toggle:has(input:not(:disabled):checked:active) > .dash > .o,
+.toggle:has(input:not(:disabled):checked:focus) > .dash > .o {
     @apply animate-checkbox-active-off;
 }
 
 /* Disabled */
-.checkbox input[type=checkbox]:disabled + .checkbox-switch {
+.toggle:has(input:disabled) > .dash {
     @apply border-icons-02;
     filter: grayscale(60%);
 }
-.checkbox input[type=checkbox]:disabled + .checkbox-switch:before {
+.toggle:has(input:disabled) > .dash > .o {
     @apply bg-icons-02;
+}
+
+/* Small toggle */
+
+.toggle.toggle-sm > .dash {
+    @apply h-2.5 w-6;
+}
+
+.toggle.toggle-sm > .dash > .o {
+    @apply h-4 w-4;
+}
+.toggle.toggle-sm:has(input:checked) > .dash > .o {
+    @apply translate-x-2;
 }

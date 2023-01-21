@@ -30,33 +30,37 @@
 
 /* Navgar subgroup */
 .navbar-subgroup {
+    @apply flex-x justify-start items-center gap-x-1;
     @apply pt-2;
-    @apply flex flex-row justify-start items-center gap-x-1 w-full;
 }
 .navbar-subgroup.first {
     @apply pt-0;
 }
 .navbar-subgroup .navbar-subgroup-content {
-    @apply text-03 text-xs font-semibold uppercase opacity-75;
+    @apply text-03 text-xs font-semibold uppercase;
+    @apply opacity-75;
 }
 .navbar-subgroup .navbar-subgroup-ending {
     @apply flex-1 justify-self-end;
-    @apply flex flex-row justify-end gap-x-1;
+    @apply flex-x justify-end gap-x-1;
     @apply text-03 text-xs font-light;
 }
 
 /* Navbar item */
 .navbar-item {
-    @apply flex flex-row w-full justify-start items-center gap-x-1 px-1 py-0.5 rounded-lg select-none md:select-auto;
+    @apply flex-x justify-start items-center gap-x-1;
+    @apply px-1 py-0.5;
+    @apply rounded-lg;
 }
 .navbar-item .navbar-item-content {
+    @apply flex-1 flex-x;
     @apply my-0.5 overflow-hidden;
     @apply text-02;
 }
-
 .navbar-item .navbar-item-ending {
-    @apply flex-1 justify-self-end h-8 gap-x-2;
-    @apply flex flex-row justify-end w-fit items-center;
+    @apply flex-none justify-self-end;
+    @apply flex-x justify-end items-center gap-x-2;
+    @apply h-8 overflow-hidden;
 }
 
 .navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,

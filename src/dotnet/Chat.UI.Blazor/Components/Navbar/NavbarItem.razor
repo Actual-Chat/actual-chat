@@ -6,13 +6,15 @@
 
 <div class="@Class @activeClass navbar-item group"
      @attributes="InputAttributes">
-    <div class="navbar-item-content">
-        @if (Url.IsNullOrEmpty()) {
+    @if (Url.IsNullOrEmpty()) {
+        <div class="navbar-item-content">
             @ChildContent
-        } else {
-            <a class="unfocusable cursor-pointer" data-href="@Url">@ChildContent</a>
-        }
-    </div>
+        </div>
+    } else {
+        <div class="navbar-item-content" data-href="@Url">
+            @ChildContent
+        </div>
+    }
     <div class="navbar-item-ending">
         @Ending
     </div>

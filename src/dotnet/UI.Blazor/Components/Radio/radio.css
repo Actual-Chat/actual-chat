@@ -1,30 +1,42 @@
 .radio {
-    @apply absolute z-minus opacity-0;
+    @apply flex-1 flex-x items-center gap-x-2 overflow-hidden;
 }
-.radio+label {
-    @apply inline-flex items-center select-none;
+.radio input {
+    /* The actual input is hidden */
+    @apply absolute z-minus;
+    @apply flex-none w-0 h-0 overflow-hidden invisible;
 }
-.radio+label::before {
-    @apply inline-block w-5 h-5 shrink-0 grow-0 border-2 border-disabled rounded mr-2 bg-no-repeat bg-center;
-    content: '';
+.radio > .c-label {
+    @apply flex-1 flex-x items-center overflow-hidden;
+}
+.radio > .c-label > .c-text {
+    @apply flex-1 overflow-hidden truncate;
+}
+
+/* "X" styling */
+.radio > .x {
+    @apply flex-none;
+    @apply w-5 h-5 overflow-hidden;
+    @apply border-2 border-disabled;
+    @apply rounded bg-no-repeat bg-center;
     background-size: 50% 50%;
 }
-.radio:checked+label::before {
+.radio:has(input:checked) > .x {
     @apply border-primary bg-primary;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
 }
-.radio:not(:disabled):not(:checked)+label:hover::before {
+.radio:has(input:not(:disabled):not(:checked)):hover > .x {
     @apply border-primary;
 }
-.radio:not(:disabled):active+label::before {
+.radio:has(input:not(:disabled):active) > .x {
     @apply bg-primary border-primary;
 }
-.radio:focus+label::before {
+.radio:has(input:focus) > .x {
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
-.radio:focus:not(:checked)+label::before {
+.radio:has(input:focus:not(:checked)) > .x {
     @apply border-primary-hover;
 }
-.radio:disabled+label::before {
+.radio:has(input:disabled) > .x {
     @apply bg-primary border-primary;
 }

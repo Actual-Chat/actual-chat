@@ -8,8 +8,8 @@
 <Toggle
     Id="@(_id ??= ComponentIdGenerator.Next("chat-mute"))"
     Label="@Label"
-    Value="@(m == ChatNotificationMode.Muted)"
-    ValueChanged="OnValueChanged"/>
+    IsChecked="@(m == ChatNotificationMode.Muted)"
+    IsCheckedChanged="OnValueChanged"/>
 
 @code {
     private string? _id;

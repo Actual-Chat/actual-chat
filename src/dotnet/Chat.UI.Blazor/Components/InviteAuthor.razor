@@ -19,9 +19,9 @@
                      @key="@contact.Account.Id"
                      @onclick="@(_ => OnContactClick(contact))">
                     @if (contact.IsExisting) {
-                        <Checkbox Checked="true" Disabled="true"/>
+                        <Checkbox IsChecked="true" IsDisabled="true"/>
                     } else {
-                        <Checkbox Checked="@contact.IsChecked"/>
+                        <Checkbox IsChecked="@contact.IsChecked"/>
                     }
                     <AvatarBadge
                         Avatar="@contact.Account.Avatar"

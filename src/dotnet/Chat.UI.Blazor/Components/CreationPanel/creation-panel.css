@@ -8,9 +8,6 @@
 .creation-modal.modal-frame .dialog-buttons {
     @apply px-4 py-2 min-h-16;
 }
-.creation-panel {
-    @apply flex-y left-0 bottom-0 w-full bg-01;
-}
 .creation-modal.modal-frame .dialog-buttons.creation-panel-01 {
     @apply hidden;
 }
@@ -18,14 +15,24 @@
     @apply h-auto;
 }
 
+.creation-panel {
+    @apply flex-none flex-y overflow-hidden;
+    @apply bg-01;
+}
+
+/* Header */
 .creation-panel .header {
-    @apply flex-x min-h-14 max-h-14 items-center border-b border-bg-04;
+    @apply flex-none flex-x justify-between items-center gap-x-2;
+    @apply min-h-14 max-h-14;
+    @apply border-b border-bg-04;
+    @apply overflow-visible;
 }
 
 .creation-panel .header.add-members {
     @apply border-transparent;
 }
 
+/* Create Xxx buttons */
 .creation-panel .creation-buttons {
     @apply flex-y py-2;
 }
@@ -38,6 +45,7 @@
 .creation-btn:hover {
     @apply bg-secondary;
 }
+
 .creation-modal .contacts {
     @apply border-t border-bg-04;
 }
@@ -60,18 +68,24 @@
     @apply mb-2;
 }
 
+/* Contact list on "Add members" page */
 .creation-panel-contact-list {
-    @apply flex-y custom-scrollbar;
+    @apply flex-1 flex-y;
+    @apply custom-scrollbar;
 }
 .creation-panel-contact-item {
-    @apply flex-x items-center px-2 py-1 rounded-md;
-}
-.creation-panel-contact-item,
-.creation-panel-contact-item * {
+    @apply flex-none flex-x items-center;
+    @apply px-2 py-1;
+    @apply rounded-md;
     @apply cursor-pointer;
 }
-.creation-panel-contact-item.unfocusable,
-.creation-panel-contact-item.unfocusable * {
+.creation-panel-contact-item > .c-contact {
+    @apply flex-1 flex-x items-center gap-x-2;
+}
+.creation-panel-contact-item > .c-checkbox {
+    @apply flex-none;
+}
+.creation-panel-contact-item.unfocusable {
     @apply cursor-default;
 }
 .creation-panel-contact-item:hover {
@@ -80,8 +94,12 @@
 .creation-panel-contact-item.unfocusable:hover {
     @apply bg-transparent;
 }
+
+/* These are contacts shown @ the very top */
 .selected-contact {
-    @apply flex-x items-center my-0.5 bg-03 rounded-full;
+    @apply flex-none flex-x items-center;
+    @apply my-0.5 bg-03;
+    @apply rounded-full;
 }
 .selected-contact,
 .selected-contact * {
@@ -98,4 +116,11 @@
 }
 .selected-contact:hover .author-avatar-badge {
     @apply hidden;
+}
+
+/* These are contacts at the bottom of the very first page */
+.creation-contacts {
+    @apply flex-1 -flex-y;
+    @apply px-2 my-2;
+    @apply overflow-y-auto custom-scrollbar;
 }

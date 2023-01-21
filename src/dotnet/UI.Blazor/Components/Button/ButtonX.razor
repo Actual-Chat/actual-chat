@@ -1,0 +1,13 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = Class.IsNullOrEmpty() ? "btn-x" : $"{Class} btn-x";
+}
+
+<ButtonRound Class="@cls" Click="@Click" tabindex="-1" aria-label="close">
+    <i class="icon-close"></i>
+</ButtonRound>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+}

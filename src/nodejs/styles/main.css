@@ -1,3 +1,10 @@
+/* Body */
+
+body {
+    @apply select-none;
+    -webkit-touch-callout: none;
+}
+
 /* Styled inputs */
 
 input.input-imprinted {
@@ -50,7 +57,7 @@ input.input-underlined {
 }
 
 .error-toast .toast-header {
-    @apply flex flex-row items-center w-full px-2 bg-error-toast-header rounded-t-md;
+    @apply flex-x items-center w-full px-2 bg-error-toast-header rounded-t-md;
 }
 
 .error-toast .header-icon {

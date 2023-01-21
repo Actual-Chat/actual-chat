@@ -1,57 +1,25 @@
+/* NOTE(AY): Andrey, fix all markup here */
 .settings-panel {
-    @apply flex-x h-full w-full;
+    @apply flex-1 flex-x overflow-hidden;
 }
-.settings-panel-tabs {
-    @apply flex-y w-full md:w-1/4 p-0 bg-02 md:bg-03 items-end;
+.settings-panel > .c-tabs {
+    @apply flex-1 md:flex-none flex-y;
+    @apply md:w-1/4 p-0;
+    @apply bg-02 md:bg-03;
 }
-.hide-panel .settings-panel-tabs {
+.hide-panel.settings-panel > .c-tabs {
     @apply hidden md:flex-y;
 }
-.settings-panel-header {
-    @apply flex min-h-14 min-w-full md:min-w-3/4 items-center;
-}
-.settings-panel-tabs .btn-group {
-    @apply flex-y h-full justify-start min-w-3/4 px-2 md:pl-0;
-}
-.settings-panel-tabs .btn-group-container {
-    @apply rounded-lg cursor-pointer;
-}
-.settings-panel-tabs .btn-group-container.on {
-    @apply md:bg-selected;
-}
-.settings-panel-tabs .btn-group-container.on i {
-    @apply text-02;
-}
-.settings-panel-tabs .btn-group-container.container-toggle,
-.settings-panel-tabs .btn-group-container.container-toggle * {
-    @apply cursor-auto;
-}
-.settings-panel-tabs .btn-group-container i {
-    @apply text-icons-01;
-}
-.settings-panel-tabs .btn-group-container:hover i {
-    @apply text-02;
-}
-.settings-panel-tabs .btn-group-container * {
-    @apply cursor-pointer;
-}
-.settings-panel-tabs .btn-group-container .btn {
-    @apply min-w-full;
-}
-.settings-panel-tabs .btn-group-container .btn-content {
-    @apply w-full;
-}
-.settings-panel-tabs .btn {
-    @apply min-w-0 justify-start text-02 border-none;
-}
-.settings-panel-tabs .btn .btn-content {
-    @apply flex-x items-center px-2 gap-x-4 text-base;
-}
-.settings-panel-header {
-    @apply min-h-14 w-full md:w-3/4 border-b border-bg-04 md:border-none;
+
+/* Header */
+.settings-panel > .c-tabs > .c-header {
+    @apply flex-none flex-x items-center overflow-hidden;
+    @apply min-h-14;
+    @apply border-b border-bg-04 md:border-none;
 }
 .settings-header-title {
-    @apply flex-x justify-start items-center w-full px-2 gap-x-2;
+    @apply flex-1 flex-x justify-start items-center;
+    @apply px-2 md:px-4;
 }
 .settings-header-title .title {
     @apply text-xl md:text-lg font-semibold md:font-medium;
@@ -62,11 +30,57 @@
 .settings-header-title i {
     @apply font-normal;
 }
+
+/* Tab items */
+.settings-panel > .c-tabs .c-tab-items {
+    @apply flex-1 flex-y overflow-hidden;
+    @apply px-2;
+}
+.settings-panel > .c-tabs .c-tab-item {
+    @apply flex-none flex-x;
+    @apply rounded-lg cursor-pointer;
+}
+.settings-panel > .c-tabs .c-tab-item.on {
+    @apply md:bg-selected;
+}
+.settings-panel > .c-tabs .c-tab-item.on i {
+    @apply text-02;
+}
+.settings-panel > .c-tabs .c-tab-item.container-toggle,
+.settings-panel > .c-tabs .c-tab-item.container-toggle * {
+    @apply cursor-auto;
+}
+.settings-panel > .c-tabs .c-tab-item i {
+    @apply text-icons-01;
+}
+.settings-panel > .c-tabs .c-tab-item:hover i {
+    @apply text-02;
+}
+.settings-panel > .c-tabs .c-tab-item .btn {
+    @apply flex-1 flex-x;
+    @apply border-none;
+    @apply md:max-w-full; /* To override this style defined for .btn */
+    @apply text-02;
+}
+.settings-panel > .c-tabs .c-tab-item .btn .btn-content {
+    @apply flex-1 flex-x justify-between items-center gap-x-4;
+    @apply text-base;
+}
+/* Tabs footer (version, Blazor mode) */
+.settings-panel > .c-tabs .c-footer {
+    @apply flex-none flex-y;
+    @apply border-t border-bg-04;
+    @apply bg-03;
+}
+
+/* Tab content */
 .settings-tab {
-    @apply w-full bg-02 overflow-y-auto custom-scrollbar pb-4;
+    @apply flex-1 flex-x;
+    @apply bg-02 overflow-y-auto custom-scrollbar pb-4;
 }
 .tab-inner {
-    @apply flex-y w-full md:w-3/5 items-center;
+    @apply flex-1 flex-y;
+    @apply md:w-3/5 items-center;
 }
 .hide-tabs .settings-tab {
     @apply hidden md:flex-y;

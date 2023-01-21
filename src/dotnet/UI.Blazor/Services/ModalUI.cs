@@ -56,7 +56,7 @@ public sealed class ModalUI
             Class = "blazored-modal modal",
         };
         if (isFullScreen)
-            modalOptions.PositionCustomClass = "position-fullscreen";
+            modalOptions.PositionCustomClass = "modal-fullscreen";
         var modalContent = new RenderFragment(builder => {
             builder.OpenComponent(0, componentType);
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);

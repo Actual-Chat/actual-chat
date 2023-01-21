@@ -3,11 +3,16 @@
 }
 
 .avatar-name {
-    @apply whitespace-nowrap select-none;
+    @apply whitespace-nowrap;
 }
-
 .avatar-name > .c-anonymous {
     @apply sup;
+}
+
+.avatar-text {
+    @apply flex-x justify-center items-center;
+    @apply rounded-full bg-avatar;
+    @apply text-center text-04;
 }
 
 /* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */

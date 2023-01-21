@@ -54,9 +54,9 @@
         <FormSection For="() => _stepModel.SyncContacts">
             <Checkbox
                 Id="syncContacts"
-                Checked="@_stepModel.SyncContacts"
+                IsChecked="@_stepModel.SyncContacts"
                 Change="OnSyncContactsChange"
-                Name="Sync Contacts"/>
+                Label="Sync Contacts"/>
         </FormSection>
         <FormSection
             For="() => _stepModel.Email"

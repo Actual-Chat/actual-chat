@@ -5,46 +5,42 @@
 
 <DialogFrame Title="Settings" NoNarrowHeader="true">
     <Body>
-        <ButtonRound Click="OnCloseClick" Class="modal-close-btn">
-            <i class="icon-close text-2xl"></i>
-        </ButtonRound>
-        <div class="flex-x justify-center w-full h-full">
-            <SettingsPanel Title="Settings" OnCloseModalClick="OnCloseClick">
-                <SettingsTab Title="My account" Id="myAccount" IconTitle="person">
-                    <MyAccount/>
-                </SettingsTab>
+        <ButtonX Click="OnCloseClick"/>
+        <SettingsPanel Title="Settings" OnCloseModalClick="OnCloseClick">
+            <SettingsTab Title="My account" Id="myAccount" IconTitle="person">
+                <MyAccount/>
+            </SettingsTab>
 
-                @if (_enableIncompleteUI) {
-                    <SettingsTab Title="Chat folder" Id="chatFolder" IconTitle="folder">
-                        <ChildContent>
-                        </ChildContent>
-                    </SettingsTab>
-                    <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
-                        <ChildContent>
-                        </ChildContent>
-                    </SettingsTab>
-                }
-
-                <SettingsTab Title="Language" Id="language" IconTitle="language">
-                    <TitleContent>
-                        <LanguageShortcut/>
-                    </TitleContent>
-                    <ChildContent>
-                        <LanguageSettings/>
-                    </ChildContent>
-                </SettingsTab>
-
-                <SettingsTab Title="Dark theme" Separator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
-                    <TitleContent>
-                        <ThemeToggle/>
-                    </TitleContent>
-                </SettingsTab>
-                <SettingsTab Title="Log out" Id="logOut" IconTitle="log-out">
+            @if (_enableIncompleteUI) {
+                <SettingsTab Title="Chat folder" Id="chatFolder" IconTitle="folder">
                     <ChildContent>
                     </ChildContent>
                 </SettingsTab>
-            </SettingsPanel>
-        </div>
+                <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
+                    <ChildContent>
+                    </ChildContent>
+                </SettingsTab>
+            }
+
+            <SettingsTab Title="Language" Id="language" IconTitle="language">
+                <TitleContent>
+                    <LanguageShortcut/>
+                </TitleContent>
+                <ChildContent>
+                    <LanguageSettings/>
+                </ChildContent>
+            </SettingsTab>
+
+            <SettingsTab Title="Dark theme" Separator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+                <TitleContent>
+                    <ThemeToggle/>
+                </TitleContent>
+            </SettingsTab>
+            <SettingsTab Title="Log out" Id="logOut" IconTitle="log-out">
+                <ChildContent>
+                </ChildContent>
+            </SettingsTab>
+        </SettingsPanel>
     </Body>
     <Buttons>
     </Buttons>

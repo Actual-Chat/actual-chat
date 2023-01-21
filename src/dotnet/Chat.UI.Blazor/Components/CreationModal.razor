@@ -40,9 +40,7 @@
                 <div class="header add-members">
                     @RenderArrowBack()
                     @RenderTitle("New Group")
-                    <ButtonRound Class="transparent" Click="@OnClose">
-                        <i class="icon-close text-2xl md:text-xl font-medium"></i>
-                    </ButtonRound>
+                    <ButtonX Click="@OnClose"/>
                 </div>
 
                 <Form @ref="@_formRef" Model="@_form" Id="@_form.FormId" Class="px-2">

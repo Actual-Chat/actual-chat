@@ -1,5 +1,5 @@
 .tab-panel {
-    @apply flex-y h-full w-full;
+    @apply flex-1 flex-y;
 }
 .tab-panel.hide-header .tab-panel-tabs {
     @apply hidden;

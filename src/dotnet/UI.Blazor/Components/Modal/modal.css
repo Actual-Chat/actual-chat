@@ -2,11 +2,11 @@
     @apply h-full w-full md:h-auto md:w-auto;
 }
 
-.position-fullscreen {
+.modal-fullscreen {
     @apply h-full w-full;
 }
 
-.position-fullscreen .blazored-modal-focus-trap {
+.modal-fullscreen .blazored-modal-focus-trap {
     @apply h-full w-full;
 }
 
@@ -37,9 +37,11 @@
     @apply z-10;
 }
 .modal-frame {
-    @apply flex-y items-stretch gap-y-4 p-0 md:p-4 pb-4 overflow-hidden;
+    @apply flex-y items-stretch gap-y-4 overflow-hidden;
+    @apply p-0 md:p-4 pb-4;
     @apply h-full w-full md:h-auto md:w-modal;
-    @apply md:rounded-2xl rounded-none font-medium;
+    @apply md:rounded-2xl rounded-none;
+    @apply font-medium;
 }
 .modal-frame .dialog-body,
 .modal-frame .dialog-buttons {
@@ -118,7 +120,7 @@
 }
 
 .dialog-buttons {
-    @apply flex flex-row justify-end;
+    @apply flex-x justify-end;
     @apply overflow-hidden;
 }
 .dialog-buttons .btn,
@@ -140,27 +142,28 @@ div.bm-content > form {
 }
 
 /* Fullscreen Modal */
-.position-fullscreen .modal {
+.modal-fullscreen .modal {
     @apply md:w-full md:h-full;
 }
-.position-fullscreen .modal-frame.modal-chrome {
+.modal-fullscreen .modal-frame.modal-chrome {
     @apply w-full h-full p-0 gap-y-0 rounded-none;
 }
-.position-fullscreen .dialog-body {
+.modal-fullscreen .dialog-body {
     @apply p-0;
 }
-.position-fullscreen .modal-close-btn {
-    @apply hidden md:flex absolute right-4 top-4;
+.modal-fullscreen .btn-x {
+    @apply absolute right-4 top-4;
+    @apply hidden md:flex-x;
 }
-.position-fullscreen .modal-header {
+.modal-fullscreen .modal-header {
     @apply hidden;
 }
-.position-fullscreen input {
+.modal-fullscreen input {
     @apply cursor-text;
 }
-.position-fullscreen .user-avatar-editor-item,
-.position-fullscreen .user-avatar-editor-item *,
-.position-fullscreen button,
-.position-fullscreen button * {
+.modal-fullscreen .user-avatar-editor-item,
+.modal-fullscreen .user-avatar-editor-item *,
+.modal-fullscreen button,
+.modal-fullscreen button * {
     @apply cursor-pointer;
 }
