@@ -822,7 +822,7 @@ export class VirtualList {
 
     private scrollToEnd(
         useSmoothScroll: boolean = false) {
-        debugLog?.log(`scrollTo, end:`);
+        debugLog?.log('scrollTo end');
         const endAnchor = document.getElementsByClassName('end-anchor')[0] as HTMLElement;
         this.scrollTo(endAnchor, useSmoothScroll, 'end');
     }
