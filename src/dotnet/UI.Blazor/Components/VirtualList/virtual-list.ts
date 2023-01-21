@@ -480,7 +480,7 @@ export class VirtualList {
                 // Server-side scroll request
                 if (!this.isItemFullyVisible(scrollToItemRef)) {
                     if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                        this.scrollTo(scrollToItemRef, false, 'end');
+                        this.scrollToEnd(false);
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     } else {
                         this.scrollTo(scrollToItemRef, false, 'center');
@@ -818,6 +818,13 @@ export class VirtualList {
             block: blockPosition,
             inline: 'nearest',
         });
+    }
+
+    private scrollToEnd(
+        useSmoothScroll: boolean = false) {
+        debugLog?.log(`scrollTo, end:`);
+        const endAnchor = document.getElementsByClassName('end-anchor')[0] as HTMLElement;
+        this.scrollTo(endAnchor, useSmoothScroll, 'end');
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
