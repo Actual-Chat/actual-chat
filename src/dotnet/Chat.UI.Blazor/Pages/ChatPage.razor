@@ -70,6 +70,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
 
@@ -83,6 +84,9 @@
             return Task.CompletedTask;
 
         _ = DeviceInfo.EnsureDeviceRegistered(CancellationToken.None);
+
+        OnboardingUI.TryShow();
+
         return Task.CompletedTask;
     }
 
