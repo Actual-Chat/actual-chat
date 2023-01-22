@@ -23,8 +23,13 @@ public class OnboardingUI
             });
     }
 
-    public void Show()
-        => ModalUI.Show(new OnboardingModal.Model());
+    public void TryShow()
+    {
+        if (!Settings.Value.ShouldBeShown())
+            return;
+
+        ModalUI.Show(new OnboardingModal.Model());
+    }
 
     private ValueTask<UserOnboardingSettings> CreateSettings(CancellationToken cancellationToken)
         => ValueTask.FromResult(new UserOnboardingSettings());
