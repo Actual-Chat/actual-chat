@@ -4,6 +4,7 @@ import { Disposable } from 'disposable';
 
 const LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
@@ -189,13 +190,26 @@ class Call<T extends (...args: unknown[]) => unknown> {
 
 export type ThrottleMode = 'default' | 'skip' | 'delayHead';
 
+class ThrottleOptions
+{
+    public ExceededSetTimeoutErrorDelay = 2000;
+    public IsAutoResetEnabled = false;
+    public LaunchDebuggerOnError = true;
+}
+
+const throttleOptions = new ThrottleOptions();
+window['throttleOptions'] = throttleOptions;
+
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     interval: number,
-    mode: ThrottleMode = 'default'
+    mode: ThrottleMode = 'default',
+    name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
     let lastFireTime = 0;
+    let lastFireDelay = 0;
+    let lastSetTimeoutTime = 0;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
     const reset = (mustClearTimeout: boolean, newLastFireTime: number) => {
@@ -203,11 +217,15 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
             clearTimeout(timeoutHandle);
         timeoutHandle = lastCall = null;
         lastFireTime = newLastFireTime;
+        lastSetTimeoutTime = 0;
+        lastFireDelay = 0;
     }
 
     const getFireDelay = () => Math.max(0, lastFireTime + interval - Date.now());
 
     const fire = () => {
+        if (name)
+            debugLog?.log(`throttle with name '${name}' fired`);
         const call = lastCall;
         reset(false, Date.now());
         call?.invoke(); // We need to do this at the very end
@@ -215,19 +233,42 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 
     const result: ResettableFunc<T> = function(...callArgs: Parameters<T>): void {
         lastCall = new Call<T>(func, this, callArgs);
-        if (timeoutHandle !== null)
+        if (timeoutHandle !== null) {
+            const delaySinceSetTimeout = Math.max(0, Date.now() - lastSetTimeoutTime);
+            if (delaySinceSetTimeout > lastFireDelay + throttleOptions.ExceededSetTimeoutErrorDelay) {
+                errorLog?.log(`throttle with name '${name}' exceeded setTimeout delay`);
+                if (throttleOptions.LaunchDebuggerOnError) {
+                    // eslint-disable-next-line no-debugger
+                    debugger;
+                }
+                if (throttleOptions.IsAutoResetEnabled) {
+                    warnLog?.log(`throttle with name '${name}' is about to forcibly reset`);
+                    reset(true, 0);
+                }
+            }
             return;
+        }
 
         if (mode === 'delayHead') {
             lastFireTime = Date.now();
-            timeoutHandle = setTimeout(fire, getFireDelay());
+            const fireDelay = getFireDelay();
+            if (name)
+                debugLog?.log(`throttle with name '${name}' got fire delay '${fireDelay}'`);
+            lastFireDelay = fireDelay;
+            timeoutHandle = setTimeout(fire, fireDelay);
+            lastSetTimeoutTime = Date.now();
             return;
         }
 
         const fireDelay = getFireDelay();
+        if (name)
+            debugLog?.log(`throttle with name '${name}' got fire delay '${fireDelay}'`);
         if (fireDelay > 0) {
-            if (mode !== 'skip')
+            if (mode !== 'skip') {
+                lastFireDelay = fireDelay;
                 timeoutHandle = setTimeout(fire, fireDelay);
+                lastSetTimeoutTime = Date.now();
+            }
             return;
         }
 

@@ -592,7 +592,7 @@ export class VirtualList {
             this.updateViewportThrottled();
     }, 2);
 
-    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead');
+    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead', 'updateVisibleKeys');
     private updateVisibleKeys = serialize(async () => {
         if (this._isDisposed)
             return;
