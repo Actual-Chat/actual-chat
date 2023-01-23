@@ -1,18 +1,22 @@
+import DetectRTC from 'detectrtc';
 import { ObjectPool } from 'object-pool';
 import { OpusMediaRecorder } from './opus-media-recorder';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'AudioRecorder';
+
+
+const LogScope = 'AudioRecorder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class AudioRecorder {
-    private static recorderPool = new ObjectPool<OpusMediaRecorder>(() => new OpusMediaRecorder());
     private readonly blazorRef: DotNet.DotNetObject;
-    private readonly isMicrophoneAvailable: boolean;
     private readonly sessionId: string;
-    private readonly whenRecorderAvailable: Promise<OpusMediaRecorder>;
+    private readonly opusMediaRecorder: OpusMediaRecorder;
+
+    private whenInitialized: Promise<void>;
     private isRecording: boolean = false;
 
     public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
@@ -22,65 +26,73 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject, sessionId: string) {
         this.blazorRef = blazorRef;
         this.sessionId = sessionId;
-        this.isMicrophoneAvailable = false;
 
         errorLog?.assert(blazorRef != null, `blazorRef == null`);
 
-        // Temporarily
-        if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
-            alert('Please allow to use microphone.');
+        this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
+        this.opusMediaRecorder = new OpusMediaRecorder();
 
-            if (navigator['getUserMedia'] !== undefined) {
-                alert('This browser seems supporting deprecated getUserMedia API.');
-            }
-        } else {
-            this.isMicrophoneAvailable = true;
-        }
-
-        this.whenRecorderAvailable = AudioRecorder.recorderPool.get();
-        this.whenRecorderAvailable.catch(error => {
-            errorLog?.log(`constructor: recorder initialization error:`, error);
-        });
     }
 
     public async dispose(): Promise<void> {
-        const recorder = await this.whenRecorderAvailable;
-        await AudioRecorder.recorderPool.release(recorder);
+        await this.opusMediaRecorder.dispose();
     }
 
     public async canRecord(): Promise<boolean> {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
-            stream.getAudioTracks().forEach(t => t.stop());
-            stream.getVideoTracks().forEach(t => t.stop());
+        await this.whenInitialized;
+        const hasMicrophone = DetectRTC.isAudioContextSupported
+            && DetectRTC.hasMicrophone
+            && DetectRTC.isGetUserMediaSupported
+            && DetectRTC.isWebsiteHasMicrophonePermissions;
+
+        if (!hasMicrophone) {
+            // requests microphone permission
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+                stream.getAudioTracks().forEach(t => t.stop());
+                stream.getVideoTracks().forEach(t => t.stop());
+                this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
+            }
+            catch (error) {
+                errorLog?.log(`canRecord: failed to request microphone permissions`, error);
+                return false;
+            }
+
             return true;
-        } catch (error) {
-            errorLog?.log(`canRecord: microphone is unavailable, error:`, error);
-            return false;
         }
+
+        return hasMicrophone;
     }
 
-    public async startRecording(chatId: string): Promise<void> {
+    public async startRecording(chatId: string): Promise<boolean> {
+        await this.whenInitialized;
+
         try {
             if (this.isRecording)
-                return;
+                return true;
 
-            if (!this.isMicrophoneAvailable) {
+            this.isRecording = true;
+
+            if (!DetectRTC.hasMicrophone) {
                 errorLog?.log(`startRecording: microphone is unavailable`);
-                return;
+                return false;
+            }
+
+            if (!DetectRTC.isWebsiteHasMicrophonePermissions) {
+                errorLog?.log(`startRecording: microphone permission is required`);
+                return false;
             }
 
             const { blazorRef, sessionId } = this;
-            const recorder = await this.whenRecorderAvailable;
-            await recorder.start(sessionId, chatId);
+            await this.opusMediaRecorder.start(sessionId, chatId);
             await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
         catch (error) {
             errorLog?.log(`startRecording: unhandled error:`, error);
+            throw error;
         }
-        finally {
-            this.isRecording = true;
-        }
+
+        return true;
     }
 
     public async stopRecording(): Promise<void> {
@@ -89,8 +101,7 @@ export class AudioRecorder {
                 return;
             debugLog?.log(`-> stopRecording`);
 
-            const recorder = await this.whenRecorderAvailable;
-            await recorder.stop();
+            await this.opusMediaRecorder.stop();
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
         }
