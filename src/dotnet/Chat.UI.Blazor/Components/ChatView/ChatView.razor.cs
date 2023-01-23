@@ -166,45 +166,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             : null;
 
         // If we are scrolling somewhere - let's load the date near the entryId
-        var queryRange = mustScrollToEntry
-            ? new Range<long>(
-                entryLid - PageSize,
-                entryLid + PageSize)
-            : query.IsNone
-                ? new Range<long>(
-                    chatIdRange.End - (2*PageSize),
-                    chatIdRange.End)
-                : query.KeyRange
-                    .AsLongRange()
-                    .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
+        var idRangeToLoad = GetIdRangeToLoad(query, mustScrollToEntry ? entryLid : 0, chatIdRange);
 
-        var adjustedRange = queryRange.Clamp(chatIdRange);
-        // Extend requested range if it's close to chat Id range
-        var closeToTheEnd = adjustedRange.End >= chatIdRange.End - (PageSize / 2);
-        var closeToTheStart = adjustedRange.Start <= chatIdRange.Start + (PageSize / 2);
-        var extendedRange = (closeToTheStart, closeToTheEnd) switch {
-            (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
-            (_, true) => new Range<long>(adjustedRange.Start, chatIdRange.End).Expand(1),
-            (true, _) => new Range<long>(chatIdRange.Start, adjustedRange.End).Expand(1),
-            _ => adjustedRange,
-        };
+        var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
+        var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
 
-        var hasVeryFirstItem = extendedRange.Start <= chatIdRange.Start;
-        var hasVeryLastItem = extendedRange.End + 1 >= chatIdRange.End;
-        // var oldRange =  oldData.Query.IsNone
-        //     ? new Range<long>(0,0)
-        //     : oldData.Query.KeyRange
-        //         .AsLongRange()
-        //         .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
-
-        // if (oldRange.Contains(extendedRange)
-        //     && oldRange.Size() - extendedRange.Size() < PageSize / 2
-        //     && (scrollToKey == null || scrollToKey == oldData.ScrollToKey)
-        //     && hasVeryFirstItem == oldData.HasVeryFirstItem
-        //     && hasVeryLastItem == oldData.HasVeryLastItem)
-        //     return oldData;
-
-        var idTiles = IdTileStack.GetOptimalCoveringTiles(extendedRange);
+        var idTiles = IdTileStack.GetOptimalCoveringTiles(idRangeToLoad);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
@@ -223,7 +190,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             TimeZoneConverter);
 
         var result = VirtualListData.New(
-            new VirtualListDataQuery(extendedRange.AsStringRange()),
+            new VirtualListDataQuery(idRangeToLoad.AsStringRange()),
             chatMessages,
             hasVeryFirstItem,
             hasVeryLastItem,
@@ -236,6 +203,35 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         return result;
+    }
+
+    private Range<long> GetIdRangeToLoad(VirtualListDataQuery query, long scrollToEntryLid, Range<long> chatIdRange)
+    {
+        var queryRange = scrollToEntryLid > 0
+            ? new Range<long>(
+                scrollToEntryLid - PageSize,
+                scrollToEntryLid + PageSize)
+            : query.IsNone
+                ? new Range<long>(
+                    chatIdRange.End - (2 * PageSize),
+                    chatIdRange.End)
+                : query.KeyRange
+                    .AsLongRange()
+                    .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
+        var adjustedRange = queryRange.Start < chatIdRange.Start ? queryRange.Move(chatIdRange.Start - queryRange.Start) : queryRange;
+        adjustedRange = adjustedRange.Clamp(chatIdRange);
+
+        // Extend requested range if it's close to chat Id range
+        var isCloseToTheEnd = adjustedRange.End >= chatIdRange.End - (PageSize / 2);
+        var isCloseToTheStart = adjustedRange.Start <= chatIdRange.Start + (PageSize / 2);
+        var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch
+        {
+            (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
+            (_, true) => new Range<long>(adjustedRange.Start, chatIdRange.End).Expand(1),
+            (true, _) => new Range<long>(chatIdRange.Start, adjustedRange.End).Expand(1),
+            _ => adjustedRange,
+        };
+        return extendedRange;
     }
 
     // Event handlers
