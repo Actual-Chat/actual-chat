@@ -2,6 +2,9 @@
 
 public partial class ChatUI
 {
+    private const int MinRestartDelayMs = 100;
+    private const int MaxRestartDelayMs = 2_000;
+
     private Language? _lastRecordingLanguage;
     private ChatId _lastRecordingChatId;
     private ChatId _lastRecorderChatId;
@@ -22,112 +25,148 @@ public partial class ChatUI
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
-        var oldChatId = SelectedChatId.Value;
-        var changes = SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
-            var newChatId = cSelectedContactId.Value;
-            if (newChatId == oldChatId)
-                continue;
+        while (true) {
+            try {
+                var oldChatId = SelectedChatId.Value;
+                var changes = SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+                await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
+                    var newChatId = cSelectedContactId.Value;
+                    if (newChatId == oldChatId)
+                        continue;
 
-            Log.LogDebug("InvalidateSelectedChatDependencies: *");
-            using (Computed.Invalidate()) {
-                _ = IsSelected(oldChatId);
-                _ = IsSelected(newChatId);
+                    Log.LogDebug("InvalidateSelectedChatDependencies: *");
+                    using (Computed.Invalidate()) {
+                        _ = IsSelected(oldChatId);
+                        _ = IsSelected(newChatId);
+                    }
+
+                    oldChatId = newChatId;
+                }
             }
-
-            oldChatId = newChatId;
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, $"{nameof(InvalidateSelectedChatDependencies)} failed");
+            }
+            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
+            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
         }
     }
 
     private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
     {
-        var oldRecordingChat = default(ActiveChat);
-        var oldListeningChats = new HashSet<ActiveChat>();
-        var changes = ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
-            var activeChats = cActiveContacts.Value;
-            var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
+        while (true) {
+            try {
+                var oldRecordingChat = default(ActiveChat);
+                var oldListeningChats = new HashSet<ActiveChat>();
+                var changes = ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+                await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
+                    var activeChats = cActiveContacts.Value;
+                    var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+                    var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
 
-            Log.LogDebug("InvalidateActiveChatDependencies: *");
-            var added = newListeningChats.Except(oldListeningChats);
-            var removed = oldListeningChats.Except(newListeningChats);
-            var changed = added.Concat(removed).ToList();
-            using (Computed.Invalidate()) {
-                if (newRecordingChat != oldRecordingChat) {
-                    _ = GetRecordingChatId();
-                    _ = GetMediaState(oldRecordingChat.ChatId);
-                    _ = GetMediaState(newRecordingChat.ChatId);
-                }
-                if (changed.Count > 0) {
-                    _ = GetListeningChatIds();
-                    foreach (var c in changed)
-                        _ = GetMediaState(c.ChatId);
+                    Log.LogDebug("InvalidateActiveChatDependencies: *");
+                    var added = newListeningChats.Except(oldListeningChats);
+                    var removed = oldListeningChats.Except(newListeningChats);
+                    var changed = added.Concat(removed).ToList();
+                    using (Computed.Invalidate()) {
+                        if (newRecordingChat != oldRecordingChat) {
+                            _ = GetRecordingChatId();
+                            _ = GetMediaState(oldRecordingChat.ChatId);
+                            _ = GetMediaState(newRecordingChat.ChatId);
+                        }
+                        if (changed.Count > 0) {
+                            _ = GetListeningChatIds();
+                            foreach (var c in changed)
+                                _ = GetMediaState(c.ChatId);
+                        }
+                    }
+
+                    oldRecordingChat = newRecordingChat;
+                    oldListeningChats = newListeningChats;
                 }
             }
-
-            oldRecordingChat = newRecordingChat;
-            oldListeningChats = newListeningChats;
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, $"{nameof(InvalidateActiveChatDependencies)} failed");
+            }
+            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
+            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
         }
     }
 
     private async Task InvalidateHistoricalPlaybackDependencies(CancellationToken cancellationToken)
     {
-        var oldChatId = ChatId.None;
-        var changes = ChatPlayers.PlaybackState.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
-            var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId ?? default;
-            if (newChatId == oldChatId)
-                continue;
+        while (true) {
+            try {
+                var oldChatId = ChatId.None;
+                var changes = ChatPlayers.PlaybackState.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+                await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
+                    var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId ?? default;
+                    if (newChatId == oldChatId)
+                        continue;
 
-            Log.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
-            using (Computed.Invalidate()) {
-                _ = GetMediaState(oldChatId);
-                _ = GetMediaState(newChatId);
+                    Log.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
+                    using (Computed.Invalidate()) {
+                        _ = GetMediaState(oldChatId);
+                        _ = GetMediaState(newChatId);
+                    }
+
+                    oldChatId = newChatId;
+                }
             }
-
-            oldChatId = newChatId;
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, $"{nameof(InvalidateHistoricalPlaybackDependencies)} failed");
+            }
+            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
+            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
         }
     }
 
 
     private async Task PushRealtimePlaybackState(CancellationToken cancellationToken)
     {
-        using var dCancellationTask = cancellationToken.ToTask();
-        var cancellationTask = dCancellationTask.Resource;
-
-        var cExpectedPlaybackStateBase = await Computed
-            .Capture(GetExpectedRealtimePlaybackState)
-            .ConfigureAwait(false);
-        var playbackState = ChatPlayers.PlaybackState;
-
         while (true) {
-            cancellationToken.ThrowIfCancellationRequested();
-            var cExpectedPlaybackState = await cExpectedPlaybackStateBase.Update(cancellationToken).ConfigureAwait(false);
-            var cActualPlaybackState = playbackState.Computed;
-            var expectedPlaybackState = cExpectedPlaybackStateBase.Value;
-            var actualPlaybackState = cActualPlaybackState.Value;
+            try {
+                using var dCancellationTask = cancellationToken.ToTask();
+                var cancellationTask = dCancellationTask.Resource;
 
-            if (actualPlaybackState is null or RealtimePlaybackState) {
-                if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
-                    if (actualPlaybackState is null && !InteractiveUI.IsInteractive.Value)
-                        await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
+                var cExpectedPlaybackStateBase = await Computed
+                    .Capture(GetExpectedRealtimePlaybackState)
+                    .ConfigureAwait(false);
+                var playbackState = ChatPlayers.PlaybackState;
 
-                    Log.LogDebug("PushRealtimePlaybackState: applying changes");
-                    playbackState.Value = expectedPlaybackState;
-                    continue;
+                while (true) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var cExpectedPlaybackState = await cExpectedPlaybackStateBase.Update(cancellationToken).ConfigureAwait(false);
+                    var cActualPlaybackState = playbackState.Computed;
+                    var expectedPlaybackState = cExpectedPlaybackStateBase.Value;
+                    var actualPlaybackState = cActualPlaybackState.Value;
+
+                    if (actualPlaybackState is null or RealtimePlaybackState) {
+                        if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
+                            if (actualPlaybackState is null && !InteractiveUI.IsInteractive.Value)
+                                await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
+
+                            Log.LogDebug("PushRealtimePlaybackState: applying changes");
+                            playbackState.Value = expectedPlaybackState;
+                            continue;
+                        }
+                    }
+
+                    Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
+                    await Task.WhenAny(
+                            cActualPlaybackState.WhenInvalidated(cancellationToken),
+                            cExpectedPlaybackState.WhenInvalidated(cancellationToken),
+                            cancellationTask)
+                        .ConfigureAwait(false);
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                 }
+                // ReSharper disable once FunctionNeverReturns
             }
-
-            Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
-            await Task.WhenAny(
-                    cActualPlaybackState.WhenInvalidated(cancellationToken),
-                    cExpectedPlaybackState.WhenInvalidated(cancellationToken),
-                    cancellationTask)
-                .ConfigureAwait(false);
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, $"{nameof(PushRealtimePlaybackState)} failed");
+            }
+            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
+            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
         }
-        // ReSharper disable once FunctionNeverReturns
     }
 
     [ComputeMethod]
@@ -139,50 +178,69 @@ public partial class ChatUI
 
     private async Task PushKeepAwakeState(CancellationToken cancellationToken)
     {
-        var lastMustKeepAwake = false;
-        var cMustKeepAwake0 = await Computed
-            .Capture(MustKeepAwake)
-            .ConfigureAwait(false);
+        while (true) {
+            try {
+                var lastMustKeepAwake = false;
+                var cMustKeepAwake0 = await Computed
+                    .Capture(MustKeepAwake)
+                    .ConfigureAwait(false);
 
-        var changes = cMustKeepAwake0.Changes(FixedDelayer.Get(1), cancellationToken);
-        await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
-            var mustKeepAwake = cMustKeepAwake.Value;
-            if (mustKeepAwake != lastMustKeepAwake) {
-                Log.LogDebug("PushKeepAwakeState: *");
-                await KeepAwakeUI.SetKeepAwake(mustKeepAwake);
-                lastMustKeepAwake = mustKeepAwake;
+                var changes = cMustKeepAwake0.Changes(FixedDelayer.Get(1), cancellationToken);
+                await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
+                    var mustKeepAwake = cMustKeepAwake.Value;
+                    if (mustKeepAwake != lastMustKeepAwake) {
+                        Log.LogDebug("PushKeepAwakeState: *");
+                        await KeepAwakeUI.SetKeepAwake(mustKeepAwake);
+                        lastMustKeepAwake = mustKeepAwake;
+                    }
+                }
             }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, $"{nameof(PushKeepAwakeState)} failed");
+            }
+            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
+            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
         }
     }
 
+
     private async Task ResetHighlightedEntry(CancellationToken cancellationToken)
     {
-        var changes = HighlightedEntryId
-            .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .Where(x => !x.Value.IsNone);
-        CancellationTokenSource? cts = null;
-        try {
-            await foreach (var cHighlightedEntryId in changes.ConfigureAwait(false)) {
-                cts.CancelAndDisposeSilently();
-                cts = cancellationToken.CreateLinkedTokenSource();
-                var ctsToken = cts.Token;
-                var highlightedEntryId = cHighlightedEntryId.Value;
-                _ = BackgroundTask.Run(async () => {
-                    await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
-                    var isReset = false;
-                    lock (_lock) {
-                        if (_highlightedEntryId.Value == highlightedEntryId) {
-                            _highlightedEntryId.Value = default;
-                            isReset = true;
-                        }
+        while (true) {
+            try {
+                var changes = HighlightedEntryId
+                    .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
+                    .Where(x => !x.Value.IsNone);
+                CancellationTokenSource? cts = null;
+                try {
+                    await foreach (var cHighlightedEntryId in changes.ConfigureAwait(false)) {
+                        cts.CancelAndDisposeSilently();
+                        cts = cancellationToken.CreateLinkedTokenSource();
+                        var ctsToken = cts.Token;
+                        var highlightedEntryId = cHighlightedEntryId.Value;
+                        _ = BackgroundTask.Run(async () => {
+                            await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
+                            var isReset = false;
+                            lock (_lock) {
+                                if (_highlightedEntryId.Value == highlightedEntryId) {
+                                    _highlightedEntryId.Value = default;
+                                    isReset = true;
+                                }
+                            }
+                            if (isReset)
+                                _ = UICommander.RunNothing();
+                        }, CancellationToken.None);
                     }
-                    if (isReset)
-                        _ = UICommander.RunNothing();
-                }, CancellationToken.None);
+                }
+                finally {
+                    cts.CancelAndDisposeSilently();
+                }
             }
-        }
-        finally {
-            cts.CancelAndDisposeSilently();
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, $"{nameof(ResetHighlightedEntry)} failed");
+            }
+            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
+            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
         }
     }
 }

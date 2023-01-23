@@ -9,9 +9,11 @@ public partial class ChatUI
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private AudioRecorder? _audioRecorder;
     private AudioSettings? _audioSettings;
+
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
-    public IState<Moment?> StopRecordingAt => _stopRecordingAt;
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    
+    public IState<Moment?> StopRecordingAt => _stopRecordingAt;
 
     [ComputeMethod] // Synced
     public virtual Task<ChatId> GetRecordingChatId()
