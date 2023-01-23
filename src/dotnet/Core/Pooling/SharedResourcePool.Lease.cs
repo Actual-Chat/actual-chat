@@ -54,7 +54,7 @@ public partial class SharedResourcePool<TKey, TResource>
             }
         }
 
-        internal async ValueTask<bool> BeginRent(CancellationToken cancellationToken)
+        internal async ValueTask<Task?> BeginRent(CancellationToken cancellationToken)
         {
             Task? endRentTask;
             lock (Lock) {
@@ -63,15 +63,13 @@ public partial class SharedResourcePool<TKey, TResource>
                 _endRentDelayTokenSource = null;
                 endRentTask = _endRentTask;
             }
-            if (endRentTask != null) {
-                await endRentTask.WaitAsync(cancellationToken).ConfigureAwait(false);
-                return false;
-            }
+            if (endRentTask != null)
+                return endRentTask;
 
             // If we're here, _endRentTask == null, i.e. no resource is allocated yet
             try {
                 await _resourceTask.WaitAsync(cancellationToken).ConfigureAwait(false);
-                return true;
+                return null;
             }
             catch (OperationCanceledException) {
                 // We assume we don't need to call EndRent if _resourceTask is cancelled.
@@ -92,8 +90,7 @@ public partial class SharedResourcePool<TKey, TResource>
                 Pool.Log.LogError(e, nameof(Pool.ResourceFactory) + " failed");
                 lock (Lock)
                     endRentTask = _endRentTask ??= EndRent();
-                await endRentTask.ConfigureAwait(false);
-                return false;
+                return endRentTask;
             }
         }
 

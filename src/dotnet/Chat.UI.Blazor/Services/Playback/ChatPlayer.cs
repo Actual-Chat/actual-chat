@@ -60,19 +60,19 @@ public abstract class ChatPlayer : ProcessorBase
         CancellationTokenSource playTokenSource;
         CancellationToken playToken;
 
-        var spinWait = new SpinWait();
         var whenPlayingSource = TaskSource.New<Unit>(true);
+        Task stopTask = Stop();
         while (true) {
-            await Stop().ConfigureAwait(false);
-            lock (Lock)
+            await stopTask.ConfigureAwait(false);
+            lock (Lock) {
                 if (_playTokenSource == null) {
                     _playTokenSource = playTokenSource = cancellationToken.LinkWith(StopToken);
                     _whenPlaying = whenPlayingSource.Task;
                     playToken = playTokenSource.Token;
                     break;
                 }
-            // Some other Play has already started in between Stop() & lock (Lock)
-            spinWait.SpinOnce();
+                stopTask = Stop();
+            }
         }
 
         _ = BackgroundTask.Run(async () => {

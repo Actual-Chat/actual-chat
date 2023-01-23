@@ -46,8 +46,6 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     protected override void Initialize(State<T>.Options options)
     {
-        if (SyncCycleTask != null!)
-            return;
         base.Initialize(options);
 
         using var _ = ExecutionContextExt.SuppressFlow();
@@ -105,48 +103,39 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     private async Task Sync(CancellationToken cancellationToken)
     {
-        var readResult = default(Result<T>);
-        var readComputed = await Stl.Fusion.Computed.Capture(
-            (Func<Task>) (async () => {
-                try {
-                    readResult = await Settings.Read(cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e) when (e is not OperationCanceledException) {
-                    readResult = Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
-                    Log.LogWarning(e, "Failed to read the initial value");
-                }
-            })).ConfigureAwait(false);
-        _lastReadComputed ??= readComputed; // It is null on the first sync
+        var readSource = new AnonymousComputedSource<T>(Services, async (_, ct) => {
+            try {
+                return await Settings.Read(ct).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "Failed to read the initial value");
+                return Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
+            }
+        });
+        var readComputed = await readSource.Update(cancellationToken).ConfigureAwait(false);
+        _lastReadComputed ??= readComputed;
 
         var mustWrite = false;
-        var spinWait = new SpinWait();
-        while (true) {
-            lock (Lock) {
-                var snapshot = Snapshot;
-                if (snapshot != null!) {
-                    // First or subsequent read is completed at this point. So if:
-                    // - we have just our first snapshot (initial value)
-                    // - or last read computed has changed (it's a subsequent read)
-                    if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
-                        // Applying read result
-                        Set(readResult);
-                        if (!WhenFirstTimeRead.IsCompleted) {
-                            // It's the very first read
-                            WhenFirstTimeReadSource.TrySetResult(default);
-                            mustWrite = Settings.MustWriteInitialValue;
-                        }
-                        _lastReadComputed = readComputed;
-                        _lastWrittenSnapshot = Snapshot;
-                    }
-                    else if (snapshot.UpdateCount > 0 && snapshot != _lastWrittenSnapshot) {
-                        // Triggering write
-                        _lastWrittenSnapshot = snapshot;
-                        mustWrite = true;
-                    }
-                    break;
+        lock (Lock) {
+            var snapshot = Snapshot;
+            // First or subsequent read is completed at this point. So if:
+            // - we have just our first snapshot (initial value)
+            // - or last read computed has changed (it's a subsequent read)
+            if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
+                // Applying read result
+                Set(readComputed.Value);
+                if (!WhenFirstTimeRead.IsCompleted) {
+                    // It's the very first read
+                    WhenFirstTimeReadSource.TrySetResult(default);
+                    mustWrite = Settings.MustWriteInitialValue;
                 }
-                // Waiting for the first update
-                spinWait.SpinOnce();
+                _lastReadComputed = readComputed;
+                _lastWrittenSnapshot = Snapshot;
+            }
+            else if (snapshot.UpdateCount > 0 && snapshot != _lastWrittenSnapshot) {
+                // Triggering write
+                _lastWrittenSnapshot = snapshot;
+                mustWrite = true;
             }
         }
         if (mustWrite && _lastWrittenSnapshot!.Computed.IsValue(out var value))

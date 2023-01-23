@@ -21,15 +21,16 @@ public partial class SharedResourcePool<TKey, TResource>
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
-        var spinWait = new SpinWait();
         while (true) {
             var lease = _leases.GetOrAdd(key, static (key1, state) => {
                 var (self, cancellationToken1) = state;
                 return new Lease(self, key1, cancellationToken1);
             }, (this, cancellationToken));
-            if (await lease.BeginRent(cancellationToken).ConfigureAwait(false))
+            var endRentTask = await lease.BeginRent(cancellationToken).ConfigureAwait(false);
+            if (endRentTask == null)
                 return lease;
-            spinWait.SpinOnce();
+
+            await endRentTask.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 

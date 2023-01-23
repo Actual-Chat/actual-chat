@@ -18,7 +18,7 @@ public class OnboardingUI
         var stateFactory = services.StateFactory();
         Settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (AccountSettings, UserOnboardingSettings.KvasKey) {
-                MissingValueFactory = CreateSettings,
+                InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
             });
     }
@@ -33,7 +33,4 @@ public class OnboardingUI
 
         await ModalUI.Show(new OnboardingModal.Model());
     }
-
-    private ValueTask<UserOnboardingSettings> CreateSettings(CancellationToken cancellationToken)
-        => ValueTask.FromResult(new UserOnboardingSettings());
 }
