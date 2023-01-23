@@ -198,7 +198,7 @@ class ThrottleOptions
 }
 
 const throttleOptions = new ThrottleOptions();
-window['throttleOptions'] = throttleOptions;
+globalThis['throttleOptions'] = throttleOptions;
 
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
