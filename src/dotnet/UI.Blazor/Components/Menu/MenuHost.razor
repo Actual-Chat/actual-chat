@@ -35,16 +35,25 @@
     private MenuModel? _menu;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
+    private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
 
+    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     public async ValueTask DisposeAsync() {
+        Nav.LocationChanged -= _onLocationChanged;
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
         _blazorRef = null!;
+    }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _onLocationChanged = OnLocationChanged;
+        Nav.LocationChanged += _onLocationChanged;
     }
 
     public ValueTask Show(
@@ -62,10 +71,14 @@
         => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, triggerElement, placement);
 
     public ValueTask Hide(IMenu menu)
-        => _jsRef.InvokeVoidAsync("hideById", menu.Id);
+        => Hide(menu.Id);
+    public ValueTask Hide(string menuId)
+        => _jsRef.InvokeVoidAsync("hideById", menuId);
 
     public ValueTask Position(IMenu menu)
-        => _jsRef.InvokeVoidAsync("positionById", menu.Id);
+        => Position(menu.Id);
+    public ValueTask Position(string menuId)
+        => _jsRef.InvokeVoidAsync("positionById", menuId);
 
     // JS interface
 
@@ -110,7 +123,7 @@
 
     protected override void OnParametersSet() {
         if (ScreenSize.IsNarrow() && _menu?.IsHoverMenu == true) {
-            _jsRef.InvokeVoidAsync("hideById", _menu.Id);
+            Hide(_menu.Id);
             _menu = null;
         }
         StateHasChanged();
@@ -129,6 +142,11 @@
         if (IsOverlayVisible())
             cls += " !block";
         return cls;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        if (_menu != null)
+            Hide(_menu.Id);
     }
 
     private sealed record MenuModel(
