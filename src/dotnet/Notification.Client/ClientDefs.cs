@@ -9,7 +9,7 @@ public interface INotificationsClientDef
     Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
     [Get(nameof(ListRecentNotificationIds))]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        Session session, Moment minVersion, CancellationToken cancellationToken);
+        Session session, Moment minSentAt, CancellationToken cancellationToken);
 
     [Post(nameof(Handle))]
     public Task Handle([Body] INotifications.HandleCommand command, CancellationToken cancellationToken);

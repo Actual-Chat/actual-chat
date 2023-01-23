@@ -10,7 +10,7 @@ public interface INotificationsBackend : IComputeService
     Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        UserId userId, Moment minVersion, CancellationToken cancellationToken);
+        UserId userId, Moment minSentAt, CancellationToken cancellationToken);
 
     // Command handlers
 

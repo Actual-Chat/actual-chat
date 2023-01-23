@@ -31,10 +31,10 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        Session session, Moment minVersion, CancellationToken cancellationToken)
+        Session session, Moment minSentAt, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.ListRecentNotificationIds(account.Id, minVersion, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListRecentNotificationIds(account.Id, minSentAt, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

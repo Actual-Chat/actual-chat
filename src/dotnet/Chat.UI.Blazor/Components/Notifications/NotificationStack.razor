@@ -33,8 +33,8 @@
     };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var minVersion = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
-        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minVersion, cancellationToken);
+        var minSentAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minSentAt, cancellationToken);
         var notifications = new List<ActualChat.Notification.Notification>();
         foreach (var notificationId in notificationIds) {
             var notification = await Notifications.Get(Session, notificationId, cancellationToken);

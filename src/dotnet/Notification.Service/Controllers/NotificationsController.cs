@@ -22,8 +22,8 @@ public class NotificationsController : ControllerBase, INotifications
 
     [HttpGet, Publish]
     public Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        Session session, Moment minVersion, CancellationToken cancellationToken)
-        => Service.ListRecentNotificationIds(session, minVersion, cancellationToken);
+        Session session, Moment minSentAt, CancellationToken cancellationToken)
+        => Service.ListRecentNotificationIds(session, minSentAt, cancellationToken);
 
     [HttpPost]
     public Task RegisterDevice([FromBody] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)

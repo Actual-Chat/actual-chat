@@ -6,7 +6,7 @@ public interface INotifications : IComputeService
     Task<Notification?> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        Session session, Moment minVersion, CancellationToken cancellationToken);
+        Session session, Moment minSentAt, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task Handle(HandleCommand command, CancellationToken cancellationToken);

@@ -80,7 +80,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     // [ComputeMethod]
     public virtual async Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
-        UserId userId, Moment minVersion, CancellationToken cancellationToken)
+        UserId userId, Moment minSentAt, CancellationToken cancellationToken)
     {
         await PseudoListRecentNotificationIds(userId).ConfigureAwait(false);
 
@@ -90,8 +90,8 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         return (
             from n in dbContext.Notifications
-            where n.UserId == userId && n.Version >= minVersion.EpochOffsetTicks
-            orderby n.Version descending, n.Id
+            where n.UserId == userId && n.SentAt >= minSentAt.ToDateTimeClamped()
+            orderby n.SentAt descending, n.Version descending, n.Id
             select new NotificationId(n.Id)
             ).ToList();
     }
