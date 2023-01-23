@@ -77,7 +77,7 @@ public class CommandQueueScheduler : WorkerBase
         }
         catch (Exception e) {
             Log.LogError(e, "Running queued command failed: {Command}", command);
-            var mustRetry = command.TryIndex + 1 >= Settings.MaxTryCount;
+            var mustRetry = command.TryIndex + 1 < Settings.MaxTryCount;
             await queueBackend.MarkFailed(command, mustRetry, e, cancellationToken).ConfigureAwait(false);
 
             if (cancellationToken.IsCancellationRequested)

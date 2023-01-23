@@ -8,32 +8,32 @@ namespace ActualChat.Users.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql($@"
-update recent_entries
-set scope = 'Chat'
-where scope = 'ChatContact';
-");
+            migrationBuilder.Sql("""
+                update recent_entries
+                set scope = 'Chat'
+                where scope = 'ChatContact';
+                """);
 
-            migrationBuilder.Sql($@"
-update recent_entries
-set scope = 'Contact'
-where scope = 'UserContact';
-");
+            migrationBuilder.Sql("""
+                update recent_entries
+                set scope = 'Contact'
+                where scope = 'UserContact';
+                """);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql($@"
-update recent_entries
-set scope = 'ChatContact'
-where scope = 'Chat';
-");
+            migrationBuilder.Sql("""
+                update recent_entries
+                set scope = 'ChatContact'
+                where scope = 'Chat';
+                """);
 
-            migrationBuilder.Sql($@"
-update recent_entries
-set scope = 'UserContact'
-where scope = 'Contact';
-");
+            migrationBuilder.Sql("""
+                update recent_entries
+                set scope = 'UserContact'
+                where scope = 'Contact';
+                """);
         }
     }
 }

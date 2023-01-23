@@ -2,7 +2,7 @@ namespace ActualChat.Notification;
 
 public static class NotificationConstants
 {
-    public static readonly TimeSpan ChatEntryNotificationThrottleInterval = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan MessageNotificationThrottleInterval = TimeSpan.FromSeconds(30);
 
     public static class ChannelIds
     {
@@ -26,5 +26,10 @@ public static class NotificationConstants
 
         public static bool IsValidKey(string key)
             => ValidKeys.Contains(key, StringComparer.Ordinal);
+    }
+
+    public static class ThrottleIntervals
+    {
+        public static readonly TimeSpan Message = TimeSpan.FromSeconds(30);
     }
 }

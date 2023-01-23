@@ -25,6 +25,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private INotifications Notifications { get; set; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() => new () {
         InitialValue = Model.None,
@@ -32,11 +33,13 @@
     };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var notificationIds = await Notifications.ListRecentNotificationIds(Session, cancellationToken);
+        var minVersion = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
+        var notificationIds = await Notifications.ListRecentNotificationIds(Session, minVersion, cancellationToken);
         var notifications = new List<ActualChat.Notification.Notification>();
         foreach (var notificationId in notificationIds) {
             var notification = await Notifications.Get(Session, notificationId, cancellationToken);
-            notifications.Add(notification);
+            if (notification != null)
+                notifications.Add(notification);
         }
 
         return new () {

@@ -132,7 +132,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
         if (localId < 0)
             return false;
 
-        result = new ChatEntryId(s, chatId, (ChatEntryKind) kind, localId, AssumeValid.Option);
+        result = new ChatEntryId(s, chatId, (ChatEntryKind)kind, localId, AssumeValid.Option);
         return true;
     }
 }

@@ -21,7 +21,9 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public UserId UserId { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Ulid Ulid { get; }
+    public NotificationKind Kind { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Symbol SimilarityKey { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -32,16 +34,16 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public NotificationId(Symbol id)
         => this = Parse(id);
-    public NotificationId(UserId userId, Ulid ulid)
-        => this = Parse(Format(userId, ulid));
-    public NotificationId(UserId userId, Ulid ulid, ParseOrNone _)
-        => this = ParseOrNone(Format(userId, ulid));
+    public NotificationId(UserId userId, NotificationKind kind, Symbol similarityKey)
+        => this = Parse(Format(userId, kind, similarityKey));
+    public NotificationId(UserId userId, NotificationKind kind, Symbol similarityKey, ParseOrNone _)
+        => this = ParseOrNone(Format(userId, kind, similarityKey));
     public NotificationId(string id)
         => this = Parse(id);
     public NotificationId(string id, ParseOrNone _)
         => this = ParseOrNone(id);
 
-    public NotificationId(Symbol id, UserId userId, Ulid ulid, AssumeValid _)
+    public NotificationId(Symbol id, UserId userId, NotificationKind kind, Symbol similarityKey, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
@@ -49,17 +51,20 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
         }
         Id = id;
         UserId = userId;
+        Kind = kind;
+        SimilarityKey = similarityKey;
     }
 
-    public NotificationId(UserId userId, Ulid ulid, AssumeValid _)
+    public NotificationId(UserId userId, NotificationKind kind, Symbol similarityKey, AssumeValid _)
     {
         if (userId.IsNone) {
             this = None;
             return;
         }
-        Id = Format(userId, ulid);
+        Id = Format(userId, kind, similarityKey);
         UserId = userId;
-        Ulid = ulid;
+        Kind = kind;
+        SimilarityKey = similarityKey;
     }
 
     // Conversion
@@ -78,8 +83,8 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
 
     // Parsing
 
-    private static string Format(UserId userId, Ulid ulid)
-        => userId.IsNone ? "" : $"{userId}:{ulid}";
+    private static string Format(UserId userId, NotificationKind kind, Symbol similarityKey)
+        => userId.IsNone ? "" : $"{userId} {kind.Format()}:{similarityKey.Value}";
 
     public static NotificationId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<NotificationId>(s);
@@ -92,16 +97,25 @@ public readonly struct NotificationId : ISymbolIdentifier<NotificationId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var userIdLength = s.IndexOf(':');
-        if (userIdLength <= 0)
+        var userIdLength = s.OrdinalIndexOf(" ");
+        if (userIdLength < 0)
+            return false;
+        if (!UserId.TryParse(s[..userIdLength], out var userId))
             return false;
 
-        if (!UserId.TryParse(s[..userIdLength], out var ownerId))
-            return false;
-        if (!Ulid.TryParse(s.AsSpan(userIdLength + 1), out var ulid))
+        var kindStart = userIdLength + 1;
+        var kindLength = s.OrdinalIndexOf(":", kindStart);
+        if (kindLength < 0)
             return false;
 
-        result = new NotificationId(s, ownerId, ulid, AssumeValid.Option);
+        var sKind = s.AsSpan(kindStart, kindLength - kindStart);
+        if (!int.TryParse(sKind, NumberStyles.Integer, CultureInfo.InvariantCulture, out var kind))
+            return false;
+        if (kind is < 1 or >= (int)NotificationKind.Invalid)
+            return false;
+
+        var similarityKey = (Symbol)s[(kindLength + 1)..];
+        result = new NotificationId(s, userId, (NotificationKind)kind, similarityKey, AssumeValid.Option);
         return true;
     }
 }

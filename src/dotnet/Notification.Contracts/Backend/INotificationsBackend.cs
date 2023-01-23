@@ -3,13 +3,14 @@ namespace ActualChat.Notification.Backend;
 public interface INotificationsBackend : IComputeService
 {
     [ComputeMethod]
-    Task<ImmutableArray<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
+    Task<Notification?> Get(NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Device>> ListDevices(UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(UserId userId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<UserId>> ListSubscribedUserIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<Notification> Get(NotificationId notificationId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
+        UserId userId, Moment minVersion, CancellationToken cancellationToken);
 
     // Command handlers
 

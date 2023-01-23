@@ -6,16 +6,20 @@ using Stl.Versioning;
 namespace ActualChat.Notification.Db;
 
 [Table("Notifications")]
+[Index(nameof(UserId), nameof(Version))]
 [Index(nameof(UserId), nameof(Id))]
+[Index(nameof(UserId), nameof(Kind), nameof(SimilarityKey))]
 public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
+    private DateTime _sentAt;
     private DateTime? _handledAt;
 
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; } = 0;
     public string UserId { get; set; } = null!;
     public NotificationKind Kind { get; set; }
+    public string SimilarityKey { get; set; } = null!;
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string? ChatId { get; set; }
@@ -29,13 +33,15 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
+    public DateTime SentAt {
+        get => _sentAt.DefaultKind(DateTimeKind.Utc);
+        set => _sentAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
     public DateTime? HandledAt {
         get => _handledAt?.DefaultKind(DateTimeKind.Utc);
         set => _handledAt = value?.DefaultKind(DateTimeKind.Utc);
     }
-
-    public static Symbol ComposeId(UserId userId, Ulid localId)
-        => $"{userId} {localId.ToString()}";
 
     public Notification ToModel()
     {
@@ -46,12 +52,11 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         var authorId = new AuthorId(AuthorId, ParseOrNone.Option);
 
         return new Notification(new NotificationId(Id), Version) {
-            UserId = new UserId(UserId, ParseOrNone.Option),
-            Kind = Kind,
             Title = Title,
             Content = Content,
             IconUrl = IconUrl,
             CreatedAt = CreatedAt,
+            SentAt = SentAt,
             HandledAt = HandledAt,
             Option = Kind switch {
                 NotificationKind.Invitation => new ChatNotificationOption(chatId),
@@ -79,6 +84,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         Version = model.Version;
         UserId = model.UserId;
         Kind = model.Kind;
+        SimilarityKey = model.SimilarityKey;
         Title = model.Title;
         Content = model.Content;
         IconUrl = model.IconUrl;
@@ -86,6 +92,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         TextEntryLocalId = chatEntryNotification?.EntryId.LocalId;
         AuthorId = chatEntryNotification?.AuthorId.Value.NullIfEmpty();
         CreatedAt = model.CreatedAt;
+        SentAt = model.SentAt;
         HandledAt = model.HandledAt;
     }
 }
