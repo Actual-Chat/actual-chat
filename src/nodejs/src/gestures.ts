@@ -91,7 +91,7 @@ class DataHrefGesture extends Gesture {
     }
 
     public static use(): void {
-        DocumentEvents.capturedPassive.click$.subscribe((event: PointerEvent) => {
+        DocumentEvents.capturedActive.click$.subscribe((event: PointerEvent) => {
             if (event.button !== 0) // Only primary button
                 return;
 
@@ -134,7 +134,7 @@ class ContextMenuOrDataHrefGesture extends Gesture {
 
     public static use(): void {
         this.cancelLongPressDistance = DeviceInfo.isAndroid ? 5 : 10;
-        DocumentEvents.capturedPassive.pointerDown$.subscribe((event: PointerEvent) => {
+        DocumentEvents.capturedActive.pointerDown$.subscribe((event: PointerEvent) => {
             if (event.button !== 0) // Only primary button
                 return;
 
