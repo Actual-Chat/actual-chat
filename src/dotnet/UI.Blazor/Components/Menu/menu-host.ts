@@ -1,5 +1,4 @@
 import {
-    fromEvent,
     merge,
     Subject,
     takeUntil,
@@ -50,7 +49,6 @@ interface Menu {
 }
 
 export class MenuHost implements Disposable {
-    private readonly skipClickEventPeriodMs = 350;
     private readonly hoverMenuDelayMs = 50;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
@@ -140,7 +138,7 @@ export class MenuHost implements Disposable {
     private create(
         menuRef: string,
         isHoverMenu: boolean,
-        triggerElement: HTMLElement | string,
+        triggerElement: HTMLElement | SVGElement | string,
         placement: Placement | null,
         position: Vector2D | null,
     ): Menu {
