@@ -29,8 +29,9 @@ public class OnboardingUI
         if (!Settings.Value.ShouldBeShown())
             return;
 
-        Settings.Value = Settings.Value with { LastTimeShowed = DateTime.UtcNow };
-
+        Settings.Value = Settings.Value with {
+            LastShownAt = DateTime.UtcNow,
+        };
         await ModalUI.Show(new OnboardingModal.Model());
     }
 }
