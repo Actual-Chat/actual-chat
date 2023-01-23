@@ -46,6 +46,7 @@
     "@microsoft/signalr-protocol-msgpack": "^7.0.0",
     "buffer": "^6.0.3",
     "denque": "^2.1.0",
+    "detectrtc": "^1.4.1",
     "firebase": "^9.15.0",
     "is-plain-object": "5.0.0",
     "nosleep.js": "^0.12.0",

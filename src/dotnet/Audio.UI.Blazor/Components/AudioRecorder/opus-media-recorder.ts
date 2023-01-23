@@ -38,8 +38,6 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-const AUDIO_BITS_PER_SECOND = 32000;
-
 export class OpusMediaRecorder {
     public static origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     private readonly worker: Worker;
@@ -129,6 +127,12 @@ export class OpusMediaRecorder {
             this.worker.postMessage(msg);
         });
         this.state = 'inactive';
+    }
+
+    public async dispose(): Promise<void> {
+        debugLog?.log( `dispose()`);
+        if (this.state !== 'inactive')
+            await this.stop();
     }
 
     // Private methods
