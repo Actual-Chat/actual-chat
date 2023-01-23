@@ -198,7 +198,7 @@ export class Landing {
             return;
 
         const withinMenu = event.composedPath().includes(this.menu);
-        if (!withinMenu)
+        if (withinMenu)
             return;
 
         this.blazorRef.invokeMethodAsync('CloseMenu');

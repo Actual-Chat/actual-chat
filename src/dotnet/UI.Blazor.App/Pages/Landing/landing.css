@@ -42,7 +42,6 @@ body.narrow .landing .title-text {
     @apply w-full h-16;
     @apply top-0;
     @apply py-2 px-16 items-center;
-    @apply overflow-hidden;
     @apply bg-transparent;
     @apply opacity-100;
     @apply transition-all duration-300 ease-in-out;
@@ -53,6 +52,7 @@ body.narrow .landing .title-text {
 }
 body.narrow .landing-header {
     @apply h-14;
+    @apply gap-x-2;
     @apply px-2;
 }
 .landing-header .light-icon,
@@ -64,7 +64,8 @@ body.narrow .landing-header {
     @apply top-3;
 }
 body.narrow .landing-header .light-icon,
-body.narrow .landing-header .dark-icon {
+body.narrow .landing-header .dark-icon,
+body.narrow .landing-menu .dark-icon {
     @apply min-w-8 min-h-8 max-h-8;
 }
 .landing-header .light-title,
@@ -81,9 +82,13 @@ body.narrow .landing-header .dark-icon {
     @apply top-2.5;
 }
 body.narrow .landing-header .light-title,
-body.narrow .landing-header .dark-title {
+body.narrow .landing-header .dark-title,
+body.narrow .landing-menu.open .dark-title {
     @apply min-h-8 max-h-8 max-w-32;
     @apply top-2;
+}
+body.narrow .landing-menu.open .dark-title {
+    @apply -mt-2;
 }
 body.narrow .landing-header .light-alpha,
 body.narrow .landing-header .dark-alpha {
@@ -138,7 +143,7 @@ body.narrow .landing-header .header-text {
     @apply text-01;
     @apply transition-all ease-in-out duration-100;
 }
-.landing-header.filled .signin-text {
+.landing-header.filled .signin-button-group {
     @apply text-01;
     @apply border-text-01;
     @apply transition-all ease-in-out duration-100;
@@ -187,7 +192,7 @@ body.narrow .landing-header .header-text {
     @apply bg-[#0436A3];
 }
 .landing .page-1 .page-1-wrapper {
-    @apply w-full h-full;
+    @apply h-full;
     @apply pt-16;
     @apply bg-contain bg-no-repeat;
     @apply bg-[url('/dist/images/ellipses.svg')];
@@ -196,7 +201,7 @@ body.narrow .landing .page-1 {
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
 }
 body.narrow .landing .page-1 .page-1-wrapper {
-    @apply w-full h-full;
+    @apply h-full;
     @apply pt-12;
     @apply bg-cover bg-repeat-round;
     @apply bg-[url('/dist/images/ellipses-mobile.svg')];
@@ -208,7 +213,7 @@ body.narrow .landing .page-1 .page-1-wrapper {
 }
 body.narrow .landing .page-1 .main-text {
     @apply flex-y;
-    @apply w-full;
+    @apply w-auto;
     @apply justify-center;
 }
 .signin-button-group {
@@ -228,7 +233,7 @@ body.narrow .signin-button-group {
 /* Timeline */
 .landing .page-timeline > .title {
     @apply flex-y;
-    @apply w-full md:w-3/5;
+    @apply md:w-3/5;
     @apply items-center justify-center;
     @apply md:mx-[20%] p-4;
     @apply text-title-1;
@@ -301,10 +306,11 @@ body.narrow .landing .link-btn-content img {
     @apply min-h-8 min-w-8 max-w-8 max-h-8;
 }
 
-.landing .footer-info-btn {
+.landing .footer-link {
     @apply h-12;
+    @apply text-04;
 }
-body.narrow .landing .footer-info-btn {
+body.narrow .landing .footer-link {
     @apply h-10;
     @apply text-title-1 text-start;
 }
@@ -323,32 +329,33 @@ body.narrow .landing .landing-menu.closed {
 body.narrow .landing .landing-menu.open {
     @apply w-10/12;
 }
-.landing-menu.open .left-line {
-    @apply relative flex-y;
-    @apply w-full h-screen;
+.landing-menu.open .c-container {
+    @apply relative flex-y flex-1;
+    @apply h-screen;
     @apply bg-01;
     @apply transition-all ease-in-out duration-100;
 }
-.landing-menu.closed .left-line {
+.landing-menu.closed .c-container {
     @apply w-0;
     @apply bg-transparent;
     @apply transition-all ease-in-out duration-100;
 }
 .landing-menu .menu-footer {
     @apply flex-x;
-    @apply h-1/4 md:h-1/3;
+    @apply my-16;
     @apply gap-x-2;
     @apply items-center justify-center;
 }
 .landing-menu .menu-content {
     @apply flex-y;
-    @apply h-full w-7/12;
+    @apply h-full;
     @apply gap-y-8;
-    @apply self-center items-start justify-center;
+    @apply mx-[20%];
+    @apply items-start justify-center;
 }
-.landing-menu .menu-content button {
-    @apply h-8;
-    @apply text-title-1;
+.landing-menu .menu-content button,
+.landing-menu .menu-content a {
+    @apply text-title-1 text-01;
 }
 .landing-links {
     @apply flex-x;
