@@ -154,14 +154,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isHighlighted = false;
         // Handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
-        if (!mustScrollToEntry)
-            if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
-                isHighlighted = true;
-                _lastNavigateToEntryId = navigateToEntryId;
-                entryLid = navigateToEntryId.Value;
-                if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
-                    mustScrollToEntry = true;
-            }
+        if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
+            isHighlighted = true;
+            _lastNavigateToEntryId = navigateToEntryId;
+            entryLid = navigateToEntryId.Value;
+            if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
+                mustScrollToEntry = true;
+        }
         var scrollToKey = mustScrollToEntry
             ? entryLid.Format()
             : null;
