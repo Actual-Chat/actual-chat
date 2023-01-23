@@ -84,8 +84,7 @@
             return Task.CompletedTask;
 
         _ = DeviceInfo.EnsureDeviceRegistered(CancellationToken.None);
-
-        OnboardingUI.TryShow();
+        _ = OnboardingUI.TryShow();
 
         return Task.CompletedTask;
     }

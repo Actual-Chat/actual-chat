@@ -23,12 +23,13 @@ public class OnboardingUI
             });
     }
 
-    public void TryShow()
+    public async Task TryShow()
     {
+        await Settings.WhenFirstTimeRead;
         if (!Settings.Value.ShouldBeShown())
             return;
 
-        ModalUI.Show(new OnboardingModal.Model());
+        await ModalUI.Show(new OnboardingModal.Model());
     }
 
     private ValueTask<UserOnboardingSettings> CreateSettings(CancellationToken cancellationToken)
