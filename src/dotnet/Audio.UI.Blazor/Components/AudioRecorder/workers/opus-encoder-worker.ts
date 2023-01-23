@@ -120,12 +120,10 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
 
     // Connect to SignalR Hub
     hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(message.audioHubUrl)
-        // Reverted skipNegotiate due to recording glitches???
-        //     .withUrl(message.audioHubUrl, {
-        //         skipNegotiation: true,
-        //         transport: signalR.HttpTransportType.WebSockets
-        //     })
+        .withUrl(message.audioHubUrl, {
+            skipNegotiation: true,
+            transport: signalR.HttpTransportType.WebSockets
+        })
         .withAutomaticReconnect(retryPolicy)
         .withHubProtocol(new MessagePackHubProtocol())
         .configureLogging(signalR.LogLevel.Information)
