@@ -40,24 +40,24 @@ public partial class ChatUI
             return activeChats;
         });
 
+    // Private methods
+
     private async Task StopRecordingWhenIdle(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
             var cRecordingChatId = await Computed.Capture(GetRecordingChatId).ConfigureAwait(false);
             cRecordingChatId = await cRecordingChatId.When(x => !x.IsNone, cancellationToken).ConfigureAwait(false);
-            using var recordingChatIdBasedCancellation = CreateRecordingChatIdBasedCancellation(cRecordingChatId, cancellationToken);
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, recordingChatIdBasedCancellation.Token);
-
+            using var cts = GetRecordingChatChangedCts(cRecordingChatId, cancellationToken);
             try {
-                await MonitorRecordingChatIdActivity(cRecordingChatId.Value, linkedCts.Token);
+                await StopRecordingWhenIdle(cRecordingChatId.Value, cts.Token);
             }
-            catch (OperationCanceledException) when (recordingChatIdBasedCancellation.IsCancellationRequested) {
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
                 _stopRecordingAt.Value = null;
             }
         }
     }
 
-    private async Task MonitorRecordingChatIdActivity(ChatId chatId, CancellationToken cancellationToken)
+    private async Task StopRecordingWhenIdle(ChatId chatId, CancellationToken cancellationToken)
     {
         var recordingStartedAt = Clocks.UIClock.Now;
         _stopRecordingAt.Value = null;
@@ -113,9 +113,9 @@ public partial class ChatUI
             cancellationToken);
     }
 
-    private CancellationTokenSource CreateRecordingChatIdBasedCancellation(Computed<ChatId> cRecordingChatId, CancellationToken cancellationToken)
+    private CancellationTokenSource GetRecordingChatChangedCts(Computed<ChatId> cRecordingChatId, CancellationToken cancellationToken)
     {
-        var cts = new CancellationTokenSource();
+        var cts = cancellationToken.CreateLinkedTokenSource();
         var chatId = cRecordingChatId.Value;
         BackgroundTask.Run(async () => {
             await cRecordingChatId.When(x => x != chatId, cancellationToken);

@@ -98,6 +98,7 @@ public partial class ChatUI : WorkerBase
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> List(ChatListOrder order, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("List, Order = {Order}", order.ToString());
         var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
         var preOrderedChats = chats.Values
             .OrderByDescending(c => c.Contact.IsPinned)
@@ -119,6 +120,7 @@ public partial class ChatUI : WorkerBase
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("ListUnordered");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         var result = await contactIds
             .Select(contactId => Get(contactId.ChatId, cancellationToken))
@@ -130,6 +132,7 @@ public partial class ChatUI : WorkerBase
     [ComputeMethod]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("Get: {ChatId}", chatId.Value);
         if (chatId.IsNone)
             return null;
 

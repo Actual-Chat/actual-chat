@@ -29,6 +29,7 @@ public partial class ChatUI
             if (newChatId == oldChatId)
                 continue;
 
+            Log.LogDebug("InvalidateSelectedChatDependencies: *");
             using (Computed.Invalidate()) {
                 _ = IsSelected(oldChatId);
                 _ = IsSelected(newChatId);
@@ -48,6 +49,7 @@ public partial class ChatUI
             var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
             var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
 
+            Log.LogDebug("InvalidateActiveChatDependencies: *");
             var added = newListeningChats.Except(oldListeningChats);
             var removed = oldListeningChats.Except(newListeningChats);
             var changed = added.Concat(removed).ToList();
@@ -78,6 +80,7 @@ public partial class ChatUI
             if (newChatId == oldChatId)
                 continue;
 
+            Log.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
             using (Computed.Invalidate()) {
                 _ = GetMediaState(oldChatId);
                 _ = GetMediaState(newChatId);
@@ -93,32 +96,36 @@ public partial class ChatUI
         using var dCancellationTask = cancellationToken.ToTask();
         var cancellationTask = dCancellationTask.Resource;
 
-        var cExpectedRealtimePlaybackStateBase = await Computed
+        var cExpectedPlaybackStateBase = await Computed
             .Capture(GetExpectedRealtimePlaybackState)
             .ConfigureAwait(false);
         var playbackState = ChatPlayers.PlaybackState;
 
-        var changes = cExpectedRealtimePlaybackStateBase.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var cExpectedPlaybackState in changes.ConfigureAwait(false)) {
-            var expectedPlaybackState = cExpectedPlaybackState.ValueOrDefault;
-            while (cExpectedPlaybackState.IsConsistent()) {
-                var playbackStateValue = playbackState.Value;
-                if (playbackStateValue is null or RealtimePlaybackState) {
-                    if (!ReferenceEquals(playbackStateValue, expectedPlaybackState)) {
-                        if (playbackStateValue is null && !InteractiveUI.IsInteractive.Value)
-                            await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
-                        playbackState.Value = expectedPlaybackState;
-                    }
-                }
+        while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+            var cExpectedPlaybackState = await cExpectedPlaybackStateBase.Update(cancellationToken).ConfigureAwait(false);
+            var cActualPlaybackState = playbackState.Computed;
+            var expectedPlaybackState = cExpectedPlaybackStateBase.Value;
+            var actualPlaybackState = cActualPlaybackState.Value;
 
-                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-                await Task.WhenAny(
-                        playbackState.Computed.WhenInvalidated(CancellationToken.None),
-                        cExpectedPlaybackState.WhenInvalidated(CancellationToken.None),
-                        cancellationTask)
-                    .ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
+            if (actualPlaybackState is null or RealtimePlaybackState) {
+                if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
+                    if (actualPlaybackState is null && !InteractiveUI.IsInteractive.Value)
+                        await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
+
+                    Log.LogDebug("PushRealtimePlaybackState: applying changes");
+                    playbackState.Value = expectedPlaybackState;
+                    continue;
+                }
             }
+
+            Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
+            await Task.WhenAny(
+                    cActualPlaybackState.WhenInvalidated(cancellationToken),
+                    cExpectedPlaybackState.WhenInvalidated(cancellationToken),
+                    cancellationTask)
+                .ConfigureAwait(false);
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         }
         // ReSharper disable once FunctionNeverReturns
     }
@@ -141,7 +148,7 @@ public partial class ChatUI
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
-                // TODO(AY): Send this update to JS
+                Log.LogDebug("PushKeepAwakeState: *");
                 await KeepAwakeUI.SetKeepAwake(mustKeepAwake);
                 lastMustKeepAwake = mustKeepAwake;
             }
