@@ -3,8 +3,8 @@ import { Log, LogLevel, LogScope } from 'logging';
 const LogScope: LogScope = 'dom-helpers';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
-export function getOrInheritData(target: unknown, dataName: string): [HTMLElement | null, string | null] {
-    if (!(target instanceof HTMLElement))
+export function getOrInheritData(target: unknown, dataName: string): [HTMLElement | SVGElement | null, string | null] {
+    if (!(target instanceof HTMLElement) && !(target instanceof SVGElement))
         return [null, null];
 
     const rootElement = document.documentElement;
@@ -13,7 +13,7 @@ export function getOrInheritData(target: unknown, dataName: string): [HTMLElemen
         const value = element.dataset[dataName];
         if (value)
             return [element, value];
-        element = element.parentNode as HTMLElement;
+        element = element.parentNode as (HTMLElement | SVGElement);
     }
     return [null, null];
 }
