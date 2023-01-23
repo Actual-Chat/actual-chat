@@ -4,50 +4,69 @@
 }
 
 <div class="landing-menu @cls">
-    <div class="left-line">
-        <div class="flex-x w-full min-h-14 justify-center items-center">
-            <div class="min-w-8 max-w-8 min-h-8 max-h-8">
-                <img src="/landing/ac-icon-dark.svg" alt="icon">
+    <div class="c-container">
+        <div class="flex-x min-h-14 justify-center items-center py-2">
+            <div class="flex">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
             <div class="px-2 self-center max-w-40">
-                <img src="/landing/ac-title-dark.svg" alt="brand">
+                <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
             </div>
         </div>
         <div class="menu-content">
             <button onclick="@Signin">
                 Sign in
             </button>
-            <button>
-                For Business
-            </button>
-            <button>
-                API
-            </button>
-            <button>
-                Apps
-            </button>
-            <button>
-                FAQ
-            </button>
+            <a href="/docs/privacy">
+                Privacy
+            </a>
+            <a href="/docs/terms">
+                Terms
+            </a>
+            <a href="/docs/cookies">
+                Cookie Preferences
+            </a>
+            <a href="/docs/privacy">
+                Contact Us
+            </a>
+            @if (EnableIncompleteUI) {
+                <button>
+                    For Business
+                </button>
+                <button>
+                    API
+                </button>
+                <button>
+                    Apps
+                </button>
+                <button>
+                    FAQ
+                </button>
+            }
         </div>
         <div class="menu-footer">
             <ButtonRound>
-                <img src="/landing/facebook-gray.svg" alt="facebook">
+                <img src="/dist/images/landing/github-gray.svg" alt="github">
             </ButtonRound>
-            <ButtonRound>
-                <img src="/landing/telegram-gray.svg" alt="telegram">
-            </ButtonRound>
-            <ButtonRound>
-                <img src="/landing/github-gray.svg" alt="github">
-            </ButtonRound>
-            <ButtonRound>
-                <img src="/landing/medium-gray.svg" alt="medium">
-            </ButtonRound>
+            @if (EnableIncompleteUI) {
+                <ButtonRound>
+                    <img src="/dist/images/landing/facebook-gray.svg" alt="facebook">
+                </ButtonRound>
+                <ButtonRound>
+                    <img src="/dist/images/landing/telegram-gray.svg" alt="telegram">
+                </ButtonRound>
+                <ButtonRound>
+                    <img src="/dist/images/landing/medium-gray.svg" alt="medium">
+                </ButtonRound>
+            }
         </div>
     </div>
 </div>
 
 @code {
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
     [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public bool EnableIncompleteUI { get; set; }
     [Parameter] public EventCallback Signin { get; set; }
 }

@@ -17,21 +17,26 @@
 }
 
 <div @ref="Ref" class="landing">
-    <LandingLeftMenu IsOpen="@_isMenuOpen" Signin="@(() => SignIn(googleScheme.Name))"/>
+    @if (isNarrow) {
+        <LandingLeftMenu
+            IsOpen="@_isMenuOpen"
+            EnableIncompleteUI="@m.EnableIncompleteUI"
+            Signin="@(() => SignIn(googleScheme.Name))"/>
+    }
 
     @* Header *@
     <div class="landing-header blur-bg">
         @if (isNarrow) {
-            <ButtonRound Class="menu-button" Click="@OnMenuHandleClick">
+            <ButtonRound Class="menu-button flex-none" Click="@OnMenuHandleClick">
                 <i class="icon-menu text-2xl"></i>
             </ButtonRound>
         }
-        <div class="flex-x w-full @(isNarrow ? "justify-center" : "")">
+        <div class="flex-x flex-1">
             <div class="min-w-fit">
                 <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
                 <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
-            <div class="flex-x w-full">
+            <div class="flex-x flex-1">
                 <div class="px-2 self-center -mt-1.5 @(!isNarrow ? "min-w-fit" : "max-w-40")">
                     <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
                     <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
@@ -63,7 +68,7 @@
             </div>
         </div>
         @if (isNarrow) {
-            <div class="flex min-w-12 justify-end">
+            <div class="flex-none justify-end">
                 <ButtonRound Class="signin-button" Click="@(() => SignIn(googleScheme.Name))">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
@@ -74,7 +79,7 @@
     @* Page 1 *@
     <div class="page page-1">
         <div class="page-1-wrapper overflow-hidden">
-            <div class="flex-x h-full overflow-hidden @(isNarrow ? "px-4" : "px-16")">
+            <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-4" : "px-16")">
                 <div class="main-text">
                     <div class="text-04 pt-12">
                         <div class="title-text">Text or call?</div>
@@ -308,7 +313,7 @@
     </div>
 
     @* Page 8 *@
-    <div class="page">
+    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
         <div class="flex-y items-center justify-center overflow-hidden @(isNarrow ? "h-full px-4 py-8 gap-y-4" : "h-screen px-16 py-24 gap-y-8")">
             <div class="flex font-semibold @(isNarrow ? "self-center text-4.5xl" : "self-start text-7xl")">
                 Enjoyable and Fun
@@ -348,7 +353,7 @@
     </div>
 
     @* Page 9 *@
-    <div class="page">
+    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
         <div class="flex-y items-center overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-8 gap-y-8" : "px-16 pb-8 pt-16 min-h-screen")">
             <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
                 Actual.chat Features
@@ -443,7 +448,7 @@
     </div>
 
     @* Page 10 *@
-    <div class="page justify-center bg-[#EEEEF6])">
+    <div class="page justify-center bg-[#EEEEF6]) @(isNarrow ? "no-auto-scroll" : "")">
         <div class="flex-y justify-center items-start overflow-hidden @(isNarrow ? "px-4 py-8 gap-y-8" : "p-16 gap-y-16")">
             <div class="font-semibold @(isNarrow ? "flex-y text-4.5xl" : "flex-x text-7xl")">
                 <span>What`s&nbsp;</span><span>upcoming?</span>
@@ -486,46 +491,52 @@
                 </div>
             </div>
             <LandingLinks IsMobile="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
-            <div class="flex-x bg-07 @(isNarrow ? "p-4" : "h-60 p-12")">
-                <div class="flex-y w-full">
+            <div class="flex-x bg-07 @(isNarrow ? "p-4" : "h-60 py-12 px-16")">
+                <div class="flex-y flex-1">
                     <div class="h-full justify-start text-04 @(isNarrow ? "flex-y" : "flex-x gap-x-12")">
-                        <button class="footer-info-btn">
+                        <a href="/docs/privacy" class="footer-link">
                             Privacy
-                        </button>
-                        <button class="footer-info-btn">
+                        </a>
+                        <a href="/docs/terms" class="footer-link">
                             Terms
-                        </button>
-                        <button class="footer-info-btn">
+                        </a>
+                        <a href="/docs/cookies" class="footer-link">
                             Cookie Preferences
-                        </button>
-                        <button class="footer-info-btn">
+                        </a>
+                        <a href="#" class="footer-link">
                             Contact us
-                        </button>
-                        <button class="footer-info-btn">
-                            Region
-                        </button>
+                        </a>
+                        @if (m.EnableIncompleteUI) {
+                            <a href="#" class="footer-link">
+                                Region
+                            </a>
+                        }
                     </div>
                     <div class="flex items-center text-04 @(isNarrow ? "min-h-16" : "min-h-12")">
                         © 2023 Actual.chat Inc. All rights reserved.
                     </div>
                 </div>
-                <div class="flex-y justify-between min-w-48 text-04 @(isNarrow ? "hidden" : "")">
-                    <button class="footer-info-btn">
-                        Announcements
-                    </button>
+                <div class="flex-y justify-between items-start text-04 @(isNarrow ? "hidden" : "")">
                     <button class="footer-info-btn">
                         Github
                     </button>
-                    <button class="footer-info-btn">
-                        Twitter
-                    </button>
-                    <button class="footer-info-btn">
-                        Medium
-                    </button>
+                    @if (m.EnableIncompleteUI) {
+                        <button class="footer-info-btn">
+                            Announcements
+                        </button>
+                        <button class="footer-info-btn">
+                            Twitter
+                        </button>
+                        <button class="footer-info-btn">
+                            Medium
+                        </button>
+                    }
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="page"></div>
 </div>
 
 @code {
