@@ -1,5 +1,5 @@
 .landing {
-    @apply w-full;
+    @apply flex-y;
 }
 .landing .page {
     @apply flex-y;
@@ -167,11 +167,13 @@ body.narrow .landing-header .header-text {
 .landing-header.filled .signin-button.btn .btn-content {
     @apply text-01;
 }
-.landing-header .menu-button.btn {
+.landing-header .menu-button.btn,
+.docs-header .menu-button.btn {
     @apply min-w-10;
     @apply bg-transparent;
 }
-.landing-header .menu-button.btn .btn-content {
+.landing-header .menu-button.btn .btn-content,
+.docs-header .menu-button.btn .btn-content {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply bg-transparent;
     @apply text-04;
@@ -185,6 +187,11 @@ body.narrow .landing-header .header-text {
     @apply border border-bg-04;
     @apply bg-transparent;
     @apply text-04;
+}
+.landing-menu {
+    @apply flex;
+    @apply bg-06;
+    background: linear-gradient(to right, rgba(255,255,255,1) 75%, rgba(68,68,68,0.5) 25%);
 }
 
 /* Page 1 styles */
@@ -315,43 +322,59 @@ body.narrow .landing .footer-link {
     @apply text-title-1 text-start;
 }
 
-body.narrow .landing .landing-menu {
-    @apply absolute flex-x z-20;
-    @apply top-0 left-0;
-}
-body.wide .landing .landing-menu {
+body.wide .landing .landing-menu,
+body.wide .docs-header .landing-menu {
     @apply hidden;
 }
-body.narrow .landing .landing-menu.closed {
-    @apply w-0;
-    @apply opacity-0;
+body.narrow .landing .landing-menu,
+body.narrow .docs-header .landing-menu {
+    @apply absolute flex-x z-20;
+    @apply top-0 left-0 right-0;
 }
-body.narrow .landing .landing-menu.open {
-    @apply w-10/12;
+body.narrow .landing .landing-menu.closed,
+body.narrow .docs-header .landing-menu.closed {
+    @apply -translate-x-full;
+    @apply transition-all ease-in-out duration-200;
+}
+body.narrow .landing .landing-menu.open,
+body.narrow .docs-header .landing-menu.open {
+    @apply translate-x-0;
+    @apply transition-all ease-in-out duration-200;
+}
+body.narrow .landing-menu .c-container {
+    @apply relative flex-y;
+    @apply h-screen w-10/12;
+    @apply rounded-r-2xl;
+    @apply pl-12;
+}
+body.narrow .landing .landing-menu {
+    @apply flex-x;
+    @apply right-0;
 }
 .landing-menu.open .c-container {
-    @apply relative flex-y flex-1;
-    @apply h-screen;
+    @apply relative flex-y;
+    @apply h-screen w-10/12;
+    @apply rounded-r-2xl;
     @apply bg-01;
-    @apply transition-all ease-in-out duration-100;
 }
-.landing-menu.closed .c-container {
-    @apply w-0;
-    @apply bg-transparent;
-    @apply transition-all ease-in-out duration-100;
+.landing-menu .c-container .menu-header {
+    @apply flex-x;
+    @apply min-h-14;
+    @apply justify-start items-center;
+    @apply py-2;
 }
 .landing-menu .menu-footer {
     @apply flex-x;
-    @apply my-16;
+    @apply my-8;
     @apply gap-x-2;
-    @apply items-center justify-center;
+    @apply items-center justify-start;
 }
 .landing-menu .menu-content {
     @apply flex-y;
     @apply h-full;
     @apply gap-y-8;
-    @apply mx-[20%];
-    @apply items-start justify-center;
+    @apply my-4;
+    @apply items-start justify-start;
 }
 .landing-menu .menu-content button,
 .landing-menu .menu-content a {
@@ -378,6 +401,9 @@ body.narrow .landing-links {
     @apply bg-03;
     @apply border-r border-bg-04;
 }
+body.narrow .docs-left-panel {
+    @apply hidden;
+}
 .docs-left-panel .c-header {
     @apply flex-x;
     @apply h-14;
@@ -391,13 +417,13 @@ body.narrow .landing-links {
 .docs-right-panel .c-title {
     @apply text-caption-3 font-medium;
 }
-.docs-left-panel .navbar-item.active .unfocusable {
+.docs-left-panel .navbar-item.active .navbar-item-content {
     @apply text-primary;
 }
 .docs-left-panel .navbar-item.inactive:hover {
     @apply bg-secondary;
 }
-.docs-left-panel .unfocusable {
+.docs-left-panel .navbar-item .navbar-item-content {
     @apply flex-x;
     @apply gap-x-4;
     @apply items-center;
@@ -422,6 +448,9 @@ body.narrow .landing-links {
     @apply w-full md:w-80 h-full;
     @apply bg-01;
 }
+body.narrow .docs-right-panel {
+    @apply hidden;
+}
 .docs-right-panel .c-header {
     @apply flex;
     @apply h-14;
@@ -443,4 +472,21 @@ body.narrow .landing-links {
     @apply flex-y flex-1;
     @apply gap-y-4 px-4;
     @apply overflow-y-auto custom-scrollbar;
+}
+
+body.narrow .docs-content {
+    @apply px-0;
+}
+body.narrow .docs-header {
+    @apply gap-x-2;
+    @apply px-2;
+    @apply border border-b border-bg-04;
+    @apply bg-02;
+    @apply text-headline-1;
+}
+.docs-header .menu-button.btn .btn-content {
+    @apply text-icons-01;
+}
+body.narrow .side-nav.side-nav-right:has(> .docs-right-panel) {
+    @apply hidden;
 }

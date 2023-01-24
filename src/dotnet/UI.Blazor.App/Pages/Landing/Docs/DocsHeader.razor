@@ -1,0 +1,112 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@using System.Security.Cryptography
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Module
+@inherits ComputedStateComponent<DocsHeader.Model>
+
+@{
+    var m = State.Value;
+    var account = m.Account;
+    var user = account?.User.OrGuest();
+    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
+
+    var isNarrow = ScreenSize.IsNarrow();
+    var title = Page switch
+    {
+        DocsCommonLayout.DocsPage.Terms => "Terms and Conditions",
+        DocsCommonLayout.DocsPage.Cookies => "Cookies",
+        _ => "Privacy Policy",
+        };
+}
+
+@if (!isNarrow) {
+    <div class="docs-header">
+        Documents
+    </div>
+} else {
+    <div @ref="Ref" class="docs-header">
+        <LandingLeftMenu
+            IsOpen="@_isMenuOpen"
+            EnableIncompleteUI="@m.EnableIncompleteUI"
+            Signin="@(() => SignIn(googleScheme.Name))"/>
+
+        <ButtonRound Class="menu-button flex-none" Click="@OnMenuHandleClick">
+            <i class="icon-menu text-2xl"></i>
+        </ButtonRound>
+        <div class="-mt-0.5">
+            @title
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isMenuOpen;
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    private DotNetObjectReference<DocsHeader> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public DocsCommonLayout.DocsPage Page { get; set; }
+
+    protected override async Task OnInitializedAsync()
+        => AuthSchemas = await ClientAuth.GetSchemas();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.DocsHeader.create",
+                Ref, BlazorRef
+                );
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return new() {
+            Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
+            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
+        };
+    }
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
+
+    private void OnMenuHandleClick() {
+        _isMenuOpen = !_isMenuOpen;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void CloseMenu() {
+        _isMenuOpen = false;
+        StateHasChanged();
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public AccountFull? Account { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+    }
+}

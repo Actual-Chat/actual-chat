@@ -15,7 +15,7 @@
     public void Dispose()
         => Nav.LocationChanged -= OnLocationChanged;
 
-    private async void OnLocationChanged(object sender, LocationChangedEventArgs e)
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => await ScrollToFragment();
 
     private async Task ScrollToFragment()
