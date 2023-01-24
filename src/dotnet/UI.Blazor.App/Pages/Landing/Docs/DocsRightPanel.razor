@@ -5,6 +5,7 @@
 @{
     var links = Array.Empty<(string, string)>();
     var pageUrl = "";
+    var isNarrow = ScreenSize.IsNarrow();
 
     var cookiesLinks = new[] {
         ("Introduction", "introduction"),
@@ -53,7 +54,7 @@
     Direction="SideNavDirection.RightToLeft"
     Opened="@(() => RightPanelUI.ChangeVisibility(true))"
     Closed="@(() => RightPanelUI.ChangeVisibility(false))"
-    IsOpen="@true">
+    IsOpen="@(!isNarrow)">
     <div class="docs-right-panel">
         <DocsRightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">

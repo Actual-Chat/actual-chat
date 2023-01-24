@@ -197,7 +197,8 @@ export class Landing {
         if (!this.menu.classList.contains('open'))
             return;
 
-        const withinMenu = event.composedPath().includes(this.menu);
+        const container = this.menu.querySelector('.c-container');
+        const withinMenu = event.composedPath().includes(container);
         if (withinMenu)
             return;
 

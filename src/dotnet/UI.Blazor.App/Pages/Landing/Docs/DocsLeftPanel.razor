@@ -10,7 +10,7 @@
 <SideNav Direction="SideNavDirection.LeftToRight"
          Opened="@(_ => NavbarUI.ChangeVisibility(true))"
          Closed="@(_ => NavbarUI.ChangeVisibility(false))"
-         IsOpen="@NavbarUI.IsVisible">
+         IsOpen="@(!isNarrow)">
     <div class="docs-left-panel">
         <div class="c-header">
             <div class="max-w-fit">

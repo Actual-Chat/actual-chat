@@ -5,7 +5,7 @@
 
 <div class="landing-menu @cls">
     <div class="c-container">
-        <div class="flex-x min-h-14 justify-center items-center py-2">
+        <div class="menu-header">
             <div class="flex">
                 <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
@@ -26,10 +26,10 @@
             <a href="/docs/cookies">
                 Cookie Preferences
             </a>
-            <a href="/docs/privacy">
-                Contact Us
-            </a>
             @if (EnableIncompleteUI) {
+                <a href="/docs/privacy">
+                    Contact Us
+                </a>
                 <button>
                     For Business
                 </button>
@@ -64,8 +64,6 @@
 </div>
 
 @code {
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public bool EnableIncompleteUI { get; set; }
     [Parameter] public EventCallback Signin { get; set; }
