@@ -5,12 +5,12 @@
 @layout ListViewLayout
 @{
     var m = _rendered = State.Value;
-    if (m.IsUnavailable) {
-        <RequireChat ChatSid="@m.ChatId" />
-        return;
-    }
     var error = State.Error; // AY: Add code displaying the error bar later
     var chat = m.Chat;
+    if (m.ShowHome) {
+        Nav.NavigateTo(Links.Home);
+        return;
+    }
 }
 
 @* @key=... ensures child components are recreated on navigation to another chat *@
@@ -20,14 +20,14 @@
     return;
 }
 
-@if (chat == null && ScreenSize.IsWide()) {
+@if (m.ChatId.IsNone && chat == null && ScreenSize.IsWide()) {
     <NoChatSelected/>
     return;
 }
 
-@if (!chat.IsPublic && !m.Account.IsActive()) {
-    /* We check account here to avoid excessive render */
-    <RequireAccount/>
+@if (m.IsUnavailable) {
+    <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+    return;
 }
 
 <RenderIntoSlot Name="MainHeader">
@@ -73,9 +73,9 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private AuthUI AuthUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -113,19 +113,20 @@
 
         var chat = await Chats.Get(Session, chatId, cancellationToken);
         var account = await Accounts.GetOwn(Session, cancellationToken);
-        var result = new Model(chatId, chat, account);
+        var hasEverSignedIn = await AuthUI.HasEverSignedIn.Use(cancellationToken);
+        var result = new Model(chatId, chat, account, hasEverSignedIn);
         return result.IsSame(_rendered) ? _rendered! : result;
     }
 
     private void OnUnreadCountSubHeaderClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account) {
-        public static Model None { get; } = new(default, null, AccountFull.None);
-        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
+    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account, bool HasEverSignedIn) {
+        public static Model None { get; } = new(default, null, AccountFull.None, false);
+        public static Model Loading { get; } = new(default, null, AccountFull.Loading, false); // Should differ by ref. from None
 
-        public bool IsNone => ChatId.Id.IsEmpty;
-        public bool IsUnavailable => !IsNone && Chat is null;
+        public bool IsUnavailable => !ChatId.Id.IsEmpty && Chat is null;
+        public bool ShowHome => IsUnavailable && !Account.IsActive() && !HasEverSignedIn;
 
         public bool IsSame(Model? other) {
             if (other == null)

@@ -1,5 +1,6 @@
 @page "/"
 @using ActualChat.Users
+@using ActualChat.Chat.UI.Blazor.Services
 @inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
 @{
@@ -26,7 +27,10 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() { InitialValue = Model.Loading };
@@ -34,7 +38,13 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
-        var link = Links.Chat(default);
+        var link = "";
+        if (ScreenSize.IsNarrow())
+            link = Links.Chat(default);
+        else {
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            link = Links.Chat(selectedChatId);
+        }
         return new(account, link);
     }
 

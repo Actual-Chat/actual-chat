@@ -106,6 +106,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<TuneUI>(c => new TuneUI(c));
         services.AddScoped<VibrationUI>(c => new VibrationUI(c));
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<AuthUI>(ServiceLifetime.Scoped);
 
         // Actual.chat-specific UI services
         services.AddScoped<ThemeUI>(c => new ThemeUI(c));
