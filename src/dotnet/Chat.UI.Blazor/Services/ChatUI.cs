@@ -22,6 +22,7 @@ public partial class ChatUI : WorkerBase
     private readonly object _lock = new();
 
     private ChatPlayers? _chatPlayers;
+    private bool _isActiveChatsFirstLoad = true;
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
@@ -85,7 +86,7 @@ public partial class ChatUI : WorkerBase
         ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
-                Corrector = FixActiveChats,
+                Corrector = FixStoredActiveChats,
             });
 
         // Read entry states from other windows / devices are delayed by 1s
@@ -422,6 +423,22 @@ public partial class ChatUI : WorkerBase
 
         updatedValue = await FixActiveChats(updatedValue, cancellationToken).ConfigureAwait(false);
         ActiveChats.Value = updatedValue;
+    }
+
+    private ValueTask<ImmutableHashSet<ActiveChat>> FixStoredActiveChats(
+        ImmutableHashSet<ActiveChat> activeChats,
+        CancellationToken cancellationToken = default)
+    {
+        if (_isActiveChatsFirstLoad) {
+            // Turn off stored recording on restoring state during app start
+            _isActiveChatsFirstLoad = false;
+            if (activeChats.Count > 0) {
+                activeChats = activeChats
+                    .Select(c => c.IsRecording ? c with {IsRecording = false} : c)
+                    .ToImmutableHashSet();
+            }
+        }
+        return FixActiveChats(activeChats, cancellationToken);
     }
 
     private async ValueTask<ImmutableHashSet<ActiveChat>> FixActiveChats(
