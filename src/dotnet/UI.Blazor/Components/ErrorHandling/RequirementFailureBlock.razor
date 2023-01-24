@@ -4,7 +4,11 @@
 @using Stl.Reflection
 @inherits FusionComponentBase
 @{
-    var showTrySignInBlock = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
+    var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
+    if (needsSignIn) {
+        Nav.NavigateTo(Links.Home);
+        return;
+    }
 }
 
 <LayoutView Layout="@typeof(DefaultLayout)">
@@ -17,7 +21,7 @@
                Title="@title"
                Dismissed="@(_ => RequirementChecker.Remove(requirement))">@error.Message</Error>
     }
-    @if (showTrySignInBlock) {
+    @if (needsSignIn) {
         <div>
             @if (Account.IsGuest) {
                 <span>You can try to <SignInDropdown/> to resolve it.</span>
@@ -32,6 +36,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;
