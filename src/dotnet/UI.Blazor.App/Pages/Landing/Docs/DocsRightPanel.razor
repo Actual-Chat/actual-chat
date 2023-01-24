@@ -43,11 +43,6 @@
         links = privacyLinks;
         pageUrl = "privacy";
     }
-
-    RenderFragment RenderRightPanel() =>
-        @<div class="flex-y gap-y-6 p-4">
-            <DocsLinks Links="@links" PageUrl="@pageUrl"/>
-        </div>;
 }
 
 <SideNav
@@ -58,7 +53,9 @@
     <div class="docs-right-panel">
         <DocsRightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">
-            @RenderRightPanel()
+            <div class="flex-y gap-y-6 p-4">
+                <DocsLinks Links="@links" PageUrl="@pageUrl"/>
+            </div>
         </div>
     </div>
 </SideNav>
