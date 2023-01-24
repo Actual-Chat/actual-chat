@@ -49,6 +49,7 @@ public partial class ChatUI : WorkerBase
     private ILogger Log { get; }
 
     public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
+    public IStoredState<ChatListSettings> ListSettings { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
@@ -87,6 +88,10 @@ public partial class ChatUI : WorkerBase
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixStoredActiveChats,
             });
+        ListSettings = StateFactory.NewKvasStored<ChatListSettings>(
+            new (AccountSettings, nameof(ListSettings)) {
+                InitialValue = new(),
+            });
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
@@ -96,14 +101,20 @@ public partial class ChatUI : WorkerBase
     }
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlyList<ChatInfo>> List(ChatListOrder order, CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<ChatInfo>> List(CancellationToken cancellationToken = default)
     {
-        Log.LogDebug("List, Order = {Order}", order.ToString());
+        var settings = await ListSettings.Use(cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("List: {Settings}", settings);
         var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
-        var preOrderedChats = chats.Values
+        var filterId = settings.Filter.Id;
+        var filteredChats = filterId switch {
+            _ when filterId == ChatListFilter.Personal.Id => chats.Values.Where(c => c.Chat.Kind == ChatKind.Peer),
+            _ => chats.Values,
+        };
+        var preOrderedChats = filteredChats
             .OrderByDescending(c => c.Contact.IsPinned)
             .ThenByDescending(c => c.HasUnreadMentions);
-        var orderedChats = order switch {
+        var orderedChats = settings.Order switch {
             ChatListOrder.ByLastEventTime => preOrderedChats
                 .ThenByDescending(c => c.News.LastTextEntry?.Version ?? 0),
             ChatListOrder.ByOwnUpdateTime => preOrderedChats
@@ -111,7 +122,10 @@ public partial class ChatUI : WorkerBase
             ChatListOrder.ByUnreadCount => preOrderedChats
                 .ThenByDescending(c => c.UnreadCount.Value)
                 .ThenByDescending(c => c.News.LastTextEntry?.Version),
-            _ => throw new ArgumentOutOfRangeException(nameof(order)),
+            ChatListOrder.ByAlphabet => filteredChats
+                .OrderByDescending(c => c.Contact.IsPinned)
+                .ThenBy(c => c.Chat.Title),
+            _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
         var result = orderedChats.ToList();
         return result;

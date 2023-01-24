@@ -3,23 +3,26 @@
 @{
     var m = State.Value;
     var count = m.AllChats.Select(c => c.UnreadCount).Sum();
-    var (title, icon) = _activeTabId switch
-    {
-        TabId.ByUnreadCount => ("Unread", "icon-sort-by-message"),
-        TabId.ByOwnActivity => ("Recent", "icon-sort-by-recent"),
-        _ => ("Updated", "icon-sort-by-alphabet"),
-        };
+    var listSettings = ChatUI.ListSettings.Value;
+    var icon = listSettings.Order switch {
+        ChatListOrder.ByOwnUpdateTime => "icon-sort-by-message",
+        ChatListOrder.ByLastEventTime => "icon-sort-by-recent",
+        ChatListOrder.ByUnreadCount => "icon-sort-by-recent",
+        ChatListOrder.ByAlphabet => "icon-sort-by-alphabet",
+        _ => throw new ArgumentOutOfRangeException(nameof(listSettings)),
+    };
 
-    RenderFragment RenderTab(TabId tabId, string tabTitle) =>
+    RenderFragment RenderTabContent(ChatListFilter filter) =>
         @<Tab
-            Title="@tabTitle" Id="@tabId.ToString()"
-            Class="chats-tab">
+             Title="@filter.Title"
+             Id="@filter.Id"
+             Class="chats-tab">
             <TitleContent>
-                <span>@tabTitle</span>
+                <span>@filter.Title</span>
                 <UnreadCount Value="@count" Click="@OnUnreadBadgeClick"/>
             </TitleContent>
             <ChildContent>
-                @if (_activeTabId == tabId) {
+                @if (filter.Id == listSettings.FilterId) {
                     <div class="flex-y my-2">
                         <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
                         <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
@@ -29,7 +32,6 @@
         </Tab>;
 }
 
-<OnUIEvent TEvent="@SelectSortingTypeEvent" Handler="OnSelectSortingTypeEvent" />
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y min-h-min">
@@ -42,14 +44,15 @@
                 ActiveTabChanged="@OnActiveTabChanged">
                 <AdditionalButton>
                     <ButtonRound Class="sort-btn btn-sm"
-                                 data-menu="@(MenuRef.New<SortMenu>())"
+                                 data-menu="@(MenuRef.New<ChatListSortMenu>())"
                                  data-menu-trigger="@MenuTrigger.Primary"
                                  data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                         <i class="@icon text-2xl"></i>
                     </ButtonRound>
                 </AdditionalButton>
                 <ChildContent>
-                    @RenderTab(_activeTabId, title )
+                    @RenderTabContent(ChatListFilter.All)
+                    @RenderTabContent(ChatListFilter.Personal)
                 </ChildContent>
             </TabPanel>
         </div>
@@ -57,8 +60,6 @@
 </NavbarGroup>
 
 @code {
-    private TabId _activeTabId;
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -73,7 +74,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = (await ListChats(_activeTabId)).ToList();
+        var chats = await ChatUI.List(cancellationToken);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
@@ -105,18 +106,11 @@
             LoadingUI.MarkLoaded();
     }
 
-    private Task<IReadOnlyList<ChatInfo>> ListChats(TabId tabId)
-        => tabId switch {
-            TabId.ByOwnActivity => ChatUI.List(ChatListOrder.ByOwnUpdateTime),
-            TabId.ByAnyActivity => ChatUI.List(ChatListOrder.ByLastEventTime),
-            TabId.ByUnreadCount => ChatUI.List(ChatListOrder.ByUnreadCount),
-            _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
-        };
-
     private void OnActiveTabChanged(Tab? tab) {
-        if (!Enum.TryParse(tab?.Id ?? "", out _activeTabId))
-            _activeTabId = default;
-        _ = State.Recompute();
+        var filterId = tab?.Id ?? "";
+        ChatUI.ListSettings.Value = ChatUI.ListSettings.Value with {
+            FilterId = filterId,
+        };
     }
 
     private void OnUnreadBadgeClick() {
@@ -126,18 +120,6 @@
             return;
 
         Nav.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));
-    }
-
-    private async Task OnSelectSortingTypeEvent(SelectSortingTypeEvent @event, CancellationToken cancellationToken) {
-        var tabId = @event.TabId;
-        _activeTabId = tabId;
-        await State.Recompute(cancellationToken);
-    }
-
-    public enum TabId {
-        ByOwnActivity,
-        ByAnyActivity,
-        ByUnreadCount,
     }
 
     public sealed record Model {
