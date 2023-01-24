@@ -6,7 +6,7 @@ export type { LogScope } from './logging-init';
 
 export class Log {
     public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
-    public static defaultMinLevel = LogLevel.Error;
+    public static defaultMinLevel = LogLevel.Warn;
     private static isInitialized = false;
     public log: (...data: unknown[]) => void;
 

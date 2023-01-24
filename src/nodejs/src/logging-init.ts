@@ -18,6 +18,7 @@ export type LogScope =
     | 'InteractiveUI'
     | 'TuneUI'
     | 'VibrationUI'
+    | 'MenuHost'
     | 'on-device-awake'
     | 'Rpc'
     | 'BrowserInfo'
@@ -37,16 +38,9 @@ export type LogScope =
     | 'AudioVad'
     | 'UserActivityUI'
     | 'VirtualList'
-    | 'MenuHost'
-    | 'Gestures'
-    | 'Interactive'
-    | 'OnDeviceAwake'
-    | 'MenuHost'
     | 'AudioContextSource'
     | 'AudioRecorder'
     | 'Landing'
-    | 'TuneUI'
-    | 'HistoryUI'
     | string;
 
 const LogMinLevelsKey = 'logMinLevels';
@@ -133,7 +127,6 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('ChatMessageEditor', LogLevel.Info);
     minLevels.set('WarmUpAudioWorkletProcessor', LogLevel.Info);
     minLevels.set('FeederProcessor', LogLevel.Info);
-    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Info);
     minLevels.set('OpusDecoder', LogLevel.Info);
     minLevels.set('OpusDecoderWorker', LogLevel.Info);
@@ -150,6 +143,7 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     // minLevels.set('MenuHost', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
+    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
     // minLevels.set('HistoryUI', LogLevel.Debug);
