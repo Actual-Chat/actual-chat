@@ -15,7 +15,7 @@ public partial class ChatUI : WorkerBase
 
     private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _readStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
-    private readonly IStoredState<ChatId> _selectedChatId;
+    private readonly IMutableState<ChatId> _selectedChatId;
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
@@ -52,7 +52,6 @@ public partial class ChatUI : WorkerBase
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
-    public Task WhenLoaded => _selectedChatId.WhenRead;
 
     public ChatUI(IServiceProvider services)
     {
@@ -79,7 +78,7 @@ public partial class ChatUI : WorkerBase
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
 
-        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)));
+        _selectedChatId = StateFactory.NewMutable<ChatId>();
         _relatedChatEntry = StateFactory.NewMutable<RelatedChatEntry?>();
         _highlightedEntryId = StateFactory.NewMutable<ChatEntryId>();
 

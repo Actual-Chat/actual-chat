@@ -1,7 +1,6 @@
 @page "/chat/{ChatId}"
 @page "/chat/"
 @using ActualChat.Notification.UI.Blazor
-@using ActualChat.Chat.UI.Blazor.Events
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
 @{
@@ -16,10 +15,16 @@
 
 @* @key=... ensures child components are recreated on navigation to another chat *@
 
-@if (chat == null) {
+@if (m == Model.Loading) {
     /* Chat isn't yet fetched, so nothing to render on the right side */
     return;
 }
+
+@if (chat == null && ScreenSize.IsWide()) {
+    <NoChatSelected/>
+    return;
+}
+
 @if (!chat.IsPublic && !m.Account.IsActive()) {
     /* We check account here to avoid excessive render */
     <RequireAccount/>
@@ -73,6 +78,7 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_rendered, null)
