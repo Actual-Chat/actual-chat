@@ -32,8 +32,8 @@
         var result = await UICommander.Run(command);
         if (!result.HasError) {
             await ModalInstance.CloseAsync();
-            if (isSelectedChat)
-                Nav.NavigateTo(Links.Chat(Constants.Chat.AnnouncementsChatId));
+            if (isSelectedChat && !ModalModel.Chat.IsPublic)
+                Nav.NavigateTo(Links.Chat(default));
         }
     }
 
