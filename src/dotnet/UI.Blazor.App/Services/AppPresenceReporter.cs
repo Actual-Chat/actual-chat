@@ -37,7 +37,6 @@ internal class AppPresenceReporter : WorkerBase
         ChatUI = services.GetRequiredService<ChatUI>();
     }
 
-
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         var session = await SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);

@@ -13,7 +13,7 @@ public partial class ChatUI : WorkerBase
 {
     public const int MaxActiveChatCount = 3;
 
-    private readonly SharedResourcePool<Symbol, ISyncedState<long?>> _readStates;
+    private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IMutableState<ChatId> _selectedChatId;
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
@@ -31,7 +31,7 @@ public partial class ChatUI : WorkerBase
     private IUserPresences UserPresences { get; }
     private IChats Chats { get; }
     private IContacts Contacts { get; }
-    private IReadPositions ReadPositions { get; }
+    private IChatPositions ChatPositions { get; }
     private IMentions Mentions { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     private AccountSettings AccountSettings { get; }
@@ -65,7 +65,7 @@ public partial class ChatUI : WorkerBase
         UserPresences = services.GetRequiredService<IUserPresences>();
         Chats = services.GetRequiredService<IChats>();
         Contacts = services.GetRequiredService<IContacts>();
-        ReadPositions = services.GetRequiredService<IReadPositions>();
+        ChatPositions = services.GetRequiredService<IChatPositions>();
         Mentions = services.GetRequiredService<IMentions>();
         AccountSettings = services.AccountSettings();
         LocalSettings = services.LocalSettings();
@@ -90,7 +90,7 @@ public partial class ChatUI : WorkerBase
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
-        _readStates = new SharedResourcePool<Symbol, ISyncedState<long?>>(CreateReadState);
+        _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ChatPosition>>(CreateReadPositionState);
         _stopRecordingAt = services.StateFactory().NewMutable<Moment?>();
         Start();
     }
@@ -142,24 +142,24 @@ public partial class ChatUI : WorkerBase
 
         var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
         var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
-        var readEntryIdTask = GetReadEntryId(chatId, cancellationToken);
+        var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
         var userSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
 
         var news = await chatNewsTask.ConfigureAwait(false);
         var userSettings = await userSettingsTask.ConfigureAwait(false);
         var lastMention = await lastMentionTask.ConfigureAwait(false);
-        var readEntryId = await readEntryIdTask.ConfigureAwait(false);
+        var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
 
         var unreadCount = 0;
-        if (readEntryId is { } vReadEntryId) { // Otherwise the chat wasn't ever opened
+        if (readEntryLid >= 0) { // Otherwise the chat wasn't ever opened
             var lastId = news.TextEntryIdRange.End - 1;
-            unreadCount = (int)(lastId - vReadEntryId).Clamp(0, ChatInfo.MaxUnreadCount);
+            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
         }
 
         var hasUnreadMentions = false;
         if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
             var lastMentionEntryId = lastMention?.EntryId.LocalId ?? 0;
-            hasUnreadMentions = lastMentionEntryId > readEntryId;
+            hasUnreadMentions = lastMentionEntryId > readEntryLid;
         }
 
         var lastTextEntryText = "";
@@ -173,7 +173,7 @@ public partial class ChatUI : WorkerBase
             News = news,
             UserSettings = userSettings,
             LastMention = lastMention,
-            ReadEntryId = readEntryId,
+            ReadEntryLid = readEntryLid,
             UnreadCount = new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount),
             HasUnreadMentions = hasUnreadMentions,
             LastTextEntryText = lastTextEntryText,
@@ -370,10 +370,10 @@ public partial class ChatUI : WorkerBase
     public void ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 
-    public async ValueTask<SyncedStateLease<long?>> LeaseReadState(ChatId chatId, CancellationToken cancellationToken)
+    public async ValueTask<SyncedStateLease<ChatPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
-        var lease = await _readStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        var result = new SyncedStateLease<long?>(lease);
+        var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
+        var result = new SyncedStateLease<ChatPosition>(lease);
         await result.WhenFirstTimeRead;
         return result;
     }
@@ -381,32 +381,36 @@ public partial class ChatUI : WorkerBase
     // Private methods
 
     // TODO: Make it non-nullable?
-    private async ValueTask<long?> GetReadEntryId(ChatId chatId, CancellationToken cancellationToken)
+    private async ValueTask<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
     {
-        using var readEntryState = await LeaseReadState(chatId, cancellationToken).ConfigureAwait(false);
-        return await readEntryState.Use(cancellationToken).ConfigureAwait(false);
+        using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
+        var readPosition = await readPositionState.Use(cancellationToken).ConfigureAwait(false);
+        return readPosition.EntryLid;
     }
 
-    private Task<ISyncedState<long?>> CreateReadState(Symbol chatId, CancellationToken cancellationToken)
+    private Task<ISyncedState<ChatPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
-        return Task.FromResult(StateFactory.NewCustomSynced<long?>(
+        return Task.FromResult(StateFactory.NewCustomSynced<ChatPosition>(
             new (
                 // Reader
                 async ct => {
                     if (pChatId.IsNone)
-                        return null;
+                        return new ChatPosition();
 
-                    return await ReadPositions.GetOwn(Session, pChatId, ct).ConfigureAwait(false);
+                    return await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
                 },
                 // Writer
-                async (readEntryId, ct) => {
-                    if (pChatId.IsNone || readEntryId is not { } entryId)
+                async (position, ct) => {
+                    if (pChatId.IsNone || position == null!)
                         return;
 
-                    var command = new IReadPositions.SetCommand(Session, pChatId, entryId);
+                    var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, position);
                     await UICommander.Run(command, ct);
-                }) { UpdateDelayer = _readStateUpdateDelayer }
+                }) {
+                InitialValue = new ChatPosition(),
+                UpdateDelayer = _readStateUpdateDelayer,
+            }
         ));
     }
 

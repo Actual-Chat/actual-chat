@@ -15,7 +15,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public ChatNews News { get; init; }
     public UserChatSettings UserSettings { get; init; } = UserChatSettings.Default;
     public Mention? LastMention { get; init; }
-    public long? ReadEntryId { get; init; }
+    public long ReadEntryLid { get; init; }
     public Trimmed<int> UnreadCount { get; init; }
     public bool HasUnreadMentions { get; init; }
     public string LastTextEntryText { get; init; } = "";

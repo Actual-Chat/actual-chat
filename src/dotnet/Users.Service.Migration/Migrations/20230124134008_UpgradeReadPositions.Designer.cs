@@ -3,6 +3,7 @@ using System;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Users.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    partial class UsersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230124134008_UpgradeReadPositions")]
+    partial class UpgradeReadPositions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -137,9 +140,9 @@ namespace ActualChat.Users.Migrations
                         .HasColumnName("origin");
 
                     b.HasKey("Id")
-                        .HasName("pk_chat_positions");
+                        .HasName("pk_read_positions");
 
-                    b.ToTable("chat_positions");
+                    b.ToTable("read_positions");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>

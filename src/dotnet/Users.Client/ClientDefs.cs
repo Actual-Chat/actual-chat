@@ -41,14 +41,14 @@ public interface IAvatarsClientDef
     Task SetDefault([Body] IAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("readPositions")]
-public interface IReadPositionsClientDef
+[BasePath("chatPositions")]
+public interface IChatPositionsClientDef
 {
     [Get(nameof(GetOwn))]
-    public Task<long?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
+    public Task<ChatPosition> GetOwn(Session session, ChatId chatId, ChatPositionKind kind, CancellationToken cancellationToken);
 
     [Post(nameof(Set))]
-    public Task Set([Body] IReadPositions.SetCommand command, CancellationToken cancellationToken);
+    public Task Set([Body] IChatPositions.SetCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("serverKvas")]

@@ -14,7 +14,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
     private long? _lastNavigateToEntryId;
-    private long? _initialLastReadEntryId;
+    private long? _initialReadEntryLid;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -23,16 +23,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IReadPositions ReadPositions { get; init; } = null!;
+    [Inject] private IChatPositions ChatPositions { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private Task WhenInitialized => _whenInitializedSource.Task;
-    private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
+    private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
-    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
+    private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -41,10 +41,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryId = StateFactory.NewMutable<long?>();
+            NavigateToEntryLid = StateFactory.NewMutable<long?>();
             ItemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty);
-            LastReadEntryState = await ChatUI.LeaseReadState(Chat.Id, _disposeToken.Token);
-            _initialLastReadEntryId = LastReadEntryState.Value;
+            ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
+            _initialReadEntryLid = ReadPositionState.Value.EntryLid;
         }
         finally {
             _whenInitializedSource.SetResult(Unit.Default);
@@ -55,8 +55,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         Nav.LocationChanged -= OnLocationChanged;
         _disposeToken.Cancel();
-        LastReadEntryState?.Dispose();
-        LastReadEntryState = null;
+        ReadPositionState?.Dispose();
+        ReadPositionState = null;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -67,26 +67,26 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     public async Task NavigateToUnreadEntry()
     {
-        long navigateToEntryId;
-        var lastReadEntryId = LastReadEntryState?.Value;
-        if (lastReadEntryId is { } entryId)
-            navigateToEntryId = entryId;
+        long navigateToEntryLid;
+        var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
+        if (readEntryLid > 0)
+            navigateToEntryLid = readEntryLid;
         else {
             var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, _disposeToken.Token);
-            navigateToEntryId = chatIdRange.ToInclusive().End;
+            navigateToEntryLid = chatIdRange.ToInclusive().End;
         }
 
         // Reset to ensure the navigation will happen
-        _initialLastReadEntryId = navigateToEntryId;
-        NavigateToEntry(navigateToEntryId);
+        _initialReadEntryLid = navigateToEntryLid;
+        NavigateToEntry(navigateToEntryLid);
     }
 
-    public void NavigateToEntry(long localId)
+    public void NavigateToEntry(long entryLid)
     {
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = null;
-        NavigateToEntryId.Value = null;
-        NavigateToEntryId.Value = localId;
+        NavigateToEntryLid.Value = null;
+        NavigateToEntryLid.Value = entryLid;
     }
 
 
@@ -121,13 +121,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
-        var lastReadEntryLid = LastReadEntryState?.Value ?? 0;
-        if (LastReadEntryState != null && lastReadEntryLid >= chatIdRange.End) {
+        var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
+        if (ReadPositionState != null && readEntryLid > 0 && readEntryLid >= chatIdRange.End) {
             // Looks like an error, let's reset last read position to the last entry Id
-            lastReadEntryLid = chatIdRange.End - 1;
-            LastReadEntryState.Value = lastReadEntryLid;
+            readEntryLid = Math.Max(0, chatIdRange.End - 1);
+            ReadPositionState.Value = new ChatPosition(readEntryLid);
         }
-        var entryLid = lastReadEntryLid;
+        var entryLid = readEntryLid;
         var mustScrollToEntry = query.IsNone && entryLid != 0;
 
         // Get the last tile to check whether the Author has submitted a new entry
@@ -138,7 +138,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
-            if (entry.AuthorId != authorId || entry.LocalId <= _initialLastReadEntryId)
+            if (entry.AuthorId != authorId || entry.LocalId <= _initialReadEntryLid)
                 continue;
 
             // Scroll only on text entries
@@ -146,14 +146,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 continue;
 
             // Scroll to the latest Author entry - e.g.m when author submits the new one
-            _initialLastReadEntryId = entry.LocalId;
+            _initialReadEntryLid = entry.LocalId;
             entryLid = entry.LocalId;
             mustScrollToEntry = true;
         }
 
         var isHighlighted = false;
         // Handle NavigateToEntry
-        var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
+        var navigateToEntryId = await NavigateToEntryLid.Use(cancellationToken);
         if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
             isHighlighted = true;
             _lastNavigateToEntryId = navigateToEntryId;
@@ -184,7 +184,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
-            _initialLastReadEntryId,
+            _initialReadEntryLid,
             hasVeryFirstItem,
             hasVeryLastItem,
             TimeZoneConverter);
@@ -247,12 +247,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (lastItemVisibility.IsEndAnchorVisible != itemVisibility.IsEndAnchorVisible)
             StateHasChanged(); // To re-render NavigateToEnd
 
-        var lastReadEntryState = LastReadEntryState;
-        if (itemVisibility.IsEmpty || lastReadEntryState == null)
+        var readPositionState = ReadPositionState;
+        if (itemVisibility.IsEmpty || readPositionState == null)
             return;
 
-        if (lastReadEntryState.Value is not { } readEntryId || readEntryId < itemVisibility.MaxEntryLid)
-            lastReadEntryState.Value = itemVisibility.MaxEntryLid;
+        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
+            readPositionState.Value = new ChatPosition(itemVisibility.MaxEntryLid);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

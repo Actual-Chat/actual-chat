@@ -1,21 +1,23 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Module;
-using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public enum Theme { Light, Dark }
-
 public class ThemeUI : WorkerBase
 {
-    private Theme _lastTheme = default;
-    private AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
+    private readonly ISyncedState<ThemeSettings> _settings;
+    private Theme _appliedTheme = Theme.Light;
 
     private ILogger Log { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
-    public ISyncedState<Theme> Theme { get; }
+    public IMutableState<ThemeSettings> Settings => _settings;
+    public Theme Theme {
+        get => Settings.Value.Theme;
+        set => Settings.Value = Settings.Value with { Theme = value };
+    }
+    public Task WhenReady { get; }
 
     public ThemeUI(IServiceProvider services)
     {
@@ -25,35 +27,34 @@ public class ThemeUI : WorkerBase
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.AccountSettings().WithPrefix(nameof(ThemeUI));
-        Theme = stateFactory.NewKvasSynced<Theme>(
-            new(accountSettings, nameof(Theme)) {
-                InitialValue = default,
-                Corrector = FixTheme,
+        _settings = stateFactory.NewKvasSynced<ThemeSettings>(
+            new(accountSettings, nameof(ThemeSettings)) {
+                InitialValue = new ThemeSettings(Theme.Light),
+                UpdateDelayer = FixedDelayer.Instant,
             });
+        WhenReady = TaskSource.New<Unit>(true).Task;
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        await foreach (var cTheme in Theme.Changes(FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false))
-            await ApplyTheme(cTheme.Value);
+        await _settings.WhenFirstTimeRead;
+        await foreach (var cTheme in Settings.Changes(FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false))
+            await ApplyTheme(cTheme.Value.Theme);
     }
 
-    public async ValueTask ApplyTheme(Theme theme)
-    {
-        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
-        if (_lastTheme == theme)
-            return;
-        try {
-            await Dispatcher.InvokeAsync(
-                () => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString()).AsTask()
-                ).ConfigureAwait(false);
-            _lastTheme = theme;
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Failed to apply the new theme");
-        }
-    }
+    private Task ApplyTheme(Theme theme)
+        => Dispatcher.InvokeAsync(async () => {
+            if (!WhenReady.IsCompleted)
+                TaskSource.For((Task<Unit>)WhenReady).TrySetResult(default);
+            if (_appliedTheme == theme)
+                return;
 
-    private ValueTask<Theme> FixTheme(Theme theme, CancellationToken cancellationToken)
-        => ValueTask.FromResult(Enum.IsDefined(theme) ? theme : default);
+            _appliedTheme = theme;
+            try {
+                await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "Failed to apply the new theme");
+            }
+        });
 }

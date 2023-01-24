@@ -11,16 +11,18 @@
 
     protected override ComputedState<Theme>.Options GetStateOptions()
         => new() {
-            InitialValue = ThemeUI.Theme.Value,
+            InitialValue = ThemeUI.Theme,
             UpdateDelayer = FixedDelayer.Instant,
         };
 
-    protected override async Task<Theme> ComputeState(CancellationToken cancellationToken)
-        => await ThemeUI.Theme.Use(cancellationToken);
+    protected override async Task<Theme> ComputeState(CancellationToken cancellationToken) {
+        var themeSettings = await ThemeUI.Settings.Use(cancellationToken);
+        return themeSettings.Theme;
+    }
 
     private void OnThemeChanged()
-        => ThemeUI.Theme.Set(r => r.Value switch {
+        => ThemeUI.Theme = ThemeUI.Theme switch {
             Theme.Light => Theme.Dark,
             _ => Theme.Light,
-        });
+        };
 }

@@ -32,5 +32,7 @@ public static partial class Constants
         public static bool SlateEditor { get; } = false;
 
         public static bool KubeEmulation { get; } = false;
+
+        public static bool SyncedState { get; } = false;
     }
 }

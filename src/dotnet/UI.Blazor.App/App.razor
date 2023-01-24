@@ -1,17 +1,14 @@
 @using Stl.Plugins
+@using ActualChat.Kvas
 @implements IDisposable
+@{
+    // We can't render anything till the moment a few key components completed the initialization
+    if (!_whenReadyToRender.IsCompletedSuccessfully)
+        return;
+}
 
 <BrowserInfoProvider>
     <BlazoredModal ActivateFocusTrap="true" />
-
-    @if (!_whenReadyToRender.IsCompletedSuccessfully) {
-        @*
-        <div class="flex justify-center items-center h-screen">
-            Initializing...
-        </div>
-        *@
-        return;
-    }
 
     <AlwaysVisibleComponents/>
 
@@ -37,6 +34,8 @@
     private static Assembly? UIAssembly { get; set; }
     private static Assembly[]? UIModuleAssemblies { get; set; }
 
+    private readonly CancellationTokenSource _disposeTokenSource;
+    private readonly CancellationToken _disposeToken;
     private Task _whenReadyToRender = null!;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
@@ -52,6 +51,11 @@
     [Inject] private ILogger<App> Log { get; init; } = null!;
 
     [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+
+    public App() {
+        _disposeTokenSource = new CancellationTokenSource();
+        _disposeToken = _disposeTokenSource.Token;
+    }
 
     protected override void OnInitialized() {
         UIAssembly ??= typeof(App).Assembly;
@@ -84,23 +88,29 @@
         _ = Loaded();
     }
 
-    public virtual void Dispose()
-        => CircuitContext.Dispose();
+    public virtual void Dispose() {
+        if (_disposeToken.IsCancellationRequested)
+            return;
+
+        _disposeTokenSource.CancelAndDisposeSilently();
+        CircuitContext.Dispose();
+    }
 
     private async Task PrepareForTheFirstRender() {
-        // Starting to acquire browser info
-        _ = BrowserInfo.Init();
+        var cancellationToken = _disposeToken;
 
-        // Starting to read theme
+        // Starting BrowserInfo
+        _ = BrowserInfo.Init();
+        await BrowserInfo.WhenReady.WaitAsync(cancellationToken);
+
+        // Checking StateFactory.GetOrigin(), which becomes available once BrowserInfo is ready
+        // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+        if (Services.StateFactory().GetOrigin().Length < 4)
+            throw StandardError.Internal("BrowserInfo exposes invalid Origin.");
+
+        // Starting ThemeUI
         var themeUI = Services.GetRequiredService<ThemeUI>();
         themeUI.Start();
-        await themeUI.Theme.WhenFirstTimeRead;
-
-        // Starting to apply theme
-        var applyThemeTask = themeUI.ApplyTheme(themeUI.Theme.Value);
-
-        // Finishing w/ browser info
-        await BrowserInfo.WhenReady;
 
         if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             try {
@@ -112,10 +122,10 @@
             }
 
         // Finishing w/ theme
-        await applyThemeTask;
+        await themeUI.WhenReady.WaitAsync(cancellationToken);
 
         // Finishing w/ history ui
-        await HistoryUI.WhenInitialized;
+        await HistoryUI.WhenInitialized.WaitAsync(cancellationToken);
     }
 
     private async Task Loaded()

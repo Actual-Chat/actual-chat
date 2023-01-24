@@ -251,7 +251,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 var chatTextIdRange = await ChatsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
                     .ConfigureAwait(false);
-                new IReadPositionsBackend.SetCommand(author.UserId, command.ChatId, chatTextIdRange.End - 1)
+                var readPosition = new ChatPosition(chatTextIdRange.End - 1);
+                new IReadPositionsBackend.SetCommand(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
                     .EnqueueOnCompletion(author.UserId);
             }
 

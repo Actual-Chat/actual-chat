@@ -24,6 +24,7 @@ public class LanguageUI
         AccountSettings = services.GetRequiredService<AccountSettings>();
         Settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
+                InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.Instant,
             });

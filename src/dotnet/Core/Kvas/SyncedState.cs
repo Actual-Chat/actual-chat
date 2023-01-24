@@ -3,42 +3,58 @@ using ActualChat.Pooling;
 namespace ActualChat.Kvas;
 
 public interface ISyncedState<T> : IMutableState<T>, IDisposable
+    where T: IHasOrigin
 {
     Task WhenFirstTimeRead { get; }
 }
 
 public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
+    where T: IHasOrigin
 {
-    private volatile IUpdateDelayer _updateDelayer;
-    private volatile Task? _whenDisposed;
     private readonly CancellationTokenSource _disposeTokenSource;
-    private StateSnapshot<T>? _lastWrittenSnapshot;
-    private AnonymousComputedSource<T>? _readComputedSource;
-    private Computed<T>? _lastReadComputed;
+    private bool _mustResetOrigin = true;
     private ILogger? _log;
 
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
+    private MomentClockSet Clocks { get; }
     private Options Settings { get; }
-    private TaskSource<Unit> WhenFirstTimeReadSource { get; }
-
-    public Task WhenFirstTimeRead => WhenFirstTimeReadSource.Task;
-    public IUpdateDelayer UpdateDelayer {
-        get => _updateDelayer;
-        set => _updateDelayer = value;
-    }
 
     public CancellationToken DisposeToken { get; }
-    public Task SyncCycleTask { get; private set; } = null!;
-    public Task? WhenDisposed => _whenDisposed;
+    public Task WhenFirstTimeRead { get; }
+    public Task WhenDisposed { get; private set; } = null!;
+    public IComputedState<T> ReadState { get; }
 
     public SyncedState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
     {
+        if (ReferenceEquals(options.InitialValue, null))
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                "SyncedState requires Settings.InitialValue != null.");
+
         Settings = options;
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
-        WhenFirstTimeReadSource = TaskSource.New<Unit>(true);
-        _updateDelayer = options.UpdateDelayer ?? services.GetRequiredService<IUpdateDelayer>();
+
+        var stateFactory = services.StateFactory();
+        Clocks = services.Clocks();
+        WhenFirstTimeRead = TaskSource.New<Unit>(true).Task;
+        ReadState = stateFactory.NewComputed<T>(
+            new ComputedState<T>.Options() {
+                ComputedOptions = options.ComputedOptions,
+                UpdateDelayer = options.UpdateDelayer,
+            },
+            async (state, ct) => {
+                try {
+                    return await Settings.Read(ct).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException) {
+                    Log.LogWarning(e, "Read failed");
+                    throw;
+                }
+            });
+
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);
@@ -50,97 +66,123 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         base.Initialize(options);
 
         using var _ = ExecutionContextExt.SuppressFlow();
-        SyncCycleTask = BackgroundTask.Run(SyncCycle, CancellationToken.None);
+        WhenDisposed = BackgroundTask.Run(SyncCycle, CancellationToken.None);
     }
 
     public void Dispose()
     {
-        if (_whenDisposed != null)
+        if (DisposeToken.IsCancellationRequested)
             return;
-        lock (Lock) {
-            if (_whenDisposed != null)
-                return;
-            _whenDisposed = SyncCycleTask ?? Task.CompletedTask;
-            _disposeTokenSource.CancelAndDisposeSilently();
-        }
+
+        _disposeTokenSource.CancelAndDisposeSilently();
+        if (!WhenFirstTimeRead.IsCompleted)
+            TaskSource.For((Task<Unit>)WhenFirstTimeRead).TrySetCanceled(DisposeToken);
+    }
+
+    protected override void OnSetSnapshot(StateSnapshot<T> snapshot, StateSnapshot<T>? prevSnapshot)
+    {
+        if (_mustResetOrigin && snapshot.Computed.IsValue(out var value))
+            value.SetOrigin("");
+
+        base.OnSetSnapshot(snapshot, prevSnapshot);
     }
 
     private async Task SyncCycle()
     {
         var cancellationToken = DisposeToken;
-        try {
-            await Sync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Failure inside SyncCycle() on the very first sync");
-            throw;
-        }
+        var origin = await Services.StateFactory().GetOriginAsync(cancellationToken).ConfigureAwait(false);
 
+        IStateSnapshot<T>? lastReadSnapshot = null;
+        IStateSnapshot<T>? lastWrittenSnapshot = null;
         while (!cancellationToken.IsCancellationRequested) {
-            var cts = cancellationToken.CreateLinkedTokenSource();
             try {
                 var snapshot = Snapshot;
-                var readResultChangedTask = _lastReadComputed!.WhenInvalidated(cts.Token);
-                var valueChangedTask = snapshot.Computed.WhenInvalidated(cts.Token);
-                await Task.WhenAny(readResultChangedTask, valueChangedTask).ConfigureAwait(false);
+                var readyToReadTask = lastReadSnapshot != ReadState.Snapshot
+                    ? Task.CompletedTask
+                    : lastReadSnapshot.WhenUpdated().WaitAsync(cancellationToken);
+                var valueChangedTask = lastWrittenSnapshot != snapshot
+                    ? Task.CompletedTask
+                    : lastWrittenSnapshot.WhenInvalidated(cancellationToken);
+                await Task.WhenAny(readyToReadTask, valueChangedTask).ConfigureAwait(false);
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                if (readResultChangedTask.IsCompleted && !valueChangedTask.IsCompleted)
-                    await UpdateDelayer.Delay(snapshot.RetryCount, cancellationToken).ConfigureAwait(false);
-                await Sync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                // Will break from "while" loop later if it's due to cancellationToken cancellation
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Failure inside SyncCycle()");
-            }
-            finally {
-                cts.CancelAndDisposeSilently();
-            }
-        }
-    }
-
-    private async Task Sync(CancellationToken cancellationToken)
-    {
-        _readComputedSource ??= new AnonymousComputedSource<T>(Services, async (_, ct) => {
-            try {
-                return await Settings.Read(ct).ConfigureAwait(false);
+                if (valueChangedTask.IsCompleted)
+                    TryWrite(snapshot);
+                if (readyToReadTask.IsCompleted)
+                    TryRead(snapshot);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogWarning(e, "Failed to read the initial value");
-                return Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
-            }
-        });
-        var readComputed = await _readComputedSource.Update(cancellationToken).ConfigureAwait(false);
-        _lastReadComputed ??= readComputed;
-
-        var mustWrite = false;
-        lock (Lock) {
-            var snapshot = Snapshot;
-            // First or subsequent read is completed at this point. So if:
-            // - we have just our first snapshot (initial value)
-            // - or last read computed has changed (it's a subsequent read)
-            if (snapshot.UpdateCount == 0 || _lastReadComputed != readComputed) {
-                // Applying read result
-                Set(readComputed.Value);
-                if (!WhenFirstTimeRead.IsCompleted) {
-                    // It's the very first read
-                    WhenFirstTimeReadSource.TrySetResult(default);
-                    mustWrite = Settings.MustWriteInitialValue;
-                }
-                _lastReadComputed = readComputed;
-                _lastWrittenSnapshot = Snapshot;
-            }
-            else if (snapshot.UpdateCount > 0 && snapshot != _lastWrittenSnapshot) {
-                // Triggering write
-                _lastWrittenSnapshot = snapshot;
-                mustWrite = true;
+                var delay = Settings.SyncFailureDelay.Next();
+                Log.LogError(e, "Failure inside SyncCycle(), will continue after {Delay}", delay.ToShortString());
+                await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
-        if (mustWrite && _lastWrittenSnapshot!.Computed.IsValue(out var value))
-            await Settings.Write(value, cancellationToken).ConfigureAwait(false);
+        return;
+
+        void TryRead(IStateSnapshot<T> snapshot)
+        {
+            lastReadSnapshot = ReadState.Snapshot;
+            if (lastReadSnapshot.UpdateCount == 0)
+                return; // Initial value
+
+            try {
+                var result = lastReadSnapshot.Computed.AsResult();
+                var hasError = !result.IsValue(out var value);
+                if (hasError && !Settings.ExposeReadErrors) {
+                    DebugLog?.LogDebug("{State}: TryRead: skipping (it's an error)", this);
+                    return;
+                }
+
+                var isVeryFirstRead = !WhenFirstTimeRead.IsCompleted && snapshot.UpdateCount == 0;
+                var mustSet = isVeryFirstRead // Very first read
+                    || !OrdinalEquals(value?.Origin, origin); // "Foreign" origin or error (null origin is "foreign" too)
+                lock (Lock) {
+                    mustSet &= snapshot == Snapshot; // And user didn't update it yet; this check requires Lock
+                    if (mustSet) {
+                        if (isVeryFirstRead && !hasError) {
+                            // This value might have "own" origin, so we need to block its write
+                            result = value!.WithOrigin(StateFactoryExt.ForeignOrigin);
+                        }
+                        _mustResetOrigin = false; // This makes sure we don't overwrite
+                        try {
+                            Set(result);
+                        }
+                        finally {
+                            _mustResetOrigin = true;
+                        }
+                    }
+                }
+
+                if (mustSet)
+                    DebugLog?.LogDebug("{State}: TryRead: read: {Result}", this, result);
+                else
+                    DebugLog?.LogDebug("{State}: TryRead: skipping (own origin or concurrent update)", this);
+            }
+            finally {
+                if (!WhenFirstTimeRead.IsCompleted)
+                    TaskSource.For((Task<Unit>)WhenFirstTimeRead).TrySetResult(default);
+            }
+        }
+
+        void TryWrite(IStateSnapshot<T> snapshot)
+        {
+            lastWrittenSnapshot = snapshot;
+            var computed = snapshot.Computed;
+            if (snapshot.UpdateCount == 0 || !computed.IsValue(out var value))
+                return; // Initial value or error
+
+            if (!value.Origin.IsNullOrEmpty() && !OrdinalEquals(value.Origin, origin)) {
+                DebugLog?.LogDebug("{State}: TryWrite: skipping (foreign origin)", this);
+                return;
+            }
+
+            value = value.WithOrigin(origin);
+            DebugLog?.LogDebug("{State}: TryWrite: write: {Value}", this, value);
+            _ = BackgroundTask.Run(
+                () => Settings.Write(value, cancellationToken),
+                Log, "Write failed", cancellationToken);
+        }
     }
 
     // Nested types
@@ -148,8 +190,8 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     public new abstract record Options : MutableState<T>.Options
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
+        public RandomTimeSpan SyncFailureDelay { get; init; } = TimeSpan.FromSeconds(1);
         public bool ExposeReadErrors { get; init; }
-        public bool MustWriteInitialValue { get; init; }
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
@@ -179,12 +221,11 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         {
             var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
             if (data == null) {
-                if (MissingValueFactory == null)
-                    return InitialValue;
-
-                var value = await MissingValueFactory(cancellationToken).ConfigureAwait(false);
-                await Write(value, cancellationToken).ConfigureAwait(false);
-                return value;
+                var value = MissingValueFactory != null
+                    ? await MissingValueFactory(cancellationToken).ConfigureAwait(false)
+                    : InitialValue;
+                // Set the origin to "foreign" to make sure it won't get written
+                return value.SetOrigin(StateFactoryExt.ForeignOrigin);
             }
             else {
                 var value = Serializer.Read(data);
@@ -203,6 +244,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 }
 
 public class SyncedStateLease<T> : MutableStateLease<T, ISyncedState<T>>, ISyncedState<T>
+    where T: IHasOrigin
 {
     public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
 

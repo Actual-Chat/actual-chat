@@ -12,7 +12,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbAccount> Accounts { get; protected set; } = null!;
     public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
-    public DbSet<DbReadPosition> ReadPositions { get; protected set; } = null!;
+    public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbUser> Users { get; protected set; } = null!;

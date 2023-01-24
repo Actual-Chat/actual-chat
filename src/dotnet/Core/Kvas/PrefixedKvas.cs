@@ -1,12 +1,12 @@
 namespace ActualChat.Kvas;
 
-public class PrefixedKvasWrapper : IKvas
+public class PrefixedKvas : IKvas
 {
     public IKvas Upstream { get; }
     public string Prefix { get; }
     public string FullPrefix { get; }
 
-    public PrefixedKvasWrapper(IKvas upstream, string prefix)
+    public PrefixedKvas(IKvas upstream, string prefix)
     {
         Upstream = upstream;
         Prefix = prefix;

@@ -61,6 +61,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
         services.AddScoped<DisposeMonitor>(_ => new DisposeMonitor());
         services.AddScoped<BrowserInfo>(c => new BrowserInfo(c));
+        services.AddTransient(c => (IOriginProvider)c.GetRequiredService<BrowserInfo>());
 
         // Settings
         services.AddSingleton<LocalSettings.Options>(_ => new LocalSettings.Options());

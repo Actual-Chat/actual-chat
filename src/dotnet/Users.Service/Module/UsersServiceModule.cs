@@ -78,7 +78,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbAvatar>();
             db.AddEntityResolver<string, DbUserPresence>();
-            db.AddEntityResolver<string, DbReadPosition>();
+            db.AddEntityResolver<string, DbChatPosition>();
 
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
@@ -132,8 +132,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IAvatars, Avatars>();
         fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
-        fusion.AddComputeService<IReadPositions, ReadPositions>();
-        fusion.AddComputeService<IReadPositionsBackend, ReadPositionsBackend>();
+        fusion.AddComputeService<IChatPositions, ChatPositions>();
+        fusion.AddComputeService<IReadPositionsBackend, ChatPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();

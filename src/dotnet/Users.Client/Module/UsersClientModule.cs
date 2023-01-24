@@ -33,6 +33,6 @@ public class UsersClientModule : HostModule
         fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
         fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
         fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IReadPositions, IReadPositionsClientDef>();
+        fusionClient.AddReplicaService<IChatPositions, IChatPositionsClientDef>();
     }
 }

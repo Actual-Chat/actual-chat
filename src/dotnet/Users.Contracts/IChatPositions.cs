@@ -1,9 +1,9 @@
 namespace ActualChat.Users;
 
-public interface IReadPositions : IComputeService
+public interface IChatPositions : IComputeService
 {
     [ComputeMethod]
-    Task<long?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ChatPosition> GetOwn(Session session, ChatId chatId, ChatPositionKind kind, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task Set(SetCommand command, CancellationToken cancellationToken);
@@ -12,6 +12,7 @@ public interface IReadPositions : IComputeService
     public sealed record SetCommand(
         [property: DataMember] Session Session,
         [property: DataMember] ChatId ChatId,
-        [property: DataMember] long ReadEntryId
+        [property: DataMember] ChatPositionKind Kind,
+        [property: DataMember] ChatPosition Position
         ) : ISessionCommand<Unit>;
 }
