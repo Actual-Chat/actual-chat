@@ -12,15 +12,15 @@ public partial class ChatUI
 
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    
+
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
 
     [ComputeMethod] // Synced
     public virtual Task<ChatId> GetRecordingChatId()
-        => Task.FromResult(ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
+        => Task.FromResult(ChatListUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
 
     public ValueTask SetRecordingChatId(ChatId chatId)
-        => UpdateActiveChats(activeChats => {
+        => ChatListUI.UpdateActiveChats(activeChats => {
             var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
             if (oldChat.ChatId == chatId)
                 return activeChats;

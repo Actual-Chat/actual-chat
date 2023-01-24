@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Chat.UI.Blazor.Services;
+﻿using ActualChat.Chat.UI.Blazor.Events;
+
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatUI
 {
@@ -13,7 +15,6 @@ public partial class ChatUI
 
     protected override Task RunInternal(CancellationToken cancellationToken)
         => Task.WhenAll(
-            InvalidateSelectedChatDependencies(cancellationToken),
             InvalidateActiveChatDependencies(cancellationToken),
             InvalidateHistoricalPlaybackDependencies(cancellationToken),
             PushRealtimePlaybackState(cancellationToken),
@@ -23,41 +24,13 @@ public partial class ChatUI
             StopRecordingWhenIdle(cancellationToken),
             Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
 
-    private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
-    {
-        while (true) {
-            try {
-                var oldChatId = SelectedChatId.Value;
-                var changes = SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-                await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
-                    var newChatId = cSelectedContactId.Value;
-                    if (newChatId == oldChatId)
-                        continue;
-
-                    Log.LogDebug("InvalidateSelectedChatDependencies: *");
-                    using (Computed.Invalidate()) {
-                        _ = IsSelected(oldChatId);
-                        _ = IsSelected(newChatId);
-                    }
-
-                    oldChatId = newChatId;
-                }
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogError(e, $"{nameof(InvalidateSelectedChatDependencies)} failed");
-            }
-            var random = Random.Shared.Next(MinRestartDelayMs, MaxRestartDelayMs);
-            await Clocks.CoarseCpuClock.Delay(random, cancellationToken);
-        }
-    }
-
     private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
     {
         while (true) {
             try {
                 var oldRecordingChat = default(ActiveChat);
                 var oldListeningChats = new HashSet<ActiveChat>();
-                var changes = ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+                var changes = ChatListUI.ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
                 await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
                     var activeChats = cActiveContacts.Value;
                     var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
@@ -172,7 +145,7 @@ public partial class ChatUI
     [ComputeMethod]
     protected virtual async Task<bool> MustKeepAwake()
     {
-        var activeChats = await ActiveChats.Use().ConfigureAwait(false);
+        var activeChats = await ChatListUI.ActiveChats.Use().ConfigureAwait(false);
         return activeChats.Any(c => c.IsListening || c.IsRecording);
     }
 

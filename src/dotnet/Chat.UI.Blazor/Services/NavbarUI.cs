@@ -4,7 +4,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class NavbarUI
 {
-    private ChatUI ChatUI { get; }
+    private ChatListUI ChatListUI { get; }
     private HistoryUI HistoryUI { get; }
     private NavigationManager Nav { get; }
     private BrowserInfo BrowserInfo { get; }
@@ -17,7 +17,7 @@ public class NavbarUI
 
     public NavbarUI(IServiceProvider services)
     {
-        ChatUI = services.GetRequiredService<ChatUI>();
+        ChatListUI = services.GetRequiredService<ChatListUI>();
         HistoryUI = services.GetRequiredService<HistoryUI>();
         Nav = services.GetRequiredService<NavigationManager>();
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
@@ -53,7 +53,7 @@ public class NavbarUI
         if (visible)
             _ = HistoryUI.GoBack();
         else {
-            var selectedChatId = ChatUI.SelectedChatId.Value;
+            var selectedChatId = ChatListUI.SelectedChatId.Value;
             if (!selectedChatId.IsNone)
                 Nav.NavigateTo(Links.Chat(selectedChatId));
         }

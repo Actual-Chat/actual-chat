@@ -16,6 +16,7 @@
 @code {
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -25,7 +26,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activeChats = await ChatUI.ActiveChats.Use(cancellationToken);
+        var activeChats = await ChatListUI.ActiveChats.Use(cancellationToken);
         var chats = (await activeChats
             .OrderByDescending(c => c.Recency)
             .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
@@ -34,7 +35,7 @@
             .ToList();
 
         // Make sure selected chat is either in the normal chat list or here chats
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await ChatListUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         if (chats.All(c => c.Id != selectedChatId)) {
             var allChats = await ChatUI.ListUnordered(cancellationToken).ConfigureAwait(false);
             if (!allChats.ContainsKey(selectedChatId)) {

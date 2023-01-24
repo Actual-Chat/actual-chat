@@ -61,6 +61,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
@@ -77,7 +78,7 @@
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var selectedChatId = await ChatListUI.SelectedChatId.Use(cancellationToken);
             chats = (
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Chat.Title)
@@ -122,7 +123,7 @@
     private void OnUnreadBadgeClick() {
         var allChats = State.Value.AllChats;
         var firstUnreadChat = allChats.FirstOrDefault(c => c.UnmutedUnreadCount != 0);
-        if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatUI.SelectedChatId.Value)
+        if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatListUI.SelectedChatId.Value)
             return;
 
         Nav.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));

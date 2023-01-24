@@ -102,6 +102,7 @@
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
@@ -145,7 +146,7 @@
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var selectedChatId = await ChatListUI.SelectedChatId.Use(cancellationToken);
             var selectedContact = contacts.FirstOrDefault(c => c.ChatId == selectedChatId);
             contacts = (
                 from contact in contacts

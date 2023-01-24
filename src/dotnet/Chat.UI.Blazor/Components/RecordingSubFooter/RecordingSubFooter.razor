@@ -33,6 +33,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -59,7 +60,7 @@
         if (recordingChatId.IsNone)
             return null;
 
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        var selectedChatId = await ChatListUI.SelectedChatId.Use(cancellationToken);
         if (selectedChatId == recordingChatId)
             return null;
 

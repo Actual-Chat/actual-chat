@@ -27,7 +27,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -42,7 +42,7 @@
         if (ScreenSize.IsNarrow())
             link = Links.Chat(default);
         else {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            var selectedChatId = await ChatListUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
             link = Links.Chat(selectedChatId);
         }
         return new(account, link);

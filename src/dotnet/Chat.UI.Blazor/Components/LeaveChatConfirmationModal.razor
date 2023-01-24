@@ -17,7 +17,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
@@ -27,7 +27,7 @@
         => _ = ModalInstance.CloseAsync();
 
     private async Task OnLeave(MouseEventArgs arg) {
-        var isSelectedChat = ModalModel.Chat.Id.Equals(ChatUI.SelectedChatId.Value);
+        var isSelectedChat = ModalModel.Chat.Id.Equals(ChatListUI.SelectedChatId.Value);
         var command = new IAuthors.LeaveCommand(Session, ModalModel.Chat.Id);
         var result = await UICommander.Run(command);
         if (!result.HasError) {
