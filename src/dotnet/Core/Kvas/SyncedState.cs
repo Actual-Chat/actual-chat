@@ -13,7 +13,8 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     private volatile Task? _whenDisposed;
     private readonly CancellationTokenSource _disposeTokenSource;
     private StateSnapshot<T>? _lastWrittenSnapshot;
-    private IComputed? _lastReadComputed;
+    private AnonymousComputedSource<T>? _readComputedSource;
+    private Computed<T>? _lastReadComputed;
     private ILogger? _log;
 
     private ILogger Log => _log ??= Services.LogFor(GetType());
@@ -103,7 +104,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     private async Task Sync(CancellationToken cancellationToken)
     {
-        var readSource = new AnonymousComputedSource<T>(Services, async (_, ct) => {
+        _readComputedSource ??= new AnonymousComputedSource<T>(Services, async (_, ct) => {
             try {
                 return await Settings.Read(ct).ConfigureAwait(false);
             }
@@ -112,7 +113,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 return Settings.ExposeReadErrors ? Result.Error<T>(e) : Settings.InitialOutput;
             }
         });
-        var readComputed = await readSource.Update(cancellationToken).ConfigureAwait(false);
+        var readComputed = await _readComputedSource.Update(cancellationToken).ConfigureAwait(false);
         _lastReadComputed ??= readComputed;
 
         var mustWrite = false;
