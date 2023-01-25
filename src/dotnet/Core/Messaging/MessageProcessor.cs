@@ -39,14 +39,21 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
             throw new ArgumentNullException(nameof(message));
         Start();
         var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
-        _ = BackgroundTask.Run(async () => {
-            try {
-                await Queue!.Writer.WriteAsync(process, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) {
-                process.MarkFailed(e);
-            }
-        }, CancellationToken.None);
+        try {
+            var queueTask = Queue!.Writer.WriteAsync(process, cancellationToken);
+            if (!queueTask.IsCompletedSuccessfully)
+                queueTask.AsTask().ContinueWith(async queueTask1 => {
+                    try {
+                        await queueTask1.ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        process.MarkFailed(e);
+                    }
+                }, TaskScheduler.Default);
+        }
+        catch (Exception e) {
+            process.MarkFailed(e);
+        }
         return process;
     }
 

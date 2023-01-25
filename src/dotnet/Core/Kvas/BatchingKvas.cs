@@ -21,7 +21,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
     protected IBatchingKvasBackend Backend { get; }
     protected IThreadSafeLruCache<Symbol, string?> ReadCache { get; }
     protected BatchProcessor<string, string?> Reader { get; }
-    protected LazyWriter<(string Key, string? Value)> Writer { get; }
+    protected LazyWriter2<(string Key, string? Value)> Writer { get; }
     protected ILogger Log { get; }
 
     public BatchingKvas(Options options, IBatchingKvasBackend backend, ILogger<BatchingKvas>? log = null)
@@ -36,9 +36,9 @@ public class BatchingKvas : IKvas, IAsyncDisposable
             BatchingDelayTaskFactory = options.ReadBatchDelayTaskFactory,
             Implementation = BatchRead,
         };
-        Writer = new LazyWriter<(string Key, string? Value)>() {
+        Writer = new LazyWriter2<(string Key, string? Value)>() {
             FlushDelay = options.FlushDelay,
-            FlushLimit = options.FlushMaxItemCount,
+            FlushMaxItemCount = options.FlushMaxItemCount,
             FlushRetryDelays = options.FlushRetryDelays,
             DisposeTimeout = options.DisposeTimeout,
             Implementation = BatchWrite,

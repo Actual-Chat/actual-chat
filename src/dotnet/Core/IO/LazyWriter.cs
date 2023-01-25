@@ -12,7 +12,7 @@ public class LazyWriter<T> : IAsyncDisposable
     private bool _isDisposed;
     private object Lock => _buffer;
 
-    public int FlushLimit { get; init; } = 64;
+    public int FlushMaxItemCount { get; init; } = 64;
     public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(1);
     public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
     public RetryDelaySeq FlushRetryDelays { get; init; } = new();
@@ -44,7 +44,7 @@ public class LazyWriter<T> : IAsyncDisposable
                 throw Errors.AlreadyDisposedOrDisposing();
             _buffer.Add(item);
             _itemIndex++;
-            if (_buffer.Count < FlushLimit) {
+            if (_buffer.Count < FlushMaxItemCount) {
                 UnsafeDelayedFlush(FlushDelay);
                 return;
             }
