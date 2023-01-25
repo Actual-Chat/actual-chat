@@ -6,6 +6,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class OnboardingUI
 {
+    private Session Session { get; }
+    private IAccounts Accounts { get; }
     private ModalUI ModalUI { get; }
     private AccountSettings AccountSettings { get; }
 
@@ -13,6 +15,8 @@ public class OnboardingUI
 
     public OnboardingUI(IServiceProvider services)
     {
+        Session = services.GetRequiredService<Session>();
+        Accounts = services.GetRequiredService<IAccounts>();
         ModalUI = services.GetRequiredService<ModalUI>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
         var stateFactory = services.StateFactory();
@@ -25,6 +29,10 @@ public class OnboardingUI
 
     public async Task TryShow()
     {
+        var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        if (account.IsGuest)
+            return;
+
         await Settings.WhenFirstTimeRead;
         if (!Settings.Value.ShouldBeShown())
             return;
