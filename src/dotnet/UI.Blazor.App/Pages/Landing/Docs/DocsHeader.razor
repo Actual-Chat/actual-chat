@@ -32,7 +32,8 @@
         <LandingLeftMenu
             IsOpen="@_isMenuOpen"
             EnableIncompleteUI="@m.EnableIncompleteUI"
-            Signin="@(() => SignIn(googleScheme.Name))"/>
+            Signin="@(() => SignIn(googleScheme.Name))"
+            OnClose="@CloseMenu"/>
 
         <ButtonRound Class="menu-button flex-none" Click="@OnMenuHandleClick">
             <i class="icon-menu text-2xl"></i>

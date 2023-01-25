@@ -462,10 +462,12 @@ body.narrow .docs-right-panel {
     @apply h-10;
     @apply border border-text-01;
 }
-.docs-right-panel .c-title.active {
+.docs-right-panel .c-title.active,
+.docs-subheader .c-title.active {
     @apply text-primary;
 }
-.docs-right-panel .c-title {
+.docs-right-panel .c-title,
+.docs-subheader .c-title {
     @apply no-underline;
 }
 .docs-content {
@@ -475,7 +477,7 @@ body.narrow .docs-right-panel {
 }
 
 body.narrow .docs-content {
-    @apply px-0;
+    @apply px-0 ml-4;
 }
 body.narrow .docs-header {
     @apply gap-x-2;
@@ -489,4 +491,17 @@ body.narrow .docs-header {
 }
 body.narrow .side-nav.side-nav-right:has(> .docs-right-panel) {
     @apply hidden;
+}
+body.narrow .layout-body:has(> .docs-content) {
+    @apply px-0;
+}
+body.wide .docs-subheader {
+    @apply hidden;
+}
+body.narrow .docs-subheader {
+    @apply flex-y;
+    @apply gap-y-2;
+    @apply px-6 py-2 -mt-4;
+    @apply bg-01;
+    @apply shadow-md;
 }
