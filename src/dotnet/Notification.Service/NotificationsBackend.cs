@@ -131,11 +131,11 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var invNotificationId = context.Operation().Items.GetOrDefault(NotificationId.None);
-            if (invNotificationId.IsNone) // Created
+            var invIsCreate = context.Operation().Items.GetOrDefault(false);
+            if (invIsCreate) // Created
                 _ = PseudoListRecentNotificationIds(userId);
             else // Updated
-                _ = Get(invNotificationId, default);
+                _ = Get(notification.Id, default);
             return;
         }
 
@@ -151,6 +151,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             dbNotification = new DbNotification();
             dbNotification.UpdateFrom(notification);
             dbContext.Notifications.Add(dbNotification);
+            context.Operation().Items.Set(true);
         }
         else { // Update
             var notificationCopy = notification;
@@ -162,7 +163,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 Version = VersionGenerator.NextVersion(notification.Version),
             };
             dbNotification.UpdateFrom(notification);
-            context.Operation().Items.Set(notification.Id);
+            context.Operation().Items.Set(false);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
