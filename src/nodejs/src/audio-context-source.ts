@@ -4,7 +4,7 @@ import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { Log, LogLevel, LogScope } from 'logging';
-import { Timeout } from 'timeout';
+import { AudioContextWrapper } from 'audio-context-wrapper';
 
 const LogScope: LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -12,6 +12,7 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
+const MaintainTestPeriodMs = 2000;
 const MaxWarmupTimeMs = 1000;
 const MaxResumeTimeMs = 1000;
 const WakeUpDetectionIntervalMs = 300;
@@ -25,9 +26,15 @@ export class AudioContextSource implements Disposable {
     private _whenAudioContextReady = new PromiseSource<AudioContext>();
     private readonly _whenDisposed: Promise<void>;
 
+    public readonly audioContextChangedEvents = new EventHandlerSet<AudioContext>();
+
     constructor() {
         this._onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
-        this._whenDisposed = this.maintainUnbroken();
+        this._whenDisposed = this.maintain();
+    }
+
+    public get consumerCount() {
+        return this.audioContextChangedEvents.count;
     }
 
     public dispose(): void {
@@ -44,19 +51,33 @@ export class AudioContextSource implements Disposable {
         return this._whenDisposed;
     }
 
-    public get(): Promise<AudioContext> {
-        this.throwIfDisposed();
-        return this._whenAudioContextReady;
+    public async get(): Promise<AudioContextWrapper> {
+        try {
+            debugLog?.log('-> get(), consumers count=', this.consumerCount);
+            this.throwIfDisposed();
+
+            const audioContext = await this._whenAudioContextReady;
+            return new AudioContextWrapper(this, audioContext);
+        }
+        finally {
+            debugLog?.log('<- get(), consumers count=', this.consumerCount);
+        }
+    }
+
+    public release(contextWrapper: AudioContextWrapper) : void {
+        warnLog?.assert(contextWrapper != null, `release: contextWrapper should not be null`);
     }
 
     public markBroken(): void {
-        if (this._whenAudioContextReady.isCompleted())
+        if (this._whenAudioContextReady.isCompleted()) {
+            debugLog?.log(`run: AudioContext is marked as broken`);
             this._breakEvents.trigger(undefined);
+        }
     }
 
     // Protected methods
 
-    protected async maintainUnbroken(): Promise<void> {
+    protected async maintain(): Promise<void> {
         let audioContext: AudioContext = null;
         for (;;) { // Renew loop
             try {
@@ -68,33 +89,37 @@ export class AudioContextSource implements Disposable {
                 await this.warmup(audioContext);
                 await this.test(audioContext);
                 this.throwIfDisposed();
+                this._whenAudioContextReady.resolve(audioContext);
 
                 for (;;) { // Fix loop
-                    this._whenAudioContextReady.resolve(audioContext);
-                    await this._breakEvents.whenNext();
+                    const whenNextBreakEvent = this._breakEvents.whenNext();
+                    const whenDelayCompleted = delayAsync(MaintainTestPeriodMs);
+                    await Promise.race([whenNextBreakEvent, whenDelayCompleted]);
                     this.throwIfDisposed();
 
-                    // Let's try to fix broken AudioContext
-                    debugLog?.log(`run: AudioContext is marked as broken`);
-                    this._whenAudioContextReady = new PromiseSource<AudioContext>();
+                    // Let's try to test whether AudioContext is broken and fix
                     try {
                         await this.test(audioContext);
                         this.throwIfDisposed();
 
-                        continue; // Test passed, we're fine to expose it
+                        continue; // Test passed, we're fine to keep it
                     }
                     catch (e) {
                         warnLog?.log(`run: AudioContext is actually broken:`, e);
+                        this._whenAudioContextReady = new PromiseSource<AudioContext>();
+                        void this._whenAudioContextReady.then(c => this.audioContextChangedEvents.trigger(c));
                     }
 
                     await this.fix(audioContext);
                     this.throwIfDisposed();
+                    this._whenAudioContextReady.resolve(audioContext);
                 }
             }
             catch (e) {
                 if (this._isDisposed)
                     return;
 
+                await delayAsync(MaintainTestPeriodMs);
                 warnLog?.log(`run: error:`, e);
             }
             finally {
@@ -107,12 +132,14 @@ export class AudioContextSource implements Disposable {
 
     protected async create(): Promise<AudioContext> {
         debugLog?.log(`create()`)
+
+        await Interactive.whenInteractive();
+
         const audioContext = new AudioContext({
             latencyHint: 'interactive',
             sampleRate: 48000,
         });
 
-        await Interactive.whenInteractive();
         await audioContext.resume();
         if (audioContext.state !== 'running') {
             await this.close(audioContext);
@@ -163,7 +190,6 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async test(audioContext: AudioContext): Promise<void> {
-        debugLog?.log(`test(): AudioContext:`, audioContext);
         if (audioContext.state !== 'running')
             throw `${LogScope}.test: AudioContext isn't running.`;
 

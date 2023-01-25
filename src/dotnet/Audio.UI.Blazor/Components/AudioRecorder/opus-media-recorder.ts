@@ -6,8 +6,14 @@ import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
 import { VadMessage } from './workers/audio-vad-worker-message';
 import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
-import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './workers/opus-encoder-worker-message';
+import {
+    CreateEncoderMessage,
+    EndMessage,
+    InitEncoderMessage,
+    StartMessage,
+} from './workers/opus-encoder-worker-message';
 import { Log, LogLevel, LogScope } from 'logging';
+import { AudioContextWrapper } from 'audio-context-wrapper';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -43,13 +49,11 @@ export class OpusMediaRecorder {
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
-    private readonly encoderWorkerChannel: MessageChannel;
-    private readonly vadWorkerChannel: MessageChannel;
     private readonly whenLoaded: Promise<void>;
 
-    private context: AudioContext = null;
-    private encoderWorklet: AudioWorkletNode = null;
-    private vadWorklet: AudioWorkletNode = null;
+    private contextWrapper: AudioContextWrapper | null = null;
+    private encoderWorklet: AudioWorkletNode | null = null;
+    private vadWorklet: AudioWorkletNode | null = null;
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
@@ -58,12 +62,10 @@ export class OpusMediaRecorder {
     public state: RecordingState = 'inactive';
 
     constructor() {
-        this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
         this.worker.onerror = this.onWorkerError;
 
-        this.vadWorkerChannel = new MessageChannel();
         this.vadWorker = new Worker('/dist/vadWorker.js');
 
         this.whenLoaded = this.load();
@@ -72,18 +74,29 @@ export class OpusMediaRecorder {
     public async start(sessionId: string, chatId: string): Promise<void> {
         warnLog?.assert(sessionId != '', `start: sessionId is unspecified`);
         warnLog?.assert(chatId != '', `start: chatId is unspecified`);
+        warnLog?.assert(this.contextWrapper != null, `start: chatId is unspecified`);
 
-        await this.init();
+        this.contextWrapper = await audioContextSource.get();
+
+        await this.init(this.contextWrapper.context);
+        this.contextWrapper.whenContextRefreshed().then(
+            _ => {
+                if (this.state === 'recording') {
+                    void this.start(sessionId, chatId);
+                }
+            },
+            _ => {}
+        )
 
         if (this.source)
             this.source.disconnect();
         this.stream = await OpusMediaRecorder.getMicrophoneStream();
-        this.source = this.context.createMediaStreamSource(this.stream);
+        this.source = this.contextWrapper.context.createMediaStreamSource(this.stream);
         this.state = 'recording';
 
         await rpc((rpcResult) => {
-            const initMessage: InitEncoderMessage = {
-                type: 'init',
+            const initMessage: StartMessage = {
+                type: 'start',
                 sessionId: sessionId,
                 chatId: chatId,
                 rpcResultId: rpcResult.id,
@@ -126,6 +139,8 @@ export class OpusMediaRecorder {
             // Tell encoder finalize the job and destroy itself.
             this.worker.postMessage(msg);
         });
+        this.contextWrapper.dispose();
+        this.contextWrapper = null;
         this.state = 'inactive';
     }
 
@@ -146,27 +161,39 @@ export class OpusMediaRecorder {
                 audioHubUrl: audioHubUrl,
                 rpcResultId: rpcResult.id,
             };
+            this.worker.postMessage(msg);
+
+            // it's OK to not wait for vadWorker create
+            const msgVad: VadMessage = { type: 'create', };
+            this.vadWorker.postMessage(msgVad);
+        });
+    }
+
+    private async init(context: AudioContext): Promise<void> {
+        if (context['initialized'])
+            return;
+
+        await this.whenLoaded;
+
+        const encoderWorkerChannel = new MessageChannel();
+        const vadWorkerChannel = new MessageChannel();
+
+        // Workers init
+        await rpc((rpcResult) => {
+            const msg: InitEncoderMessage = {
+                type: 'init',
+                rpcResultId: rpcResult.id,
+            };
 
             const crossWorkerChannel = new MessageChannel();
             this.worker.postMessage(
                 msg,
-                [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
+                [encoderWorkerChannel.port1, crossWorkerChannel.port1]);
 
-            const msgVad: VadMessage = { type: 'create', };
-            this.vadWorker.postMessage(msgVad, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
+            // it's OK to not wait for vadWorker init
+            const msgVad: VadMessage = { type: 'init', };
+            this.vadWorker.postMessage(msgVad, [vadWorkerChannel.port1, crossWorkerChannel.port2]);
         });
-    }
-
-    private async init(): Promise<void> {
-        const context = await audioContextSource.get();
-        if (context.sampleRate !== 48000)
-            throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
-
-        this.context = context;
-        if (this.context['initialized'])
-            return;
-
-        await this.whenLoaded;
 
         // Encoder worklet init
         const encoderWorkletOptions: AudioWorkletNodeOptions = {
@@ -180,11 +207,11 @@ export class OpusMediaRecorder {
             } as ProcessorOptions,
         };
         this.encoderWorklet = new AudioWorkletNode(
-            this.context,
+            context,
             'opus-encoder-worklet-processor',
             encoderWorkletOptions);
         const initPortMessage: EncoderWorkletMessage = { type: 'init' };
-        this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
+        this.encoderWorklet.port.postMessage(initPortMessage, [encoderWorkerChannel.port2]);
 
         // VAD worklet init
         const vadWorkletOptions: AudioWorkletNodeOptions = {
@@ -194,10 +221,11 @@ export class OpusMediaRecorder {
             channelInterpretation: 'speakers',
             channelCountMode: 'explicit',
         };
-        this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
+        this.vadWorklet = new AudioWorkletNode(context, 'audio-vad-worklet-processor', vadWorkletOptions);
         const vadInitPortMessage: VadWorkletMessage = { type: 'init' };
-        this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
-        this.context['initialized'] = true;
+        this.vadWorklet.port.postMessage(vadInitPortMessage, [vadWorkerChannel.port2]);
+
+        context['initialized'] = true;
     }
 
     private static async getMicrophoneStream(): Promise<MediaStream> {

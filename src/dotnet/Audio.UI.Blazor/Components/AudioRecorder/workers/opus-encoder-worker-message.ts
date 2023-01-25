@@ -1,5 +1,5 @@
 export interface EncoderMessage {
-    type: 'create' | 'init' | 'end';
+    type: 'create' | 'init' | 'start' | 'end';
     rpcResultId: number;
 }
 
@@ -10,6 +10,10 @@ export interface CreateEncoderMessage extends EncoderMessage {
 
 export interface InitEncoderMessage extends EncoderMessage {
     type: 'init';
+}
+
+export interface StartMessage extends EncoderMessage {
+    type: 'start';
     sessionId: string;
     chatId: string;
 }

@@ -15,7 +15,7 @@ import { handleRpc } from 'rpc';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
-import { CreateEncoderMessage, EndMessage, InitEncoderMessage } from './opus-encoder-worker-message';
+import { CreateEncoderMessage, EndMessage, InitEncoderMessage, StartMessage } from './opus-encoder-worker-message';
 import { PromiseSource } from 'promises';
 import { Log, LogLevel, LogScope } from 'logging';
 
@@ -78,16 +78,18 @@ let lowNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
-worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMessage | EndMessage>) => handleRpc(
+worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | StartMessage | EndMessage>) => handleRpc(
     ev.data.rpcResultId,
     (message) => worker.postMessage(message),
     async () => {
         const request = ev.data;
         switch (request.type) {
             case 'create':
-                return await onCreate(request as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
+                return await onCreate(request as CreateEncoderMessage);
             case 'init':
-                return await onInit(request as InitEncoderMessage);
+                return await onInit(request as InitEncoderMessage, ev.ports[0], ev.ports[1]);
+            case 'start':
+                return await onStart(request as StartMessage);
             case 'end':
                 return onEnd();
             default:
@@ -97,7 +99,7 @@ worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMes
     error => errorLog?.log(`worker.onmessage: unhandled error:`, error),
 );
 
-async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+async function onCreate(message: CreateEncoderMessage): Promise<void> {
     if (workletPort != null)
         throw new Error('workletPort has already been set.');
     if (vadPort != null)
@@ -112,11 +114,6 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
             return averageDelay * (1.2 + Math.random());
         },
     };
-
-    workletPort = workletMessagePort;
-    vadPort = vadMessagePort;
-    workletPort.onmessage = onWorkletMessage;
-    vadPort.onmessage = onVadMessage;
 
     // Connect to SignalR Hub
     hubConnection = new signalR.HubConnectionBuilder()
@@ -151,18 +148,27 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     whenMicReady = new PromiseSource();
     debugLog?.log(`onCreate, encoder:`, encoder);
 
-    // Notify the host ready to accept 'init' message.
     state = 'created';
 }
 
-async function onInit(message: InitEncoderMessage): Promise<void> {
+async function onInit(message: InitEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+    workletPort = workletMessagePort;
+    vadPort = vadMessagePort;
+    workletPort.onmessage = onWorkletMessage;
+    vadPort.onmessage = onVadMessage;
+
+    state = 'ended';
+}
+
+async function onStart(message: StartMessage): Promise<void> {
     const { sessionId, chatId } = message;
     lastInitArguments = { sessionId, chatId };
 
-    debugLog?.log(`onInit`);
+    debugLog?.log(`onStart`);
 
     encoder = new codecModule.Encoder();
 
+    // may hung there
     if (whenMicReady) {
         // wait for mic data
         await whenMicReady;

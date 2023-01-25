@@ -47,6 +47,10 @@ export class EventHandlerSet<T> {
     constructor(private readonly handlersChanged?: ((handlers: Set<EventHandler<T>>) => void)) {
     }
 
+    public get count() {
+        return this.handlers.size;
+    }
+
     public add(handler: (value: T) => void, justOnce = false): EventHandler<T> {
         const eventHandler = new EventHandler<T>(this, handler, justOnce);
         this.handlers.add(eventHandler);
@@ -80,6 +84,10 @@ export class EventHandlerSet<T> {
     public triggerSilently(argument: T): void {
         for (const handler of this.handlers)
             handler.triggerSilently(argument);
+    }
+
+    public clear(): void {
+        this.handlers.clear();
     }
 }
 

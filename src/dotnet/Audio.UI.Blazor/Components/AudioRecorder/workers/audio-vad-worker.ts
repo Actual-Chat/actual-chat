@@ -35,7 +35,10 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
 
         switch (type) {
         case 'create':
-            await onCreate(ev.ports[0], ev.ports[1]);
+            await onCreate();
+            break;
+        case 'init':
+            await onInit(ev.ports[0], ev.ports[1]);
             break;
         case 'reset':
             onReset();
@@ -48,7 +51,7 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
     }
 };
 
-async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
+async function onCreate(): Promise<void> {
     if (workletPort != null) {
         throw new Error('workletPort has already been specified.');
     }
@@ -56,9 +59,6 @@ async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: Mes
         throw new Error('encoderPort has already been specified.');
     }
 
-    workletPort = workletMessagePort;
-    encoderPort = encoderMessagePort;
-    workletPort.onmessage = onWorkletMessage;
     queue.clear();
     resampler = new SoxrResampler(
         CHANNELS,
@@ -71,6 +71,12 @@ async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: Mes
     await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
     voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
     await voiceDetector.init();
+}
+
+async function onInit(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
+    workletPort = workletMessagePort;
+    encoderPort = encoderMessagePort;
+    workletPort.onmessage = onWorkletMessage;
     isActive = true;
 }
 
