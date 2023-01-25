@@ -77,7 +77,7 @@ let lowNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
-worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | StartMessage | EndMessage>) => handleRpc(
+worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMessage | StartMessage | EndMessage>) => handleRpc(
     ev.data.rpcResultId,
     (message) => worker.postMessage(message),
     async () => {
