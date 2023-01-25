@@ -112,7 +112,7 @@ public partial class ChatUI
             cancellationToken.ThrowIfCancellationRequested();
             var cExpectedPlaybackState = await cExpectedPlaybackStateBase.Update(cancellationToken).ConfigureAwait(false);
             var cActualPlaybackState = playbackState.Computed;
-            var expectedPlaybackState = cExpectedPlaybackStateBase.Value;
+            var expectedPlaybackState = cExpectedPlaybackState.Value;
             var actualPlaybackState = cActualPlaybackState.Value;
 
             if (actualPlaybackState is null or RealtimePlaybackState) {
@@ -128,10 +128,10 @@ public partial class ChatUI
 
             Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
             await Task.WhenAny(
-                    cActualPlaybackState.WhenInvalidated(cancellationToken),
-                    cExpectedPlaybackState.WhenInvalidated(cancellationToken),
-                    cancellationTask)
-                .ConfigureAwait(false);
+                cActualPlaybackState.WhenInvalidated(cancellationToken),
+                cExpectedPlaybackState.WhenInvalidated(cancellationToken),
+                cancellationTask
+                ).ConfigureAwait(false);
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         }
         // ReSharper disable once FunctionNeverReturns
