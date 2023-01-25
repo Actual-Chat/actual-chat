@@ -51,7 +51,7 @@
         OffToOn,
         Initializing,
     }
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private AudioUI AudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
@@ -68,7 +68,7 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         CanRecord = await AudioRecorder.CanRecord(cancellationToken);
-        var recordingChatId = await ChatUI.GetRecordingChatId();
+        var recordingChatId = await AudioUI.GetRecordingChatId();
         var isRecordingRequested = recordingChatId == ChatId && !recordingChatId.IsNone;
         // Default scheduler is used from here
         var lastState = State.Value;
@@ -95,7 +95,7 @@
         var m = State.Value;
         var isRecordingInThisChat = m?.RecordingState is RecordingState.On or RecordingState.OffToOn or RecordingState.Initializing;
         if (isRecordingInThisChat) {
-            _ = ChatUI.SetRecordingChatId(default);
+            _ = AudioUI.SetRecordingChatId(default);
             return;
         }
         CanRecord = await AudioRecorder.CanRecord();
@@ -103,7 +103,7 @@
             StateHasChanged();
             return;
         }
-        _ = ChatUI.SetRecordingChatId(ChatId);
+        _ = AudioUI.SetRecordingChatId(ChatId);
     }
 
     private async Task OnLongPressStart() {
@@ -116,7 +116,7 @@
             return;
         }
         IsForcePush = true;
-        _ = ChatUI.SetRecordingChatId(ChatId);
+        _ = AudioUI.SetRecordingChatId(ChatId);
     }
 
     private void OnPointerUp() {
@@ -124,7 +124,7 @@
             return;
 
         IsForcePush = false;
-        _ = ChatUI.SetRecordingChatId(default);
+        _ = AudioUI.SetRecordingChatId(default);
     }
 
     public record Model(RecordingState RecordingState);

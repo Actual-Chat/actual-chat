@@ -16,6 +16,7 @@
 @code {
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -25,7 +26,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var activeChats = await ChatUI.ActiveChats.Use(cancellationToken);
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken);
         var chats = (await activeChats
             .OrderByDescending(c => c.Recency)
             .Select(c => ChatUI.Get(c.ChatId, cancellationToken))

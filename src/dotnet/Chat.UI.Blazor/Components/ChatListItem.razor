@@ -5,7 +5,7 @@
     var chat = m.Chat;
     var info = m.Info;
     var lastTextEntry = info.LastTextEntry;
-    var mediaState = m.MediaState;
+    var audioState = m.AudioState;
     var canWrite = chat.Rules.CanWrite();
     var isMenuVisible = m.IsListening || m.IsRecording;
     var cls = isMenuVisible ? "visible-menu" : "invisible-menu";
@@ -40,15 +40,15 @@
         <div class="@cls">
             @if (ListKind == ChatListKind.Active) {
                 if (canWrite) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle AudioState="@audioState" Class="chat-menu-btn blackout"/>
                 <ActiveChatRemoveButton Chat="@chat" Class="chat-menu-btn"/>
             } else {
                 @if (canWrite) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@mediaState.IsRecording" Class="chat-menu-btn blackout"/>
+                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="chat-menu-btn blackout"/>
                 }
-                <ChatListListenToggle MediaState="@mediaState" Class="chat-menu-btn blackout"/>
+                <ChatListListenToggle AudioState="@audioState" Class="chat-menu-btn blackout"/>
                 <div class="flex"
                      data-menu="@(MenuRef.New<ChatMenu>(chat.Id).ToString())"
                      data-menu-trigger="@MenuTrigger.Primary"
@@ -82,7 +82,7 @@
 
     protected override ComputedState<ChatState>.Options GetStateOptions()
         => new() {
-            InitialValue = new ChatState(ChatInfo, new ChatMediaState(ChatInfo.Id)),
+            InitialValue = new ChatState(ChatInfo, new ChatAudioState(ChatInfo.Id)),
         };
 
     protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken)

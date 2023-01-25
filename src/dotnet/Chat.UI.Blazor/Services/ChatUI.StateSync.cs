@@ -2,23 +2,14 @@
 
 public partial class ChatUI
 {
-    private Language? _lastRecordingLanguage;
-    private ChatId _lastRecordingChatId;
-    private ChatId _lastRecorderChatId;
-
     // All state sync logic should be here
 
     protected override Task RunInternal(CancellationToken cancellationToken)
     {
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
-            new(nameof(InvalidateActiveChatDependencies), InvalidateActiveChatDependencies),
-            new(nameof(InvalidateHistoricalPlaybackDependencies), InvalidateHistoricalPlaybackDependencies),
-            new(nameof(PushRealtimePlaybackState), PushRealtimePlaybackState),
-            new(nameof(SyncRecordingState), SyncRecordingState),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
-            new(nameof(StopRecordingWhenIdle), StopRecordingWhenIdle),
         };
         var retryDelays = new RetryDelaySeq(100, 1000);
         return (
@@ -48,100 +39,10 @@ public partial class ChatUI
         }
     }
 
-    private async Task InvalidateActiveChatDependencies(CancellationToken cancellationToken)
-    {
-        var oldRecordingChat = default(ActiveChat);
-        var oldListeningChats = new HashSet<ActiveChat>();
-        var changes = ActiveChats.Changes(cancellationToken);
-        await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
-            var activeChats = cActiveContacts.Value;
-            var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
-
-            Log.LogDebug("InvalidateActiveChatDependencies: *");
-            var added = newListeningChats.Except(oldListeningChats);
-            var removed = oldListeningChats.Except(newListeningChats);
-            var changed = added.Concat(removed).ToList();
-            using (Computed.Invalidate()) {
-                if (newRecordingChat != oldRecordingChat) {
-                    _ = GetRecordingChatId();
-                    _ = GetMediaState(oldRecordingChat.ChatId);
-                    _ = GetMediaState(newRecordingChat.ChatId);
-                }
-                if (changed.Count > 0) {
-                    _ = GetListeningChatIds();
-                    foreach (var c in changed)
-                        _ = GetMediaState(c.ChatId);
-                }
-            }
-
-            oldRecordingChat = newRecordingChat;
-            oldListeningChats = newListeningChats;
-        }
-    }
-
-    private async Task InvalidateHistoricalPlaybackDependencies(CancellationToken cancellationToken)
-    {
-        var oldChatId = ChatId.None;
-        var changes = ChatPlayers.PlaybackState.Changes(cancellationToken);
-        await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
-            var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId ?? default;
-            if (newChatId == oldChatId)
-                continue;
-
-            Log.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
-            using (Computed.Invalidate()) {
-                _ = GetMediaState(oldChatId);
-                _ = GetMediaState(newChatId);
-            }
-
-            oldChatId = newChatId;
-        }
-    }
-
-    private async Task PushRealtimePlaybackState(CancellationToken cancellationToken)
-    {
-        using var dCancellationTask = cancellationToken.ToTask();
-        var cancellationTask = dCancellationTask.Resource;
-
-        var playbackState = ChatPlayers.PlaybackState;
-        var cExpectedPlaybackState = await Computed
-            .Capture(GetExpectedRealtimePlaybackState)
-            .ConfigureAwait(false);
-        var cActualPlaybackState = playbackState.Computed;
-
-        while (!cancellationToken.IsCancellationRequested) {
-            var expectedPlaybackState = cExpectedPlaybackState.Value;
-            var actualPlaybackState = cActualPlaybackState.Value;
-            if (actualPlaybackState is null or RealtimePlaybackState) {
-                if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
-                    if (actualPlaybackState is null && !InteractiveUI.IsInteractive.Value)
-                        await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
-
-                    Log.LogDebug("PushRealtimePlaybackState: applying changes");
-                    playbackState.Value = expectedPlaybackState;
-
-                    // An extra pause to make sure we don't apply changes too frequently
-                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
-            await Task.WhenAny(
-                cActualPlaybackState.WhenInvalidated(cancellationToken),
-                cExpectedPlaybackState.WhenInvalidated(cancellationToken),
-                cancellationTask
-                ).ConfigureAwait(false);
-            cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
-            cActualPlaybackState = playbackState.Computed;
-        }
-        // ReSharper disable once FunctionNeverReturns
-    }
-
     [ComputeMethod]
     protected virtual async Task<bool> MustKeepAwake()
     {
-        var activeChats = await ActiveChats.Use().ConfigureAwait(false);
+        var activeChats = await ActiveChatsUI.ActiveChats.Use().ConfigureAwait(false);
         return activeChats.Any(c => c.IsListening || c.IsRecording);
     }
 

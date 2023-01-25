@@ -14,11 +14,11 @@
 </ButtonRound>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
     [Parameter] public string Class { get; set; } = "";
 
     private void OnClick()
-        => _ = ChatUI.RemoveActiveChat(Chat.Id);
+        => _ = ActiveChatsUI.RemoveActiveChat(Chat.Id);
 }

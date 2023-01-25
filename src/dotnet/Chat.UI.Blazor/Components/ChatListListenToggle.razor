@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits FusionComponentBase
 @{
-    var m = MediaState;
+    var m = AudioState;
     var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass} {Class}";
 }
@@ -16,12 +16,12 @@
 </ButtonRound>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private AudioUI AudioUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatMediaState MediaState { get; set; } = ChatMediaState.None;
+    [Parameter, EditorRequired] public ChatAudioState AudioState { get; set; } = ChatAudioState.None;
     [Parameter] public string Class { get; set; } = "";
 
     private void OnListenClick()
-        => _ = ChatUI.SetListeningState(MediaState.ChatId, !MediaState.IsListening);
+        => _ = AudioUI.SetListeningState(AudioState.ChatId, !AudioState.IsListening);
 
 }

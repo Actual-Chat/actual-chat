@@ -98,6 +98,7 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -199,7 +200,7 @@
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
                 ReadPositionState.Value = new ChatPosition(readEntryLid);
-            _ = ChatUI.AddActiveChat(Chat.Id);
+            _ = ActiveChatsUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
         }
         catch (Exception e) {

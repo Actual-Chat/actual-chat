@@ -5,7 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed record ChatState(
     ChatInfo Info,
-    ChatMediaState MediaState = default
+    ChatAudioState AudioState = default
     ) : IHasId<ChatId>
 {
     public static ChatState None { get; } = new(ChatInfo.None);
@@ -18,7 +18,7 @@ public sealed record ChatState(
     public ChatId Id => Info.Id;
     public Chat Chat => Info.Chat;
     public Contact Contact => Info.Contact;
-    public bool IsListening => MediaState.IsListening;
-    public bool IsPlayingHistorical => MediaState.IsPlayingHistorical;
-    public bool IsRecording => MediaState.IsRecording;
+    public bool IsListening => AudioState.IsListening;
+    public bool IsPlayingHistorical => AudioState.IsPlayingHistorical;
+    public bool IsRecording => AudioState.IsRecording;
 }

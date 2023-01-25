@@ -12,7 +12,7 @@ public class ChatPlayers : WorkerBase
     private IServiceProvider Services { get; }
     private IAudioOutputController AudioOutputController { get;}
     private MomentClockSet Clocks { get; }
-    private ChatUI ChatUI { get; }
+    private AudioUI AudioUI { get; }
     private TuneUI TuneUI { get; }
 
     public IMutableState<PlaybackState?> PlaybackState { get; }
@@ -22,7 +22,7 @@ public class ChatPlayers : WorkerBase
         Services = services;
         AudioOutputController = services.GetRequiredService<IAudioOutputController>();
         Clocks = services.Clocks();
-        ChatUI = services.GetRequiredService<ChatUI>();
+        AudioUI = services.GetRequiredService<AudioUI>();
         TuneUI = services.GetRequiredService<TuneUI>();
 
         var stateFactory = services.StateFactory();
@@ -45,7 +45,7 @@ public class ChatPlayers : WorkerBase
 
     public void ResumeRealtimePlayback()
         => BackgroundTask.Run(async () => {
-            var playbackState = await ChatUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
+            var playbackState = await AudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
             StartPlayback(playbackState);
         }, CancellationToken.None);
 
