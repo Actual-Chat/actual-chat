@@ -104,10 +104,10 @@ public partial class ChatUI
         using var dCancellationTask = cancellationToken.ToTask();
         var cancellationTask = dCancellationTask.Resource;
 
+        var playbackState = ChatPlayers.PlaybackState;
         var cExpectedPlaybackState = await Computed
             .Capture(GetExpectedRealtimePlaybackState)
             .ConfigureAwait(false);
-        var playbackState = ChatPlayers.PlaybackState;
         var cActualPlaybackState = playbackState.Computed;
 
         while (!cancellationToken.IsCancellationRequested) {
@@ -120,7 +120,9 @@ public partial class ChatUI
 
                     Log.LogDebug("PushRealtimePlaybackState: applying changes");
                     playbackState.Value = expectedPlaybackState;
-                    continue;
+
+                    // An extra pause to make sure we don't apply changes too frequently
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -130,8 +132,6 @@ public partial class ChatUI
                 cExpectedPlaybackState.WhenInvalidated(cancellationToken),
                 cancellationTask
                 ).ConfigureAwait(false);
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-
             cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
             cActualPlaybackState = playbackState.Computed;
         }
