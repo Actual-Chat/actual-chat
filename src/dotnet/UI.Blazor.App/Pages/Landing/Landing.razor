@@ -594,6 +594,8 @@
 
     [JSInvokable]
     public void CloseMenu() {
+        if (!_isMenuOpen)
+            return;
         _isMenuOpen = false;
         StateHasChanged();
     }

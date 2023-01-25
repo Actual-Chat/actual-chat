@@ -1,6 +1,9 @@
 @namespace ActualChat.UI.Blazor.App
 @{
     var cls = IsOpen ? "open" : "closed";
+    const string privacyUrl = "/docs/privacy";
+    const string termsUrl = "/docs/terms";
+    const string cookiesUrl = "/docs/cookies";
 }
 
 <div class="landing-menu @cls">
@@ -17,15 +20,15 @@
             <button onclick="@Signin">
                 Sign in
             </button>
-            <a href="/docs/privacy">
+            <button onclick="@(() => NavigateTo(privacyUrl))">
                 Privacy
-            </a>
-            <a href="/docs/terms">
+            </button>
+            <button onclick="@(() => NavigateTo(termsUrl))">
                 Terms
-            </a>
-            <a href="/docs/cookies">
+            </button>
+            <button onclick="@(() => NavigateTo(cookiesUrl))">
                 Cookie Preferences
-            </a>
+            </button>
             @if (EnableIncompleteUI) {
                 <a href="/docs/privacy">
                     Contact Us
@@ -64,7 +67,15 @@
 </div>
 
 @code {
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public bool EnableIncompleteUI { get; set; }
     [Parameter] public EventCallback Signin { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private void NavigateTo(string url) {
+        OnClose.InvokeAsync();
+        Nav.NavigateTo(url);
+    }
 }
