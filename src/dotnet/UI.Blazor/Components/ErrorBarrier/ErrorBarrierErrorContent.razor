@@ -1,0 +1,60 @@
+@using System.Timers
+@namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
+@{
+    var text = "Reload";
+    if (IsAutoReloadEnabled)
+        text += $" (auto reload in {_countdown} sec)";
+    var cls = Kind == ErrorBarrierKind.Full ? "error-barrier-full" : "error-barrier-compact";
+}
+
+<div class="error-barrier @cls">
+    @if (Kind == ErrorBarrierKind.Full) {
+        <div class="c-image"></div>
+    }
+    <div class="error-barrier-text">
+        <h4>Aw, Snap!</h4>
+        <p>Something went wrong<br/>while displaying this page</p>
+    </div>
+    <Button Class="btn-primary" Click="OnReloadClicked">@text</Button>
+</div>
+
+@code {
+    private const int StartCount = 9;
+    private int _countdown;
+    private System.Timers.Timer? _timer;
+
+    [Parameter] public ErrorBarrier Owner { get; set; } = null!;
+    [Parameter] public ErrorBarrierKind Kind { get; set; }
+    [Parameter] public bool IsAutoReloadEnabled { get; set; } = true;
+
+    protected override void OnInitialized() {
+        if (!IsAutoReloadEnabled)
+            return;
+        _countdown = StartCount;
+        _timer = new System.Timers.Timer();
+        _timer.Interval = 1000;
+        _timer.Elapsed += OnTick;
+        _timer.Start();
+    }
+
+    private void OnTick(object? sender, ElapsedEventArgs e)
+    {
+        if (_countdown > 0) {
+            _countdown--;
+            InvokeAsync(StateHasChanged);
+        } else {
+            _timer!.Stop();
+            InvokeAsync(Reload);
+        }
+    }
+
+    private void OnReloadClicked()
+        => Reload();
+
+    private void Reload()
+        => Owner.Reload();
+
+    public void Dispose()
+        => _timer?.Dispose();
+}

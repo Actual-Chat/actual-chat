@@ -7,9 +7,11 @@
     <FocusTrap @ref="FocusTrap" IsActive="ActivateFocusTrap">
         <div class="@ModalClass" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             <div class="bm-content">
-                <CascadingValue Value="this">
-                    @Content
-                </CascadingValue>
+                <ErrorBarrier>
+                    <CascadingValue Value="this">
+                        @Content
+                    </CascadingValue>
+                </ErrorBarrier>
             </div>
         </div>
     </FocusTrap>
