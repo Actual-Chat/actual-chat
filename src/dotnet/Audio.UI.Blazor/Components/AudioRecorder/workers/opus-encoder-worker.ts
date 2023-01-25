@@ -70,7 +70,6 @@ let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
 let lastInitArguments: { sessionId: string, chatId: string } | null = null;
-let whenMicReady: PromiseSource<void> | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
@@ -145,7 +144,6 @@ async function onCreate(message: CreateEncoderMessage): Promise<void> {
     encoder.delete();
     encoder = null;
 
-    whenMicReady = new PromiseSource();
     debugLog?.log(`onCreate, encoder:`, encoder);
 
     state = 'created';
@@ -168,12 +166,6 @@ async function onStart(message: StartMessage): Promise<void> {
 
     encoder = new codecModule.Encoder();
 
-    // may hung there
-    if (whenMicReady) {
-        // wait for mic data
-        await whenMicReady;
-        whenMicReady = null;
-    }
     state = 'encoding';
     vadState = 'silence';
 }
@@ -202,7 +194,6 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         if (audioBuffer.byteLength === 0)
             return;
 
-        whenMicReady?.resolve(undefined);
         if (state === 'encoding') {
             queue.push(buffer);
             if (vadState === 'voice')
