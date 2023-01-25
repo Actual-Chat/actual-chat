@@ -20,10 +20,11 @@ public partial class ChatUI
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(StopRecordingWhenIdle), StopRecordingWhenIdle),
         };
+        var retryDelays = new RetryDelaySeq(100, 1000);
         return (
             from chain in baseChains
             select chain
-                .RetryForever(new RetryDelaySeq(100, 1000), Log)
+                .RetryForever(retryDelays, Log)
                 // .LogBoundary(LogLevel.Debug, Log)
             ).RunIsolated(cancellationToken);
     }
@@ -103,18 +104,15 @@ public partial class ChatUI
         using var dCancellationTask = cancellationToken.ToTask();
         var cancellationTask = dCancellationTask.Resource;
 
-        var cExpectedPlaybackStateBase = await Computed
+        var cExpectedPlaybackState = await Computed
             .Capture(GetExpectedRealtimePlaybackState)
             .ConfigureAwait(false);
         var playbackState = ChatPlayers.PlaybackState;
+        var cActualPlaybackState = playbackState.Computed;
 
-        while (true) {
-            cancellationToken.ThrowIfCancellationRequested();
-            var cExpectedPlaybackState = await cExpectedPlaybackStateBase.Update(cancellationToken).ConfigureAwait(false);
-            var cActualPlaybackState = playbackState.Computed;
+        while (!cancellationToken.IsCancellationRequested) {
             var expectedPlaybackState = cExpectedPlaybackState.Value;
             var actualPlaybackState = cActualPlaybackState.Value;
-
             if (actualPlaybackState is null or RealtimePlaybackState) {
                 if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
                     if (actualPlaybackState is null && !InteractiveUI.IsInteractive.Value)
@@ -133,6 +131,9 @@ public partial class ChatUI
                 cancellationTask
                 ).ConfigureAwait(false);
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+            cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
+            cActualPlaybackState = playbackState.Computed;
         }
         // ReSharper disable once FunctionNeverReturns
     }

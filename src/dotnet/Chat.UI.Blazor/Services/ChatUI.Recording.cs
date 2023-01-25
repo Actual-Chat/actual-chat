@@ -12,7 +12,7 @@ public partial class ChatUI
 
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    
+
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
 
     [ComputeMethod] // Synced
@@ -68,7 +68,8 @@ public partial class ChatUI
 
         ChatEntry? prevLastEntry = null;
         while (!cancellationToken.IsCancellationRequested) {
-            var lastEntry = await GetLastTranscribedEntry(chatId, prevLastEntry?.LocalId, recordingStartedAt, cancellationToken).ConfigureAwait(false);
+            var lastEntry = await GetLastTranscribedEntry(chatId, prevLastEntry?.LocalId, recordingStartedAt, cancellationToken)
+                .ConfigureAwait(false);
             var lastEntryAt = lastEntry != null
                 ? GetEndsAt(lastEntry)
                 : recordingStartedAt;
