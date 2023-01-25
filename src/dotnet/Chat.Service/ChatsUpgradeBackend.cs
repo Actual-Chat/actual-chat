@@ -125,7 +125,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var chatPositionsBackend = Services.GetRequiredService<IReadPositionsBackend>();
+        var chatPositionsBackend = Services.GetRequiredService<IChatPositionsBackend>();
         var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
 
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
@@ -152,7 +152,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                     chatId,
                     position,
                     fixedPosition);
-                var setCmd = new IReadPositionsBackend.SetCommand(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
+                var setCmd = new IChatPositionsBackend.SetCommand(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
                 await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
             }
         }

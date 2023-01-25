@@ -133,7 +133,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IAvatars, Avatars>();
         fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
         fusion.AddComputeService<IChatPositions, ChatPositions>();
-        fusion.AddComputeService<IReadPositionsBackend, ChatPositionsBackend>();
+        fusion.AddComputeService<IChatPositionsBackend, ChatPositionsBackend>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();

@@ -8,12 +8,12 @@ namespace ActualChat.Users;
 public class ChatPositions: DbServiceBase<UsersDbContext>, IChatPositions
 {
     private IAccounts Accounts { get; }
-    private IReadPositionsBackend Backend { get; }
+    private IChatPositionsBackend Backend { get; }
 
     public ChatPositions(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
-        Backend = services.GetRequiredService<IReadPositionsBackend>();
+        Backend = services.GetRequiredService<IChatPositionsBackend>();
     }
 
     // [ComputeMethod]
@@ -33,7 +33,7 @@ public class ChatPositions: DbServiceBase<UsersDbContext>, IChatPositions
 
         var (session, chatId, kind, position) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var backendCommand = new IReadPositionsBackend.SetCommand(account.Id, chatId, kind, position);
+        var backendCommand = new IChatPositionsBackend.SetCommand(account.Id, chatId, kind, position);
         await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

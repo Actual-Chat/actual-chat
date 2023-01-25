@@ -6,7 +6,7 @@ using Stl.Fusion.EntityFramework;
 namespace ActualChat.Users;
 
 [SuppressMessage("Usage", "MA0006:Use String.Equals instead of equality operator")]
-public class ChatPositionsBackend: DbServiceBase<UsersDbContext>, IReadPositionsBackend
+public class ChatPositionsBackend: DbServiceBase<UsersDbContext>, IChatPositionsBackend
 {
     private IDbEntityResolver<string, DbChatPosition> DbChatPositionResolver { get; }
 
@@ -24,7 +24,7 @@ public class ChatPositionsBackend: DbServiceBase<UsersDbContext>, IReadPositions
     }
 
     // [CommandHandler]
-    public virtual async Task Set(IReadPositionsBackend.SetCommand command, CancellationToken cancellationToken)
+    public virtual async Task Set(IChatPositionsBackend.SetCommand command, CancellationToken cancellationToken)
     {
         var (userId, chatId, kind, position, force) = command;
         var context = CommandContext.GetCurrent();

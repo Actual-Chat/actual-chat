@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IReadPositionsBackend : IComputeService
+public interface IChatPositionsBackend : IComputeService
 {
     [ComputeMethod]
     Task<ChatPosition> Get(UserId userId, ChatId chatId, ChatPositionKind kind, CancellationToken cancellationToken);
