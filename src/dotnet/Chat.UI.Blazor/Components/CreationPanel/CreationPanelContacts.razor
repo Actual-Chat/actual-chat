@@ -19,12 +19,14 @@
     var disableLink = PageNumber != 1;
     var count = SelectedContacts.Length;
 
-    RenderFragment RenderTab(TabId tabId, string title) =>
+    RenderFragment RenderTab(string id, string title) =>
         @<Tab
-            Title="@title" Id="@tabId.ToString()"
-            Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
+             @key="@id"
+             Id="@id"
+             Title="@title"
+             Class="flex-y self-start relative overflow-y-auto custom-scrollbar h-full contacts-tab">
             <div class="h-full flex-y">
-                @foreach (var contact in ListContacts(tabId, onlySelected)) {
+                @foreach (var contact in ListContacts(onlySelected)) {
                     var isSelected = SelectedContacts.Contains(contact);
                     <CreationPanelContactItem
                         @key="contact"
@@ -44,8 +46,7 @@
         Class="@panelHeaderCls"
         TabsClass="left-panel-tabs">
 
-        @RenderTab(TabId.Recent, "Recent")
-        @RenderTab(TabId.All, "A-Z")
+        @RenderTab("", "Recent")
     </TabPanel>
     <div class="font-medium px-4 mb-4 @countCls">
         @(count > 1 ? $"{count} Members" : $"{count} Member")
@@ -78,18 +79,9 @@
     [Parameter] public EventCallback<Contact> OnAddContact { get; set; }
     [Parameter] public SearchBox SearchBox { get; set; } = null!;
 
-    private List<Contact> ListContacts(TabId tabId, bool onlySelected) {
+    private List<Contact> ListContacts(bool onlySelected) {
         var contacts = onlySelected ? SelectedContacts : FilteredContacts;
-        return tabId switch {
-            TabId.All => contacts.OrderBy(c => c.Account!.Avatar.Name).ToList(),
-            TabId.Recent => contacts.OrderByDescending(c => c.TouchedAt).ToList(),
-            _ => throw new ArgumentOutOfRangeException(nameof(tabId)),
-        };
-    }
-
-    public enum TabId {
-        Recent,
-        All,
+        return contacts.OrderByDescending(c => c.TouchedAt).ToList();
     }
 
     private void AddContactToSelected(Contact selectedContact) {

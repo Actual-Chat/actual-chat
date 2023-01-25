@@ -26,13 +26,11 @@ public static partial class Constants
         public static bool WebMReader { get; } = false;
         public static bool MarkupParser { get; } = false;
 
-        public static bool SignalR { get; } = false;
-
-        public static bool MarkupEditor { get; } = false;
-        public static bool SlateEditor { get; } = false;
+        public static bool StoredState { get; } = false;
+        public static bool SyncedState { get; } = false;
 
         public static bool KubeEmulation { get; } = false;
 
-        public static bool SyncedState { get; } = false;
+        public static bool SignalR { get; } = false;
     }
 }

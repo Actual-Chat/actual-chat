@@ -16,22 +16,24 @@
             <RightPanelChatInfo/>
             <div class="flex flex-col border-t border-bg-04">
                 @if (m.ShowMembers || m.EnableIncompleteUI) {
-                    <TabPanel TabsClass="left-panel-tabs wide-left-panel-tabs"
-                              BottomHill="true"
-                              @key="Chat.Id">
+                    <TabPanel
+                        @key="Chat.Id"
+                        TabsClass="left-panel-tabs wide-left-panel-tabs"
+                        BottomHill="true">
+
                         @if (m.ShowMembers) {
-                            <Tab Title="Members" TabIndex="0">
+                            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
                                 <AuthorList/>
                             </Tab>
                         }
                         @if (m.EnableIncompleteUI) {
-                            <Tab Title="Media" TabIndex="1">
+                            <Tab @key="@("media")" Id="media" Title="Media" Order="1">
                                 <ToBeDone/>
                             </Tab>
-                            <Tab Title="Files" TabIndex="2">
+                            <Tab @key="@("files")" Id="files" Title="Files" Order="2">
                                 <ToBeDone/>
                             </Tab>
-                            <Tab Title="Links" TabIndex="3">
+                            <Tab @key="@("links")" Id="links" Title="Links" Order="3">
                                 <ToBeDone/>
                             </Tab>
                         }

@@ -108,9 +108,9 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
                     break;
 
                 if (valueChangedTask.IsCompleted)
-                    TryWrite(snapshot);
+                    Write(snapshot);
                 if (readyToReadTask.IsCompleted)
-                    TryRead(snapshot);
+                    Read(snapshot);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 var delay = Settings.SyncFailureDelay.Next();
@@ -120,7 +120,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         }
         return;
 
-        void TryRead(IStateSnapshot<T> snapshot)
+        void Read(IStateSnapshot<T> snapshot)
         {
             lastReadSnapshot = ReadState.Snapshot;
             if (lastReadSnapshot.UpdateCount == 0)
@@ -130,7 +130,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 var result = lastReadSnapshot.Computed.AsResult();
                 var hasError = !result.IsValue(out var value);
                 if (hasError && !Settings.ExposeReadErrors) {
-                    DebugLog?.LogDebug("{State}: TryRead: skipping (it's an error)", this);
+                    DebugLog?.LogDebug("{State}: Read: skipping (is error)", this);
                     return;
                 }
 
@@ -155,9 +155,9 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 }
 
                 if (mustSet)
-                    DebugLog?.LogDebug("{State}: TryRead: read: {Result}", this, result);
+                    DebugLog?.LogDebug("{State}: Read = {Result}", this, result);
                 else
-                    DebugLog?.LogDebug("{State}: TryRead: skipping (own origin or concurrent update)", this);
+                    DebugLog?.LogDebug("{State}: Read: skipping (own origin or already changed)", this);
             }
             finally {
                 if (!WhenFirstTimeRead.IsCompleted)
@@ -165,7 +165,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
             }
         }
 
-        void TryWrite(IStateSnapshot<T> snapshot)
+        void Write(IStateSnapshot<T> snapshot)
         {
             lastWrittenSnapshot = snapshot;
             var computed = snapshot.Computed;
@@ -173,12 +173,12 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 return; // Initial value or error
 
             if (!value.Origin.IsNullOrEmpty() && !OrdinalEquals(value.Origin, origin)) {
-                DebugLog?.LogDebug("{State}: TryWrite: skipping (foreign origin)", this);
+                DebugLog?.LogDebug("{State}: Write: skipping (foreign origin)", this);
                 return;
             }
 
             value = value.WithOrigin(origin);
-            DebugLog?.LogDebug("{State}: TryWrite: write: {Value}", this, value);
+            DebugLog?.LogDebug("{State}: Write = {Value}", this, value);
             _ = BackgroundTask.Run(
                 () => Settings.Write(value, cancellationToken),
                 Log, "Write failed", cancellationToken);

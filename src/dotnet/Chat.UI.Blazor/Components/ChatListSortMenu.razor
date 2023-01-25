@@ -2,7 +2,7 @@
 @inherits MenuBase
 
 <div class="sort-menu">
-    <div class="p-2">
+    <div class="p-2 font-semibold">
         Sort by:
     </div>
     <MenuEntry
@@ -30,6 +30,11 @@
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    private void OnClick(ChatListOrder order)
-        => ChatUI.ListSettings.Value = ChatUI.ListSettings.Value with { Order = order };
+    private void OnClick(ChatListOrder order) {
+        var settings = ChatUI.ListSettings.Value;
+        if (settings.Order == order)
+            return;
+
+        ChatUI.ListSettings.Value = settings with { Order = order };
+    }
 }

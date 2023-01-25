@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 
-@if (Panel.ActiveTab != this) {
+@if (Panel.SelectedTabId != Id) {
     return;
 }
 
@@ -11,12 +11,12 @@
 
 @code {
     [CascadingParameter] public TabPanel Panel { get; set; } = null!;
-    [Parameter] public string Id { get; set; } = "";
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public double Order { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
-    [Parameter] public int? TabIndex { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override void OnInitialized() {
