@@ -20,12 +20,14 @@
     return;
 }
 
-@if (m.ChatId.IsNone && chat == null && ScreenSize.IsWide()) {
-    <NoChatSelected/>
+@if (m.IsNotSelected) {
+    if (ScreenSize.IsWide()) {
+        <NoChatSelected/>
+    }
     return;
 }
 
-@if (m.IsUnavailable) {
+@if (m.IsUnavailable && ScreenSize.IsWide()) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
     return;
 }
@@ -60,7 +62,7 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<CascadingValue Value="chat" @key="chat.Id">
+<CascadingValue Value="chat" @key="chat!.Id">
     <ChatView @ref="_chatViewRef" />
 </CascadingValue>
 
@@ -125,6 +127,7 @@
         public static Model None { get; } = new(default, null, AccountFull.None, false);
         public static Model Loading { get; } = new(default, null, AccountFull.Loading, false); // Should differ by ref. from None
 
+        public bool IsNotSelected => ChatId.Id.IsEmpty && Chat is null;
         public bool IsUnavailable => !ChatId.Id.IsEmpty && Chat is null;
         public bool ShowHome => IsUnavailable && !Account.IsActive() && !HasEverSignedIn;
 
