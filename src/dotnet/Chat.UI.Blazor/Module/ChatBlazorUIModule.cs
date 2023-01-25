@@ -38,6 +38,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<AudioUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>(_ => new PlayableTextPaletteProvider());

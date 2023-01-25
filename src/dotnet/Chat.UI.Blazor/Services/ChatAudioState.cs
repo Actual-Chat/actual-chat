@@ -1,14 +1,14 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct ChatMediaState(
+public readonly record struct ChatAudioState(
     ChatId ChatId,
     bool IsListening = false,
     bool IsPlayingHistorical = false,
     bool IsRecording = false
-    ) : ICanBeNone<ChatMediaState>
+    ) : ICanBeNone<ChatAudioState>
 {
-    public static ChatMediaState None { get; } = default;
+    public static ChatAudioState None { get; } = default;
 
     public bool IsNone => ChatId.IsNone;
 }
