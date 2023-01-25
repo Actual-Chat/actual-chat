@@ -133,7 +133,7 @@ public partial class ChatUI
             .Capture(() => SyncRecordingStateImpl(cancellationToken))
             .ConfigureAwait(false);
         // Let's update it continuously -- solely for the side effects of GetRecordingChatId runs
-        await cRecordingChatId.When(_ => false, FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false);
+        await cRecordingChatId.When(_ => false, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]

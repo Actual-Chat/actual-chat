@@ -32,7 +32,7 @@ public partial class ChatUI
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
         var oldChatId = SelectedChatId.Value;
-        var changes = SelectedChatId.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = SelectedChatId.Changes(cancellationToken);
         await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
             var newChatId = cSelectedContactId.Value;
             if (newChatId == oldChatId)
@@ -52,7 +52,7 @@ public partial class ChatUI
     {
         var oldRecordingChat = default(ActiveChat);
         var oldListeningChats = new HashSet<ActiveChat>();
-        var changes = ActiveChats.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = ActiveChats.Changes(cancellationToken);
         await foreach (var cActiveContacts in changes.ConfigureAwait(false)) {
             var activeChats = cActiveContacts.Value;
             var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
@@ -83,7 +83,7 @@ public partial class ChatUI
     private async Task InvalidateHistoricalPlaybackDependencies(CancellationToken cancellationToken)
     {
         var oldChatId = ChatId.None;
-        var changes = ChatPlayers.PlaybackState.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = ChatPlayers.PlaybackState.Changes(cancellationToken);
         await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
             var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId ?? default;
             if (newChatId == oldChatId)
@@ -166,7 +166,7 @@ public partial class ChatUI
     private async Task ResetHighlightedEntry(CancellationToken cancellationToken)
     {
         var changes = HighlightedEntryId
-            .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
+            .Changes(cancellationToken)
             .Where(x => !x.Value.IsNone);
         CancellationTokenSource? cts = null;
         try {

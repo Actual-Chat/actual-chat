@@ -14,7 +14,7 @@ public partial class AccountUI
         var cOwnAccount0 = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
-        var changes = cOwnAccount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        var changes = cOwnAccount0.Changes(cancellationToken);
         await foreach (var cOwnAccount in changes.ConfigureAwait(false)) {
             if (cOwnAccount.HasError)
                 continue;

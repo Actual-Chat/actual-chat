@@ -126,7 +126,6 @@ public sealed class ChatEntryReader
 
         cTile = await cTile.When(
                 t => predicate(t.Entries.FirstOrDefault(e => e.LocalId == id)),
-                FixedDelayer.ZeroUnsafe,
                 cancellationToken
             ).ConfigureAwait(false);
         return cTile.Value.Entries.FirstOrDefault(e => e.LocalId == id);

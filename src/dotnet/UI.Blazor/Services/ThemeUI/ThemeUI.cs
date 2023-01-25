@@ -38,7 +38,7 @@ public class ThemeUI : WorkerBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         await _settings.WhenFirstTimeRead;
-        await foreach (var cTheme in Settings.Changes(FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false))
+        await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
             await ApplyTheme(cTheme.Value.Theme);
     }
 
