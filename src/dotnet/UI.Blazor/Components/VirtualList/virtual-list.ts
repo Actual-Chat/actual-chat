@@ -515,7 +515,7 @@ export class VirtualList {
                         continue;
 
                     new Promise<void>(resolve => {
-                        requestAnimationFrame(_time => {
+                        requestAnimationFrame(() => {
                             const pivotOffset = pivot.offset;
                             const itemRect = pivotRef.getBoundingClientRect();
                             const currentPivotOffset = itemRect.top;
@@ -557,7 +557,7 @@ export class VirtualList {
             return;
 
         const viewport = await new Promise<NumberRange | null>(resolve => {
-            requestAnimationFrame(time => {
+            requestAnimationFrame(() => {
                 const viewportHeight = this._ref.clientHeight;
                 const scrollHeight = this._ref.scrollHeight;
                 const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
