@@ -214,6 +214,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return;
 
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
+        var now = Clocks.SystemClock.Now;
+        if (now - contact.TouchedAt < Constants.Contacts.MinTouchInterval)
+            return;
+
         var command = new IContactsBackend.TouchCommand(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

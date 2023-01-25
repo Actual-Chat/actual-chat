@@ -1,5 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Contacts;
+using ActualChat.IO;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
@@ -33,6 +34,7 @@ public partial class ChatUI : WorkerBase
     private AudioUI AudioUI { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
+    private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
     public IStoredState<ChatListSettings> ListSettings { get; }
@@ -61,6 +63,7 @@ public partial class ChatUI : WorkerBase
         AudioUI = services.GetRequiredService<AudioUI>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
+        Commander = services.Commander();
 
         _selectedChatId = StateFactory.NewMutable<ChatId>();
         _relatedChatEntry = StateFactory.NewMutable<RelatedChatEntry?>();
@@ -319,6 +322,12 @@ public partial class ChatUI : WorkerBase
     private Task<ISyncedState<ChatPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
+
+        // Commander use here is intended: this "action" shouldn't be counted as user action
+        var writeDebouncer = new Debouncer<ICommand>(
+            TimeSpan.FromSeconds(1),
+            command => Commander.Run(command, CancellationToken.None));
+
         return Task.FromResult(StateFactory.NewCustomSynced<ChatPosition>(
             new (
                 // Reader
@@ -329,12 +338,13 @@ public partial class ChatUI : WorkerBase
                     return await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
                 },
                 // Writer
-                async (position, ct) => {
+                (position, ct) => {
                     if (pChatId.IsNone || position == null!)
-                        return;
+                        return Task.CompletedTask;
 
                     var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, position);
-                    await UICommander.Run(command, ct);
+                    writeDebouncer.Debounce(command);
+                    return Task.CompletedTask;
                 }) {
                 InitialValue = new ChatPosition(),
                 UpdateDelayer = _readStateUpdateDelayer,
