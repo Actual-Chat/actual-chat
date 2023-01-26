@@ -40,7 +40,7 @@
 
   <!-- Here we can alter either app is build to connect to dev or prod environment -->
   <!-- Comment property group below to build an app connecting to prod -->
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(IsDevMaui)' == ''">
     <IsDevMaui>true</IsDevMaui>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
