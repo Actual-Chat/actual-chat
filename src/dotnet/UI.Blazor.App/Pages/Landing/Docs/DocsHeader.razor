@@ -30,6 +30,7 @@
 } else {
     <div @ref="Ref" class="docs-header">
         <LandingLeftMenu
+            AccountFull="@account"
             IsOpen="@_isMenuOpen"
             EnableIncompleteUI="@m.EnableIncompleteUI"
             Signin="@(() => SignIn(googleScheme.Name))"
@@ -90,8 +91,10 @@
         };
     }
 
-    private void SignIn(string name)
-        => ClientAuth.SignIn(name);
+    private void SignIn(string name) {
+        ClientAuth.SignIn(name);
+        CloseMenu();
+    }
 
     private void OnMenuHandleClick() {
         _isMenuOpen = !_isMenuOpen;

@@ -1,5 +1,7 @@
+@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.App
 @{
+    var isGuest = AccountFull is not {IsGuest: false };
     var cls = IsOpen ? "open" : "closed";
     const string privacyUrl = "/docs/privacy";
     const string termsUrl = "/docs/terms";
@@ -17,9 +19,11 @@
             </div>
         </div>
         <div class="menu-content">
-            <button onclick="@Signin">
-                Sign in
-            </button>
+            @if (isGuest) {
+                <button onclick="@Signin">
+                    Sign in
+                </button>
+            }
             <button onclick="@(() => NavigateTo(privacyUrl))">
                 Privacy
             </button>
@@ -71,6 +75,7 @@
 
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public bool EnableIncompleteUI { get; set; }
+    [Parameter] public AccountFull? AccountFull { get; set; }
     [Parameter] public EventCallback Signin { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 

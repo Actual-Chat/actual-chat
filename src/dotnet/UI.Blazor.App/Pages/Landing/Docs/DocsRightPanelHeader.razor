@@ -1,15 +1,38 @@
 @namespace ActualChat.UI.Blazor.App
+@using ActualChat.Users
+@using Microsoft.CodeAnalysis
+@inherits ComputedStateComponent<Account>
 
-<div class="c-header">
-    <SigninButtonGroup>
-        <GoogleIcon>
-            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
-        </GoogleIcon>
-        <FacebookIcon>
-            <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
-        </FacebookIcon>
-        <AppleIcon>
-            <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
-        </AppleIcon>
-    </SigninButtonGroup>
-</div>
+@{
+    var account = State.Value;
+    var isGuest = account is not {IsGuest: false };
+}
+
+@if (isGuest) {
+    <div class="c-header">
+        <SigninButtonGroup>
+            <GoogleIcon>
+                <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+            </GoogleIcon>
+            <FacebookIcon>
+                <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
+            </FacebookIcon>
+            <AppleIcon>
+                <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
+            </AppleIcon>
+        </SigninButtonGroup>
+    </div>
+} else {
+    <div class="c-header mx-12">
+        <AvatarCircle Avatar="@account.Avatar" Size="SquareSize.Size9"></AvatarCircle>
+    </div>
+}
+
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+
+    protected override async Task<Account> ComputeState(CancellationToken cancellationToken)
+        => await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+}
