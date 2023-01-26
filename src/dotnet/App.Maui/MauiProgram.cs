@@ -68,9 +68,10 @@ public static class MauiProgram
         var services = builder.Services;
         services.AddMauiBlazorWebView();
 
-#if DEBUG || DEBUG_MAUI
+// Temporarily allow developer tools for all configurations
+// #if DEBUG || DEBUG_MAUI
         builder.Services.AddBlazorWebViewDeveloperTools();
-#endif
+// #endif
 
         services.AddLogging(logging => logging
             .AddDebug()
