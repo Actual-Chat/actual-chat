@@ -64,10 +64,8 @@ public class ChatPlayers : WorkerBase
     {
         // TODO(AY): Implement _players cleanup here
         var lastPlaybackState = (PlaybackState?)null;
-        var cPlaybackState = PlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
-            if (!cPlaybackState.IsConsistent())
-                cPlaybackState = await cPlaybackState.Update(cancellationToken).ConfigureAwait(false);
+            var cPlaybackState = PlaybackState.Computed;
             var newPlaybackState = cPlaybackState.Value;
             if (newPlaybackState != lastPlaybackState) {
                 try {
