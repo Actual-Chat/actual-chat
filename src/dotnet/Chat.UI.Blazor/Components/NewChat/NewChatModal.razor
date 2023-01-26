@@ -1,0 +1,185 @@
+@using Stl.Extensibility
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Contacts
+@using ActualChat.Search
+@implements IModalView<NewChatModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame Class="new-chat-modal" Title="New group" HasCloseButton="true">
+    <Body>
+    <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+        <DataAnnotationsValidator/>
+        <div class="new-chat-modal-form-section">
+            @if (_form.Title.IsNullOrEmpty()) {
+                <AnonymousIcon Class="w-20 h-20"></AnonymousIcon>
+            } else {
+                <Pic Title="@_form.Title" Size="SquareSize.Size20"/>
+            }
+            <FormSection
+                For="() => _form.Title"
+                Label="Group name"
+                InputId="@_form.TitleId"
+                IsLabelInsideInput="true"
+                Class="!mt-0 grow"
+                IsRequired="true">
+                <TextBox
+                    @bind-Value="@_form.Title"
+                    Id="@_form.TitleId"
+                    Autofocus="true"
+                    Autocomplete="false"/>
+            </FormSection>
+        </div>
+    </Form>
+    @if (SelectedContacts.Any()) {
+        <div class="new-chat-modal-selected-contacts">
+            @foreach (var contact in SelectedContacts) {
+                <div class="new-chat-modal-selected-contact"
+                     @onclick="() => OnContactClick(contact)">
+                    <div class="new-chat-modal-remove-contact-icon">
+                        <i class="icon-close text-04 text-2xl pl-1"></i>
+                    </div>
+                    <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Account?.Avatar"/>
+                    <div class="pl-1 max-w-32 truncate">
+                        @contact.Account?.Avatar.Name
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    <SearchBox
+        Placeholder="Type the username"
+        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+        TextChanged="@OnFilter"/>
+    <div class="new-chat-modal-contact-list">
+        @foreach (var contact in FilteredContacts) {
+            var isSelected = SelectedContacts.Contains(contact);
+            <div class="new-chat-modal-contact-list-item"
+                 @onclick="() => OnContactClick(contact)">
+                <AccountCircle UserSid="@contact.Account!.Id" ShowPresence="true"/>
+                <span class="new-chat-modal-contact-list-item-text">
+                    <SearchMatchHighlighter Match="@GetMatch(@contact.Account.Avatar.Name)"/>
+                </span>
+                <Checkbox
+                    IsChecked="@isSelected"
+                    Class="!flex-none"
+                    Change="() => OnContactClick(contact)"/>
+            </div>
+        }
+    </div>
+    </Body>
+    <Buttons>
+        <div class="btn-group">
+            <Button
+                Click="ModalInstance.CloseAsync"
+                Class="btn-outline">
+                Cancel
+            </Button>
+            <Button
+                Click="@OnCreate"
+                Type="@ButtonType.Submit"
+                Class="btn-primary">
+                Create
+            </Button>
+        </div>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+    private string _filter = null!;
+    private List<Contact> FilteredContacts { get; set; } = new();
+    private List<Contact> SelectedContacts { get; set; } = new();
+    private List<Contact> AllContacts { get; set; } = new();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _form = new(ComponentIdGenerator);
+        var userContacts = await Contacts.ListUserContacts(Session, CancellationToken.None);
+        AllContacts = userContacts
+            .OrderBy(x => x.Account?.Avatar.Name)
+            .ToList();
+        FilteredContacts = AllContacts.ToList();
+    }
+
+    private SearchMatch GetMatch(string text) {
+        var searchPhrase = _filter.ToSearchPhrase(true, false);
+        return searchPhrase.GetMatch(text);
+    }
+
+    private void OnFilter(string filter) {
+        _filter = filter;
+
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToList()
+            : AllContacts
+                .Where(x => x.Account != null && x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .ToList();
+
+        StateHasChanged();
+    }
+
+    private void OnContactClick(Contact contact) {
+        if (SelectedContacts.Contains(contact)) {
+            SelectedContacts.Remove(contact);
+        } else {
+            SelectedContacts.Add(contact);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnCreate() {
+        try {
+            var command = new IChats.ChangeCommand(Session, default, null, new() {
+                Create = new ChatDiff {
+                    Title = _form.Title,
+                    Kind = ChatKind.Group,
+                    IsPublic = false,
+                },
+            });
+            var (chat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+            if (createChatError != null)
+                return;
+
+            chat.Require();
+
+            var userIds = SelectedContacts
+                .Where(contact => contact.Account != null)
+                .Select(contact => contact.Account!.Id)
+                .ToArray();
+            var createAuthorsCommand = new IAuthors.InviteCommand(Session, chat.Id, userIds);
+            var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, CancellationToken.None);
+            if (createAuthorsError != null)
+                return;
+
+            await ModalInstance.CloseAsync();
+            Nav.NavigateTo(Links.Chat(chat.Id));
+        }
+        catch { // Intended: command errors are shown in the UI anyway
+        }
+    }
+
+    public sealed record Model;
+
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+        }
+    }
+}
