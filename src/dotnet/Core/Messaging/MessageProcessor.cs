@@ -120,10 +120,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         {
             if (message is not (ITerminatorMessage or IMaybeTerminatorMessage { IsTerminator: true }))
                 return false;
-            _ = BackgroundTask.Run(() => {
-                Queue.Writer.TryComplete();
-                return Task.CompletedTask;
-            }, CancellationToken.None);
+
+            Queue.Writer.TryComplete();
             return true;
         }
     }
