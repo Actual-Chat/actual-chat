@@ -2,6 +2,7 @@ import DetectRTC from 'detectrtc';
 import { ObjectPool } from 'object-pool';
 import { OpusMediaRecorder } from './opus-media-recorder';
 import { Log, LogLevel, LogScope } from 'logging';
+import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 
 const LogScope: LogScope = 'AudioRecorder';
 
@@ -38,10 +39,12 @@ export class AudioRecorder {
 
     public async canRecord(): Promise<boolean> {
         await this.whenInitialized;
+
+        const isMaui = BrowserInfo.appKind == 'Maui';
         const hasMicrophone = DetectRTC.isAudioContextSupported
             && DetectRTC.hasMicrophone
             && DetectRTC.isGetUserMediaSupported
-            && DetectRTC.isWebsiteHasMicrophonePermissions;
+            && (DetectRTC.isWebsiteHasMicrophonePermissions || isMaui);
 
         if (!hasMicrophone) {
             // requests microphone permission
@@ -70,13 +73,14 @@ export class AudioRecorder {
                 return true;
 
             this.isRecording = true;
+            const isMaui = BrowserInfo.appKind == 'Maui';
 
             if (!DetectRTC.hasMicrophone) {
                 errorLog?.log(`startRecording: microphone is unavailable`);
                 return false;
             }
 
-            if (!DetectRTC.isWebsiteHasMicrophonePermissions) {
+            if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
                 errorLog?.log(`startRecording: microphone permission is required`);
                 return false;
             }
