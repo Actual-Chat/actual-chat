@@ -85,12 +85,8 @@ public partial class ChatUI : WorkerBase
     {
         var settings = await ListSettings.Use(cancellationToken).ConfigureAwait(false);
         Log.LogDebug("List: {Settings}", settings);
-        var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
         var filterId = settings.Filter.Id;
-        var filteredChats = filterId switch {
-            _ when filterId == ChatListFilter.Personal.Id => chats.Values.Where(c => c.Chat.Kind == ChatKind.Peer).ToList(),
-            _ => chats.Values.ToList(),
-        };
+        var filteredChats = await ListUnorderedFiltered(filterId, cancellationToken);
         var preOrderedChats = filteredChats
             .OrderByDescending(c => c.Contact.IsPinned)
             .ThenByDescending(c => c.HasUnreadMentions);
@@ -109,6 +105,18 @@ public partial class ChatUI : WorkerBase
         };
         var result = orderedChats.ToList();
         return result;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<IReadOnlyList<ChatInfo>> ListUnorderedFiltered(Symbol filterId, CancellationToken cancellationToken)
+    {
+        var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
+        var filteredChats = filterId switch
+        {
+            _ when filterId == ChatListFilter.Personal.Id => chats.Values.Where(c => c.Chat.Kind == ChatKind.Peer).ToList(),
+            _ => chats.Values.ToList(),
+        };
+        return filteredChats;
     }
 
     [ComputeMethod]
@@ -227,15 +235,18 @@ public partial class ChatUI : WorkerBase
     public virtual Task<bool> IsSelected(ChatId chatId)
         => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
 
-    // Not compute method!
-    public async ValueTask<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)
+    [ComputeMethod]
+    public virtual async Task<Trimmed<int>> GetUnreadCount(ChatListFilter filter, CancellationToken cancellationToken)
     {
-        var chatNews = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chatNews.IsNone)
-            return new Trimmed<int>(0, ChatInfo.MaxUnreadCount);
+        var chats = await ListUnorderedFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
+        return chats.UnreadMessageCount();
+    }
 
-        var readEntryLid = await GetReadEntryLid(chatId, cancellationToken).ConfigureAwait(false);
-        return ComputeUnreadCount(chatNews, readEntryLid);
+    [ComputeMethod]
+    public virtual async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chatInfo = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        return chatInfo?.UnreadCount ?? new ();
     }
 
     // Not compute method!

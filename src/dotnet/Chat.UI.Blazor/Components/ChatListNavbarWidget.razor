@@ -2,7 +2,6 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.Value;
-    var count = m.AllChats.Select(c => c.UnreadCount).Sum();
     var settings = ChatUI.ListSettings.Value;
 
     RenderFragment RenderTabContent(ChatListFilter filter, double order) =>
@@ -14,7 +13,7 @@
              Class="chats-tab">
             <TitleContent>
                 <span>@filter.Title</span>
-                <UnreadCount Value="@count" Click="@OnUnreadBadgeClick"/>
+                <UnreadCount Value="@m.UnreadCountsByChatFilter.GetValueOrDefault(filter.Id)" Click="@OnUnreadBadgeClick"/>
             </TitleContent>
             <ChildContent>
                 <div class="flex-y my-2">
@@ -74,6 +73,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await ChatUI.List(cancellationToken);
+        var unreadCounts = await ChatListFilter.All
+            .Select(async x => new { FilterId = x.Id, UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken) })
+            .Collect();
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
@@ -97,6 +99,7 @@
         return new Model {
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
+            UnreadCountsByChatFilter = unreadCounts.ToDictionary(x => x.FilterId, x => x.UnreadCount),
         };
     }
 
@@ -133,6 +136,6 @@
         public List<ChatInfo> PinnedChats { get; init; } = _emptyList;
         public List<ChatInfo> UnpinnedChats { get; init; } = _emptyList;
         public IEnumerable<ChatInfo> AllChats => PinnedChats.Concat(UnpinnedChats);
-
+        public Dictionary<Symbol, Trimmed<int>> UnreadCountsByChatFilter { get; init; } = new();
     }
 }
