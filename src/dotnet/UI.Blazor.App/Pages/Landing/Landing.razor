@@ -1,3 +1,4 @@
+@page "/landing"
 @namespace ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
@@ -9,6 +10,7 @@
 @{
     var m = State.Value;
     var account = m.Account;
+    var isGuest = account is not {IsGuest: false };
     var user = account?.User.OrGuest();
     var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
@@ -19,6 +21,7 @@
 <div @ref="Ref" class="landing">
     @if (isNarrow) {
         <LandingLeftMenu
+            AccountFull="@account"
             IsOpen="@_isMenuOpen"
             EnableIncompleteUI="@m.EnableIncompleteUI"
             Signin="@(() => SignIn(googleScheme.Name))"/>
@@ -53,25 +56,36 @@
                             For business
                         </div>
                     }
-                    <SigninButtonGroup>
-                        <GoogleIcon>
-                            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
-                        </GoogleIcon>
-                        <FacebookIcon>
-                            <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
-                        </FacebookIcon>
-                        <AppleIcon>
-                            <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
-                        </AppleIcon>
-                    </SigninButtonGroup>
+                    <div class="px-8">
+                        <a href="/docs" class="header-text text-headline-1">Docs</a>
+                    </div>
+                    @if (isGuest) {
+                        <SigninButtonGroup>
+                            <GoogleIcon>
+                                <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                            </GoogleIcon>
+                            <FacebookIcon>
+                                <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
+                            </FacebookIcon>
+                            <AppleIcon>
+                                <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
+                            </AppleIcon>
+                        </SigninButtonGroup>
+                    } else {
+                        <AvatarCircle Avatar="@account?.Avatar" Size="SquareSize.Size9"></AvatarCircle>
+                    }
                 }
             </div>
         </div>
         @if (isNarrow) {
             <div class="flex-none justify-end">
-                <ButtonRound Class="signin-button" Click="@(() => SignIn(googleScheme.Name))">
-                    <i class="icon-log-in text-xl"></i>
-                </ButtonRound>
+                @if (isGuest) {
+                    <ButtonRound Class="signin-button" Click="@(() => SignIn(googleScheme.Name))">
+                        <i class="icon-log-in text-xl"></i>
+                    </ButtonRound>
+                } else {
+                    <AvatarCircle Avatar="@account?.Avatar" Size="SquareSize.Size9"></AvatarCircle>
+                }
             </div>
         }
     </div>
@@ -89,17 +103,19 @@
                         </div>
                     </div>
                     <div class="flex @(isNarrow ? "justify-center" : "")">
-                        <SigninButtonGroup>
-                            <GoogleIcon>
-                                <img src="/dist/images/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
-                            </GoogleIcon>
-                            <FacebookIcon>
-                                <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
-                            </FacebookIcon>
-                            <AppleIcon>
-                                <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
-                            </AppleIcon>
-                        </SigninButtonGroup>
+                        @if (isGuest) {
+                            <SigninButtonGroup>
+                                <GoogleIcon>
+                                    <img src="/dist/images/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
+                                </GoogleIcon>
+                                <FacebookIcon>
+                                    <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
+                                </FacebookIcon>
+                                <AppleIcon>
+                                    <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
+                                </AppleIcon>
+                            </SigninButtonGroup>
+                        }
                     </div>
                 </div>
                 <div class="flex w-2/5 justify-center @(isNarrow ? "hidden" : "")">
@@ -110,7 +126,23 @@
     </div>
 
     @* Page 2 *@
-    <LandingTimeline IsNarrow="@isNarrow"/>
+    <div class="page">
+        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y py-8" : "flex-x")">
+            <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
+                <div class="flex overflow-hidden justify-center items-center">
+                    <img src="/dist/images/landing/evolution.svg" alt="evolution">
+                </div>
+            </div>
+            <div class="flex-y @(isNarrow ? "p-4 justify-center" : "w-1/2 gap-y-8 justify-start p-16 pl-4 text-4xl font-medium")">
+                <div>
+                    What’s the biggest differentiator between humans and any other form of life on Earth?
+                </div>
+                <div>
+                    Communication. And the more productive it is, the faster we evolve.
+                </div>
+            </div>
+        </div>
+    </div>
 
     @* Page 3 *@
     <div class="page">
