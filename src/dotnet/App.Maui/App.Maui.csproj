@@ -59,7 +59,7 @@
     <AnalysisLevel>preview</AnalysisLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
-    <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PPRODUCTION</DefineConstants>
+    <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->

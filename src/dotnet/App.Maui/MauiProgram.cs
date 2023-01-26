@@ -85,7 +85,7 @@ public static class MauiProgram
         var settings = new ClientAppSettings { SessionId = sessionId };
         services.TryAddSingleton(settings);
 
-#if IS_FIXED_ENVIRONMENT_PPRODUCTION
+#if IS_FIXED_ENVIRONMENT_PRODUCTION || !(DEBUG || DEBUG_MAUI)
         var environment = Environments.Production;
 #else
         var environment = Environments.Development;
