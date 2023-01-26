@@ -122,11 +122,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
         var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
+
+        // NOTE(AY): Commented this out:
+        // - It triggers backward updates due to latency / eventual consistency
+        // - Even though such updates to state are possible, they are ignored
+        //   in ChatPositionBackend, but generate many extra commands.
+        /*
         if (ReadPositionState != null && readEntryLid > 0 && readEntryLid >= chatIdRange.End) {
             // Looks like an error, let's reset last read position to the last entry Id
             readEntryLid = Math.Max(0, chatIdRange.End - 1);
             ReadPositionState.Value = new ChatPosition(readEntryLid);
         }
+        */
+
         var entryLid = readEntryLid;
         var mustScrollToEntry = query.IsNone && entryLid != 0;
 
