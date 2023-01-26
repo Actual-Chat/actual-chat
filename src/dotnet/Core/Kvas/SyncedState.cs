@@ -66,7 +66,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         base.Initialize(options);
 
         using var _ = ExecutionContextExt.SuppressFlow();
-        WhenDisposed = BackgroundTask.Run(SyncCycle, CancellationToken.None);
+        WhenDisposed = BackgroundTask.Run(SyncCycle, DisposeToken);
     }
 
     public void Dispose()
@@ -179,7 +179,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
             value = value.WithOrigin(origin);
             DebugLog?.LogDebug("{State}: Write = {Value}", this, value);
-            _ = BackgroundTask.Run(
+            _ = ForegroundTask.Run(
                 () => Settings.Write(value, cancellationToken),
                 Log, "Write failed", cancellationToken);
         }

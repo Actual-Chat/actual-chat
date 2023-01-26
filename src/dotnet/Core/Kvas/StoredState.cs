@@ -36,7 +36,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
         if (snapshot.UpdateCount == 0) {
             // Initial value
             var initialSnapshot = snapshot;
-            BackgroundTask.Run(async () => {
+            ForegroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
                     try {
