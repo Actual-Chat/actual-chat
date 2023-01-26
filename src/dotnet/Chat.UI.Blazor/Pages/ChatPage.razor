@@ -1,6 +1,7 @@
 @page "/chat/{ChatId}"
 @page "/chat/"
 @using ActualChat.Notification.UI.Blazor
+@using System.Diagnostics.CodeAnalysis
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
 @{
@@ -104,13 +105,20 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var model = await ComputeStateInternal(cancellationToken);
+        return model.IsIdenticalTo(_rendered) ? _rendered : model;
+    }
+
+    private async Task<Model> ComputeStateInternal(CancellationToken cancellationToken)
+    {
         var chatId = new ChatId(ChatId, ParseOrNone.Option);
         if (chatId.IsNone)
             chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId.IsNone)
-            return Model.None;
+            return Model.NotSelected(ScreenSize);
 
-        if (ChatUI.SelectedChatId.Value != chatId) {
+        if (ChatUI.SelectedChatId.Value != chatId)
+        {
             ChatUI.SelectChat(chatId);
             if (ChatUI.RelatedChatEntry.Value != null)
                 ChatUI.HideRelatedEntry(false);
@@ -119,27 +127,27 @@
         var chat = await Chats.Get(Session, chatId, cancellationToken);
         var account = await Accounts.GetOwn(Session, cancellationToken);
         var hasEverSignedIn = await AuthUI.HasEverSignedIn.Use(cancellationToken);
-        var result = new Model(chatId, chat, account, hasEverSignedIn);
-        return result.IsSame(_rendered) ? _rendered! : result;
+        return new Model(chatId, chat, account, hasEverSignedIn, ScreenSize);
     }
 
     private void OnUnreadCountSubHeaderClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account, bool HasEverSignedIn) {
-        public static Model None { get; } = new(default, null, AccountFull.None, false);
+    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account, bool HasEverSignedIn, ScreenSize ScreenSize = ScreenSize.Unknown) {
         public static Model Loading { get; } = new(default, null, AccountFull.Loading, false); // Should differ by ref. from None
+        public static Model NotSelected(ScreenSize screenSize) => new(default, null, AccountFull.None, false, screenSize);
 
         public bool IsNotSelected => ChatId.Id.IsEmpty && Chat is null;
         public bool IsUnavailable => !ChatId.Id.IsEmpty && Chat is null;
         public bool ShowHome => IsUnavailable && !Account.IsActive() && !HasEverSignedIn;
 
-        public bool IsSame(Model? other) {
+        public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
             if (other == null)
                 return false;
             return ChatId == other.ChatId
-                && ReferenceEquals(Chat, other.Chat)
-                && ReferenceEquals(Account, other.Account);
+                   && ReferenceEquals(Chat, other.Chat)
+                   && ReferenceEquals(Account, other.Account)
+                   && ScreenSize == other.ScreenSize;
         }
     }
 }
