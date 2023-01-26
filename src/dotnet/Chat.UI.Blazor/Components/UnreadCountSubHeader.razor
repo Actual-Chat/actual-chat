@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatInfo?>
+@inherits ComputedStateComponent<Trimmed<int>>
 @{
-    var count = State.Value?.UnreadCount ?? 0;
+    var count = State.Value;
     if (count == 0)
         return;
 
@@ -14,7 +14,7 @@
 </div>
 
 @code {
-    private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(1);
+    private IMutableState<bool> _overrideToZero = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -22,13 +22,28 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }
 
-    protected override ComputedState<ChatInfo?>.Options GetStateOptions() {
-        return new() {
-            InitialValue = ChatInfo.Loading,
-            UpdateDelayer = UpdateDelayer,
-        };
+    protected override void OnInitialized() {
+        _overrideToZero = StateFactory.NewMutable(false);
+        base.OnInitialized();
     }
 
-    protected override Task<ChatInfo?> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.Get(Chat.Id, cancellationToken);
+    protected override async Task<Trimmed<int>> ComputeState(CancellationToken cancellationToken) {
+        var unreadCount = await ChatUI.GetUnreadCount(Chat.Id, cancellationToken);
+        if (unreadCount == 0) {
+            _overrideToZero.Value = true;
+            return 0;
+        }
+
+        if (_overrideToZero.Value) {
+            var snapshot = _overrideToZero.Snapshot;
+            _ = Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)
+                .ContinueWith(_ => {
+                    if (_overrideToZero.Snapshot == snapshot) // Only first task like this one will "win"
+                        _overrideToZero.Value = false;
+                }, TaskScheduler.Default);
+        }
+
+        var overrideToZero = await _overrideToZero.Use(cancellationToken);
+        return overrideToZero ? 0 : unreadCount;
+    }
 }

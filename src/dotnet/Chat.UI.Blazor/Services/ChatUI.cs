@@ -143,12 +143,7 @@ public partial class ChatUI : WorkerBase
         var userSettings = await userSettingsTask.ConfigureAwait(false);
         var lastMention = await lastMentionTask.ConfigureAwait(false);
         var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
-
-        var unreadCount = 0;
-        if (readEntryLid >= 0) { // Otherwise the chat wasn't ever opened
-            var lastId = news.TextEntryIdRange.End - 1;
-            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
-        }
+        var unreadCount = ComputeUnreadCount(news, readEntryLid);
 
         var hasUnreadMentions = false;
         if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
@@ -168,7 +163,7 @@ public partial class ChatUI : WorkerBase
             UserSettings = userSettings,
             LastMention = lastMention,
             ReadEntryLid = readEntryLid,
-            UnreadCount = new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount),
+            UnreadCount = unreadCount,
             HasUnreadMentions = hasUnreadMentions,
             LastTextEntryText = lastTextEntryText,
         };
@@ -209,9 +204,52 @@ public partial class ChatUI : WorkerBase
         };
     }
 
+    [ComputeMethod] // Manually & automatically invalidated
+    public virtual async ValueTask<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // NOTE(AY): This method uses LeaseReadPositionState in a bit tricky way:
+        // on one hand, it can't depend on it, coz it disposes the lease, which means
+        // computed it maintains might end up being never updated.
+        // On another hand, it makes sense to read the most up-to-date read position,
+        // so it returns max(leased read position, fetched read position).
+
+        var fetchedReadPosition = await ChatPositions
+            .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
+            .ConfigureAwait(false);
+
+        using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
+        var readPosition = readPositionState.Value;
+        return readPosition.EntryLid > fetchedReadPosition.EntryLid
+            ? readPosition.EntryLid
+            : fetchedReadPosition.EntryLid;
+    }
+
     [ComputeMethod] // Synced
     public virtual Task<bool> IsSelected(ChatId chatId)
         => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
+
+    // Not compute method!
+    public async ValueTask<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chatNews = await Chats.GetNews(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chatNews.IsNone)
+            return new Trimmed<int>(0, ChatInfo.MaxUnreadCount);
+
+        var readEntryLid = await GetReadEntryLid(chatId, cancellationToken).ConfigureAwait(false);
+        return ComputeUnreadCount(chatNews, readEntryLid);
+    }
+
+    // Not compute method!
+    public Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
+    {
+        var unreadCount = 0;
+        if (readEntryLid > 0 && !chatNews.IsNone) {
+            // Otherwise the chat wasn't ever opened
+            var lastId = chatNews.TextEntryIdRange.End - 1;
+            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
+        }
+        return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
+    }
 
     // SetXxx & Add/RemoveXxx
 
@@ -311,14 +349,6 @@ public partial class ChatUI : WorkerBase
 
     // Private methods
 
-    // TODO: Make it non-nullable?
-    private async ValueTask<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
-    {
-        using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
-        var readPosition = await readPositionState.Use(cancellationToken).ConfigureAwait(false);
-        return readPosition.EntryLid;
-    }
-
     private Task<ISyncedState<ChatPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
@@ -343,7 +373,16 @@ public partial class ChatUI : WorkerBase
                         return Task.CompletedTask;
 
                     var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, position);
-                    writeDebouncer.Debounce(command);
+                    writeDebouncer.Throttle(command);
+
+                    var cReadEntryLid = Computed.GetExisting(() => GetReadEntryLid(pChatId, default));
+                    // Conditions:
+                    // - No computed -> nothing to invalidate
+                    // - No value (error) -> invalidate
+                    // - Value < current -> invalidate
+                    if (cReadEntryLid != null && (!cReadEntryLid.IsValue(out var entryLid) || entryLid < position.EntryLid))
+                        cReadEntryLid.Invalidate();
+
                     return Task.CompletedTask;
                 }) {
                 InitialValue = new ChatPosition(),
