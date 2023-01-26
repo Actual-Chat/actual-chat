@@ -30,9 +30,9 @@
             </FormSection>
         </div>
     </Form>
-    @if (SelectedContacts.Any()) {
+    @if (_selectedContacts.Any()) {
         <div class="new-chat-modal-selected-contacts">
-            @foreach (var contact in SelectedContacts) {
+            @foreach (var contact in _selectedContacts) {
                 <div class="new-chat-modal-selected-contact"
                      @onclick="() => OnContactClick(contact)">
                     <div class="new-chat-modal-remove-contact-icon">
@@ -51,8 +51,8 @@
         MaxLength="@Constants.Chat.MaxSearchFilterLength"
         TextChanged="@OnFilter"/>
     <div class="new-chat-modal-contact-list">
-        @foreach (var contact in FilteredContacts) {
-            var isSelected = SelectedContacts.Contains(contact);
+        @foreach (var contact in _filteredContacts) {
+            var isSelected = _selectedContacts.Contains(contact);
             <div class="new-chat-modal-contact-list-item"
                  @onclick="() => OnContactClick(contact)">
                 <AccountCircle UserSid="@contact.Account!.Id" ShowPresence="true"/>
@@ -88,9 +88,9 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private string _filter = null!;
-    private List<Contact> FilteredContacts { get; set; } = new();
-    private List<Contact> SelectedContacts { get; set; } = new();
-    private List<Contact> AllContacts { get; set; } = new();
+    private List<Contact> _filteredContacts = new();
+    private List<Contact> _allContacts = new();
+    private readonly List<Contact> _selectedContacts = new();
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
@@ -104,10 +104,10 @@
     protected override async Task OnInitializedAsync() {
         _form = new(ComponentIdGenerator);
         var userContacts = await Contacts.ListUserContacts(Session, CancellationToken.None);
-        AllContacts = userContacts
+        _allContacts = userContacts
             .OrderBy(x => x.Account?.Avatar.Name)
             .ToList();
-        FilteredContacts = AllContacts.ToList();
+        _filteredContacts = _allContacts.ToList();
     }
 
     private SearchMatch GetMatch(string text) {
@@ -118,9 +118,9 @@
     private void OnFilter(string filter) {
         _filter = filter;
 
-        FilteredContacts = string.IsNullOrWhiteSpace(filter)
-            ? AllContacts.ToList()
-            : AllContacts
+        _filteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? _allContacts.ToList()
+            : _allContacts
                 .Where(x => x.Account != null && x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
                 .ToList();
 
@@ -128,10 +128,10 @@
     }
 
     private void OnContactClick(Contact contact) {
-        if (SelectedContacts.Contains(contact)) {
-            SelectedContacts.Remove(contact);
+        if (_selectedContacts.Contains(contact)) {
+            _selectedContacts.Remove(contact);
         } else {
-            SelectedContacts.Add(contact);
+            _selectedContacts.Add(contact);
         }
 
         StateHasChanged();
@@ -152,7 +152,7 @@
 
             chat.Require();
 
-            var userIds = SelectedContacts
+            var userIds = _selectedContacts
                 .Where(contact => contact.Account != null)
                 .Select(contact => contact.Account!.Id)
                 .ToArray();
