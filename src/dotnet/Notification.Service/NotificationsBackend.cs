@@ -5,12 +5,15 @@ using ActualChat.Notification.Db;
 using ActualChat.Commands;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
 public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
 {
+    private readonly IMemoryCache _recentChatsWithNotifications;
+
     private IAuthorsBackend AuthorsBackend { get; }
     private IChatsBackend ChatsBackend { get; }
     private IServerKvasBackend ServerKvasBackend { get; }
@@ -30,6 +33,12 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
+
+        _recentChatsWithNotifications = new MemoryCache(new MemoryCacheOptions {
+            CompactionPercentage = 0.1,
+            SizeLimit = 10_000,
+            ExpirationScanFrequency = TimeSpan.FromSeconds(5),
+        });
     }
 
     // [ComputeMethod]
@@ -214,7 +223,20 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (changeKind != ChangeKind.Create || entry.IsSystemEntry)
             return;
 
-        var text = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
+        var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
+        var chatId = entry.ChatId;
+        var key = chatId.Id.Value;
+        if (!_recentChatsWithNotifications.TryGetValue(key, out _))
+        {
+            using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
+            cacheEntry.Size = 1;
+            cacheEntry.Value = "";
+            cacheEntry.AbsoluteExpirationRelativeToNow = NotificationConstants.ThrottleIntervals.Message;
+        }
+        else if (mentionIds.Count == 0)
+            // throttle low priority notifications
+            return;
+
         var userIds = await ListSubscribedUserIds(entry.ChatId, cancellationToken).ConfigureAwait(false);
         var similarityKey = entry.ChatId;
         await EnqueueMessageRelatedNotifications(
@@ -236,7 +258,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         if (author.Id == reactionAuthor.Id) // No notifs on your own reactions to your own messages
             return;
 
-        var text = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
+        var (text, _) = await GetText(entry, MarkupConsumer.ReactionNotification, cancellationToken).ConfigureAwait(false);
         text = $"{reaction.EmojiId} to \"{text}\"";
         var userIds = new[] { author.UserId };
         var similarityKey = entry.ChatId;
@@ -311,16 +333,19 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
         };
 
-    private async ValueTask<string> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
+    private async ValueTask<(string Content, HashSet<Symbol> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
     {
         var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
         var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);
-        return markup.ToReadableText(consumer);
+        var mentionIds = new MentionExtractor().GetMentionIds(markup);
+        return (markup.ToReadableText(consumer), mentionIds);
     }
 
     private TimeSpan? GetThrottleInterval(Notification notification)
     {
         if (notification.Kind == NotificationKind.Message)
+            return NotificationConstants.ThrottleIntervals.Message;
+        if (notification.Kind == NotificationKind.Reaction)
             return NotificationConstants.ThrottleIntervals.Message;
 
         return null;
