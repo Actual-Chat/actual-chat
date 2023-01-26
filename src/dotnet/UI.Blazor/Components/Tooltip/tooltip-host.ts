@@ -1,5 +1,6 @@
 import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, empty } from 'rxjs';
+import { getOrInheritData } from 'dom-helpers';
 import {
     Placement,
     computePosition,
@@ -9,7 +10,6 @@ import {
     arrow,
 } from '@floating-ui/dom';
 import { Log, LogLevel, LogScope } from 'logging';
-import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
 
 const LogScope: LogScope = 'TooltipHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

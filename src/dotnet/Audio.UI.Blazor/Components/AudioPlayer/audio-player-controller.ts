@@ -4,7 +4,7 @@ import { Resettable } from 'object-pool';
 import { audioContextSource } from 'audio-context-source';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 import { Log, LogLevel, LogScope } from 'logging';
-import { AudioContextWrapper } from '../../../../nodejs/src/audio-context-wrapper';
+import { AudioContextRef } from 'audio-context-ref';
 
 const LogScope: LogScope = 'AudioPlayerController';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -47,13 +47,14 @@ let lastControllerId = 0;
 /** The main class of audio player, that controls all parts of the playback */
 export class AudioPlayerController implements Resettable {
     /** The id is used to store related objects on the web worker side */
-    public readonly id: number;
-    private contextWrapper?: AudioContextWrapper = null;
+    private contextRef: AudioContextRef = null;
     private decoderChannel = new MessageChannel();
     private feederNode?: FeederAudioWorkletNode = null;
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private cleanup?: () => void = null;
     private isReset = false;
+
+    public readonly id: number;
 
     private constructor() {
         this.id = lastControllerId++;
@@ -98,15 +99,14 @@ export class AudioPlayerController implements Resettable {
     }): Promise<void> {
         this.isReset = false;
         /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
-        this.contextWrapper = await audioContextSource.get();
-        this.contextWrapper.whenContextRefreshed().then(
-            _ => {
-                if (!this.isReset) {
-                    void this.init(callbacks);
-                }
-            },
-            _ => {}
-        )
+        this.contextRef = await audioContextSource.getRef();
+        this.contextRef.whenContextChanged().then(context => {
+            if (context && !this.isReset) {
+                this.contextRef?.dispose();
+                this.contextRef = null;
+                void this.init(callbacks); // Note that this call is recursive!
+            }
+        });
         if (this.feederNode === null) {
             const feederNodeOptions: AudioWorkletNodeOptions = {
                 channelCount: 1,
@@ -117,7 +117,7 @@ export class AudioPlayerController implements Resettable {
             };
             this.feederNode = await FeederAudioWorkletNode.create(
                 this.decoderChannel.port2,
-                this.contextWrapper.context,
+                this.contextRef.context,
                 'feederWorklet',
                 feederNodeOptions
             );
@@ -135,13 +135,13 @@ export class AudioPlayerController implements Resettable {
         // recreating nodes due to memory leaks in not disconnected nodes
         if (isAecWorkaroundNeeded()) {
             debugLog?.log(`init: isAecWorkaroundNeeded() == true`);
-            this.destinationNode = this.contextWrapper.context.createMediaStreamDestination();
+            this.destinationNode = this.contextRef.context.createMediaStreamDestination();
             feederNode.connect(this.destinationNode);
             this.cleanup = await enableChromiumAec(this.destinationNode.stream);
         }
         else {
             debugLog?.log(`init(): isAecWorkaroundNeeded == false`);
-            feederNode.connect(this.contextWrapper.context.destination);
+            feederNode.connect(this.contextRef.context.destination);
         }
         await this.initWorker();
     }
@@ -230,9 +230,9 @@ export class AudioPlayerController implements Resettable {
             this.cleanup();
             this.cleanup = null;
         }
-        if (this.contextWrapper != null) {
-            this.contextWrapper.dispose();
-            this.contextWrapper = null;
+        if (this.contextRef != null) {
+            this.contextRef.dispose();
+            this.contextRef = null;
         }
     }
 }

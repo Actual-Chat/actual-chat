@@ -1,7 +1,6 @@
 import { Observable } from 'rxjs';
 import { ResolvedPromise } from 'promises';
 import { EventHandlerSet } from 'event-handling';
-import { NextInteraction } from 'next-interaction';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'Interactive';
@@ -14,6 +13,11 @@ export class Interactive {
     private static _isInteractive = false;
     private static _isAlwaysInteractive = false;
 
+    public static interactionEvents: EventHandlerSet<Event>;
+    public static readonly interactionEvent$ = new Observable<Event>(subject => {
+        const handler = this.interactionEvents.add((event: Event) => subject.next(event));
+        return () => handler.dispose();
+    })
     public static readonly isInteractiveChanged = new EventHandlerSet<boolean>();
     public static readonly isInteractiveChange$ = new Observable<boolean>(subject => {
         const handler = this.isInteractiveChanged.add(value => subject.next(value));
@@ -26,7 +30,22 @@ export class Interactive {
 
         this._isInitialized = true;
         debugLog?.log(`init`);
-        NextInteraction.addHandler(() => this.isInteractive = true, false);
+
+        // Initialize interactionEvents
+        const onInteractionEvents = ['touchend', 'keydown', 'click', 'doubleclick'];
+        let onInteractionHandlersAttached = false;
+        this.interactionEvents = new EventHandlerSet<Event>(handlers => {
+            const requiresOnInteractionHandlers = handlers.size != 0;
+            if (requiresOnInteractionHandlers && !onInteractionHandlersAttached) {
+                const options = { capture: true, passive: true };
+                onInteractionEvents.forEach((e) => document.body.addEventListener(e, this.onInteractionEvent, options));
+            }
+            else if (onInteractionHandlersAttached && !requiresOnInteractionHandlers) {
+                const options = { capture: true, passive: true };
+                onInteractionEvents.forEach((e) => document.body.removeEventListener(e, this.onInteractionEvent, options));
+            }
+            onInteractionHandlersAttached = requiresOnInteractionHandlers;
+        });
     }
 
     public static get isInteractive(): boolean {
@@ -60,6 +79,11 @@ export class Interactive {
             ? ResolvedPromise.Void
             : this.isInteractiveChanged.whenNextVoid();
     }
+
+    // Private methods
+
+    private static onInteractionEvent =
+        (event: Event) => this.interactionEvents.triggerSilently(event)
 }
 
 Interactive.init();

@@ -1,8 +1,8 @@
+import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { Log, LogLevel, LogScope } from 'logging';
-import { DeviceInfo } from '../../../../nodejs/src/device-info';
 
 const LogScope: LogScope = 'BrowserInfo';
 const log = Log.get(LogScope, LogLevel.Info);

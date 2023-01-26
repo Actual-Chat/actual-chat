@@ -1,4 +1,4 @@
-import { fromEvent, merge, Observable } from 'rxjs';
+import { fromEvent, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
 import { Log, LogLevel, LogScope } from 'logging';
 

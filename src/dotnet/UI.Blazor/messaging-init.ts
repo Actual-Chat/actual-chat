@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
-import { NextInteraction } from 'next-interaction';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Interactive } from 'interactive';
 import { BrowserInfo } from './Services/BrowserInfo/browser-info';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'MessagingInit';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -47,6 +47,8 @@ export async function getDeviceToken(): Promise<string | null> {
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
+    debugLog?.log('requestNotificationPermission()')
+
     // Let's check if the browser supports notifications
     if (!('Notification' in window)) {
         warnLog?.log(`requestNotificationPermission: this browser doesn't support notifications`);
@@ -110,7 +112,7 @@ function hasPromiseBasedNotificationApi(): boolean {
     }
 }
 
-NextInteraction.addHandler(async () => {
+Interactive.whenInteractive().then(async () => {
     if (BrowserInfo.appKind == 'Maui')
         return;
 

@@ -1,6 +1,6 @@
+import { delayAsync } from 'promises';
 import { VibrationUI } from '../VibrationUI/vibration-ui';
 import { Log, LogLevel, LogScope } from 'logging';
-import { delayAsync } from '../../../../nodejs/src/promises';
 
 const LogScope: LogScope = 'TuneUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

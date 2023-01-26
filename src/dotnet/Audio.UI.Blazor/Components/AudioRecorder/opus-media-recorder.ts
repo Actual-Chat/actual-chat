@@ -12,8 +12,8 @@ import {
     InitEncoderMessage,
     StartMessage,
 } from './workers/opus-encoder-worker-message';
+import { AudioContextRef } from 'audio-context-ref';
 import { Log, LogLevel, LogScope } from 'logging';
-import { AudioContextWrapper } from 'audio-context-wrapper';
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -51,7 +51,7 @@ export class OpusMediaRecorder {
     private readonly channelCount: number = 1;
     private readonly whenLoaded: Promise<void>;
 
-    private contextWrapper: AudioContextWrapper | null = null;
+    private contextRef: AudioContextRef | null = null;
     private encoderWorklet: AudioWorkletNode | null = null;
     private vadWorklet: AudioWorkletNode | null = null;
 
@@ -74,24 +74,23 @@ export class OpusMediaRecorder {
     public async start(sessionId: string, chatId: string): Promise<void> {
         warnLog?.assert(sessionId != '', `start: sessionId is unspecified`);
         warnLog?.assert(chatId != '', `start: chatId is unspecified`);
-        warnLog?.assert(this.contextWrapper != null, `start: chatId is unspecified`);
+        warnLog?.assert(this.contextRef != null, `start: chatId is unspecified`);
 
-        this.contextWrapper = await audioContextSource.get();
+        this.contextRef = await audioContextSource.getRef();
 
-        await this.init(this.contextWrapper.context);
-        this.contextWrapper.whenContextRefreshed().then(
-            _ => {
-                if (this.state === 'recording') {
-                    void this.start(sessionId, chatId);
-                }
-            },
-            _ => {}
-        )
+        await this.init(this.contextRef.context);
+        this.contextRef.whenContextChanged().then(context => {
+            if (context && this.state === 'recording') {
+                this.contextRef?.dispose();
+                this.contextRef = null;
+                void this.start(sessionId, chatId); // This call is recursive!
+            }
+        });
 
         if (this.source)
             this.source.disconnect();
         this.stream = await OpusMediaRecorder.getMicrophoneStream();
-        this.source = this.contextWrapper.context.createMediaStreamSource(this.stream);
+        this.source = this.contextRef.context.createMediaStreamSource(this.stream);
         this.state = 'recording';
 
         await rpc((rpcResult) => {
@@ -139,8 +138,8 @@ export class OpusMediaRecorder {
             // Tell encoder finalize the job and destroy itself.
             this.worker.postMessage(msg);
         });
-        this.contextWrapper.dispose();
-        this.contextWrapper = null;
+        this.contextRef?.dispose();
+        this.contextRef = null;
         this.state = 'inactive';
     }
 

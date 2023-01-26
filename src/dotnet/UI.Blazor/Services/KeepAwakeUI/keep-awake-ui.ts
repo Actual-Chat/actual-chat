@@ -1,5 +1,5 @@
+import { Interactive } from 'interactive';
 import { default as NoSleep } from 'nosleep.js';
-import { NextInteraction } from 'next-interaction';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'KeepAwakeUI';
@@ -45,4 +45,4 @@ export class KeepAwakeUI {
     }
 }
 
-NextInteraction.addHandler(KeepAwakeUI.warmup);
+Interactive.whenInteractive().then(() => KeepAwakeUI.warmup);

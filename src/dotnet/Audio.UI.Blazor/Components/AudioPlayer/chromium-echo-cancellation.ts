@@ -1,5 +1,5 @@
+import { DeviceInfo } from 'device-info';
 import { Log, LogLevel, LogScope } from 'logging';
-import { DeviceInfo } from '../../../../nodejs/src/device-info';
 
 const LogScope: LogScope = 'ChromiumEchoCancellation';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -160,7 +160,8 @@ export function isAecWorkaroundNeeded(): boolean {
     const force = self['forceEchoCancellation'] as boolean;
     if (force !== null && force !== undefined)
         return force;
-    // Mobile phones have a good echoCancellation by default, we don't need anything to do
-    return !(DeviceInfo.isMobile || DeviceInfo.isChrome);
 
+    // Mobile phones have a good echoCancellation by default, we don't need anything to do
+    const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChrome;
+    return !hasBuiltInAec;
 }

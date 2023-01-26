@@ -15,16 +15,15 @@ import {
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
 import { DocumentEvents, endEvent } from 'event-handling';
-import { Vector2D } from 'math';
+import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
-import { Log, LogLevel, LogScope } from 'logging';
-
+import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { HistoryUI } from '../../Services/HistoryUI/history-ui';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
-import { getOrInheritData } from '../../../../nodejs/src/dom-helpers';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -110,7 +109,7 @@ export class MenuHost implements Disposable {
     public hideById(id: string): void {
         const menu = this.menu;
         if (!menu || menu.id !== id) {
-            warnLog?.log('hideById: no menu with id:', id)
+            debugLog?.log('hideById: no menu with id:', id)
             return;
         }
 
@@ -120,7 +119,7 @@ export class MenuHost implements Disposable {
     public async positionById(id: string): Promise<void> {
         const menu = this.menu;
         if (!menu || menu.id !== id) {
-            warnLog?.log('position: no menu with id:', id)
+            debugLog?.log('positionById: no menu with id:', id)
             return;
         }
 
@@ -197,6 +196,7 @@ export class MenuHost implements Disposable {
         const menu = this.menu;
         if (!menu)
             return;
+
         if (options) {
             if (options.id !== undefined && menu.id !== options.id)
                 return;
@@ -325,7 +325,7 @@ export class MenuHost implements Disposable {
 
             // It's a click outside of any menu which doesn't trigger another menu
             if (!this.menu || this.menu.isHoverMenu)
-                return; // There are no visible menu (unless it's a hover menu)
+                return; // There is no visible menu or visible menu is a hover menu
 
             // Non-hover menu is visible, so we need to hide it on this click
             this.hide();

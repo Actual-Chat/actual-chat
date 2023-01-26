@@ -22,8 +22,8 @@ export class Gestures {
     public static init(): void {
         // Used gestures
         DataHrefGesture.use();
-        SuppressContextMenuGesture.use();
-        ContextMenuOrDataHrefGesture.use();
+        SuppressDefaultContextMenuGesture.use();
+        ContextMenuGesture.use();
     }
 
     public static addActive(gesture: Gesture): Gesture {
@@ -54,7 +54,7 @@ export class Gestures {
         else {
             debugLog?.log(`Active gestures:`);
             for (const gesture of this.activeGestures)
-                debugLog?.log(`- `, gesture);
+                debugLog?.log(`  `, gesture);
         }
         this.dumpTimeout = null;
         this.startDumping();
@@ -72,15 +72,18 @@ class Gesture implements Disposable {
         if (this.toDispose == null)
             return;
 
-        Gestures.removeActive(this);
         const toDispose = this.toDispose;
         this.toDispose = null;
-
-        for (const disposable of toDispose) {
-            if (disposable instanceof Subscription)
-                disposable.unsubscribe();
-            else
-                (disposable ).dispose();
+        try {
+            for (const disposable of toDispose) {
+                if (disposable instanceof Subscription)
+                    disposable.unsubscribe();
+                else
+                    disposable?.dispose();
+            }
+        }
+        finally {
+            Gestures.removeActive(this);
         }
     }
 }
@@ -114,12 +117,9 @@ class DataHrefGesture extends Gesture {
     }
 }
 
-class SuppressContextMenuGesture extends Gesture {
+class SuppressDefaultContextMenuGesture extends Gesture {
     public static use(): void {
         DocumentEvents.capturedActive.contextmenu$.subscribe((event: PointerEvent) => {
-            if (event['isCustom']) // This is our custom 'contextmenu' event
-                return;
-
             // Suppress browser context menu anywhere but on images
             const target = event.target as HTMLElement;
             if (!target || target.nodeName !== 'IMG')
@@ -128,7 +128,7 @@ class SuppressContextMenuGesture extends Gesture {
     }
 }
 
-class ContextMenuOrDataHrefGesture extends Gesture {
+class ContextMenuGesture extends Gesture {
     public static cancelLongPressDistance: number;
     public static defaultDelayMs = 500;
 
@@ -139,16 +139,16 @@ class ContextMenuOrDataHrefGesture extends Gesture {
                 return;
 
             const [, delayText] = getOrInheritData(event.target, 'contextMenuDelay');
-            if (delayText === null) {
-                if (ScreenSize.isWide() && !DeviceInfo.isIos) {
-                    DataHrefGesture.tryHandle(event);
-                    return;
-                }
-            }
+            if (delayText === null && ScreenSize.isWide() && !DeviceInfo.isIos)
+                return; // No 'data-context-menu-delay' + wide screen + non-iOS device: default handling
+
+            // This turns off default 'contextmenu' event on long tap.
+            // This is necessary, coz it might get triggered together with ours.
+            event.preventDefault();
 
             let delay = parseInt(delayText);
             delay = isNaN(delay) ? this.defaultDelayMs : delay;
-            const gesture = new ContextMenuOrDataHrefGesture(event, delay);
+            const gesture = new ContextMenuGesture(event, delay);
             Gestures.addActive(gesture);
         });
     }
@@ -160,20 +160,23 @@ class ContextMenuOrDataHrefGesture extends Gesture {
         super();
         const startPoint = new Vector2D(startEvent.clientX, startEvent.clientY);
         this.toDispose.push(
+            // Events that we track
             DocumentEvents.capturedPassive.pointerMove$.subscribe((e: PointerEvent) => {
                 const delta = new Vector2D(e.clientX, e.clientY).sub(startPoint).length;
-                if (delta > ContextMenuOrDataHrefGesture.cancelLongPressDistance)
+                if (delta > ContextMenuGesture.cancelLongPressDistance)
                     this.dispose()
             }),
             DocumentEvents.capturedPassive.pointerUp$.subscribe(() => this.dispose()),
             DocumentEvents.capturedPassive.pointerCancel$.subscribe(() => this.dispose()),
-            // We should suppress default 'contextmenu' events while waiting for our own
-            DocumentEvents.capturedPassive.contextmenu$.subscribe((e: MouseEvent) => {
-                endEvent(e);
-                this.dispose()
-            }),
+            // Just in case - it normally shouldn't be triggered before 'pointerup'
+            Gestures.addActive(new SuppressEventGesture('click', 1000)),
+            // Just in case - we cancelled it in on 'onpointerdown' handler
+            Gestures.addActive(new SuppressEventGesture('contextmenu', 1000)),
+
             // This timeout actually triggers 'contextmenu'
             new Timeout(delayMs, () => {
+                // It's important to call dispose in the very beginning,
+                // coz it removes 'contextmenu' suppression gesture
                 this.dispose();
 
                 let mustCancelClick = true;
@@ -209,13 +212,15 @@ class ContextMenuOrDataHrefGesture extends Gesture {
                     mustCancelClick = event.defaultPrevented || event.cancelBubble || !mustHandleDefault;
                 }
                 finally {
+                    const suppressContextMenuGesture = Gestures.addActive(new SuppressEventGesture('contextmenu', 300));
                     let cancelGesture: Gesture = null;
                     const suppressGesture = Gestures.addActive(
                         new WaitForEventGesture('pointerup', () => {
+                            suppressContextMenuGesture.dispose();
                             cancelGesture?.dispose();
+                            Gestures.addActive(new SuppressEventGesture('contextmenu', 300));
                             if (mustCancelClick)
-                                Gestures.addActive(new SuppressEventGesture('click', 200));
-                            Gestures.addActive(new SuppressEventGesture('contextmenu', 200));
+                                Gestures.addActive(new SuppressEventGesture('click', 300));
                         }));
                     cancelGesture = Gestures.addActive(
                         new WaitForEventGesture('pointercancel', () => suppressGesture.dispose()));

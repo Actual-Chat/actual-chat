@@ -1,5 +1,5 @@
-import { NextInteraction } from 'next-interaction';
 import { EventHandler } from 'event-handling';
+import { Interactive } from 'interactive';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'UserActivityUI';
@@ -17,7 +17,7 @@ export class UserActivityUI {
 
     constructor(blazorRef: DotNet.DotNetObject) {
         this._blazorRef = blazorRef;
-        this._handler = NextInteraction.addHandler(() => this.onInteracted(), false)
+        this._handler = Interactive.interactionEvents.add(() => this.onInteracted())
     }
 
     public dispose() {
