@@ -19,7 +19,7 @@ export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/ImageViewerModal/image-viewer';
 export * from './Components/Menu/menu-host';
-export * from './Components/Modal/BlazoredModal/BlazoredModal.razor.js';
+export * from './Components/Modal/BlazoredModal/blazored-modal.js';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';

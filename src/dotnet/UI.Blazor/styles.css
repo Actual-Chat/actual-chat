@@ -14,7 +14,7 @@
 @import './Components/ImageViewerModal/image-viewer-modal.css';
 @import './Components/Lines/lines.css';
 @import './Components/Menu/menu.css';
-@import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css';
+@import './Components/Modal/BlazoredModal/blazored-modal-instance.css';
 @import './Components/Modal/modal.css'; /* based on BlazoredModal */
 @import './Components/Pic/pic.css';
 @import './Components/PicUpload/pic-upload.css';
