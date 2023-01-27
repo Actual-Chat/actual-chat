@@ -74,12 +74,11 @@
         if (error != null)
             return;
 
-        EditAvatar(avatar, "Add avatar");
+        await EditAvatar(avatar, "Add avatar");
     }
 
-    private void EditAvatar(AvatarFull avatar, string title) {
-        ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
-    }
+    private Task EditAvatar(AvatarFull avatar, string title)
+        => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
 
     private async Task SetDefaultAvatar(AvatarFull avatar) {
         var command = new IAvatars.SetDefaultCommand(Session, avatar.Id);

@@ -23,7 +23,7 @@
                 NameClass="hidden" />
         </Icon>
         <Right>
-            <TileButtons HideSetDefaultButton="true" OnEditClick="@EditAccount"/>
+            <TileButtons HideSetDefaultButton="true" OnEditClick="@OnEditClick"/>
         </Right>
         <Content>
             @account.User.Name
@@ -117,6 +117,6 @@
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);
 
-    private void EditAccount()
+    private Task OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);
 }

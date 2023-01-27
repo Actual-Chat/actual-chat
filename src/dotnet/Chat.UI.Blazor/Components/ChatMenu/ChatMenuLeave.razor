@@ -14,7 +14,6 @@
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    private void OnLeaveChatClick() {
-        _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
-    }
+    private Task OnLeaveChatClick()
+        => ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
 }

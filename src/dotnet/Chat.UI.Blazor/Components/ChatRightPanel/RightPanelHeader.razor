@@ -41,6 +41,6 @@
     private void OnHideRightPanelClick()
         => RightPanelUI.ChangeVisibility(false);
 
-    private void OnEditChatSettingsClick()
+    private Task OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.Model(Chat));
 }

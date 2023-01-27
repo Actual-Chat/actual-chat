@@ -347,7 +347,7 @@ public partial class ChatUI : WorkerBase
             UICommander.RunNothing();
     }
 
-    public void ShowDeleteMessageModal(ChatMessageModel model)
+    public Task ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 
     public async ValueTask<SyncedStateLease<ChatPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)

@@ -25,6 +25,6 @@
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    private void OnCreateButtonClick()
+    private Task OnCreateButtonClick()
         => ModalUI.Show(new CreationModal.Model());
 }
