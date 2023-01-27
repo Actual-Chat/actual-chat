@@ -24,7 +24,7 @@ export class UserActivityUI {
         this._handler.dispose();
     }
 
-    public getLastActiveAt() {
+    public getLastActiveAt() : Date {
         return this._lastActiveAt;
     }
 
@@ -38,8 +38,8 @@ export class UserActivityUI {
         if (!this._shouldNotify)
             return;
 
+        this._shouldNotify = false;
         debugLog?.log(`onInteracted: notifying server about user activity`);
         await this._blazorRef.invokeMethodAsync('OnInteracted');
-        this._shouldNotify = false;
     }
 }
