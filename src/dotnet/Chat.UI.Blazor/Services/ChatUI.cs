@@ -116,10 +116,9 @@ public partial class ChatUI : WorkerBase
     {
         Log.LogDebug("ListUnordered");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        var result = await contactIds
-            .Select(contactId => Get(contactId.ChatId, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
+        var result = await Task.WhenAll(
+            contactIds.Select(contactId => Get(contactId.ChatId, cancellationToken))
+            ).ConfigureAwait(false);
         return result.SkipNullItems().ToDictionary(c => c.Id);
     }
 
