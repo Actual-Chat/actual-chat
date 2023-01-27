@@ -142,10 +142,6 @@ class ContextMenuGesture extends Gesture {
             if (delayText === null && ScreenSize.isWide() && !DeviceInfo.isIos)
                 return; // No 'data-context-menu-delay' + wide screen + non-iOS device: default handling
 
-            // This turns off default 'contextmenu' event on long tap.
-            // This is necessary, coz it might get triggered together with ours.
-            event.preventDefault();
-
             let delay = parseInt(delayText);
             delay = isNaN(delay) ? this.defaultDelayMs : delay;
             const gesture = new ContextMenuGesture(event, delay);
