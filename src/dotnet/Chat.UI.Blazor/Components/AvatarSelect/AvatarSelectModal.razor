@@ -50,7 +50,9 @@
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, cancellationToken);
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
-        var avatars = await avatarIds.Select(x => Avatars.GetOwn(Session, x, cancellationToken)).Collect();
+        var avatars = await avatarIds
+            .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
+            .Collect();
         var existingAvatars = avatars.SkipNullItems().ToImmutableArray();
         return new ViewModel(existingAvatars, account.Avatar.Id);
     }

@@ -294,7 +294,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 await peerChatId.UserIds
                     .ToArray()
                     .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
-                    .Collect(0)
+                    .Collect()
                     .ConfigureAwait(false);
             }
             else if (chatId.Kind == ChatKind.Group) {

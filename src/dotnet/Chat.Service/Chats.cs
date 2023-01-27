@@ -141,7 +141,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var authors = await authorIds
             .Select(id => Authors.Get(session, chatId, id, cancellationToken))
-            .Collect()
+            .Collect() // Add concurrency
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()

@@ -71,7 +71,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             await peerChatId.UserIds
                 .ToArray()
                 .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
-                .Collect(0)
+                .Collect()
                 .ConfigureAwait(false);
         }
         else {

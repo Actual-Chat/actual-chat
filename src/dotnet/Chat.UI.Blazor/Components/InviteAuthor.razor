@@ -95,7 +95,7 @@
                     IsExisting = existingUserIds.Contains(account.Id),
                 };
             })
-            .Collect();
+            .Collect(); // Add concurrency
 
         AllContacts = contacts
             .SkipNullItems()

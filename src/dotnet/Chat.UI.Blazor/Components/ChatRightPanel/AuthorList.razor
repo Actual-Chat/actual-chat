@@ -58,7 +58,7 @@
                 var presence = await Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
                 return (authorId, presence);
             })
-            .Collect();
+            .Collect(); // Add concurrency
         foreach (var (authorId, presence) in presences) {
             if (presence is Presence.Online or Presence.Recording) {
                 onlineAuthorIds.Add(authorId);
