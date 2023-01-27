@@ -10,12 +10,12 @@ public class DebouncerTest
     {
         var results = new List<int>();
         var clock = new TestClock();
-        var debouncer = new Debouncer<int>(TimeSpan.FromMilliseconds(1000), i => {
+        var debouncer = new Debouncer<int>(clock, TimeSpan.FromMilliseconds(1000), i => {
             lock (results) {
                 results.Add(i);
             }
             return Task.CompletedTask;
-        }) { Clock = clock };
+        });
         debouncer.Debounce(1);
         clock.OffsetBy(100);
         debouncer.Debounce(2);
@@ -67,12 +67,12 @@ public class DebouncerTest
     {
         var results = new List<int>();
         var clock = new TestClock();
-        var debouncer = new Debouncer<int>(TimeSpan.FromMilliseconds(1000), i => {
+        var debouncer = new Debouncer<int>(clock, TimeSpan.FromMilliseconds(1000), i => {
             lock (results) {
                 results.Add(i);
             }
             return Task.CompletedTask;
-        }) { Clock = clock };
+        });
         debouncer.Throttle(1);
         clock.OffsetBy(100);
         debouncer.Throttle(2);

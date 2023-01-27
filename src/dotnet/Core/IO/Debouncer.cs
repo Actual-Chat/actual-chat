@@ -9,13 +9,18 @@ public class Debouncer<T>
     private readonly Func<T, Task> _action;
     private object Lock => this;
 
+    public IMomentClock Clock { get; }
     public TimeSpan Interval { get; }
-    public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
 
     public Debouncer(TimeSpan interval, Func<T, Task> action)
+        : this(MomentClockSet.Default.CpuClock, interval, action)
+    { }
+
+    public Debouncer(IMomentClock clock, TimeSpan interval, Func<T, Task> action)
     {
-        _action = action;
+        Clock = clock;
         Interval = interval;
+        _action = action;
     }
 
     public Task WhenCompleted()
