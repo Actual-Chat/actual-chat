@@ -72,7 +72,7 @@
     private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
+    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -92,7 +92,7 @@
         if (!firstRender)
             return Task.CompletedTask;
 
-        _ = DeviceInfo.EnsureDeviceRegistered(CancellationToken.None);
+        _ = NotificationUI.EnsureDeviceRegistered(CancellationToken.None);
         _ = OnboardingUI.TryShow();
 
         return Task.CompletedTask;
