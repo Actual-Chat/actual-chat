@@ -27,6 +27,13 @@ export class NotificationUI {
         NotificationUI.registerNotificationHandler();
     }
 
+    public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
+        buttonContainer.addEventListener('click', async () => {
+            await NotificationUI.requestNotificationPermission();
+            await NotificationUI.getDeviceToken();
+        });
+    }
+
     public static async getNotificationPermissionStatus(): Promise<PermissionState> {
         if (!('Notification' in window))
             return 'denied';

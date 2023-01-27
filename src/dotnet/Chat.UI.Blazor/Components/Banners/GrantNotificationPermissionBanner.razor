@@ -1,5 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Notification.UI.Blazor
+@using ActualChat.Notification.UI.Blazor.Module
+@using ActualChat.Hosting
 @inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
 @{
     var m = State.Value;
@@ -9,15 +11,28 @@
     Actual Chat can notify you about new messages
     </Body>
     <Buttons>
-        <Button Class="btn-transparent on" Click="@OnAddClick">Configure</Button>
+        <Button @*@ref="_configureButton"*@ Class="btn-transparent on" Click="@OnAddClick">Configure</Button>
     </Buttons>
 </Banner>
 
 @code {
+    private Button _configureButton = null!;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        await JS.InvokeVoidAsync(
+            $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
+            _configureButton
+            );
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
