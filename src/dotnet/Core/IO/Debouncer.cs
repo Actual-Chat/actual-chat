@@ -10,6 +10,7 @@ public class Debouncer<T>
     private object Lock => this;
 
     public TimeSpan Interval { get; }
+    public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
 
     public Debouncer(TimeSpan interval, Func<T, Task> action)
     {
@@ -57,7 +58,7 @@ public class Debouncer<T>
     private async Task WaitAndProcess(CancellationToken cancellationToken)
     {
         try {
-            await Task.Delay(Interval, cancellationToken).ConfigureAwait(false);
+            await Clock.Delay(Interval, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             return;
