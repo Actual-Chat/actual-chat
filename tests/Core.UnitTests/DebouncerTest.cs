@@ -1,8 +1,10 @@
 using ActualChat.IO;
+using ActualChat.Testing.Collections;
 using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 
+[Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
 public class DebouncerTest
 {
     [Fact]
