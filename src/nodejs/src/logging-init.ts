@@ -19,12 +19,12 @@ export type LogScope =
     | 'Gestures'
     | 'OnDeviceAwake'
     | 'OnDeviceAwakeWorker'
-    | 'MessagingInit'
     | 'MenuHost'
     | 'UndoStack'
     | 'LocalSettings'
     | 'VirtualList'
     // XxxUI
+    | 'NotificationUI'
     | 'HistoryUI'
     | 'InteractiveUI'
     | 'TuneUI'
@@ -123,7 +123,7 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     // minLevels.set('Gestures', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
-    minLevels.set('MessagingInit', LogLevel.Debug);
+    minLevels.set('NotificationUI', LogLevel.Debug);
     minLevels.set('AudioPlayerController', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
     // minLevels.set('AudioContextRef', LogLevel.Debug);

@@ -27,8 +27,9 @@ public class BannerUI
         var instance = CreateInstance(bannerModel, componentType);
  #pragma warning restore IL2072
 
+        var bannerInstances = _bannerInstances;
         lock (_lock)
-            _bannerInstances.Value = _bannerInstances.Value.Add(instance);
+            bannerInstances.Value = bannerInstances.Value.Add(instance);
 
         return instance;
     }
@@ -63,7 +64,8 @@ public class BannerUI
 
     private void Close(BannerInstance bannerInstance)
     {
+        var bannerInstances = _bannerInstances;
         lock (_lock)
-            _bannerInstances.Value = _bannerInstances.Value.Remove(bannerInstance);
+            bannerInstances.Value = bannerInstances.Value.Remove(bannerInstance);
     }
 }

@@ -116,9 +116,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             c.GetRequiredService<ModalUI>()));
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
-        // Misc. helpers
-        services.AddScoped<NotificationNavigationHandler>(c => new NotificationNavigationHandler(c));
-
         // Host-specific services
         services.TryAddScoped<IClientAuth>(c => new WebClientAuth(
             c.GetRequiredService<ClientAuthHelper>()));

@@ -1,0 +1,41 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification.UI.Blazor
+@inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
+@{
+    var m = State.Value;
+}
+<Banner IsVisible="m.State==PermissionState.Prompt" Severity="BannerSeverity.Info">
+    <Body>
+    Actual Chat can notify you about new messages
+    </Body>
+    <Buttons>
+        <Button Class="btn-transparent on" Click="@OnAddClick">Configure</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var permissionState = await NotificationUI.State.Use(cancellationToken);
+        return new(permissionState);
+    }
+
+    private async Task OnAddClick() {
+        // var contact = State.Value.Contact!;
+        // var command = new IContacts.ChangeCommand(Session, contact.Id, null, new Change<Contact> {
+        //     Create = contact,
+        // });
+        // await UICommander.Run(command);
+    }
+
+    public sealed record Model(PermissionState State) {
+        public  static readonly Model None = new(PermissionState.Denied);
+    }
+}
