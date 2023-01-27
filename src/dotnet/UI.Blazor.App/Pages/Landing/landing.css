@@ -453,9 +453,10 @@ body.narrow .docs-right-panel {
     @apply hidden;
 }
 .docs-right-panel .c-header {
-    @apply flex;
+    @apply flex-x;
     @apply h-14;
     @apply items-center justify-end;
+    @apply gap-x-4;
     @apply px-4;
     @apply bg-01;
 }

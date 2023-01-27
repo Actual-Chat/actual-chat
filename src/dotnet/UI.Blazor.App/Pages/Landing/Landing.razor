@@ -7,6 +7,7 @@
 @using ActualChat.UI.Blazor.Module
 @inherits ComputedStateComponent<Landing.Model>
 @layout NoLayout
+
 @{
     var m = State.Value;
     var account = m.Account;
@@ -56,7 +57,12 @@
                             For business
                         </div>
                     }
-                    <div class="px-8">
+                    @if (!isGuest) {
+                        <div>
+                            <a href="/chat" class="header-text text-headline-1">Chat</a>
+                        </div>
+                    }
+                    <div>
                         <a href="/docs" class="header-text text-headline-1">Docs</a>
                     </div>
                     @if (isGuest) {
