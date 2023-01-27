@@ -111,7 +111,7 @@ export class Landing {
         debugLog?.log(`autoScroll: starting`);
         endEvent(event);
         this.isAutoScrolling = true;
-        scrollWithOffset(nextPage, this.scrollContainer, this.header.getBoundingClientRect().height);
+        scrollWithOffset(nextPage, this.scrollContainer, 0);
     }
 
     private getCurrentPage(): HTMLElement | null {

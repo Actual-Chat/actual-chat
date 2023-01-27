@@ -60,17 +60,22 @@
                         <a href="/docs" class="header-text text-headline-1">Docs</a>
                     </div>
                     @if (isGuest) {
-                        <SigninButtonGroup>
-                            <GoogleIcon>
-                                <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
-                            </GoogleIcon>
-                            <FacebookIcon>
-                                <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8">
-                            </FacebookIcon>
-                            <AppleIcon>
-                                <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8">
-                            </AppleIcon>
-                        </SigninButtonGroup>
+                        <button class="signin-button-group" onclick="@(() => SignIn(googleScheme.Name))">
+                            <span class="px-2">Sign in with</span>
+                            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                        </button>
+                        // Don't remove this button group
+                        @* <SigninButtonGroup> *@
+                        @*     <GoogleIcon> *@
+                        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
+                        @*     </GoogleIcon> *@
+                        @*     <FacebookIcon> *@
+                        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8"> *@
+                        @*     </FacebookIcon> *@
+                        @*     <AppleIcon> *@
+                        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8"> *@
+                        @*     </AppleIcon> *@
+                        @* </SigninButtonGroup> *@
                     } else {
                         <AvatarCircle Avatar="@account?.Avatar" Size="SquareSize.Size9"></AvatarCircle>
                     }
@@ -104,17 +109,22 @@
                     </div>
                     <div class="flex @(isNarrow ? "justify-center" : "")">
                         @if (isGuest) {
-                            <SigninButtonGroup>
-                                <GoogleIcon>
-                                    <img src="/dist/images/landing/google-icon-blue.svg" alt="google" class="min-h-8 min-w-8">
-                                </GoogleIcon>
-                                <FacebookIcon>
-                                    <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8">
-                                </FacebookIcon>
-                                <AppleIcon>
-                                    <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8">
-                                </AppleIcon>
-                            </SigninButtonGroup>
+                            <button class="signin-button-group bg-01" onclick="@(() => SignIn(googleScheme.Name))">
+                                <span class="px-2">Sign in with</span>
+                                <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                            </button>
+                            // Don't remove this button group
+                            @* <SigninButtonGroup> *@
+                            @*     <GoogleIcon> *@
+                            @*         <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
+                            @*     </GoogleIcon> *@
+                            @*     <FacebookIcon> *@
+                            @*         <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8"> *@
+                            @*     </FacebookIcon> *@
+                            @*     <AppleIcon> *@
+                            @*         <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8"> *@
+                            @*     </AppleIcon> *@
+                            @* </SigninButtonGroup> *@
                         }
                     </div>
                 </div>
@@ -126,16 +136,19 @@
     </div>
 
     @* Page 2 *@
-    <div class="page">
-        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y py-8" : "flex-x")">
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y justify-center" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/evolution.svg" alt="evolution">
                 </div>
             </div>
             <div class="flex-y @(isNarrow ? "p-4 justify-center" : "w-1/2 gap-y-8 justify-start p-16 pl-4 text-4xl font-medium")">
+                <div class="title-text">
+                    What’s the biggest differentiator?
+                </div>
                 <div>
-                    What’s the biggest differentiator between humans and any other form of life on Earth?
+                     Between humans and any other form of life on Earth?
                 </div>
                 <div>
                     Communication. And the more productive it is, the faster we evolve.
@@ -145,9 +158,9 @@
     </div>
 
     @* Page 3 *@
-    <div class="page">
-        <div class="overflow-hidden bg-[#EEEEF6] @(isNarrow ? "h-full flex-y" : "h-screen flex-x")">
-            <div class="flex-y gap-y-8 @(isNarrow ? "px-4 py-8" : "w-1/2 justify-center p-16 pb-24 pr-6")">
+    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
+        <div class="overflow-hidden bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
+            <div class="flex-y gap-y-8 @(isNarrow ? "px-4 py-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
                 <div class="title-text">Voice and text merged into a single medium</div>
                 @if (isNarrow) {
                     <div class="flex justify-center p-4">
@@ -171,24 +184,23 @@
                 </div>
             </div>
             @if (!isNarrow) {
-                <div class="flex justify-center w-1/2 p-16 pb-24 pl-6">
+                <div class="flex justify-center w-2/5 p-16 pb-24 pl-0">
                     <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
                 </div>
             }
         </div>
-        <LandingLinks IsMobile="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
-    </div>
-
-    @* Page 4 *@
-    <div class="page @(isNarrow ? "" : "pt-8")">
-        <div class="flex w-full items-center justify-center @(isNarrow ? "py-8 px-16" : "h-40 py-12 px-16")">
+        <div class="flex w-full items-center justify-center @(isNarrow ? "py-8 px-16" : "h-56 py-8 px-16")">
             <div class="@(isNarrow ? "flex-y items-center text-title-1" : "flex-x text-5xl font-semibold")">
                 <span>We believe&nbsp;</span>
                 <span>communication must be...</span>
             </div>
         </div>
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y px-4" : "flex-x")">
-            <div class="flex justify-center @(isNarrow ? "p-8" : "w-1/2 p-16 pb-24 pr-6")">
+    </div>
+
+    @* Page 4 *@
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y px-4 pt-14" : "flex-x")">
+            <div class="flex justify-center @(isNarrow ? "p-8" : "w-1/2 p-4")">
                 <img src="/dist/images/landing/stressless.svg" alt="stressless">
             </div>
             <div class="flex-y justify-center @(isNarrow ? "" : "w-1/2 p-16 pb-24 pl-6")">
@@ -218,8 +230,8 @@
     </div>
 
     @* Page 5 *@
-    <div class="page">
-        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y justify-end py-8" : "flex-x")">
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y justify-center" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="title-text">Seamless and frictionless</div>
                 <ul>
@@ -256,8 +268,8 @@
     </div>
 
     @* Page 6 *@
-    <div class="page">
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y py-8" : "flex-x")">
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
@@ -282,8 +294,8 @@
     </div>
 
     @* Page 7 *@
-    <div class="page">
-        <div class="@(isNarrow ? "-flex-y py-16" : "flex-x min-h-136")">
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="h-full @(isNarrow ? "-flex-y justify-center" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="title-text">Productive</div>
                 <div>
@@ -314,8 +326,8 @@
     </div>
 
     @* Page 7.5 *@
-    <div class="page">
-        <div class="bg-[#EEEEF6] @(isNarrow ? "flex-y py-16" : "flex-x min-h-136")">
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center" : "flex-x")">
             <div class="flex justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
             </div>
@@ -346,7 +358,7 @@
 
     @* Page 8 *@
     <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y items-center justify-center overflow-hidden @(isNarrow ? "h-full px-4 py-8 gap-y-4" : "h-screen px-16 py-24 gap-y-8")">
+        <div class="flex-y items-center justify-center overflow-hidden @(isNarrow ? "h-full px-4 pt-14 pb-8 gap-y-4" : "h-screen px-16 py-24 gap-y-8")">
             <div class="flex font-semibold @(isNarrow ? "self-center text-4.5xl" : "self-start text-7xl")">
                 Enjoyable and Fun
             </div>
@@ -432,15 +444,10 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
                     <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-05.svg" alt="description">
+                        <img src="/dist/images/landing/dialog-07.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <div>
-                            <span class="font-bold">Public</span> (anyone can view &
-                        </div>
-                        <div>
-                            listen) <span class="font-bold">and private chats</span>
-                        </div>
+                        <span class="font-bold">Unlimited Image & file uploads</span>
                     </div>
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
@@ -451,29 +458,6 @@
                         <span class="font-bold">Characters</span>
                         your status and picture you can choose on per-chat basis
                     </div>
-                </div>
-            </div>
-
-            <div class="w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-07.svg" alt="description">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Unlimited Image & file uploads</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-08.svg" alt="description">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Languages</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")"></div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")"></div>
                 </div>
             </div>
         </div>
@@ -505,7 +489,7 @@
     </div>
 
     @* Page 11 *@
-    <div class="page">
+    <div class="page no-auto-scroll">
         <div class="flex-y h-full">
             <div class="@(isNarrow ? "flex-y py-8" : "flex-x min-h-120")">
                 <div class="@(isNarrow ? "flex-y px-4 py-8" : "flex-x w-1/2 p-16 pr-6")">
@@ -535,10 +519,10 @@
                         <a href="/docs/cookies" class="footer-link">
                             Cookie Preferences
                         </a>
-                        <a href="#" class="footer-link">
-                            Contact us
-                        </a>
                         @if (m.EnableIncompleteUI) {
+                            <a href="#" class="footer-link">
+                                Contact us
+                            </a>
                             <a href="#" class="footer-link">
                                 Region
                             </a>
@@ -549,9 +533,9 @@
                     </div>
                 </div>
                 <div class="flex-y justify-between items-start text-04 @(isNarrow ? "hidden" : "")">
-                    <button class="footer-info-btn">
+                    <a class="footer-link" href="https://github.com/Actual-Chat/actual-chat">
                         Github
-                    </button>
+                    </a>
                     @if (m.EnableIncompleteUI) {
                         <button class="footer-info-btn">
                             Announcements
@@ -567,8 +551,6 @@
             </div>
         </div>
     </div>
-
-    <div class="page"></div>
 </div>
 
 @code {
