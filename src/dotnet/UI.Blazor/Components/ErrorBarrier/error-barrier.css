@@ -1,0 +1,25 @@
+﻿.error-barrier {
+    @apply grow place-self-center;
+    @apply flex-y justify-center items-center;
+    @apply text-icons-01;
+}
+
+.error-barrier-full {
+    min-width: 260px;
+}
+
+.error-barrier .c-image {
+    height: 168px;
+    width: 239px;
+    background-image: url('/dist/images/error-barrier-image.svg');
+    background-repeat: no-repeat;
+}
+
+.error-barrier-text {
+    @apply flex-y justify-center items-center;
+    @apply my-2;
+}
+
+.error-barrier p {
+    @apply text-center;
+}
