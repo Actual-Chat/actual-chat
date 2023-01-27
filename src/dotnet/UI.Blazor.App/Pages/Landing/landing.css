@@ -3,8 +3,11 @@
 }
 .landing .page {
     @apply flex-y;
-    @apply h-full;
+    @apply md:h-screen;
     @apply overflow-hidden;
+}
+.landing .page.no-auto-scroll {
+    @apply h-full;
 }
 
 /* General styles */
@@ -382,15 +385,13 @@ body.narrow .landing .landing-menu {
 }
 .landing-links {
     @apply flex-x;
-    @apply h-60;
     @apply gap-x-16;
     @apply items-center justify-evenly;
-    @apply p-16;
+    @apply p-4;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }
 body.narrow .landing-links {
     @apply flex-y;
-    @apply p-4;
 }
 
 /* Docs */
