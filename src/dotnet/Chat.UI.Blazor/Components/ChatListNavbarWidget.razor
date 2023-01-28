@@ -74,7 +74,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await ChatUI.List(cancellationToken);
         var unreadCounts = await ChatListFilter.All
-            .Select(async x => new { FilterId = x.Id, UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken) })
+            .Select(async x => new {
+                FilterId = x.Id,
+                UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken),
+            })
             .Collect();
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);

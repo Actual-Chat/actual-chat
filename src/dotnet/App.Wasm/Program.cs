@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.App.Wasm.Diagnostics;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -35,6 +36,16 @@ public static class Program
         IConfiguration configuration,
         string baseUrl)
     {
+        // Diagnostics
+        if (Constants.Diagnostics.Wasm.TaskMonitor) {
+            services.AddSingleton<TaskMonitor>();
+            services.AddHostedService<TaskMonitor>();
+        }
+        if (Constants.Diagnostics.Wasm.ComputedMonitor) {
+            services.AddSingleton<ComputedMonitor>();
+            services.AddHostedService<ComputedMonitor>();
+        }
+
         // Logging
         services.AddLogging(logging => logging
             .SetMinimumLevel(LogLevel.Debug)
