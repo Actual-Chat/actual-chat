@@ -3,10 +3,12 @@
   <!-- Publish & runtime properties -->
   <PropertyGroup>
     <!-- These settings allows to build dotnet.js w/ symbols, but it takes like 1H or so -->
+    <!--
     <RunAOTCompilation>true</RunAOTCompilation>
     <RunAOTCompilationAfterBuild>true</RunAOTCompilationAfterBuild>
     <WasmEmitSymbolMap>true</WasmEmitSymbolMap>
     <WasmNativeStrip>false</WasmNativeStrip>
+    -->
 
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
