@@ -10,16 +10,17 @@
 
 @code {
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
     [Parameter, EditorRequired] public Moment StopAt { get; set; }
     [Parameter] public string Format { get; set; } = "mm\\:ss";
     [Parameter] public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(0.9);
     [Parameter] public string Class { get; set; } = "";
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
-        if (StopAt <= Clocks.UIClock.Now)
+        if (StopAt <= Clocks.CpuClock.Now)
             return Task.FromResult("");
 
-        var result = (Clocks.UIClock.Now - StopAt).ToString(Format);
+        var result = (Clocks.CpuClock.Now - StopAt).ToString(Format);
         Computed.GetCurrent()!.Invalidate(UpdateInterval);
         return Task.FromResult(result);
     }
