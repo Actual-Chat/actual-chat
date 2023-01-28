@@ -51,7 +51,10 @@
     [Parameter] public Chat Chat { get; set; } = Chat.None;
 
     protected override ComputedState<ImmutableArray<AvatarFull>>.Options GetStateOptions()
-        => new () { InitialValue = ImmutableArray<AvatarFull>.Empty };
+        => new () {
+            InitialValue = ImmutableArray<AvatarFull>.Empty,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ImmutableArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);

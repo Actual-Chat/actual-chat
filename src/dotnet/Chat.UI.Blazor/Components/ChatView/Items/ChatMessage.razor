@@ -155,7 +155,10 @@
             var ownAuthorId = ownAuthorTask.Result?.Id ?? AuthorId.None;
             initialValue = new Model { OwnAuthorId = ownAuthorId };
         }
-        return new() { InitialValue = initialValue };
+        return new() {
+            InitialValue = initialValue,
+            Category = GetStateCategory(),
+        };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

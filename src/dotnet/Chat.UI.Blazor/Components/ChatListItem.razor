@@ -83,6 +83,7 @@
     protected override ComputedState<ChatState>.Options GetStateOptions()
         => new() {
             InitialValue = new ChatState(ChatInfo, new ChatAudioState(ChatInfo.Id)),
+            Category = GetStateCategory(),
         };
 
     protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken)

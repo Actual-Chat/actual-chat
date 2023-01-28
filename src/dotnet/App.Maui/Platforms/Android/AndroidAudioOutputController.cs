@@ -42,17 +42,22 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
 
         var stateFactory = services.StateFactory();
         var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(AndroidAudioOutput));
-        _isAudioOn = stateFactory.NewMutable<bool>();
+        var type = GetType();
+        _isAudioOn = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsAudioOn)));
         _isSpeakerphoneOnStored = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsSpeakerphoneOn)) {
                 InitialValue = false,
+                Category = StateCategories.Get(type, nameof(_isSpeakerphoneOnStored)),
             });
         IsSpeakerphoneOn = stateFactory.NewComputed(
             new ComputedState<bool>.Options() {
-                UpdateDelayer = FixedDelayer.ZeroUnsafe,
                 ComputedOptions = new ComputedOptions() {
                     AutoInvalidationDelay = TimeSpan.FromSeconds(5),
                 },
+                UpdateDelayer = FixedDelayer.ZeroUnsafe,
+                Category = StateCategories.Get(type, nameof(IsSpeakerphoneOn)),
             },
             (_, _) => Task.FromResult(IsSpeakerphoneActuallyOn(true)));
     }

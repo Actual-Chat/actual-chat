@@ -37,7 +37,10 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
-        => new() { InitialValue = ComputedModel.Loading };
+        => new() {
+            InitialValue = ComputedModel.Loading,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         if (AuthorId.IsNone)

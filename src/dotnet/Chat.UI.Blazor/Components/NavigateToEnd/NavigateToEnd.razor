@@ -35,7 +35,10 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.Invisible };
+        => new() {
+            InitialValue = Model.Invisible,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = new ChatId(ChatSid, ParseOrNone.Option);

@@ -45,7 +45,10 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ViewModel>.Options GetStateOptions()
-        => new() { InitialValue = ViewModel.None };
+        => new() {
+            InitialValue = ViewModel.None,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, cancellationToken);

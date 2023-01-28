@@ -67,7 +67,10 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.Loading };
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var languages = await LanguageUI.Settings.Use(cancellationToken);

@@ -9,7 +9,6 @@ public class OnboardingUI
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private ModalUI ModalUI { get; }
-    private AccountSettings AccountSettings { get; }
 
     public ISyncedState<UserOnboardingSettings> Settings { get; }
 
@@ -18,12 +17,14 @@ public class OnboardingUI
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
         ModalUI = services.GetRequiredService<ModalUI>();
-        AccountSettings = services.GetRequiredService<AccountSettings>();
+
         var stateFactory = services.StateFactory();
+        var accountSettings = services.GetRequiredService<AccountSettings>();
         Settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
-            new (AccountSettings, UserOnboardingSettings.KvasKey) {
+            new (accountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
     }
 

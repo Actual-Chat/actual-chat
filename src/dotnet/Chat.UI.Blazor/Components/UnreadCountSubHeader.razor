@@ -23,7 +23,9 @@
     [Parameter] public EventCallback Click { get; set; }
 
     protected override void OnInitialized() {
-        _overrideToZero = StateFactory.NewMutable(false);
+        _overrideToZero = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_overrideToZero)));
         base.OnInitialized();
     }
 

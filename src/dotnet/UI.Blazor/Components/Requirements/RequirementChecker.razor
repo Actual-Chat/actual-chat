@@ -53,6 +53,7 @@
         => new() {
             InitialValue = FailedRequirementSet.Empty,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {

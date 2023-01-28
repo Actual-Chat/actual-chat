@@ -26,7 +26,9 @@ public class ChatPlayers : WorkerBase
         TuneUI = services.GetRequiredService<TuneUI>();
 
         var stateFactory = services.StateFactory();
-        PlaybackState = stateFactory.NewMutable<PlaybackState?>();
+        PlaybackState = stateFactory.NewMutable(
+            (PlaybackState?)null,
+            StateCategories.Get(GetType(), nameof(PlaybackState)));
         Start();
     }
 

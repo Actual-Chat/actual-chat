@@ -27,7 +27,10 @@
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = await ChatUI.Get(ChatId, cancellationToken).ConfigureAwait(false);

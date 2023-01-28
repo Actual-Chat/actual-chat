@@ -13,12 +13,10 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private bool _mustResetOrigin = true;
-    private ILogger? _log;
 
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
     private MomentClockSet Clocks { get; }
     private Options Settings { get; }
+    private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
 
     public CancellationToken DisposeToken { get; }
     public Task WhenFirstTimeRead { get; }
@@ -40,10 +38,11 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         var stateFactory = services.StateFactory();
         Clocks = services.Clocks();
         WhenFirstTimeRead = TaskSource.New<Unit>(true).Task;
-        ReadState = stateFactory.NewComputed<T>(
+        ReadState = stateFactory.NewComputed(
             new ComputedState<T>.Options() {
                 ComputedOptions = options.ComputedOptions,
                 UpdateDelayer = options.UpdateDelayer,
+                Category = StateCategories.Get(Category, nameof(ReadState)),
             },
             async (state, ct) => {
                 try {

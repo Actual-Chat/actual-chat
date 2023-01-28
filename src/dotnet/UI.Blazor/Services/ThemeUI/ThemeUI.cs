@@ -31,6 +31,7 @@ public class ThemeUI : WorkerBase
             new(accountSettings, nameof(ThemeSettings)) {
                 InitialValue = new ThemeSettings(Theme.Light),
                 UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
         WhenReady = TaskSource.New<Unit>(true).Task;
     }

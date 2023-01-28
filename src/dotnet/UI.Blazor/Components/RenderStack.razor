@@ -28,7 +28,10 @@
     [Parameter] public RenderFragment<RenderFragment?>? Item { get; set; }
 
     protected override ComputedState<ImmutableList<RenderIntoStack>>.Options GetStateOptions()
-        => new () { UpdateDelayer = FixedDelayer.Instant };
+        => new () {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ImmutableList<RenderIntoStack>> ComputeState(CancellationToken cancellationToken)
         => await RenderVars.RenderStack(Name).Use(cancellationToken);

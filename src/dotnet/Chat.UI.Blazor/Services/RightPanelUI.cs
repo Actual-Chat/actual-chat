@@ -20,13 +20,17 @@ public class RightPanelUI
 
         var stateFactory = services.StateFactory();
         // TODO: On Desktop we can switch between 2 wide and narrow layout. Decide how to better handle this?
+        var type = GetType();
         if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            _isVisible = stateFactory.NewMutable<bool>();
+            _isVisible = stateFactory.NewMutable(
+                false,
+                StateCategories.Get(type, nameof(IsVisible)));
         else {
             var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanelUI));
             _isVisible = stateFactory.NewKvasStored<bool>(
                 new (localSettings, nameof(IsVisible)) {
                     InitialValue = false,
+                    Category = StateCategories.Get(type, nameof(IsVisible)),
                 });
         }
     }

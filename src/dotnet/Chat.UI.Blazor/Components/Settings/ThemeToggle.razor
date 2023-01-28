@@ -13,6 +13,7 @@
         => new() {
             InitialValue = ThemeUI.Theme,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<Theme> ComputeState(CancellationToken cancellationToken) {

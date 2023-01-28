@@ -53,10 +53,11 @@
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     protected override ComputedState<Model>.Options GetStateOptions()
-    => new() {
-        InitialValue = Model.NotPlaying,
-        UpdateDelayer = FixedDelayer.Instant,
-    };
+        => new() {
+            InitialValue = Model.NotPlaying,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);

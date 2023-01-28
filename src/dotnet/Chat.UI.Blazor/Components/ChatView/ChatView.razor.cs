@@ -41,8 +41,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryLid = StateFactory.NewMutable<long?>();
-            ItemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty);
+            NavigateToEntryLid = StateFactory.NewMutable(
+                (long?)null,
+                StateCategories.Get(GetType(), nameof(NavigateToEntryLid)));
+            ItemVisibility = StateFactory.NewMutable(
+                ChatViewItemVisibility.Empty,
+                StateCategories.Get(GetType(), nameof(ItemVisibility)));
             ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
         }

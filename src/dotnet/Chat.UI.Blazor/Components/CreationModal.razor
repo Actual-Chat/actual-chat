@@ -133,6 +133,7 @@
         => new() {
             InitialValue = ComputedModel.None,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {

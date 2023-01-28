@@ -47,9 +47,11 @@
     [Parameter] public TimeSpan? AutoCloseDelay { get; set; }
     [Parameter] public TimeSpan? AnimationTime { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions() => new () {
-        InitialValue = Model.None,
-    };
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new () {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override void OnParametersSet() {
         if (_closingTimer != null) {

@@ -4,8 +4,9 @@ namespace ActualChat.App.Wasm.Diagnostics;
 
 public class ComputedMonitor : WorkerBase
 {
-    const int SummarySampleRatio = 10;
-    const int LogSampleRatio = 0; // SummarySampleRatio * 3; // Must be a multiple of SummarySampleRatio
+    private readonly TimeSpan SummaryInterval = TimeSpan.FromSeconds(3);
+    private const int SummarySampleRatio = 10;
+    private const int LogSampleRatio = 0; // SummarySampleRatio * 3; // Must be a multiple of SummarySampleRatio
 
     private int _registered;
     private int _unregistered;
@@ -29,7 +30,7 @@ public class ComputedMonitor : WorkerBase
 
         var sb = new StringBuilder();
         while (!cancellationToken.IsCancellationRequested) {
-            await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(SummaryInterval, cancellationToken).ConfigureAwait(false);
             var registered = Interlocked.Exchange(ref _registered, 0);
             var unregistered = Interlocked.Exchange(ref _unregistered, 0);
 
@@ -44,12 +45,13 @@ public class ComputedMonitor : WorkerBase
                 if (_summary.Count != 0) {
                     if (sb.Length != 0)
                         sb.Append("\r\n");
-                    sb.Append("Registration frequencies:");
-                    foreach (var (key, count) in _summary) {
+                    sb.Append("Update counts (per second):");
+                    var multiplier = SummarySampleRatio / SummaryInterval.TotalSeconds;
+                    foreach (var (key, count) in _summary.OrderByDescending(kv => kv.Value)) {
                         sb.Append("\r\n- ");
                         sb.Append(key);
                         sb.Append(": ");
-                        sb.Append(count * SummarySampleRatio);
+                        sb.AppendFormat(CultureInfo.InvariantCulture, "{0:F1}", count * multiplier);
                     }
                     _summary.Clear();
                 }

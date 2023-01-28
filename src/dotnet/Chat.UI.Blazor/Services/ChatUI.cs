@@ -67,13 +67,21 @@ public partial class ChatUI : WorkerBase
         UIEventHub = services.UIEventHub();
         Commander = services.Commander();
 
-        _selectedChatId = StateFactory.NewMutable<ChatId>();
-        _relatedChatEntry = StateFactory.NewMutable<RelatedChatEntry?>();
-        _highlightedEntryId = StateFactory.NewMutable<ChatEntryId>();
+        var type = GetType();
+        _selectedChatId = StateFactory.NewMutable(
+            ChatId.None,
+            StateCategories.Get(type, nameof(SelectedChatId)));
+        _relatedChatEntry = StateFactory.NewMutable(
+            (RelatedChatEntry?)null,
+            StateCategories.Get(type, nameof(RelatedChatEntry)));
+        _highlightedEntryId = StateFactory.NewMutable(
+            ChatEntryId.None,
+            StateCategories.Get(type, nameof(HighlightedEntryId)));
 
         ListSettings = StateFactory.NewKvasStored<ChatListSettings>(
             new (AccountSettings, nameof(ListSettings)) {
                 InitialValue = new(),
+                Category = StateCategories.Get(type, nameof(ListSettings)),
             });
 
         // Read entry states from other windows / devices are delayed by 1s
@@ -406,6 +414,7 @@ public partial class ChatUI : WorkerBase
                 }) {
                 InitialValue = new ChatPosition(),
                 UpdateDelayer = _readStateUpdateDelayer,
+                Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }
         ));
     }

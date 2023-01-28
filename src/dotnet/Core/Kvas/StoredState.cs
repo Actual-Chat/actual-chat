@@ -9,12 +9,9 @@ public interface IStoredState<T> : IMutableState<T>
 
 public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 {
-    private ILogger? _log;
-
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
     private Options Settings { get; }
     private TaskSource<Unit> WhenReadSource { get; }
+    private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
 
     public Task WhenRead => WhenReadSource.Task;
 

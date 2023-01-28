@@ -16,6 +16,7 @@
             InitialValue = Text,
             // Just to de-bounce re-renders
             UpdateDelayer = UpdateDelayer,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {

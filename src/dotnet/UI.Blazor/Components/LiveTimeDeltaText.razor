@@ -21,7 +21,10 @@
 
     protected override ComputedState<string>.Options GetStateOptions() {
         var initialValue = Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value) : NullText;
-        return new () { InitialValue = initialValue };
+        return new () {
+            InitialValue = initialValue,
+            Category = GetStateCategory(),
+        };
     }
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)

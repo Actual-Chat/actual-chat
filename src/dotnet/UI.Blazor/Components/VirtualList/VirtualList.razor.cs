@@ -92,6 +92,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         => new () {
             InitialValue = VirtualListData<TItem>.None,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)

@@ -33,6 +33,7 @@
         => new() {
             InitialValue = AuthorRules.None(Chat.Id),
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)

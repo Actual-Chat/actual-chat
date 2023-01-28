@@ -34,6 +34,7 @@ public class ActiveChatsUI
             new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixStoredActiveChats,
+                Category = StateCategories.Get(GetType(), nameof(ActiveChats)),
             });
     }
 

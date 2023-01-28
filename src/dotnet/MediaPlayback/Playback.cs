@@ -30,9 +30,16 @@ public sealed class Playback : ProcessorBase
         _messageProcessor = new MessageProcessor<IPlaybackCommand>(ProcessCommand) {
             QueueFullMode = BoundedChannelFullMode.DropOldest,
         };
-        PlayingTracks = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
-        IsPlaying = stateFactory.NewMutable(false);
-        IsPaused = stateFactory.NewMutable(false);
+        var type = GetType();
+        PlayingTracks = stateFactory.NewMutable(
+            ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty,
+            StateCategories.Get(type, nameof(PlayingTracks)));
+        IsPlaying = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsPlaying)));
+        IsPaused = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsPaused)));
     }
 
     protected override async Task DisposeAsyncCore()

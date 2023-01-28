@@ -70,7 +70,10 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var publicUrl = Chat.IsPublic ? Links.Chat(Chat.Id).ToDisplayUrl(UrlMapper) : (DisplayUrl?)null;

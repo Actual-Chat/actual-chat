@@ -22,6 +22,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
                 ComputedOptions = new () {
                     AutoInvalidationDelay = Constants.Presence.UpdatePeriod,
                 },
+                Category = StateCategories.Get(GetType(), nameof(LastActiveAt)),
             },
             (_, token) => GetLastActiveAt(token));
     }

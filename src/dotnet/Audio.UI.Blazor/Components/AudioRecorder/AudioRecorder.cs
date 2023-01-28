@@ -34,7 +34,9 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         Session = session;
         Js = js;
         _messageProcessor = new MessageProcessor<IAudioRecorderCommand>(ProcessCommand);
-        State = stateFactory.NewMutable<AudioRecorderState?>();
+        State = stateFactory.NewMutable(
+            (AudioRecorderState?)null,
+            StateCategories.Get(GetType(), nameof(State)));
         WhenInitialized = Initialize();
 
         async Task Initialize()

@@ -33,7 +33,10 @@ public partial class AccountUI : WorkerBase
             ? ownAccountTask.Result
             : AccountFull.Loading;
  #pragma warning restore VSTHRD002
-        _ownAccount = StateFactory.NewMutable<AccountFull>(new() { InitialValue = ownAccount });
+        _ownAccount = StateFactory.NewMutable<AccountFull>(new() {
+            InitialValue = ownAccount,
+            Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
+        });
         Start();
     }
 }

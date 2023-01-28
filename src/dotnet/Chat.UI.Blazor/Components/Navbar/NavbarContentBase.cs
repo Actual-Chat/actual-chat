@@ -10,7 +10,10 @@ public abstract class NavbarContentBase : ComputedStateComponent<AccountFull>
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() { InitialValue = AccountFull.Loading };
+        => new() {
+            InitialValue = AccountFull.Loading,
+            Category = GetStateCategory(),
+        };
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => Accounts.GetOwn(Session, cancellationToken);

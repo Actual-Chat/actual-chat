@@ -27,6 +27,7 @@ public class LanguageUI
                 InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
     }
 

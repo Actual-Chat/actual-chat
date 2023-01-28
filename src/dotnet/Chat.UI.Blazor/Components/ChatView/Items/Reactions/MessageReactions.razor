@@ -40,6 +40,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new Model(Entry.HasReactions, ImmutableArray<ReactionSummary>.Empty),
+            Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

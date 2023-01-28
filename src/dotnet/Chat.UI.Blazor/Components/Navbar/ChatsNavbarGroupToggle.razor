@@ -23,8 +23,9 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
-            UpdateDelayer = FixedDelayer.Get(5),
             InitialValue = new(),
+            UpdateDelayer = FixedDelayer.Get(5),
+            Category = GetStateCategory(),
         };
     }
 

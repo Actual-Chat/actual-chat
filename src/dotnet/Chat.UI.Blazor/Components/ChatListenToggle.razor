@@ -19,6 +19,7 @@
         => new() {
             InitialValue = ChatAudioState.None,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override Task<ChatAudioState> ComputeState(CancellationToken cancellationToken)

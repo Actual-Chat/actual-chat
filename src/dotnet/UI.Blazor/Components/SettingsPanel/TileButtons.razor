@@ -35,7 +35,10 @@
     [Parameter] public EventCallback OnSetDefaultClick { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken);
