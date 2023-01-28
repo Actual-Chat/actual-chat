@@ -77,7 +77,7 @@ public partial class ChatUI
                 var ctsToken = cts.Token;
                 var highlightedEntryId = cHighlightedEntryId.Value;
                 _ = BackgroundTask.Run(async () => {
-                    await Clocks.UIClock.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
                     var isReset = false;
                     lock (_lock) {
                         if (_highlightedEntryId.Value == highlightedEntryId) {

@@ -1,5 +1,4 @@
 using System.Text;
-using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.App.Wasm.Diagnostics;
 
@@ -65,23 +64,25 @@ public class ComputedMonitor : WorkerBase
     {
         var registered = Interlocked.Increment(ref _registered);
         if (SummarySampleRatio != 0 && registered % SummarySampleRatio == 0) {
-            var id = computed.Input.ToString();
-            if (id.OrdinalStartsWith("Intercepted:"))
-                id = id[12..];
-            var bracketIndex = id.IndexOf('(');
-            var key = bracketIndex < 0 ? id : id[..bracketIndex];
+            var input = computed.Input;
+            var category = input.Category;
             lock (_summary) {
-                if (_summary.TryGetValue(key, out var count))
-                    _summary[key] = count + 1;
+                if (_summary.TryGetValue(category, out var count))
+                    _summary[category] = count + 1;
                 else
-                    _summary[key] = 1;
+                    _summary[category] = 1;
             }
             if (LogSampleRatio != 0 && registered % LogSampleRatio == 0)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                Log.LogDebug("+ " + id);
+                Log.LogDebug("+ " + input.ToString());
         }
     }
 
     private void OnUnregister(IComputed computed)
-        => Interlocked.Increment(ref _unregistered);
+    {
+        var unregistered = Interlocked.Increment(ref _unregistered);
+        if (LogSampleRatio != 0 && unregistered % LogSampleRatio == 0)
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+            Log.LogDebug("+ " + computed.Input.ToString());
+    }
 }

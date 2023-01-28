@@ -233,7 +233,6 @@ public partial class ChatUI : WorkerBase
             .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
             .ConfigureAwait(false);
 
-        return fetchedReadPosition.EntryLid;
         using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
         var readPosition = readPositionState.Value;
         return readPosition.EntryLid > fetchedReadPosition.EntryLid

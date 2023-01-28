@@ -10,11 +10,11 @@ public class ComponentAnimator : IDisposable
     public Moment AnimationEndsAt { get; private set; }
     public bool IsAnimating => AnimationEndsAt > Clock.Now;
 
-    public ComponentAnimator(ComponentBase component, TimeSpan duration, IMomentClock clock)
+    public ComponentAnimator(ComponentBase component, TimeSpan duration, IMomentClock? clock = null)
     {
         Component = component;
         Duration = duration;
-        Clock = clock;
+        Clock = clock ?? MomentClockSet.Default.CpuClock;
     }
 
     public void Dispose()

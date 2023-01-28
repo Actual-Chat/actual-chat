@@ -10,8 +10,8 @@ public class ShowHideAnimator : ComponentAnimator
     public string Class { get; private set; }
     public bool MustHideComponent => OrdinalEquals(Class, "hidden");
 
-    public ShowHideAnimator(ComponentBase component, TimeSpan duration, IMomentClock clock, bool state = false)
-        : base(component, duration, clock)
+    public ShowHideAnimator(ComponentBase component, TimeSpan duration, bool state = false)
+        : base(component, duration)
     {
         _state = state;
         Class = state ? "" : "hidden";

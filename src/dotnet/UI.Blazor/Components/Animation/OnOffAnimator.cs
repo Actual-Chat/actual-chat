@@ -7,8 +7,8 @@ public class OnOffAnimator : ComponentAnimator
     public bool State { get => _state; set => ChangeState(value); }
     public string Class { get; private set; }
 
-    public OnOffAnimator(ComponentBase component, TimeSpan duration, IMomentClock clock, bool state = false)
-        : base(component, duration, clock)
+    public OnOffAnimator(ComponentBase component, TimeSpan duration, bool state = false)
+        : base(component, duration)
     {
         _state = state;
         Class = state ? "on" : "off";

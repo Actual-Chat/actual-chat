@@ -29,7 +29,9 @@
 </div>
 @code {
     private ShowHideAnimator _animator = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [CascadingParameter] public BannerInstance BannerInstance { get; set; } = null!;
+
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
@@ -38,11 +40,10 @@
     [Parameter] public bool IsVisible { get; set; } = true;
     [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Info;
     [Parameter] public EventCallback Close { get; set; }
-    [CascadingParameter] public BannerInstance BannerInstance { get; set; } = null!;
 
     protected override void OnInitialized() {
         base.OnInitialized();
-        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300), Clocks.UIClock);
+        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
     }
 
     public void Dispose() {

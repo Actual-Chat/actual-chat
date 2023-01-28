@@ -213,7 +213,8 @@ public class AudioUI : WorkerBase
 
     private async Task StopRecordingWhenIdle(ChatId chatId, CancellationToken cancellationToken)
     {
-        var recordingStartedAt = Clocks.UIClock.Now;
+        var clock = Clocks.SystemClock;
+        var recordingStartedAt = clock.Now;
         _stopRecordingAt.Value = null;
         // no need to check last entry since recording has just started
         await Task.Delay(AudioSettings.IdleRecordingTimeoutBeforeCountdown, cancellationToken).ConfigureAwait(false);
@@ -227,9 +228,9 @@ public class AudioUI : WorkerBase
                 : recordingStartedAt;
             lastEntryAt = Moment.Max(lastEntryAt, recordingStartedAt);
             var stopRecordingAt = lastEntryAt + AudioSettings.IdleRecordingTimeout;
-            var timeBeforeStop = (stopRecordingAt - Clocks.UIClock.Now).Positive();
+            var timeBeforeStop = (stopRecordingAt - clock.Now).Positive();
             var timeBeforeCountdown =
-                (lastEntryAt + AudioSettings.IdleRecordingTimeoutBeforeCountdown - Clocks.UIClock.Now).Positive();
+                (lastEntryAt + AudioSettings.IdleRecordingTimeoutBeforeCountdown - clock.Now).Positive();
             if (timeBeforeStop == TimeSpan.Zero) {
                 // stop recording and countdown
                 _stopRecordingAt.Value = null;

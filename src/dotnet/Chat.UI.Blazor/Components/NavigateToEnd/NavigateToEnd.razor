@@ -20,13 +20,12 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
     [Parameter, EditorRequired] public bool IsVisible { get; set; }
 
     protected override void OnInitialized() {
-        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300), Clocks.UIClock);
+        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
         base.OnInitialized();
     }
 
