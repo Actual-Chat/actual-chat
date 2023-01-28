@@ -178,7 +178,7 @@ class Call<T extends (...args: unknown[]) => unknown> {
         return this.func.apply(this.self, this.parameters);
     }
 
-    public invokeSafely(): unknown {
+    public invokeSilently(): unknown {
         try {
             return this.invoke();
         }
@@ -190,133 +190,142 @@ class Call<T extends (...args: unknown[]) => unknown> {
 
 export type ThrottleMode = 'default' | 'skip' | 'delayHead';
 
-class ThrottleOptions
-{
-    public ExceededSetTimeoutErrorDelay = 2000;
-    public IsAutoResetEnabled = false;
-    public LaunchDebuggerOnError = true;
-}
-
-const throttleOptions = new ThrottleOptions();
-globalThis['throttleOptions'] = throttleOptions;
-
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
-    interval: number,
+    intervalMs: number,
     mode: ThrottleMode = 'default',
     name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
-    let lastFireTime = 0;
-    let lastFireDelay = 0;
-    let lastSetTimeoutTime = 0;
+    let nextFireTime = 0;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
-    const reset = (mustClearTimeout: boolean, newLastFireTime: number) => {
-        if (mustClearTimeout && timeoutHandle !== null)
+    const reset = () => {
+        if (timeoutHandle !== null)
             clearTimeout(timeoutHandle);
         timeoutHandle = lastCall = null;
-        lastFireTime = newLastFireTime;
-        lastSetTimeoutTime = 0;
-        lastFireDelay = 0;
+        nextFireTime = 0;
     }
 
-    const getFireDelay = () => Math.max(0, lastFireTime + interval - Date.now());
-
     const fire = () => {
-        if (name)
-            debugLog?.log(`throttle with name '${name}' fired`);
-        const call = lastCall;
-        reset(false, Date.now());
-        call?.invoke(); // We need to do this at the very end
+        if (timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+        nextFireTime = 0;
+        if (lastCall !== null) {
+            if (name)
+                debugLog?.log(`throttle '${name}': fire`);
+            const call = lastCall;
+            lastCall = null;
+            call?.invokeSilently(); // This must be done at last
+        }
+        else {
+            if (name)
+                debugLog?.log(`throttle '${name}': delay ended`);
+        }
     };
 
     const result: ResettableFunc<T> = function(...callArgs: Parameters<T>): void {
-        lastCall = new Call<T>(func, this, callArgs);
-        if (timeoutHandle !== null) {
-            const delaySinceSetTimeout = Math.max(0, Date.now() - lastSetTimeoutTime);
-            if (delaySinceSetTimeout > lastFireDelay + throttleOptions.ExceededSetTimeoutErrorDelay) {
-                errorLog?.log(`throttle with name '${name}' exceeded setTimeout delay`);
-                if (throttleOptions.LaunchDebuggerOnError) {
-                    // eslint-disable-next-line no-debugger
-                    debugger;
-                }
-                if (throttleOptions.IsAutoResetEnabled) {
-                    warnLog?.log(`throttle with name '${name}' is about to forcibly reset`);
-                    reset(true, 0);
-                }
-            }
-            return;
+        const call = new Call<T>(func, this, callArgs);
+        const fireDelay = nextFireTime - Date.now();
+        if (timeoutHandle !== null && fireDelay <= 0) {
+            // Our delayed "fire" is ready to fire but not fired yet,
+            // so we "flush" it here.
+            fire();
         }
 
-        if (mode === 'delayHead') {
-            lastFireTime = Date.now();
-            const fireDelay = getFireDelay();
+        if (timeoutHandle === null) {
+            // lastCall is null here
+            if (mode === 'delayHead') {
+                if (name)
+                    debugLog?.log(`throttle '${name}': delaying head call`);
+                lastCall = call;
+            } else {
+                if (name)
+                    debugLog?.log(`throttle '${name}': fire (head call)`);
+                call?.invokeSilently();
+            }
+            nextFireTime = Date.now() + intervalMs;
+            timeoutHandle = setTimeout(fire, intervalMs);
+        } else {
+            // timeoutHandle !== null, so all we need to do here is to update lastCall
             if (name)
-                debugLog?.log(`throttle with name '${name}' got fire delay '${fireDelay}'`);
-            lastFireDelay = fireDelay;
-            timeoutHandle = setTimeout(fire, fireDelay);
-            lastSetTimeoutTime = Date.now();
-            return;
+                debugLog?.log(`throttle '${name}': throttling, remaining delay = ${fireDelay}ms`);
+            if (mode !== 'skip') // i.e. default or delayHead
+                lastCall = call;
         }
-
-        const fireDelay = getFireDelay();
-        if (name)
-            debugLog?.log(`throttle with name '${name}' got fire delay '${fireDelay}'`);
-        if (fireDelay > 0) {
-            if (mode !== 'skip') {
-                lastFireDelay = fireDelay;
-                timeoutHandle = setTimeout(fire, fireDelay);
-                lastSetTimeoutTime = Date.now();
-            }
-            return;
-        }
-
-        fire(); // We need to do this at the very end
     }
-    result.reset = () => reset(true, 0);
+    result.reset = reset;
     return result;
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
-    interval: number,
+    intervalMs: number,
     debounceHead = false,
+    name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
-    let lastCallTime = 0;
-    let timeoutPromise: PromiseSourceWithTimeout<void> | null = null;
+    let nextFireTime = 0;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
-    const reset = (newLastCallTime: number) => {
-        timeoutPromise?.clearTimeout();
-        timeoutPromise = lastCall = null;
-        lastCallTime = newLastCallTime;
+    const reset = () => {
+        if (timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        timeoutHandle = lastCall = null;
+        nextFireTime = 0;
     }
 
-    const getFireDelay = () => Math.max(0, lastCallTime + interval - Date.now());
-
     const fire = () => {
-        const call = lastCall;
-        reset(lastCallTime);
-        call?.invoke(); // We need to do this at the very end
+        if (timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+        nextFireTime = 0;
+        if (lastCall !== null) {
+            if (name)
+                debugLog?.log(`debounce '${name}': fire`);
+            const call = lastCall;
+            lastCall = null;
+            call?.invokeSilently(); // This must be done at last
+        }
+        else {
+            if (name)
+                debugLog?.log(`debounce '${name}': delay ended`);
+        }
     };
 
     const result: ResettableFunc<T> = function(...callArgs: Parameters<T>): void {
-        const isHead = getFireDelay() == 0;
-        lastCall = new Call<T>(func, this, callArgs);
-        lastCallTime = Date.now();
-        if (timeoutPromise !== null)
-            return;
-
-        if (debounceHead || !isHead) {
-            timeoutPromise = flexibleDelayAsync(getFireDelay);
-            void timeoutPromise.then(fire);
-            return;
+        const call = new Call<T>(func, this, callArgs);
+        const fireDelay = nextFireTime - Date.now();
+        if (timeoutHandle !== null && fireDelay <= 0) {
+            // Our delayed "fire" is ready to fire but not fired yet,
+            // so we "flush" it here.
+            fire();
         }
 
-        fire(); // We need to do this at the very end
+        if (timeoutHandle === null) {
+            // lastCall is null here
+            if (debounceHead) {
+                if (name)
+                    debugLog?.log(`debounce '${name}': debouncing head call`);
+                lastCall = call;
+            } else {
+                if (name)
+                    debugLog?.log(`debounce '${name}': fire (head call)`);
+                call?.invokeSilently();
+            }
+            nextFireTime = Date.now() + intervalMs;
+            timeoutHandle = setTimeout(fire, intervalMs);
+        } else {
+            // timeoutHandle !== null, so all we need to do here is to update lastCall
+            if (name)
+                debugLog?.log(`debounce '${name}': debouncing`);
+            lastCall = call;
+            clearTimeout(timeoutHandle);
+            timeoutHandle = setTimeout(fire, intervalMs);
+        }
     };
-    result.reset = () => reset(0);
+    result.reset = reset;
     return result;
 }
 

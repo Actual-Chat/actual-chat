@@ -12,6 +12,11 @@ export class JSTestPage {
     private static throttledDelayHead: ResettableFunc<() => void>;
     private static debounced: ResettableFunc<() => void>;
     private static debouncedHead: ResettableFunc<() => void>;
+    private static throttled2: () => void;
+    private static throttledSkip2: () => void;
+    private static throttledDelayHead2: () => void;
+    private static debounced2: () => void;
+    private static debouncedHead2: () => void;
 
     public static init() {
         const loggerFactory = (name: string) => {
@@ -33,10 +38,16 @@ export class JSTestPage {
         this.serialized = serialize(asyncLoggerFactory("serialized"));
         this.serialized1 = serialize(asyncLoggerFactory("serialized1"), 1);
         this.serialized2 = serialize(asyncLoggerFactory("serialized2"), 2);
-        this.throttled = throttle(loggerFactory("throttled"), 1000);
-        this.throttledSkip = throttle(loggerFactory("throttled(mode = 'skip')"), 1000, 'skip');
-        this.throttledDelayHead = throttle(loggerFactory("throttled(mode = 'delayHead')"), 1000, 'delayHead');
-        this.debounced = debounce(loggerFactory("debounced"), 1000);
-        this.debouncedHead = debounce(loggerFactory("debounced(debounceHead = true)"), 1000, true);
+        this.throttled = throttle(loggerFactory('throttled'), 1000, 'default', 'throttled');
+        this.throttledSkip = throttle(loggerFactory("throttled(mode = 'skip')"), 1000, 'skip', 'throttled-skip');
+        this.throttledDelayHead = throttle(loggerFactory("throttled(mode = 'delayHead')"), 1000, 'delayHead', 'throrttled-delay-head');
+        this.debounced = debounce(loggerFactory("debounced"), 1000, false, 'debounced');
+        this.debouncedHead = debounce(loggerFactory("debounced(debounceHead = true)"), 1000, true, 'debounced-debounce-head');
+
+        this.throttled2 = () => { this.throttled(); this.throttled(); }
+        this.throttledSkip2 = () => { this.throttledSkip(); this.throttledSkip(); }
+        this.throttledDelayHead2 = () => { this.throttledDelayHead(); this.throttledDelayHead(); }
+        this.debounced2 = () => { this.debounced(); this.debounced(); }
+        this.debouncedHead2 = () => { this.debouncedHead(); this.debouncedHead(); }
     }
 }
