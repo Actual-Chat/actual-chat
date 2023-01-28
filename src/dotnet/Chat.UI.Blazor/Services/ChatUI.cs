@@ -84,9 +84,9 @@ public partial class ChatUI : WorkerBase
     public virtual async Task<IReadOnlyList<ChatInfo>> List(CancellationToken cancellationToken = default)
     {
         var settings = await ListSettings.Use(cancellationToken).ConfigureAwait(false);
-        Log.LogDebug("List: {Settings}", settings);
+        Log.LogDebug("-> List: {Settings}", settings);
         var filterId = settings.Filter.Id;
-        var filteredChats = await ListUnorderedFiltered(filterId, cancellationToken);
+        var filteredChats = await ListFiltered(filterId, cancellationToken).ConfigureAwait(false);
         var preOrderedChats = filteredChats
             .OrderByDescending(c => c.Contact.IsPinned)
             .ThenByDescending(c => c.HasUnreadMentions);
@@ -104,31 +104,35 @@ public partial class ChatUI : WorkerBase
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
         var result = orderedChats.ToList();
+        Log.LogDebug("<- List: {Settings}", settings);
         return result;
     }
 
     [ComputeMethod]
-    protected virtual async Task<IReadOnlyList<ChatInfo>> ListUnorderedFiltered(Symbol filterId, CancellationToken cancellationToken)
+    protected virtual async Task<IReadOnlyList<ChatInfo>> ListFiltered(Symbol filterId, CancellationToken cancellationToken)
     {
+        Log.LogDebug("-> ListFiltered: '{FilterId}'", filterId);
         var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
-        var filteredChats = filterId switch
-        {
+        var result = filterId switch {
             _ when filterId == ChatListFilter.Personal.Id => chats.Values.Where(c => c.Chat.Kind == ChatKind.Peer).ToList(),
             _ => chats.Values.ToList(),
         };
-        return filteredChats;
+        Log.LogDebug("<- ListFiltered: '{FilterId}'", filterId);
+        return result;
     }
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(CancellationToken cancellationToken = default)
     {
-        Log.LogDebug("ListUnordered");
+        Log.LogDebug("-> ListUnordered");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        var result = await contactIds
+        var contacts = await contactIds
             .Select(contactId => Get(contactId.ChatId, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        return result.SkipNullItems().ToDictionary(c => c.Id);
+        var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
+        Log.LogDebug("<- ListUnordered");
+        return result;
     }
 
     [ComputeMethod]
@@ -213,7 +217,7 @@ public partial class ChatUI : WorkerBase
     }
 
     [ComputeMethod] // Manually & automatically invalidated
-    public virtual async ValueTask<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
     {
         // NOTE(AY): This method uses LeaseReadPositionState in a bit tricky way:
         // on one hand, it can't depend on it, coz it disposes the lease, which means
@@ -221,10 +225,13 @@ public partial class ChatUI : WorkerBase
         // On another hand, it makes sense to read the most up-to-date read position,
         // so it returns max(leased read position, fetched read position).
 
+        Log.LogDebug("GetReadEntryLid: {ChatId}", chatId);
+
         var fetchedReadPosition = await ChatPositions
             .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
             .ConfigureAwait(false);
 
+        return fetchedReadPosition.EntryLid;
         using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
         var readPosition = readPositionState.Value;
         return readPosition.EntryLid > fetchedReadPosition.EntryLid
@@ -239,7 +246,7 @@ public partial class ChatUI : WorkerBase
     [ComputeMethod]
     public virtual async Task<Trimmed<int>> GetUnreadCount(ChatListFilter filter, CancellationToken cancellationToken)
     {
-        var chats = await ListUnorderedFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
+        var chats = await ListFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
         return chats.UnreadMessageCount();
     }
 
@@ -391,7 +398,7 @@ public partial class ChatUI : WorkerBase
                     // - No computed -> nothing to invalidate
                     // - No value (error) -> invalidate
                     // - Value < current -> invalidate
-                    if (cReadEntryLid != null && (!cReadEntryLid.IsValue(out var entryLid) || entryLid < position.EntryLid))
+                    if (cReadEntryLid?.IsConsistent() == true && (!cReadEntryLid.IsValue(out var entryLid) || entryLid < position.EntryLid))
                         cReadEntryLid.Invalidate();
 
                     return Task.CompletedTask;
