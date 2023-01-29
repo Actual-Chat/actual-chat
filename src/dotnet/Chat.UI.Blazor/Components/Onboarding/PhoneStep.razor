@@ -39,7 +39,7 @@
                 Class="w-20"
                 IsLabelInsideInput="true"
                 IsRequired="true">
-                <InputText id="phoneCode" @bind-Value="_stepModel.Code"/>
+                <InputText id="phoneCode" @bind-Value="_stepModel.Code" autocomplete="tel-country-code"/>
             </FormSection>
             <FormSection
                 For="() => _stepModel.Number"
@@ -48,7 +48,7 @@
                 Class="grow"
                 IsLabelInsideInput="true"
                 IsRequired="true">
-                <InputText id="phoneNumber" @bind-Value="_stepModel.Number"/>
+                <InputText id="phoneNumber" @bind-Value="_stepModel.Number" autocomplete="tel-national"/>
             </FormSection>
         </div>
         <FormSection For="() => _stepModel.SyncContacts">
