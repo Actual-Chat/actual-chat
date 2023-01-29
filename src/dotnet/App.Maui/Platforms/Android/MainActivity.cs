@@ -70,15 +70,6 @@ public class MainActivity : MauiAppCompatActivity
         var componentName = new ComponentName(this, Java.Lang.Class.FromType(typeof(FirebaseMessagingService)));
         PackageManager?.SetComponentEnabledSetting(componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
 
-        // TODO: move permissions request to where it's really needed
-        // https://github.com/dotnet/maui/issues/3694#issuecomment-1014880727
-        // https://stackoverflow.com/questions/70229906/blazor-maui-camera-and-microphone-android-permissions
-        ActivityCompat.RequestPermissions(this, new[] {
-            Manifest.Permission.Camera,
-            Manifest.Permission.RecordAudio,
-            Manifest.Permission.ModifyAudioSettings
-        }, 0);
-
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DefaultSignIn)
