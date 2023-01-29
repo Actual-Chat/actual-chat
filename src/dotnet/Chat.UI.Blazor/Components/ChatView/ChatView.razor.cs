@@ -219,29 +219,36 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Range<long> GetIdRangeToLoad(VirtualListDataQuery query, long scrollToEntryLid, Range<long> chatIdRange)
     {
-        var queryRange = scrollToEntryLid > 0
+        var queryRange = query.IsNone
+            ? new Range<long>(
+                chatIdRange.End - (2 * PageSize),
+                chatIdRange.End)
+            : query.KeyRange
+                .AsLongRange()
+                .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
+        var scrollToEntryRange = scrollToEntryLid > 0
             ? new Range<long>(
                 scrollToEntryLid - PageSize,
                 scrollToEntryLid + PageSize)
-            : query.IsNone
-                ? new Range<long>(
-                    chatIdRange.End - (2 * PageSize),
-                    chatIdRange.End)
-                : query.KeyRange
-                    .AsLongRange()
-                    .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
-        var adjustedRange = queryRange.Start < chatIdRange.Start ? queryRange.Move(chatIdRange.Start - queryRange.Start) : queryRange;
-        adjustedRange = adjustedRange.Clamp(chatIdRange);
+            : queryRange;
+
+        // Union (queryRange, scrollToEntryRange) if they overlap, otherwise pick scrollToEntryRange
+        queryRange = scrollToEntryRange.Overlaps(queryRange)
+            ? queryRange.MinMaxWith(scrollToEntryRange)
+            : scrollToEntryRange;
+
+        // Clamp queryRange by chatIdRange
+        queryRange = queryRange.Clamp(chatIdRange);
 
         // Extend requested range if it's close to chat Id range
-        var isCloseToTheEnd = adjustedRange.End >= chatIdRange.End - (PageSize / 2);
-        var isCloseToTheStart = adjustedRange.Start <= chatIdRange.Start + (PageSize / 2);
+        var isCloseToTheEnd = queryRange.End >= chatIdRange.End - (PageSize / 2);
+        var isCloseToTheStart = queryRange.Start <= chatIdRange.Start + (PageSize / 2);
         var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch
         {
             (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
-            (_, true) => new Range<long>(adjustedRange.Start, chatIdRange.End).Expand(1),
-            (true, _) => new Range<long>(chatIdRange.Start, adjustedRange.End).Expand(1),
-            _ => adjustedRange,
+            (_, true) => new Range<long>(queryRange.Start, chatIdRange.End).Expand(1),
+            (true, _) => new Range<long>(chatIdRange.Start, queryRange.End).Expand(1),
+            _ => queryRange,
         };
         return extendedRange;
     }

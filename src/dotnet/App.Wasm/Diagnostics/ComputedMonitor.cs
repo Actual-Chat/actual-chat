@@ -45,8 +45,10 @@ public class ComputedMonitor : WorkerBase
                 if (_summary.Count != 0) {
                     if (sb.Length != 0)
                         sb.Append("\r\n");
-                    sb.Append("Update frequencies (#/s):");
-                    var multiplier = SummarySampleRatio / SummaryInterval.TotalSeconds;
+                    sb.Append("Update counts (sampled count * ");
+                    sb.Append(SummarySampleRatio);
+                    sb.Append("):");
+                    var multiplier = SummarySampleRatio;
                     foreach (var (key, count) in _summary.OrderByDescending(kv => kv.Value)) {
                         sb.Append("\r\n- ");
                         sb.Append(key);

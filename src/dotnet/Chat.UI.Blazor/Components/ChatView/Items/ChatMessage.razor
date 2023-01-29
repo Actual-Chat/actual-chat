@@ -117,6 +117,7 @@
     private IChatMarkupHub _chatMarkupHub = null!;
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
+    private ChatMessageModel? _lastMessage;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
@@ -127,6 +128,7 @@
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    // [Inject] private ILogger<ChatMessage> Log { get; init; } = null!;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
@@ -136,10 +138,25 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        _chatMarkupHub = ChatMarkupHubFactory[ChatId];
-        _markupTask = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default);
-        _markup = await _markupTask;
-        await base.OnParametersSetAsync();
+        var mustReset = _chatMarkupHub == null!;
+        mustReset |= Message != _lastMessage;
+        /*
+        if (mustReset)
+            Log.LogInformation("+ {EntryId}", Entry.Id);
+        else {
+            var changed = Message != _lastMessage;
+            if (changed)
+                Log.LogInformation("* {EntryId}", Entry.Id);
+            mustReset = changed;
+        }
+        */
+        if (mustReset) {
+            _lastMessage = Message;
+            _chatMarkupHub = ChatMarkupHubFactory[ChatId];
+            _markupTask = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default);
+            _markup = await _markupTask;
+            await base.OnParametersSetAsync(); // Triggers recompute
+        }
     }
 
     protected override bool ShouldRender() {

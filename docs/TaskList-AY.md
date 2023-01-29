@@ -19,7 +19,7 @@ Implement common variants of ErrorBoundary (timeout + reload, just show an error
 - Modals
 - Menus
 
-Remove UpdateDelayer.Instant:
+Remove FixedDelayer.Instant:
 - ChatSettingsModal
 
 Misc:

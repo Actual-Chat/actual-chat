@@ -624,7 +624,7 @@ export class VirtualList {
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
         const countAs = getItemCountAs(itemRef);
-        const newItem = new VirtualListItem(itemKey, countAs ?? 1);
+        const newItem = new VirtualListItem(itemKey, countAs);
         this._unmeasuredItems.add(itemKey);
         this._sizeObserver.observe(itemRef, { box: 'border-box' });
         this._visibilityObserver.observe(itemRef);
@@ -1027,13 +1027,10 @@ function getItemKey(itemRef?: HTMLElement): string | null {
     return itemRef?.id;
 }
 
-function getItemCountAs(itemRef?: HTMLElement): number | null {
+function getItemCountAs(itemRef?: HTMLElement): number {
     if (itemRef == null)
         return null;
 
-    const countString = itemRef.dataset['countAs'];
-    if (countString == null)
-        return null;``;
-
-    return parseInt(countString);
+    const sCountAs = itemRef.dataset['countAs'];
+    return sCountAs == null ? 1 : parseInt(sCountAs);
 }
