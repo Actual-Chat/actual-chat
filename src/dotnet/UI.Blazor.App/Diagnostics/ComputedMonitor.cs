@@ -1,11 +1,11 @@
 using System.Text;
 
-namespace ActualChat.App.Wasm.Diagnostics;
+namespace ActualChat.UI.Blazor.App.Diagnostics;
 
 public class ComputedMonitor : WorkerBase
 {
     private readonly TimeSpan SummaryInterval = TimeSpan.FromSeconds(3);
-    private const int SummarySampleRatio = 10;
+    private const int SummarySampleRatioMask = 7;
     private const int LogSampleRatio = 0; // SummarySampleRatio * 3; // Must be a multiple of SummarySampleRatio
 
     private int _registered;
@@ -46,9 +46,9 @@ public class ComputedMonitor : WorkerBase
                     if (sb.Length != 0)
                         sb.Append("\r\n");
                     sb.Append("Update counts (sampled count * ");
-                    sb.Append(SummarySampleRatio);
+                    sb.Append(SummarySampleRatioMask);
                     sb.Append("):");
-                    var multiplier = SummarySampleRatio;
+                    var multiplier = SummarySampleRatioMask;
                     foreach (var (key, count) in _summary.OrderByDescending(kv => kv.Value)) {
                         sb.Append("\r\n- ");
                         sb.Append(key);
@@ -67,19 +67,20 @@ public class ComputedMonitor : WorkerBase
     private void OnRegister(IComputed computed)
     {
         var registered = Interlocked.Increment(ref _registered);
-        if (SummarySampleRatio != 0 && registered % SummarySampleRatio == 0) {
-            var input = computed.Input;
-            var category = input.Category;
-            lock (_summary) {
-                if (_summary.TryGetValue(category, out var count))
-                    _summary[category] = count + 1;
-                else
-                    _summary[category] = 1;
-            }
-            if (LogSampleRatio != 0 && registered % LogSampleRatio == 0)
-                // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                Log.LogDebug("+ " + input.ToString());
+        if (registered % SummarySampleRatioMask != 0)
+            return;
+
+        var input = computed.Input;
+        var category = input.Category;
+        lock (_summary) {
+            if (_summary.TryGetValue(category, out var count))
+                _summary[category] = count + 1;
+            else
+                _summary[category] = 1;
         }
+        if (LogSampleRatio != 0 && registered % LogSampleRatio == 0)
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+            Log.LogDebug("+ " + input.ToString());
     }
 
     private void OnUnregister(IComputed computed)

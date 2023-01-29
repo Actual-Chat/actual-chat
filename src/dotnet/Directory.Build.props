@@ -122,6 +122,10 @@
     <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
+    <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
+    <!--
+    <TrimmerRootAssembly Include="System.Private.CoreLib" />
+    -->
   </ItemGroup>
 
 </Project>

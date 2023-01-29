@@ -24,6 +24,7 @@
     private CancellationTokenSource _disposeCts;
     private CancellationToken _disposeToken;
     private Moment _lastRenderTime;
+    private CancellationTokenSource? _cancelRenderDelayCts;
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
@@ -44,14 +45,20 @@
         => _disposeCts.CancelAndDisposeSilently();
 
     protected override bool ShouldRender() {
+        _cancelRenderDelayCts.CancelAndDisposeSilently();
+        _cancelRenderDelayCts = null;
+
         var now = Clock.Now;
         var delay = _lastRenderTime + UpdateDelay - now;
-        if (delay <= TimeSpan.Zero)
+        if (delay <= FixedDelayer.Defaults.MinDelay)
             return true;
 
-        Clock.Delay(delay, _disposeToken).ContinueWith(_ => {
-            if (_disposeToken.IsCancellationRequested)
+        _cancelRenderDelayCts = _disposeToken.CreateLinkedTokenSource();
+        var cancelDelayToken = _cancelRenderDelayCts.Token;
+        Clock.Delay(delay, cancelDelayToken).ContinueWith(_ => {
+            if (cancelDelayToken.IsCancellationRequested)
                 return;
+
             this.StateHasChangedAsync();
         }, TaskScheduler.Current);
         return false;

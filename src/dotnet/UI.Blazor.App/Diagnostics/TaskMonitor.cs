@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace ActualChat.App.Wasm.Diagnostics;
+namespace ActualChat.UI.Blazor.App.Diagnostics;
 
 public class TaskMonitor : WorkerBase
 {

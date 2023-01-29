@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Diagnostics;
 using ActualChat.UI.Blazor.App.Services;
 using Stl.Plugins;
 
@@ -18,6 +19,23 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
     {
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
+
+        // Diagnostics
+        if (OSInfo.IsWebAssembly) {
+            if (Constants.Diagnostics.Wasm.ComputedMonitor) {
+                services.AddSingleton<ComputedMonitor>();
+                services.AddHostedService<ComputedMonitor>();
+            }
+            if (Constants.Diagnostics.Wasm.TaskEventListener) {
+                services.AddSingleton<TaskEventListener>();
+                services.AddHostedService<TaskEventListener>();
+            }
+            if (Constants.Diagnostics.Wasm.TaskMonitor) {
+                services.AddSingleton<TaskMonitor>();
+                services.AddHostedService<TaskMonitor>();
+            }
+        }
+
         var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
         if (!isServerSideBlazor) {
             services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
