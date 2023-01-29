@@ -3,7 +3,7 @@
 @using ActualChat.Chat
 @inherits FusionComponentBase
 
-<div class="avatar-badge" @onclick="@Click">
+<div class="avatar-badge @Class" @onclick="@Click">
     <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
     <div class="flex-y ml-2">
         <div class="avatar-badge-name grid">
@@ -25,6 +25,7 @@
     [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string NameClass { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowStatusText { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 

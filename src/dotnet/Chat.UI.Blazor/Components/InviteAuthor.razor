@@ -6,27 +6,34 @@
 
 <DialogFrame Class="invite-chat-author-modal" Title="Invite users" HasCloseButton="true">
     <Body>
-    <div class="flex-y h-full w-full">
+    <div class="flex-y gap-y-2 h-full w-full">
         <SearchBox
             @ref="_searchBoxRef"
             Class="mt-1"
             Placeholder="Find contacts..."
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnFilter"/>
-        <div class="flex-1 gap-y-1 mt-2 ml-1 mr-2 max-h-[60vh] min-h-[60vh] overflow-y-auto custom-scrollbar">
+        <div class="flex-y gap-y-1 max-h-[60vh] min-h-[60vh] overflow-y-auto custom-scrollbar">
             @foreach (var contact in FilteredContacts) {
-                <div class="flex-x items-center gap-x-2 w-full rounded-md pl-2 hover:bg-02"
+                <div class="flex-x items-center gap-x-2 w-full rounded-md px-1 hover:bg-02"
                      @key="@contact.Account.Id"
                      @onclick="@(_ => OnContactClick(contact))">
-                    @if (contact.IsExisting) {
-                        <Checkbox IsChecked="true" IsDisabled="true"/>
-                    } else {
-                        <Checkbox IsChecked="@contact.IsChecked"/>
-                    }
                     <AvatarBadge
+                        Class="grow"
                         Avatar="@contact.Account.Avatar"
                         Presence="@contact.Presence"
                         Size="SquareSize.Size8"/>
+                    @if (contact.IsExisting) {
+                        <Checkbox
+                            IsChecked="true"
+                            IsDisabled="true"
+                            Class="!flex-none"/>
+                    } else {
+                        <Checkbox
+                            IsChecked="@contact.IsChecked"
+                            Class="!flex-none"
+                            Change="@(_ => OnContactClick(contact))"/>
+                    }
                 </div>
             }
         </div>
