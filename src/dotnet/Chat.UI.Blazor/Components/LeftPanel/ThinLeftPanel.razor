@@ -9,7 +9,7 @@
         </div>
         <div class="flex-y w-full grow items-center gap-y-3 md:gap-y-2">
             <ButtonSquare
-                Click="OnCreateNewChat"
+                Click="OnCreateChatClick"
                 ContentClass="navbar-navigation-button-content"
                 Tooltip="Create"
                 TooltipPosition="FloatingPosition.Right">
@@ -26,6 +26,6 @@
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    private void OnCreateNewChat()
+    private Task OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model());
 }
