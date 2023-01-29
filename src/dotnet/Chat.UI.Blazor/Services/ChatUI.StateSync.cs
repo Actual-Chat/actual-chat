@@ -67,26 +67,22 @@ public partial class ChatUI
     private async Task ResetHighlightedEntry(CancellationToken cancellationToken)
     {
         var changes = HighlightedEntryId
-            .Changes(cancellationToken)
+            .Changes(FixedDelayer.Get(0.1), cancellationToken)
             .Where(x => !x.Value.IsNone);
         CancellationTokenSource? cts = null;
         try {
             await foreach (var cHighlightedEntryId in changes.ConfigureAwait(false)) {
                 cts.CancelAndDisposeSilently();
+                var highlightedEntryId = cHighlightedEntryId.Value;
+                if (highlightedEntryId.IsNone)
+                    continue; // Nothing to reset
+
                 cts = cancellationToken.CreateLinkedTokenSource();
                 var ctsToken = cts.Token;
-                var highlightedEntryId = cHighlightedEntryId.Value;
                 _ = BackgroundTask.Run(async () => {
                     await Task.Delay(TimeSpan.FromSeconds(2), ctsToken).ConfigureAwait(false);
-                    var isReset = false;
-                    lock (_lock) {
-                        if (_highlightedEntryId.Value == highlightedEntryId) {
-                            _highlightedEntryId.Value = default;
-                            isReset = true;
-                        }
-                    }
-                    if (isReset)
-                        _ = UICommander.RunNothing();
+                    if (HighlightedEntryId.Value == highlightedEntryId)
+                        HighlightEntry(ChatEntryId.None, false);
                 }, CancellationToken.None);
             }
         }
