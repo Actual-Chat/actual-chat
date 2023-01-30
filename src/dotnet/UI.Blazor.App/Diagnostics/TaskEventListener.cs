@@ -1,17 +1,15 @@
 using System.Diagnostics.Tracing;
+using Stl.Diagnostics;
 
 namespace ActualChat.UI.Blazor.App.Diagnostics;
 
 // Requires <TrimmerRootAssembly Include="System.Private.CoreLib" />
 public class TaskEventListener : WorkerBase
 {
-    private readonly long SummaryInterval = TimeSpan.FromSeconds(3).Ticks;
-    private const int SampleRatioMask = 127;
-
-    private int _eventCount;
-
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
+
+    public Sampler Sampler { get; init; } = Sampler.EveryNth(128);
 
     public TaskEventListener(IServiceProvider services) : base()
     {
@@ -37,9 +35,7 @@ public class TaskEventListener : WorkerBase
     {
         if (eventArgs?.EventId != 14)
             return;
-
-        var eventCount = Interlocked.Increment(ref _eventCount);
-        if ((eventCount & SampleRatioMask) != 0)
+        if (!Sampler.Next())
             return;
 
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
