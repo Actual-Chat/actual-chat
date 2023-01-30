@@ -11,27 +11,38 @@
     Actual Chat can notify you about new messages
     </Body>
     <Buttons>
-        <Button @*@ref="_configureButton"*@ Class="btn-transparent on" Click="@OnAddClick">Configure</Button>
+        <Button @ref="_configureButton" Class="btn-transparent on">Configure</Button>
     </Buttons>
 </Banner>
 
 @code {
-    private Button _configureButton = null!;
+    private Button? _configureButton = null!;
+    private bool _hasHandlerRegistered;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
+        if (HostInfo.AppKind == AppKind.Maui)
+            return;
+
+        if (_hasHandlerRegistered)
+            return;
+
+        // it can be null if state is not Prompt
+        if (_configureButton == null)
             return;
 
         await JS.InvokeVoidAsync(
             $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
-            _configureButton
+            _configureButton.ButtonRef
             );
+        _hasHandlerRegistered = true;
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -40,14 +51,6 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var permissionState = await NotificationUI.State.Use(cancellationToken);
         return new(permissionState);
-    }
-
-    private async Task OnAddClick() {
-        // var contact = State.Value.Contact!;
-        // var command = new IContacts.ChangeCommand(Session, contact.Id, null, new Change<Contact> {
-        //     Create = contact,
-        // });
-        // await UICommander.Run(command);
     }
 
     public sealed record Model(PermissionState State) {

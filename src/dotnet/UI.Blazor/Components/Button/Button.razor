@@ -1,16 +1,20 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="@Class btn"
-        type="@GetButtonType()"
-        @attributes="@GetAttributes()"
-        @onclick="@Click">
+<button
+    @ref="ButtonRef"
+    class="@Class btn"
+    type="@GetButtonType()"
+    @attributes="@GetAttributes()"
+    @onclick="@Click">
     <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
     </div>
 </button>
 
 @code {
+    public ElementReference ButtonRef { get; set; }
+
     [Parameter] public string Class { get; set; } = "btn-primary";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
