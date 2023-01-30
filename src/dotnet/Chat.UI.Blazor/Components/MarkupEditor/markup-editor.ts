@@ -158,6 +158,7 @@ export class MarkupEditor {
             this.fixEverything();
         });
         this.closeListUI();
+        this.moveCursorToTheEnd();
     }
 
     public moveCursorToTheEnd() {

@@ -12,7 +12,6 @@
 <div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
         var title = mention.Text;
-        var searchMatch = mention.SearchMatch;
         var cls = mention == selection ? "selected" : "";
         var picture = string.IsNullOrWhiteSpace(mention.Picture)
             ? $"https://avatars.dicebear.com/api/avataaars/{title}.svg"
