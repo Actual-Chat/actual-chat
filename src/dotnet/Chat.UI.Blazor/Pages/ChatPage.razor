@@ -1,6 +1,5 @@
 @page "/chat/{ChatId}"
 @page "/chat/"
-@using ActualChat.Notification.UI.Blazor
 @using System.Diagnostics.CodeAnalysis
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
@@ -72,7 +71,6 @@
     private ChatView _chatViewRef = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -92,7 +90,6 @@
         if (!firstRender)
             return Task.CompletedTask;
 
-        _ = NotificationUI.EnsureDeviceRegistered(CancellationToken.None);
         _ = OnboardingUI.TryShow();
 
         return Task.CompletedTask;
