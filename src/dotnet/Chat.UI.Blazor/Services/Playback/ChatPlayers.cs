@@ -10,11 +10,13 @@ public class ChatPlayers : WorkerBase
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private readonly IMutableState<PlaybackState?> _playbackState;
+    private AudioUI? _audioUI;
 
     private IServiceProvider Services { get; }
     private IAudioOutputController AudioOutputController { get;}
     private MomentClockSet Clocks { get; }
-    private AudioUI AudioUI { get; }
+    // TODO: get rid of circular dependency between AudioUI and ChatPlayers
+    private AudioUI AudioUI => _audioUI ??= Services.GetRequiredService<AudioUI>();
     private TuneUI TuneUI { get; }
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
@@ -24,7 +26,6 @@ public class ChatPlayers : WorkerBase
         Services = services;
         AudioOutputController = services.GetRequiredService<IAudioOutputController>();
         Clocks = services.Clocks();
-        AudioUI = services.GetRequiredService<AudioUI>();
         TuneUI = services.GetRequiredService<TuneUI>();
 
         var stateFactory = services.StateFactory();
