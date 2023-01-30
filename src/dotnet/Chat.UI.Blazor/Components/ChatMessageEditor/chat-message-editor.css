@@ -67,8 +67,8 @@
 /* Closed panel */
 .notify-call-panel,
 .notify-call-panel.panel-closed {
-    @apply flex-none flex-row-reverse;
-    @apply h-12 w-12; /* -flex-x here somehow makes webpack fail */
+    @apply -flex-x;
+    @apply h-12 w-12;
     @apply right-2;
     @apply bg-transparent;
 }
