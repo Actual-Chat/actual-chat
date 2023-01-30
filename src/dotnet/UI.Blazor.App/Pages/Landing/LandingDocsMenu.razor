@@ -4,7 +4,7 @@
 @inherits ComputedMenuBase<AccountFull?>
 
 @{
-    var m = State.LatestNonErrorValue;
+    var m = State.Value;
     var avatar = m?.Avatar;
     var name = avatar?.Name;
 }
