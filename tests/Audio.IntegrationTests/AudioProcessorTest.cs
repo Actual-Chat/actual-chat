@@ -36,7 +36,7 @@ public class AudioProcessorTest : AppHostTestBase
         await audioProcessor.ProcessAudio(audioRecord, 333, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
-        var readSize = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
+        var readSize = await ReadAudio(audioRecord.Id, audioStreamer, default, cts.Token)
             .WaitAsync(TimeSpan.FromSeconds(1), cts.Token);
         readSize.Should().Be(0);
         cts.Cancel();
@@ -74,7 +74,10 @@ public class AudioProcessorTest : AppHostTestBase
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
         var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
-        var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
+        var ctsToken = cts.Token;
+        var readTask = BackgroundTask.Run(
+            () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
+            ctsToken);
         var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
 
         var writtenSize = await ProcessAudioFile(audioRecord, audioProcessor, log);
@@ -120,7 +123,10 @@ public class AudioProcessorTest : AppHostTestBase
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
         var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
 
-        var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
+        var ctsToken = cts.Token;
+        var readTask = BackgroundTask.Run(
+            () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
+            ctsToken);
         var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
 
         var writtenSize = await ProcessAudioFile(
@@ -183,8 +189,12 @@ public class AudioProcessorTest : AppHostTestBase
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
         var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
 
-        var readTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
-        var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
+        var ctsToken = cts.Token;
+        var readTask = BackgroundTask.Run(
+            () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
+            ctsToken);
+        var readTranscriptTask = BackgroundTask.Run(
+            () => ReadTranscriptStream(audioRecord.Id, transcriptStreamer));
 
         var writtenSize = await ProcessAudioFile(
             audioRecord,
@@ -241,7 +251,50 @@ public class AudioProcessorTest : AppHostTestBase
         using var cts = new CancellationTokenSource();
 
         var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
-        var readSizeTask = ReadAudio(audioRecord.Id, audioStreamer, cts.Token);
+        var ctsToken = cts.Token;
+        var readSizeTask = BackgroundTask.Run(
+            () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
+            ctsToken);
+
+        var writtenSize = await ProcessAudioFile(audioRecord, audioProcessor, log);
+
+        var readSize = await readSizeTask;
+        readSize.Should().BeLessThan(writtenSize);
+    }
+
+    [Fact]
+    public async Task RealtimeAudioStreamerSupportsSkip()
+    {
+        using var appHost = await NewAppHost();
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var sessionFactory = services.SessionFactory();
+        var session = sessionFactory.CreateSession();
+        _ = await appHost.SignIn(session, new User("Bob"));
+        var audioProcessor = services.GetRequiredService<AudioProcessor>();
+        var audioStreamer =services.GetRequiredService<IAudioStreamer>();
+        var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
+        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
+        await kvas.Set(UserLanguageSettings.KvasKey,
+            new UserLanguageSettings {
+                Primary = Languages.Russian,
+            });
+
+        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+            Create = new ChatDiff {
+                Title = "Test",
+                Kind = ChatKind.Group,
+            },
+        }));
+        chat.Require();
+
+        using var cts = new CancellationTokenSource();
+
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var ctsToken = cts.Token;
+        var readSizeTask = BackgroundTask.Run(
+            () => ReadAudio(audioRecord.Id, audioStreamer, TimeSpan.FromSeconds(1), ctsToken),
+            ctsToken);
 
         var writtenSize = await ProcessAudioFile(audioRecord, audioProcessor, log);
 
@@ -276,10 +329,11 @@ public class AudioProcessorTest : AppHostTestBase
     private static async Task<int> ReadAudio(
         string audioRecordId,
         IAudioStreamer audioStreamer,
+        TimeSpan skip = default,
         CancellationToken cancellationToken = default)
     {
         var streamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
-        var audio = await audioStreamer.GetAudio(streamId, default, cancellationToken);
+        var audio = await audioStreamer.GetAudio(streamId, skip, cancellationToken);
 
         var sum = 0;
         await foreach (var audioFrame in audio.GetFrames(default))

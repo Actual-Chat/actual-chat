@@ -413,6 +413,17 @@ public static class AsyncEnumerableExt
         }
     }
 
+    public static async IAsyncEnumerable<TSource> Prepend<TSource>(this IAsyncEnumerable<TSource> source, Task<TSource> elementTask)
+    {
+        if (source == null)
+            throw StandardError.Constraint(nameof(Prepend), "source is null");
+
+        yield return await elementTask.ConfigureAwait(false);
+
+        await foreach (var item in source.ConfigureAwait(false))
+            yield return item;
+    }
+
     /* This exists in Stl, though the impl. is different, so temp. keeping it here:
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
