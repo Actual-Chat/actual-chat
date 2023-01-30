@@ -194,16 +194,22 @@ export class Landing {
     }
 
     private onClick() {
-        if (!this.menu.classList.contains('open'))
-            return;
+        const menuBtn = this.header.querySelector('.context-menu-btn');
+        const nullBtn = menuBtn == null;
+        if (nullBtn || (!nullBtn && !event.composedPath().includes(menuBtn))) {
+            if (!ScreenSize.isNarrow())
+                return;
+            if (!this.menu.classList.contains('open'))
+                return;
 
-        const container = this.menu.querySelector('.c-container');
-        const withinMenu = event.composedPath().includes(container);
-        if (withinMenu)
-            return;
+            const container = this.menu.querySelector('.c-container');
+            const withinMenu = event.composedPath().includes(container);
+            if (withinMenu)
+                return;
 
-        this.blazorRef.invokeMethodAsync('CloseMenu');
-        endEvent(event);
+            this.blazorRef.invokeMethodAsync('CloseMenu');
+            endEvent(event);
+        }
     };
 }
 

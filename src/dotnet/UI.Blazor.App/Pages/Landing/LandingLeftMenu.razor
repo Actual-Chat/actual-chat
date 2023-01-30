@@ -20,19 +20,24 @@
         </div>
         <div class="menu-content">
             @if (isGuest) {
-                <button onclick="@Signin">
-                    Sign in
-                </button>
+                <Button Class="btn-transparent" Click="@Signin">
+                    <div>
+                        <i class="icon-log-in text-2xl text-badge"></i>
+                    </div>
+                    <div class="flex items-center mx-2 text-badge">
+                        Sign in
+                    </div>
+                </Button>
             }
-            <button onclick="@(() => NavigateTo(privacyUrl))">
+            <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
                 Privacy
-            </button>
-            <button onclick="@(() => NavigateTo(termsUrl))">
+            </Button>
+            <Button Class="btn-transparent" Click="@(() => NavigateTo(termsUrl))">
                 Terms
-            </button>
-            <button onclick="@(() => NavigateTo(cookiesUrl))">
+            </Button>
+            <Button Class="btn-transparent" Click="@(() => NavigateTo(cookiesUrl))">
                 Cookie Preferences
-            </button>
+            </Button>
             @if (EnableIncompleteUI) {
                 <a href="/docs/privacy">
                     Contact Us

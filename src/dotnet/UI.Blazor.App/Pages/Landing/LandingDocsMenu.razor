@@ -1,0 +1,77 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedMenuBase<AccountFull?>
+
+@{
+    var m = State.LatestNonErrorValue;
+    var avatar = m?.Avatar;
+    var name = avatar?.Name;
+}
+
+<MenuEntry
+    Click="@OnAccountClick">
+    <IconContent>
+        <AvatarCircle
+            Avatar="@avatar"
+            Size="SquareSize.Size8"/>
+    </IconContent>
+    <TextContent>
+        <div class="flex-x items-center">
+            <div class="flex-1 flex-y">
+                <div class="text-sm">
+                    @name
+                </div>
+                <div class="text-sm text-badge">
+                    Manage your Account
+                </div>
+            </div>
+            <div class="flex-none w-8 -mt-1 rotate-180">
+                <i class="icon-chevron-left"></i>
+            </div>
+        </div>
+    </TextContent>
+</MenuEntry>
+<MenuEntry
+    Click="@(_ => Nav.NavigateTo(Links.Chat(default), true))">
+    <IconContent>
+        <i class="icon-message-ellipse"></i>
+    </IconContent>
+    <TextContent>
+        Go to Chat
+    </TextContent>
+</MenuEntry>
+<MenuEntry
+    Click="@(_ => Nav.NavigateTo("mailto:support@actual.chat"))">
+    <IconContent>
+        <i class="icon-question-mark-circle"></i>
+    </IconContent>
+    <TextContent>
+        Support
+    </TextContent>
+</MenuEntry>
+<MenuEntry
+    Click="@(_ => Nav.NavigateTo(Links.SignOut, true))">
+    <IconContent>
+        <i class="icon-log-out"></i>
+    </IconContent>
+    <TextContent>
+        Sign out
+    </TextContent>
+</MenuEntry>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    protected override ComputedState<AccountFull?>.Options GetStateOptions()
+        => new() { UpdateDelayer = FixedDelayer.Instant };
+
+    protected override Task<AccountFull?> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken)!;
+
+    private void OnAccountClick()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+}

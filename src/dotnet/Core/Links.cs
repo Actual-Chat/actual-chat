@@ -3,6 +3,7 @@ namespace ActualChat;
 public static class Links
 {
     public static LocalUrl Home { get; } = default;
+    public static LocalUrl Docs { get; } = "/docs";
     public static LocalUrl SignIn { get; } = "/signIn";
     public static LocalUrl SignOut { get; } = "/signOut";
     public static LocalUrl SigningOut { get; } = "/SigningOut";

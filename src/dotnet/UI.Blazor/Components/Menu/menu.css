@@ -50,7 +50,7 @@ body.narrow .ac-menu {
 .ac-menu-item {
     @apply flex-x;
     @apply min-w-[120px] h-12 md:h-10 p-[6px];
-    @apply rounded-xl hover:bg-round-hover;
+    @apply rounded-lg hover:bg-round-hover;
     @apply text-02 whitespace-nowrap;
     @apply cursor-pointer;
 }
@@ -60,7 +60,7 @@ body.narrow .ac-menu {
     @apply bg-transparent;
 }
 .ac-menu-content {
-    @apply flex-x items-center gap-x-2;
+    @apply flex-1 flex-x items-center gap-x-4;
 }
 .ac-menu-icon > i {
     @apply text-icons-01 text-2xl;
