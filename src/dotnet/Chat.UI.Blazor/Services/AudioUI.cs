@@ -382,7 +382,10 @@ public class AudioUI : WorkerBase
                         await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
 
                     Log.LogDebug("PushRealtimePlaybackState: applying changes");
-                    playbackState.Value = expectedPlaybackState;
+                    if (expectedPlaybackState == null)
+                        ChatPlayers.StopPlayback();
+                    else
+                        ChatPlayers.StartRealtimePlayback(expectedPlaybackState);
 
                     // An extra pause to make sure we don't apply changes too frequently
                     await Task.Delay(100, cancellationToken).ConfigureAwait(false);
