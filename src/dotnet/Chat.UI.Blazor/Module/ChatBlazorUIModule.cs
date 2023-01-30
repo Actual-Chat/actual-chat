@@ -37,6 +37,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
+        services.AddTransient<IdleAudioMonitor>(c => new IdleAudioMonitor(c));
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<AudioUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
