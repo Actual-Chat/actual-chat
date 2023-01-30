@@ -38,10 +38,7 @@
         if (_configureButton == null)
             return;
 
-        await JS.InvokeVoidAsync(
-            $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
-            _configureButton.ButtonRef
-            );
+        await NotificationUI.RegisterRequestNotificationHandler(_configureButton.ButtonRef);
         _hasHandlerRegistered = true;
     }
 
