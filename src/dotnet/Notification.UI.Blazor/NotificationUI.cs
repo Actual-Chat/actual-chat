@@ -8,6 +8,7 @@ public class NotificationUI : INotificationUIBackend
 {
     private readonly object _lock = new();
     private string? _deviceId;
+    private IMutableState<PermissionState> _state;
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private Session Session { get; }
@@ -18,7 +19,7 @@ public class NotificationUI : INotificationUIBackend
     private NavigationManager Nav { get; }
 
     public Task WhenInitialized { get; }
-    public IMutableState<PermissionState> State { get; }
+    public IState<PermissionState> State => _state;
 
     public NotificationUI(IServiceProvider services)
     {
@@ -29,7 +30,8 @@ public class NotificationUI : INotificationUIBackend
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         Nav = services.GetRequiredService<NavigationManager>();
-        State = services.StateFactory().NewMutable<PermissionState>();
+
+        _state = services.StateFactory().NewMutable<PermissionState>();
 
         WhenInitialized = Initialize();
 
@@ -105,11 +107,15 @@ public class NotificationUI : INotificationUIBackend
     [JSInvokable]
     public Task UpdateNotificationStatus(string permissionState)
     {
-        State.Value = permissionState switch {
+        var newState = permissionState switch {
             "granted" => PermissionState.Granted,
             "prompt" => PermissionState.Prompt,
             _ => PermissionState.Denied,
         };
+        if (newState != _state.Value)
+            _state.Value = newState;
+        if (newState == PermissionState.Granted)
+            _ = EnsureDeviceRegistered(CancellationToken.None);
 
         return Task.CompletedTask;
     }
