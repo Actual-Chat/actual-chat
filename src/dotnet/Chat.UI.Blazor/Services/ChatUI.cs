@@ -13,7 +13,7 @@ public partial class ChatUI : WorkerBase
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
-    private readonly IMutableState<ChatId> _selectedChatId;
+    private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
@@ -35,7 +35,6 @@ public partial class ChatUI : WorkerBase
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
     private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
@@ -43,11 +42,11 @@ public partial class ChatUI : WorkerBase
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
+    public Task WhenLoaded => _selectedChatId.WhenRead;
 
     public ChatUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        Clocks = services.Clocks();
         StateFactory = services.StateFactory();
         ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();
 
@@ -68,9 +67,7 @@ public partial class ChatUI : WorkerBase
         Commander = services.Commander();
 
         var type = GetType();
-        _selectedChatId = StateFactory.NewMutable(
-            ChatId.None,
-            StateCategories.Get(type, nameof(SelectedChatId)));
+        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)));
         _relatedChatEntry = StateFactory.NewMutable(
             (RelatedChatEntry?)null,
             StateCategories.Get(type, nameof(RelatedChatEntry)));
@@ -308,6 +305,8 @@ public partial class ChatUI : WorkerBase
 
             _selectedChatId.Value = chatId;
         }
+
+        HideRelatedEntry(false);
         _ = TuneUI.Play("select-chat");
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
         UICommander.RunNothing();
