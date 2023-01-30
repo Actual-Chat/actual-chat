@@ -10,7 +10,7 @@
             .ToVector2()
             .ScaleToFitInto(MaxSize)
             .ToIntPair();
-        imgStyle = $"width: {width}px; height: {height}px";
+        imgStyle = $"max-width: {width}px; max-height: {height}px; width:100%; display:block; aspect-ratio: {width} / {height};";
     }
 }
 
