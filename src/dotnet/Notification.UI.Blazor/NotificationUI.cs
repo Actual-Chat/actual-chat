@@ -75,6 +75,12 @@ public class NotificationUI : INotificationUIBackend
             _ = RegisterDevice(deviceId, cancellationToken);
     }
 
+    public ValueTask RegisterRequestNotificationHandler(ElementReference reference)
+        => JS.InvokeVoidAsync(
+            $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
+            reference
+        );
+
     [JSInvokable]
     public Task HandleNotificationNavigation(string url)
     {
