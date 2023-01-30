@@ -174,7 +174,7 @@
     @apply min-h-1 -mt-1;
 }
 .navbar-chats .left-panel-tabs .message-counter-badge {
-    @apply h-4 w-6;
+    @apply h-4 min-w-6;
 }
 
 .tab-panel .chats-tab.tab .navbar-item,
