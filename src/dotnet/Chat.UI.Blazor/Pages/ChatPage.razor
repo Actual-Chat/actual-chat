@@ -21,13 +21,13 @@
 }
 
 @if (m.IsNotSelected) {
-    if (ScreenSize.IsWide()) {
+    if (m.ScreenSize.IsWide()) {
         <NoChatSelected/>
     }
     return;
 }
 
-@if (m.IsUnavailable && ScreenSize.IsWide()) {
+@if (m.IsUnavailable && m.ScreenSize.IsWide()) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
     return;
 }
@@ -76,6 +76,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private AuthUI AuthUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
@@ -85,6 +86,28 @@
         => ReferenceEquals(_rendered, null)
             || State.HasError
             || !ReferenceEquals(_rendered, State.Value);
+
+    protected override Task OnInitializedAsync()
+        => ChatUI.WhenLoaded;
+
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+
+        var chatId = new ChatId(ChatId, ParseOrNone.Option);
+        var prevChatId = await ChatUI.SelectedChatId.Use();
+        if (!chatId.IsNone) {
+            ChatUI.SelectChat(chatId);
+            return;
+        }
+
+        if (ScreenSize.IsNarrow()) {
+            NavbarUI.ChangeVisibility(true);
+            return;
+        }
+
+        if (!prevChatId.IsNone)
+            Nav.NavigateTo(Links.Chat(prevChatId));
+    }
 
     protected override Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
@@ -110,16 +133,7 @@
     {
         var chatId = new ChatId(ChatId, ParseOrNone.Option);
         if (chatId.IsNone)
-            chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        if (chatId.IsNone)
             return Model.NotSelected(ScreenSize);
-
-        if (ChatUI.SelectedChatId.Value != chatId)
-        {
-            ChatUI.SelectChat(chatId);
-            if (ChatUI.RelatedChatEntry.Value != null)
-                ChatUI.HideRelatedEntry(false);
-        }
 
         var chat = await Chats.Get(Session, chatId, cancellationToken);
         var account = await Accounts.GetOwn(Session, cancellationToken);

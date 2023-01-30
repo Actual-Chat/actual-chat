@@ -31,6 +31,8 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
+    protected override Task OnInitializedAsync()
+        => ChatUI.WhenLoaded;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
