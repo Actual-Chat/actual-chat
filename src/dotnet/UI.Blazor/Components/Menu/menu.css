@@ -94,3 +94,7 @@ body.narrow .ac-menu-icon > i {
 .ac-menu-item.warning-item:hover .ac-menu-text {
     @apply text-error;
 }
+.device-touch-capable .ac-menu-item.warning-item .ac-menu-icon > i,
+.device-touch-capable .ac-menu-item.warning-item .ac-menu-text {
+    @apply text-error;
+}
