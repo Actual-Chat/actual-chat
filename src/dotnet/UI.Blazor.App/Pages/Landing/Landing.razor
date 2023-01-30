@@ -57,14 +57,10 @@
                             For business
                         </div>
                     }
-                    @if (!isGuest) {
-                        <div>
-                            <a href="/chat" class="header-text text-headline-1">Chat</a>
-                        </div>
-                    }
-                    <div>
-                        <a href="/docs" class="header-text text-headline-1">Docs</a>
-                    </div>
+                    <Button
+                        Click="@(_ => Nav.NavigateTo(Links.Docs, true))"
+                        Class="header-text text-headline-1 btn-transparent">Docs
+                    </Button>
                     @if (isGuest) {
                         <button class="signin-button-group" onclick="@(() => SignIn(googleScheme.Name))">
                             <span class="px-2">Sign in with</span>
@@ -83,7 +79,15 @@
                         @*     </AppleIcon> *@
                         @* </SigninButtonGroup> *@
                     } else {
-                        <AvatarCircle Avatar="@account?.Avatar" Size="SquareSize.Size9"></AvatarCircle>
+                        <div
+                            class="context-menu-btn"
+                            data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+                            data-menu-trigger="@MenuTrigger.Primary"
+                            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                            <AvatarCircle
+                                Avatar="@account?.Avatar"
+                                Size="SquareSize.Size10"/>
+                        </div>
                     }
                 }
             </div>
@@ -95,7 +99,15 @@
                         <i class="icon-log-in text-xl"></i>
                     </ButtonRound>
                 } else {
-                    <AvatarCircle Avatar="@account?.Avatar" Size="SquareSize.Size9"></AvatarCircle>
+                    <button
+                        class="context-menu-btn md:mx-4"
+                        data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                        <AvatarCircle
+                            Avatar="@account?.Avatar"
+                            Size="SquareSize.Size9"/>
+                    </button>
                 }
             </div>
         }
@@ -525,10 +537,10 @@
                         <a href="/docs/cookies" class="footer-link">
                             Cookie Preferences
                         </a>
+                        <a href="mailto:support@actual.chat" class="footer-link">
+                            Contact us
+                        </a>
                         @if (m.EnableIncompleteUI) {
-                            <a href="#" class="footer-link">
-                                Contact us
-                            </a>
                             <a href="#" class="footer-link">
                                 Region
                             </a>
@@ -573,6 +585,7 @@
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

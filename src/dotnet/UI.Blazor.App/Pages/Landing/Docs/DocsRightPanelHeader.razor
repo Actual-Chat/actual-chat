@@ -31,10 +31,15 @@
         @*     </AppleIcon> *@
         @* </SigninButtonGroup> *@
     } else {
-        <AvatarCircle
-            Avatar="@account.Avatar"
-            Size="SquareSize.Size9"
-            Class="mr-12"></AvatarCircle>
+        <div
+            class="context-menu-btn"
+            data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <AvatarCircle
+                Avatar="@account?.Avatar"
+                Size="SquareSize.Size10"/>
+        </div>
     }
 </div>
 

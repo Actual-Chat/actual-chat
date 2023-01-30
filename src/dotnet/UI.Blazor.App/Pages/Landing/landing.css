@@ -375,7 +375,7 @@ body.narrow .landing .landing-menu {
 .landing-menu .menu-content {
     @apply flex-y;
     @apply h-full;
-    @apply gap-y-8;
+    @apply gap-y-2;
     @apply my-4;
     @apply items-start justify-start;
 }
@@ -443,6 +443,12 @@ body.narrow .docs-left-panel {
     @apply px-8;
     @apply bg-01;
     @apply text-3xl font-semibold;
+}
+.docs-right-panel .context-menu-btn,
+.landing .context-menu-btn {
+    @apply md:mx-4;
+    @apply rounded-full;
+    @apply cursor-pointer;
 }
 .docs-right-panel {
     @apply flex-y;
