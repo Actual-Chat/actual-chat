@@ -60,6 +60,17 @@ public class MarkupParserTest : TestBase
     }
 
     [Fact]
+    public void UrlWithCommaInHashTest()
+    {
+        var m = Parse<MarkupSeq>("https://github.com/Actual-Chat/actual-chat/blob/710d73de02f1241e1f4b2e8c13e6f8978c3896c9/src/nodejs/styles/tailwind.css#L18,L23 x", out _);
+        m.Items.Length.Should().Be(2);
+        var url = (UrlMarkup)m.Items[0];
+        url.Url.Should().EndWith("L18,L23");
+        var text = (PlainTextMarkup)m.Items[1];
+        text.Text.Should().Be(" x");
+    }
+
+    [Fact]
     public void MentionTest()
     {
         var m = Parse<MentionMarkup>("@alex", out var text);

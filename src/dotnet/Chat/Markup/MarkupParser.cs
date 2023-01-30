@@ -40,7 +40,7 @@ public class MarkupParser : IMarkupParser
             or 'w' // for www.
             ).Labelled("First URL character");
     private static readonly Parser<char, char> UrlChar =
-        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%_.\\-~".OrdinalContains(c)).Labelled("URL character");
+        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%_.,\\-~".OrdinalContains(c)).Labelled("URL character");
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
     private static readonly Parser<char, char> EndOfLineChar =
