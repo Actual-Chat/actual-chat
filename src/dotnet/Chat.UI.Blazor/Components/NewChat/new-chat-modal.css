@@ -20,7 +20,7 @@
 }
 .new-chat-modal-contact-list-item {
     @apply flex-x items-center;
-    @apply gap-x-2 pr-2 pl-1;
+    @apply gap-x-2 py-1 px-2;
     @apply rounded-md;
     @apply hover:bg-secondary;
 }
