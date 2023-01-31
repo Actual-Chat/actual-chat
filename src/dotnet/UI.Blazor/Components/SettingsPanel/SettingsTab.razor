@@ -29,6 +29,7 @@
     [Parameter] public int? TabIndex { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public string TitleComment { get; set; } = "";
     [Parameter] public EventCallback OnTabArrowClick { get; set; }
 
     protected override void OnInitialized() {

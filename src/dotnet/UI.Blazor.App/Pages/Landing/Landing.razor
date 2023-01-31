@@ -416,14 +416,14 @@
 
     @* Page 9 *@
     <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y items-center overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-8 gap-y-8" : "px-16 pb-8 pt-16 min-h-screen")">
+        <div class="flex-y overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-8 gap-y-12" : "px-16 pb-8 pt-16 min-h-screen")">
             <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
                 Actual.chat Features
             </div>
-            <div class="w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-01.svg" alt="description">
+            <div class="justify-around @(isNarrow ? "flex-y gap-y-12" : "flex-x")">
+                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
+                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
+                        <img src="/dist/images/landing/dialog-01.svg" alt="description" class="md:h-48">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Voice & text</span>
@@ -431,18 +431,18 @@
                         <span>chats - channels</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-02.svg" alt="description">
+                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
+                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
+                        <img src="/dist/images/landing/dialog-02.svg" alt="description" class="md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Markdown-style</span>
                         text message markup: **bold**, *italic*, `preformatted` text and ```code blocks```
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-03.svg" alt="description">
+                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
+                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
+                        <img src="/dist/images/landing/dialog-03.svg" alt="description" class="md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Replies, @@mentions, and reactions</span>
@@ -450,27 +450,27 @@
                 </div>
             </div>
 
-            <div class="w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-04.svg" alt="description">
+            <div class="justify-around @(isNarrow ? "flex-y gap-y-12" : "flex-x")">
+                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
+                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
+                        <img src="/dist/images/landing/dialog-04.svg" alt="description" class="md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Group and peer-to-peer</span>
                         <span class="font-bold">chats</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-07.svg" alt="description">
+                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
+                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
+                        <img src="/dist/images/landing/dialog-07.svg" alt="description" class="md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Unlimited Image & file uploads</span>
                     </div>
                 </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
-                    <div class="flex w-full p-2 @(isNarrow ? "justify-center" : "h-60 items-end")">
-                        <img src="/dist/images/landing/dialog-06.svg" alt="description">
+                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
+                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
+                        <img src="/dist/images/landing/dialog-06.svg" alt="description" class="md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Characters</span>
