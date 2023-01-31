@@ -9,8 +9,6 @@
     var avatar = account.Avatar;
     var link = Links.User(account.Id).ToDisplayUrl(UrlMapper);
     user.Claims.TryGetValue(ClaimTypes.Email, out var email);
-    user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var mobilePhone);
-    var phone = !string.IsNullOrEmpty(mobilePhone) ? mobilePhone : "+1 234 567 89 00";
 }
 
 <Tile>
@@ -56,7 +54,7 @@
             <CopyToClipboard InputClass="hidden" ButtonClass="btn-sm transparent tile-hidden-btn" Text="+71234567890" HideCopiedTag="true"/>
         </Right>
         <Content>
-            @phone
+            @account.Phone
         </Content>
         <Caption>
             Phone
