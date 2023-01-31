@@ -184,7 +184,7 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
                 throw new ArgumentOutOfRangeException(nameof(IdleTimeout));
             if (CheckInterval <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(CheckInterval));
-            if (IdleTimeoutBeforeCountdown < IdleTimeout)
+            if (IdleTimeoutBeforeCountdown > IdleTimeout)
                 throw new ArgumentOutOfRangeException(nameof(IdleTimeoutBeforeCountdown), IdleTimeoutBeforeCountdown, $"{nameof(IdleTimeoutBeforeCountdown)} cannot be greater than {nameof(IdleTimeout)}");
         }
     }
