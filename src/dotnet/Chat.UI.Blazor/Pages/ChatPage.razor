@@ -74,7 +74,6 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private AuthUI AuthUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -137,20 +136,19 @@
 
         var chat = await Chats.Get(Session, chatId, cancellationToken);
         var account = await Accounts.GetOwn(Session, cancellationToken);
-        var hasEverSignedIn = await AuthUI.HasEverSignedIn.Use(cancellationToken);
-        return new Model(chatId, chat, account, hasEverSignedIn, ScreenSize);
+        return new Model(chatId, chat, account, ScreenSize);
     }
 
     private void OnUnreadCountSubHeaderClick()
         => _ = _chatViewRef.NavigateToUnreadEntry();
 
-    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account, bool HasEverSignedIn, ScreenSize ScreenSize = ScreenSize.Unknown) {
-        public static Model Loading { get; } = new(default, null, AccountFull.Loading, false); // Should differ by ref. from None
-        public static Model NotSelected(ScreenSize screenSize) => new(default, null, AccountFull.None, false, screenSize);
+    public sealed record Model(ChatId ChatId, Chat? Chat, AccountFull Account, ScreenSize ScreenSize = ScreenSize.Unknown) {
+        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
+        public static Model NotSelected(ScreenSize screenSize) => new(default, null, AccountFull.None, screenSize);
 
         public bool IsNotSelected => ChatId.Id.IsEmpty && Chat is null;
         public bool IsUnavailable => !ChatId.Id.IsEmpty && Chat is null;
-        public bool ShowHome => IsUnavailable && !Account.IsActive() && !HasEverSignedIn;
+        public bool ShowHome => IsUnavailable && !Account.IsActive();
 
         public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
             if (other == null)
