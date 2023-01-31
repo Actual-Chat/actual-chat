@@ -130,12 +130,16 @@ We use:
 
 ## Releases
 
-We use [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/nbgv-cli.md).  
+We use [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/nbgv-cli.md).
+
+To publish a new release, run these commands from repo root:
 
 ```bash
 dotnet nbgv prepare-release
 # Push newly created version XX:
 git push --set-upstream origin release/v0.XX
 ```
+
+Note that release deployment won't happen unless approved by one of our core team members.
 
 We use the `alpha` suffix in the `master` branch, `beta`,`rc-*` in release branches. When a release branch drops the version suffix it becomes a production release.
