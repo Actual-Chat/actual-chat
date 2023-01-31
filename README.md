@@ -23,6 +23,13 @@ Install:
 - [Configure GCP service key](https://www.notion.so/actual-chat/GCP-service-keys-d4cbb93a014644fba636e35aad45f94d)
 - Ensure your time & timezone settings are correct.
 
+Run:
+```bash
+dotnet tool restore
+dotnet workload install wasm-tools
+dotnet workload install maui
+```
+
 Recommended IDEs:
 - [Rider](https://www.jetbrains.com/rider/)
 - [Visual Studio Code](https://code.visualstudio.com/)
