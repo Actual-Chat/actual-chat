@@ -126,8 +126,9 @@ We use:
 We use [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/nbgv-cli.md).  
 
 ```bash
-# might not work, see https://github.com/dotnet/Nerdbank.GitVersioning/issues/685
 dotnet nbgv prepare-release
+# Push newly created version XX:
+git push --set-upstream origin release/v0.XX
 ```
 
 We use the `alpha` suffix in the `master` branch, `beta`,`rc-*` in release branches. When a release branch drops the version suffix it becomes a production release.
