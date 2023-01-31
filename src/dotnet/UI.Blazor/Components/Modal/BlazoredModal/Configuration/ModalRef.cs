@@ -10,6 +10,7 @@ public class ModalRef : IModalRef
     internal Guid Id { get; }
     internal RenderFragment ModalInstance { get; }
     internal BlazoredModalInstance? ModalInstanceRef { get; set; }
+
     public event EventHandler<ModalCloseRequestEventArgs>? ModalCloseRequest;
 
     public ModalRef(Guid modalInstanceId, RenderFragment modalInstance, ModalService modalService)

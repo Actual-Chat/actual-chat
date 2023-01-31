@@ -227,6 +227,9 @@ export class AudioContextSource implements Disposable {
             throw `${LogScope}.test: AudioContext isn't running.`;
         if (audioContext.currentTime == now) // AudioContext isn't running
             throw `${LogScope}.test: AudioContext is running, but didn't pass currentTime test.`;
+
+        // Since AudioContext is fine, we should report we're interactive at this point
+        Interactive.isInteractive = true;
     }
 
     protected async fix(audioContext: AudioContext): Promise<void> {
@@ -367,5 +370,5 @@ export class AudioContextSource implements Disposable {
 // Init
 
 export const audioContextSource = new AudioContextSource();
-window['audioContextSource'] = audioContextSource;
+globalThis['audioContextSource'] = audioContextSource;
 

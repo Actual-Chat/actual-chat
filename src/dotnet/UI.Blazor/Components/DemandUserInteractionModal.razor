@@ -1,22 +1,87 @@
 @using Stl.Extensibility
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<string>
 @implements IModalView<DemandUserInteractionModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@{
+    var operations = State.Value;
+    var isUpdating = operations.IsNullOrEmpty();
+}
 
-<ModalChrome Class="max-w-sm">
-    <div class="p-4">
-        <p>Starting @ModalModel.Operation.</p>
-    </div>
-    <div class="p-4 pt-1 flex justify-center">
-        <Button Click="OnContinueClick">Continue</Button>
-    </div>
+<ModalChrome Class="max-w-sm p-4 flex-y gap-y-4">
+    @if (isUpdating) {
+        <div class="flex-none">Updating...</div>
+    }
+    else {
+        <div class="flex-1">Continue @operations?</div>
+        <div class="flex-none flex-x justify-center gap-x-4">
+            <Button Class="btn-cancel" Click="OnCancelClick">Cancel</Button>
+            <Button Class="btn-primary" Click="OnContinueClick">Continue</Button>
+        </div>
+    }
 </ModalChrome>
 
 @code {
+    private CancellationTokenSource? _autoCloseCts;
+
+    [Inject] private InteractiveUI InteractiveUI { get; init; } = null!;
+
     [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private void OnContinueClick()
+    public override ValueTask DisposeAsync() {
+        _autoCloseCts.CancelAndDisposeSilently();
+        return base.DisposeAsync();
+    }
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new() {
+            InitialValue = GetOperationsText(InteractiveUI.ActiveDemand.Value?.Operations),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        var activeDemand = await InteractiveUI.ActiveDemand.Use(cancellationToken);
+        var isInteractive = await InteractiveUI.IsInteractive.Use(cancellationToken);
+        if (isInteractive) {
+            // This means user clicked on something, and:
+            // - If it's "Ok", we'll close soon anyway (once event comes)
+            // - Otherwise we'll just close = cancel playback/recording demand
+            _ = AutoClose();
+        }
+
+        return GetOperationsText(activeDemand?.Operations);
+    }
+
+    private async Task AutoClose() {
+        if (_autoCloseCts != null)
+            return;
+
+        _autoCloseCts = new CancellationTokenSource();
+        var cancellationToken = _autoCloseCts.Token;
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+        _ = ModalInstance.CloseAsync();
+    }
+
+    private string GetOperationsText(ImmutableList<string>? operations)
+        => operations?.Count > 0 ? operations.ToCommaPhrase() : "";
+
+    // Event handlers
+
+    private void OnCancelClick()
         => _ = ModalInstance.CloseAsync();
 
-    public record Model(string Operation);
+    private void OnContinueClick() {
+        var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmed;
+        if (whenConfirmed != null)
+            TaskSource.For(whenConfirmed).TrySetResult(default);
+
+        _ = ModalInstance.CloseAsync();
+    }
+
+    // Nested types
+
+    public class Model {
+        public static Model Instance { get; } = new();
+    }
 }

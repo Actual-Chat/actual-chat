@@ -19,18 +19,17 @@ public class AudioUI : WorkerBase
     private Session Session { get; }
     private IChats Chats { get; }
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private LanguageUI LanguageUI { get; }
-    private InteractiveUI InteractiveUI { get; }
-    private TuneUI TuneUI { get; }
-    private ActiveChatsUI ActiveChatsUI { get; }
-    private UICommander UICommander { get; }
-    private MomentClockSet Clocks { get; }
-    private Moment Now => Clocks.SystemClock.Now;
-    private ILogger Log { get; }
-
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    private LanguageUI LanguageUI { get; }
+    private TuneUI TuneUI { get; }
+    private ActiveChatsUI ActiveChatsUI { get; }
+    private InteractiveUI InteractiveUI { get; }
+    private UICommander UICommander { get; }
+    private MomentClockSet Clocks { get; }
+    private ILogger Log { get; }
 
+    private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
 
     public AudioUI(IServiceProvider services)
@@ -90,6 +89,22 @@ public class AudioUI : WorkerBase
             return activeChats;
         });
     }
+
+    public ValueTask ClearListeningState()
+        => ActiveChatsUI.UpdateActiveChats(activeChats => {
+            var oldActiveChats = activeChats;
+            foreach (var chat in oldActiveChats) {
+                if (chat.IsListening) {
+                    activeChats = activeChats.Remove(chat);
+                    var updatedChat = chat with { IsListening = false };
+                    activeChats = activeChats.Add(updatedChat);
+                }
+            }
+            if (oldActiveChats != activeChats)
+                UICommander.RunNothing();
+
+            return activeChats;
+        });
 
     [ComputeMethod] // Synced
     public virtual Task<ChatId> GetRecordingChatId()
@@ -344,23 +359,32 @@ public class AudioUI : WorkerBase
 
     private Task UpdateRecorderState(
         bool mustStop,
-        ChatId chatIdToStartRecording,
+        ChatId recordingChatId,
         CancellationToken cancellationToken)
         => BackgroundTask.Run(async () => {
-                if (mustStop) {
-                    // Recording is running - let's top it first;
-                    await AudioRecorder.StopRecording(cancellationToken).ConfigureAwait(false);
+            if (mustStop) {
+                // Recording is running - let's top it first;
+                await AudioRecorder.StopRecording(cancellationToken).ConfigureAwait(false);
+            }
+            if (!recordingChatId.IsNone) {
+                // And start the recording if we must
+                if (!InteractiveUI.IsInteractive.Value) {
+                    var isConfirmed = false;
+                    var chat = await Chats.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
+                    if (chat != null) {
+                        var operation = $"recording in \"{chat.Title}\"";
+                        isConfirmed = await InteractiveUI.Demand(operation, cancellationToken).ConfigureAwait(false);
+                    }
+                    if (!isConfirmed) {
+                        await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+                        // An extra pause to make sure we don't apply changes too frequently
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                        return;
+                    }
                 }
-                if (!chatIdToStartRecording.IsNone) {
-                    // And start the recording if we must
-                    if (!InteractiveUI.IsInteractive.Value)
-                        await InteractiveUI.Demand("audio recording").ConfigureAwait(false);
-                    await AudioRecorder.StartRecording(chatIdToStartRecording, cancellationToken).ConfigureAwait(false);
-                }
-            },
-            Log,
-            "Failed to apply new recording state.",
-            CancellationToken.None);
+                await AudioRecorder.StartRecording(recordingChatId, cancellationToken).ConfigureAwait(false);
+            }
+        }, Log, "Failed to apply new recording state.", CancellationToken.None);
 
     private async Task PushRealtimePlaybackState(CancellationToken cancellationToken)
     {
@@ -378,14 +402,35 @@ public class AudioUI : WorkerBase
             var actualPlaybackState = cActualPlaybackState.Value;
             if (actualPlaybackState is null or RealtimePlaybackState) {
                 if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
-                    if (actualPlaybackState is null && !InteractiveUI.IsInteractive.Value)
-                        await InteractiveUI.Demand("audio playback").ConfigureAwait(false);
-
-                    Log.LogDebug("PushRealtimePlaybackState: applying changes");
-                    if (expectedPlaybackState == null)
+                    if (expectedPlaybackState == null) {
+                        Log.LogDebug("PushRealtimePlaybackState: stopping playback");
                         ChatPlayers.StopPlayback();
-                    else
+                    }
+                    else {
+                        if (actualPlaybackState == null && !InteractiveUI.IsInteractive.Value) {
+                            var isConfirmed = false;
+                            var chats = await expectedPlaybackState.ChatIds
+                                .Select(id => Chats.Get(Session, id, cancellationToken))
+                                .Collect()
+                                .ConfigureAwait(false);
+                            var chatTitles = chats
+                                .SkipNullItems()
+                                .Select(c => $"\"{c.Title}\"")
+                                .ToCommaPhrase();
+                            if (!chatTitles.IsNullOrEmpty()) { // It's empty if there are no chats
+                                var operation = "listening in " + chatTitles;
+                                isConfirmed = await InteractiveUI.Demand(operation, cancellationToken).ConfigureAwait(false);
+                            }
+                            if (!isConfirmed) {
+                                await ClearListeningState().ConfigureAwait(false);
+                                // An extra pause to make sure we don't apply changes too frequently
+                                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                                continue;
+                            }
+                        }
+                        Log.LogDebug("PushRealtimePlaybackState: starting playback");
                         ChatPlayers.StartRealtimePlayback(expectedPlaybackState);
+                    }
 
                     // An extra pause to make sure we don't apply changes too frequently
                     await Task.Delay(100, cancellationToken).ConfigureAwait(false);

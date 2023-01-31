@@ -24,7 +24,7 @@ export class BrowserInfo {
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
-        this.windowId = (window['App'] as { windowId: string }).windowId;
+        this.windowId = (globalThis['App'] as { windowId: string }).windowId;
         this.initBodyClasses();
 
         // Call OnInitialized

@@ -93,7 +93,7 @@ export class VirtualList {
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
-            window['virtualList'] = this;
+            globalThis['virtualList'] = this;
         }
 
         this._ref = ref;
