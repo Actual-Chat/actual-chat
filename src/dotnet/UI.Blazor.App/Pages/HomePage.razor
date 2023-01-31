@@ -8,7 +8,7 @@
     var account = m.Account;
     if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
-    if (account.IsGuest) { // Loaded, but user doesn't have an account
+    if (!account.IsActive()) { // Loaded, but user doesn't have an account
         <Landing/>
         return;
     }

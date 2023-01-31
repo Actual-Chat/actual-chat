@@ -51,6 +51,6 @@ public class SignOutReloader : WorkerBase
 
         Log.LogInformation("Forcing reload on sign-out");
         var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo(nav.Uri, true);
+        nav.NavigateTo(Links.Home, true);
     }
 }
