@@ -74,14 +74,14 @@
             IsLabelInsideInput="true">
             <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
         </FormSection>
-        <FormSection
-            For="() => _stepModel.Username"
-            InputId="userName"
-            Label="@("@username")"
-            IsLabelInsideInput="true"
-            IsRequired="true">
-            <InputText id="userName" @bind-Value="_stepModel.Username"/>
-        </FormSection>
+        @* <FormSection *@
+        @*     For="() => _stepModel.Username" *@
+        @*     InputId="userName" *@
+        @*     Label="@("@username")" *@
+        @*     IsLabelInsideInput="true" *@
+        @*     IsRequired="true"> *@
+        @*     <InputText id="userName" @bind-Value="_stepModel.Username"/> *@
+        @* </FormSection> *@
     </Form>
 </div>
 
@@ -167,7 +167,7 @@
         [Required]
         public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
-        [Required]
+        // [Required]
         public string Username { get; set; } = "";
         public string AvatarPicture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
