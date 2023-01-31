@@ -28,11 +28,6 @@
 .new-chat-modal-contact-list-item * {
     @apply cursor-pointer;
 }
-.new-chat-modal-contact-list-item-text {
-    @apply grow;
-    @apply overflow-hidden;
-    @apply text-ellipsis whitespace-nowrap;
-}
 
 .new-chat-modal-selected-contact {
     @apply flex-none flex-x items-center;

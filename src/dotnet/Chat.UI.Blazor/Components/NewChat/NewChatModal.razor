@@ -38,9 +38,9 @@
                     <div class="new-chat-modal-remove-contact-icon">
                         <i class="icon-close text-04 text-2xl pl-1"></i>
                     </div>
-                    <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Account?.Avatar"/>
+                    <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Contact.Account?.Avatar"/>
                     <div class="px-1 max-w-32 truncate">
-                        @contact.Account?.Avatar.Name
+                        @contact.Contact.Account?.Avatar.Name
                     </div>
                 </div>
             }
@@ -55,10 +55,15 @@
             var isSelected = _selectedContacts.Contains(contact);
             <div class="new-chat-modal-contact-list-item"
                  @onclick="() => OnContactClick(contact)">
-                <AccountCircle UserSid="@contact.Account!.Id" ShowPresence="true"/>
-                <span class="new-chat-modal-contact-list-item-text">
-                    <SearchMatchHighlighter Match="@GetMatch(@contact.Account.Avatar.Name)"/>
-                </span>
+                <AccountCircle UserSid="@contact.Contact.Account!.Id" ShowPresence="true"/>
+                <div class="flex-y grow gap-y-1 overflow-hidden">
+                    <span class="text-headline-1 text-02 truncate">
+                        <SearchMatchHighlighter Match="@GetMatch(contact.Contact.Account.Avatar.Name)"/>
+                    </span>
+                    <span class="text-xs text-03 truncate">
+                        @contact.LastChatMessage
+                    </span>
+                </div>
                 <Checkbox
                     IsChecked="@isSelected"
                     Class="!flex-none"
@@ -88,12 +93,13 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private string _filter = null!;
-    private List<Contact> _filteredContacts = new();
-    private List<Contact> _allContacts = new();
-    private readonly List<Contact> _selectedContacts = new();
+    private List<ContactModel> _filteredContacts = new();
+    private List<ContactModel> _allContacts = new();
+    private readonly List<ContactModel> _selectedContacts = new();
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -104,10 +110,23 @@
     protected override async Task OnInitializedAsync() {
         _form = new(ComponentIdGenerator);
         var userContacts = await Contacts.ListUserContacts(Session, CancellationToken.None);
-        _allContacts = userContacts
+        var models = await userContacts
             .OrderBy(x => x.Account?.Avatar.Name)
-            .ToList();
+            .Select(LoadContact)
+            .Collect();
+        _allContacts = models.ToList();
         _filteredContacts = _allContacts.ToList();
+    }
+
+    private async Task<ContactModel> LoadContact(Contact contact) {
+        var chatInfo = contact.ChatId != ChatId.None
+            ? await ChatUI.Get(contact.ChatId, CancellationToken.None)
+            : null;
+
+;        return new ContactModel {
+            Contact = contact,
+            LastChatMessage = chatInfo?.LastTextEntryText,
+        };
     }
 
     private SearchMatch GetMatch(string text) {
@@ -121,13 +140,13 @@
         _filteredContacts = string.IsNullOrWhiteSpace(filter)
             ? _allContacts.ToList()
             : _allContacts
-                .Where(x => x.Account != null && x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .Where(x => x.Contact.Account != null && x.Contact.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
                 .ToList();
 
         StateHasChanged();
     }
 
-    private void OnContactClick(Contact contact) {
+    private void OnContactClick(ContactModel contact) {
         if (_selectedContacts.Contains(contact)) {
             _selectedContacts.Remove(contact);
         } else {
@@ -153,8 +172,8 @@
             chat.Require();
 
             var userIds = _selectedContacts
-                .Where(contact => contact.Account != null)
-                .Select(contact => contact.Account!.Id)
+                .Where(contact => contact.Contact.Account != null)
+                .Select(contact => contact.Contact.Account!.Id)
                 .ToArray();
             var createAuthorsCommand = new IAuthors.InviteCommand(Session, chat.Id, userIds);
             var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, CancellationToken.None);
@@ -170,7 +189,7 @@
 
     public sealed record Model;
 
-    public sealed class FormModel {
+    private sealed class FormModel {
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
@@ -181,5 +200,10 @@
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
         }
+    }
+
+    private sealed class ContactModel {
+        public Contact Contact { get; init; } = null!;
+        public string? LastChatMessage { get; init; }
     }
 }
