@@ -14,7 +14,7 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const MaintainCyclePeriodMs = 2000;
 const MaxWarmupTimeMs = 1000;
-const MaxResumeTimeMs = 300;
+const MaxResumeTimeMs = 600;
 const MaxSuspendTimeMs = 300;
 const MaxInteractionWaitTimeMs = 60_000;
 const TestIntervalMs = 40;
@@ -80,12 +80,13 @@ export class AudioContextSource implements Disposable {
 
     // Must be private, but good to keep it near markNotReady
     private markReady(audioContext: AudioContext | null) {
+        Interactive.isInteractive = true;
+
         if (this._whenReady.isCompleted())
             return; // Already ready
 
         this._changeCount++;
         debugLog?.log(`markReady(): #${this._changeCount}, AudioContext:`, audioContext);
-        Interactive.isInteractive = true;
 
         // _whenNotReady must be replaced first
         if (this._whenNotReady.isCompleted())
@@ -112,29 +113,40 @@ export class AudioContextSource implements Disposable {
     // Protected methods
 
     protected async maintain(): Promise<void> {
-        let audioContext: AudioContext = null;
+        let audioContext: AudioContext | null = null;
+        let lastTestTimestamp = Date.now();
+
         for (;;) { // Renew loop
             if (this._isDisposed)
                 return;
 
             try {
-                audioContext = await this.create();
+                if (audioContext === null || audioContext.state === 'closed') {
+                    audioContext = await this.create();
+                    await this.warmup(audioContext);
+                    await this.test(audioContext);
+                    this.markReady(audioContext);
+                }
                 this.throwIfDisposed();
-
-                await this.warmup(audioContext);
-                await this.test(audioContext);
 
                 // noinspection InfiniteLoopJS
                 for (;;) { // Fix loop
                     this.throwIfDisposed();
-                    this.markReady(audioContext);
 
-                    const whenDelayCompleted = delayAsync(MaintainCyclePeriodMs);
-                    await Promise.race([this._whenNotReady, whenDelayCompleted]);
+                    const currentTimestamp = Date.now();
+                    const timePassedSinceTest = currentTimestamp - lastTestTimestamp;
+                    if (timePassedSinceTest < MaintainCyclePeriodMs) {
+                        await delayAsync(MaintainCyclePeriodMs - timePassedSinceTest);
+                    }
+                    else {
+                        const whenDelayCompleted = delayAsync(MaintainCyclePeriodMs);
+                        await Promise.race([this._whenNotReady, whenDelayCompleted]);
+                    }
                     this.throwIfDisposed();
 
                     // Let's try to test whether AudioContext is broken and fix
                     try {
+                        lastTestTimestamp = Date.now();
                         await this.test(audioContext);
 
                         // Test passed, we're fine to keep it
@@ -148,7 +160,8 @@ export class AudioContextSource implements Disposable {
                     }
 
                     this.throwIfDisposed();
-                    await this.fix(audioContext);
+                    const fixedContext = await this.fix(audioContext);
+                    this.markReady(fixedContext);
                 }
             }
             catch (e) {
@@ -156,7 +169,6 @@ export class AudioContextSource implements Disposable {
             }
             finally {
                 this.markNotReady();
-                await this.close(audioContext);
             }
         }
     }
@@ -164,11 +176,7 @@ export class AudioContextSource implements Disposable {
     protected async create(): Promise<AudioContext> {
         debugLog?.log(`create()`)
 
-        const audioContext = new AudioContext({
-            latencyHint: 'interactive',
-            sampleRate: 48000,
-        });
-        await this.resume(audioContext, true);
+        const audioContext = await this.refreshContext(null);
         if (audioContext.state !== 'running') {
             await this.close(audioContext);
             throw `${LogScope}.create: AudioContext.resume failed.`;
@@ -232,14 +240,16 @@ export class AudioContextSource implements Disposable {
         Interactive.isInteractive = true;
     }
 
-    protected async fix(audioContext: AudioContext): Promise<void> {
+    protected async fix(audioContext: AudioContext): Promise<AudioContext> {
         debugLog?.log(`fix(): AudioContext:`, audioContext);
 
         try {
-            await this.resume(audioContext, false);
-            await this.test(audioContext);
+            if (!await this.trySuspend(audioContext))
+                throw `${LogScope}.resume: couldn't suspend AudioContext`;
+            const refreshedContext = await this.refreshContext(audioContext);
+            await this.test(refreshedContext);
             debugLog?.log(`fix: success`, );
-            return;
+            return refreshedContext;
         }
         catch (e) {
             warnLog?.log(`fix: failed, error:`, e);
@@ -247,38 +257,51 @@ export class AudioContextSource implements Disposable {
         }
     }
 
-    protected async resume(audioContext: AudioContext, tryInteractive: boolean): Promise<void> {
+    protected async refreshContext(audioContext: AudioContext | null): Promise<AudioContext> {
         debugLog?.log(`resume(): AudioContext:`, audioContext);
-        if (audioContext.state === 'running')
-            return;
+        if (audioContext && audioContext.state === 'running')
+            return audioContext;
 
-        const isWakeUp = this.isWakeUp()
+        // Create and resume audio context without waiting for user interaction iof not required
+        if (Interactive.isAlwaysInteractive) {
+            if (!audioContext)
+                audioContext = new AudioContext({
+                    latencyHint: 'interactive',
+                    sampleRate: 48000,
+                });
+            if (!await this.tryResume(audioContext))
+                throw `${LogScope}.resume: couldn't resume w/o interaction, but tryInteractive == false`;
+            return audioContext;
+        }
 
-        if (!await this.trySuspend(audioContext))
-            throw `${LogScope}.resume: couldn't suspend AudioContext`;
-        if (await this.tryResume(audioContext))
-            return;
-
-        // Couldn't resume
+        // Resume can be called during user interaction only
+        const isWakeUp = this.isWakeUp();
         if (isWakeUp)
             Interactive.isInteractive = false;
-        if (!tryInteractive)
-            throw `${LogScope}.resume: couldn't resume w/o interaction, but tryInteractive == false`;
 
         debugLog?.log(`resume: waiting for interaction`);
-        const whenResumed = new PromiseSource<boolean>();
-        const handler = Interactive.interactionEvents.add(() => {
-            audioContext.resume().then(
-                () => audioContext.state === 'running' ? whenResumed.resolve(true) : undefined,
-                () => undefined);
+        const contextTask = new PromiseSource<AudioContext | null>();
+        const handler = Interactive.interactionEvents.add( () => {
+            if (!audioContext)
+                audioContext = new AudioContext({
+                    latencyHint: 'interactive',
+                    sampleRate: 48000,
+                });
+            this.tryResume(audioContext).then(
+                () => contextTask.resolve(audioContext),
+                () => contextTask.resolve(null));
         });
         try {
-            const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
-            if (!await Promise.race([whenResumed, timerTask]))
+            const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => null as (AudioContext | null));
+            const refreshedContext = await Promise.race([contextTask, timerTask]);
+            if (!refreshedContext)
                 throw `${LogScope}.resume: timed out while waiting for interaction`;
+            if (refreshedContext.state !== 'running')
+                // Unable to resume context - let's close and recreate later
+                await refreshedContext.close();
 
             debugLog?.log(`resume: succeeded on interaction`);
-            return;
+            return refreshedContext;
         }
         finally {
             handler.dispose();
@@ -292,9 +315,9 @@ export class AudioContextSource implements Disposable {
         }
 
         debugLog?.log(`trySuspend(): AudioContext:`, audioContext);
-        const resumeTask = audioContext.suspend().then(() => true);
+        const suspendTask = audioContext.suspend().then(() => true);
         const timerTask = delayAsync(MaxSuspendTimeMs).then(() => false);
-        if (await Promise.race([resumeTask, timerTask])) {
+        if (await Promise.race([suspendTask, timerTask])) {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             if (audioContext.state !== 'suspended') {
