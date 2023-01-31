@@ -1,10 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
@@ -50,6 +52,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings
+        services.TryAddSingleton<AudioSettings>(c => new AudioSettings());
         services.AddScoped<LanguageUI>(c => new LanguageUI(c));
         services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
 
