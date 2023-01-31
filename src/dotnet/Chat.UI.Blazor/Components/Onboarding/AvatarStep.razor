@@ -148,7 +148,7 @@
             avatar.Version,
             new Change<AvatarFull> {
                 Update = avatar with {
-                    Name = _stepModel.Name,
+                    Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
                     Picture = _stepModel.AvatarPicture,
                 },
             });
