@@ -1,0 +1,17 @@
+@page "/SigningOut"
+@layout NoLayout
+<div>Signing out...</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        var account = await Accounts.GetOwn(Session, default);
+        if (account.IsActive())
+            await ClientAuth.SignOut();
+        Nav.NavigateTo(Links.Home, true, true);
+    }
+}

@@ -570,6 +570,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -603,8 +604,8 @@
         };
     }
 
-    private void SignIn(string name)
-        => ClientAuth.SignIn(name);
+    private Task SignIn(string name) =>
+        ClientAuth.SignIn(name).AsTask();
 
     private void OnMenuHandleClick() {
         _isMenuOpen = !_isMenuOpen;

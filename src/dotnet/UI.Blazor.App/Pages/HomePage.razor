@@ -8,22 +8,11 @@
     var account = m.Account;
     if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
-    if (!account.IsActive()) { // Loaded, but user doesn't have an account
-        <Landing/>
-        return;
-    }
-
-    // Logged in
-    if (!m.Link.IsNullOrEmpty() && !_navigated) {
-        _navigated = true; // prevents multiple calls
-        // Do automatic redirect on first load.
-        Nav.NavigateTo(m.Link, false, true);
-    }
 }
 
-@code {
-    private bool _navigated;
+<Landing/>
 
+@code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;

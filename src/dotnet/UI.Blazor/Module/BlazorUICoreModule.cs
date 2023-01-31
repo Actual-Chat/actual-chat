@@ -116,8 +116,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
-        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(
-            c.GetRequiredService<ClientAuthHelper>()));
+        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
 
         services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += InitializeHistoryUI);
     }
