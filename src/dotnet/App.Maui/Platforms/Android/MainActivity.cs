@@ -8,6 +8,7 @@ using Android.Content;
 using Result = Android.App.Result;
 using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
+using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
 
@@ -231,9 +232,9 @@ public class MainActivity : MauiAppCompatActivity
             var serviceProvider = ScopedServicesAccessor.ScopedServices;
             var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
-            var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
+            var handler = serviceProvider.GetRequiredService<NotificationUI>();
             Log.LogDebug("MainActivity.NotificationTap navigates to '{Url}'", url);
-            _ = handler.Handle(url);
+            _ = handler.HandleNotificationNavigation(url);
         }
         _ = Handle();
     }

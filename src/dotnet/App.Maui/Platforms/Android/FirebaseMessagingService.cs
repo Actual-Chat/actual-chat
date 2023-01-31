@@ -1,4 +1,5 @@
 using ActualChat.Notification;
+using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
@@ -42,7 +43,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
         var chatId = new ChatId(sChatId, ParseOrNone.Option);
         if (!chatId.IsNone && ScopedServicesAccessor.IsInitialized) {
-            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationNavigationHandler>();
+            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationUI>();
             if (handler.IsAlreadyThere(chatId)) {
                 // Do nothing if notification leads to the active chat.
                 Log.LogDebug("FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: \'{ChatId}\'.", chatId);
