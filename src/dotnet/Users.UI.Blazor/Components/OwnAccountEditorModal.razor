@@ -23,7 +23,7 @@
         </FormSection>
 
         <FormSection For="() => _form.Phone" InputId="@_form.PhoneFieldId" Label="Phone" IsRequired="false" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.Phone" Id="@_form.PhoneFieldId" Autofocus="true"/>
+            <TextBox @bind-Value="@_form.Phone" Id="@_form.PhoneFieldId" Autofocus="true" disabled/>
         </FormSection>
 
         </Body>
@@ -56,6 +56,7 @@
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         _account = await Accounts.GetOwn(Session, default);
         _form.Name = _account.User.Name ?? "";
+        _form.Phone = _account.Phone ?? "";
         _form.CopyToBase();
     }
 
