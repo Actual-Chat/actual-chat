@@ -9,8 +9,6 @@
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    private async Task OnSignOutClick() {
-        await ClientAuth.SignOut();
-        Nav.NavigateTo(Links.Home);
-    }
+    private void OnSignOutClick()
+        => Nav.NavigateTo(Links.SigningOut);
 }

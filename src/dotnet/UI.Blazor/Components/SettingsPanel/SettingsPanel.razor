@@ -166,9 +166,6 @@
         StateHasChanged();
     }
 
-    private async Task OnSignOutClick() {
-        await ModalInstance.CloseAsync().ConfigureAwait(false);
-        await ClientAuth.SignOut();
-        Nav.NavigateTo(Links.Home);
-    }
+    private void OnSignOutClick()
+        => Nav.NavigateTo(Links.SigningOut);
 }
