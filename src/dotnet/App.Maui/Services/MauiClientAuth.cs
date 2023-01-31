@@ -7,12 +7,14 @@ internal sealed class MauiClientAuth : IClientAuth
     private ClientAppSettings AppSettings { get; }
     private UrlMapper UrlMapper { get; }
     private ILogger<MauiClientAuth> Log { get; }
+    private MobileAuthClient MobileAuthClient { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
         AppSettings = services.GetRequiredService<ClientAppSettings>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         Log = services.GetRequiredService<ILogger<MauiClientAuth>>();
+        MobileAuthClient = services.GetRequiredService<MobileAuthClient>();
     }
 
     public async ValueTask SignIn(string scheme)
@@ -35,12 +37,9 @@ internal sealed class MauiClientAuth : IClientAuth
         var activity = (MainActivity)Platform.CurrentActivity!;
         if (activity.IsSignedInWithGoogle()) {
             await activity.SignOutWithGoogle().ConfigureAwait(true);
-            return;
         }
 #endif
-
-        var uri = $"{UrlMapper.BaseUrl}mobileauth/signout/{AppSettings.SessionId}";
-        await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
+        await MobileAuthClient.SignOut().ConfigureAwait(true);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()

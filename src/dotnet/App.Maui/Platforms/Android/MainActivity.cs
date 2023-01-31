@@ -82,8 +82,6 @@ public class MainActivity : MauiAppCompatActivity
         // Build a GoogleSignInClient with the options specified by gso.
         mGoogleSignInClient = GoogleSignIn.GetClient(this, gso);
 
-        _ = AutoSignInOnStart();
-
         CreateNotificationChannel();
 
         TryProcessNotificationTap(Intent);
@@ -135,11 +133,7 @@ public class MainActivity : MauiAppCompatActivity
     }
 
     public async Task SignOutWithGoogle()
-    {
-        await mGoogleSignInClient.SignOutAsync().ConfigureAwait(true);
-        var mobileAuthClient = AppServices.GetRequiredService<MobileAuthClient>();
-        await mobileAuthClient.SignOut().ConfigureAwait(true);
-    }
+        => await mGoogleSignInClient.SignOutAsync().ConfigureAwait(true);
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
@@ -159,13 +153,8 @@ public class MainActivity : MauiAppCompatActivity
             }
             if (resultCode == Result.Ok)
                 _ = CheckResult(data!);
-            else {
+            else
                 Log.LogDebug("Google SignIn. SignInIntent result is NOK. Actual result: {ResultCode}", resultCode);
-                new AlertDialog.Builder(this)
-                    .SetTitle("Google SignIn")!
-                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")!
-                    .Show();
-            }
         }
     }
 
@@ -176,13 +165,6 @@ public class MainActivity : MauiAppCompatActivity
             return;
         var mobileAuthClient = AppServices.GetRequiredService<MobileAuthClient>();
         await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
-    }
-
-    private async Task AutoSignInOnStart()
-    {
-        // Check for existing Google Sign In account, if it exists then request authentication code and authenticate session.
-        if (IsSignedInWithGoogle())
-            await SignInWithGoogle().ConfigureAwait(true);
     }
 
     private void CreateNotificationChannel()
