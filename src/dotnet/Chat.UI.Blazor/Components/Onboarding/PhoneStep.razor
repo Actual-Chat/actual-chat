@@ -51,13 +51,13 @@
                 <InputText id="phoneNumber" @bind-Value="_stepModel.Number" autocomplete="tel-national"/>
             </FormSection>
         </div>
-        <FormSection For="() => _stepModel.SyncContacts">
-            <Checkbox
-                Id="syncContacts"
-                IsChecked="@_stepModel.SyncContacts"
-                Change="OnSyncContactsChange"
-                Label="Sync Contacts"/>
-        </FormSection>
+        @* <FormSection For="() => _stepModel.SyncContacts"> *@
+        @*     <Checkbox *@
+        @*         Id="syncContacts" *@
+        @*         IsChecked="@_stepModel.SyncContacts" *@
+        @*         Change="OnSyncContactsChange" *@
+        @*         Label="Sync Contacts"/> *@
+        @* </FormSection> *@
         <FormSection
             For="() => _stepModel.Email"
             InputId="email"
