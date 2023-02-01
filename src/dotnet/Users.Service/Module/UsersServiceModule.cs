@@ -36,8 +36,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddAuthentication(options => {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         }).AddCookie(options => {
-            options.LoginPath = Links.SignIn.Value;
-            options.LogoutPath = Links.SignOut.Value;
+            options.LoginPath = "/signIn";
+            options.LogoutPath = "/signOut";
             if (IsDevelopmentInstance)
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
             // This controls the expiration time stored in the cookie itself
