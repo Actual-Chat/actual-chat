@@ -4,7 +4,6 @@ public static class Links
 {
     public static LocalUrl Home { get; } = default;
     public static LocalUrl Docs { get; } = "/docs";
-    public static LocalUrl SigningOut { get; } = "/SigningOut";
 
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone
@@ -24,4 +23,9 @@ public static class Links
 
     public static LocalUrl Invite(string format, string inviteId)
         => string.Format(CultureInfo.InvariantCulture, format, inviteId.UrlEncode());
+
+    public static LocalUrl SignOut(string redirectUrl = "")
+        =>  redirectUrl.IsNullOrEmpty()
+            ? "sign-out"
+            : $"sign-out/{redirectUrl.UrlEncode()}";
 }

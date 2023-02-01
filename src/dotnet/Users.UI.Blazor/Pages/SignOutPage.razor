@@ -1,5 +1,7 @@
-@page "/SigningOut"
+@page "/sign-out"
+@page "/sign-out/{RedirectUrl}"
 @layout NoLayout
+
 <div>Signing out...</div>
 
 @code {
@@ -8,10 +10,16 @@
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
+    [Parameter] public string RedirectUrl { get; set; } = "";
+
     protected override async Task OnInitializedAsync() {
+        if (RedirectUrl.IsNullOrEmpty())
+            RedirectUrl = Links.Home;
+
         var account = await Accounts.GetOwn(Session, default);
         if (account.IsActive())
             await ClientAuth.SignOut();
-        Nav.NavigateTo(Links.Home, true, true);
+
+        Nav.NavigateTo(RedirectUrl, true, true);
     }
 }

@@ -10,5 +10,5 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private void OnSignOutClick()
-        => Nav.NavigateTo(Links.SigningOut);
+        => Nav.NavigateTo(Links.SignOut());
 }
