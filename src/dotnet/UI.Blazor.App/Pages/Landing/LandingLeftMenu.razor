@@ -32,11 +32,6 @@
             <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
                 Home
             </Button>
-            @if (!isGuest) {
-                <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Chat(default)))">
-                    Chats
-                </Button>
-            }
             <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
                 Privacy
             </Button>
