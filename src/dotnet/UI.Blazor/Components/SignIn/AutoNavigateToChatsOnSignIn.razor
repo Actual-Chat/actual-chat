@@ -1,0 +1,34 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services;
+@inherits ComputedStateComponent<Account?>
+
+@code {
+    private Account? _lastAccount;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    protected override ComputedState<Account?>.Options GetStateOptions()
+        => new () {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Account?> ComputeState(CancellationToken cancellationToken) {
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
+        if (_lastAccount == null) {
+            _lastAccount = account;
+            return account;
+        }
+
+        var lastAccount = _lastAccount;
+        _lastAccount = account;
+        if (lastAccount.IsGuest && !account.IsGuest)
+            AutoNavigationUI.TryNavigateToChatsOnSignIn(); // Fine to do this from here
+
+        return account;
+    }
+}

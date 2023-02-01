@@ -45,7 +45,13 @@ export class BrowserInfo {
         ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
         if (this.appKind == 'Maui')
             Interactive.isAlwaysInteractive = true;
+        globalThis["browserInfo"] = this;
     }
+
+    public static redirect(url: string): void {
+        log?.log(`redirect, url:`, url);
+        this.backendRef.invokeMethodAsync('OnRedirect', url);
+    };
 
     // Backend methods
 
