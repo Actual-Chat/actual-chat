@@ -136,19 +136,18 @@
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
         if (browserInfo.ScreenSize.Value.IsNarrow()) {
             var url = Nav.GetLocalUrl();
-            // Home page in narrow view redirects to Chat page.
-            // Chat page sets WhenLoaded marker.
-            if (url.IsHome() || url.IsChat()) {
-                // Wait to let Chat page to
-                // So far timeout is too big. I would like to put in less than 5 seconds.
-                // But tests with my phone indicate that it takes more that 5 seconds to be ready to
-                // load and display chat list.
-                // So far we definitely exceed limit considered by Android Vitals
-                // which should be less than 5 seconds for cold start.
+            // Only ChatPage (actually, ChatListNavbarWidget) & HomePage sets WhenLoaded marker.
+            if (url.IsHome() || url.IsChatOrChatRoot()) {
+                // Wait to let some initial content to load before the first render.
+                // Tests with my phone indicate that it takes more that 5 seconds
+                // for chat page to load and display chat list.
+                //
+                // So far we definitely exceed the limit considered by Android Vitals,
+                // which should be less than 5 seconds for cold start:
                 // https://developer.android.com/topic/performance/vitals/launch-time#av
                 var cts = new CancellationTokenSource();
                 try {
-                    var delayTask = Task.Delay(TimeSpan.FromSeconds(10), cts.Token);
+                    var delayTask = Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
                     await Task.WhenAny(delayTask, loadingUI.WhenLoaded);
                 }
                 finally {

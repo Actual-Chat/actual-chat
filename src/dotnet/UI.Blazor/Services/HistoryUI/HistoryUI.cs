@@ -59,11 +59,12 @@ public class HistoryUI
             return;
 
         var url = Nav.GetLocalUrl();
-        var acceptableInitialLocation = url.IsHome() || url.IsDocs() || url.IsChatRoot();
-        if (!acceptableInitialLocation) {
+        // We need at least one history item to enable proper left/right drawer support on chats page
+        var mustRedirectToChats = url.IsChatOrChatRoot();
+        if (mustRedirectToChats) {
             _rewriteInitialLocation = true;
             _whenInitializedSource = TaskSource.New<Unit>(true);
-            Log.LogDebug("Rewrite initial location from '{InitialLocation}'", url);
+            Log.LogDebug("Redirecting to chats from '{InitialLocation}' to create history item", url);
             Nav.NavigateTo(Links.Chat(default), false, true);
             await _whenInitializedSource.Task.ConfigureAwait(true);
             _whenInitializedSource = TaskSource<Unit>.Empty;
