@@ -3,6 +3,7 @@ import { Disposable } from 'disposable';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'event-handling';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class EventHandler<T> implements Disposable {
@@ -141,13 +142,22 @@ export const DocumentEvents = {
     capturedPassive: new DocumentEventSet(true, false),
 }
 
-export function endEvent(event?: Event, stopImmediatePropagation = true, preventDefault = true) : void {
+export function stopEvent(event?: Event, stopImmediatePropagation = true, preventDefault = true) : void {
     if (!event)
         return;
 
+    debugLog?.log(`stopEvent: event:`, event, ', stopImmediatePropagation:', stopImmediatePropagation, ', preventDefault:', preventDefault);
     event.stopPropagation();
     if (stopImmediatePropagation)
         event.stopImmediatePropagation();
     if (preventDefault)
         event.preventDefault();
+}
+
+export function preventDefaultForEvent(event?: Event) : void {
+    if (!event)
+        return;
+
+    debugLog?.log(`preventDefaultForEvent: event:`, event);
+    event.preventDefault();
 }

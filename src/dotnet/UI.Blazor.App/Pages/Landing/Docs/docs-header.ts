@@ -1,5 +1,5 @@
 import { debounceTime, filter, fromEvent, map, merge, Subject, takeUntil } from 'rxjs';
-import { endEvent } from 'event-handling';
+import { stopEvent } from 'event-handling';
 import { ScreenSize } from '../../../../UI.Blazor/Services/ScreenSize/screen-size';
 
 import { Log, LogLevel, LogScope } from 'logging';
@@ -48,6 +48,6 @@ export class DocsHeader {
             return;
 
         this.blazorRef.invokeMethodAsync('CloseMenu');
-        endEvent(event);
+        stopEvent(event);
     };
 }

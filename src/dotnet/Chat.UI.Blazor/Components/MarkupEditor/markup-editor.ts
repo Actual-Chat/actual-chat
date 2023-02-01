@@ -1,5 +1,8 @@
+import { DeviceInfo } from 'device-info';
 import { getOrInheritData } from 'dom-helpers';
+import { Timeout } from 'timeout';
 import { throttle } from 'promises';
+import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
 import { Log, LogLevel, LogScope } from 'logging';
 
@@ -27,13 +30,15 @@ export class MarkupEditor {
     public readonly contentDiv: HTMLDivElement;
     public changed: (html: string, text: string) => void = () => { };
 
-    private readonly listHandlers: Array<ListHandler>;
-    private listHandler?: ListHandler = null;
-    private listFilter: string = "";
+    private isContentDivInitialized = false;
     private lastSelectedRange?: Range = null;
     private undoStack: UndoStack<string>;
     private currentTransaction: () => void | null;
     private lastHtml: string = null;
+
+    private readonly listHandlers: Array<ListHandler>;
+    private listHandler?: ListHandler = null;
+    private listFilter: string = "";
 
     constructor(
         public readonly editorDiv: HTMLDivElement,
@@ -61,7 +66,7 @@ export class MarkupEditor {
         // Attach listeners & observers
         this.contentDiv.addEventListener("focus", this.onFocus)
         this.contentDiv.addEventListener("blur", this.onBlur)
-        this.contentDiv.addEventListener("mousedown", this.onMouseDown)
+        this.contentDiv.addEventListener("pointerdown", this.onPointerDown)
         this.contentDiv.addEventListener("keydown", this.onKeyDown);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
         this.contentDiv.addEventListener("paste", this.onPaste);
@@ -77,7 +82,7 @@ export class MarkupEditor {
     public dispose() {
         this.contentDiv.removeEventListener("focus", this.onFocus)
         this.contentDiv.removeEventListener("blur", this.onBlur)
-        this.contentDiv.removeEventListener("mousedown", this.onMouseDown)
+        this.contentDiv.removeEventListener("pointerdown", this.onPointerDown)
         this.contentDiv.removeEventListener("keydown", this.onKeyDown);
         this.contentDiv.removeEventListener("keypress", this.onKeyPress);
         this.contentDiv.removeEventListener("paste", this.onPaste);
@@ -88,6 +93,7 @@ export class MarkupEditor {
     }
 
     public transaction(action: () => void): void {
+        debugLog?.log("transaction");
         const oldTransaction = this.currentTransaction;
         this.currentTransaction = action;
         try {
@@ -192,23 +198,34 @@ export class MarkupEditor {
     // Event handlers
 
     private onFocus = () => {
-        this.transaction(() => {
-            document.execCommand("insertBrOnReturn", false, "true");
-            document.execCommand("styleWithCSS", false, "false");
-        });
+        debugLog?.log("onFocus");
+        if (!this.isContentDivInitialized) {
+            if (DeviceInfo.isIos)
+                this.isContentDivInitialized = true;
+            this.transaction(() => {
+                document.execCommand("insertBrOnReturn", false, "true");
+                document.execCommand("styleWithCSS", false, "false");
+            });
+            if (DeviceInfo.isIos)
+                this.focus();
+        }
         this.fixVirtualKeyboard();
     }
 
-    private onBlur = () => this.fixVirtualKeyboard()
+    private onBlur = () => {
+        debugLog?.log("onBlur");
+        this.fixVirtualKeyboard();
+    }
 
-    private onMouseDown = () => {
+    private onPointerDown = (e: PointerEvent) => {
+        debugLog?.log("onPointerDown, event:", e);
         this.focus();
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
-        // debugLog?.log(`onKeyDown: code = "${e.code}"`)
+        debugLog?.log(`onKeyDown, code = "${e.code}", event:`, e)
 
-        const ok = () => e.preventDefault();
+        const ok = () => preventDefaultForEvent(e);
 
         // When list handler is active...
         const listHandler = this.listHandler;
@@ -222,12 +239,12 @@ export class MarkupEditor {
                 return ok();
             }
             if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-                e.preventDefault();
+                preventDefaultForEvent(e);
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem));
                 return ok();
             }
             if (e.code === 'Escape') {
-                e.preventDefault();
+                preventDefaultForEvent(e);
                 if (!this.expandSelection(listHandler))
                     return ok();
                 this.closeListUI();
@@ -249,9 +266,9 @@ export class MarkupEditor {
     }
 
     private onKeyPress = (e: KeyboardEvent) => {
-        // debugLog?.log(`onKeyPress: code = "${e.code}"`)
+        debugLog?.log(`onKeyPress, code = "${e.code}", event:`, e)
 
-        const ok = () => e.preventDefault();
+        const ok = () => preventDefaultForEvent(e);
 
         // Suppress bold, italic, and underline shortcuts
         if ((e.ctrlKey || e.metaKey)) {
@@ -284,7 +301,8 @@ export class MarkupEditor {
     }
 
     private onPaste = (e: ClipboardEvent) => {
-        const ok = () => e.preventDefault();
+        debugLog?.log(`onPaste, event:`, e)
+        const ok = () => preventDefaultForEvent(e);
 
         const data = e.clipboardData;
         const text = cleanPastedText(data.getData('text'));
@@ -296,16 +314,18 @@ export class MarkupEditor {
         return ok();
     }
 
-    private onSelectionChange = () => {
+    private onSelectionChange = (e: Event) => {
+        debugLog?.log(`onSelectionChange, event:`, e)
         this.fixSelection();
         this.updateListUIThrottled();
     };
 
-    private onDocumentClick = (event: Event): void => {
-        if (!(event.target instanceof Element))
+    private onDocumentClick = (e: Event): void => {
+        debugLog?.log(`onDocumentClick, event:`, e)
+        if (!(e.target instanceof Element))
             return;
 
-        const [_, trigger] = getOrInheritData(event.target, 'editorTrigger');
+        const [_, trigger] = getOrInheritData(e.target, 'editorTrigger');
         if (trigger?.toLowerCase() !== 'true')
             return;
 
@@ -313,6 +333,7 @@ export class MarkupEditor {
     };
 
     private onBeforeInput = (e: InputEvent) => {
+        debugLog?.log(`onBeforeInput, event:`, e)
         const ok = () => e.preventDefault();
 
         switch (e.inputType) {
@@ -329,6 +350,7 @@ export class MarkupEditor {
     }
 
     private onInput = (e: InputEvent) => {
+        debugLog?.log(`onInput, event:`, e)
         this.fixContent();
         this.undoStack.pushThrottled();
         this.updateListUIThrottled();
@@ -543,6 +565,7 @@ export class MarkupEditor {
 
         if (!('virtualKeyboard' in navigator))
             return;
+
         let mustShow = document.activeElement == this.contentDiv;
         // @ts-ignore
         let virtualKeyboard = navigator.virtualKeyboard as { show(), hide() };

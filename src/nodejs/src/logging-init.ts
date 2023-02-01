@@ -48,6 +48,8 @@ export type LogScope =
     // Isolated components
     | 'MarkupEditor'
     | 'ChatMessageEditor'
+    | 'ImageViewer'
+    | 'PicUpload'
     | 'Landing'
     | string;
 
@@ -120,7 +122,9 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.clear();
 
     // Bumping down levels of in-dev scopes
-    // minLevels.set('Gestures', LogLevel.Debug);
+    minLevels.set('Gestures', LogLevel.Debug);
+    minLevels.set('FocusUI', LogLevel.Debug);
+    minLevels.set('event-handling', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('NotificationUI', LogLevel.Debug);
@@ -129,9 +133,10 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     // minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    // minLevels.set('MenuHost', LogLevel.Debug);
+    minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
     // minLevels.set('HistoryUI', LogLevel.Debug);
+    minLevels.set('MarkupEditor', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)

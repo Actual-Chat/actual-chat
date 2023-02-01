@@ -2,7 +2,7 @@ import {
     Subject,
     takeUntil,
 } from 'rxjs';
-import { endEvent } from 'event-handling';
+import { preventDefaultForEvent, stopEvent } from 'event-handling';
 import { throttle } from 'promises';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
@@ -112,7 +112,7 @@ export class ChatMessageEditor {
     };
 
     private onHorizontalScroll = ((event: WheelEvent & { target: Element; }) => {
-        event.preventDefault();
+        preventDefaultForEvent(event);
         this.attachmentList.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
     });
 
@@ -223,7 +223,7 @@ export class ChatMessageEditor {
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
                 if (!isAdding)
-                    event.preventDefault(); // We can do it only in the sync part of async handler
+                    preventDefaultForEvent(event); // We can do it only in the sync part of async handler
                 isAdding = true;
                 const file = item.getAsFile();
                 await this.addAttachment(file);

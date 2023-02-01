@@ -1,6 +1,10 @@
-import { LogScope } from 'logging';
+import { preventDefaultForEvent } from 'event-handling';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'ImageViewer';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class ImageViewer {
     private readonly overlay: HTMLElement;
@@ -143,7 +147,7 @@ export class ImageViewer {
         const windowHeight = window.innerHeight;
         const width = this.image.getBoundingClientRect().width;
         const height = this.image.getBoundingClientRect().height;
-        event.preventDefault();
+        preventDefaultForEvent(event);
         if (delta < 0) {
             // up
             let newWidth = width * this.multiplier;
@@ -188,12 +192,12 @@ export class ImageViewer {
             this.getImageAndMouseY(event, imageRect);
             window.addEventListener('pointermove', this.onPointerMove);
         } else {
-            event.preventDefault();
+            preventDefaultForEvent(event);
         }
     };
 
     private onPointerMove = (event: PointerEvent) => {
-        event.preventDefault();
+        preventDefaultForEvent(event);
         let rect = this.imageViewer.getBoundingClientRect();
         let topPosition = this.getTop(event, rect);
         let leftPosition = this.getLeft(event, rect);

@@ -1,5 +1,13 @@
 import { Disposable } from 'disposable';
 import { fromEvent, map, Subject, takeUntil, tap, merge } from 'rxjs';
+import { preventDefaultForEvent } from 'event-handling';
+import { Log, LogLevel, LogScope } from 'logging';
+
+const LogScope: LogScope = 'PicUpload';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
+const errorLog = Log.get(LogScope, LogLevel.Error);
+
 
 export class PicUpload implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
@@ -15,18 +23,18 @@ export class PicUpload implements Disposable {
         private readonly input: HTMLInputElement) {
         merge(fromEvent(this.dropZone, 'dragenter'), fromEvent(this.dropZone, 'dragover')).pipe(
             takeUntil(this.disposed$),
-            tap((e: DragEvent) => e.preventDefault()),
+            tap((e: DragEvent) => preventDefaultForEvent(e)),
         ).subscribe(() => this.addHoverClass());
 
         fromEvent(this.dropZone, 'dragleave').pipe(
             takeUntil(this.disposed$),
-            tap((e: DragEvent) => e.preventDefault()),
+            tap((e: DragEvent) => preventDefaultForEvent(e)),
         ).subscribe(() => this.removeHoverClass());
 
         fromEvent(this.dropZone, 'drop').pipe(
             takeUntil(this.disposed$),
             tap((e: DragEvent) => {
-                e.preventDefault();
+                preventDefaultForEvent(e);
                 this.removeHoverClass();
             }),
             map((e: DragEvent) => e.dataTransfer.files),

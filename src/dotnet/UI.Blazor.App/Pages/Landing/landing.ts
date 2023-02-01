@@ -1,7 +1,7 @@
 import { debounceTime, filter, fromEvent, map, merge, Subject, takeUntil } from 'rxjs';
 import { clamp } from 'math';
 import { hasModifierKey } from 'keyboard';
-import { endEvent } from 'event-handling';
+import { stopEvent } from 'event-handling';
 import { Timeout } from 'timeout';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
@@ -109,7 +109,7 @@ export class Landing {
             return;
 
         debugLog?.log(`autoScroll: starting`);
-        endEvent(event);
+        stopEvent(event);
         this.isAutoScrolling = true;
         scrollWithOffset(nextPage, this.scrollContainer, 0);
     }
@@ -208,7 +208,7 @@ export class Landing {
                 return;
 
             this.blazorRef.invokeMethodAsync('CloseMenu');
-            endEvent(event);
+            stopEvent(event);
         }
     };
 }

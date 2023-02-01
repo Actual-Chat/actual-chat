@@ -14,7 +14,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { DocumentEvents, endEvent } from 'event-handling';
+import { DocumentEvents, stopEvent } from 'event-handling';
 import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
@@ -74,7 +74,7 @@ export class MenuHost implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: KeyboardEvent) => {
                 if (this.menu != null) {
-                    endEvent(event);
+                    stopEvent(event);
                     this.hide();
                 }
             });
@@ -329,7 +329,7 @@ export class MenuHost implements Disposable {
 
             // Non-hover menu is visible, so we need to hide it on this click
             this.hide();
-            return endEvent(event);
+            return stopEvent(event);
         }
 
         const position = isDesktopMode && event instanceof PointerEvent
@@ -346,7 +346,7 @@ export class MenuHost implements Disposable {
         else
             this.render(menu);
 
-        endEvent(event);
+        stopEvent(event);
     }
 
     private async onPointerOver(event: Event): Promise<void> {

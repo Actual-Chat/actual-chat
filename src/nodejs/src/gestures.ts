@@ -1,6 +1,6 @@
 import { DeviceInfo } from 'device-info';
 import { Disposable } from 'disposable';
-import { DocumentEvents, endEvent } from 'event-handling';
+import { DocumentEvents, preventDefaultForEvent, stopEvent } from 'event-handling';
 import { fromEvent, Subscription } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
@@ -94,7 +94,16 @@ class DataHrefGesture extends Gesture {
     }
 
     public static use(): void {
-        DocumentEvents.capturedActive.click$.subscribe((event: PointerEvent) => {
+        debugLog?.log(`DataHrefGesture.use`);
+
+        // We attach this event to pointerUp instead of click solely because
+        // click somehow doesn't trigger on iOS for such divs, and none of
+        // suggested workarounds helped.
+        //
+        // For issue w/ click & workarounds, see "Safari Mobile" section here:
+        // - https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event
+        DocumentEvents.active.pointerUp$.subscribe((event: PointerEvent) => {
+            debugLog?.log(`DataHrefGesture.use: pointerUp:`, event);
             if (event.button !== 0) // Only primary button
                 return;
 
@@ -110,7 +119,10 @@ class DataHrefGesture extends Gesture {
         if (href === null)
             return;
 
-        endEvent(event);
+        // ContextMenuGesture's capturing handler may cancel this event
+        if (event.defaultPrevented)
+            return;
+
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
         FocusUI.blur();
         this.blazor.navigateTo(href);
@@ -119,6 +131,7 @@ class DataHrefGesture extends Gesture {
 
 class SuppressDefaultContextMenuGesture extends Gesture {
     public static use(): void {
+        debugLog?.log(`SuppressDefaultContextMenuGesture.use`);
         DocumentEvents.capturedActive.contextmenu$.subscribe((event: PointerEvent) => {
             // Suppress browser context menu anywhere but on images
             const target = event.target as HTMLElement;
@@ -133,6 +146,7 @@ class ContextMenuGesture extends Gesture {
     public static defaultDelayMs = 500;
 
     public static use(): void {
+        debugLog?.log(`ContextMenuGesture.use`);
         this.cancelLongPressDistance = DeviceInfo.isAndroid ? 5 : 10;
         DocumentEvents.capturedActive.pointerDown$.subscribe((event: PointerEvent) => {
             if (event.button !== 0) // Only primary button
@@ -164,9 +178,7 @@ class ContextMenuGesture extends Gesture {
             }),
             DocumentEvents.capturedPassive.pointerUp$.subscribe(() => this.dispose()),
             DocumentEvents.capturedPassive.pointerCancel$.subscribe(() => this.dispose()),
-            // Just in case - it normally shouldn't be triggered before 'pointerup'
-            Gestures.addActive(new SuppressEventGesture('click', 1000)),
-            // Just in case - we cancelled it in on 'onpointerdown' handler
+            // We cancel it in on 'onpointerdown' handler, but it might trigger earlier on some devices
             Gestures.addActive(new SuppressEventGesture('contextmenu', 1000)),
 
             // This timeout actually triggers 'contextmenu'
@@ -211,13 +223,14 @@ class ContextMenuGesture extends Gesture {
                     const suppressContextMenuGesture = Gestures.addActive(new SuppressEventGesture('contextmenu', 300));
                     let cancelGesture: Gesture = null;
                     const suppressGesture = Gestures.addActive(
-                        new WaitForEventGesture('pointerup', () => {
+                        new WaitForEventGesture('pointerup', (e: PointerEvent) => {
+                            preventDefaultForEvent(e);
                             suppressContextMenuGesture.dispose();
                             cancelGesture?.dispose();
                             Gestures.addActive(new SuppressEventGesture('contextmenu', 300));
                             if (mustCancelClick)
                                 Gestures.addActive(new SuppressEventGesture('click', 300));
-                        }));
+                        }, true, false));
                     cancelGesture = Gestures.addActive(
                         new WaitForEventGesture('pointercancel', () => suppressGesture.dispose()));
                 }
@@ -230,10 +243,12 @@ class WaitForEventGesture extends Gesture {
     constructor(
         public readonly eventName: string,
         public readonly handler: (event: Event) => void,
+        public isCapturing = true,
+        public isPassive = true,
     ) {
         super();
         this.toDispose.push(
-            fromEvent(document, eventName, { capture: true, passive: true })
+            fromEvent(document, eventName, { capture: isCapturing, passive: isPassive })
                 .subscribe((event: Event) => {
                     this.dispose();
                     handler(event);
@@ -253,7 +268,7 @@ class SuppressEventGesture extends Gesture {
             new Timeout(timeoutMs, () => this.dispose()),
             fromEvent(document, eventName, { capture: true, passive: false })
                 .subscribe((e: Event) => {
-                    endEvent(e);
+                    stopEvent(e);
                     if (justOnce)
                         this.dispose();
                 }),

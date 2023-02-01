@@ -135,7 +135,7 @@
     	@(closeWindowFlowName) completed, you can close this window.
     </div>
 } else {
-    <app id="app" class="flex flex-col h-full" >
+    <app id="app" class="flex flex-col h-full">
         @(await Html.RenderApp(Services, HttpContext))
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
