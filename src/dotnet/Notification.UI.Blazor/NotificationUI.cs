@@ -16,6 +16,7 @@ public class NotificationUI : INotificationUIBackend
     private IJSRuntime JS { get; }
     private HostInfo HostInfo { get; }
     private UrlMapper UrlMapper { get; }
+    private Dispatcher Dispatcher { get; }
     private NavigationManager Nav { get; }
 
     public Task WhenInitialized { get; }
@@ -29,6 +30,7 @@ public class NotificationUI : INotificationUIBackend
         JS = services.GetRequiredService<IJSRuntime>();
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
+        Dispatcher = services.GetRequiredService<Dispatcher>();
         Nav = services.GetRequiredService<NavigationManager>();
 
         _state = services.StateFactory().NewMutable<PermissionState>();
@@ -86,22 +88,26 @@ public class NotificationUI : INotificationUIBackend
     [JSInvokable]
     public Task HandleNotificationNavigation(string url)
     {
-        var origin = UrlMapper.BaseUrl.TrimEnd('/');
-        if (url.IsNullOrEmpty() || !url.OrdinalStartsWith(origin))
-            return Task.CompletedTask;
+        // Called from MainActivity, i.e. unclear if it's running in Blazor Dispatcher
+        Dispatcher.InvokeAsync(() => {
+            var origin = UrlMapper.BaseUrl.TrimEnd('/');
+            if (url.IsNullOrEmpty() || !url.OrdinalStartsWith(origin))
+                return;
 
-        var chatPageRe = new Regex($"^{Regex.Escape(origin)}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
-        var match = chatPageRe.Match(url);
-        if (!match.Success)
-            return Task.CompletedTask;
+            var chatPageRe = new Regex($"^{Regex.Escape(origin)}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
+            var match = chatPageRe.Match(url);
+            if (!match.Success)
+                return;
 
-        // Take relative URL to eliminate difference between web app and MAUI app
-        var relativeUrl = url[origin.Length..];
+            // Take relative URL to eliminate difference between web app and MAUI app
+            var relativeUrl = url[origin.Length..];
 
-        var chatIdGroup = match.Groups["chatid"];
-        if (chatIdGroup.Success)
-            Nav.NavigateTo(relativeUrl);
+            var chatIdGroup = match.Groups["chatid"];
+            if (chatIdGroup.Success)
+                Nav.NavigateTo(relativeUrl);
+        });
         return Task.CompletedTask;
+
     }
 
     [JSInvokable]
