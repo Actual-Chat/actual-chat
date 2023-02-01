@@ -204,9 +204,12 @@ body.narrow .landing-header .header-text {
 
 /* Page styles */
 .landing .page {
-    @apply text-xl md:text-2xl;
+    @apply text-base md:text-2xl;
 }
-.landing .page p, .landing .page .p {
+.landing .page .features-text {
+    @apply text-base md:text-lg;
+}
+.landing .page p, .landing .page .p{
     @apply pt-2 md:pt-4;
 }
 

@@ -159,7 +159,7 @@
 
     @* Page 2 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y justify-center pt-8" : "flex-x")">
+        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y justify-center pt-14" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/evolution.svg" alt="evolution">
@@ -186,7 +186,7 @@
     @* Page 3 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
-            <div class="flex-y gap-y-5 @(isNarrow ? "px-4 py-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
+            <div class="flex-y gap-y-5 @(isNarrow ? "px-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
                 <div class="title-text">
                     Let's reimagine calls and voice messaging
                 </div>
@@ -225,7 +225,7 @@
 
     @* Page 4 *@
     <div class="page @(isNarrow ? "h-screen" : "") overflow-hidden">
-        <div class="flex w-full items-center justify-center pt-16 pb-4 px-16 @(isNarrow ? "" : "h-56")">
+        <div class="flex w-full items-center justify-center pb-4 px-16 @(isNarrow ? "pt-14" : "h-56 pt-16")">
             <div class="@(isNarrow ? "flex-y items-center pb-4 text-title-1" : "flex-x text-5xl font-semibold")">
                 <span>We believe&nbsp;</span>
                 <span>communication must be...</span>
@@ -261,7 +261,7 @@
 
     @* Page 5 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y justify-center" : "flex-x")">
+        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y justify-center pt-14" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="title-text">Seamless &amp; Frictionless</div>
                 <ul>
@@ -434,7 +434,7 @@
 
     @* Page 9 *@
     <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-8 gap-y-12" : "px-16 pb-8 pt-16 min-h-screen")">
+        <div class="flex-y overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-14 gap-y-12" : "px-16 pb-8 pt-16 min-h-screen")">
             <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
                 Actual Chat Features
             </div>
@@ -445,8 +445,8 @@
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Voice and text</span>
-                        <span>are blended together </span>
-                        <span>&ndash; everywhere!</span>
+                        <span class="features-text">are blended together </span>
+                        <span class="features-text">&ndash; everywhere!</span>
                     </div>
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
@@ -455,7 +455,9 @@
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Markdown-style markup</span>
-                        **bold**, *italic*, `preformatted` text and ```code blocks```
+                        <span class="features-text">
+                            **bold**, *italic*, `preformatted` text and ```code blocks```
+                        </span>
                     </div>
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
@@ -480,7 +482,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
                     <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-07.png" alt="description" class="md:h-40">
+                        <img src="/dist/images/landing/dialog-07.png" alt="description" class="max-w-4/5 md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Unlimited image & file uploads</span>
@@ -492,7 +494,9 @@
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Avatars</span>
-                        change name, picture, and bio on per-chat basis
+                        <span class="features-text">
+                            change name, picture, and bio on per-chat basis
+                        </span>
                     </div>
                 </div>
             </div>
@@ -501,7 +505,7 @@
 
     @* Page 10 *@
     <div class="page justify-center bg-[#EEEEF6]) @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y justify-center items-start overflow-hidden @(isNarrow ? "px-4 py-8 gap-y-8" : "p-16 gap-y-16")">
+        <div class="flex-y justify-center items-start overflow-hidden @(isNarrow ? "px-4 pb-8 pt-14 gap-y-8" : "p-16 gap-y-16")">
             <div class="font-semibold @(isNarrow ? "flex-y text-4.5xl" : "flex-x text-7xl")">
                 <span>What`s&nbsp;</span><span>upcoming?</span>
             </div>
