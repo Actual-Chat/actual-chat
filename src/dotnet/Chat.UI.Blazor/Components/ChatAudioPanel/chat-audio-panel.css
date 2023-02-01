@@ -59,6 +59,23 @@
 .wide .recorder-wrapper .recorder-icon {
     @apply h-7 w-7;
 }
+.chat-audio-panel .recorder-wrapper.record-off,
+.chat-audio-panel .recorder-wrapper.record-on-to-off {
+    @apply rounded-full;
+    @apply border border-double border-transparent;
+    background-image: linear-gradient(white, white), linear-gradient(to bottom, #2970FF, #C60077);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    @apply transition-all ease-linear duration-300;
+}
+.chat-audio-panel .recorder-wrapper.record-on,
+.chat-audio-panel .recorder-wrapper.record-off-to-on {
+    @apply border-[#FF3880];
+}
+.chat-audio-panel .recorder-wrapper .btn {
+    @apply absolute;
+    @apply transition-all ease-in-out duration-300;
+}
 
 /* Buttons, Mobile view */
 .narrow .chat-audio-panel .btn.btn-round .btn-content {
@@ -67,7 +84,7 @@
 .narrow .chat-audio-panel .language-button,
 .narrow .chat-audio-panel .playback-wrapper,
 .narrow .chat-audio-panel .recorder-wrapper {
-    @apply shadow-scrollbar shadow-md;
+    @apply shadow-md shadow-scrollbar;
 }
 .narrow .chat-audio-panel .language-button:active,
 .narrow .chat-audio-panel .playback-wrapper:active,
@@ -81,10 +98,9 @@
     @apply flex;
     @apply h-20 w-20;
     @apply justify-center;
-    @apply transition-none;
 }
 .narrow .chat-audio-panel .recorder-wrapper:active {
-    @apply translate-y-0 transition-none;
+    @apply translate-y-0;
 }
 .narrow .chat-audio-panel .recorder-wrapper .btn {
     @apply self-center;
@@ -95,52 +111,6 @@
 }
 .narrow .chat-audio-panel .recorder-button .btn.recorder-skeleton .btn-content {
     @apply min-w-20 min-h-20;
-}
-.chat-audio-panel .recorder-wrapper.record-off,
-.chat-audio-panel .recorder-wrapper.record-on-to-off {
-    @apply w-20 h-20;
-    @apply rounded-full;
-    @apply border border-double border-transparent;
-    background-image: linear-gradient(white, white), linear-gradient(to bottom, #2970FF, #C60077);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
-}
-.chat-audio-panel .recorder-wrapper.record-on,
-.chat-audio-panel .recorder-wrapper.record-off-to-on {
-    @apply border-[#FF3880];
-    @apply transition-colors duration-300;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-off .record-on-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-off .record-off-btn.btn {
-    @apply scale-100;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-    @apply animate-scale-to-5;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
-    @apply scale-100;
-    @apply animate-scale-to-full;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-on .record-off-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
-    @apply scale-100;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-    @apply animate-scale-to-5;
-}
-.narrow .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
-    @apply scale-100;
-    @apply animate-scale-to-full;
 }
 .narrow .chat-audio-panel .playback-button {
     @apply w-24;
@@ -206,7 +176,7 @@
     @apply shadow-sm shadow-scrollbar;
 }
 .narrow-panel.narrow .chat-audio-panel .recorder-wrapper {
-    @apply h-auto w-auto;
+    @apply min-w-20 max-w-20 min-h-12 max-h-12;
     @apply border-0;
 }
 .narrow-panel.narrow .chat-audio-panel .playback-button {
@@ -259,6 +229,7 @@
     @apply animate-loud-show-text-mode;
     @apply translate-x-10;
 }
+
 /* Buttons, Desktop view */
 .wide .chat-audio-panel .recorder-wrapper {
     @apply relative flex;
@@ -271,38 +242,6 @@
     @apply self-center;
     @apply m-0.5;
 }
-.wide .chat-audio-panel .recorder-wrapper.record-off .record-on-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-off .record-off-btn.btn {
-    @apply scale-100;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-    @apply animate-scale-to-5;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
-    @apply scale-100;
-    @apply animate-scale-to-full;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-on .record-off-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
-    @apply scale-100;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
-    @apply absolute;
-    @apply scale-0;
-    @apply animate-scale-to-5;
-}
-.wide .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
-    @apply scale-100;
-    @apply animate-scale-to-full;
-}
 .chat-language-toggle.btn {
     @apply font-semibold text-lg text-icons-01 md:text-base;
 }
@@ -312,4 +251,42 @@
 }
 .wide .playback-wrapper .loud-btn {
     @apply hidden;
+}
+
+/* Recorder button animation */
+
+/* From "off" state */
+.chat-audio-panel .recorder-wrapper.record-off .record-on-btn.btn {
+    @apply scale-0;
+    @apply opacity-0;
+}
+.chat-audio-panel .recorder-wrapper.record-off .record-off-btn.btn {
+    @apply scale-100;
+    @apply opacity-100;
+}
+.chat-audio-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
+    @apply scale-0;
+    @apply opacity-0;
+}
+.chat-audio-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
+    @apply scale-100;
+    @apply opacity-100;
+}
+
+/* From "on" state */
+.chat-audio-panel .recorder-wrapper.record-on .record-off-btn.btn {
+    @apply scale-0;
+    @apply opacity-0;
+}
+.chat-audio-panel .recorder-wrapper.record-on .record-on-btn.btn {
+    @apply scale-100;
+    @apply opacity-100;
+}
+.chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
+    @apply scale-0;
+    @apply opacity-0;
+}
+.chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
+    @apply scale-100;
+    @apply opacity-100;
 }

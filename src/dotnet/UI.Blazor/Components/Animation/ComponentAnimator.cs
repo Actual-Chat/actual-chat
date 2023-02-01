@@ -38,4 +38,13 @@ public class ComponentAnimator : IDisposable
         }, TaskScheduler.Current);
         return this;
     }
+
+    public ComponentAnimator EndAnimation()
+    {
+        _lastAnimateCts?.CancelAndDisposeSilently();
+        _lastAnimateCts = null;
+        AnimationEndsAt = default;
+        Component.StateHasChangedAsync();
+        return this;
+    }
 }
