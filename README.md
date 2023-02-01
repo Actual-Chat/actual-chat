@@ -2,9 +2,11 @@
 
 ![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/unit-tests.yml/badge.svg)
 
+Web site: [actual.chat](https://actual.chat)
+
 ## Join Team Chats 
 
-- Unsurprisingly, our team uses [Actual.chat](https://actual.chat) to communicate  
+- Unsurprisingly, our team uses [Actual Chat](https://actual.chat) to communicate  
 - If you're a part of our team, please contact [Alex Yakunin](https://actual.chat/u/hjp639qb6bp1) to get access.
 
 ## Prerequisites
