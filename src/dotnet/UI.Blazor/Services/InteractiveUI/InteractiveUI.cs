@@ -20,6 +20,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private ILogger Log { get; }
 
     public IState<bool> IsInteractive => _isInteractive;
+    // ReSharper disable once InconsistentlySynchronizedField
     public IState<ActiveDemandModel?> ActiveDemand => _activeDemand;
     public Task WhenReady { get; }
 
@@ -89,10 +90,16 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
                     TaskSource.New<Unit>(true).Task);
                 _activeDemand.Value = activeDemand;
             }
-            else if (!activeDemand.Operations.Contains(operation, StringComparer.Ordinal)) {
-                _activeDemand.Value = activeDemand with {
-                    Operations = activeDemand.Operations.Add(operation),
-                };
+            else {
+                if (activeDemand.WhenConfirmed.IsCompleted) {
+                    // The modal was already closed once, and we don't want to show it multiple times,
+                    // so the best we can do is to report that demand is satisfied (or not).
+                    return true;
+                }
+                if (!activeDemand.Operations.Contains(operation, StringComparer.Ordinal))
+                    _activeDemand.Value = activeDemand with {
+                        Operations = activeDemand.Operations.Add(operation),
+                    };
             }
         }
 
@@ -117,8 +124,10 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
                 await modalRef.WhenClosed.ConfigureAwait(false);
             }
             lock (_lock) {
-                // Since _activeDemand is modified inside lock blocks, it's safe to do this here
-                _activeDemand.Value = null;
+                var activeDemand = _activeDemand.Value;
+                var whenConfirmed = activeDemand?.WhenConfirmed;
+                if (whenConfirmed?.IsCompleted is false)
+                    TaskSource.For(whenConfirmed).TrySetCanceled();
             }
         }, TaskScheduler.Default);
         return modalRefTask;

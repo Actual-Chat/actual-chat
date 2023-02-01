@@ -73,7 +73,7 @@
 
     private void OnContinueClick() {
         var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmed;
-        if (whenConfirmed != null)
+        if (whenConfirmed?.IsCompleted is false)
             TaskSource.For(whenConfirmed).TrySetResult(default);
 
         _ = ModalInstance.CloseAsync();
