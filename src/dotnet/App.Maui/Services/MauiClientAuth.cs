@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -8,6 +9,7 @@ internal sealed class MauiClientAuth : IClientAuth
     private UrlMapper UrlMapper { get; }
     private ILogger<MauiClientAuth> Log { get; }
     private MobileAuthClient MobileAuthClient { get; }
+    private NavigationManager Nav { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
@@ -15,6 +17,7 @@ internal sealed class MauiClientAuth : IClientAuth
         UrlMapper = services.GetRequiredService<UrlMapper>();
         Log = services.GetRequiredService<ILogger<MauiClientAuth>>();
         MobileAuthClient = services.GetRequiredService<MobileAuthClient>();
+        Nav = services.GetRequiredService<NavigationManager>();
     }
 
     public async ValueTask SignIn(string scheme)
@@ -29,6 +32,7 @@ internal sealed class MauiClientAuth : IClientAuth
 
         var uri = $"{UrlMapper.BaseUrl}mobileauth/signin/{AppSettings.SessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
+        Nav.NavigateTo(Links.Chat(default), true);
     }
 
     public async ValueTask SignOut()
