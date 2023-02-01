@@ -63,7 +63,7 @@
                     </Button>
                     @if (isGuest) {
                         <button class="signin-button-group" onclick="@(() => SignIn(googleScheme.Name))">
-                            <span class="px-2">Sign in with</span>
+                            <span class="px-2 font-medium">Sign in with</span>
                             <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
                         </button>
                         // Don't remove this button group
@@ -118,21 +118,21 @@
         <div class="page-1-wrapper overflow-hidden">
             <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-8" : "px-16")">
                 <div class="main-text">
-                    <div class="text-04 pt-12">
+                    <div class="md:text-4xl font-normal text-04 pt-12">
                         <div class="title-text">To text? To call? Postpone?</div>
-                        <div class="pt-8 @(isNarrow ? "text-3xl font-thin" : "")">
+                        <p class="pt-8">
                             Sometimes we stuck between a bunch of wrong choices.
                             That's how revolutions happen.
-                        </div>
-                        <div class="pt-8 @(isNarrow ? "text-3xl font-thin" : "")">
+                        </p>
+                        <p class="pt-8">
                             We are here to redefine the meaning of "Chat".
                             <strong>Actually.</strong>
-                        </div>
+                        </p>
                     </div>
                     <div class="flex @(isNarrow ? "justify-center" : "") pt-8">
                         @if (isGuest) {
                             <button class="signin-button-group bg-01" onclick="@(() => SignIn(googleScheme.Name))">
-                                <span class="px-2">Sign in with</span>
+                                <span class="px-2 text-xl font-semibold">Sign in with</span>
                                 <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
                             </button>
                             // Don't remove this button group
@@ -159,7 +159,7 @@
 
     @* Page 2 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y justify-center" : "flex-x")">
+        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y justify-center pt-8" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/evolution.svg" alt="evolution">
@@ -186,9 +186,9 @@
     @* Page 3 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
-            <div class="flex-y gap-y-8 @(isNarrow ? "px-4 py-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
+            <div class="flex-y gap-y-5 @(isNarrow ? "px-4 py-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
                 <div class="title-text">
-                    Actual Chat reimagines calls and voice messaging
+                    Let's reimagine calls and voice messaging
                 </div>
                 @if (isNarrow) {
                     <div class="flex justify-center p-4">
@@ -207,10 +207,12 @@
                         And it's not just transcript - <strong>it's voice + text, streamed in real time</strong>.
                         Listen to chats like a call, without the need for a call.
                     </p>
-                    <p>
-                        Effortlessly catch up on missed moments - every conversation
-                        is captured in text and audio for later playback or reading.
-                    </p>
+                    @if (!isNarrow) {
+                        <p>
+                            Effortlessly catch up on missed moments - every conversation
+                            is captured in text and audio for later playback or reading.
+                        </p>
+                    }
                 </div>
             </div>
             @if (!isNarrow) {
@@ -223,14 +225,14 @@
 
     @* Page 4 *@
     <div class="page @(isNarrow ? "h-screen" : "") overflow-hidden">
-        <div class="flex w-full items-center justify-center pt-16 pb-8 px-16 @(isNarrow ? "" : "h-56")">
-            <div class="@(isNarrow ? "flex-y items-center text-title-1" : "flex-x text-5xl font-semibold")">
+        <div class="flex w-full items-center justify-center pt-16 pb-4 px-16 @(isNarrow ? "" : "h-56")">
+            <div class="@(isNarrow ? "flex-y items-center pb-4 text-title-1" : "flex-x text-5xl font-semibold")">
                 <span>We believe&nbsp;</span>
                 <span>communication must be...</span>
             </div>
         </div>
         <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y px-4" : "flex-x")">
-            <div class="flex justify-center p-8 @(isNarrow ? "pt-12" : "w-1/2")">
+            <div class="flex justify-center p-8 @(isNarrow ? "py-4" : "w-1/2")">
                 <img src="/dist/images/landing/stressless.svg" alt="stressless">
             </div>
             <div class="flex-y justify-center @(isNarrow ? "" : "w-1/2 p-8")">
@@ -248,9 +250,11 @@
                         Most even need to work up the courage to press the "Call" button.
                     </li>
                 </ul>
-                <div>
-                    Believe it or not, but there is no “Call” button in Actual Chat.
-                </div>
+                @if (!isNarrow) {
+                    <div>
+                        Believe it or not, but there is no “Call” button in Actual Chat.
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -295,7 +299,7 @@
 
     @* Page 6 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center" : "flex-x")">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center pt-14" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
@@ -322,8 +326,8 @@
 
     @* Page 7 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full @(isNarrow ? "-flex-y justify-center" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
+        <div class="h-full @(isNarrow ? "-flex-y justify-center pt-14" : "flex-x")">
+            <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pr-6")">
                 <div class="title-text">Productive</div>
                 <ul>
                     <li>
@@ -338,13 +342,15 @@
                         to have the summary later?
                     </li>
                 </ul>
-                <div>
-                    Actual Chat shines in these scenarios.
-                </div>
+                @if (!isNarrow) {
+                    <div>
+                        Actual Chat shines in these scenarios.
+                    </div>
+                }
             </div>
-            <div class="flex-y @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                <div class="flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/productive.svg" alt="productive" class="h-full">
+            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
+                <div class="flex-1 flex overflow-hidden justify-center items-center">
+                    <img src="/dist/images/landing/productive.svg" alt="productive" class="h-full max-h-96">
                 </div>
             </div>
         </div>
@@ -352,11 +358,11 @@
 
     @* Page 7.5 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center" : "flex-x")">
+        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center pt-14" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
                 <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
             </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
+            <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pl-6")">
                 <div class="title-text">Team-friendy</div>
                 <p>
                     The dilema of real-time vs asynchronous communication style
@@ -373,13 +379,15 @@
                     </li>
                     <li>
                         <a href="https://www.forbes.com/sites/glennllopis/2022/10/05/the-demands-of-millennials--gen-z-a-guide-to-meeting-their-needs/"
-                             target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
+                           target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
                     </li>
                 </ul>
-                <p>
-                    Is there a solution helping to address some of these issues?
-                    We hope you just found it!
-                </p>
+                @if (!isNarrow) {
+                    <p>
+                        Is there a solution helping to address some of these issues?
+                        We hope you just found it!
+                    </p>
+                }
             </div>
         </div>
     </div>
@@ -472,7 +480,7 @@
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
                     <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-07.svg" alt="description" class="md:h-40">
+                        <img src="/dist/images/landing/dialog-07.png" alt="description" class="md:h-40">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
                         <span class="font-bold">Unlimited image & file uploads</span>

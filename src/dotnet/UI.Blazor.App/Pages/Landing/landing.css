@@ -207,7 +207,7 @@ body.narrow .landing-header .header-text {
     @apply text-xl md:text-2xl;
 }
 .landing .page p, .landing .page .p {
-    @apply pt-4;
+    @apply pt-2 md:pt-4;
 }
 
 /* Page 1 styles */
