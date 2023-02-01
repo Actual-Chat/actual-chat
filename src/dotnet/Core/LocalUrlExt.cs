@@ -5,6 +5,9 @@ public static class LocalUrlExt
     public static bool IsHome(this LocalUrl url)
         => url == Links.Home;
 
+    public static bool IsDocs(this LocalUrl url)
+        => url.Value.OrdinalStartsWith("/docs");
+
     public static bool IsChatRoot(this LocalUrl url)
         => OrdinalEquals(url.Value, "/chat");
 

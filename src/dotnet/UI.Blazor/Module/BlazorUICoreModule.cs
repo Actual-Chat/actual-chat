@@ -95,6 +95,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ErrorUI>(c => new ErrorUI(
             c.GetRequiredService<UIActionTracker>()));
         services.AddScoped<HistoryUI>(c => new HistoryUI(c));
+        services.AddScoped<NavigateOnSignInToggle>(c => new NavigateOnSignInToggle());
         services.AddScoped<ModalUI>(c => new ModalUI(c));
         services.AddScoped<BannerUI>(c => new BannerUI(c));
         services.AddScoped<FocusUI>(c => new FocusUI(

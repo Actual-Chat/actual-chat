@@ -59,7 +59,8 @@ public class HistoryUI
             return;
 
         var url = Nav.GetLocalUrl();
-        if (!url.IsHome() && !url.IsChatRoot()) {
+        var acceptableInitialLocation = url.IsHome() || url.IsDocs() || url.IsChatRoot();
+        if (!acceptableInitialLocation) {
             _rewriteInitialLocation = true;
             _whenInitializedSource = TaskSource.New<Unit>(true);
             Log.LogDebug("Rewrite initial location from '{InitialLocation}'", url);

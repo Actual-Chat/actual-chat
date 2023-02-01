@@ -1,0 +1,14 @@
+@inherits LayoutComponentBase
+@layout BaseLayout
+
+<PageWithHeaderAndFooter Class="default-layout">
+    <LeftDrawer><RenderSlot Name="DocsLeftDrawer"/></LeftDrawer>
+    <Header><RenderSlot Name="MainHeader"/></Header>
+    <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
+    <Footer><RenderSlot Name="MainFooter"/></Footer>
+    <SubFooter><RenderStack Name="SubFooter"/></SubFooter>
+    <Body>@Body</Body>
+    <RightDrawer><RenderSlot Name="MainRightDrawer"/></RightDrawer>
+</PageWithHeaderAndFooter>
+
+

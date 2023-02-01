@@ -77,6 +77,7 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private NavigateOnSignInToggle NavigateOnSignInToggle { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -86,8 +87,10 @@
             || State.HasError
             || !ReferenceEquals(_rendered, State.Value);
 
-    protected override Task OnInitializedAsync()
-        => ChatUI.WhenLoaded;
+    protected override Task OnInitializedAsync() {
+        NavigateOnSignInToggle.Disable();
+        return ChatUI.WhenLoaded;
+    }
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();

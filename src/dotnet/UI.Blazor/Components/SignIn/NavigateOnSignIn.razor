@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services;
+@inherits ComputedStateComponent<NavigateOnSignIn.Model>
+@{
+    var m = State.Value;
+    if (m.Navigate && !_navigated) {
+        _navigated = true;
+        Nav.NavigateTo(Links.Chat(default));
+    }
+}
+
+@code {
+    private bool _navigated;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private NavigateOnSignInToggle NavigateOnSignInToggle { get; init; } = null!;
+
+    [Parameter] public bool IsDisabled { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new ComputedState<Model>.Options() {
+            InitialValue = Model.None
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (IsDisabled || NavigateOnSignInToggle.IsDisabled)
+            return Model.None;
+        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
+        return new Model(!account.IsGuest);
+    }
+
+    public record Model(bool Navigate) {
+        public static Model None { get; } = new(false);
+    }
+}

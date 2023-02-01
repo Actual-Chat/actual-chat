@@ -1,6 +1,8 @@
 @namespace ActualChat.UI.Blazor.App
 
-<RenderIntoSlot Name="MainLeftDrawer">
+<NavigateOnSignIn />
+
+<RenderIntoSlot Name="DocsLeftDrawer">
     <CascadingValue Value="@Page">
         <DocsLeftPanel/>
     </CascadingValue>
