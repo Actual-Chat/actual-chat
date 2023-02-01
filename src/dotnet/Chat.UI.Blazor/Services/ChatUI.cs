@@ -67,7 +67,9 @@ public partial class ChatUI : WorkerBase
         Commander = services.Commander();
 
         var type = GetType();
-        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)));
+        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)) {
+            InitialValue = Constants.Chat.AnnouncementsChatId,
+        });
         _relatedChatEntry = StateFactory.NewMutable(
             (RelatedChatEntry?)null,
             StateCategories.Get(type, nameof(RelatedChatEntry)));
