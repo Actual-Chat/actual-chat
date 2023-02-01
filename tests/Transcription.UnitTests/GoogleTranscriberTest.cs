@@ -183,11 +183,23 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();
         var transcript = transcripts.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
+    }
+
+    [Fact(Skip = "Needs to be fixed")]
+    public async Task LongTranscriptProducesCorrectDiff()
+    {
+        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"), CancellationToken.None);
+
+        var transcripts = process.GetTranscripts();
+        var diffs = transcripts.GetDiffs(CancellationToken.None);
+        await foreach (var diff in diffs)
+            Out.WriteLine(diff.ToString());
     }
 }

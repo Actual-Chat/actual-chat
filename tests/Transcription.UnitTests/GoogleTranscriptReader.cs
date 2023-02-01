@@ -41,7 +41,6 @@ public static class GoogleTranscriptReader
                                                 Word = w.Word,
                                                 StartOffset = w.StartOffset.FromString(),
                                                 EndOffset = w.EndOffset.FromString(),
-                                                SpeakerLabel = w.SpeakerLabel,
                                             }),
                                     },
                                 }
