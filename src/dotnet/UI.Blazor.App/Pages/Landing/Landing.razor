@@ -19,7 +19,7 @@
     var isNarrow = ScreenSize.IsNarrow();
 }
 
-<div @ref='Ref' class='landing' xmlns='http://www.w3.org/1999/html'>
+<div @ref="Ref" class="landing" xmlns="http://www.w3.org/1999/html">
     @if (isNarrow) {
         <LandingLeftMenu
             AccountFull="@account"
@@ -596,7 +596,6 @@
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
