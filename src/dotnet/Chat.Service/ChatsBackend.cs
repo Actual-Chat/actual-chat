@@ -104,7 +104,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             if (!isJoined) {
                 var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
                 if (anyoneSystemRole != null)
-                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.SeeMembers | ChatPermissions.Join);
+                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.Read | ChatPermissions.SeeMembers | ChatPermissions.Join);
             }
         }
         permissions = permissions.AddImplied();
