@@ -13,6 +13,7 @@
     var account = m.Account;
     var isGuest = account is not {IsGuest: false };
     var user = account?.User.OrGuest();
+    var avatar = account?.Avatar ?? Avatar.None;
     var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
@@ -85,7 +86,7 @@
                             data-menu-trigger="@MenuTrigger.Primary"
                             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                             <AvatarCircle
-                                Avatar="@account?.Avatar"
+                                Avatar="@avatar"
                                 Size="SquareSize.Size10"/>
                         </div>
                     }
@@ -105,7 +106,7 @@
                         data-menu-trigger="@MenuTrigger.Primary"
                         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                         <AvatarCircle
-                            Avatar="@account?.Avatar"
+                            Avatar="@avatar"
                             Size="SquareSize.Size9"/>
                     </button>
                 }

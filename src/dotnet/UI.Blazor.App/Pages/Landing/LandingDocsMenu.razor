@@ -5,8 +5,8 @@
 
 @{
     var m = State.Value;
-    var avatar = m?.Avatar;
-    var name = avatar?.Name;
+    var avatar = m?.Avatar ?? Avatar.None;
+    var name = avatar.Name;
 }
 
 <MenuEntry
