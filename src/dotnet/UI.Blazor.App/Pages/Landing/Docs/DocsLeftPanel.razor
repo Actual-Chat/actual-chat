@@ -26,7 +26,10 @@
             </div>
         </div>
         <div class="h-full py-2">
-            <div class="text-headline-1 m-2">Docs</div>
+            <div class="navbar-item h-9" @onclick="@(_ => Nav.NavigateTo(Links.Home))">
+                <i class="icon-arrow-left mx-2 text-xl"></i>
+                <div class="mx-2 text-headline-1">Home</div>
+            </div>
             <DocsLeftPanelContent/>
         </div>
     </div>
@@ -34,6 +37,7 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public DocsCommonLayout.DocsPage ActivePage { get; set; }
