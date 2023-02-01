@@ -639,6 +639,14 @@
         };
     }
 
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+        await base.DisposeAsync();
+    }
+
     private Task SignIn(string name) =>
         ClientAuth.SignIn(name).AsTask();
 
