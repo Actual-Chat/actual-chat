@@ -23,7 +23,8 @@ const WakeUpDetectionIntervalMs = 5000;
 export class AudioContextSource implements Disposable {
     private _isDisposed = false;
     private _onDeviceAwakeHandler: EventHandler<void>;
-    private _deviceWokeUpAt: number;
+    private _deviceWokeUpAt = 0;
+    private _isInteractiveWasReset = false;
     private _changeCount = 0;
     private _whenReady = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
@@ -276,8 +277,10 @@ export class AudioContextSource implements Disposable {
 
         // Resume can be called during user interaction only
         const isWakeUp = this.isWakeUp();
-        if (isWakeUp)
+        if (isWakeUp && !this._isInteractiveWasReset) {
+            this._isInteractiveWasReset = true;
             Interactive.isInteractive = false;
+        }
 
         debugLog?.log(`resume: waiting for interaction`);
         const contextTask = new PromiseSource<AudioContext | null>();
@@ -386,6 +389,7 @@ export class AudioContextSource implements Disposable {
 
     private onDeviceAwake() {
         this._deviceWokeUpAt = Date.now();
+        this._isInteractiveWasReset = false;
         this.markNotReady();
     }
 }
