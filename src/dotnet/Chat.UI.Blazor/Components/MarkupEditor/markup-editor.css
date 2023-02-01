@@ -7,6 +7,11 @@
     @apply truncate;
     @apply whitespace-pre-wrap;
     word-wrap: break-word;
+    /*
+    Super important to keep select-text here, otherwise contenteditable simply doesn't work on iOS.
+    Details: https://github.com/ionic-team/ionic-framework/issues/18368
+    */
+    @apply select-text;
 }
 .markup-editor .editor-content .editor-mention {
     @apply inline-block;

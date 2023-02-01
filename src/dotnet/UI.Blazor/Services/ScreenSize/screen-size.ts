@@ -1,11 +1,9 @@
 import {
     concat,
-    distinctUntilChanged,
     fromEvent,
-    map,
     of,
     Observable,
-    shareReplay,
+    Subject,
 } from 'rxjs';
 import { Log, LogLevel, LogScope } from 'logging';
 
@@ -20,7 +18,7 @@ export class ScreenSize {
     private static screenSizeMeasureDiv: HTMLDivElement;
 
     public static size: Size;
-    public static change$: Observable<Size>;
+    public static change$ = new Subject<Size>();
     public static size$: Observable<Size>;
     public static event$: Observable<Event>;
 
@@ -39,11 +37,7 @@ export class ScreenSize {
         this.measureAndUpdate();
 
         this.event$ = fromEvent(window.visualViewport, 'resize');
-        this.change$ = this.event$.pipe(
-            map(_ => this.measureAndUpdate()),
-            distinctUntilChanged(),
-            shareReplay(1)
-        );
+        this.event$.subscribe(() => this.measureAndUpdate());
         this.size$ = concat(
             of(this.size),
             this.change$
@@ -64,6 +58,12 @@ export class ScreenSize {
             debugLog?.log(`measureAndUpdate: new size:`, size);
             this.size = size;
             this.updateBodyClasses();
+            try {
+                this.change$.next(size);
+            }
+            catch (e) {
+                errorLog?.log("measureAndUpdate: one of change$ handlers failed:", e)
+            }
         }
         return size;
     }

@@ -73,7 +73,7 @@ export class RpcResult<T> extends PromiseSourceWithTimeout<T> {
         };
         this.id = id ?? ++lastResultId;
         results.set(this.id, this);
-        debugLog?.log(`RpcResult.ctor[#${this.id}]`)
+        debugLog?.log(`RpcResult.ctor[#${this.id}]`);
     }
 
     public static get<T>(id: number): RpcResult<T> | null {

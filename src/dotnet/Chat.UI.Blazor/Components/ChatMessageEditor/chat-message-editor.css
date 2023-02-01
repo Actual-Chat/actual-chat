@@ -37,7 +37,7 @@
     @apply outline-none;
     @apply text-counter md:text-02;
     @apply bg-07 md:bg-03;
-    @apply hover:cursor-text;
+    @apply cursor-text;
     word-break: break-word;
 
 }

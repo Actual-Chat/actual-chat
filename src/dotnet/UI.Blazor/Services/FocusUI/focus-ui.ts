@@ -10,7 +10,7 @@ export class FocusUI {
     }
 
     public static blur(): void {
-        debugLog?.log(`blur()`)
+        debugLog?.log(`blur()`);
         const activeElement = document.activeElement as HTMLElement;
         if (activeElement != null && activeElement.blur != null)
             activeElement.blur();

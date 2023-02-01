@@ -5,6 +5,7 @@
     var m = State.Value;
     var entry = ChatMessageModel.Entry;
     var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
+    var canEditOrDelete = m is { CanWrite: true, IsOwnEntry: true } && entry is { Kind: ChatEntryKind.Text, IsStreaming: false };
 }
 
 <div class="message-menu">
@@ -12,28 +13,30 @@
     @if (showPlayButton) {
         <MessageMenuPlay Entry="@entry" IsMenu="true"/>
     }
-    @if (m.IsJoined && m.IsEntryAuthor && !entry.IsStreaming && entry.StreamId.IsEmpty) {
+    @if (canEditOrDelete) {
         <MenuEntry
             Icon="icon-edit"
             Class="important-item"
-            TriggerEditor="true"
+            FocusOnEditor="true"
             Text="Edit"
             Click="@(() => Edit(entry))">
         </MenuEntry>
     }
-    @if (m.CanReply) {
+    @if (m.CanWrite) {
         <MenuEntry
             Icon="icon-reply"
-            TriggerEditor="true"
+            FocusOnEditor="true"
             Text="Reply"
             Click="@(() => Reply(entry))">
         </MenuEntry>
     }
+    @*
     <MenuEntry
         Icon="icon-hash-fill"
         Text="Create thread"
         Click="@(() => _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"))">
     </MenuEntry>
+    *@
     @if (!ClickedLinkUrl.IsNullOrEmpty()) {
         <MenuEntry
             Icon="icon-copy"
@@ -46,7 +49,7 @@
         Text="Copy message link"
         Click="@(() => CopyMessageLink(entry))">
     </MenuEntry>
-    @if (m is { IsJoined: true, IsEntryAuthor: true } && !entry.IsStreaming) {
+    @if (canEditOrDelete) {
         <MenuEntrySeparator />
         <MenuEntry
             Class="warning-item"
@@ -84,12 +87,11 @@
         var requestAuthor = await Authors.GetOwn(Session, chatId, CancellationToken.None);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         // Default scheduler is used from here
-        var сanReply = rules.CanWrite();
+        var canWrite = rules.CanWrite();
 
         return new Model {
-            CanReply = сanReply,
-            IsJoined = requestAuthor != null,
-            IsEntryAuthor = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
+            CanWrite = canWrite,
+            IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
         };
     }
 
@@ -110,8 +112,7 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public bool IsJoined { get; init; }
-        public bool IsEntryAuthor { get; init; }
-        public bool CanReply { get; init; }
+        public bool IsOwnEntry { get; init; }
+        public bool CanWrite { get; init; }
     }
 }

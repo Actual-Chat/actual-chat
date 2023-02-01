@@ -89,7 +89,7 @@ export class NotificationUI {
                 };
                 return await getToken(messaging, tokenOptions);
             } else {
-                warnLog?.log(`getDeviceToken: unable to initialize messaging subscription, status: ${response.status}`)
+                warnLog?.log(`getDeviceToken: unable to initialize messaging subscription, status: ${response.status}`);
             }
             return null;
         }
@@ -99,7 +99,7 @@ export class NotificationUI {
     }
 
     public static async requestNotificationPermission(): Promise<boolean> {
-        debugLog?.log('requestNotificationPermission()')
+        debugLog?.log('requestNotificationPermission()');
 
         // Let's check if the browser supports notifications
         if (!('Notification' in window)) {

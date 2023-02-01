@@ -58,7 +58,7 @@ export class MenuHost implements Disposable {
     }
 
     constructor(private readonly blazorRef: DotNet.DotNetObject) {
-        debugLog?.log('constructor')
+        debugLog?.log('constructor');
         merge(
             DocumentEvents.active.click$,
             DocumentEvents.active.contextmenu$,

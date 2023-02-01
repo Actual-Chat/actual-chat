@@ -40,10 +40,10 @@ const ensureWorker = (handlers: Set<EventHandler<void>>) => {
         return;
 
     if (requiresWorker) {
-        debugLog?.log(`ensureWorker: creating worker`)
+        debugLog?.log(`ensureWorker: creating worker`);
         worker = createWorker();
     } else {
-        debugLog?.log(`ensureWorker: terminating worker`)
+        debugLog?.log(`ensureWorker: terminating worker`);
         worker.terminate();
         worker = null;
     }

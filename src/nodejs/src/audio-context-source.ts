@@ -175,7 +175,7 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async create(): Promise<AudioContext> {
-        debugLog?.log(`create()`)
+        debugLog?.log(`create()`);
 
         const audioContext = await this.refreshContext(null);
         if (audioContext.state !== 'running') {
@@ -183,7 +183,7 @@ export class AudioContextSource implements Disposable {
             throw `${LogScope}.create: AudioContext.resume failed.`;
         }
 
-        debugLog?.log(`create: loading modules`)
+        debugLog?.log(`create: loading modules`);
         const whenModule1 = audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
         const whenModule2 = audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
         const whenModule3 = audioContext.audioWorklet.addModule('/dist/vadWorklet.js');

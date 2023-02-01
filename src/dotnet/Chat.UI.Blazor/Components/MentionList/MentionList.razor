@@ -17,6 +17,7 @@
             ? $"https://avatars.dicebear.com/api/avataaars/{title}.svg"
             : UrlMapper.ContentUrl(mention.Picture);
         <div class="@cls mention-list-item"
+             data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"
              @onclick="@(_ => Manager.SelectMention(mention))">
             <div class="flex-x gap-x-2 px-4 items-center h-6 md:h-8">

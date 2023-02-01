@@ -174,7 +174,7 @@ export class Landing {
 
         if (Math.abs(dPage0Top) < 0.1) {
             // The scroll is stopped
-            debugLog?.log(`onScroll: scroll stopped`)
+            debugLog?.log(`onScroll: scroll stopped`);
             this.isAutoScrolling = false;
             this.finalScrollCheckTimeout?.clear();
             this.finalScrollCheckTimeout = null;
@@ -183,7 +183,7 @@ export class Landing {
         if (this.isAutoScrolling) {
             if (!isFinalCheck) {
                 // The very last scroll event may still report some dScrollTop, so...
-                debugLog?.log(`onScroll: scheduling final check`)
+                debugLog?.log(`onScroll: scheduling final check`);
                 this.finalScrollCheckTimeout = new Timeout(100, () => this.onScroll(true));
             }
             // Still auto-scrolling
