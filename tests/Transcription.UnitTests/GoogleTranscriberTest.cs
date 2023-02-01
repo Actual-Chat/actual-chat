@@ -191,7 +191,7 @@ public class GoogleTranscriberTest : TestBase
         transcript.TimeRange.End.Should().BeLessThan(23f);
     }
 
-    [Fact(Skip = "Needs to be fixed")]
+    [Fact]
     public async Task LongTranscriptProducesCorrectDiff()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);

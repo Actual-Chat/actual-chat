@@ -96,15 +96,29 @@ public class GoogleTranscriberProcess : WorkerBase
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
+
+            var resultEndOffset = results.First().ResultEndOffset;
+            var endTime = resultEndOffset == null
+                ? null
+                : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
+
+            // Google Transcribe issue: doesn't provide IsFinal results time to time, so let's implement some heuristics
+            // when we can Complete current transcript
+            if (_state.LastStable == Transcript.EmptyStable) {
+                if (_state.Last.Length > text.Length + 4)
+                    _state.Complete();
+            }
+            else {
+                var diffMap = _state.LastStable.TextToTimeMap.GetDiffSuffix(_state.Last.TextToTimeMap);
+                if (diffMap.XRange.Size() > text.Length + 24)
+                    _state.Complete();
+            }
+
             if (_state.LastStable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
                 // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
-            var resultEndOffset = results.First().ResultEndOffset;
-            var endTime = resultEndOffset == null
-                ? null
-                : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
 
             transcript = _state.AppendAlternative(text, endTime);
         }
