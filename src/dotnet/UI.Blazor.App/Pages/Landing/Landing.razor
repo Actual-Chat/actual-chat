@@ -159,7 +159,7 @@
 
     @* Page 2 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "flex-y justify-center pt-14" : "flex-x")">
+        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "grid pt-14" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/evolution.svg" alt="evolution">
@@ -186,7 +186,7 @@
     @* Page 3 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
-            <div class="flex-y gap-y-5 @(isNarrow ? "px-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
+            <div class="grid h-full gap-y-5 @(isNarrow ? "px-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
                 <div class="title-text">
                     Let's reimagine calls and voice messaging
                 </div>
@@ -231,7 +231,7 @@
                 <span>communication must be...</span>
             </div>
         </div>
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y px-4" : "flex-x")">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "grid px-4" : "flex-x")">
             <div class="flex justify-center p-8 @(isNarrow ? "py-4" : "w-1/2")">
                 <img src="/dist/images/landing/stressless.svg" alt="stressless">
             </div>
@@ -261,7 +261,7 @@
 
     @* Page 5 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y justify-center pt-14" : "flex-x")">
+        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y pt-14 justify-around" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="title-text">Seamless &amp; Frictionless</div>
                 <ul>
@@ -299,7 +299,7 @@
 
     @* Page 6 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center pt-14" : "flex-x")">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "grid pt-14" : "flex-x")">
             <div class="flex items-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
@@ -326,7 +326,7 @@
 
     @* Page 7 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full @(isNarrow ? "-flex-y justify-center pt-14" : "flex-x")">
+        <div class="h-full @(isNarrow ? "-flex-y pt-14 justify-around" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pr-6")">
                 <div class="title-text">Productive</div>
                 <ul>
@@ -358,7 +358,7 @@
 
     @* Page 7.5 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center pt-14" : "flex-x")">
+        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "grid pt-14" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
                 <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
             </div>
@@ -531,10 +531,10 @@
 
     @* Page 11 *@
     <div class="page no-auto-scroll">
-        <div class="flex-y h-full">
-            <div class="@(isNarrow ? "flex-y py-8" : "flex-x min-h-120")">
-                <div class="@(isNarrow ? "flex-y px-4 py-8" : "flex-x w-1/2 p-16 pr-6")">
-                    <div class="w-full font-semibold @(isNarrow ? "flex-x flex-wrap text-4.5xl text-center" : "flex-y justify-center text-7xl")">
+        <div class="h-full @(isNarrow ? "grid" : "flex-y")">
+            <div class="@(isNarrow ? "flex-y" : "flex-x")">
+                <div class="@(isNarrow ? "flex-y px-4" : "flex-x w-1/2 p-16 pr-6")">
+                    <div class="font-semibold @(isNarrow ? "flex-x flex-wrap text-4.5xl text-center" : "flex-y justify-center text-7xl")">
                         <span>Are there any fees?</span>
                     </div>
                 </div>
@@ -568,7 +568,7 @@
                             </a>
                         }
                     </div>
-                    <div class="flex items-center text-04 @(isNarrow ? "min-h-16" : "min-h-12")">
+                    <div class="flex items-center text-04 @(isNarrow ? "min-h-8 text-sm" : "min-h-16 text-base")">
                         © 2023 Actual Chat Inc. All rights reserved.
                     </div>
                 </div>

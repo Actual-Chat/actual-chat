@@ -337,7 +337,7 @@ body.narrow .landing .link-btn-content img {
     @apply text-04;
 }
 body.narrow .landing .footer-link {
-    @apply h-10;
+    @apply h-8;
     @apply text-title-1 text-start;
 }
 
@@ -401,7 +401,7 @@ body.narrow .landing .landing-menu {
 }
 .landing-links {
     @apply flex-x;
-    @apply gap-x-4;
+    @apply gap-y-2 md:gap-x-4;
     @apply items-center justify-evenly;
     @apply p-4;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];

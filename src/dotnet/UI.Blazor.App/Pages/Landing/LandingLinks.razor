@@ -1,15 +1,11 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.App
 
-<div class="landing-links" xmlns='http://www.w3.org/1999/html'>
-    <div class="flex-y gap-y-2 @(IsNarrow ? "self-start" : "")">
-        <div class="flex-y gap-y-2">
-            <div class="font-semibold text-04 @(IsNarrow ? "text-4.5xl text-center py-4" : "text-6xl")">
-                Get Actual Chat
-            </div>
-        </div>
+<div class="landing-links" xmlns="http://www.w3.org/1999/html">
+    <div class="flex-y self-auto font-semibold text-04 @(IsNarrow ? "text-4.5xl" : "text-6xl")">
+        Get Actual Chat
     </div>
-    <div class="flex-x justify-center gap-x-4 @(IsNarrow ? "py-4 " : "")">
+    <div class="flex-x justify-center gap-x-4">
         <button class="link-btn">
             <div class="link-btn-content">
                 <img src="/dist/images/landing/android-logo-white.svg" alt="android">
@@ -18,7 +14,7 @@
                 Download for <strong>Android</strong>
             </div>
         </button>
-        <button class="link-btn">
+        <button class="link-btn cursor-default">
             <div class="link-btn-content">
                 <img src="/dist/images/landing/apple-logo-white.svg" alt="apple">
             </div>
@@ -27,7 +23,7 @@
                 <strong>iPhone/iPad</strong>
             </div>
         </button>
-        <button class="link-btn">
+        <button class="link-btn cursor-default">
             <div class="link-btn-content">
                 <img src="/dist/images/landing/web-logo-white.svg" alt="web">
             </div>
