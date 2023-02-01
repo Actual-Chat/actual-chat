@@ -33,9 +33,10 @@ public class UsersServiceModule : HostModule<UsersSettings>
             return; // Server-side only module
 
         // ASP.NET Core authentication providers
-        services.AddAuthentication(options => {
+        var authentication = services.AddAuthentication(options => {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        }).AddCookie(options => {
+        });
+        authentication.AddCookie(options => {
             options.LoginPath = "/signIn";
             options.LogoutPath = "/signOut";
             if (IsDevelopmentInstance)
@@ -48,12 +49,15 @@ public class UsersServiceModule : HostModule<UsersSettings>
                 ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
                 return Task.CompletedTask;
             };
-        }).AddGoogle(options => {
+        });
+        authentication.AddGoogle(options => {
             options.ClientId = Settings.GoogleClientId;
             options.ClientSecret = Settings.GoogleClientSecret;
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
             options.BackchannelHttpHandler = GoogleBackchannelHttpHandler;
-        }).AddMicrosoftAccount(options => {
+        });
+        /*
+        authentication.AddMicrosoftAccount(options => {
             options.ClientId = Settings.MicrosoftAccountClientId;
             options.ClientSecret = Settings.MicrosoftAccountClientSecret;
             // That's for personal account authentication flow
@@ -61,6 +65,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         });
+        */
 
         // Redis
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();

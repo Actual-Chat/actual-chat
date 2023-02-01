@@ -122,10 +122,8 @@ public partial class ChatUI : WorkerBase
     {
         DebugLog?.LogDebug("-> ListFiltered: '{FilterId}'", filterId);
         var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
-        var result = filterId switch {
-            _ when filterId == ChatListFilter.Personal.Id => chats.Values.Where(c => c.Chat.Kind == ChatKind.Peer).ToList(),
-            _ => chats.Values.ToList(),
-        };
+        var filter = ChatListFilter.Parse(filterId);
+        var result = chats.Values.Where(filter.Filter ?? (_ => true)).ToList();
         DebugLog?.LogDebug("<- ListFiltered: '{FilterId}'", filterId);
         return result;
     }

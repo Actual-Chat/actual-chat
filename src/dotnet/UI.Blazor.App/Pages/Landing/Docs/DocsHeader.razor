@@ -15,12 +15,11 @@
     var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
 
     var isNarrow = ScreenSize.IsNarrow();
-    var title = Page switch
-    {
+    var title = Page switch {
         DocsCommonLayout.DocsPage.Terms => "Terms and Conditions",
         DocsCommonLayout.DocsPage.Cookies => "Cookies",
         _ => "Privacy Policy",
-        };
+    };
 }
 
 @if (!isNarrow) {

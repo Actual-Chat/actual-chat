@@ -54,15 +54,19 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var idPrefix = ownerId.Value + ' ';
         var contactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .OrderBy(a => a.Id)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
+        if (!contactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
+            contactIds.Add(announcementChatContactId);
 
         // That's just a bit more efficient conversion than .Select().ToImmutableArray()
         var result = new ContactId[contactIds.Count];
         for (var i = 0; i < contactIds.Count; i++)
             result[i] = new ContactId(contactIds[i]);
+
         return ImmutableArray.Create(result);
     }
 

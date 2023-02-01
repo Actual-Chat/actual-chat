@@ -1,9 +1,5 @@
 @namespace ActualChat.UI.Blazor.App
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
-@using System.Security.Cryptography
-@using ActualChat.UI.Blazor.App.Module
-@using ActualChat.UI.Blazor.Module
 @inherits ComputedStateComponent<SigninButtonGroup.Model>
 
 @{
@@ -22,14 +18,6 @@
     <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => SignIn(googleScheme.Name))">
         @GoogleIcon
     </ButtonRound>
-    @if (m.EnableIncompleteUI) {
-        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("facebookAuth", "Facebook authentication"))">
-            @FacebookIcon
-        </ButtonRound>
-        <ButtonRound Class="btn-sm" ContentClass="transparent" Click="@(() => FeedbackUI.AskFeatureRequestFeedback("appleAuth", "Apple ID authentication"))">
-            @AppleIcon
-        </ButtonRound>
-    }
 </div>
 
 @code {
