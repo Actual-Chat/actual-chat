@@ -19,7 +19,7 @@
     var isNarrow = ScreenSize.IsNarrow();
 }
 
-<div @ref="Ref" class="landing">
+<div @ref='Ref' class='landing' xmlns='http://www.w3.org/1999/html'>
     @if (isNarrow) {
         <LandingLeftMenu
             AccountFull="@account"
@@ -104,16 +104,20 @@
     @* Page 1 *@
     <div class="page page-1">
         <div class="page-1-wrapper overflow-hidden">
-            <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-4" : "px-16")">
+            <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-8" : "px-16")">
                 <div class="main-text">
                     <div class="text-04 pt-12">
-                        <div class="title-text">Text or call?</div>
-                        <div class="title-text highlight">Pick both!</div>
-                        <div class="py-8 @(isNarrow ? "text-4.5xl font-thin" : "text-xl")">
-                            We want to redefine the meaning of "Chat". Actually.
+                        <div class="title-text">To text? To call? Postpone?</div>
+                        <div class="pt-8 @(isNarrow ? "text-3xl font-thin" : "")">
+                            Sometimes we stuck between a bunch of wrong choices.
+                            That's how revolutions happen.
+                        </div>
+                        <div class="pt-8 @(isNarrow ? "text-3xl font-thin" : "")">
+                            We are here to redefine the meaning of "Chat".
+                            <strong>Actually.</strong>
                         </div>
                     </div>
-                    <div class="flex @(isNarrow ? "justify-center" : "")">
+                    <div class="flex @(isNarrow ? "justify-center" : "") pt-8">
                         @if (isGuest) {
                             <button class="signin-button-group bg-01" onclick="@(() => SignIn(googleScheme.Name))">
                                 <span class="px-2">Sign in with</span>
@@ -149,44 +153,52 @@
                     <img src="/dist/images/landing/evolution.svg" alt="evolution">
                 </div>
             </div>
-            <div class="flex-y @(isNarrow ? "p-4 justify-center" : "w-1/2 gap-y-8 justify-start p-16 pl-4 text-4xl font-medium")">
+            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 gap-y-8 p-16 pl-4 text-4xl")">
                 <div class="title-text">
-                    What’s the biggest differentiator?
+                    We used to speak, laugh, and cry
                 </div>
-                <div>
-                     Between humans and any other form of life on Earth?
-                </div>
-                <div>
-                    Communication. And the more productive it is, the faster we evolve.
-                </div>
+                <p>
+                    But now we text, "like", and send emojis.
+                </p>
+                <p>
+                    It's slower, inconvenient, less expressive.
+                </p>
+                <p>
+                    With all the progress in technology and AI,<br/>
+                    <strong>how it happened that we can't just talk in chats?</strong>
+                </p>
             </div>
         </div>
     </div>
 
     @* Page 3 *@
-    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="overflow-hidden bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
+    <div class="page @(isNarrow ? "h-screen" : "")">
+        <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
             <div class="flex-y gap-y-8 @(isNarrow ? "px-4 py-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
-                <div class="title-text">Voice and text merged into a single medium</div>
+                <div class="title-text">
+                    Actual Chat reimagines calls and voice messaging
+                </div>
                 @if (isNarrow) {
                     <div class="flex justify-center p-4">
                         <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
                     </div>
                 }
-                <div class="flex-y gap-y-2">
-                    <div>
-                        We record, transmit & transcribe your speech &ndash; <strong>all in real-time</strong>.
+                <div class="flex-none flex-y">
+                    <div class="font-semibold">
+                        We blend voice and text into a single medium.
                     </div>
-                    <ul>
-                        <li>Instead of “calling” your parties, you just start talking.</li>
-                        <li>Once chat participants start responding, you’ll hear & see their responses in real time.</li>
-                        <li>You can also can read or listen to the responses at any time later.</li>
-                    </ul>
-                    <div>
-                        So if you talk with people in real-time, it’s very similar to a regular call.
-                        Otherwise it’s quite similar to text & voice messaging.
-                        The only difference is: <strong>you don't have to switch!</strong>
-                    </div>
+                    <p>
+                        Watch your words come to life as you talk -
+                        anything you say is transcribed and instantly available, word-by-word.
+                    </p>
+                    <p>
+                        And it's not just transcript - <strong>it's voice + text, streamed in real time</strong>.
+                        Listen to chats like a call, without the need for a call.
+                    </p>
+                    <p>
+                        Effortlessly catch up on missed moments - every conversation
+                        is captured in text and audio for later playback or reading.
+                    </p>
                 </div>
             </div>
             @if (!isNarrow) {
@@ -195,42 +207,38 @@
                 </div>
             }
         </div>
-        <div class="flex w-full items-center justify-center @(isNarrow ? "py-8 px-16" : "h-56 py-8 px-16")">
+    </div>
+
+    @* Page 4 *@
+    <div class="page @(isNarrow ? "h-screen" : "") overflow-hidden">
+        <div class="flex w-full items-center justify-center pt-16 pb-8 px-16 @(isNarrow ? "" : "h-56")">
             <div class="@(isNarrow ? "flex-y items-center text-title-1" : "flex-x text-5xl font-semibold")">
                 <span>We believe&nbsp;</span>
                 <span>communication must be...</span>
             </div>
         </div>
-    </div>
-
-    @* Page 4 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y px-4 pt-14" : "flex-x")">
-            <div class="flex justify-center @(isNarrow ? "p-8" : "w-1/2 p-4")">
+        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "flex-y px-4" : "flex-x")">
+            <div class="flex justify-center p-8 @(isNarrow ? "pt-12" : "w-1/2")">
                 <img src="/dist/images/landing/stressless.svg" alt="stressless">
             </div>
-            <div class="flex-y justify-center @(isNarrow ? "" : "w-1/2 p-16 pb-24 pl-6")">
+            <div class="flex-y justify-center @(isNarrow ? "" : "w-1/2 p-8")">
                 <div class="title-text">Stressless</div>
-                <ul class="@(isNarrow ? "px-8 py-4" : " m-8")">
+                <ul>
                     <li>
                         <strong>61%</strong> of the millennials and
                         <strong>40% of baby boomers</strong> experience anxiety when the phone rings.
                         <a href="https://theconversation.com/phone-call-anxiety-why-so-many-of-us-have-it-and-how-to-get-over-it-155798"
-                           target="_blank">
-                            That's why they tend to avoid calls.
-                        </a>
+                           target="_blank">That's why they avoid calls.</a>
                     </li>
                     <li>
                         <a href="https://www.forbes.com/sites/briannawiest/2019/11/04/millennials-hate-phone-calls-they-have-a-point/"
-                           target="_blank">
-                            Millennials and Gen-Z also find calls rude.
-                        </a>
-                        Most, if not all, even need to work up the courage to press the "Call" button.
-                    </li>
-                    <li>
-                        Believe it or not, but there is no “Call” button in Actual.chat.
+                           target="_blank">Millennials and Gen-Z also find calls rude.</a>
+                        Most even need to work up the courage to press the "Call" button.
                     </li>
                 </ul>
+                <div>
+                    Believe it or not, but there is no “Call” button in Actual Chat.
+                </div>
             </div>
         </div>
     </div>
@@ -239,14 +247,14 @@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="h-full overflow-hidden @(isNarrow ? "-flex-y justify-center" : "flex-x")">
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
-                <div class="title-text">Seamless and frictionless</div>
+                <div class="title-text">Seamless &amp; Frictionless</div>
                 <ul>
                     <li>
-                        Typing is great, but there are so many cases when it’s inconvenient or impossible to type
+                        Typing is great, but sometimes it's not practical or feasible
                     </li>
                     <li>
-                        Driving, jogging, or already in bed, but still looking through your chats?
-                        Just hit the microphone button & start talking.
+                        Driving, jogging, or about to sleep, but need to respond?
+                        Just hit the microphone button & start talking!
                     </li>
                 </ul>
             </div>
@@ -281,16 +289,17 @@
                     <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
                 </div>
             </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pb-24 pl-6")">
-                <div class="title-text">Synchronous + asynchronous</div>
+            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-[60%] p-16 pb-24 pl-6")">
+                <div class="title-text">Real-time + asynchronous</div>
                 <ul>
                     <li>
-                        Start any conversation as asynchronous, which turns synchronous
-                        when parties start to respond in real-time
+                        Start any conversation as asynchronous,
+                        which turns into real-time one
+                        when parties start to respond
                     </li>
                     <li>
-                        And if you missed the real-time conversation,
-                        transcription and recording is always there
+                        And if you missed the real-time part,
+                        transcript and recording is always there
                         – in fact, you get exactly the same experience
                         as in regular chats in this case.
                     </li>
@@ -302,28 +311,26 @@
     @* Page 7 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="h-full @(isNarrow ? "-flex-y justify-center" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
+            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
                 <div class="title-text">Productive</div>
-                <div>
-                    Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
-                </div>
-                <ul class="list-[&ndash;]">
+                <ul>
                     <li>
-                        You know, we discussed this problem with Alice over the phone… Can you somehow find it?
+                        Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
                     </li>
                     <li>
-                        Unfortunately, no - could you please tell me again what happened?
+                        "I explained the problem to your colleague in December. Do you have any notes on this?"
+                        &ndash; "Sorry, but no... Could you explain it again?"
+                    </li>
+                    <li>
+                        Have you ever dreamed of highlighting the important parts of a voice conversation
+                        to have the summary later?
                     </li>
                 </ul>
                 <div>
-                    Have you ever dreamed of highlighting the important parts of a voice conversation
-                    to have the summary later, or slicing a longer one to a few topics that could be continued later?
-                </div>
-                <div>
-                    Actual.chat shines in these scenarios.
+                    Actual Chat shines in these scenarios.
                 </div>
             </div>
-            <div class="flex @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
+            <div class="flex-y @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
                 <div class="flex overflow-hidden justify-center items-center">
                     <img src="/dist/images/landing/productive.svg" alt="productive" class="h-full">
                 </div>
@@ -334,30 +341,33 @@
     @* Page 7.5 *@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="h-full bg-[#EEEEF6] @(isNarrow ? "flex-y justify-center" : "flex-x")">
-            <div class="flex justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
+            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
                 <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
             </div>
             <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
                 <div class="title-text">Team-friendy</div>
-                <div>
-                    Choosing between synchronous and asynchronous style is a well-known problem for team conversations:
-                </div>
+                <p>
+                    The dilema of real-time vs asynchronous communication style
+                    is a common issue in almost any team:
+                </p>
                 <ul>
                     <li>
-                        Gathering the whole team = productivity hit;
-                        + <a href="https://www.forbes.com/sites/glennllopis/2022/10/05/the-demands-of-millennials--gen-z-a-guide-to-meeting-their-needs/"
-                             target="_blank">
-                            Millennials and Gen-Z are ok only with specific kinds of meetings.
-                        </a>
+                        Keeping everyone on the same page is super important,
+                        but bringing the whole team together is always a productivity hit
                     </li>
                     <li>
-                        But keeping everyone on the same page is important too.
+                        Individual communication preferences vary based on daily schedules,
+                        job duties, and other factors.
+                    </li>
+                    <li>
+                        <a href="https://www.forbes.com/sites/glennllopis/2022/10/05/the-demands-of-millennials--gen-z-a-guide-to-meeting-their-needs/"
+                             target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
                     </li>
                 </ul>
-                <div>
-                    Is there a solution addressing both these issues well?
+                <p>
+                    Is there a solution helping to address some of these issues?
                     We hope you just found it!
-                </div>
+                </p>
             </div>
         </div>
     </div>
@@ -375,7 +385,7 @@
                         <img src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
                     </div>
                     <div class="px-8 text-center">
-                        Many people prefer hearing you rather than reading your texts
+                        Many people prefer hearing your voice rather than reading your texts
                     </div>
                 </div>
 
@@ -384,7 +394,7 @@
                         <img src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
                     </div>
                     <div class="px-8 text-center">
-                        Some of us are much better speakers than writers
+                        For some, speaking is a stronger communication tool than writing
                     </div>
                 </div>
 
@@ -393,20 +403,20 @@
                         <img src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
                     </div>
                     <div class="px-8 text-center">
-                        Jokes are almost always more fun when they’re told
+                        Jokes are almost always more fun when delivered verbally
                     </div>
                 </div>
 
             </div>
         </div>
-        <LandingLinks IsMobile="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
+        <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
     </div>
 
     @* Page 9 *@
     <div class="page @(isNarrow ? "no-auto-scroll" : "")">
         <div class="flex-y items-center overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-8 gap-y-8" : "px-16 pb-8 pt-16 min-h-screen")">
             <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
-                Actual.chat Features
+                Actual Chat Features
             </div>
             <div class="w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
@@ -414,9 +424,9 @@
                         <img src="/dist/images/landing/dialog-01.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Voice & text</span>
-                        <span>are merged together in</span>
-                        <span>chats - channels</span>
+                        <span class="font-bold">Voice and text</span>
+                        <span>are blended together </span>
+                        <span>&ndash; everywhere!</span>
                     </div>
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
@@ -424,8 +434,8 @@
                         <img src="/dist/images/landing/dialog-02.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Markdown-style</span>
-                        text message markup: **bold**, *italic*, `preformatted` text and ```code blocks```
+                        <span class="font-bold">Markdown-style markup</span>
+                        **bold**, *italic*, `preformatted` text and ```code blocks```
                     </div>
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
@@ -453,7 +463,7 @@
                         <img src="/dist/images/landing/dialog-07.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Unlimited Image & file uploads</span>
+                        <span class="font-bold">Unlimited image & file uploads</span>
                     </div>
                 </div>
                 <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-64")">
@@ -461,8 +471,8 @@
                         <img src="/dist/images/landing/dialog-06.svg" alt="description">
                     </div>
                     <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Characters</span>
-                        your status and picture you can choose on per-chat basis
+                        <span class="font-bold">Avatars</span>
+                        change name, picture, and bio on per-chat basis
                     </div>
                 </div>
             </div>
@@ -477,12 +487,13 @@
             </div>
             <div class="flex-x w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
                 <div class="flex-y gap-y-8 min-w-1/3">
-                    <LandingUpcomingItem Text="Highlights & conversation collapsing (“Show just highlights for voice conversations”)"/>
-                    <LandingUpcomingItem Text="Places: a group of chats managed together. A perfect fit for team, company, or community chats."/>
+                    <LandingUpcomingItem Text="Highlights & conversations"/>
+                    <LandingUpcomingItem Text="Action items"/>
+                    <LandingUpcomingItem Text="Places: a group of chats managed together"/>
                 </div>
                 <div class="flex-y gap-y-8 min-w-1/3">
-                    <LandingUpcomingItem Text="Chat timelines - think scrollbars, but much more informative"/>
-                    <LandingUpcomingItem Text="New voice-related features - quotes, filters, noise cancellation"/>
+                    <LandingUpcomingItem Text="Chat timelines"/>
+                    <LandingUpcomingItem Text="Voice quotes"/>
                     <LandingUpcomingItem Text="Nested chats / threads"/>
                 </div>
                 <div class="flex-y gap-y-8 min-w-1/3">
@@ -500,19 +511,18 @@
             <div class="@(isNarrow ? "flex-y py-8" : "flex-x min-h-120")">
                 <div class="@(isNarrow ? "flex-y px-4 py-8" : "flex-x w-1/2 p-16 pr-6")">
                     <div class="w-full font-semibold @(isNarrow ? "flex-x flex-wrap text-4.5xl text-center" : "flex-y justify-center text-7xl")">
-                        <span>How much&nbsp;</span>
-                        <span>does it&nbsp;</span>
-                        <span>cost?</span>
+                        <span>Are there any fees?</span>
                     </div>
                 </div>
                 <div class="flex-y gap-y-4 justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                    <span>Right now Actual.chat is completely free.</span>
-                    <span>Its basic features will be either completely free or require a nominal fee forever.</span>
-                    <span>We see corporate subscriptions and advanced features (embedding, online support scenarios, phone integration) as our primary future revenue sources.
-                        So if you’re using it for daily or team communications, you shouldn’t expect any significant changes related to pricing.</span>
+                    <span>Right now Actual Chat is <strong>completely free</strong>.</span>
+                    <span>We see corporate subscriptions and advanced features
+                        as our primary revenue sources.</span>
+                    <span>So if you use Actual Chat for daily communications,
+                        you shouldn’t expect any significant changes related to pricing.</span>
                 </div>
             </div>
-            <LandingLinks IsMobile="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
+            <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
             <div class="flex-x bg-07 @(isNarrow ? "p-4" : "py-12 px-16")">
                 <div class="flex-y flex-1">
                     <div class="h-full justify-start text-04 @(isNarrow ? "flex-y" : "flex-x gap-x-12")">
@@ -539,13 +549,13 @@
                     </div>
                 </div>
                 <div class="flex-y justify-between items-start text-04 @(isNarrow ? "hidden" : "")">
+                    <a class="footer-link" href="https://actual.chat/chat/announcements">
+                        Announcements
+                    </a>
                     <a class="footer-link" href="https://github.com/Actual-Chat/actual-chat">
-                        Github
+                        GitHub
                     </a>
                     @if (m.EnableIncompleteUI) {
-                        <button class="footer-info-btn">
-                            Announcements
-                        </button>
                         <button class="footer-info-btn">
                             Twitter
                         </button>

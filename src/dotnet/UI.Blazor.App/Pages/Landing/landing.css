@@ -1,5 +1,6 @@
 .landing {
     @apply flex-y;
+    @apply select-text;
 }
 .landing .page {
     @apply flex-y;
@@ -13,8 +14,12 @@
 /* General styles */
 
 .landing ul {
-    @apply m-4 mr-0;
+    @apply m-4 ml-5 mr-0;
+    @apply md:ml-6;
     @apply list-disc;
+}
+.landing ul li {
+    @apply my-2;
 }
 .landing .page a[target="_blank"] {
     @apply underline hover:no-underline;
@@ -197,6 +202,14 @@ body.narrow .landing-header .header-text {
     background: linear-gradient(to right, rgba(255,255,255,1) 75%, rgba(68,68,68,0.5) 25%);
 }
 
+/* Page styles */
+.landing .page {
+    @apply text-xl md:text-2xl;
+}
+.landing .page p, .landing .page .p {
+    @apply pt-4;
+}
+
 /* Page 1 styles */
 .landing .page-1 {
     @apply bg-[#0436A3];
@@ -295,8 +308,8 @@ body.narrow .timeline-item .content-icon.left {
 }
 
 .link-btn {
-    @apply flex-y;
-    @apply max-w-24;
+    @apply flex-1 flex-y;
+    @apply max-w-28 md:max-w-44;
     @apply gap-y-1;
     @apply items-center justify-center;
     @apply bg-transparent;
@@ -385,7 +398,7 @@ body.narrow .landing .landing-menu {
 }
 .landing-links {
     @apply flex-x;
-    @apply gap-x-16;
+    @apply gap-x-4;
     @apply items-center justify-evenly;
     @apply p-4;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
@@ -472,15 +485,17 @@ body.narrow .docs-right-panel {
 .docs-subheader .c-title {
     @apply no-underline;
 }
+
 .docs-content {
     @apply flex-y flex-1;
     @apply gap-y-4 px-4;
     @apply overflow-y-auto custom-scrollbar;
+    @apply select-text;
 }
-
 body.narrow .docs-content {
     @apply px-0 ml-4;
 }
+
 body.narrow .docs-header {
     @apply gap-x-2;
     @apply px-2;
@@ -491,12 +506,7 @@ body.narrow .docs-header {
 .docs-header .menu-button.btn .btn-content {
     @apply text-icons-01;
 }
-body.narrow .side-nav.side-nav-right:has(> .docs-right-panel) {
-    @apply hidden;
-}
-body.narrow .layout-body:has(> .docs-content) {
-    @apply px-0;
-}
+
 body.wide .docs-subheader {
     @apply hidden;
 }
@@ -506,4 +516,11 @@ body.narrow .docs-subheader {
     @apply px-6 py-2 -mt-4;
     @apply bg-01;
     @apply shadow-md;
+}
+
+body.narrow .side-nav.side-nav-right:has(> .docs-right-panel) {
+    @apply hidden;
+}
+body.narrow .layout-body:has(> .docs-content) {
+    @apply px-0;
 }
