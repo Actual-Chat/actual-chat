@@ -7,24 +7,32 @@ const log = Log.get(LogScope, LogLevel.Info);
 export class DebugUI {
     private static backendRef: DotNet.DotNetObject = null;
 
-    public static whenReady: PromiseSource<void> = new PromiseSource<void>();
-
     public static init(backendRef1: DotNet.DotNetObject): void {
         log?.log(`init`);
         this.backendRef = backendRef1;
-        this.whenReady.resolve(undefined);
         globalThis["debugUI"] = this;
     }
 
     public static startFusionMonitor(): void {
-        this.backendRef.invokeMethodAsync('OnStartFusionMonitor');
+        this.backendRef.invokeMethodAsync('StartFusionMonitor');
     };
 
     public static startTaskMonitor(): void {
-        this.backendRef.invokeMethodAsync('OnStartTaskMonitor');
+        this.backendRef.invokeMethodAsync('StartTaskMonitor');
     };
 
-    public static redirect(url: string): void {
-        this.backendRef.invokeMethodAsync('OnRedirect', url);
+    public static async getThreadPoolSettings(): Promise<string> {
+        const settings = await this.backendRef.invokeMethodAsync('GetThreadPoolSettings');
+        console.log(settings);
+        return settings as string;
+    };
+
+    public static changeThreadPoolSettings(min: number, minIO: number, max: number, maxIO: number): Promise<string> {
+        this.backendRef.invokeMethodAsync('ChangeThreadPoolSettings', min, minIO, max, maxIO);
+        return this.getThreadPoolSettings();
+    };
+
+    public static navigateTo(url: string): void {
+        this.backendRef.invokeMethodAsync('NavigateTo', url);
     };
 }
