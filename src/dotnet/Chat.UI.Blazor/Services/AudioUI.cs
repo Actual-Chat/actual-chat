@@ -262,7 +262,7 @@ public class AudioUI : WorkerBase
         var prev = RecordingState.None;
         await foreach (var change in cRecordingState.Changes(cancellationToken).ConfigureAwait(false)) {
             var (recordingChatId, recorderChatId, language) = change.Value;
-            var mustStop = recorderChatId != recordingChatId || language != prev.Language;
+            var mustStop = (recorderChatId != recordingChatId || language != prev.Language) && !prev.RecorderChatId.IsNone;
             var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
             if (mustSync) {
                 await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
