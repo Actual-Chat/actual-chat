@@ -2,16 +2,16 @@
 @inherits FusionComponentBase
 
 <MenuEntry
-    Icon="icon-pin"
-    Text="@(ChatState.Contact.IsPinned ? "Unpin" : "Pin")"
+    Icon="icon-close"
+    Text="Remove from Recent Chats"
     Click="@OnClick">
 </MenuEntry>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnClick()
-        => _ = ChatUI.SetPinState(ChatState.Id, !ChatState.Contact.IsPinned);
+        => _ = ActiveChatsUI.RemoveActiveChat(ChatState.Id);
 }

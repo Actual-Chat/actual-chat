@@ -6,7 +6,7 @@
     Class="warning-item"
     Icon="icon-trash03"
     Text="Leave chat"
-    Click="@OnLeaveChatClick">
+    Click="@OnClick">
 </MenuEntry>
 
 @code {
@@ -14,6 +14,6 @@
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    private Task OnLeaveChatClick()
+    private Task OnClick()
         => ModalUI.Show(new LeaveChatConfirmationModal.Model(ChatState.Chat));
 }

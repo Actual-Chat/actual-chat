@@ -1,30 +1,6 @@
 .chat-menu-btn.btn.btn-round {
     @apply w-8 h-12;
 }
-.visible-menu {
-    @apply flex;
-}
-.active-chats .visible-menu .chat-menu-btn.btn-round.on {
-    @apply visible;
-}
-.visible-menu .chat-menu-btn.btn-round.off,
-.visible-menu .chat-menu-btn.btn-round {
-    @apply invisible;
-}
-.navbar-item:hover .visible-menu .chat-menu-btn.btn-round.off,
-.navbar-item:hover .visible-menu .chat-menu-btn.btn-round {
-    @apply visible;
-}
-.invisible-menu {
-    @apply hidden;
-}
-.navbar-item:hover .invisible-menu {
-    @apply flex;
-}
-.navbar-item:hover .invisible-menu-menu .chat-menu-btn.btn-round.off,
-.navbar-item:hover .invisible-menu .chat-menu-btn.btn-round {
-    @apply visible;
-}
 .chat-menu-btn.btn.btn-round.on:hover .btn-content {
     @apply text-primary;
 }
@@ -36,4 +12,32 @@
 }
 .navbar-item:hover .message-counter-badge {
     @apply hidden;
+}
+
+/* Navbar item - menu */
+.navbar-item .menu {
+    @apply flex;
+}
+.active-chats .navbar-item .menu .chat-menu-btn.btn-round.on {
+    @apply visible;
+}
+.navbar-item .menu .chat-menu-btn.btn-round.off,
+.navbar-item .menu .chat-menu-btn.btn-round {
+    @apply invisible;
+}
+.navbar-item:hover .menu .chat-menu-btn.btn-round.off,
+.navbar-item:hover .menu .chat-menu-btn.btn-round {
+    @apply visible;
+}
+
+/* Navbar item - hover menu */
+.navbar-item .menu.hover-menu {
+    @apply hidden;
+}
+.navbar-item:hover .menu.hover-menu {
+    @apply flex;
+}
+.navbar-item:hover .menu.hover-menu .chat-menu-btn.btn-round.off,
+.navbar-item:hover .menu.hover-menu .chat-menu-btn.btn-round {
+    @apply visible;
 }

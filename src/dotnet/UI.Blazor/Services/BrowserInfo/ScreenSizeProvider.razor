@@ -1,8 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<Unit>
+@inherits ComputedStateComponent<ScreenSize>
+@{
+    var m = State.Value;
+}
 
-<CascadingValue Value="@BrowserInfo.ScreenSize.Value">
+<CascadingValue Value="@m">
     @ChildContent
 </CascadingValue>
 
@@ -11,14 +14,12 @@
 
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
-    protected override ComputedState<Unit>.Options GetStateOptions()
+    protected override ComputedState<ScreenSize>.Options GetStateOptions()
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {
-        var _ = await BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
-        return default!;
-    }
+    protected override Task<ScreenSize> ComputeState(CancellationToken cancellationToken)
+        => BrowserInfo.ScreenSize.Use(cancellationToken).AsTask();
 }

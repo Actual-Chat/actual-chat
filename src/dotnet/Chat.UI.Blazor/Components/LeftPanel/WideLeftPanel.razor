@@ -52,8 +52,7 @@
         => InvokeAsync(StateHasChanged);
 
     private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
-        if (_searchBoxRef != null) {
+        if (_searchBoxRef != null)
             await _searchBoxRef.Cancel();
-        }
     }
 }

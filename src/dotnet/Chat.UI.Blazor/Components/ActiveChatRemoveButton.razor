@@ -1,14 +1,17 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits FusionComponentBase
 @{
-    var cls = $"pin-toggle blackout {Class}";
+    var cls = $"{Class} pin-toggle blackout {(IsSelected ? "opacity-50": "")}";
+    var tooltip = IsSelected
+        ? "Active chat cannot be removed from Recent Chats"
+        : "Remove from Recent Chats";
 }
 
 <ButtonRound
     Class="@cls"
     ContentClass="!bg-transparent"
     Click="@OnClick"
-    Tooltip="Remove"
+    Tooltip="@tooltip"
     TooltipPosition="FloatingPosition.Top">
     <i class="icon-close text-2xl"></i>
 </ButtonRound>
@@ -17,6 +20,7 @@
     [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public bool IsSelected { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
     private void OnClick()

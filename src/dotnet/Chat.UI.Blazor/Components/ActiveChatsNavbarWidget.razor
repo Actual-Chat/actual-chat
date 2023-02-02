@@ -1,13 +1,13 @@
 @inherits ComputedStateComponent<ActiveChatsNavbarWidget.Model>
 @{
     var m = State.Value;
-    var title = "Active & recent chats" + (m.IsSearchModeOn ? " — filtered on search" : "");
+    var title = "Recent Chats" + (m.IsSearchModeOn ? " — filtered on search" : "");
     var titleClass = "text-sm font-medium px-2 pb-2";
 }
 
 @if (m.Chats.Count > 0) {
     <div class="active-chats">
-        <div class="@titleClass" data-tooltip="Your active or recently used chats (up to 3)">@title</div>
+        <div class="@titleClass" data-tooltip="Your active or recently used chats, 3 at most">@title</div>
 
         <ChatList Kind="ChatListKind.Active" Chats="@m.Chats"/>
     </div>
