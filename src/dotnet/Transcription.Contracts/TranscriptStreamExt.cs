@@ -9,6 +9,9 @@ public static class TranscriptStreamExt
         var lastTranscript = new Transcript();
         await foreach (var transcript in transcripts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             var diff = transcript.DiffWith(lastTranscript);
+            if (diff.Length == 0)
+                continue;
+
             yield return diff;
             lastTranscript = transcript;
         }
