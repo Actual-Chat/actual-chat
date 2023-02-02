@@ -192,7 +192,34 @@ public sealed class Transcript
     {
         var updatedText = ZString.Concat(Text, suffix);
         var updatedMap = TextToTimeMap.AppendOrUpdateTail(suffixTextToTimeMap, TextToTimeMapTextPrecision);
-        return new Transcript(updatedText, updatedMap, suffixIsStable ?? IsStable);
+        var isStable = suffixIsStable ?? IsStable;
+
+        if (this != EmptyStable && suffixTextToTimeMap.YRange.Start == 0 && isStable) {
+            // fixup audio axis - there were no final transcript with word offsets before
+            var extrapolatedData = new float[updatedMap.Data.Length];
+            updatedMap.Data.CopyTo(extrapolatedData, 0);
+            var extrapolatedMap = new LinearMap(extrapolatedData);
+            var kAvg = 0f;
+            var recentKs = new LinkedList<float>();
+            for (int i = extrapolatedMap.Points.Length - 2; i >= 0 ; i--) {
+                var p0 = extrapolatedMap.Points[i];
+                var p1 = extrapolatedMap.Points[i+1];
+                if (p0.Y == 0)
+                    extrapolatedData[(i * 2) + 1] = Math.Max(0f, p1.Y - (kAvg * (p1.X - p0.X)));
+                else {
+                    var k = (p1.Y - p0.Y) / (p1.X - p0.X);
+                    if (k is 0 or > 1)
+                        continue;
+
+                    if (recentKs.Count > 5)
+                        recentKs.RemoveLast();
+                    recentKs.AddFirst(k);
+                    kAvg = recentKs.Sum() / recentKs.Count;
+                }
+            }
+            return new Transcript(updatedText, extrapolatedMap, isStable);
+        }
+        return new Transcript(updatedText, updatedMap, isStable);
     }
 
     public Transcript WithDiff(Transcript? diff)
