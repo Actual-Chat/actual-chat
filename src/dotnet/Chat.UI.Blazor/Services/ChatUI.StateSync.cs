@@ -8,8 +8,8 @@ public partial class ChatUI
     {
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
-            new(nameof(PushKeepAwakeState), PushKeepAwakeState),
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
+            new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
         var retryDelays = new RetryDelaySeq(100, 1000);
         return (

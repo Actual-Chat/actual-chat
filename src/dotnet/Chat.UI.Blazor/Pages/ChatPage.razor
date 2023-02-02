@@ -74,6 +74,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -89,6 +90,7 @@
 
     protected override Task OnInitializedAsync() {
         AutoNavigationUI.MustNavigateToChatsOnSignIn = false;
+        ChatAudioUI.Enable();
         return ChatUI.WhenLoaded;
     }
 

@@ -7,6 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatAudioUI : WorkerBase
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
+    private readonly TaskSource<Unit> _whenEnabledSource;
 
     private Session Session { get; }
     private AudioSettings AudioSettings { get; }
@@ -25,6 +26,7 @@ public partial class ChatAudioUI : WorkerBase
 
     private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
+    public Task<Unit> WhenEnabled => _whenEnabledSource.Task;
 
     public ChatAudioUI(IServiceProvider services)
     {
@@ -43,10 +45,15 @@ public partial class ChatAudioUI : WorkerBase
         UICommander = services.UICommander();
         Log = services.LogFor(GetType());
 
+        _whenEnabledSource = TaskSource.New<Unit>(true);
         // Read entry states from other windows / devices are delayed by 1s
         _stopRecordingAt = services.StateFactory().NewMutable<Moment?>();
         Start();
     }
+
+    // ChatAudioUI is disabled until the moment user visits ChatPage
+    public void Enable()
+        => _whenEnabledSource.TrySetResult(default);
 
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)

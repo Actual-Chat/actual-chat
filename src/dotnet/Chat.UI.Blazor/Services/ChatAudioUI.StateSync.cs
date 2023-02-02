@@ -76,6 +76,9 @@ public partial class ChatAudioUI
 
     private async Task StopRecordingWhenIdle(CancellationToken cancellationToken)
     {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var options = new IdleAudioMonitor.Options(AudioSettings.IdleRecordingTimeout,
             AudioSettings.IdleRecordingTimeoutBeforeCountdown,
             AudioSettings.IdleRecordingCheckInterval);
@@ -100,6 +103,9 @@ public partial class ChatAudioUI
 
     private async Task StopListeningWhenIdle(CancellationToken cancellationToken)
     {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var options = new IdleAudioMonitor.Options(AudioSettings.IdleListeningTimeout,
             AudioSettings.IdleListeningTimeout - AudioSettings.IdleListeningCheckInterval + TimeSpan.FromSeconds(1),
             AudioSettings.IdleListeningCheckInterval);
@@ -120,6 +126,9 @@ public partial class ChatAudioUI
 
     private async Task SyncRecordingState(CancellationToken cancellationToken)
     {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var cRecordingState = await Computed
             .Capture(() => GetRecordingState(cancellationToken))
             .ConfigureAwait(false);
@@ -182,6 +191,9 @@ public partial class ChatAudioUI
 
     private async Task PushRealtimePlaybackState(CancellationToken cancellationToken)
     {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         using var dCancellationTask = cancellationToken.ToTask();
         var cancellationTask = dCancellationTask.Resource;
 
