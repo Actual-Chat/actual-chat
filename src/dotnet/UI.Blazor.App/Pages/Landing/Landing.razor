@@ -7,7 +7,6 @@
 @using ActualChat.UI.Blazor.Module
 @inherits ComputedStateComponent<Landing.Model>
 @layout NoLayout
-
 @{
     var m = State.Value;
     var account = m.Account;
@@ -53,11 +52,6 @@
             </div>
             <div class="header-text">
                 @if (!isNarrow) {
-                    @if (m.EnableIncompleteUI) {
-                        <div class="px-8">
-                            For business
-                        </div>
-                    }
                     <Button
                         Click="@(_ => Nav.NavigateTo(Links.Docs))"
                         Class="header-text text-headline-1 btn-transparent">Docs
