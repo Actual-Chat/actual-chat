@@ -1,3 +1,5 @@
+using Stl.Internal;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 internal sealed class IdleAudioMonitor : IAsyncDisposable
@@ -175,7 +177,7 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
     {
         // ReSharper disable once InconsistentlySynchronizedField
         if (_isDisposed)
-            throw StandardError.Internal("Unable to start monitoring: IdleAudioMonitor is disposed");
+            throw Errors.AlreadyDisposed();
     }
 
     // Nested types
