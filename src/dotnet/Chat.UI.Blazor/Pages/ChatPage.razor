@@ -20,6 +20,12 @@
     return;
 }
 
+<RenderIntoSlot Name="MainHeader">
+    <CascadingValue Value="@(chat ?? Chat.None)">
+        <ChatHeader/>
+    </CascadingValue>
+</RenderIntoSlot>
+
 @if (m.IsNotSelected) {
     if (m.ScreenSize.IsWide()) {
         <NoChatSelected/>
@@ -27,16 +33,10 @@
     return;
 }
 
-@if (m.IsUnavailable && m.ScreenSize.IsWide()) {
+@if (m.IsUnavailable) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
     return;
 }
-
-<RenderIntoSlot Name="MainHeader">
-    <CascadingValue Value="chat">
-        <ChatHeader/>
-    </CascadingValue>
-</RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="UnreadMessagesSubHeader">
     <CascadingValue Value="chat">
