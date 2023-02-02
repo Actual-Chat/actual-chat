@@ -1,42 +1,40 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using Stl.Extensibility
 @using ActualChat.Contacts
 @implements IModalView<InviteAuthor.Model>
 @implements IDisposable
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame Class="invite-chat-author-modal" Title="Invite users" HasCloseButton="true">
+<DialogFrame Class="invite-author-modal" Title="Invite users" HasCloseButton="true">
     <Body>
-    <div class="flex-y gap-y-2 h-full w-full">
-        <SearchBox
-            @ref="_searchBoxRef"
-            Class="mt-1"
-            Placeholder="Find contacts..."
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnFilter"/>
-        <div class="flex-y gap-y-1 max-h-[60vh] min-h-[60vh] overflow-y-auto custom-scrollbar">
-            @foreach (var contact in FilteredContacts) {
-                <div class="flex-x items-center gap-x-2 w-full rounded-md px-1 hover:bg-02"
-                     @key="@contact.Account.Id"
-                     @onclick="@(_ => OnContactClick(contact))">
-                    <AvatarBadge
-                        Class="grow"
-                        Avatar="@contact.Account.Avatar"
-                        Presence="@contact.Presence"
-                        Size="SquareSize.Size8"/>
-                    @if (contact.IsExisting) {
-                        <Checkbox
-                            IsChecked="true"
-                            IsDisabled="true"
-                            Class="!flex-none"/>
-                    } else {
-                        <Checkbox
-                            IsChecked="@contact.IsChecked"
-                            Class="!flex-none"
-                            Change="@(_ => OnContactClick(contact))"/>
-                    }
-                </div>
-            }
-        </div>
+    <SearchBox
+        @ref="_searchBoxRef"
+        Placeholder="Find contacts..."
+        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+        TextChanged="@OnFilter"/>
+    <div class="invite-author-modal-contact-list">
+        @foreach (var contact in FilteredContacts) {
+            <div class="invite-author-modal-contact-list-item"
+                 @key="@contact.Account.Id"
+                 @onclick="@(_ => OnContactClick(contact))">
+                <AvatarBadge
+                    Class="grow"
+                    Avatar="@contact.Account.Avatar"
+                    Presence="@contact.Presence"
+                    Size="SquareSize.Size8"/>
+                @if (contact.IsExisting) {
+                    <Checkbox
+                        IsChecked="true"
+                        IsDisabled="true"
+                        Class="!flex-none"/>
+                } else {
+                    <Checkbox
+                        IsChecked="@contact.IsChecked"
+                        Class="!flex-none"
+                        Change="@(_ => OnContactClick(contact))"/>
+                }
+            </div>
+        }
     </div>
     </Body>
     <Buttons>

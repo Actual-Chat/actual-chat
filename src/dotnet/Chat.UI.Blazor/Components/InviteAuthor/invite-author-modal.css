@@ -1,0 +1,18 @@
+.invite-author-modal.modal-frame {
+    @apply md:min-h-160 md:max-h-160;
+}
+.invite-author-modal .dialog-body {
+    @apply flex-y;
+    @apply gap-y-2;
+}
+.invite-author-modal-contact-list {
+    @apply flex-y grow;
+    @apply gap-y-1;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.invite-author-modal-contact-list-item {
+    @apply flex-x w-full;
+    @apply items-center gap-x-2 px-1;
+    @apply hover:bg-02;
+    @apply rounded-md;
+}

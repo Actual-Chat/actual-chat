@@ -8,6 +8,7 @@
 @import './Components/ChatMenu/chat-menu.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';
 @import './Components/ChatSearchBox/chat-search-box.css';
+@import './Components/InviteAuthor/invite-author-modal.css';
 @import './Components/MarkupParts/markup-parts.css';
 @import './Components/NavigateToEnd/navigate-to-end.css';
 @import './Components/NewChat/new-chat-modal.css';
