@@ -27,9 +27,9 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
         if (chatIds.Count == 0)
             return;
 
-        CheckNotDisposed();
+        ThrowIfDisposed();
         lock (_lock) {
-            CheckNotDisposed();
+            ThrowIfDisposed();
             foreach (var chatId in chatIds) {
                 if (_running.ContainsKey(chatId))
                     throw StandardError.Constraint($"There is already running monitoring operation for chatId={chatId}");
@@ -50,9 +50,9 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
             return;
 
         var stoppedTasks = new List<Task>();
-        CheckNotDisposed();
+        ThrowIfDisposed();
         lock (_lock) {
-            CheckNotDisposed();
+            ThrowIfDisposed();
             foreach (var chatId in chatIds) {
                 if (!_running.Remove(chatId, out var monitor))
                     throw StandardError.Constraint($"No running monitoring operation for chatId={chatId}");
@@ -171,12 +171,14 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
         await toDispose.Select(x => x.Task).Collect();
     }
 
-    private void CheckNotDisposed()
+    private void ThrowIfDisposed()
     {
         // ReSharper disable once InconsistentlySynchronizedField
         if (_isDisposed)
             throw StandardError.Internal("Unable to start monitoring: IdleAudioMonitor is disposed");
     }
+
+    // Nested types
 
     public record Options(TimeSpan IdleTimeout,
         TimeSpan IdleTimeoutBeforeCountdown,
