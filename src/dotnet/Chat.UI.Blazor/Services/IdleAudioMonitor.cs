@@ -6,7 +6,7 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
 {
     private readonly Dictionary<ChatId, (Task Task, CancellationTokenSource TokenSource)> _running = new ();
     private readonly object _lock = new ();
-    private bool _isDisposed;
+    private volatile bool _isDisposed;
     private Session Session { get; }
     private IChats Chats { get; }
     private MomentClockSet Clocks { get; }
