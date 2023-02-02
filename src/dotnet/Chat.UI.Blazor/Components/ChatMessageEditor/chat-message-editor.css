@@ -11,15 +11,15 @@
     @apply overflow-x-hidden;
     @apply bg-transparent;
 }
-.chat-message-editor.narrow .post-panel-wrapper {
+.narrow .post-panel-wrapper {
     background: linear-gradient(to bottom, rgba(255,255,255,0) 45%, rgba(68,68,68,1) 30%);
+}
+.narrow.narrow-panel .post-panel-wrapper {
+    background: linear-gradient(to top, rgba(68,68,68,1) 75%, rgba(255,255,255,0) 25%);
 }
 .narrow .audio-panel-wrapper {
     @apply -mb-0.5;
     background: linear-gradient(to bottom, rgba(255,255,255,0) 70%, rgba(68,68,68,1) 0%);
-}
-.chat-message-editor.narrow.narrow-panel .post-panel-wrapper {
-    @apply bg-07;
 }
 .post-panel {
     @apply flex-x;
@@ -175,11 +175,17 @@
     @apply self-end;
     @apply p-2;
     @apply outline-none;
-    @apply text-04;
+    @apply text-05;
 }
 
 .text-mode .btn.btn-round.post-message {
     @apply flex md:hidden;
+    @apply animate-display-from-left;
+}
+body.wide .attachment-mode .btn.btn-round.post-message {
+    @apply flex;
+    @apply min-w-12;
+    @apply text-icons-01;
     @apply animate-display-from-left;
 }
 

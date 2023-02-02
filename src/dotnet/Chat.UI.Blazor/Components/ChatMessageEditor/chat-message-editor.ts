@@ -97,12 +97,16 @@ export class ChatMessageEditor {
         mutationsList.forEach(m => {
             m.addedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
+                    if (!this.editorDiv.classList.contains('attachment-mode')) {
+                        this.editorDiv.classList.add('attachment-mode');
+                    }
                     this.attachmentList = this.editorDiv.querySelector('.attachment-list')
                     this.attachmentList.addEventListener('wheel', this.onHorizontalScroll);
                 }
             });
             m.removedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
+                    this.editorDiv.classList.remove('attachment-mode');
                     if (this.attachmentList != null) {
                         this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
                     }

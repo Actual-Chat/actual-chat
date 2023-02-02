@@ -17,8 +17,8 @@
 /* ChatAudioPanel, Mobile view, Text mode */
 .narrow-panel.narrow .chat-audio-panel {
     @apply gap-x-2;
-    @apply py-1;
-    @apply bg-01;
+    @apply py-2;
+    background: linear-gradient(to top, rgba(255,255,255,1) 60%, rgba(255,255,255,1) 5%, transparent);
 }
 /* ChatAudioPanel, Desktop view */
 .wide .chat-audio-panel {
