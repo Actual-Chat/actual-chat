@@ -130,29 +130,24 @@ public sealed class Transcript
     {
         if (IsDiff || @base.IsDiff)
             throw StandardError.NotSupported("Can't compute diff for diffs.");
+
+        if (@base.Length == 0)
+            return this;
+
         var text = Text;
         var map = TextToTimeMap;
-        var baseText = @base.Text;
         var baseMap = @base.TextToTimeMap;
         var d = map[0] - baseMap[0];
         if (Math.Abs(d.X) > 1e-6 || Math.Abs(d.Y) > 1e-6)
             return this;
         var textRangeStart = TextRange.Start;
 
-        // The logic below is fairly complex, but overall:
-        // - We find the max. common part of the map and the text
-        // - Take shorter(commonMap, commonText) as our common prefix
-        // - Try to augment commonMap with one extra point - (commonTextEnd, itsTime)
-        // - Compute the updated map as (commonText, commonMap) + suffix from (updatedText, updatedMap)
-
-        var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points);
+        // Only the last segment of the map can vary
+        // Google Speech-to-Text v2 doesn't provide endTime so only the last segment is being changed
+        // TODO(AK): Needs to be revised with another transcription model
+        // probably it makes sense to emulate similar behavior even there - to get milestone of stable transcription
+        var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points[..^1]);
         if (commonMapPrefixLength == 0)
-            return this;
-        var commonTextPrefixLengthBasedOnMap = (int)baseMap.Points[commonMapPrefixLength - 1].X - textRangeStart;
-        var commonTextPrefixLength = baseText.AsSpan(0, commonTextPrefixLengthBasedOnMap)
-            .CommonPrefixLength(text.AsSpan(0, commonTextPrefixLengthBasedOnMap));
-        commonMapPrefixLength = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength + textRangeStart);
-        if (commonMapPrefixLength <= 0)
             return this;
 
         // Here commonMapPrefixLength points to a map point that lies before commonTextPrefixLength,
@@ -161,16 +156,8 @@ public sealed class Transcript
         if (mapPrefix.IsEmpty)
             return this;
 
-        // Strip spaces for prefix - diffs should start with spaces instead of prefixes
-        // otherwise the text map will not match the text
-        while (commonTextPrefixLength > 0
-               && baseText.Length > commonTextPrefixLength
-               && baseText[commonTextPrefixLength - 1] == ' ')
-            commonTextPrefixLength--;
-        var textPrefix = baseText[..commonTextPrefixLength];
-
-        var textSuffix = text[textPrefix.Length..];
-        var textPrefixRangeEnd = textPrefix.Length + textRangeStart;
+        var textSuffix = text[(int)mapPrefix.XRange.End..];
+        var textPrefixRangeEnd = mapPrefix.XRange.End + textRangeStart;
         var mapSuffix = new LinearMap(textPrefixRangeEnd, map.Map(textPrefixRangeEnd))
             .AppendOrUpdateTail(map[mapPrefix.Length..], TextToTimeMapTextPrecision);
 
