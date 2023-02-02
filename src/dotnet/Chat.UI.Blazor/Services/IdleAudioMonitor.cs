@@ -81,9 +81,9 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
     {
         await Task.Yield();
         var clock = Clocks.SystemClock;
-        var recordingStartedAt = clock.Now;
+        var monitoringStartedAt = clock.Now;
         await callback(chatId, State.NotIdle);
-        // no need to check last entry since recording has just started
+        // no need to check last entry since monitoring has just started
         await Task.Delay(options.IdleTimeoutBeforeCountdown, cancellationToken)
             .ConfigureAwait(false);
 
@@ -91,13 +91,13 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
         while (!cancellationToken.IsCancellationRequested) {
             var lastEntry = await GetLastTranscribedEntry(chatId,
                     prevLastEntry?.LocalId,
-                    recordingStartedAt,
+                    monitoringStartedAt,
                     cancellationToken)
                 .ConfigureAwait(false);
             var lastEntryAt = lastEntry != null
                 ? GetEndsAt(lastEntry)
-                : recordingStartedAt;
-            lastEntryAt = Moment.Max(lastEntryAt, recordingStartedAt);
+                : monitoringStartedAt;
+            lastEntryAt = Moment.Max(lastEntryAt, monitoringStartedAt);
             var willBeIdleAt = lastEntryAt + options.IdleTimeout;
             var timeBeforeStop = (willBeIdleAt - clock.Now).Positive();
             var timeBeforeCountdown =
@@ -105,8 +105,9 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
             if (timeBeforeStop == TimeSpan.Zero) {
                 // notify is idle and stop counting down
                 await callback(chatId, State.Idle);
+                return;
             }
-            else if (timeBeforeCountdown == TimeSpan.Zero) {
+            if (timeBeforeCountdown == TimeSpan.Zero) {
                 // continue counting down
                 await callback(chatId, State.Soon(willBeIdleAt));
                 await Task.Delay(TimeSpanExt.Min(timeBeforeStop, options.CheckInterval),
