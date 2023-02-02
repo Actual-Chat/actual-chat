@@ -120,12 +120,13 @@
             <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-8" : "px-16")">
                 <div class="main-text">
                     <div class="md:text-4xl font-normal text-04 pt-12">
-                        <div class="title-text">To text? To call? Postpone?</div>
-                        <p class="pt-8">
-                            Sometimes we stuck between a bunch of wrong choices.
-                            That's how revolutions happen.
+                        <div class="title-text main">To call, to text, or<br/>to voice message?</div>
+                        <p class="!pt-8">
+                            But... Could these options be purely artifical?<br/>
+                            Is it possible to create a medium, which naturally
+                            combines all of them together?
                         </p>
-                        <p class="pt-8">
+                        <p class="!pt-8">
                             We are here to redefine the meaning of "Chat".
                             <strong>Actually.</strong>
                         </p>
@@ -188,8 +189,8 @@
     <div class="page @(isNarrow ? "h-screen" : "")">
         <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
             <div class="grid h-full gap-y-5 @(isNarrow ? "px-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
-                <div class="title-text">
-                    Let's reimagine calls and voice messaging
+                <div class="title-text !-mb-8 md:mb-0">
+                    We reimagine calls, texts and voice messages
                 </div>
                 @if (isNarrow) {
                     <div class="flex justify-center p-4">
@@ -198,7 +199,7 @@
                 }
                 <div class="flex-none flex-y">
                     <div class="font-semibold">
-                        We blend voice and text into a single medium.
+                        By blending voice and text into a single medium.
                     </div>
                     <p>
                         Watch your words come to life as you talk -
@@ -435,7 +436,7 @@
 
     @* Page 9 *@
     <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y overflow-hidden @(isNarrow ? "text-4.5xl px-4 pt-14 gap-y-12" : "px-16 pb-8 pt-16 min-h-screen")">
+        <div class="flex-y overflow-hidden pt-16 @(isNarrow ? "text-4.5xl px-4 gap-y-12" : "px-16 pb-8 min-h-screen")">
             <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
                 Actual Chat Features
             </div>

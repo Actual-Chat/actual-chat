@@ -1,5 +1,6 @@
-import { debounceTime, filter, fromEvent, map, merge, Subject, takeUntil } from 'rxjs';
 import { clamp } from 'math';
+import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
+import { DeviceInfo } from 'device-info';
 import { hasModifierKey } from 'keyboard';
 import { stopEvent } from 'event-handling';
 import { Timeout } from 'timeout';
@@ -93,6 +94,11 @@ export class Landing {
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
+        return; // Say thanks to Andrey, he broke most of layouts, so I have to turn it off
+
+        if (DeviceInfo.isIos)
+            return; // The auto-scroll doesn't work on iOS devices (yet)
+
         const page = this.getCurrentPage();
         if (page == null)
             return;

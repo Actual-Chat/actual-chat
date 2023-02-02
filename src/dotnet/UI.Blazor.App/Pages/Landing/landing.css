@@ -43,6 +43,9 @@
 body.narrow .landing .title-text {
     @apply text-4.5xl;
 }
+body.narrow .landing .title-text.main {
+    @apply text-4xl;
+}
 
 /* Header */
 .landing-header {
@@ -123,10 +126,8 @@ body.narrow .landing-header .light-alpha {
     @apply transition-all ease-in-out duration-200;
 }
 .landing-header .header-text {
-    @apply flex-x;
+    @apply flex-x items-center justify-center gap-x-4;
     @apply min-w-fit w-fit;
-    @apply gap-x-4;
-    @apply items-center justify-center;
     @apply px-4;
     @apply text-04 font-medium;
     @apply transition-all ease-in-out duration-100;
@@ -233,20 +234,17 @@ body.narrow .landing .page-1 .page-1-wrapper {
     @apply bg-[url('/dist/images/ellipses-mobile.svg')];
 }
 .landing .page-1 .main-text {
-    @apply flex-y;
+    @apply flex-y justify-center;
     @apply w-3/5;
-    @apply justify-center;
 }
 body.narrow .landing .page-1 .main-text {
-    @apply flex-y;
+    @apply flex-y justify-center;
     @apply w-auto;
-    @apply justify-center;
 }
 .signin-button-group {
-    @apply flex-x;
-    @apply h-12;
-    @apply items-center;
+    @apply flex-x items-center;
     @apply px-2;
+    @apply h-12;
     @apply rounded-full;
     @apply bg-01;
     @apply text-01 font-semibold;
@@ -258,9 +256,8 @@ body.narrow .signin-button-group {
 
 /* Timeline */
 .landing .page-timeline > .title {
-    @apply flex-y;
+    @apply flex-y items-center justify-center;
     @apply md:w-3/5;
-    @apply items-center justify-center;
     @apply md:mx-[20%] p-4;
     @apply text-title-1;
 }
@@ -293,9 +290,8 @@ body.narrow .timeline-item .part-right .content {
     @apply gap-y-2;
 }
 .timeline-item .content-icon {
-    @apply flex;
+    @apply flex items-center justify-center;
     @apply min-w-24;
-    @apply items-center justify-center;
     @apply mx-2;
 }
 body.narrow .timeline-item .part-left .content-icon {
@@ -311,16 +307,13 @@ body.narrow .timeline-item .content-icon.left {
 }
 
 .link-btn {
-    @apply flex-1 flex-y;
+    @apply flex-1 flex-y items-center justify-center gap-y-1;
     @apply max-w-28 md:max-w-44;
-    @apply gap-y-1;
-    @apply items-center justify-center;
     @apply bg-transparent;
 }
 .link-btn-content {
-    @apply flex;
+    @apply flex items-center;
     @apply h-12;
-    @apply items-center;
 }
 body.narrow .landing .link-btn-content {
     @apply h-8;
@@ -377,32 +370,25 @@ body.narrow .landing .landing-menu {
     @apply bg-01;
 }
 .landing-menu .c-container .menu-header {
-    @apply flex-x;
+    @apply flex-x justify-start items-center;
     @apply min-h-14;
-    @apply justify-start items-center;
     @apply py-2;
 }
 .landing-menu .menu-footer {
-    @apply flex-x;
+    @apply flex-x items-center justify-start gap-x-2;
     @apply my-8;
-    @apply gap-x-2;
-    @apply items-center justify-start;
 }
 .landing-menu .menu-content {
-    @apply flex-y;
+    @apply flex-y items-start justify-start gap-y-2;
     @apply h-full;
-    @apply gap-y-2;
     @apply my-4;
-    @apply items-start justify-start;
 }
 .landing-menu .menu-content button,
 .landing-menu .menu-content a {
     @apply text-title-1 text-01;
 }
 .landing-links {
-    @apply flex-x;
-    @apply gap-y-2 md:gap-x-4;
-    @apply items-center justify-evenly;
+    @apply flex-x items-center justify-evenly gap-y-2 md:gap-x-4;
     @apply p-4;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }
@@ -478,10 +464,8 @@ body.narrow .docs-right-panel {
     @apply hidden;
 }
 .docs-right-panel .c-header {
-    @apply flex-x;
+    @apply flex-x items-center justify-end gap-x-4;
     @apply h-14;
-    @apply items-center justify-end;
-    @apply gap-x-4;
     @apply px-4;
     @apply bg-01;
 }
