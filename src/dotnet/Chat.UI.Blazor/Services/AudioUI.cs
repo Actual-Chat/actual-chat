@@ -6,9 +6,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class AudioUI : WorkerBase
 {
-    private Language? _lastRecordingLanguage;
-    private ChatId _lastRecordingChatId;
-    private ChatId _lastRecorderChatId;
     private readonly IMutableState<Moment?> _stopRecordingAt;
 
     private Session Session { get; }
@@ -259,64 +256,35 @@ public class AudioUI : WorkerBase
 
     private async Task SyncRecordingState(CancellationToken cancellationToken)
     {
-        var cRecordingChatId = await Computed
-            .Capture(() => SyncRecordingStateImpl(cancellationToken))
+        var cRecordingState = await Computed
+            .Capture(() => GetRecordingState(cancellationToken))
             .ConfigureAwait(false);
-        // Let's update it continuously -- solely for the side effects of GetRecordingChatId runs
-        await cRecordingChatId.When(_ => false, cancellationToken).ConfigureAwait(false);
+        var prev = RecordingState.None;
+        await foreach (var change in cRecordingState.Changes(cancellationToken).ConfigureAwait(false)) {
+            var (recordingChatId, recorderChatId, language) = change.Value;
+            var mustStop = recorderChatId != recordingChatId || language != prev.Language;
+            var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
+            if (mustSync) {
+                await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
+                if (!recordingChatId.IsNone)
+                    // Start recording = start realtime playback
+                    await SetListeningState(recordingChatId, true);
+            } else if (recorderChatId != prev.RecorderChatId)
+                // Something stopped (or started?) the recorder
+                await SetRecordingChatId(recordingChatId).ConfigureAwait(false);
+            prev = change.Value;
+        }
     }
 
     [ComputeMethod]
-    protected virtual async Task<Symbol> SyncRecordingStateImpl(CancellationToken cancellationToken)
+    protected virtual async Task<RecordingState> GetRecordingState(
+        CancellationToken cancellationToken)
     {
-        // This compute method creates dependencies & gets recomputed on changes by SyncRecordingState.
-        // The result it returns doesn't have any value - it runs solely for its own side effects.
-
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
-        var recordingChatIdChanged = recordingChatId != _lastRecordingChatId;
-        _lastRecordingChatId = recordingChatId;
-
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         var recorderChatId = recorderState?.ChatId ?? default;
-        var recorderChatIdChanged = recorderChatId != _lastRecorderChatId;
-        _lastRecorderChatId = recorderChatId;
-
-        if (recordingChatId == recorderChatId) {
-            // The state is in sync
-            if (recordingChatId.IsNone)
-                return default;
-
-            if (await IsRecordingLanguageChanged().ConfigureAwait(false))
-                SyncRecorderState(); // We need to toggle the recording in this case
-        } else if (recordingChatIdChanged) {
-            // The recording was activated or deactivated
-            SyncRecorderState();
-            if (recordingChatId.IsNone)
-                return default;
-
-            // Update _lastRecordingLanguage
-            await IsRecordingLanguageChanged().ConfigureAwait(false);
-            // Start recording = start realtime playback
-            await SetListeningState(recordingChatId, true).ConfigureAwait(false);
-        } else if (recorderChatIdChanged) {
-            // Something stopped (or started?) the recorder
-            await SetRecordingChatId(recorderChatId).ConfigureAwait(false);
-        }
-        return default;
-
-        async ValueTask<bool> IsRecordingLanguageChanged()
-        {
-            if (recorderChatId.IsNone)
-                return false;
-
-            var language = await LanguageUI.GetChatLanguage(recorderChatId, cancellationToken).ConfigureAwait(false);
-            var isLanguageChanged = _lastRecordingLanguage.HasValue && language != _lastRecordingLanguage;
-            _lastRecordingLanguage = language;
-            return isLanguageChanged;
-        }
-
-        void SyncRecorderState()
-            => UpdateRecorderState(recorderState != null && recorderChatId != recordingChatId, recordingChatId, cancellationToken);
+        var language = await LanguageUI.GetChatLanguage(recorderChatId, cancellationToken).ConfigureAwait(false);
+        return new(recordingChatId, recorderChatId, language);
     }
 
     private Task UpdateRecorderState(
@@ -409,5 +377,10 @@ public class AudioUI : WorkerBase
             cActualPlaybackState = playbackState.Computed;
         }
         // ReSharper disable once FunctionNeverReturns
+    }
+
+    protected sealed record RecordingState(ChatId RecordingChatId, ChatId RecorderChatId, Language Language)
+    {
+        public static readonly RecordingState None = new (ChatId.None, ChatId.None, Language.None);
     }
 }
