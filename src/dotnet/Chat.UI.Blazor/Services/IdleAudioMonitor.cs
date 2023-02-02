@@ -154,15 +154,18 @@ internal sealed class IdleAudioMonitor : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         List<(Task Task, CancellationTokenSource TokenSource)> toDispose;
-        CheckNotDisposed();
+
+        if (_isDisposed)
+            return;
         lock (_lock) {
-            CheckNotDisposed();
+            if (_isDisposed)
+                return;
+            _isDisposed = true;
+
             toDispose = _running.Values.ToList();
             _running.Clear();
-
             foreach (var running in toDispose)
                 running.TokenSource.CancelAndDisposeSilently();
-            _isDisposed = true;
         }
 
         await toDispose.Select(x => x.Task).Collect();
