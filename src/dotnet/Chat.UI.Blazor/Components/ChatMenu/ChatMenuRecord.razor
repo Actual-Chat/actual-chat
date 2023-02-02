@@ -10,19 +10,19 @@
         Class="@cls"
         Icon="icon-Stop-fill"
         Text="Stop talking"
-        Click="@(_ => AudioUI.SetRecordingChatId(default))">
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))">
     </MenuEntry>
 } else {
     <MenuEntry
         Class="@cls"
         Icon="icon-mic"
         Text="Start talking"
-        Click="@(_ => AudioUI.SetRecordingChatId(ChatState.Id))">
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(ChatState.Id))">
     </MenuEntry>
 }
 
 @code {
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 }

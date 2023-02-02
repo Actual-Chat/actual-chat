@@ -21,7 +21,7 @@ internal class AppPresenceReporter : WorkerBase
     protected MomentClockSet Clocks { get; }
     protected UserActivityUI UserActivityUI { get; }
     protected IUserPresences UserPresences { get; }
-    protected AudioUI AudioUI { get; }
+    protected ChatAudioUI ChatAudioUI { get; }
 
     public AppPresenceReporter(Options settings, IServiceProvider services)
     {
@@ -34,7 +34,7 @@ internal class AppPresenceReporter : WorkerBase
         Clocks = Settings.Clocks ?? services.Clocks();
         UserActivityUI = services.GetRequiredService<UserActivityUI>();
         UserPresences = services.GetRequiredService<IUserPresences>();
-        AudioUI = services.GetRequiredService<AudioUI>();
+        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
@@ -56,7 +56,7 @@ internal class AppPresenceReporter : WorkerBase
     protected virtual async Task<(Moment lastActiveAt, bool IsRecording)> GetAppPresenceState(CancellationToken cancellationToken)
     {
         var lastActiveAt = await UserActivityUI.LastActiveAt.Use(cancellationToken).ConfigureAwait(false);
-        var recordingChatId = await AudioUI.GetRecordingChatId().ConfigureAwait(false);
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         return (lastActiveAt, !recordingChatId.IsNone);
     }
 

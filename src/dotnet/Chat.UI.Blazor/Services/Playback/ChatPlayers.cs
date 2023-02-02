@@ -10,14 +10,13 @@ public class ChatPlayers : WorkerBase
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private readonly IMutableState<PlaybackState?> _playbackState;
-    private AudioUI? _audioUI;
+    private ChatAudioUI? _audioUI;
 
     private IServiceProvider Services { get; }
     private IAudioOutputController AudioOutputController { get;}
-    private MomentClockSet Clocks { get; }
-    // TODO: get rid of circular dependency between AudioUI and ChatPlayers
-    private AudioUI AudioUI => _audioUI ??= Services.GetRequiredService<AudioUI>();
+    private ChatAudioUI ChatAudioUI => _audioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private TuneUI TuneUI { get; }
+    private MomentClockSet Clocks { get; }
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
@@ -90,7 +89,7 @@ public class ChatPlayers : WorkerBase
 
     private void ResumeRealtimePlayback()
         => BackgroundTask.Run(async () => {
-            var playbackState = await AudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
+            var playbackState = await ChatAudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
             if (playbackState == null)
                 StopPlayback();
             else

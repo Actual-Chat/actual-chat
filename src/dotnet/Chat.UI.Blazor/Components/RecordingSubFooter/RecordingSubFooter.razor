@@ -33,7 +33,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -44,7 +44,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var recordingChat = await GetRecordingChat(cancellationToken);
-        var stopRecordingAt = await AudioUI.StopRecordingAt.Use(cancellationToken);
+        var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken);
         if (recordingChat == null && stopRecordingAt == null)
             return Model.None;
 
@@ -57,7 +57,7 @@
 
     private async Task<Chat?> GetRecordingChat(CancellationToken cancellationToken)
     {
-        var recordingChatId = await AudioUI.GetRecordingChatId();
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         if (recordingChatId.IsNone)
             return null;
 
@@ -69,7 +69,7 @@
     }
 
     private void OnStop()
-        => _ = AudioUI.SetRecordingChatId(default);
+        => _ = ChatAudioUI.SetRecordingChatId(default);
 
     public sealed record Model {
         public static Model None { get; } = new();

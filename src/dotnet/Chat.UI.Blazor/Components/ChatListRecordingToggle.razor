@@ -11,7 +11,7 @@
     <ButtonRound
         Class="@cls"
         ContentClass="!bg-transparent"
-        Click="@(_ => AudioUI.SetRecordingChatId(default))"
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
         Tooltip="Stop"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
@@ -20,7 +20,7 @@
     <ButtonRound
         Class="@cls"
         ContentClass="!bg-transparent"
-        Click="@(_ => AudioUI.SetRecordingChatId(Chat.Id))"
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(Chat.Id))"
         Tooltip="Start"
         TooltipPosition="FloatingPosition.Top">
         <i class="icon-mic text-2xl"></i>
@@ -28,7 +28,7 @@
 }
 
 @code {
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
     [Parameter, EditorRequired] public bool IsRecording { get; set; }

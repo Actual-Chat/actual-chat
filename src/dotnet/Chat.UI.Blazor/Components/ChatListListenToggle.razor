@@ -16,12 +16,12 @@
 </ButtonRound>
 
 @code {
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatAudioState AudioState { get; set; } = ChatAudioState.None;
     [Parameter] public string Class { get; set; } = "";
 
     private void OnListenClick()
-        => _ = AudioUI.SetListeningState(AudioState.ChatId, !AudioState.IsListening);
+        => _ = ChatAudioUI.SetListeningState(AudioState.ChatId, !AudioState.IsListening);
 
 }

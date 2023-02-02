@@ -32,7 +32,7 @@
     private Model _rendered = Model.Loading;
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
@@ -48,7 +48,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var audioState = await AudioUI.GetState(Chat.Id);
+        var audioState = await ChatAudioUI.GetState(Chat.Id);
         var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
         return new Model(Chat, audioState, isSpeakerphoneOn);
     }
@@ -57,7 +57,7 @@
         if (IsLoading)
             return;
 
-        _ = AudioUI.SetListeningState(Chat.Id, !IsListening);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);
     }
 
     private void OnToggleAudioOutputClick()

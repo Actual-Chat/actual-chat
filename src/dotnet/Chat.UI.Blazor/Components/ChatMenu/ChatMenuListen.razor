@@ -29,10 +29,10 @@
 
 @code {
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private void OnListenClick()
-        => _ = AudioUI.SetListeningState(ChatState.Id, !ChatState.IsListening);
+        => _ = ChatAudioUI.SetListeningState(ChatState.Id, !ChatState.IsListening);
 }

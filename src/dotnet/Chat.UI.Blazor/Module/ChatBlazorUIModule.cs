@@ -41,7 +41,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Chat UI
         services.AddTransient<IdleAudioMonitor>(c => new IdleAudioMonitor(c));
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<AudioUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);

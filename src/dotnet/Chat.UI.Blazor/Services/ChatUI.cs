@@ -31,7 +31,7 @@ public partial class ChatUI : WorkerBase
     private TuneUI TuneUI { get; }
     private ModalUI ModalUI { get; }
     private ActiveChatsUI ActiveChatsUI { get; }
-    private AudioUI AudioUI { get; }
+    private ChatAudioUI ChatAudioUI { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
     private ICommander Commander { get; }
@@ -61,7 +61,7 @@ public partial class ChatUI : WorkerBase
         TuneUI = services.GetRequiredService<TuneUI>();
         ModalUI = services.GetRequiredService<ModalUI>();
         ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
-        AudioUI = services.GetRequiredService<AudioUI>();
+        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
         Commander = services.Commander();
@@ -217,7 +217,7 @@ public partial class ChatUI : WorkerBase
             return null;
 
         var isSelected = await IsSelected(chatId).ConfigureAwait(false);
-        var audioState = await AudioUI.GetState(chatId).ConfigureAwait(false);
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         return new(chat, audioState) {
             IsSelected = isSelected,
         };

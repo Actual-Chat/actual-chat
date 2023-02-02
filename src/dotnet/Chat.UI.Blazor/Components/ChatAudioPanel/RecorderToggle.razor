@@ -40,7 +40,7 @@
     private bool? _canRecord = null;
     private OnOffAnimator _animator = null!;
 
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     private bool CanRecord => _canRecord ?? true;
@@ -68,7 +68,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var audioState = await AudioUI.GetState(Chat.Id);
+        var audioState = await ChatAudioUI.GetState(Chat.Id);
         return new Model(Chat, audioState.IsRecording);
     }
 
@@ -77,7 +77,7 @@
             return; // Loading
 
         if (IsRecording) {
-            _ = AudioUI.SetRecordingChatId(default);
+            _ = ChatAudioUI.SetRecordingChatId(default);
         }
         else {
             if (_canRecord == null) {
@@ -87,7 +87,7 @@
             if (!CanRecord)
                 return;
 
-            _ = AudioUI.SetRecordingChatId(Chat.Id);
+            _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
         }
     }
 
@@ -103,7 +103,7 @@
             return;
 
         IsForcePush = true;
-        _ = AudioUI.SetRecordingChatId(Chat.Id);
+        _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
     }
 
     private void OnPointerUp() {
@@ -111,7 +111,7 @@
             return;
 
         IsForcePush = false;
-        _ = AudioUI.SetRecordingChatId(default);
+        _ = ChatAudioUI.SetRecordingChatId(default);
     }
 
     public sealed record Model(

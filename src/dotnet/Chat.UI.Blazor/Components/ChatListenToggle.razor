@@ -11,7 +11,7 @@
 </ButtonRound>
 
 @code {
-    [Inject] private AudioUI AudioUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
 
@@ -23,8 +23,8 @@
         };
 
     protected override Task<ChatAudioState> ComputeState(CancellationToken cancellationToken)
-        => AudioUI.GetState(ChatId);
+        => ChatAudioUI.GetState(ChatId);
 
     private void OnListenClick()
-        => _ = AudioUI.SetListeningState(ChatId, !State.Value.IsListening);
+        => _ = ChatAudioUI.SetListeningState(ChatId, !State.Value.IsListening);
 }
