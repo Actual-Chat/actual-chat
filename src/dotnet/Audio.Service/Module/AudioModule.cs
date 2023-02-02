@@ -28,7 +28,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         services.AddResponseCaching();

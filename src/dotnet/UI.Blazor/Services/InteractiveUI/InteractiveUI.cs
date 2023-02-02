@@ -58,7 +58,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public async Task<bool> Demand(string operation, CancellationToken cancellationToken)
     {
-        if (HostInfo.AppKind == AppKind.Maui)
+        if (HostInfo.AppKind == AppKind.MauiApp)
             // MAUI controlled browsers doesn't require user interaction to use sound
             return true;
 

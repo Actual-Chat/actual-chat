@@ -3,7 +3,6 @@ namespace ActualChat.UI.Blazor.Services;
 public interface IBrowserInfoBackend
 {
     void OnScreenSizeChanged(string screenSizeText);
-    void OnRedirect(string url);
 
     // Nested types
 

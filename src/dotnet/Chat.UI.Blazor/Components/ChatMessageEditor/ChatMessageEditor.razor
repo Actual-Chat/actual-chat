@@ -185,7 +185,7 @@
 
             } else {
                 var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
-                if (HostInfo is { AppKind: AppKind.Maui, Platform: Platform.iOS }) {
+                if (HostInfo is { AppKind: AppKind.MauiApp, Platform: Platform.iOS }) {
                     // iOS doesn't allow to post from JS, so we have to use workaround here
                     // TODO: add support for attachments on iOS
                     var command = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {

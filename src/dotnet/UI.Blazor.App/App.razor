@@ -125,7 +125,7 @@
         await themeUI.WhenReady.WaitAsync(cancellationToken);
 
         // Finishing w/ history ui
-        await HistoryUI.WhenInitialized.WaitAsync(cancellationToken);
+        await HistoryUI.WhenReady.WaitAsync(cancellationToken);
     }
 
     private async Task Loaded()

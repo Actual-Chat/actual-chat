@@ -48,11 +48,6 @@ export class BrowserInfo {
         globalThis["browserInfo"] = this;
     }
 
-    public static redirect(url: string): void {
-        log?.log(`redirect, url:`, url);
-        this.backendRef.invokeMethodAsync('OnRedirect', url);
-    };
-
     // Backend methods
 
     private static onScreenSizeChanged(screenSize: string): void {

@@ -1,11 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal.Services;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Stl.Fusion.Bridge.Interception;
+using Stl.Fusion.Diagnostics;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
@@ -22,9 +25,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        var appKind = HostInfo.AppKind;
+        if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
-        var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
 
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
@@ -73,7 +76,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<AccountSettings>(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
             c.GetRequiredService<Session>()));
-        if (isServerSideBlazor)
+        if (appKind.IsServer())
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
         else
             services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
@@ -119,9 +122,67 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Host-specific services
         services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
 
-        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += InitializeHistoryUI);
+        // Initializes HistoryUI
+        services.ConfigureUILifetimeEvents(
+            events => events.OnCircuitContextCreated += c => c.GetRequiredService<HistoryUI>());
+
+        InjectDiagnosticsServices(services);
     }
 
-    private void InitializeHistoryUI(IServiceProvider services)
-        => _ = services.GetRequiredService<HistoryUI>();
+    private void InjectDiagnosticsServices(IServiceCollection services)
+    {
+        // Diagnostics
+        var isDev = HostInfo.IsDevelopmentInstance;
+        var appKind = HostInfo.AppKind;
+        var isServer = appKind.IsServer();
+        var isClient = appKind.IsClient();
+        var isWasmApp = appKind.IsWasmApp();
+
+        services.AddScoped(c => new DebugUI(c));
+        services.ConfigureUILifetimeEvents(
+            events => events.OnCircuitContextCreated += c => c.GetRequiredService<DebugUI>());
+
+        if (isClient) {
+            services.AddSingleton(c => new TaskMonitor(c));
+            services.AddSingleton(c => new TaskEventListener(c));
+        }
+        services.AddSingleton(c => {
+            return new FusionMonitor(c) {
+                SleepPeriod = isDev ? TimeSpan.Zero : TimeSpan.FromMinutes(5).ToRandom(0.2),
+                CollectPeriod = TimeSpan.FromSeconds(isDev ? 10 : 60),
+                AccessFilter = isWasmApp
+                    ? static computed => computed.Input.Function is IReplicaMethodFunction
+                    : static _ => true,
+                AccessStatisticsPreprocessor = StatisticsPreprocessor,
+                RegistrationStatisticsPreprocessor = StatisticsPreprocessor,
+            };
+
+            void StatisticsPreprocessor(Dictionary<string, (int, int)> stats)
+            {
+                if (isServer) {
+                    foreach (var key in stats.Keys.ToList()) {
+                        if (key.OrdinalStartsWith("DbAuthService"))
+                            continue;
+                        if (key.OrdinalContains("Backend."))
+                            continue;
+                        stats.Remove(key);
+                    }
+                }
+                else {
+                    foreach (var key in stats.Keys.ToList()) {
+                        if (key.OrdinalContains(".Pseudo"))
+                            stats.Remove(key);
+                        if (key.OrdinalStartsWith("FusionTime."))
+                            stats.Remove(key);
+                        if (key.OrdinalStartsWith("LiveTime."))
+                            stats.Remove(key);
+                        if (key.OrdinalStartsWith("LiveTimeDelta"))
+                            stats.Remove(key);
+                    }
+                }
+            }
+        });
+        if (isServer) // Auto-start FusionMonitor on server
+            services.AddHostedService(c => c.GetRequiredService<FusionMonitor>());
+    }
 }

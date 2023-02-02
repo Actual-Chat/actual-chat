@@ -109,7 +109,7 @@ public class DbModule : HostModule<DbSettings>
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         var fusion = services.AddFusion();

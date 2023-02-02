@@ -17,7 +17,7 @@ public class AudioClientModule : HostModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
+        if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
         var fusionClient = services.AddFusion().AddRestEaseClient();

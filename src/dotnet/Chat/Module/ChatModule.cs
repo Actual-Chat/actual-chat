@@ -14,7 +14,7 @@ public class ChatModule : HostModule
     public override void InjectServices(IServiceCollection services)
     {
         var rawParser = new MarkupParser();
-        if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server)) {
+        if (HostInfo.AppKind.IsServer()) {
             var sharedCache = new ConcurrentLruCache<string, Markup>(16384, HardwareInfo.GetProcessorCountPo2Factor(4));
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);

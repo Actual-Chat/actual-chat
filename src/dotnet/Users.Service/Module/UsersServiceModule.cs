@@ -29,7 +29,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // ASP.NET Core authentication providers

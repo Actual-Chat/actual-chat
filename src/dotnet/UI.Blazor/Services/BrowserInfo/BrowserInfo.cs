@@ -69,10 +69,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     public void OnScreenSizeChanged(string screenSizeText)
         => SetScreenSize(screenSizeText);
 
-    [JSInvokable]
-    public void OnRedirect(string url)
-        => Services.GetRequiredService<NavigationManager>().NavigateTo(url);
-
     private void SetScreenSize(string screenSizeText)
     {
         if (!Enum.TryParse<ScreenSize>(screenSizeText, true, out var screenSize))

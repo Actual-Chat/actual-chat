@@ -5,9 +5,9 @@ namespace ActualChat.Hosting;
 
 public sealed record HostInfo
 {
-    private bool? _isProductionInstance;
-    private bool? _isStagingInstance;
-    private bool? _isDevelopmentInstance;
+    private readonly BoolOption _isProductionInstance = new();
+    private readonly BoolOption _isStagingInstance = new();
+    private readonly BoolOption _isDevelopmentInstance = new();
     private readonly string _baseUrl = "";
     private ImmutableHashSet<Symbol>? _requiredServiceScopes;
 
@@ -33,8 +33,8 @@ public sealed record HostInfo
 
     public Func<string>? BaseUrlProvider { get; init; }
 
-    public bool IsProductionInstance => _isProductionInstance ??= Environment == ProductionEnvironment;
-    public bool IsStagingInstance => _isStagingInstance ??= Environment == StagingEnvironment;
-    public bool IsDevelopmentInstance => _isDevelopmentInstance ??= Environment == DevelopmentEnvironment;
+    public bool IsProductionInstance => _isProductionInstance.Value ??= Environment == ProductionEnvironment;
+    public bool IsStagingInstance => _isStagingInstance.Value ??= Environment == StagingEnvironment;
+    public bool IsDevelopmentInstance => _isDevelopmentInstance.Value ??= Environment == DevelopmentEnvironment;
     public Platform Platform { get; set; }
 }

@@ -54,7 +54,7 @@ public static class Program
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
         services.AddSingleton(c => new HostInfo() {
-            AppKind = AppKind.Wasm,
+            AppKind = AppKind.WasmApp,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = baseUrl,

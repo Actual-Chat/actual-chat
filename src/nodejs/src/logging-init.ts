@@ -24,6 +24,7 @@ export type LogScope =
     | 'LocalSettings'
     | 'VirtualList'
     // XxxUI
+    | 'DebugUI'
     | 'NotificationUI'
     | 'HistoryUI'
     | 'InteractiveUI'

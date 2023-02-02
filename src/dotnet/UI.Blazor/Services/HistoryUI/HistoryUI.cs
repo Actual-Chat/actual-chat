@@ -13,14 +13,14 @@ public class HistoryUI
     private readonly string _initialLocation;
     private bool _rewriteInitialLocation;
     private readonly bool _isTestServer;
-    private TaskSource<Unit> _whenInitializedSource;
+    private TaskSource<Unit> _whenInitialRedirectsCompleted;
 
     private IJSRuntime JS { get; }
     private ILogger Log { get; }
     private NavigationManager Nav { get; }
 
     public bool IsInitialLocation { get; private set; }
-    public Task WhenInitialized { get; }
+    public Task WhenReady { get; }
 
     public event EventHandler<EventArgs>? AfterLocationChangedHandled;
 
@@ -50,7 +50,7 @@ public class HistoryUI
             Nav.LocationChanged += OnLocationChanged;
         }
 
-        WhenInitialized = Initialize();
+        WhenReady = Initialize();
     }
 
     private async Task Initialize()
@@ -63,11 +63,10 @@ public class HistoryUI
         var mustRedirectToChats = url.IsChatOrChatRoot();
         if (mustRedirectToChats) {
             _rewriteInitialLocation = true;
-            _whenInitializedSource = TaskSource.New<Unit>(true);
+            _whenInitialRedirectsCompleted = TaskSource.New<Unit>(true);
             Log.LogDebug("Redirecting to chats from '{InitialLocation}' to create history item", url);
             Nav.NavigateTo(Links.Chat(default), false, true);
-            await _whenInitializedSource.Task.ConfigureAwait(true);
-            _whenInitializedSource = TaskSource<Unit>.Empty;
+            await _whenInitialRedirectsCompleted.Task.ConfigureAwait(true);
         }
     }
 
@@ -115,8 +114,8 @@ public class HistoryUI
         // redirects to 'chrome://new-tab-page/' and not to '/chats/'.
         // While calling 'history.back()' works as expected.
 
-        if (!_whenInitializedSource.IsEmpty)
-            _whenInitializedSource.TrySetResult(default);
+        if (!_whenInitialRedirectsCompleted.IsEmpty)
+            _whenInitialRedirectsCompleted.TrySetResult(default);
 
         IsInitialLocation = false;
 

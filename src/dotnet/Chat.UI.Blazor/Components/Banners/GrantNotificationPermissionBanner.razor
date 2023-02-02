@@ -28,7 +28,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (HostInfo.AppKind == AppKind.Maui)
+        if (HostInfo.AppKind == AppKind.MauiApp)
             return;
 
         if (_hasHandlerRegistered)

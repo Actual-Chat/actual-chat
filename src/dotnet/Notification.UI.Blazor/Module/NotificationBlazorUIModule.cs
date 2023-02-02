@@ -16,7 +16,7 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();
@@ -24,7 +24,7 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
         // Scoped / Blazor Circuit services
         fusion.AddComputeService<NotificationUI>(ServiceLifetime.Scoped);
 
-        if (HostInfo.AppKind != AppKind.Maui)
+        if (HostInfo.AppKind != AppKind.MauiApp)
             services.TryAddTransient<IDeviceTokenRetriever, WebDeviceTokenRetriever>();
     }
 }

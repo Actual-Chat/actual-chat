@@ -1,7 +1,7 @@
 using System.Diagnostics.Tracing;
 using Stl.Diagnostics;
 
-namespace ActualChat.UI.Blazor.App.Diagnostics;
+namespace ActualChat.UI.Blazor.Diagnostics;
 
 // Requires <TrimmerRootAssembly Include="System.Private.CoreLib" />
 public class TaskEventListener : WorkerBase

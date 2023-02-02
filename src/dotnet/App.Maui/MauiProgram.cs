@@ -92,7 +92,7 @@ public static class MauiProgram
 #endif
 
         services.AddSingleton(c => new HostInfo {
-            AppKind = AppKind.Maui,
+            AppKind = AppKind.MauiApp,
             Environment = environment,
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = GetBaseUrl(),

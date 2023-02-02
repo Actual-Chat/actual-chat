@@ -19,7 +19,7 @@ public class ContactsServiceModule : HostModule<ContactsSettings>
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis

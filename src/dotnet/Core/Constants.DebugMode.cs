@@ -23,7 +23,7 @@ public static partial class Constants
         public static bool AudioSource { get; } = false;
         public static bool AudioProcessor { get; } = true;
         public static bool AudioPlayback { get; } = false;
-        public static bool AudioPlaybackPlayMyOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.AppKind != AppKind.Maui;
+        public static bool AudioPlaybackPlayMyOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.AppKind != AppKind.MauiApp;
         public static bool AudioRecording { get; } = false;
         public static bool AudioRecordingStream { get; } = false;
         public static bool AudioStreamProxy { get; } = true;

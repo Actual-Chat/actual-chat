@@ -36,7 +36,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
             Log.LogInformation("Recreating DB '{DatabaseName}'...", dbName);
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             var mustMigrate = false;
-            if (hostInfo.RequiredServiceScopes.Contains(ServiceScope.Test))
+            if (hostInfo.AppKind.IsTestServer())
                 mustMigrate = Random.Shared.Next(10) < 1; // 10% migration probability in tests
             if (mustMigrate)
                 await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
