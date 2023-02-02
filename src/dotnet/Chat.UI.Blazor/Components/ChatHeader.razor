@@ -2,6 +2,7 @@
 @inherits FusionComponentBase
 @{
     var canInvite = Chat.Rules.CanInvite();
+    var isUnavailable = ReferenceEquals(Chat, Chat.None);
 }
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
     <div>
@@ -22,27 +23,29 @@
             </div>
         </div>
     </div>
-    <div class="chat-header-control-panel mx-2">
-        <div class="flex-x gap-x-1">
-            <ChatSearch/>
-            @if(canInvite) {
-                <ButtonRound
-                    Click="OnInviteClick"
-                    Class="transparent"
-                    Tooltip="Add participants..."
-                    TooltipPosition="FloatingPosition.Bottom">
-                    <i class="icon-person-add text-2xl ml-1"></i>
-                </ButtonRound>
-            }
+    @if (!isUnavailable) {
+        <div class="chat-header-control-panel mx-2">
+            <div class="flex-x gap-x-1">
+                <ChatSearch/>
+                @if(canInvite) {
+                    <ButtonRound
+                        Click="OnInviteClick"
+                        Class="transparent"
+                        Tooltip="Add participants..."
+                        TooltipPosition="FloatingPosition.Bottom">
+                        <i class="icon-person-add text-2xl ml-1"></i>
+                    </ButtonRound>
+                }
+            </div>
+            <ButtonRound
+                Click="OnSwitchRightPanelClick"
+                Class="transparent"
+                Tooltip="Chat properties"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-layout text-2xl"></i>
+            </ButtonRound>
         </div>
-        <ButtonRound
-            Click="OnSwitchRightPanelClick"
-            Class="transparent"
-            Tooltip="Chat properties"
-            TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-layout text-2xl"></i>
-        </ButtonRound>
-    </div>
+    }
 </div>
 
 @code {
