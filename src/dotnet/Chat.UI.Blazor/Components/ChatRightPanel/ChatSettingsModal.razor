@@ -12,7 +12,7 @@
 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal">
         <Body>
-        <div class="flex-y text-03 p-3">
+        <div class="flex-y text-03 p-3 overflow-y-auto custom-scrollbar">
             @if (m.Rules != null) {
                 @if (m.Rules.CanEditProperties()) {
                     <DataAnnotationsValidator/>
