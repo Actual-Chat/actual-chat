@@ -23,6 +23,8 @@
     [Parameter, EditorRequired] public bool IsSelected { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
-    private void OnClick()
-        => _ = ActiveChatsUI.RemoveActiveChat(Chat.Id);
+    private void OnClick() {
+        if (!IsSelected)
+            _ = ActiveChatsUI.RemoveActiveChat(Chat.Id);
+    }
 }
