@@ -23,10 +23,8 @@
 @code {
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
-    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
 
     [Parameter] public RenderFragment? GoogleIcon { get; set; }
@@ -38,25 +36,19 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = new Model(AccountUI.OwnAccount.Value, false),
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        return new() {
-            Account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false),
-            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false),
-        };
+        return new Model(
+            await AccountUI.OwnAccount.Use(cancellationToken),
+            await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken));
     }
 
     private void SignIn(string name)
         => ClientAuth.SignIn(name);
 
-    public sealed record Model {
-        public static Model None { get; } = new();
-
-        public AccountFull? Account { get; init; }
-        public bool EnableIncompleteUI { get; init; }
-    }
+    public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
 }

@@ -27,8 +27,6 @@
         Round,
     }
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
 
     [Parameter] public string ButtonClass { get; set; } = "";
