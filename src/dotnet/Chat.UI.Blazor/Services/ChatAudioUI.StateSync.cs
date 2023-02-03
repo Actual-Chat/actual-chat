@@ -144,7 +144,8 @@ public partial class ChatAudioUI
                 var mustShowError = recorderError != null;
                 if (mustShowError)
                     recordingChatId = ChatId.None;
-                var mustStop = ((recorderChatId != recordingChatId || language != prev.Language) && !prev.RecorderChatId.IsNone)
+                var mustStop = ((recorderChatId != recordingChatId || language != prev.Language)
+                    && !prev.RecorderChatId.IsNone)
                     || mustShowError;
                 var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
                 if (mustShowError)
@@ -163,11 +164,17 @@ public partial class ChatAudioUI
                     await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
                     if (!recordingChatId.IsNone && !mustStop)
                         // Start recording = start realtime playback
-                    await SetListeningState(recordingChatId, true).ConfigureAwait(false);
+                        await SetListeningState(recordingChatId, true).ConfigureAwait(false);
                 }
-            } else if (recorderChatId != prev.RecordingChatId)
+                else if (recorderChatId != prev.RecorderChatId)
                     // Something stopped (or started?) the recorder
-                await SetRecordingChatId(recorderChatId).ConfigureAwait(false);
+                    await SetRecordingChatId(recorderChatId).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                if (!current.RecordingChatId.IsNone)
+                    await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+                if (cancellationToken.IsCancellationRequested)
+                    throw;
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to sync recording state");
@@ -175,11 +182,8 @@ public partial class ChatAudioUI
                 // mark recording stopped in case of timeout
                 if (!current.RecordingChatId.IsNone) {
                     await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
-                    ErrorUI.ShowError("Unable to start recording in time");
+                    ErrorUI.ShowError("Recording failed");
                 }
-
-                if (cancellationToken.IsCancellationRequested)
-                    throw;
             }
             finally {
                 prev = change.Value;

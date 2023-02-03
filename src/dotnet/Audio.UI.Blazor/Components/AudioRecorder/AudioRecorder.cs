@@ -90,21 +90,9 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         catch (TimeoutException e) {
             Log.LogWarning(e, nameof(StartRecording) + " failed with timeout");
             var currentValue = State.Value;
-            if (currentValue != null)
+            if (currentValue is { Error: null })
                 State.Value = currentValue with { Error = AudioRecorderError.Timeout };
         }
-        // catch (Exception e) when (e is not OperationCanceledException) {
-        //     // reset state when unable to start recording in time
-        //     Log.LogWarning(e, nameof(StartRecording) + " failed with an error");
-        //
-        //     if (State.Value != null)
-        //         _ = BackgroundTask.Run(
-        //             () => StopRecording(cancellationToken),
-        //             Log,
-        //             $"{nameof(StopRecording)} failed",
-        //             cancellationToken);
-        //     throw;
-        // }
     }
 
     public async Task StopRecording(CancellationToken cancellationToken = default)
