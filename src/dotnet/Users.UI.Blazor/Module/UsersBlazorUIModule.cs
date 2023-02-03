@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using ActualChat.Users.UI.Blazor.Services;
 using Stl.Plugins;
 
 namespace ActualChat.Users.UI.Blazor.Module;
@@ -21,7 +20,6 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 
         var fusion = services.AddFusion();
 
-        // Account UI
-        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
+
     }
 }

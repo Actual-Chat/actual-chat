@@ -117,6 +117,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<FeedbackUI>(c => new FeedbackUI(c));
         services.AddScoped<ImageViewerUI>(c => new ImageViewerUI(
             c.GetRequiredService<ModalUI>()));
+        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services

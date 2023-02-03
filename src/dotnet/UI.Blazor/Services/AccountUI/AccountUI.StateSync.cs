@@ -1,4 +1,4 @@
-namespace ActualChat.Users.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI
 {

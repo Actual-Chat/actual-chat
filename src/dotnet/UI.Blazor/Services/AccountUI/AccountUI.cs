@@ -1,4 +1,6 @@
-namespace ActualChat.Users.UI.Blazor.Services;
+using ActualChat.Users;
+
+namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI : WorkerBase
 {

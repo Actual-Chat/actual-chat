@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services;
-@inherits ComputedStateComponent<AccountFull?>
+@inherits ComputedStateComponent<AccountFull>
 
 @{
     var account = State.Value;
-    if (ReferenceEquals(account, null)) // Not yet loaded
+    if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
     if (ChildContent == null)
         return;
@@ -22,21 +22,34 @@
     private bool _renderedContent;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool NavigateIfAlreadySignedIn { get; set; }
 
-    protected override ComputedState<AccountFull?>.Options GetStateOptions()
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        var account = State.Value;
+        HandleAccountChanges(account);
+    }
+
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new () {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
+            InitialValue = AccountUI.OwnAccount.Value
         };
 
-    protected override async Task<AccountFull?> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken);
+        HandleAccountChanges(account);
+        return account;
+    }
+
+    private void HandleAccountChanges(AccountFull account)
+    {
         _lastAccount ??= account;
 
         var isSignedIn = !account.IsGuest;
@@ -44,9 +57,8 @@
         _lastAccount = account;
 
         if (isSignedIn && (NavigateIfAlreadySignedIn || !wasSignedIn)) {
-            if (AutoNavigationUI.TryNavigateToChatsOnSignIn())
+            if (!_navigated && AutoNavigationUI.TryNavigateToChatsOnSignIn())
                 _navigated = true;
         }
-        return account;
     }
 }
