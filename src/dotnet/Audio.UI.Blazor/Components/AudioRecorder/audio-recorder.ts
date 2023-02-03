@@ -2,6 +2,7 @@ import DetectRTC from 'detectrtc';
 import { OpusMediaRecorder } from './opus-media-recorder';
 import { Log, LogLevel, LogScope } from 'logging';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
+import { PromiseSource } from 'promises';
 
 const LogScope: LogScope = 'AudioRecorder';
 
@@ -79,8 +80,29 @@ export class AudioRecorder {
             }
 
             if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
-                errorLog?.log(`startRecording: microphone permission is required`);
-                return false;
+                if (navigator.userAgent.toLowerCase().includes('firefox')) {
+                    // Firefox doesn't support microphone permissions query
+                    const hasMicrophonePromise = new PromiseSource<boolean>();
+                    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                        .then(
+                            stream => {
+                                stream.getAudioTracks().forEach(t => t.stop());
+                                stream.getVideoTracks().forEach(t => t.stop());
+                                hasMicrophonePromise.resolve(true);
+                            },
+                            () => {
+                                hasMicrophonePromise.resolve(false);
+                            });
+                    const hasMicrophone = await hasMicrophonePromise;
+                    if (!hasMicrophone) {
+                        errorLog?.log(`startRecording: microphone permission is required`);
+                        return false;
+                    }
+                }
+                else {
+                    errorLog?.log(`startRecording: microphone permission is required`);
+                    return false;
+                }
             }
 
             const { blazorRef, sessionId } = this;
@@ -89,7 +111,7 @@ export class AudioRecorder {
         }
         catch (error) {
             errorLog?.log(`startRecording: unhandled error:`, error);
-            throw error;
+            return false;
         }
 
         return true;

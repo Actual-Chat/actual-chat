@@ -259,7 +259,7 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async refreshContext(audioContext: AudioContext | null): Promise<AudioContext> {
-        debugLog?.log(`resume(): AudioContext:`, audioContext);
+        debugLog?.log(`refreshContext(): AudioContext:`, audioContext);
         if (audioContext && audioContext.state === 'running')
             return audioContext;
 
