@@ -1,94 +1,52 @@
 @using ActualChat.Users
+@using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App
+@implements IAsyncDisposable
 @{
-    var isGuest = AccountFull is not {IsGuest: false };
-    var cls = IsOpen ? "open" : "closed";
-    const string privacyUrl = "/docs/privacy";
-    const string termsUrl = "/docs/terms";
-    const string cookiesUrl = "/docs/cookies";
+    var cls = _isMenuOpen ? "open" : "closed";
 }
 
-<div class="landing-menu @cls">
+<div @ref="Ref" class="landing-menu @cls">
     <div class="c-container">
-        <div class="menu-header">
-            <div class="flex">
-                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
-            </div>
-            <div class="px-2 self-center max-w-40">
-                <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
-            </div>
-        </div>
-        <div class="menu-content">
-            @if (isGuest) {
-                <Button Class="btn-transparent" Click="@Signin">
-                    <div>
-                        <i class="icon-log-in text-2xl text-badge"></i>
-                    </div>
-                    <div class="flex items-center mx-2 text-badge">
-                        Sign in
-                    </div>
-                </Button>
-            }
-            <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
-                Home
-            </Button>
-            <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
-                Privacy
-            </Button>
-            <Button Class="btn-transparent" Click="@(() => NavigateTo(termsUrl))">
-                Terms
-            </Button>
-            <Button Class="btn-transparent" Click="@(() => NavigateTo(cookiesUrl))">
-                Cookie Preferences
-            </Button>
-            @if (EnableIncompleteUI) {
-                <a href="/docs/privacy">
-                    Contact Us
-                </a>
-                <button>
-                    For Business
-                </button>
-                <button>
-                    API
-                </button>
-                <button>
-                    Apps
-                </button>
-                <button>
-                    FAQ
-                </button>
-            }
-        </div>
-        <div class="menu-footer">
-            @if (EnableIncompleteUI) {
-                <ButtonRound>
-                    <img src="/dist/images/landing/github-gray.svg" alt="github">
-                </ButtonRound>
-                <ButtonRound>
-                    <img src="/dist/images/landing/facebook-gray.svg" alt="facebook">
-                </ButtonRound>
-                <ButtonRound>
-                    <img src="/dist/images/landing/telegram-gray.svg" alt="telegram">
-                </ButtonRound>
-                <ButtonRound>
-                    <img src="/dist/images/landing/medium-gray.svg" alt="medium">
-                </ButtonRound>
-            }
-        </div>
+        <LandingLeftMenuContent Owner="@this" />
     </div>
 </div>
 
 @code {
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    private bool _isMenuOpen;
 
-    [Parameter] public bool IsOpen { get; set; }
-    [Parameter] public bool EnableIncompleteUI { get; set; }
-    [Parameter] public AccountFull? AccountFull { get; set; }
-    [Parameter] public EventCallback Signin { get; set; }
-    [Parameter] public EventCallback OnClose { get; set; }
+    private ElementReference Ref { get; set; }
+    private DotNetObjectReference<LandingLeftMenu> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
 
-    private void NavigateTo(string url) {
-        OnClose.InvokeAsync();
-        Nav.NavigateTo(url);
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    public void Open()
+        => Toggle(true);
+
+    [JSInvokable]
+    public void Close()
+        => Toggle(false);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.LandingLeftMenu.create",
+                Ref, BlazorRef
+                );
+        }
+    }
+
+    private void Toggle(bool isOpen) {
+        _isMenuOpen = isOpen;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 }

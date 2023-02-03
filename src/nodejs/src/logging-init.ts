@@ -52,6 +52,7 @@ export type LogScope =
     | 'ImageViewer'
     | 'PicUpload'
     | 'Landing'
+    | 'LandingLeftMenu'
     | string;
 
 const GlobalThisKey = 'logLevels';
@@ -140,6 +141,7 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
+    minLevels.set('LandingLeftMenu', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);

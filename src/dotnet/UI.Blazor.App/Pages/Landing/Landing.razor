@@ -11,8 +11,8 @@
     var m = State.Value;
     var account = m.Account;
     var isGuest = account is not {IsGuest: false };
-    var user = account?.User.OrGuest();
-    var avatar = account?.Avatar ?? Avatar.None;
+    var user = account.User.OrGuest();
+    var avatar = account.Avatar;
     var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
@@ -21,11 +21,7 @@
 
 <div @ref="Ref" class="landing" xmlns="http://www.w3.org/1999/html">
     @if (isNarrow) {
-        <LandingLeftMenu
-            AccountFull="@account"
-            IsOpen="@_isMenuOpen"
-            EnableIncompleteUI="@m.EnableIncompleteUI"
-            Signin="@(() => SignIn(googleScheme.Name))"/>
+        <LandingLeftMenu @ref="_landingLeftMenu" />
     }
 
     @* Header *@
@@ -590,12 +586,11 @@
 </div>
 
 @code {
-    private bool _isMenuOpen;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
-    private DotNetObjectReference<Landing> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
+    private LandingLeftMenu? _landingLeftMenu;
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
@@ -611,11 +606,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUIAppModule.ImportName}.Landing.create",
-                Ref, BlazorRef
-                );
+                $"{BlazorUIAppModule.ImportName}.Landing.create", Ref);
         }
     }
 
@@ -635,28 +627,14 @@
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
         await base.DisposeAsync();
     }
 
     private Task SignIn(string name) =>
         ClientAuth.SignIn(name).AsTask();
 
-    private void OnMenuHandleClick() {
-        _isMenuOpen = !_isMenuOpen;
-        StateHasChanged();
-    }
-
-    // JS API
-
-    [JSInvokable]
-    public void CloseMenu() {
-        if (!_isMenuOpen)
-            return;
-        _isMenuOpen = false;
-        StateHasChanged();
-    }
+    private void OnMenuHandleClick()
+        => _landingLeftMenu?.Open();
 
     // Nested types
 

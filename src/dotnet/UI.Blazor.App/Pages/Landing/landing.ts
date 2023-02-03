@@ -19,7 +19,6 @@ enum ScrollBlock {
 
 export class Landing {
     private readonly disposed$ = new Subject<void>();
-    private readonly menu: HTMLElement;
     private readonly header: HTMLElement;
     private readonly scrollContainer: HTMLElement;
     private readonly links = new Array<HTMLElement>();
@@ -28,23 +27,17 @@ export class Landing {
     private isAutoScrolling = false;
     private finalScrollCheckTimeout?: Timeout;
 
-    static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
-        return new Landing(landing, blazorRef);
+    static create(landing: HTMLElement): Landing {
+        return new Landing(landing);
     }
 
     constructor(
         private readonly landing: HTMLElement,
-        private readonly blazorRef: DotNet.DotNetObject,
     ) {
         this.header = landing.querySelector('.landing-header');
-        this.menu = landing.querySelector('.landing-menu');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
         landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
         this.scrollContainer = getScrollContainer(this.pages[0]);
-
-        fromEvent(document, 'click')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(() => this.onClick())
 
         fromEvent(document, 'keydown')
             .pipe(takeUntil(this.disposed$))
@@ -198,25 +191,6 @@ export class Landing {
 
         this.autoScroll(dPage0Top < 0, null, true);
     }
-
-    private onClick() {
-        const menuBtn = this.header.querySelector('.context-menu-btn');
-        const nullBtn = menuBtn == null;
-        if (nullBtn || (!nullBtn && !event.composedPath().includes(menuBtn))) {
-            if (!ScreenSize.isNarrow())
-                return;
-            if (!this.menu.classList.contains('open'))
-                return;
-
-            const container = this.menu.querySelector('.c-container');
-            const withinMenu = event.composedPath().includes(container);
-            if (withinMenu)
-                return;
-
-            this.blazorRef.invokeMethodAsync('CloseMenu');
-            stopEvent(event);
-        }
-    };
 }
 
 // Helpers

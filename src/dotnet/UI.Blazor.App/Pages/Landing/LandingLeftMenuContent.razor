@@ -1,0 +1,113 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.Users
+@inherits ComputedStateComponent<LandingLeftMenuContent.Model>
+
+@{
+    var m = State.Value;
+    var account = m.Account;
+    var isGuest = account is not {IsGuest: false };
+    const string privacyUrl = "/docs/privacy";
+    const string termsUrl = "/docs/terms";
+    const string cookiesUrl = "/docs/cookies";
+}
+
+<div class="menu-header">
+    <div class="flex">
+        <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+    </div>
+    <div class="px-2 self-center max-w-40">
+        <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+    </div>
+</div>
+<div class="menu-content">
+    @if (isGuest) {
+        <Button Class="btn-transparent" Click="SignIn">
+            <div>
+                <i class="icon-log-in text-2xl text-badge"></i>
+            </div>
+            <div class="flex items-center mx-2 text-badge">
+                Sign in
+            </div>
+        </Button>
+    }
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
+        Home
+    </Button>
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
+        Privacy
+    </Button>
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(termsUrl))">
+        Terms
+    </Button>
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(cookiesUrl))">
+        Cookie Preferences
+    </Button>
+    @if (m.EnableIncompleteUI) {
+        <a href="/docs/privacy">
+            Contact Us
+        </a>
+        <button>
+            For Business
+        </button>
+        <button>
+            API
+        </button>
+        <button>
+            Apps
+        </button>
+        <button>
+            FAQ
+        </button>
+    }
+</div>
+<div class="menu-footer">
+    @if (m.EnableIncompleteUI) {
+        <ButtonRound>
+            <img src="/dist/images/landing/github-gray.svg" alt="github">
+        </ButtonRound>
+        <ButtonRound>
+            <img src="/dist/images/landing/facebook-gray.svg" alt="facebook">
+        </ButtonRound>
+        <ButtonRound>
+            <img src="/dist/images/landing/telegram-gray.svg" alt="telegram">
+        </ButtonRound>
+        <ButtonRound>
+            <img src="/dist/images/landing/medium-gray.svg" alt="medium">
+        </ButtonRound>
+    }
+</div>
+
+@code {
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [Parameter] public LandingLeftMenu Owner { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(AccountUI.OwnAccount.Value, false),
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return new Model(
+            await AccountUI.OwnAccount.Use(cancellationToken),
+            await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken));
+    }
+
+    private void NavigateTo(string url) {
+        Owner.Close();
+        Nav.NavigateTo(url);
+    }
+
+    private void SignIn()
+        => SignIn(IClientAuth.GoogleSchemeName);
+
+    private Task SignIn(string name) =>
+        ClientAuth.SignIn(name).AsTask();
+
+    public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
+}
