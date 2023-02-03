@@ -16,33 +16,25 @@
                 BannerSeverity.Error => "info",
                 BannerSeverity.Warning => "alert-triangle",
                 _ => "",
-                };
+            };
 
             return $"icon-{iconName}";
         }
     }
 
-    private string IconColor {
-        get {
-            return Severity switch {
-                BannerSeverity.Success => "text-banner-success",
-                BannerSeverity.Info => "text-banner-info",
-                BannerSeverity.Error => "text-banner-error",
-                BannerSeverity.Warning => "text-banner-warning",
-                _ => "",
-                };
-        }
-    }
+    private string IconColor => Severity switch {
+        BannerSeverity.Success => "text-banner-success",
+        BannerSeverity.Info => "text-banner-info",
+        BannerSeverity.Error => "text-banner-error",
+        BannerSeverity.Warning => "text-banner-warning",
+        _ => "",
+    };
 
-    private string CircleBgColor {
-        get {
-            return Severity switch {
-                BannerSeverity.Success => "bg-banner-success",
-                BannerSeverity.Info => "bg-banner-info",
-                BannerSeverity.Error => "bg-banner-error",
-                BannerSeverity.Warning => "bg-banner-warning",
-                _ => "",
-                };
-        }
-    }
+    private string CircleBgColor => Severity switch {
+        BannerSeverity.Success => "bg-banner-success",
+        BannerSeverity.Info => "bg-banner-info",
+        BannerSeverity.Error => "bg-banner-error",
+        BannerSeverity.Warning => "bg-banner-warning",
+        _ => "",
+    };
 }

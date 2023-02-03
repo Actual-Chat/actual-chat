@@ -10,7 +10,7 @@
     var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
 }
 
-<Banner IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowCloseButton="true" Close="OnClose">
+<Banner IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnClose">
     <Body>
         Actual Chat can notify you about new messages
     </Body>

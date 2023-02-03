@@ -3,7 +3,7 @@
 @using ActualChat.UI.Blazor.Services
 @implements IDisposable
 @{
-    _animator.State = IsVisible;
+    _animator.State = IsVisible && !_isDismissed;
     if (_animator.MustHideComponent)
         return;
 }
@@ -11,7 +11,7 @@
      @if (Icon != null) {
          @Icon
      } else {
-         <SeverityIcon Severity="@Severity"></SeverityIcon>
+         <SeverityIcon Severity="@Severity"/>
      }
      <div class="banner-body">
          @Body
@@ -19,8 +19,12 @@
      @if (Buttons != null) {
          <div class="banner-buttons">
              @Buttons
-             @if (ShowCloseButton) {
-                 <Button Class="btn-transparent blackout text-icons-01" Click="OnClose">
+             @if (ShowDismissButton) {
+                 <Button
+                     Class="btn-transparent blackout text-icons-01"
+                     Click="OnClose"
+                     Tooltip="Dismiss"
+                     TooltipPosition="FloatingPosition.Top">
                      <i class="icon-close text-2xl"></i>
                  </Button>
              }
@@ -29,17 +33,18 @@
 </div>
 @code {
     private ShowHideAnimator _animator = null!;
+    private bool _isDismissed = false;
 
-    [CascadingParameter] public BannerInstance BannerInstance { get; set; } = null!;
+    [CascadingParameter] public BannerDef? BannerDef { get; set; } = null!;
 
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
-    [Parameter] public bool ShowCloseButton { get; set; }
     [Parameter] public bool ShowIconCircle { get; set; } = true;
+    [Parameter] public bool ShowDismissButton { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
     [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Info;
-    [Parameter] public EventCallback Close { get; set; }
+    [Parameter] public EventCallback Dismiss { get; set; }
 
     protected override void OnInitialized() {
         base.OnInitialized();
@@ -50,11 +55,13 @@
         _animator.DisposeSilently();
     }
 
-    private Task OnClose() {
-        if (Close.HasDelegate)
-            return Close.InvokeAsync();
-
-        BannerInstance.Close();
-        return Task.CompletedTask;
+    private async Task OnClose() {
+        if (Dismiss.HasDelegate)
+            await Dismiss.InvokeAsync();
+        else if (BannerDef?.HasDismissHandler == true)
+            BannerDef.Dismiss();
+        else
+            _isDismissed = true; // NOTE(AY) You can't change IsVisible here, coz it's a parameter of component
+        StateHasChanged();
     }
 }

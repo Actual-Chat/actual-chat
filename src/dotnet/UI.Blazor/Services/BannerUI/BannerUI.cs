@@ -7,65 +7,72 @@ namespace ActualChat.UI.Blazor.Services;
 public class BannerUI
 {
     private readonly object _lock = new ();
-    private readonly IMutableState<ImmutableList<BannerInstance>> _bannerInstances;
+    private readonly IMutableState<ImmutableList<BannerDef>> _banners;
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
-    public IState<ImmutableList<BannerInstance>> BannerInstances => _bannerInstances;
+    // ReSharper disable once InconsistentlySynchronizedField
+    public IState<ImmutableList<BannerDef>> Banners => _banners;
 
     public BannerUI(IServiceProvider serviceProvider)
     {
         MatchingTypeFinder = serviceProvider.GetRequiredService<IMatchingTypeFinder>();
-        _bannerInstances = serviceProvider.StateFactory().NewMutable(ImmutableList<BannerInstance>.Empty);
+        _banners = serviceProvider.StateFactory().NewMutable(
+            ImmutableList<BannerDef>.Empty, nameof(Banners));
     }
 
-    public BannerInstance Show<TBannerModel>(TBannerModel bannerModel)
+    public BannerDef Show<TBannerModel>(TBannerModel bannerModel)
         where TBannerModel : notnull
     {
         var componentType = MatchingTypeFinder.TryFind(bannerModel.GetType(), typeof(IBannerView<>))
-            ?? throw StandardError.NotFound<TBannerModel>($"No banner view found for model {typeof(TBannerModel)}");
+            ?? throw StandardError.NotFound<TBannerModel>(
+                $"No banner view is found for model '{typeof(TBannerModel).GetName()}'.");
  #pragma warning disable IL2072
-        var instance = CreateInstance(bannerModel, componentType);
+        var banner = Create(bannerModel, componentType);
  #pragma warning restore IL2072
 
-        var bannerInstances = _bannerInstances;
         lock (_lock)
-            bannerInstances.Value = bannerInstances.Value.Add(instance);
-
-        return instance;
+            _banners.Value = _banners.Value.Add(banner);
+        return banner;
     }
 
-    private BannerInstance CreateInstance<TBannerModel>(
+    private BannerDef Create<TBannerModel>(
         TBannerModel bannerModel,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType)
         where TBannerModel : notnull
     {
-        var instance = new BannerInstance(Close);
-#pragma warning disable MA0123
-        var i = 0;
-        instance.View = cascadingValueBuilder => {
-            cascadingValueBuilder.OpenComponent<CascadingValue<BannerInstance>>(i++);
-            cascadingValueBuilder.AddAttribute(i++, nameof(CascadingValue<BannerInstance>.Value), instance);
-            cascadingValueBuilder.AddAttribute(i++, nameof(CascadingValue<BannerInstance>.IsFixed), true);
-            cascadingValueBuilder.AddAttribute(i++,
-                nameof(CascadingValue<BannerInstance>.ChildContent),
-                (RenderFragment)CreateBannerView);
-            cascadingValueBuilder.CloseComponent();
-        };
-        return instance;
+        return new BannerDef(View, OnDismiss);
 
-        void CreateBannerView(RenderTreeBuilder bannerViewBuilder)
+#pragma warning disable MA0123
+        RenderFragment View(BannerDef instance)
         {
-            bannerViewBuilder.OpenComponent(i++, componentType);
-            bannerViewBuilder.AddAttribute(i++, nameof(IBannerView<TBannerModel>.BannerModel), bannerModel);
-            bannerViewBuilder.CloseComponent();
+            return RenderBannerWrapper;
+
+            void RenderBannerWrapper(RenderTreeBuilder builder)
+            {
+                var i = 0;
+                builder.OpenComponent<CascadingValue<BannerDef>>(i++);
+                builder.AddAttribute(i++, nameof(CascadingValue<BannerDef>.Value), instance);
+                builder.AddAttribute(i++, nameof(CascadingValue<BannerDef>.IsFixed), true);
+                builder.AddAttribute(i++,
+                    nameof(CascadingValue<BannerDef>.ChildContent),
+                    (RenderFragment)RenderBanner);
+                builder.CloseComponent();
+            }
+
+            void RenderBanner(RenderTreeBuilder bannerViewBuilder)
+            {
+                var j = 0;
+                bannerViewBuilder.OpenComponent(j++, componentType);
+                bannerViewBuilder.AddAttribute(j++, nameof(IBannerView<TBannerModel>.BannerModel), bannerModel);
+                bannerViewBuilder.CloseComponent();
+            }
         }
 #pragma warning restore MA0123
     }
 
-    private void Close(BannerInstance bannerInstance)
+    private void OnDismiss(BannerDef banner)
     {
-        var bannerInstances = _bannerInstances;
         lock (_lock)
-            bannerInstances.Value = bannerInstances.Value.Remove(bannerInstance);
+            _banners.Value = _banners.Value.Remove(banner);
     }
 }
