@@ -2,11 +2,15 @@
 @using ActualChat.Notification.UI.Blazor
 @using ActualChat.Notification.UI.Blazor.Module
 @using ActualChat.Hosting
+@using ActualChat.Kvas
+@using ActualChat.Notification
 @inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
 @{
     var m = State.Value;
+    var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
 }
-<Banner IsVisible="m.State==PermissionState.Prompt" Severity="BannerSeverity.Info">
+
+<Banner IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowCloseButton="true" Close="OnClose">
     <Body>
         Actual Chat can notify you about new messages
     </Body>
@@ -18,14 +22,22 @@
 @code {
     private Button? _configureButton = null!;
     private bool _hasHandlerRegistered;
+    private IStoredState<Moment> _dismissedAt = null!;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
+        base.OnInitialized();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (HostInfo.AppKind == AppKind.MauiApp)
@@ -47,10 +59,24 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var permissionState = await NotificationUI.State.Use(cancellationToken);
-        return new(permissionState);
+        // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
+        var dismissedAt = await _dismissedAt.Use(cancellationToken);
+        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
+        var isDismissed = dismissPeriod < NotificationConstants.UI.PermissionRequestDismissPeriod;
+        return new(permissionState, isDismissed);
     }
 
-    public sealed record Model(PermissionState State) {
-        public  static readonly Model None = new(PermissionState.Denied);
+    // Event handlers
+
+    private void OnClose()
+        => _dismissedAt.Value = Clocks.SystemClock.Now;
+
+    // Nested types
+
+    public sealed record Model(
+        PermissionState State,
+        bool IsDismissed
+    ) {
+        public  static readonly Model None = new(PermissionState.Denied, true);
     }
 }

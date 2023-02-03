@@ -32,4 +32,9 @@ public static class NotificationConstants
     {
         public static readonly TimeSpan Message = TimeSpan.FromSeconds(30);
     }
+
+    public static class UI
+    {
+        public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
+    }
 }

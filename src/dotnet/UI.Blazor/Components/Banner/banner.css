@@ -5,7 +5,7 @@
     @apply ml-1;
 }
 .banner-buttons {
-    @apply flex-x ml-auto items-center;
+    @apply flex-x ml-auto items-center gap-x-2;
 }
 .banner-buttons-close {
     @apply flex w-6 h-6  ml-3 rounded-full items-center justify-center;
