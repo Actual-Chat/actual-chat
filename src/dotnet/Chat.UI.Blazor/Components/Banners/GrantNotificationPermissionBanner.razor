@@ -10,7 +10,7 @@
     var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
 }
 
-<Banner IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnClose">
+<Banner IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnDismiss">
     <Body>
         Actual Chat can notify you about new messages
     </Body>
@@ -72,7 +72,7 @@
 
     // Event handlers
 
-    private void OnClose()
+    private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
     // Nested types
