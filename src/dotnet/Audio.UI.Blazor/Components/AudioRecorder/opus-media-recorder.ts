@@ -74,7 +74,6 @@ export class OpusMediaRecorder {
     public async start(sessionId: string, chatId: string): Promise<void> {
         warnLog?.assert(sessionId != '', `start: sessionId is unspecified`);
         warnLog?.assert(chatId != '', `start: chatId is unspecified`);
-        warnLog?.assert(this.contextRef != null, `start: chatId is unspecified`);
 
         this.contextRef = await audioContextSource.getRef();
 

@@ -1,3 +1,5 @@
+using ActualChat.Audio.UI.Blazor.Components;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatAudioUI
@@ -133,31 +135,66 @@ public partial class ChatAudioUI
             .Capture(() => GetRecordingState(cancellationToken))
             .ConfigureAwait(false);
         var prev = RecordingState.None;
-        await foreach (var change in cRecordingState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (recordingChatId, recorderChatId, language) = change.Value;
-            var mustStop = (recorderChatId != recordingChatId || language != prev.Language) && !prev.RecorderChatId.IsNone;
-            var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
-            if (mustSync) {
-                await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
-                if (!recordingChatId.IsNone)
-                    // Start recording = start realtime playback
+        var current = RecordingState.None;
+        await foreach (var change in cRecordingState.Changes(cancellationToken).ConfigureAwait(false))
+            try {
+                current = change.Value;
+
+                var (recordingChatId, recorderChatId, recorderError, language) = current;
+                var mustShowError = recorderError != null;
+                if (mustShowError)
+                    recordingChatId = ChatId.None;
+                var mustStop = ((recorderChatId != recordingChatId || language != prev.Language) && !prev.RecorderChatId.IsNone)
+                    || mustShowError;
+                var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
+                if (mustShowError)
+                    switch (recorderError) {
+                    case AudioRecorderError.Microphone:
+                        ErrorUI.ShowError("Microphone is not ready");
+                        break;
+                    case AudioRecorderError.Timeout:
+                        ErrorUI.ShowError("Unable to start recording in time");
+                        break;
+                    default:
+                        ErrorUI.ShowError("Voice recording failed");
+                        break;
+                    }
+                if (mustSync) {
+                    await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
+                    if (!recordingChatId.IsNone && !mustStop)
+                        // Start recording = start realtime playback
                     await SetListeningState(recordingChatId, true).ConfigureAwait(false);
+                }
             } else if (recorderChatId != prev.RecordingChatId)
-                // Something stopped (or started?) the recorder
+                    // Something stopped (or started?) the recorder
                 await SetRecordingChatId(recorderChatId).ConfigureAwait(false);
-            prev = change.Value;
-        }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to sync recording state");
+
+                // mark recording stopped in case of timeout
+                if (!current.RecordingChatId.IsNone) {
+                    await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+                    ErrorUI.ShowError("Unable to start recording in time");
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                    throw;
+            }
+            finally {
+                prev = change.Value;
+            }
     }
 
     [ComputeMethod]
-    protected virtual async Task<RecordingState> GetRecordingState(
-        CancellationToken cancellationToken)
+    protected virtual async Task<RecordingState> GetRecordingState(CancellationToken cancellationToken)
     {
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         var recorderChatId = recorderState?.ChatId ?? default;
+        var recorderError = recorderState?.Error;
         var language = await LanguageUI.GetChatLanguage(recorderChatId, cancellationToken).ConfigureAwait(false);
-        return new(recordingChatId, recorderChatId, language);
+        return new(recordingChatId, recorderChatId, recorderError, language);
     }
 
     private Task UpdateRecorderState(
@@ -255,8 +292,8 @@ public partial class ChatAudioUI
         // ReSharper disable once FunctionNeverReturns
     }
 
-    protected sealed record RecordingState(ChatId RecordingChatId, ChatId RecorderChatId, Language Language)
+    protected sealed record RecordingState(ChatId RecordingChatId, ChatId RecorderChatId, AudioRecorderError? RecorderError, Language Language)
     {
-        public static readonly RecordingState None = new (ChatId.None, ChatId.None, Language.None);
+        public static readonly RecordingState None = new (ChatId.None, ChatId.None, null, Language.None);
     }
 }

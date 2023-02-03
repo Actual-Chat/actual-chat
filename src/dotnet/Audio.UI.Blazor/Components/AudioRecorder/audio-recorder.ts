@@ -71,7 +71,6 @@ export class AudioRecorder {
             if (this.isRecording)
                 return true;
 
-            this.isRecording = true;
             const isMaui = BrowserInfo.appKind == 'Maui';
 
             if (!DetectRTC.hasMicrophone) {
@@ -107,11 +106,12 @@ export class AudioRecorder {
 
             const { blazorRef, sessionId } = this;
             await this.opusMediaRecorder.start(sessionId, chatId);
+            this.isRecording = true;
             await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
         catch (error) {
             errorLog?.log(`startRecording: unhandled error:`, error);
-            return false;
+            throw error;
         }
 
         return true;
@@ -119,8 +119,6 @@ export class AudioRecorder {
 
     public async stopRecording(): Promise<void> {
         try {
-            if (!this.isRecording)
-                return;
             debugLog?.log(`-> stopRecording`);
 
             await this.opusMediaRecorder.stop();
