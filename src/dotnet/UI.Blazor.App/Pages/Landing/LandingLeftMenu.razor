@@ -1,5 +1,6 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.App
 @implements IAsyncDisposable
 @{
@@ -20,9 +21,18 @@
     private IJSObjectReference JSRef { get; set; } = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    public void Open()
-        => Toggle(true);
+    public async Task Open() {
+        // Component root div class list is updated with 'open' class
+        // and on-click handler in js that is executed synchronously will see it immediately.
+        // Handler will consider that menu is already opened (while it's not true)
+        // and will close menu because click happened outside of the menu (menu is not visible yet).
+        // To prevent this make small delay in wasm.
+        if (HostInfo.AppKind == AppKind.WasmApp)
+            await Task.Delay(1);
+        Toggle(true);
+    }
 
     [JSInvokable]
     public void Close()
