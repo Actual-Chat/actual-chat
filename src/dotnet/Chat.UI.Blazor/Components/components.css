@@ -154,6 +154,7 @@
     @apply min-h-14 justify-between px-4 overflow-x-hidden;
 }
 
+.navbar-pages,
 .navbar-chats,
 .navbar-contacts {
     @apply overflow-auto custom-scrollbar;
@@ -177,6 +178,20 @@
     @apply h-4 min-w-6;
 }
 
+.navbar-pages {
+    @apply gap-y-1;
+    @apply p-1;
+}
+.navbar-pages .navbar-item {
+    @apply p-2;
+    @apply cursor-pointer;
+}
+.navbar-pages .navbar-item .navbar-item-content {
+    @apply mx-2;
+    @apply font-medium;
+}
+
+.navbar-pages .navbar-item,
 .tab-panel .chats-tab.tab .navbar-item,
 .tab-panel .contacts-tab.tab .navbar-item {
     @apply relative;
