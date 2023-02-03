@@ -1,55 +1,19 @@
 @page "/"
-@using ActualChat.Users
-@using ActualChat.Chat.UI.Blazor.Services
-@inherits ComputedStateComponent<HomePage.Model>
 @layout NoLayout
-@{
-    var m = State.Value;
-    var account = m.Account;
-    if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
-        return;
-}
 
-<AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true" />
-<Landing/>
+<AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true">
+    @{ _renderedContent = true; }
+    <Landing/>
+</AutoNavigateToChatsOnSignIn>
+
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    private bool _renderedContent;
+
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    protected override Task OnInitializedAsync()
-        => ChatUI.WhenLoaded;
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
-        var link = "";
-        if (ScreenSize.IsNarrow())
-            link = Links.Chat(default);
-        else {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            link = Links.Chat(selectedChatId);
-        }
-        return new(account, link);
-    }
 
     protected override void OnAfterRender(bool firstRender) {
-        var m = State.Value;
-        var account = m.Account;
-        if (!ReferenceEquals(account, AccountFull.Loading))
+        if (_renderedContent)
             LoadingUI.MarkLoaded();
-    }
-
-    public record Model(AccountFull Account, string Link) {
-        public static Model Loading { get; } = new(AccountFull.Loading, ""); // Should differ by ref. from None
     }
 }

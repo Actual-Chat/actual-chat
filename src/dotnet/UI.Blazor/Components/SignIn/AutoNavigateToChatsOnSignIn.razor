@@ -3,14 +3,30 @@
 @using ActualChat.UI.Blazor.Services;
 @inherits ComputedStateComponent<AccountFull?>
 
+@{
+    var account = State.Value;
+    if (ReferenceEquals(account, null)) // Not yet loaded
+        return;
+    if (ChildContent == null)
+        return;
+    if (!_renderedContent && _navigated)
+        return;
+    _renderedContent = true;
+}
+
+@ChildContent
+
 @code {
     private AccountFull? _lastAccount;
+    private bool _navigated;
+    private bool _renderedContent;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
+    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool NavigateIfAlreadySignedIn { get; set; }
 
     protected override ComputedState<AccountFull?>.Options GetStateOptions()
@@ -27,8 +43,10 @@
         var wasSignedIn = !_lastAccount.IsGuest;
         _lastAccount = account;
 
-        if (isSignedIn && (NavigateIfAlreadySignedIn || !wasSignedIn))
-            AutoNavigationUI.TryNavigateToChatsOnSignIn();
+        if (isSignedIn && (NavigateIfAlreadySignedIn || !wasSignedIn)) {
+            if (AutoNavigationUI.TryNavigateToChatsOnSignIn())
+                _navigated = true;
+        }
         return account;
     }
 }
