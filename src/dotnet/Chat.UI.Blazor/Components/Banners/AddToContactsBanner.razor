@@ -4,7 +4,8 @@
 @{
     var m = State.Value;
 }
-<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning">
+
+<Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning" ShowCloseButton="true">
     <Body>
     This user is not in your contact list
     </Body>

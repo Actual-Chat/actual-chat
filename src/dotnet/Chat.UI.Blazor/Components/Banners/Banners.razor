@@ -3,6 +3,7 @@
 @{
     var m = State.Value;
 }
+
 @foreach (var banner in m.BannerInstances.Take(MaxCount)) {
     @banner.View
 }
