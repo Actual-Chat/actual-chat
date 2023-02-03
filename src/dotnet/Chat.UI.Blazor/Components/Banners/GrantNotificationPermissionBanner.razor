@@ -55,7 +55,11 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var permissionState = await NotificationUI.State.Use(cancellationToken);
