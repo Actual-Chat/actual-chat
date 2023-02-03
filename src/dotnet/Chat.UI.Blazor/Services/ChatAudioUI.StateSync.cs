@@ -97,7 +97,7 @@ public partial class ChatAudioUI
         Task OnIdleChanged(ChatId _, IdleAudioMonitor.State state)
         {
             _stopRecordingAt.Value = state.WillBeIdleAt;
-            return state.IsIdle ? UpdateRecorderState(true, default, cancellationToken) : Task.CompletedTask;
+            return state.IsIdle ? SetRecordingChatId(default).AsTask() : Task.CompletedTask;
         }
     }
 
@@ -141,10 +141,10 @@ public partial class ChatAudioUI
                 await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
                 if (!recordingChatId.IsNone)
                     // Start recording = start realtime playback
-                    await SetListeningState(recordingChatId, true);
-            } else if (recorderChatId != prev.RecorderChatId)
+                    await SetListeningState(recordingChatId, true).ConfigureAwait(false);
+            } else if (recorderChatId != prev.RecordingChatId)
                 // Something stopped (or started?) the recorder
-                await SetRecordingChatId(recordingChatId).ConfigureAwait(false);
+                await SetRecordingChatId(recorderChatId).ConfigureAwait(false);
             prev = change.Value;
         }
     }
