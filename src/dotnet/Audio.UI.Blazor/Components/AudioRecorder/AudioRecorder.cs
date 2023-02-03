@@ -124,8 +124,11 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         State.Value = new AudioRecorderState(chatId);
         if (_jsRef != null) {
             var hasMicrophone = await _jsRef.InvokeAsync<bool>("startRecording", chatId).ConfigureAwait(false);
-            if (!hasMicrophone)
+            if (!hasMicrophone) {
                 Log.LogWarning($"{nameof(StartRecordingInternal)}: there is no microphone available");
+                // Cancel recording
+                State.Value = null;
+            }
         }
     }
 
@@ -138,12 +141,12 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 
         var state = State.Value;
         _ = Task.Delay(TimeSpan.FromSeconds(5))
-            .ContinueWith(async _ => {
+            .ContinueWith(_ => {
                 if (State.Value?.Id != state?.Id)
                     return; // We don't want to stop the next recording here
 
                 Log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
-                await OnRecordingStopped();
+                OnRecordingStopped();
             }, TaskScheduler.Current);
 
         if (_jsRef != null)
@@ -160,21 +163,18 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             return;
 
         DebugLog?.LogDebug(nameof(OnRecordingStarted) + ": chat #{ChatId}", chatId);
-
         State.Value = recorderState with { IsRecording = true };
     }
 
     [JSInvokable]
-    public Task OnRecordingStopped()
+    public void OnRecordingStopped()
     {
         // Does the same as StopRecording; we assume here that recording
         // might be recognized as stopped by JS backend as well
         if (State.Value == null)
-            return Task.CompletedTask;
+            return;
 
         DebugLog?.LogDebug(nameof(OnRecordingStopped));
-
         State.Value = null;
-        return Task.CompletedTask;
     }
 }
