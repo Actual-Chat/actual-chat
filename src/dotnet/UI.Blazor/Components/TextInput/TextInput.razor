@@ -15,7 +15,7 @@
 @code {
     private bool NeedsRender { get; set; } = true;
     private ElementReference ElementRef { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; } = null!;
     private DotNetObjectReference<TextInput> BlazorRef { get; set; } = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -65,7 +65,7 @@
         => ElementRef.FocusAsync();
 
     public ValueTask Clear()
-        => JSRef.InvokeVoidAsync("clear");
+        => JSRef?.InvokeVoidAsync("clear") ?? ValueTask.CompletedTask;
 
     [JSInvokable]
     public Task OnTextChanged(string text) {
