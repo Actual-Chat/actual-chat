@@ -81,25 +81,27 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var options = new IdleAudioMonitor.Options(AudioSettings.IdleRecordingTimeout,
+        var options = new IdleMonitoringOptions(AudioSettings.IdleRecordingTimeout,
             AudioSettings.IdleRecordingTimeoutBeforeCountdown,
             AudioSettings.IdleRecordingCheckInterval);
 
         var cChatId = await Computed.Capture(GetRecordingChatId).ConfigureAwait(false);
-        var prevChatId = cChatId.Value;
+        Operation? monitoring = null;
         await foreach (var change in cChatId.Changes(cancellationToken).ConfigureAwait(false)) {
             var chatId = change.Value;
-            if (!prevChatId.IsNone)
-                await IdleRecordingMonitor.StopMonitoring(prevChatId).ConfigureAwait(false);
-            if (!chatId.IsNone)
-                IdleRecordingMonitor.StartMonitoring(chatId, OnIdleChanged, options, cancellationToken);
-            prevChatId = chatId;
+            if (monitoring != null)
+                await monitoring.Stop().ConfigureAwait(false);
+            if (!chatId.IsNone) {
+                monitoring = new Operation(ct => MonitorIdleRecording(chatId, ct), cancellationToken);
+                monitoring.Start();
+            }
         }
 
-        Task OnIdleChanged(ChatId _, IdleAudioMonitor.State state)
+        async Task MonitorIdleRecording(ChatId chatId, CancellationToken cancellationToken1)
         {
-            _stopRecordingAt.Value = state.WillBeIdleAt;
-            return state.IsIdle ? SetRecordingChatId(default).AsTask() : Task.CompletedTask;
+            await foreach (var willStopAt in MonitorIdleAudio(chatId, options, cancellationToken1).ConfigureAwait(false))
+                _stopRecordingAt.Value = willStopAt;
+            await SetRecordingChatId(default).ConfigureAwait(false);
         }
     }
 
@@ -108,23 +110,107 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var options = new IdleAudioMonitor.Options(AudioSettings.IdleListeningTimeout,
+        var options = new IdleMonitoringOptions(AudioSettings.IdleListeningTimeout,
             AudioSettings.IdleListeningTimeout - AudioSettings.IdleListeningCheckInterval + TimeSpan.FromSeconds(1),
             AudioSettings.IdleListeningCheckInterval);
         var cListeningChatIds = await Computed.Capture(GetListeningChatIds).ConfigureAwait(false);
-        var prevListeningChatIds = cListeningChatIds.Value;
-        await foreach (var change in cListeningChatIds.Changes(cancellationToken)) {
+        var running = new Dictionary<ChatId, Operation>();
+        await foreach (var change in cListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             var listeningChatIds = change.Value;
-            var toStop = prevListeningChatIds.Except(listeningChatIds).ToList();
-            var toStart = listeningChatIds.Except(prevListeningChatIds).ToList();
-            await IdleListeningMonitor.StopMonitoring(toStop).ConfigureAwait(false);
-            IdleListeningMonitor.StartMonitoring(toStart, OnIdleChanged, options, cancellationToken);
-            prevListeningChatIds = listeningChatIds;
+            var toStop = running.Keys.Except(listeningChatIds).ToList();
+            var toStart = listeningChatIds.Except(running.Keys).ToList();
+
+            var stoppedTasks = new List<Task>();
+            foreach (var chatId in toStop) {
+                running.Remove(chatId, out var monitoring);
+                stoppedTasks.Add(monitoring!.Stop());
+            }
+            await stoppedTasks.Collect().ConfigureAwait(false);
+
+            foreach (var chatId in toStart) {
+                var monitoring = new Operation(ct => MonitorIdleListening(chatId, ct), cancellationToken);
+                running.Add(chatId, monitoring);
+                monitoring.Start();
+            }
         }
 
-        Task OnIdleChanged(ChatId chatId, IdleAudioMonitor.State state)
-            => state.IsIdle ? SetListeningState(chatId, false).AsTask() : Task.CompletedTask;
+        async Task MonitorIdleListening(ChatId chatId, CancellationToken cancellationToken1)
+        {
+            await foreach (var _ in MonitorIdleAudio(chatId, options, cancellationToken1).ConfigureAwait(false))
+            { }
+            await SetListeningState(chatId, false).ConfigureAwait(false);
+        }
     }
+
+    private async IAsyncEnumerable<Moment?> MonitorIdleAudio(
+        ChatId chatId,
+        IdleMonitoringOptions options,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await Task.Yield();
+        var clock = Clocks.SystemClock;
+        var monitoringStartedAt = clock.Now;
+        yield return null;
+        // no need to check last entry since monitoring has just started
+        await Task.Delay(options.IdleTimeoutBeforeCountdown, cancellationToken)
+            .ConfigureAwait(false);
+
+        ChatEntry? prevLastEntry = null;
+        while (!cancellationToken.IsCancellationRequested) {
+            var lastEntry = await GetLastTranscribedEntry(chatId,
+                    prevLastEntry?.LocalId,
+                    monitoringStartedAt,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var lastEntryAt = lastEntry != null
+                ? GetEndsAt(lastEntry)
+                : monitoringStartedAt;
+            lastEntryAt = Moment.Max(lastEntryAt, monitoringStartedAt);
+            var willBeIdleAt = lastEntryAt + options.IdleTimeout;
+            var timeBeforeStop = (willBeIdleAt - clock.Now).Positive();
+            var timeBeforeCountdown =
+                (lastEntryAt + options.IdleTimeoutBeforeCountdown - clock.Now).Positive();
+            if (timeBeforeStop == TimeSpan.Zero) {
+                // notify is idle and stop counting down
+                yield return null;
+                yield break;
+            }
+            if (timeBeforeCountdown == TimeSpan.Zero) {
+                // continue counting down
+                yield return willBeIdleAt;
+                await Task.Delay(TimeSpanExt.Min(timeBeforeStop, options.CheckInterval),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else {
+                // reset countdown since there were new messages
+                yield return null;
+                await Task.Delay(timeBeforeCountdown, cancellationToken).ConfigureAwait(false);
+            }
+            prevLastEntry = lastEntry;
+        }
+    }
+
+    private async Task<ChatEntry?> GetLastTranscribedEntry(
+        ChatId chatId,
+        long? startFrom,
+        Moment minEndsAt,
+        CancellationToken cancellationToken)
+    {
+        var idRange = await Chats
+            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
+            .ConfigureAwait(false);
+        if (startFrom != null)
+            idRange = (startFrom.Value, idRange.End);
+        var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        return await reader.GetLastWhile(idRange,
+            x => x.HasAudioEntry || x.IsStreaming,
+            x => GetEndsAt(x.ChatEntry) >= minEndsAt && x.SkippedCount < 100,
+            cancellationToken);
+    }
+
+    private static Moment GetEndsAt(ChatEntry lastEntry)
+        => lastEntry.EndsAt ?? lastEntry.ContentEndsAt ?? lastEntry.BeginsAt;
 
     private async Task SyncRecordingState(CancellationToken cancellationToken)
     {
@@ -299,5 +385,35 @@ public partial class ChatAudioUI
     protected sealed record RecordingState(ChatId RecordingChatId, ChatId RecorderChatId, AudioRecorderError? RecorderError, Language Language)
     {
         public static readonly RecordingState None = new (ChatId.None, ChatId.None, null, Language.None);
+    }
+
+    public record IdleMonitoringOptions(TimeSpan IdleTimeout,
+        TimeSpan IdleTimeoutBeforeCountdown,
+        TimeSpan CheckInterval)
+    {
+        public void Validate()
+        {
+            if (IdleTimeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(IdleTimeout));
+            if (CheckInterval <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(CheckInterval));
+            if (IdleTimeoutBeforeCountdown > IdleTimeout)
+                throw new ArgumentOutOfRangeException(nameof(IdleTimeoutBeforeCountdown), IdleTimeoutBeforeCountdown, $"{nameof(IdleTimeoutBeforeCountdown)} cannot be greater than {nameof(IdleTimeout)}");
+        }
+    }
+
+    private sealed class Operation : WorkerBase
+    {
+        private Func<CancellationToken, Task> TaskFactory { get; }
+
+        public Operation(Func<CancellationToken, Task> taskFactory, CancellationToken cancellationToken)
+            : base(cancellationToken.CreateLinkedTokenSource())
+            => TaskFactory = taskFactory;
+
+        protected override async Task RunInternal(CancellationToken cancellationToken)
+        {
+            await Task.Yield();
+            await TaskFactory(cancellationToken).ConfigureAwait(false);
+        }
     }
 }
