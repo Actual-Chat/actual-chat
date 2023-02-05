@@ -5,7 +5,7 @@
 
 @{
     var account = State.Value;
-    var isGuest = account is not {IsGuest: false };
+    var isGuest = account is not {IsGuestOrNone: false };
     var user = account.User.OrGuest();
     var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();

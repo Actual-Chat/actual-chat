@@ -30,9 +30,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             ?? new Contact(contactId); // A fake contact
 
         var chatId = contact.ChatId;
-        if (chatId.IsPeerChatId(out var peerChatId)) {
+        if (chatId.IsPeerChat(out var peerChatId)) {
             var userId = peerChatId.UserIds.OtherThanOrDefault(ownerId);
-            if (userId.IsNone)
+            if (userId.IsGuestOrNone)
                 throw new ArgumentOutOfRangeException(nameof(contactId));
 
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
@@ -77,18 +77,20 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     {
         var (id, expectedVersion, change) = command;
         var context = CommandContext.GetCurrent();
+        var ownerId = id.OwnerId;
 
         if (Computed.IsInvalidating()) {
             var invIsChanged = context.Operation().Items.GetOrDefault(false);
             if (invIsChanged) {
-                _ = Get(id.OwnerId, id, default);
+                _ = Get(ownerId, id, default);
                 if (!change.Update.HasValue) // Create or Delete
-                    _ = ListIds(id.OwnerId, default);
+                    _ = ListIds(ownerId, default);
             }
             return default!;
         }
 
         id.Require();
+        ownerId.Require();
         change.RequireValid();
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -103,9 +105,16 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
                 return dbContact.ToModel(); // Already exist, so we don't recreate one
 
             // Original UserId is ignored here - it's set based on Id
-            var userId = id.ChatId.IsPeerChatId(out var peerChatId)
-                ? peerChatId.UserIds.OtherThan(id.OwnerId)
+            var userId = id.ChatId.IsPeerChat(out var peerChatId)
+                ? peerChatId.UserIds.OtherThan(ownerId)
                 : UserId.None;
+
+            // Checks
+            if (ownerId.IsGuest && !userId.IsNone)
+                throw StandardError.Constraint("You must sign-in to chat with another user.");
+            if (userId.IsGuest)
+                throw StandardError.Constraint("You can't chat with unauthenticated user.");
+
             contact = contact with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),

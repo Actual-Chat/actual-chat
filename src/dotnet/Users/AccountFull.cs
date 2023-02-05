@@ -11,10 +11,10 @@ public sealed record AccountFull(
 
     public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
-        (AccountFull? a) => a is { Id.IsNone: false });
+        (AccountFull? a) => a is { IsNone: false });
     public static new Requirement<AccountFull> MustNotBeGuest { get; } = Requirement.New(
         new(() => StandardError.Account.Guest()),
-        (AccountFull? a) => a?.IsGuest == false);
+        (AccountFull? a) => a?.IsGuestOrNone == false);
     public static Requirement<AccountFull> MustBeAdmin { get; } = MustExist & Requirement.New(
         new(() => StandardError.Account.NonAdmin()),
         (AccountFull? a) => a?.IsAdmin ?? false);

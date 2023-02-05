@@ -30,7 +30,7 @@ public sealed class AuthorUI
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
 
-        var mustShowModal = account == null || account.IsGuest || ownAccount.IsGuest || account.Id == ownAccount.Id;
+        var mustShowModal = account == null || account.IsGuestOrNone || ownAccount.IsGuestOrNone || account.Id == ownAccount.Id;
         if (mustShowModal)
             await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
         else {

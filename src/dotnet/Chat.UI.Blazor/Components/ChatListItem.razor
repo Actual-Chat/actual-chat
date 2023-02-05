@@ -93,7 +93,8 @@
 
     protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken)
     {
-        var chatState = await ChatUI.GetState(ChatInfo.Id, false, cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatUI.FixChatId(ChatInfo.Id, cancellationToken).ConfigureAwait(false);
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         return chatState ?? ChatState.None;
     }
 }

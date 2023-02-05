@@ -6,7 +6,7 @@
 @using System.Timers
 @{
     var m = State.ValueOrDefault ?? Model.NotPlaying;
-    if (m == Model.NotPlaying)
+    if (ReferenceEquals(m, Model.NotPlaying))
         return;
 }
 

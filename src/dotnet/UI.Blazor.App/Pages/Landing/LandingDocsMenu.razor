@@ -2,7 +2,6 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Events
 @inherits ComputedMenuBase<AccountFull>
-
 @{
     var m = State.Value;
     var avatar = m.Avatar;
@@ -33,7 +32,7 @@
     </TextContent>
 </MenuEntry>
 <MenuEntry
-    Click="@(_ => Nav.NavigateTo(Links.Chat(default)))">
+    Click="@(_ => Nav.NavigateTo(Links.Chats))">
     <IconContent>
         <i class="icon-message-ellipse"></i>
     </IconContent>
@@ -51,7 +50,7 @@
     </TextContent>
 </MenuEntry>
 <MenuEntry
-    Click="@(_ => Nav.NavigateTo(Links.SignOut()))">
+    Click="@(_ => AccountUI.SignOut())">
     <IconContent>
         <i class="icon-log-out"></i>
     </IconContent>

@@ -33,7 +33,7 @@
         if (!result.HasError) {
             await ModalInstance.CloseAsync();
             if (isSelectedChat && !ModalModel.Chat.IsPublic)
-                Nav.NavigateTo(Links.Chat(default));
+                Nav.NavigateTo(Links.Chats);
         }
     }
 

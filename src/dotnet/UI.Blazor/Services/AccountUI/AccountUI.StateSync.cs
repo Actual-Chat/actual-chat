@@ -24,7 +24,7 @@ public partial class AccountUI
                 continue;
 
             _ownAccount.Value = ownAccount;
-            _whenLoaded.TrySetResult(default);
+            _whenLoadedSource.TrySetResult(default);
         }
     }
 }

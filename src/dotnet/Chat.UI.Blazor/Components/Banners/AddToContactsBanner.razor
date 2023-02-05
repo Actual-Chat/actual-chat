@@ -3,11 +3,13 @@
 @inherits ComputedStateComponent<AddToContactsBanner.Model>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
 }
 
 <Banner IsVisible="@m.CanAddToContacts" Severity="BannerSeverity.Warning" ShowDismissButton="true">
     <Body>
-    This user is not in your contact list
+        This user is not in your contact list
     </Body>
     <Buttons>
         <Button Class="btn-transparent on" Click="@OnAddClick">Add to contacts</Button>
@@ -22,7 +24,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = Model.Loading,
             Category = GetStateCategory(),
         };
 
@@ -40,7 +42,8 @@
     }
 
     public sealed record Model(Contact? Contact = null) {
-        public  static readonly Model None = new();
+        public  static readonly Model Loading = new();
+
         public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
     }
 }

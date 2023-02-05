@@ -94,6 +94,7 @@
     private readonly List<SettingsTab> _tabs = new();
     private SettingsTab? _activeTab;
 
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
@@ -174,5 +175,5 @@
     }
 
     private void OnSignOutClick()
-        => Nav.NavigateTo(Links.SignOut());
+        => AccountUI.SignOut();
 }

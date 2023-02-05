@@ -115,7 +115,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             if (activationKeyOpt.IsSome(out var activationKey)) {
                 var isValid = await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
                 if (isValid)
-                    rules = rules with { Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied() };
+                    rules = rules with {
+                        Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied(),
+                    };
             }
         }
         return rules;

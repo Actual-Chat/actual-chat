@@ -7,7 +7,7 @@
 
 <div class="@GetCss(Kind)">
     @foreach (var chat in Chats) {
-        <ChatListItem @key="chat" ChatInfo="@chat" ListKind="@Kind"/>
+        <ChatListItem @key="@chat" ChatInfo="@chat" ListKind="@Kind"/>
     }
 </div>
 @if (Kind == ChatListKind.Pinned) {

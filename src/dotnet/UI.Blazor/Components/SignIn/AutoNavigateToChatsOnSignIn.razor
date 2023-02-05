@@ -52,8 +52,8 @@
     {
         _lastAccount ??= account;
 
-        var isSignedIn = !account.IsGuest;
-        var wasSignedIn = !_lastAccount.IsGuest;
+        var isSignedIn = !account.IsGuestOrNone;
+        var wasSignedIn = !_lastAccount.IsGuestOrNone;
         _lastAccount = account;
 
         if (isSignedIn && (NavigateIfAlreadySignedIn || !wasSignedIn)) {

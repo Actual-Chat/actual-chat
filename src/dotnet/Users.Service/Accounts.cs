@@ -22,6 +22,8 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         if (user == null) {
             var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
             userId = sessionInfo.GetGuestId();
+            if (!userId.IsGuest)
+                throw StandardError.Internal("GuestId is not set.");
         }
         else
             userId = new UserId(user.Id);

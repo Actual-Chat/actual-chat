@@ -38,14 +38,11 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     }
 
     public string GetUserPrefix(UserId userId)
-    {
-        if (userId.IsNone)
-            return "";
-
-        return userId.IsGuestId
-            ? $"g/{userId}/"
-            : $"u/{userId}/";
-    }
+        => userId.IsNone
+            ? ""
+            : userId.IsGuest
+                ? $"g/{userId}/"
+                : $"u/{userId}/";
 
     // Command handlers
 

@@ -31,7 +31,7 @@ public class OnboardingUI
     public async Task TryShow()
     {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
-        if (account.IsGuest)
+        if (account.IsGuestOrNone)
             return;
 
         await Settings.WhenFirstTimeRead;

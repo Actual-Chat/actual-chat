@@ -65,7 +65,7 @@ public class HistoryUI
             _rewriteInitialLocation = true;
             _whenInitialRedirectsCompleted = TaskSource.New<Unit>(true);
             Log.LogDebug("Redirecting to chats from '{InitialLocation}' to create history item", url);
-            Nav.NavigateTo(Links.Chat(default), false, true);
+            Nav.NavigateTo($"{Links.Chats.Value}?historyRedirectTo={url.Value.UrlEncode()}", false, true);
             await _whenInitialRedirectsCompleted.Task.ConfigureAwait(true);
         }
     }
@@ -100,7 +100,7 @@ public class HistoryUI
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        Log.LogDebug("Location changed: '{Location}'. State: '{State}'. History.Count: {Count}, Position: {Position}.",
+        Log.LogDebug("Location changed: '{Location}'. State: '{State}'. History.Count: {Count}, Position: {Position}",
             e.Location, e.HistoryEntryState, _history.Count, _position);
 
         if (_rewriteInitialLocation) {
@@ -122,7 +122,7 @@ public class HistoryUI
         var state = GetState(e.HistoryEntryState);
         OnLocationChanged(e.Location, state);
 
-        Log.LogDebug("Location changed completed. History.Count: {Count}. Position: {Position}.",
+        Log.LogDebug("Location changed completed. History.Count: {Count}. Position: {Position}",
             _history.Count, _position);
     }
 

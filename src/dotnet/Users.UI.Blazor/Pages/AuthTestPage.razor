@@ -104,7 +104,7 @@
 @if (m.User.IsAuthenticated()) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
-        <Button Click="@(_ => Nav.NavigateTo(Links.SignOut()))">Sign out</Button>
+        <Button Click="@(_ => AccountUI.SignOut())">Sign out</Button>
         <Button Click="@(_ => AuthHelper.SignOutEverywhere())">Sign out everywhere</Button>
         @if (unusedAuthSchemas.Length != 0) {
             <span> or add account: </span>
@@ -123,9 +123,10 @@
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILiveTime LiveTime { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

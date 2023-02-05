@@ -19,7 +19,7 @@ public sealed class DbSessionInfoConverter : DbSessionInfoConverter<UsersDbConte
         }
 
         var guestId = guestIdOption?.GuestId ?? default;
-        if (guestId.IsNone || !guestId.IsGuestId) {
+        if (!guestId.IsGuest) {
             guestId = UserId.NewGuest();
             guestIdOption = new GuestIdOption(guestId);
             target.Options = target.Options.Set(guestIdOption);

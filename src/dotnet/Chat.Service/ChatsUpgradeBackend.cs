@@ -66,7 +66,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             chatId, dbChat.Title, dbChat.Kind);
 
         var chat = dbChat.ToModel();
-        if (chat.Id.IsPeerChatId(out var peerChatId)) {
+        if (chat.Id.IsPeerChat(out var peerChatId)) {
             // Peer chat
             await peerChatId.UserIds
                 .ToArray()

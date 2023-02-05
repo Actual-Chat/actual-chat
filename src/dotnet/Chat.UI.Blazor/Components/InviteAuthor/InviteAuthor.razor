@@ -15,7 +15,7 @@
     <div class="invite-author-modal-contact-list">
         @foreach (var contact in FilteredContacts) {
             <div class="invite-author-modal-contact-list-item"
-                 @key="@contact.Account.Id"
+                 @key="@contact.Account.Id.Value"
                  @onclick="@(_ => OnContactClick(contact))">
                 <AvatarBadge
                     Class="grow"

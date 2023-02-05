@@ -84,6 +84,7 @@
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken);
             chats = (
                 from c in chats
                 let rank = searchPhrase.GetMatchRank(c.Chat.Title)

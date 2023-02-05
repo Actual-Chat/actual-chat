@@ -39,13 +39,13 @@ public class NavbarUI
         SelectedGroupChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void ChangeVisibility(bool visible)
+    public void ChangeVisibility(bool visible, bool disableHistory = false)
     {
         if (IsVisible == visible)
             return;
 
-        var screenSize = BrowserInfo.ScreenSize.Value;
-        if (!screenSize.IsNarrow()) {
+        disableHistory |= BrowserInfo.ScreenSize.Value.IsWide();
+        if (disableHistory) {
             SetIsVisible(visible);
             return;
         }
@@ -64,7 +64,7 @@ public class NavbarUI
     private bool ShouldBeVisible()
     {
         var navUrl = Nav.GetLocalUrl();
-        return navUrl == Links.Chat(default);
+        return navUrl == Links.Chats;
     }
 
     private void SetIsVisible(bool visible)

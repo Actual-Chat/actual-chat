@@ -43,7 +43,7 @@
     }
 
     private bool CanBeRendered()
-        => State.Value.IsGuest && AuthSchemas != null;
+        => State.Value.IsGuestOrNone && AuthSchemas != null;
 
     private void SignIn(string name)
         => ClientAuth.SignIn(name);

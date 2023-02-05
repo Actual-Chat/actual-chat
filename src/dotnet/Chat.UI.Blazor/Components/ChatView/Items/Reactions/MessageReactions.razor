@@ -44,7 +44,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!Entry.Id.IsTextEntryId(out var textEntryId))
+        if (!Entry.Id.IsTextEntry(out var textEntryId))
             return Model.None;
 
         var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken);

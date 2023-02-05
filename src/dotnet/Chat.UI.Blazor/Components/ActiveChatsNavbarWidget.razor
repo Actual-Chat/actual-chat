@@ -14,6 +14,7 @@
 }
 
 @code {
+    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
@@ -36,11 +37,12 @@
             .ToList();
 
         // Make sure selected chat is either in the normal chat list or here chats
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chats.All(c => c.Id != selectedChatId)) {
-            var allChats = await ChatUI.ListUnordered(cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken);
+        if (!selectedChatId.IsNone && chats.All(c => c.Id != selectedChatId)) {
+            var allChats = await ChatUI.ListUnordered(cancellationToken);
             if (!allChats.ContainsKey(selectedChatId)) {
-                var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+                var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken);
                 if (selectedChat != null)
                     chats.Insert(0, selectedChat);
             }

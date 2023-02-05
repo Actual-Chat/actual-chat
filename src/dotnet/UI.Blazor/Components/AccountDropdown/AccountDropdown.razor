@@ -8,7 +8,7 @@
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    if (!account.IsGuest) {
+    if (!account.IsGuestOrNone) {
         <button class="account-btn btn-square" @onclick="@OnSettingsClick">
             <AccountView/>
         </button>

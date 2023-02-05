@@ -2,6 +2,7 @@ import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
+import { Timeout } from 'timeout';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'BrowserInfo';
@@ -46,6 +47,11 @@ export class BrowserInfo {
         if (this.appKind == 'Maui')
             Interactive.isAlwaysInteractive = true;
         globalThis["browserInfo"] = this;
+    }
+
+    public static hardRedirect(url: string) {
+        // We want this method to return immediately to report Blazor that it completed successfully
+        Timeout.startRegular(50, () => window.location.assign(url));
     }
 
     // Backend methods
