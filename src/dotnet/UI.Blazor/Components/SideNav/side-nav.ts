@@ -15,6 +15,7 @@ export class SideNav implements Disposable {
 
     private touchStartX?: number = null;
     private touchStartY?: number = null;
+    private touchStartAt?: number = null;
     private translate?: number = null;
     private diffX?: number = null;
     private diffY?: number = null;
@@ -51,6 +52,7 @@ export class SideNav implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: TouchEvent) => {
                 element.classList.remove('side-nav-animate');
+                this.touchStartAt = Date.now();
                 this.touchStartX = e.touches[0].clientX;
                 this.touchStartY = e.touches[0].clientY;
             });
@@ -60,6 +62,7 @@ export class SideNav implements Disposable {
             .subscribe((e: TouchEvent) => {
                 if (this.touchStartX === null || this.touchStartY === null) {
                     element.classList.remove('side-nav-animate');
+                    this.touchStartAt = Date.now();
                     this.touchStartX = e.touches[0].clientX;
                     this.touchStartY = e.touches[0].clientY;
                 }
@@ -71,47 +74,37 @@ export class SideNav implements Disposable {
                     return;
                 }
 
-                const speed = 7;
                 const isOpened = element.classList.contains('side-nav-open');
-                const isClosed = element.classList.contains('side-nav-closed');
                 this.translate = 0;
 
                 if (this.options.direction == SideNavDirection.LeftToRight) {
                     if (this.diffX > 0) {
                         if (isOpened) {
                             // closing <-
-                            this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
-                            console.log('closing');
+                            this.translate = -1 * this.diffX / element.clientWidth * 100;
                         }
                     } else {
-                        if (isClosed) {
+                        if (!isOpened) {
                             // opening ->
-                            console.log('opening');
-                            this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / speed;
+                            this.translate = -100 + (-1 * this.diffX / element.clientWidth * 100);
                         }
                     }
-
-                    console.log(`diffX: '${this.diffX}', translate: '${this.translate}'`);
 
                     if (this.translate >= -100 && this.translate <= 0) {
                         element.style.transform = `translate3d(${this.translate}%, 0, 0)`;
                     }
                 } else {
                     if (this.diffX > 0) {
-                        if (isClosed) {
+                        if (!isOpened) {
                             // opening <-
-                            console.log('opening');
-                            this.translate = 100 - element.clientWidth / 100 * this.diffX / speed;
+                            this.translate = 100 - this.diffX / element.clientWidth * 100;
                         }
                     } else {
                         if (isOpened) {
                             // closing ->
-                            console.log('closing');
-                            this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
+                            this.translate = -1 * this.diffX / element.clientWidth * 100;
                         }
                     }
-
-                    console.log(`diffX: '${this.diffX}', translate: '${this.translate}'`);
 
                     if (this.translate >= 0 && this.translate <= 100) {
                         element.style.transform = `translate3d(${this.translate}%, 0, 0)`;
@@ -131,14 +124,38 @@ export class SideNav implements Disposable {
                     return;
                 }
 
+                const isOpened = element.classList.contains('side-nav-open');
                 element.classList.remove('side-nav-open');
                 element.classList.remove('side-nav-closed');
 
+                const elapsed = Date.now() - this.touchStartAt;
+                // Swipes with distance more than 50px in less than 300ms are considered as fast swipes.
+                // Use fast swipes to toggle side nav panel.
+                const isFastSwipe = elapsed < 300 && Math.abs(this.diffX) > 50;
                 let isOpen = false;
+                const swipeToLeft = this.diffX > 0;
                 if (this.options.direction == SideNavDirection.RightToLeft) {
-                    isOpen = (this.translate <= 50);
+                    if (isFastSwipe) {
+                        if (isOpened && !swipeToLeft)
+                            isOpen = false;
+                        else if (!isOpened && swipeToLeft)
+                            isOpen = true;
+                        else
+                            isOpen = isOpened;
+                    }
+                    else
+                        isOpen = this.translate <= 50;
                 } else {
-                    isOpen = !(this.translate <= -50);
+                    if (isFastSwipe) {
+                       if (isOpened && swipeToLeft)
+                           isOpen = false;
+                       else if (!isOpened && !swipeToLeft)
+                           isOpen = true;
+                       else
+                           isOpen = isOpened;
+                    }
+                    else
+                        isOpen = !(this.translate <= -50);
                 }
                 element.classList.add(isOpen ? 'side-nav-open' : 'side-nav-closed');
 
@@ -169,6 +186,7 @@ export class SideNav implements Disposable {
 
     private resetTouch()
     {
+        this.touchStartAt = null;
         this.touchStartX = null;
         this.touchStartY = null;
         this.translate = null;
