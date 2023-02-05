@@ -103,16 +103,12 @@ export class SideNav implements Disposable {
         fromEvent(this.element, 'touchend', { passive: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => {
-                element.classList.add('side-nav-animate');
-                element.style.transform = null;
+                this.resetTransform(element);
 
-                if (Math.abs(this.diffY) > Math.abs(this.diffX)) {
-                    this.touchStartX = null;
-                    this.touchStartY = null;
-                    this.translate = null;
-                    this.diffX = null;
-                    this.diffY = null;
+                const isHorizontalSwipe = this.diffX && this.diffY && Math.abs(this.diffX) > Math.abs(this.diffY);
 
+                if (!isHorizontalSwipe) {
+                    this.resetTouch();
                     return;
                 }
 
@@ -133,11 +129,14 @@ export class SideNav implements Disposable {
                     }
                 }
 
-                this.touchStartX = null;
-                this.touchStartY = null;
-                this.translate = null;
-                this.diffX = null;
-                this.diffY = null;
+                this.resetTouch();
+            });
+
+        fromEvent(this.element, 'touchcancel', { passive: true })
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => {
+                this.resetTransform(element);
+                this.resetTouch();
             });
     }
 
@@ -147,5 +146,20 @@ export class SideNav implements Disposable {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private resetTransform(element: HTMLDivElement)
+    {
+        element.classList.add('side-nav-animate');
+        element.style.transform = null;
+    }
+
+    private resetTouch()
+    {
+        this.touchStartX = null;
+        this.touchStartY = null;
+        this.translate = null;
+        this.diffX = null;
+        this.diffY = null;
     }
 }
