@@ -1,5 +1,5 @@
 .new-chat-modal.modal-frame {
-    @apply md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
+    @apply md:min-w-90 md:max-w-90 md:h-160 md:max-h-160;
 }
 .new-chat-modal .dialog-body {
     @apply flex-y;

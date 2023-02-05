@@ -18,7 +18,7 @@
 }
 
 .modal .bm-content {
-    @apply h-full w-full;
+    @apply h-[90vh] w-full;
 }
 
 .modal-chrome-wrapper {
