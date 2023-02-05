@@ -72,27 +72,46 @@ export class SideNav implements Disposable {
                 }
 
                 const speed = 7;
+                const isOpened = element.classList.contains('side-nav-open');
+                const isClosed = element.classList.contains('side-nav-closed');
+                this.translate = 0;
 
                 if (this.options.direction == SideNavDirection.LeftToRight) {
                     if (this.diffX > 0) {
-                        // closing <-
-                        this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
+                        if (isOpened) {
+                            // closing <-
+                            this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
+                            console.log('closing');
+                        }
                     } else {
-                        // opening ->
-                        this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / speed;
+                        if (isClosed) {
+                            // opening ->
+                            console.log('opening');
+                            this.translate = -100 + element.clientWidth / 100 * this.diffX * -1 / speed;
+                        }
                     }
+
+                    console.log(`diffX: '${this.diffX}', translate: '${this.translate}'`);
 
                     if (this.translate >= -100 && this.translate <= 0) {
                         element.style.transform = `translate3d(${this.translate}%, 0, 0)`;
                     }
                 } else {
                     if (this.diffX > 0) {
-                        // opening <-
-                        this.translate = 100 - element.clientWidth / 100 * this.diffX / speed;
+                        if (isClosed) {
+                            // opening <-
+                            console.log('opening');
+                            this.translate = 100 - element.clientWidth / 100 * this.diffX / speed;
+                        }
                     } else {
-                        // closing ->
-                        this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
+                        if (isOpened) {
+                            // closing ->
+                            console.log('closing');
+                            this.translate = element.clientWidth / 100 * this.diffX * -1 / speed;
+                        }
                     }
+
+                    console.log(`diffX: '${this.diffX}', translate: '${this.translate}'`);
 
                     if (this.translate >= 0 && this.translate <= 100) {
                         element.style.transform = `translate3d(${this.translate}%, 0, 0)`;
@@ -115,19 +134,13 @@ export class SideNav implements Disposable {
                 element.classList.remove('side-nav-open');
                 element.classList.remove('side-nav-closed');
 
+                let isOpen = false;
                 if (this.options.direction == SideNavDirection.RightToLeft) {
-                    if (this.translate <= 50) {
-                        element.classList.add('side-nav-open');
-                    } else {
-                        element.classList.add('side-nav-closed');
-                    }
+                    isOpen = (this.translate <= 50);
                 } else {
-                    if (this.translate <= -50) {
-                        element.classList.add('side-nav-closed');
-                    } else {
-                        element.classList.add('side-nav-open');
-                    }
+                    isOpen = !(this.translate <= -50);
                 }
+                element.classList.add(isOpen ? 'side-nav-open' : 'side-nav-closed');
 
                 this.resetTouch();
             });
