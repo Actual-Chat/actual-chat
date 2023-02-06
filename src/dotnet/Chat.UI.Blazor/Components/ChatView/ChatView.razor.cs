@@ -193,10 +193,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
+        // do not render -new- section if we see the end anchor to avoid rerender
+        var unreadEntryLidStarts = ItemVisibility.Value.IsEndAnchorVisible
+            ? int.MaxValue
+            : _initialReadEntryLid;
+
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
-            _initialReadEntryLid,
+            unreadEntryLidStarts,
             hasVeryFirstItem,
             hasVeryLastItem,
             TimeZoneConverter);
