@@ -180,8 +180,10 @@
             if (createAuthorsError != null)
                 return;
 
-            await ModalInstance.CloseAsync();
             Nav.NavigateTo(Links.Chat(chat.Id));
+            // Required for proper navigation to the newly created chat
+            await Task.Delay(100);
+            await ModalInstance.CloseAsync();
         }
         catch { // Intended: command errors are shown in the UI anyway
         }
