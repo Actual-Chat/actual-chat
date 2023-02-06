@@ -55,10 +55,10 @@ public sealed class Transcript
         TextToTimeMap = textToTimeMap;
         var textRange = TextToTimeMap.XRange;
         TextRange = ((int)textRange.Start, (int)textRange.End);
-        if (TextRange.Size() != Text.Length)
-            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length.");
         TimeRange = TextToTimeMap.YRange;
         Flags = flags;
+        if (TextRange.Size() != Text.Length)
+            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length.");
     }
 
     public override string ToString()
@@ -136,6 +136,7 @@ public sealed class Transcript
 
         var text = Text;
         var map = TextToTimeMap;
+        var baseText = @base.Text;
         var baseMap = @base.TextToTimeMap;
         var d = map[0] - baseMap[0];
         if (Math.Abs(d.X) > 1e-6 || Math.Abs(d.Y) > 1e-6)
@@ -146,22 +147,29 @@ public sealed class Transcript
         // Google Speech-to-Text v2 doesn't provide endTime so only the last segment is being changed
         // TODO(AK): Needs to be revised with another transcription model
         // probably it makes sense to emulate similar behavior even there - to get milestone of stable transcription
-        var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points[..^1]);
+        var commonMapPrefixLength = baseMap.Points[..^1].CommonPrefixLength(map.Points);
         if (commonMapPrefixLength == 0)
             return this;
 
-        // Here commonMapPrefixLength points to a map point that lies before commonTextPrefixLength,
-        // and moreover, commonMapPrefixLength lies in the common part of the map too
         var mapPrefix = baseMap[..commonMapPrefixLength];
         if (mapPrefix.IsEmpty)
             return this;
 
-        var textSuffix = text[(int)mapPrefix.XRange.End..];
-        var textPrefixRangeEnd = mapPrefix.XRange.End + textRangeStart;
-        var mapSuffix = new LinearMap(textPrefixRangeEnd, map.Map(textPrefixRangeEnd))
-            .AppendOrUpdateTail(map[mapPrefix.Length..], TextToTimeMapTextPrecision);
+        var mapSuffix = map[commonMapPrefixLength..];
 
-        var diff = new Transcript(textSuffix, mapSuffix, IsStable, !noDiffFlag);
+        // Length of common text starting at the last common map point
+        var commonTextSuffixLength = baseText.AsSpan((int)baseMap.Points[commonMapPrefixLength - 1].X)
+            .CommonPrefixLength(text.AsSpan((int)baseMap.Points[commonMapPrefixLength - 1].X));
+        // If the common text suffix is too big and overlaps with map suffix - let's cut it
+        if (commonTextSuffixLength > mapSuffix.XRange.Start - mapPrefix.XRange.End)
+            commonTextSuffixLength = (int)mapSuffix.XRange.Start - (int)mapPrefix.XRange.End;
+
+        var textDiff = text[((int)mapPrefix.XRange.End + commonTextSuffixLength)..];
+        var textPrefixRangeEnd = mapPrefix.XRange.End + commonTextSuffixLength + textRangeStart;
+        var mapDiff = new LinearMap(textPrefixRangeEnd, map.Map(textPrefixRangeEnd))
+            .AppendOrUpdateTail(mapSuffix, TextToTimeMapTextPrecision);
+
+        var diff = new Transcript(textDiff, mapDiff, IsStable, !noDiffFlag);
         diff.RequireValid(); // TODO(AY): Remove this call once we see everything is fine
         return diff;
     }
