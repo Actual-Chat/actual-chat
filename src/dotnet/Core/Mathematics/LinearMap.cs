@@ -89,7 +89,7 @@ public readonly struct LinearMap
     {
         var points = Points;
         return points.IsStrictlyIncreasingYSequence()
-            || points.Length == 2 && points[0] == points[1];
+            || (points.Length == 2 && points[0] == points[1]);
     }
 
     public LinearMap RequireValid(bool requireInvertible = false)
