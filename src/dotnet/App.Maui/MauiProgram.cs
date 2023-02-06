@@ -9,11 +9,9 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Notification.UI.Blazor;
 using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.App.Maui;
 
@@ -21,8 +19,14 @@ namespace ActualChat.App.Maui;
 
 public static class MauiProgram
 {
+    private static readonly TraceSession _trace = TraceSession.Main;
+
     public static MauiApp CreateMauiApp()
     {
+        if (!_trace.IsStarted)
+            _trace.Start();
+        _trace.Track("MauiProgram.CreateMauiApp");
+
         var loggerConfiguration = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext();
@@ -80,8 +84,11 @@ public static class MauiProgram
         );
 
         services.TryAddSingleton(builder.Configuration);
+        services.TryAddSingleton<ITraceSession>(_trace);
 
+        var step = _trace.TrackStep("Getting session id");
         var sessionId = GetSessionId();
+        step.Complete();
         var settings = new ClientAppSettings { SessionId = sessionId };
         services.TryAddSingleton(settings);
 
@@ -107,9 +114,13 @@ public static class MauiProgram
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 #endif
+        step = _trace.TrackStep("ConfigureServices");
         ConfigureServices(services);
+        step.Complete();
 
+        step = _trace.TrackStep("Building maui app");
         var mauiApp = builder.Build();
+        step.Complete();
 
         AppServices = mauiApp.Services;
 
@@ -117,11 +128,15 @@ public static class MauiProgram
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = AppServices.LogFor(typeof(WebMReader));
 
+        step = _trace.TrackStep("Init session info");
         EnsureSessionInfoCreated(mauiApp.Services);
+        step.Complete();
 
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
+        step = _trace.TrackStep("Starting host services");
         StartHostedServices(mauiApp);
+        step.Complete();
 
         return mauiApp;
     }

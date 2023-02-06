@@ -38,6 +38,7 @@ public class CoreModule : HostModule<CoreSettings>
         services.AddHostedService<StaticImportsInitializer>();
         services.AddSingleton<UrlMapper>(c => new UrlMapper(
             c.GetRequiredService<HostInfo>()));
+        services.TryAddSingleton<ITraceSession>(TraceSession.Null);
 
         // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options {

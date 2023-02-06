@@ -5,6 +5,7 @@
     // We can't render anything till the moment a few key components completed the initialization
     if (!_whenReadyToRender.IsCompletedSuccessfully)
         return;
+    _trace.Track("App.Rendered");
 }
 
 <ScreenSizeProvider>
@@ -37,6 +38,7 @@
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private Task _whenReadyToRender = null!;
+    private ITraceSession _trace = null!;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
@@ -58,6 +60,10 @@
     }
 
     protected override void OnInitialized() {
+        var circuitTraceAccessor = Services.GetService<CircuitTraceAccessor>();
+        circuitTraceAccessor?.Init();
+        _trace = Services.GetRequiredService<ITraceSession>();
+        _trace.Track("App.OnInitialized");
         UIAssembly ??= typeof(App).Assembly;
         UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
             .Select(p => p.GetType().Assembly)
@@ -78,6 +84,7 @@
         CircuitContext.RootComponent = this;
         _whenReadyToRender = PrepareForTheFirstRender();
         _whenReadyToRender.ContinueWith(_ => InvokeAsync(() => {
+            _trace.Track("App.ReadyToRender");
             StateHasChanged();
             UILifetimeEvents.RaiseOnAppInitialized(Services);
         }), TaskScheduler.Current);

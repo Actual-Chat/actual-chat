@@ -8,6 +8,7 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
+        TraceSession.Main.Track("MauiBlazorWebViewHandler.ConnectHandler");
         Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
 
         base.ConnectHandler(platformView);
@@ -44,8 +45,10 @@ public partial class MauiBlazorWebViewHandler
         [Export("DOMContentLoaded")]
         public void OnDOMContentLoaded()
         {
+            TraceSession.Main.Track("OnDOMContentLoaded");
             _webView.Post(() => {
                 try {
+                    TraceSession.Main.Track("window.App.initPage");
                     var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
                     var script = $"window.App.initPage('{_handler.UrlMapper.BaseUrl}', '{sessionHash}')";
                     _webView.EvaluateJavascript(script, null);

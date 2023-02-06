@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services;
 using Grpc.Core;
 
 namespace ActualChat.App.Server;
@@ -9,6 +10,13 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        var serverTrace = TraceSession.New("webserver").ConfigureOutput(TraceOutput).Start();
+        var rootTraceAccessor = new RootTraceAccessor(serverTrace);
+        CircuitTraceAccessor.Factory = () => {
+            var traceId = string.Concat("circuit_", Guid.NewGuid().ToString().AsSpan(0, 8));
+            return TraceSession.New(traceId).ConfigureOutput(TraceOutput).Start();
+        };
+
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;
@@ -17,7 +25,15 @@ internal static class Program
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
 
-        using var appHost = new AppHost();
+        using var appHost = new AppHost {
+            AppServicesBuilder = (_, services) => {
+                services.AddScoped<CircuitTraceAccessor>();
+                services.AddTransient<ITraceAccessor>(c => {
+                    var scopedAccessor = c.GetService<CircuitTraceAccessor>();
+                    return scopedAccessor ?? (ITraceAccessor)rootTraceAccessor;
+                });
+            },
+        };
         try {
             await appHost.Build().ConfigureAwait(false);
         }
@@ -70,5 +86,10 @@ internal static class Program
             // true is dangerous: if user block in async code, this can easily lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
         }
+
+        static void TraceOutput(string m)
+            => Console.WriteLine(m);
     }
+
+    private record RootTraceAccessor(ITraceSession? Trace) : ITraceAccessor;
 }

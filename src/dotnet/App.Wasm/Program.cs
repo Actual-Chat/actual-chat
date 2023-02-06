@@ -18,8 +18,13 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<,>))]
     public static async Task Main(string[] args)
     {
+        var trace = TraceSession.Main
+            .ConfigureOutput(m => Console.Out.WriteLine(m))
+            .Start();
+        trace.Track("Wasm.Program.Main");
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         var baseUrl = builder.HostEnvironment.BaseAddress;
+        builder.Services.TryAddSingleton<ITraceSession>(trace);
         await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
 
         var host = builder.Build();
