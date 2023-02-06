@@ -2,7 +2,8 @@
     @apply h-full w-full md:h-auto md:w-auto;
 }
 
-.modal-fullscreen {
+.modal-fullscreen,
+.modal-fullscreen .modal .bm-content {
     @apply h-full w-full;
 }
 
