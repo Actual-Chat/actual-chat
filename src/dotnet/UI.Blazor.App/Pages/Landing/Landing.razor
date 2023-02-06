@@ -149,280 +149,281 @@
     </div>
 
     @* Page 2 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "grid pt-14" : "flex-x")">
-            <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
-                <div class="flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/evolution.svg" alt="evolution">
-                </div>
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 gap-y-8 p-16 pl-4 text-4xl")">
-                <div class="title-text">
-                    We used to speak, laugh, and cry
-                </div>
-                <p>
-                    But now we text, "like", and send emojis.
-                </p>
-                <p>
-                    It's slower, inconvenient, and less expressive.
-                </p>
-                <p>
-                    With all the progress in technology and AI,<br/>
-                    how it happened that <strong>we can't just talk</strong> in chats?
-                </p>
-            </div>
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen">
+        <ImageContent>
+            <img src="/dist/images/landing/evolution.svg" alt="evolution">
+        </ImageContent>
+        <DescriptionTitle>
+            We used to speak, laugh, and cry
+        </DescriptionTitle>
+        <DescriptionContent>
+            <p>
+                But now we text, "like", and send emojis.
+            </p>
+            <p>
+                It's slower, inconvenient, and less expressive.
+            </p>
+            <p>
+                With all the progress in technology and AI,<br/>
+                how it happened that <strong>we can't just talk</strong> in chats?
+            </p>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 3 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
-            <div class="grid h-full gap-y-5 @(isNarrow ? "px-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
-                <div class="title-text !-mb-8 md:mb-0">
-                    We reimagine calls, texts and voice messages
-                </div>
-                @if (isNarrow) {
-                    <div class="flex justify-center p-4">
-                        <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
-                    </div>
-                }
-                <div class="flex-none flex-y">
-                    <div class="font-semibold">
-                        By blending voice and text into a single medium.
-                    </div>
-                    <p>
-                        Watch your words come to life as you talk -
-                        anything you say is transcribed and instantly available, word-by-word.
-                    </p>
-                    <p>
-                        And it's not just a transcript - <strong>it's voice + text, streamed in real time</strong>.
-                        Listen to chats like a call, without the need for a call.
-                    </p>
-                    @if (!isNarrow) {
-                        <p>
-                            Effortlessly catch up on missed moments - every conversation
-                            is captured in text and audio for later playback or reading.
-                        </p>
-                    }
-                </div>
-            </div>
-            @if (!isNarrow) {
-                <div class="flex justify-center w-2/5 p-16 pb-24 pl-0">
-                    <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
-                </div>
-            }
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="h-screen bg-[#EEEEF6]"
+        DescriptionTitleClass="hidden md:flex"
+        MainTitleClass="flex md:hidden">
+        <MainTitle>
+            We reimagine calls, texts and voice messages
+        </MainTitle>
+        <ImageContent>
+            <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
+        </ImageContent>
+        <DescriptionTitle>
+            We reimagine calls, texts and voice messages
+        </DescriptionTitle>
+        <DescriptionContent>
+            <p class="font-semibold">
+                By blending voice and text into a single medium.
+            </p>
+            <p>
+                Watch your words come to life as you talk -
+                anything you say is transcribed and instantly available, word-by-word.
+            </p>
+            <p>
+                And it's not just a transcript - <strong>it's voice + text, streamed in real time</strong>.
+                Listen to chats like a call, without the need for a call.
+            </p>
+            <p>
+                Effortlessly catch up on missed moments - every conversation
+                is captured in text and audio for later playback or reading.
+            </p>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 4 *@
-    <div class="page @(isNarrow ? "h-screen" : "") overflow-hidden">
-        <div class="flex w-full items-center justify-center pb-4 px-16 @(isNarrow ? "pt-14" : "h-56 pt-16")">
-            <div class="@(isNarrow ? "flex-y items-center pb-4 text-title-1" : "flex-x text-5xl font-semibold")">
-                <span>We believe&nbsp;</span>
-                <span>communication must be...</span>
-            </div>
-        </div>
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "grid px-4" : "flex-x")">
-            <div class="flex justify-center p-8 @(isNarrow ? "py-4" : "w-1/2")">
-                <img src="/dist/images/landing/stressless.svg" alt="stressless">
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "" : "w-1/2 p-8")">
-                <div class="title-text">Stressless</div>
-                <ul>
-                    <li>
-                        <strong>61%</strong> of the millennials and
-                        <strong>40% of baby boomers</strong> experience anxiety when the phone rings.
-                        <a href="https://theconversation.com/phone-call-anxiety-why-so-many-of-us-have-it-and-how-to-get-over-it-155798"
-                           target="_blank">That's why they avoid calls.</a>
-                    </li>
-                    <li>
-                        <a href="https://www.forbes.com/sites/briannawiest/2019/11/04/millennials-hate-phone-calls-they-have-a-point/"
-                           target="_blank">Millennials and Gen-Z also find calls rude.</a>
-                        Most even need to work up the courage to press the "Call" button.
-                    </li>
-                </ul>
-                @if (!isNarrow) {
-                    <div>
-                        Believe it or not, but there is no “Call” button in Actual Chat.
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen bg-[#EEEEF6]"
+        HeaderClass="bg-01">
+        <HeaderContent>
+            <span>We believe&nbsp;</span>
+            <span>communication must be...</span>
+        </HeaderContent>
+        <ImageContent>
+            <img src="/dist/images/landing/stressless.svg" alt="stressless">
+        </ImageContent>
+        <DescriptionTitle>
+            Stressless
+        </DescriptionTitle>
+        <DescriptionContent>
+            <ul>
+                <li>
+                    <strong>61%</strong> of the millennials and
+                    <strong>40% of baby boomers</strong> experience anxiety when the phone rings.
+                    <a href="https://theconversation.com/phone-call-anxiety-why-so-many-of-us-have-it-and-how-to-get-over-it-155798"
+                       target="_blank">That's why they avoid calls.</a>
+                </li>
+                <li>
+                    <a href="https://www.forbes.com/sites/briannawiest/2019/11/04/millennials-hate-phone-calls-they-have-a-point/"
+                       target="_blank">Millennials and Gen-Z also find calls rude.</a>
+                    Most even need to work up the courage to press the "Call" button.
+                </li>
+            </ul>
+            <p>
+                Believe it or not, but there is no “Call” button in Actual Chat.
+            </p>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 5 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y pt-14 justify-around" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
-                <div class="title-text">Seamless &amp; Frictionless</div>
-                <ul>
-                    <li>
-                        Typing is great, but sometimes it's not practical or feasible
-                    </li>
-                    <li>
-                        Driving, jogging, or about to sleep, but need to respond?
-                        Just hit the microphone button & start talking &ndash;
-                        we'll do the rest!
-                    </li>
-                </ul>
-            </div>
-            <div class="@(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                <div class="flex-y gap-y-4 justify-center w-full h-full">
-                    <div class="flex-x gap-x-8">
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-01.svg" alt="body">
-                        </div>
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-02.svg" alt="body">
-                        </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="h-screen">
+        <ImageContent>
+            <div class="flex-y gap-y-4 justify-center w-full h-full">
+                <div class="flex-x gap-x-8">
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/dist/images/landing/person-01.svg" alt="body">
                     </div>
-                    <div class="flex-x gap-x-8">
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-03.svg" alt="body">
-                        </div>
-                        <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-04.svg" alt="body">
-                        </div>
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/dist/images/landing/person-02.svg" alt="body">
+                    </div>
+                </div>
+                <div class="flex-x gap-x-8">
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/dist/images/landing/person-03.svg" alt="body">
+                    </div>
+                    <div class="flex overflow-hidden justify-center items-center">
+                        <img src="/dist/images/landing/person-04.svg" alt="body">
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </ImageContent>
+        <DescriptionTitle>
+            Seamless &amp; Frictionless
+        </DescriptionTitle>
+        <DescriptionContent>
+            <ul>
+                <li>
+                    Typing is great, but sometimes it's not practical or feasible
+                </li>
+                <li>
+                    Driving, jogging, or about to sleep, but need to respond?
+                    Just hit the microphone button & start talking &ndash;
+                    we'll do the rest!
+                </li>
+            </ul>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 6 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "grid pt-14" : "flex-x")">
-            <div class="flex items-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
-                <div class="flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
-                </div>
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-[60%] p-16 pb-24 pl-6")">
-                <div class="title-text">Real-time + asynchronous</div>
-                <ul>
-                    <li>
-                        Start any conversation as asynchronous,
-                        which turns into real-time one
-                        when parties start to respond
-                    </li>
-                    <li>
-                        And if you missed the real-time part,
-                        transcript and recording is always there
-                        – in fact, you get exactly the same experience
-                        as in regular chats in this case.
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen bg-[#EEEEF6]">
+        <ImageContent>
+            <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
+        </ImageContent>
+        <DescriptionTitle>
+            Real-time + asynchronous
+        </DescriptionTitle>
+        <DescriptionContent>
+            <ul>
+                <li>
+                    Start any conversation as asynchronous,
+                    which turns into real-time one
+                    when parties start to respond
+                </li>
+                <li>
+                    And if you missed the real-time part,
+                    transcript and recording is always there
+                    – in fact, you get exactly the same experience
+                    as in regular chats in this case.
+                </li>
+            </ul>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 7 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full @(isNarrow ? "-flex-y pt-14 justify-around" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pr-6")">
-                <div class="title-text">Productive</div>
-                <ul>
-                    <li>
-                        Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
-                    </li>
-                    <li>
-                        "I explained the problem to your colleague in December. Do you have any notes on this?"
-                        &ndash; "Sorry, but no... Could you explain it again?"
-                    </li>
-                    <li>
-                        Have you ever dreamed of highlighting the important parts of a voice conversation
-                        to have the summary later?
-                    </li>
-                </ul>
-                @if (!isNarrow) {
-                    <div>
-                        Actual Chat shines in these scenarios.
-                    </div>
-                }
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                <div class="flex-1 flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/productive.svg" alt="productive" class="h-full max-h-96">
-                </div>
-            </div>
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen">
+        <ImageContent>
+            <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly">
+        </ImageContent>
+        <DescriptionTitle>
+            Team-friendly
+        </DescriptionTitle>
+        <DescriptionContent>
+            <p>
+                The dilemma of real-time vs asynchronous communication style
+                is a common issue in almost any team:
+            </p>
+            <ul>
+                <li>
+                    Keeping everyone on the same page is super important,
+                    but bringing the whole team together is always a productivity hit
+                </li>
+                <li>
+                    Individual communication preferences vary based on daily schedules,
+                    job duties, and other factors.
+                </li>
+                <li>
+                    <a href="https://www.forbes.com/sites/glennllopis/2022/10/05/the-demands-of-millennials--gen-z-a-guide-to-meeting-their-needs/"
+                       target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
+                </li>
+            </ul>
+            <p>
+                Is there a solution helping to address some of these issues?
+                We hope you just found it!
+            </p>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 7.5 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "grid pt-14" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
-                <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pl-6")">
-                <div class="title-text">Team-friendly</div>
-                <p>
-                    The dilemma of real-time vs asynchronous communication style
-                    is a common issue in almost any team:
-                </p>
-                <ul>
-                    <li>
-                        Keeping everyone on the same page is super important,
-                        but bringing the whole team together is always a productivity hit
-                    </li>
-                    <li>
-                        Individual communication preferences vary based on daily schedules,
-                        job duties, and other factors.
-                    </li>
-                    <li>
-                        <a href="https://www.forbes.com/sites/glennllopis/2022/10/05/the-demands-of-millennials--gen-z-a-guide-to-meeting-their-needs/"
-                           target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
-                    </li>
-                </ul>
-                @if (!isNarrow) {
-                    <p>
-                        Is there a solution helping to address some of these issues?
-                        We hope you just found it!
-                    </p>
-                }
-            </div>
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="h-screen bg-[#EEEEF6]">
+        <ImageContent>
+            <img src="/dist/images/landing/productive.svg" alt="productive">
+        </ImageContent>
+        <DescriptionTitle>
+            Productive
+        </DescriptionTitle>
+        <DescriptionContent>
+            <ul>
+                <li>
+                    Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
+                </li>
+                <li>
+                    "I explained the problem to your colleague in December. Do you have any notes on this?"
+                    &ndash; "Sorry, but no... Could you explain it again?"
+                </li>
+                <li>
+                    Have you ever dreamed of highlighting the important parts of a voice conversation
+                    to have the summary later?
+                </li>
+            </ul>
+            <p>
+                Actual Chat shines in these scenarios.
+            </p>
+        </DescriptionContent>
+    </LandingItem>
 
     @* Page 8 *@
-    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y items-center justify-center overflow-hidden @(isNarrow ? "h-full px-4 pt-14 pb-8 gap-y-4" : "h-screen px-16 py-24 gap-y-8")">
-            <div class="flex font-semibold @(isNarrow ? "self-center text-4.5xl" : "self-start text-7xl")">
-                Enjoyable and Fun
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="@(isNarrow ? "no-auto-scroll" : "h-screen")"
+        ImageClass="flex-col gap-y-12 md:flex-row"
+        MainTitleClass="text-4.5xl md:text-7xl">
+        <MainTitle>
+            Enjoyable and Fun
+        </MainTitle>
+        <ImageContent>
+            <div class="flex-y gap-y-2">
+                <div class="flex h-60 items-center justify-center">
+                    <img src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
+                </div>
+                <div class="px-8 text-center">
+                    Many people prefer hearing your voice rather than reading your texts
+                </div>
             </div>
-            <div class="@(isNarrow ? "grid grid-rows-3 gap-y-8" : "grid grid-cols-3 gap-x-8")">
 
-                <div class="flex-y gap-y-2">
-                    <div class="flex h-60 items-center justify-center">
-                        <img src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
-                    </div>
-                    <div class="px-8 text-center">
-                        Many people prefer hearing your voice rather than reading your texts
-                    </div>
+            <div class="flex-y gap-y-2">
+                <div class="flex h-60 items-center justify-center">
+                    <img src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
                 </div>
-
-                <div class="flex-y gap-y-2">
-                    <div class="flex h-60 items-center justify-center">
-                        <img src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
-                    </div>
-                    <div class="px-8 text-center">
-                        For some, speaking is a stronger communication tool than writing
-                    </div>
+                <div class="px-8 text-center">
+                    For some, speaking is a stronger communication tool than writing
                 </div>
-
-                <div class="flex-y">
-                    <div class="flex h-60 items-center justify-center">
-                        <img src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
-                    </div>
-                    <div class="px-8 text-center">
-                        Jokes are almost always more fun when delivered verbally
-                    </div>
-                </div>
-
             </div>
-        </div>
-        <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
-    </div>
+
+            <div class="flex-y gap-y-2">
+                <div class="flex h-60 items-center justify-center">
+                    <img src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
+                </div>
+                <div class="px-8 text-center">
+                    Jokes are almost always more fun when delivered verbally
+                </div>
+            </div>
+        </ImageContent>
+        <FooterContent>
+            <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
+        </FooterContent>
+    </LandingItem>
 
     @* Page 9 *@
     <div class="page @(isNarrow ? "no-auto-scroll" : "")">
