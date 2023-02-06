@@ -19,7 +19,7 @@ export class NotificationUI {
         NotificationUI.baseLayoutRef = baseLayoutRef;
         NotificationUI.appKind = appKind;
 
-        if (appKind === 'Maui')
+        if (appKind === 'MauiApp')
             return;
 
         const status = await NotificationUI.getNotificationPermissionStatus();
