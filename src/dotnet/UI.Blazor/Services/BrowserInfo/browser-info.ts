@@ -10,7 +10,7 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-export type AppKind = 'Unknown' | 'WebServer' | 'Wasm' | 'Maui';
+export type AppKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 
 export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
@@ -43,7 +43,7 @@ export class BrowserInfo {
         this.whenReady.resolve(undefined);
 
         ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
-        if (this.appKind == 'Maui')
+        if (this.appKind == 'MauiApp')
             Interactive.isAlwaysInteractive = true;
         globalThis["browserInfo"] = this;
     }
@@ -61,10 +61,10 @@ export class BrowserInfo {
         case 'WebServer':
             classList.add('app-web', 'app-server');
             break;
-        case 'Wasm':
+        case 'WasmApp':
             classList.add('app-web', 'app-wasm');
             break;
-        case 'Maui':
+        case 'MauiApp':
             classList.add('app-mobile', 'app-maui');
             break;
         default:

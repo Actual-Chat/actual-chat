@@ -71,8 +71,7 @@ export class AudioRecorder {
             if (this.isRecording)
                 return true;
 
-            const isMaui = BrowserInfo.appKind == 'Maui';
-
+            const isMaui = BrowserInfo.appKind == 'MauiApp';
             if (!DetectRTC.hasMicrophone) {
                 errorLog?.log(`startRecording: microphone is unavailable`);
                 return false;
