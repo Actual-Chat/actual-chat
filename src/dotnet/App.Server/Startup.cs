@@ -1,5 +1,6 @@
 using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -25,6 +26,12 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddScoped<CircuitTraceAccessor>();
+        services.AddTraceSession(c => {
+            var scopedAccessor = c.GetService<CircuitTraceAccessor>();
+            return scopedAccessor ?? (ITraceAccessor)RootTraceAccessor.Instance;
+        });
+
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();

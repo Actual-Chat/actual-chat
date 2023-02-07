@@ -38,6 +38,7 @@ public class MainActivity : MauiAppCompatActivity
 #endif
 
     internal static readonly int NotificationID = 101;
+    private readonly ITraceSession _trace = TraceSession.Default;
 
     private GoogleSignInClient mGoogleSignInClient = null!;
 
@@ -60,6 +61,7 @@ public class MainActivity : MauiAppCompatActivity
         }
         Log = AppServices.LogFor<MainActivity>();
         Log.LogDebug("MainActivity.OnCreate, is loaded: {IsLoaded}", isLoaded);
+        var step = _trace.TrackStep($"MainActivity.OnCreate");
 
         base.OnCreate(savedInstanceState);
 
@@ -90,12 +92,21 @@ public class MainActivity : MauiAppCompatActivity
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var content = FindViewById(Android.Resource.Id.Content);
         content!.ViewTreeObserver!.AddOnPreDrawListener(new PreDrawListener());
+
+        step.Complete();
     }
 
     protected override void OnStart()
     {
         Log.LogDebug("MainActivity.OnStart");
+        _trace.Track("MainActivity.OnStart");
         base.OnStart();
+    }
+
+    protected override void OnResume()
+    {
+        _trace.Track("MainActivity.OnResume");
+        base.OnResume();
     }
 
     protected override void OnStop()

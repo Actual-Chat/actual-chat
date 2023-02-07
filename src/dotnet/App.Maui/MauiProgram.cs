@@ -9,11 +9,9 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Notification.UI.Blazor;
 using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.App.Maui;
 
@@ -21,14 +19,27 @@ namespace ActualChat.App.Maui;
 
 public static class MauiProgram
 {
+    private static readonly ITraceSession _trace;
+
+    static MauiProgram()
+    {
+        // Setup default trace session if it was not done earlier
+        if (TraceSession.IsTracingEnabled && TraceSession.Default == TraceSession.Null)
+            TraceSession.Default = TraceSession.New("main").Start();
+        _trace = TraceSession.Default;
+    }
+
     public static MauiApp CreateMauiApp()
     {
+        _trace.Track("MauiProgram.CreateMauiApp");
+
         var loggerConfiguration = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext();
 #if ANDROID
-        loggerConfiguration = loggerConfiguration.WriteTo.AndroidLog()
-            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, AndroidConstants.LogTag);
+        loggerConfiguration = loggerConfiguration.WriteTo
+            .AndroidTaggedLog(AndroidConstants.LogTag)
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
 #elif IOS
         loggerConfiguration = loggerConfiguration.WriteTo.NSLog();
 #endif
@@ -73,16 +84,14 @@ public static class MauiProgram
         builder.Services.AddBlazorWebViewDeveloperTools();
 // #endif
 
-        services.AddLogging(logging => logging
-            .AddDebug()
-            .AddSerilog(Log.Logger, dispose: true)
-            .SetMinimumLevel(LogLevel.Information)
-        );
+        services.AddLogging(logging => ConfigureLogging(logging, true));
 
         services.TryAddSingleton(builder.Configuration);
+        services.AddTraceSession(_trace);
 
-        var sessionId = GetSessionId();
-        var settings = new ClientAppSettings { SessionId = sessionId };
+        var settings = new ClientAppSettings();
+        _ = GetSessionId()
+            .ContinueWith(t => settings.SetSessionId(t.Result), TaskScheduler.Default);
         services.TryAddSingleton(settings);
 
 #if IS_FIXED_ENVIRONMENT_PRODUCTION || !(DEBUG || DEBUG_MAUI)
@@ -91,11 +100,13 @@ public static class MauiProgram
         var environment = Environments.Development;
 #endif
 
+        var baseUrl = GetBaseUrl();
+        var initSessionInfoTask = InitSessionInfo(settings, new BaseUrlProvider(baseUrl));
         services.AddSingleton(c => new HostInfo {
             AppKind = AppKind.MauiApp,
             Environment = environment,
             Configuration = c.GetRequiredService<IConfiguration>(),
-            BaseUrl = GetBaseUrl(),
+            BaseUrl = baseUrl,
             Platform = PlatformInfoProvider.GetPlatform(),
         });
 
@@ -107,9 +118,13 @@ public static class MauiProgram
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 #endif
+        var step = _trace.TrackStep("ConfigureServices");
         ConfigureServices(services);
+        step.Complete();
 
+        step = _trace.TrackStep("Building maui app");
         var mauiApp = builder.Build();
+        step.Complete();
 
         AppServices = mauiApp.Services;
 
@@ -117,30 +132,47 @@ public static class MauiProgram
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = AppServices.LogFor(typeof(WebMReader));
 
-        EnsureSessionInfoCreated(mauiApp.Services);
+        initSessionInfoTask.GetAwaiter().GetResult();
 
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
+        step = _trace.TrackStep("Starting host services");
         StartHostedServices(mauiApp);
+        step.Complete();
 
         return mauiApp;
     }
 
-    private static void EnsureSessionInfoCreated(IServiceProvider services)
-        => Task.Run(async () => {
+    private static ILoggingBuilder ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
+        => logging
+            .AddDebug()
+            .AddSerilog(Log.Logger, dispose: disposeSerilog)
+            .SetMinimumLevel(LogLevel.Information);
+
+    private static Task InitSessionInfo(ClientAppSettings appSettings, BaseUrlProvider baseUrlProvider)
+        => BackgroundTask.Run(async () => {
+            var step = _trace.TrackStep("Init session info");
+            var services = new ServiceCollection()
+                .AddLogging(logging => ConfigureLogging(logging, false))
+                .BuildServiceProvider();
             var log = services.GetRequiredService<ILogger<MauiApp>>();
             try {
-                var mobileAuthClient = services.GetRequiredService<MobileAuthClient>();
+                var log2 = services.GetRequiredService<ILogger<MobileAuthClient>>();
+                var mobileAuthClient = new MobileAuthClient(appSettings, baseUrlProvider, log2);
                 log.LogInformation("Creating session...");
                 if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
                     throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
+
                 log.LogInformation("Creating session... Completed");
             }
             catch (Exception e) {
                 log.LogError(e, "Failed to create session");
             }
-
-        }).Wait();
+            finally {
+                await services.DisposeAsync().ConfigureAwait(false);
+            }
+            step.Complete();
+        });
 
     private static void StartHostedServices(MauiApp mauiApp)
         => mauiApp.Services.HostedServices().Start()
@@ -218,7 +250,12 @@ public static class MauiProgram
 
         // Auth
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
-        services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(c));
+        services.AddSingleton<BaseUrlProvider>(c => new BaseUrlProvider(
+            c.GetRequiredService<UrlMapper>().BaseUrl));
+        services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(
+            c.GetRequiredService<ClientAppSettings>(),
+            c.GetRequiredService<BaseUrlProvider>(),
+            c.GetRequiredService<ILogger<MobileAuthClient>>()));
 
         // UI
         services.AddSingleton<NavigationInterceptor>(c => new NavigationInterceptor(c));
@@ -242,8 +279,9 @@ public static class MauiProgram
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
     }
 
-    private static Symbol GetSessionId()
+    private static Task<Symbol> GetSessionId()
         => BackgroundTask.Run(async () => {
+            var step = _trace.TrackStep("Getting session id");
             Symbol sessionId = Symbol.Empty;
             const string sessionIdStorageKey = "Fusion.SessionId";
             var storage = SecureStorage.Default;
@@ -252,7 +290,9 @@ public static class MauiProgram
                 if (!string.IsNullOrEmpty(storedSessionId))
                     sessionId = storedSessionId;
             }
+ #pragma warning disable RCS1075
             catch (Exception) {
+ #pragma warning restore RCS1075
                 // ignored
                 // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
                 // TODO: configure selective backup, to prevent app crashes after re-installing
@@ -263,10 +303,13 @@ public static class MauiProgram
                 try {
                     await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
                 }
+ #pragma warning disable RCS1075
                 catch (Exception) {
+ #pragma warning restore RCS1075
                     // ignored
                 }
             }
+            step.Complete();
             return sessionId;
-        }).Result;
+        });
 }

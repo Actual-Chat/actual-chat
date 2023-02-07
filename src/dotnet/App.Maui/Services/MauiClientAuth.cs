@@ -28,7 +28,8 @@ internal sealed class MauiClientAuth : IClientAuth
 #endif
         }
 
-        var uri = $"{UrlMapper.BaseUrl}mobileauth/signin/{AppSettings.SessionId}/{scheme}";
+        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+        var uri = $"{UrlMapper.BaseUrl}mobileauth/signin/{sessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
