@@ -27,11 +27,7 @@ internal static class Program
 
         using var appHost = new AppHost {
             AppServicesBuilder = (_, services) => {
-                services.AddScoped<CircuitTraceAccessor>();
-                services.AddTransient<ITraceAccessor>(c => {
-                    var scopedAccessor = c.GetService<CircuitTraceAccessor>();
-                    return scopedAccessor ?? (ITraceAccessor)rootTraceAccessor;
-                });
+                services.AddSingleton(rootTraceAccessor);
             },
         };
         try {
@@ -91,5 +87,5 @@ internal static class Program
             => Console.WriteLine(m);
     }
 
-    private record RootTraceAccessor(ITraceSession? Trace) : ITraceAccessor;
+    internal record RootTraceAccessor(ITraceSession? Trace) : ITraceAccessor;
 }
