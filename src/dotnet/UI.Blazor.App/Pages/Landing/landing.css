@@ -244,7 +244,7 @@ body.narrow .landing .page-1 .main-text {
 .signin-button-group {
     @apply flex-x items-center;
     @apply px-2;
-    @apply h-12;
+    @apply h-12 w-fit;
     @apply rounded-full;
     @apply bg-01;
     @apply text-01 font-semibold;
@@ -394,6 +394,13 @@ body.narrow .landing .landing-menu {
 }
 body.narrow .landing-links {
     @apply flex-y;
+}
+.download-btn {
+    @apply flex-x gap-x-4 items-center;
+    @apply h-12;
+    @apply px-4;
+    @apply rounded-full;
+    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }
 
 .page-container {
