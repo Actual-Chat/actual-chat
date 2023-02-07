@@ -18,6 +18,7 @@ public class HistoryUI
     private IJSRuntime JS { get; }
     private ILogger Log { get; }
     private NavigationManager Nav { get; }
+    private ITraceSession Trace { get; }
 
     public bool IsInitialLocation { get; private set; }
     public Task WhenReady { get; }
@@ -29,8 +30,11 @@ public class HistoryUI
         Log = services.LogFor(GetType());
         JS = services.GetRequiredService<IJSRuntime>();
         Nav = services.GetRequiredService<NavigationManager>();
+        Trace = services.GetRequiredService<ITraceSession>();
         var hostInfo = services.GetRequiredService<HostInfo>();
         _isTestServer = hostInfo.AppKind == AppKind.TestServer;
+
+        Trace.Track($"HistoryUI.Constructor. Location: '{Nav.Uri}'");
 
         IsInitialLocation = true;
         if (_isTestServer) {
@@ -68,6 +72,8 @@ public class HistoryUI
             Nav.NavigateTo(Links.Chat(default), false, true);
             await _whenInitialRedirectsCompleted.Task.ConfigureAwait(true);
         }
+
+        Trace.Track("HistoryUI.Initialize completed");
     }
 
     public Task GoBack()
@@ -105,6 +111,7 @@ public class HistoryUI
 
         if (_rewriteInitialLocation) {
             _rewriteInitialLocation = false;
+            Trace.Track($"HistoryUI.Navigate to initial location. Location: '{e.Location}'.");
             Nav.NavigateTo(_initialLocation);
             return;
         }
@@ -117,6 +124,7 @@ public class HistoryUI
         if (!_whenInitialRedirectsCompleted.IsEmpty)
             _whenInitialRedirectsCompleted.TrySetResult(default);
 
+        Trace.Track($"HistoryUI.OnLocationChanged. Location: '{e.Location}'.");
         IsInitialLocation = false;
 
         var state = GetState(e.HistoryEntryState);

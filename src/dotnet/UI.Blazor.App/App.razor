@@ -69,6 +69,7 @@
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
             .ToArray();
+        _trace.Track("App.UIModuleAssemblies evaluated");
 
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
@@ -107,29 +108,28 @@
         var cancellationToken = _disposeToken;
 
         // Starting BrowserInfo
+        var step = _trace.TrackStep("BrowserInfo.Init");
         _ = BrowserInfo.Init();
+
+        // Starting ThemeUI
+        var step2 = _trace.TrackStep("ThemeUI.Start");
+        var themeUI = Services.GetRequiredService<ThemeUI>();
+        themeUI.Start();
+
         await BrowserInfo.WhenReady.WaitAsync(cancellationToken);
+        step.Complete();
 
         // Checking StateFactory.GetOrigin(), which becomes available once BrowserInfo is ready
         // ReSharper disable once MethodHasAsyncOverloadWithCancellation
         if (Services.StateFactory().GetOrigin().Length < 4)
             throw StandardError.Internal("BrowserInfo exposes invalid Origin.");
 
-        // Starting ThemeUI
-        var themeUI = Services.GetRequiredService<ThemeUI>();
-        themeUI.Start();
-
         if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
-            try {
-                serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
-            }
-            catch (Exception ex) {
-                Log.LogError(ex, "Failed to initialize ServerSideTimeZoneConverter");
-                serverSideTimeZoneConverter.Initialize(TimeSpan.FromMinutes(0));
-            }
+            serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
 
         // Finishing w/ theme
         await themeUI.WhenReady.WaitAsync(cancellationToken);
+        step2.Complete();
 
         // Finishing w/ history ui
         await HistoryUI.WhenReady.WaitAsync(cancellationToken);

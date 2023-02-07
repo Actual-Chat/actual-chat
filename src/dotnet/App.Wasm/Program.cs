@@ -25,14 +25,20 @@ public static class Program
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         var baseUrl = builder.HostEnvironment.BaseAddress;
         builder.Services.TryAddSingleton<ITraceSession>(trace);
+        var step = trace.TrackStep("ConfigureServices");
         await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
+        step.Complete();
 
+        step = trace.TrackStep("Building wasm host");
         var host = builder.Build();
+        step.Complete();
         Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
+        step = trace.TrackStep("Starting host services");
         await host.Services.HostedServices().Start().ConfigureAwait(false);
+        step.Complete();
         await host.RunAsync().ConfigureAwait(false);
     }
 
