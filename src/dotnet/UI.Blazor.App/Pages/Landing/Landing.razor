@@ -387,8 +387,7 @@
         ImagePositionMobile="ImagePosition.Top"
         ImagePositionDesktop="ImagePosition.Bottom"
         Class="@(isNarrow ? "no-auto-scroll" : "h-screen")"
-        ImageClass="flex-col gap-y-12 md:flex-row"
-        MainTitleClass="text-4.5xl md:text-7xl">
+        ImageClass="flex-col gap-y-12 md:flex-row">
         <MainTitle>
             Enjoyable and Fun
         </MainTitle>
@@ -426,164 +425,70 @@
     </LandingItem>
 
     @* Page 9 *@
-    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y overflow-hidden pt-16 @(isNarrow ? "text-4.5xl px-4 gap-y-12" : "px-16 pb-8 min-h-screen")">
-            <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
-                Actual Chat Features
-            </div>
-            <div class="justify-around @(isNarrow ? "flex-y gap-y-12" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-01.svg" alt="description" class="md:h-48">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Voice and text</span>
-                        <span class="features-text">are blended together </span>
-                        <span class="features-text">&ndash; everywhere!</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-02.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Markdown-style markup</span>
-                        <span class="features-text">
-                            **bold**, *italic*, `preformatted` text and ```code blocks```
-                        </span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-03.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Replies, @@mentions, and reactions</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="justify-around @(isNarrow ? "flex-y gap-y-12" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-04.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Group and peer-to-peer</span>
-                        <span class="font-bold">chats</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-07.png" alt="description" class="max-w-4/5 md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Unlimited image & file uploads</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-06.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Avatars</span>
-                        <span class="features-text">
-                            change name, picture, and bio on per-chat basis
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="@(isNarrow ? "no-auto-scroll" : "h-screen")"
+        ImageClass="features-grid">
+        <MainTitle>
+            Actual Chat Features
+        </MainTitle>
+        <ImageContent>
+            <LandingFeatures/>
+        </ImageContent>
+    </LandingItem>
 
     @* Page 10 *@
-    <div class="page justify-center bg-[#EEEEF6]) @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y justify-center items-start overflow-hidden @(isNarrow ? "px-4 pb-8 pt-14 gap-y-8" : "p-16 gap-y-16")">
-            <div class="font-semibold @(isNarrow ? "flex-y text-4.5xl" : "flex-x text-7xl")">
-                <span>What`s&nbsp;</span><span>upcoming?</span>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="@(isNarrow ? "no-auto-scroll bg-[#EEEEF6]" : "h-screen bg-[#EEEEF6]")"
+        ImageClass="justify-between flex-col gap-y-8 md:flex-row md:mt-16">
+        <MainTitle>
+            <span>What`s&nbsp;</span><span>upcoming?</span>
+        </MainTitle>
+        <ImageContent>
+            <div class="flex-y gap-y-8 min-w-1/3">
+                <LandingUpcomingItem Text="Highlights & conversations"/>
+                <LandingUpcomingItem Text="Action items"/>
+                <LandingUpcomingItem Text="Places: a group of chats managed together"/>
             </div>
-            <div class="flex-x w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
-                <div class="flex-y gap-y-8 min-w-1/3">
-                    <LandingUpcomingItem Text="Highlights & conversations"/>
-                    <LandingUpcomingItem Text="Action items"/>
-                    <LandingUpcomingItem Text="Places: a group of chats managed together"/>
-                </div>
-                <div class="flex-y gap-y-8 min-w-1/3">
-                    <LandingUpcomingItem Text="Chat timelines"/>
-                    <LandingUpcomingItem Text="Voice quotes"/>
-                    <LandingUpcomingItem Text="Nested chats / threads"/>
-                </div>
-                <div class="flex-y gap-y-8 min-w-1/3">
-                    <LandingUpcomingItem Text="More languages, transcription and punctuation engines"/>
-                    <LandingUpcomingItem Text="Phone integration"/>
-                    <LandingUpcomingItem Text="Search everywhere"/>
-                </div>
+            <div class="flex-y gap-y-8 min-w-1/3">
+                <LandingUpcomingItem Text="Chat timelines"/>
+                <LandingUpcomingItem Text="Voice quotes"/>
+                <LandingUpcomingItem Text="Nested chats / threads"/>
             </div>
-        </div>
-    </div>
+            <div class="flex-y gap-y-8 min-w-1/3">
+                <LandingUpcomingItem Text="More languages, transcription and punctuation engines"/>
+                <LandingUpcomingItem Text="Phone integration"/>
+                <LandingUpcomingItem Text="Search everywhere"/>
+            </div>
+        </ImageContent>
+    </LandingItem>
 
     @* Page 11 *@
-    <div class="page no-auto-scroll">
-        <div class="h-full @(isNarrow ? "grid" : "flex-y")">
-            <div class="@(isNarrow ? "flex-y" : "flex-x")">
-                <div class="@(isNarrow ? "flex-y px-4" : "flex-x w-1/2 p-16 pr-6")">
-                    <div class="font-semibold @(isNarrow ? "flex-x flex-wrap text-4.5xl text-center" : "flex-y justify-center text-7xl")">
-                        <span>Are there any fees?</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-4 justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                    <span>Right now Actual Chat is <strong>completely free</strong>.</span>
-                    <span>We see corporate subscriptions and advanced features
-                        as our primary revenue sources.</span>
-                    <span>So if you use Actual Chat for daily communications,
-                        you shouldn’t expect any significant changes related to pricing.</span>
-                </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen"
+        ImageClass="flex-col gap-y-12 md:flex-row">
+        <ImageContent>
+            <div class="flex-x flex-wrap title-text @(isNarrow ? "text-center" : "items-center")">
+                <span>Are there any fees?</span>
             </div>
+        </ImageContent>
+        <DescriptionContent>
+            <span>Right now Actual Chat is <strong>completely free</strong>.</span>
+            <span>We see corporate subscriptions and advanced features
+                as our primary revenue sources.</span>
+            <span>So if you use Actual Chat for daily communications,
+                you shouldn’t expect any significant changes related to pricing.</span>
+        </DescriptionContent>
+        <FooterContent>
             <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
-            <div class="flex-x bg-07 @(isNarrow ? "p-4" : "py-12 px-16")">
-                <div class="flex-y flex-1">
-                    <div class="h-full justify-start text-04 @(isNarrow ? "flex-y" : "flex-x gap-x-12")">
-                        <a href="/docs/privacy" class="footer-link">
-                            Privacy
-                        </a>
-                        <a href="/docs/terms" class="footer-link">
-                            Terms
-                        </a>
-                        <a href="/docs/cookies" class="footer-link">
-                            Cookie Preferences
-                        </a>
-                        <a href="mailto:support@actual.chat" class="footer-link">
-                            Contact us
-                        </a>
-                        @if (m.EnableIncompleteUI) {
-                            <a href="#" class="footer-link">
-                                Region
-                            </a>
-                        }
-                    </div>
-                    <div class="flex items-center text-05 @(isNarrow ? "min-h-8 text-sm" : "min-h-16")">
-                        © 2023 Actual Chat Inc. All rights reserved.
-                    </div>
-                </div>
-                <div class="flex-y justify-between items-start text-04 @(isNarrow ? "hidden" : "")">
-                    <a class="footer-link" href="https://actual.chat/chat/announcements">
-                        Announcements
-                    </a>
-                    <a class="footer-link" href="https://github.com/Actual-Chat/actual-chat">
-                        GitHub
-                    </a>
-                    @if (m.EnableIncompleteUI) {
-                        <button class="footer-info-btn">
-                            Twitter
-                        </button>
-                        <button class="footer-info-btn">
-                            Medium
-                        </button>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
+            <LandingFooter/>
+        </FooterContent>
+    </LandingItem>
 </div>
 
 @code {
