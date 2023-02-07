@@ -3,9 +3,13 @@ namespace ActualChat.Performance;
 public sealed class TraceSession : ITraceSession
 {
     private readonly Stopwatch _stopwatch;
+    private bool _hasStarted;
     private Action<string> _output;
 
-    public static TraceSession Main { get; } = new ("main");
+    public static bool IsTracingEnabled { get; set; } = true;
+
+    public static ITraceSession Default { get; set; } = Null;
+
     public static NullTraceSession Null => NullTraceSession.Instance;
 
     public static TraceSession New(string name)
@@ -24,8 +28,6 @@ public sealed class TraceSession : ITraceSession
 
     public TimeSpan Elapsed => _stopwatch.Elapsed;
 
-    public bool IsStarted => _stopwatch.IsRunning;
-
     public TraceSession ConfigureOutput(Action<string> output)
     {
         _output = output;
@@ -35,12 +37,15 @@ public sealed class TraceSession : ITraceSession
     public TraceSession Start()
     {
         _stopwatch.Start();
+        _hasStarted = true;
         Track("Started");
         return this;
     }
 
     public void Track(string message)
     {
+        if (!_hasStarted)
+            Start();
         var ts = _stopwatch.Elapsed;
         var tid = Thread.CurrentThread.ManagedThreadId;
         var formattedMessage = $"Trace [{Name}] [{tid:000}] {ts:c} {message}";

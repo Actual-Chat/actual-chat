@@ -19,12 +19,18 @@ namespace ActualChat.App.Maui;
 
 public static class MauiProgram
 {
-    private static readonly TraceSession _trace = TraceSession.Main;
+    private static readonly ITraceSession _trace;
+
+    static MauiProgram()
+    {
+        // Setup default trace session if it was not done earlier
+        if (TraceSession.IsTracingEnabled && TraceSession.Default == TraceSession.Null)
+            TraceSession.Default = TraceSession.New("main").Start();
+        _trace = TraceSession.Default;
+    }
 
     public static MauiApp CreateMauiApp()
     {
-        if (!_trace.IsStarted)
-            _trace.Start();
         _trace.Track("MauiProgram.CreateMauiApp");
 
         var loggerConfiguration = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)

@@ -10,9 +10,13 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
-        var serverTrace = TraceSession.New("webserver").ConfigureOutput(TraceOutput).Start();
+        var serverTrace = TraceSession.Default = TraceSession.IsTracingEnabled
+            ? TraceSession.New("webserver").ConfigureOutput(TraceOutput).Start()
+            : TraceSession.Null;
         var rootTraceAccessor = new RootTraceAccessor(serverTrace);
         CircuitTraceAccessor.Factory = () => {
+            if (!TraceSession.IsTracingEnabled)
+                return TraceSession.Null;
             var traceId = string.Concat("circuit_", Guid.NewGuid().ToString().AsSpan(0, 8));
             return TraceSession.New(traceId).ConfigureOutput(TraceOutput).Start();
         };

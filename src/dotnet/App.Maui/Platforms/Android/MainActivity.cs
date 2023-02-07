@@ -38,6 +38,7 @@ public class MainActivity : MauiAppCompatActivity
 #endif
 
     internal static readonly int NotificationID = 101;
+    private readonly ITraceSession _trace = TraceSession.Default;
 
     private GoogleSignInClient mGoogleSignInClient = null!;
 
@@ -60,7 +61,7 @@ public class MainActivity : MauiAppCompatActivity
         }
         Log = AppServices.LogFor<MainActivity>();
         Log.LogDebug("MainActivity.OnCreate, is loaded: {IsLoaded}", isLoaded);
-        var step = TraceSession.Main.TrackStep($"MainActivity.OnCreate");
+        var step = _trace.TrackStep($"MainActivity.OnCreate");
 
         base.OnCreate(savedInstanceState);
 
@@ -98,13 +99,13 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnStart()
     {
         Log.LogDebug("MainActivity.OnStart");
-        TraceSession.Main.Track("MainActivity.OnStart");
+        _trace.Track("MainActivity.OnStart");
         base.OnStart();
     }
 
     protected override void OnResume()
     {
-        TraceSession.Main.Track("MainActivity.OnResume");
+        _trace.Track("MainActivity.OnResume");
         base.OnResume();
     }
 
