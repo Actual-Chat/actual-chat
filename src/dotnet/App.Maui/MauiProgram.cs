@@ -31,8 +31,9 @@ public static class MauiProgram
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext();
 #if ANDROID
-        loggerConfiguration = loggerConfiguration.WriteTo.AndroidLog()
-            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, AndroidConstants.LogTag);
+        loggerConfiguration = loggerConfiguration.WriteTo
+            .AndroidTaggedLog(AndroidConstants.LogTag)
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
 #elif IOS
         loggerConfiguration = loggerConfiguration.WriteTo.NSLog();
 #endif
