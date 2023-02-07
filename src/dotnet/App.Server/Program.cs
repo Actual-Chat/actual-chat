@@ -10,10 +10,9 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
-        var serverTrace = TraceSession.Default = TraceSession.IsTracingEnabled
+        RootTraceAccessor.Instance.Trace = TraceSession.Default = TraceSession.IsTracingEnabled
             ? TraceSession.New("webserver").ConfigureOutput(TraceOutput).Start()
             : TraceSession.Null;
-        var rootTraceAccessor = new RootTraceAccessor(serverTrace);
         CircuitTraceAccessor.Factory = () => {
             if (!TraceSession.IsTracingEnabled)
                 return TraceSession.Null;
@@ -29,11 +28,7 @@ internal static class Program
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
 
-        using var appHost = new AppHost {
-            AppServicesBuilder = (_, services) => {
-                services.AddSingleton(rootTraceAccessor);
-            },
-        };
+        using var appHost = new AppHost();
         try {
             await appHost.Build().ConfigureAwait(false);
         }
@@ -91,5 +86,12 @@ internal static class Program
             => Console.WriteLine(m);
     }
 
-    internal record RootTraceAccessor(ITraceSession? Trace) : ITraceAccessor;
+    internal class RootTraceAccessor : ITraceAccessor
+    {
+        public static readonly RootTraceAccessor Instance = new RootTraceAccessor();
+
+        private RootTraceAccessor() { }
+
+        public ITraceSession? Trace { get; set; }
+    }
 }

@@ -27,11 +27,10 @@ public class Startup
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddScoped<CircuitTraceAccessor>();
-        services.AddTransient<ITraceAccessor>(c => {
+        services.AddTraceSession(c => {
             var scopedAccessor = c.GetService<CircuitTraceAccessor>();
-            return scopedAccessor ?? (ITraceAccessor)c.GetRequiredService<Program.RootTraceAccessor>();
+            return scopedAccessor ?? (ITraceAccessor)Program.RootTraceAccessor.Instance;
         });
-        services.AddTransient<ITraceSession>(c => c.GetRequiredService<ITraceAccessor>().Trace ?? TraceSession.Null);
 
         // Logging
         services.AddLogging(logging => {

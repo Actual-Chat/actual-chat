@@ -1,10 +1,5 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public interface ITraceAccessor
-{
-    public ITraceSession? Trace { get; }
-}
-
 public class CircuitTraceAccessor : ITraceAccessor, IDisposable
 {
     public ITraceSession? Trace { get; private set; }

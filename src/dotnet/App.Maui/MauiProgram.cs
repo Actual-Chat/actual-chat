@@ -87,7 +87,7 @@ public static class MauiProgram
         services.AddLogging(logging => ConfigureLogging(logging, true));
 
         services.TryAddSingleton(builder.Configuration);
-        services.TryAddSingleton<ITraceSession>(_trace);
+        services.AddTraceSession(_trace);
 
         var settings = new ClientAppSettings();
         _ = GetSessionId()
