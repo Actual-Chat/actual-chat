@@ -29,7 +29,7 @@ public class Startup
         services.AddScoped<CircuitTraceAccessor>();
         services.AddTraceSession(c => {
             var scopedAccessor = c.GetService<CircuitTraceAccessor>();
-            return scopedAccessor ?? (ITraceAccessor)Program.RootTraceAccessor.Instance;
+            return scopedAccessor ?? (ITraceAccessor)RootTraceAccessor.Instance;
         });
 
         // Logging

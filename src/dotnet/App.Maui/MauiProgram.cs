@@ -103,11 +103,11 @@ public static class MauiProgram
         var baseUrl = GetBaseUrl();
         var initSessionInfoTask = InitSessionInfo(settings, new BaseUrlProvider(baseUrl));
         services.AddSingleton(c => new HostInfo {
-                AppKind = AppKind.MauiApp,
-                Environment = environment,
-                Configuration = c.GetRequiredService<IConfiguration>(),
-                BaseUrl = baseUrl,
-                Platform = PlatformInfoProvider.GetPlatform(),
+            AppKind = AppKind.MauiApp,
+            Environment = environment,
+            Configuration = c.GetRequiredService<IConfiguration>(),
+            BaseUrl = baseUrl,
+            Platform = PlatformInfoProvider.GetPlatform(),
         });
 
         builder.ConfigureMauiHandlers(handlers => {
