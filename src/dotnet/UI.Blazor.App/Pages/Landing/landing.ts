@@ -87,7 +87,6 @@ export class Landing {
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
-        return; // Say thanks to Andrey, he broke most of layouts, so I have to turn it off
 
         if (DeviceInfo.isIos)
             return; // The auto-scroll doesn't work on iOS devices (yet)

@@ -31,13 +31,13 @@
         <div class="c-content flex @(isNarrow ? bodyMobileCls : bodyDesktopCls)">
 
             @if (MainTitle != null) {
-                <h1 class="title-text my-4 @MainTitleClass">
+                <h1 class="title-text my-4 text-4.5xl md:text-7xl @MainTitleClass">
                     @MainTitle
                 </h1>
             }
 
             @if (ImageContent != null) {
-                <div class="flex items-center justify-center @(ScreenSize.IsNarrow() ? "" : "flex-1") @ImageClass">
+                <div class="flex @(ScreenSize.IsNarrow() ? "" : "flex-1") @ImageClass">
                     @ImageContent
                 </div>
             }

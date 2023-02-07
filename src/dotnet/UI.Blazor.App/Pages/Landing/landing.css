@@ -425,8 +425,35 @@ body.narrow .c-header {
     @apply text-title-1;
 }
 .page-container img {
-    @apply flex-1;
     @apply h-full;
+}
+.features-grid {
+    @apply flex-col gap-y-12;
+    @apply mt-8;
+}
+body.wide .features-grid {
+    @apply justify-around gap-y-4;
+}
+.features-grid .c-row {
+    @apply flex-y md:flex-x justify-around gap-y-12;
+}
+.features-grid .c-cell {
+    @apply flex-y gap-y-2;
+    @apply md:w-72;
+}
+.features-grid .c-image {
+    @apply flex justify-start md:items-end;
+    @apply md:h-36;
+}
+.features-grid .c-image img {
+    @apply flex-1 md:flex-none;
+}
+.features-grid .c-text {
+    @apply flex-y;
+    @apply px-2;
+}
+body.narrow .features-grid .c-text {
+    @apply text-2xl;
 }
 
 /* Docs */

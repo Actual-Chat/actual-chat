@@ -9,7 +9,7 @@
 
 <div @ref="Ref" class="landing-menu @cls">
     <div class="c-container">
-        <LandingLeftMenuContent Owner="@this" />
+        <LandingLeftMenuContent Owner="@this" ShowHome="@ShowHome"/>
     </div>
 </div>
 
@@ -22,6 +22,8 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    [Parameter] public bool ShowHome { get; set; }
 
     public async Task Open() {
         // Component root div class list is updated with 'open' class

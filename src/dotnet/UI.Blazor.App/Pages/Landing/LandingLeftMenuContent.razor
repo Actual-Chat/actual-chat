@@ -30,9 +30,17 @@
             </div>
         </Button>
     }
-    <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
-        Home
-    </Button>
+    @if (ShowHome) {
+        <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
+            Home
+        </Button>
+    }
+    @if (!isGuest) {
+        <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Chat(default)))">
+            Chat
+        </Button>
+    }
+    <div class="h-0 w-10/12 my-2 border border-b border-bg-04"></div>
     <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
         Privacy
     </Button>
@@ -84,6 +92,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public LandingLeftMenu Owner { get; init; } = null!;
+    [Parameter] public bool ShowHome { get; init; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
