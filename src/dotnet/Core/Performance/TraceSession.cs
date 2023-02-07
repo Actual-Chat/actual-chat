@@ -42,7 +42,8 @@ public sealed class TraceSession : ITraceSession
     public void Track(string message)
     {
         var ts = _stopwatch.Elapsed;
-        var formattedMessage = $"Trace [{Name}] {ts:c} {message}";
+        var tid = Thread.CurrentThread.ManagedThreadId;
+        var formattedMessage = $"Trace [{Name}] [{tid:000}] {ts:c} {message}";
         _output(formattedMessage);
     }
 
