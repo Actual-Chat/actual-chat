@@ -103,6 +103,7 @@ async function onCreate(message: CreateEncoderMessage): Promise<void> {
         throw new Error('workletPort has already been set.');
     if (vadPort != null)
         throw new Error('vadPort has already been set.');
+    debugLog?.log(`-> onCreate`);
 
     const retryPolicy: signalR.IRetryPolicy = {
         nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
@@ -144,7 +145,7 @@ async function onCreate(message: CreateEncoderMessage): Promise<void> {
     encoder.delete();
     encoder = null;
 
-    debugLog?.log(`onCreate, encoder:`, encoder);
+    debugLog?.log(`<- onCreate`);
 
     state = 'created';
 }

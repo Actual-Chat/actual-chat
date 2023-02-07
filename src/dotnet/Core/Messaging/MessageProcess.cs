@@ -83,12 +83,16 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
 
     public override void MarkStarted()
     {
+        DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkStarted));
+
         var whenStarted = TaskSource.For(WhenStarted);
         whenStarted.TrySetResult(default);
     }
 
     public override void MarkCompleted(Result<object?> result)
     {
+        DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkCompleted) + " {Result}", result.ValueOrDefault);
+
         var whenStarted = TaskSource.For(WhenStarted);
         var whenCompleted = TaskSource.For(WhenCompleted);
         whenStarted.TrySetResult(default);
@@ -108,6 +112,8 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
 
     public override void MarkFailed(Exception error)
     {
+        DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkFailed));
+
         var whenStarted = TaskSource.For(WhenStarted);
         var whenCompleted = TaskSource.For(WhenCompleted);
         if (error is OperationCanceledException && CancellationToken.IsCancellationRequested) {

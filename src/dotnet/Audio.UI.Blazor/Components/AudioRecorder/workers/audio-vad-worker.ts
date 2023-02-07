@@ -58,6 +58,7 @@ async function onCreate(): Promise<void> {
     if (encoderPort != null) {
         throw new Error('encoderPort has already been specified.');
     }
+    debugLog?.log(`-> onCreate`);
 
     queue.clear();
     resampler = new SoxrResampler(
@@ -71,6 +72,7 @@ async function onCreate(): Promise<void> {
     await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
     voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
     await voiceDetector.init();
+    debugLog?.log(`<- onCreate`);
 }
 
 async function onInit(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {

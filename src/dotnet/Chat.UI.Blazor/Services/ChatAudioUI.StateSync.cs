@@ -225,7 +225,7 @@ public partial class ChatAudioUI
         await foreach (var change in cRecordingState.Changes(cancellationToken).ConfigureAwait(false))
             try {
                 current = change.Value;
-
+                Log.LogDebug(nameof(SyncRecordingState) + " change");
                 var (recordingChatId, recorderChatId, recorderError, language) = current;
                 var mustShowError = recorderError != null;
                 if (mustShowError)
@@ -247,6 +247,8 @@ public partial class ChatAudioUI
                         break;
                     }
                 if (mustSync) {
+                    if (mustShowError)
+                        await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
                     await UpdateRecorderState(mustStop, recordingChatId, cancellationToken).ConfigureAwait(false);
                     if (!recordingChatId.IsNone && !mustStop)
                         // Start recording = start realtime playback
