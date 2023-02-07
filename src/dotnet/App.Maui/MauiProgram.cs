@@ -8,8 +8,7 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
-using ActualChat.Chat.UI.Blazor.Services;
-using Microsoft.JSInterop;
+using ActualChat.UI.Blazor;
 using Serilog;
 using Serilog.Events;
 
@@ -35,6 +34,7 @@ public static class MauiProgram
 
         var loggerConfiguration = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
+            .WriteTo.Sentry(options => options.ConfigureForApp())
             .Enrich.FromLogContext();
 #if ANDROID
         loggerConfiguration = loggerConfiguration.WriteTo
@@ -70,6 +70,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
+            .UseSentry(options => options.ConfigureForApp())
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
