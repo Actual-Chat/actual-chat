@@ -105,9 +105,9 @@
     </div>
 
     @* Page 1 *@
-    <div class="page page-1">
+    <div class="page page-1 h-screen">
         <div class="page-1-wrapper overflow-hidden">
-            <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-8" : "px-16")">
+            <div class="flex-x h-full overflow-hidden @(isNarrow ? "px-8" : "px-16")">
                 <div class="main-text">
                     <div class="md:text-4xl font-normal text-04 pt-12">
                         <div class="title-text main">To call, to text, or<br/>to voice message?</div>
@@ -120,7 +120,7 @@
                             <strong>We are here to redefine the meaning of "Chat".</strong>
                         </p>
                     </div>
-                    <div class="flex @(isNarrow ? "justify-center" : "") pt-8">
+                    <div class="flex gap-x-8 @(isNarrow ? "flex-col items-center" : "") pt-8">
                         @if (isGuest) {
                             <button class="signin-button-group bg-01" onclick="@(() => SignIn(googleScheme.Name))">
                                 <span class="px-2 text-xl font-semibold">Sign in with</span>
@@ -139,6 +139,7 @@
                             @*     </AppleIcon> *@
                             @* </SigninButtonGroup> *@
                         }
+                        <DownloadButton/>
                     </div>
                 </div>
                 <div class="flex w-2/5 justify-center @(isNarrow ? "hidden" : "")">
