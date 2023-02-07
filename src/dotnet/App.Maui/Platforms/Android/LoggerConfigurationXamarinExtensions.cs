@@ -14,7 +14,7 @@ namespace ActualChat.App.Maui;
 public static class LoggerConfigurationXamarinExtensions
 {
     private const string DefaultAndroidTaggedLogOutputTemplate =
-        "[{SourceContext}] [{Level}] {Message:l{NewLine:l}{Exception:l}";
+        "[{SourceContext}] {Message:l{NewLine:l}{Exception:l}";
 
     /// <summary>Write to the built-in Android log.</summary>
     /// <param name="sinkConfiguration">The configuration this applies to.</param>
