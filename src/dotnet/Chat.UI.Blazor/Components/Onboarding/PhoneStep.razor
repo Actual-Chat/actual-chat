@@ -51,19 +51,12 @@
                 <InputText id="phoneNumber" @bind-Value="_stepModel.Number" autocomplete="tel-national"/>
             </FormSection>
         </div>
-        @* <FormSection For="() => _stepModel.SyncContacts"> *@
-        @*     <Checkbox *@
-        @*         Id="syncContacts" *@
-        @*         IsChecked="@_stepModel.SyncContacts" *@
-        @*         Change="OnSyncContactsChange" *@
-        @*         Label="Sync Contacts"/> *@
-        @* </FormSection> *@
         <FormSection
             For="() => _stepModel.Email"
             InputId="email"
-            Label="Email (optional)"
+            Label="Email"
             IsLabelInsideInput="true">
-            <InputText id="email" @bind-Value="_stepModel.Email"/>
+            <InputText id="email" @bind-Value="_stepModel.Email" disabled/>
         </FormSection>
     </Form>
 </div>
@@ -83,6 +76,11 @@
         OnboardingUI.Settings.Value = OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true };
     }
 
+    protected override async Task OnInitializedAsync() {
+        var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        _stepModel.Email = account.Email;
+    }
+
     protected override Task<bool> Validate() {
         var isValid = _formRef?.EditContext?.Validate() ?? false;
         return Task.FromResult(isValid);
@@ -94,15 +92,9 @@
             Session,
             account with {
                 Phone = $"{_stepModel.Code} {_stepModel.Number}",
-                SyncContacts = _stepModel.SyncContacts,
-                Email = _stepModel.Email ?? "",
             },
             account.Version);
         await UICommander.Run(command);
-    }
-
-    private void OnSyncContactsChange(ChangeEventArgs args) {
-        _stepModel.SyncContacts = args.Value is true;
     }
 
     public class PhoneStepModel {
@@ -123,7 +115,6 @@
         [Required]
         public string? Number { get; set; }
 
-        public bool SyncContacts { get; set; }
         public string? Email { get; set; }
     }
 }

@@ -62,7 +62,7 @@
         <FormSection
             For="() => _stepModel.Name"
             InputId="name"
-            Label="Name"
+            Label="First name"
             IsLabelInsideInput="true"
             IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
@@ -74,14 +74,6 @@
             IsLabelInsideInput="true">
             <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
         </FormSection>
-        @* <FormSection *@
-        @*     For="() => _stepModel.Username" *@
-        @*     InputId="userName" *@
-        @*     Label="@("@username")" *@
-        @*     IsLabelInsideInput="true" *@
-        @*     IsRequired="true"> *@
-        @*     <InputText id="userName" @bind-Value="_stepModel.Username"/> *@
-        @* </FormSection> *@
     </Form>
 </div>
 
@@ -104,11 +96,15 @@
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        _stepModel.Name = account.Name;
+        _stepModel.LastName = account.LastName;
+
         if (!account.Avatar.Id.IsEmpty) {
             _stepModel.AvatarPicture = account.Avatar.Picture;
             _stepModel.AvatarId = account.Avatar.Id;
             return;
         }
+
         var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull {
                 UserId = account.Id,
@@ -136,7 +132,6 @@
             account with {
                 Name = _stepModel.Name,
                 LastName = _stepModel.LastName,
-                Username = _stepModel.Username,
             },
             account.Version);
         await UICommander.Run(updateAccountCommand);
@@ -167,8 +162,6 @@
         [Required]
         public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
-        // [Required]
-        public string Username { get; set; } = "";
         public string AvatarPicture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
     }
