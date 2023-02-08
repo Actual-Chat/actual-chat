@@ -29,27 +29,7 @@
 
     <div class="page-container flex-y @containerCls">
         <div class="c-content flex @(isNarrow ? bodyMobileCls : bodyDesktopCls)">
-
-            @if (MainTitle != null) {
-                <h1 class="title-text my-4 text-4.5xl md:text-7xl @MainTitleClass">
-                    @MainTitle
-                </h1>
-            }
-
-            @if (ImageContent != null) {
-                <div class="flex @(ScreenSize.IsNarrow() ? "" : "flex-1") @ImageClass">
-                    @ImageContent
-                </div>
-            }
-
-            @if (DescriptionContent != null) {
-                <div class="flex-y justify-center @(ScreenSize.IsNarrow() ? "" : "w-1/2 gap-y-4")">
-                    <h1 class="title-text @DescriptionTitleClass">
-                        @DescriptionTitle
-                    </h1>
-                    @DescriptionContent
-                </div>
-            }
+            @ChildContent
         </div>
     </div>
     @if (FooterContent != null) {
@@ -65,16 +45,9 @@
     [Parameter] public ImagePosition ImagePositionMobile { get; set; } = ImagePosition.Bottom;
     [Parameter] public ImagePosition ImagePositionDesktop { get; set; } = ImagePosition.Left;
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public RenderFragment? HeaderContent { get; set; }
     [Parameter] public string HeaderClass { get; set; } = "";
-    [Parameter] public RenderFragment? MainTitle { get; set; }
-    [Parameter] public string MainTitleClass { get; set; } = "";
-    [Parameter] public RenderFragment? ImageContent { get; set; }
-    [Parameter] public string ImageClass { get; set; } = "";
-    [Parameter] public RenderFragment? DescriptionTitle { get; set; }
-    [Parameter] public string DescriptionTitleClass { get; set; } = "";
-    [Parameter] public RenderFragment? DescriptionContent { get; set; }
-    [Parameter] public RenderFragment? FooterContent { get; set; }
     [Parameter] public string FooterClass { get; set; } = "";
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }
