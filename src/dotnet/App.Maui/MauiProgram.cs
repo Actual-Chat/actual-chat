@@ -1,3 +1,5 @@
+using System.Net;
+using System.Security.Authentication;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
@@ -157,8 +159,18 @@ public static class MauiProgram
                 .BuildServiceProvider();
             var log = services.GetRequiredService<ILogger<MauiApp>>();
             try {
+                // Manually configure http client as we don't have it configured globally at DI level
+                using var httpClient = new HttpClient(new HttpClientHandler {
+                    SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                    UseCookies = false,
+                }, true) {
+                    DefaultRequestVersion = HttpVersion.Version30,
+                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+                };
+                httpClient.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{AppStartup.SessionAffinityKey}\"");
+
                 var log2 = services.GetRequiredService<ILogger<MobileAuthClient>>();
-                var mobileAuthClient = new MobileAuthClient(appSettings, baseUrlProvider, log2);
+                var mobileAuthClient = new MobileAuthClient(appSettings, baseUrlProvider, httpClient, log2);
                 log.LogInformation("Creating session...");
                 if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
                     throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
@@ -255,6 +267,7 @@ public static class MauiProgram
         services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(
             c.GetRequiredService<ClientAppSettings>(),
             c.GetRequiredService<BaseUrlProvider>(),
+            c.GetRequiredService<HttpClient>(),
             c.GetRequiredService<ILogger<MobileAuthClient>>()));
 
         // UI

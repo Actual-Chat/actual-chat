@@ -3,15 +3,18 @@ namespace ActualChat.App.Maui.Services;
 public class MobileAuthClient
 {
     private ClientAppSettings AppSettings { get; }
+    private HttpClient HttpClient { get; }
     private BaseUrlProvider BaseUrlProvider { get; }
     private ILogger<MobileAuthClient> Log { get; }
 
     public MobileAuthClient(
         ClientAppSettings clientAppSettings,
         BaseUrlProvider baseUrlProvider,
+        HttpClient httpClient,
         ILogger<MobileAuthClient> log)
     {
         AppSettings = clientAppSettings;
+        HttpClient = httpClient;
         BaseUrlProvider = baseUrlProvider;
         Log = log;
     }
@@ -21,8 +24,7 @@ public class MobileAuthClient
         try {
             var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
             var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
@@ -38,8 +40,7 @@ public class MobileAuthClient
         var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
         var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
@@ -53,8 +54,7 @@ public class MobileAuthClient
         var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
         var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
