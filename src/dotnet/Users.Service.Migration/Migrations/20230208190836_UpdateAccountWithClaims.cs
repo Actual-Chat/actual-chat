@@ -23,7 +23,7 @@ namespace ActualChat.Users.Migrations
                         claims_json::json->>'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname' AS last_name,
                         claims_json::json->>'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress' AS email
                     from users
-                    where claims_json <> '{}'
+                    where claims_json <> '{}' and claims_json <> ''
                 ) as subquery
                 where accounts.id = subquery.id;
             ");
