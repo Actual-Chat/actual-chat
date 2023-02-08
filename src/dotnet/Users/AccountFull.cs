@@ -33,6 +33,10 @@ public sealed record AccountFull(
     [DataMember] public string LastName { get; init; } = "";
     [DataMember] public string Username { get; init; } = "";
 
+    // Computed
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string FullName => $"{Name} {LastName}".Trim();
+
     public AccountFull() : this(None.User) { }
 
     // This record relies on version-based equality
