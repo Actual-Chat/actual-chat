@@ -30,7 +30,7 @@
 </ModalChrome>
 
 @code {
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
@@ -42,5 +42,5 @@
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
     private void OnCloseClick()
-        => _ = ModalInstance.CloseAsync();
+        => _ = Modal.Close();
 }

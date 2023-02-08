@@ -13,8 +13,8 @@ internal class AndroidClipboardUI : ClipboardUI
     public override async ValueTask<string> ReadText()
     {
         if (Clipboard.Default.HasText)
-            return await Clipboard.Default.GetTextAsync().ConfigureAwait(true) ?? string.Empty;
-        return string.Empty;
+            return await Clipboard.Default.GetTextAsync().ConfigureAwait(true) ?? "";
+        return "";
     }
 
     public override async ValueTask WriteText(string text)

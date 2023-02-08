@@ -1,68 +1,74 @@
 using System.Diagnostics.CodeAnalysis;
-using Blazored.Modal;
-using Blazored.Modal.Services;
 using Stl.Extensibility;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class ModalUI
+public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
 {
+    private readonly Acceptor<ModalHost> _hostAcceptor = new(true);
+
     private BrowserInfo BrowserInfo { get; }
     private HistoryUI HistoryUI { get; }
-    private ModalService ModalService { get; }
+    private TuneUI TuneUI { get; }
     private IMatchingTypeFinder MatchingTypeFinder { get; }
+
+    Acceptor<ModalHost> IHasAcceptor<ModalHost>.Acceptor => _hostAcceptor;
+
+    public IServiceProvider Services { get; }
+    public Task WhenReady => _hostAcceptor.WhenAccepted();
+    public ModalHost Host => _hostAcceptor.Value;
 
     public ModalUI(IServiceProvider services)
     {
+        Services = services;
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
         HistoryUI = services.GetRequiredService<HistoryUI>();
-        ModalService = services.GetRequiredService<ModalService>();
+        TuneUI = services.GetRequiredService<TuneUI>();
         MatchingTypeFinder = services.GetRequiredService<IMatchingTypeFinder>();
     }
 
-#pragma warning disable IL2072
-    public Task<IModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
+    public async Task<ModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
-        var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
-        if (componentType == null)
-            throw StandardError.NotFound<IModalView>(
-                $"No modal view component for '{model.GetType().GetName()}' model.");
-
-        IModalRef? modalReference = null;
-        var whenCompletedSource = TaskSource.New<IModalRef>(true);
-        HistoryUI.NavigateTo(
-            () => {
-                modalReference = ShowInternal(componentType, model, isFullScreen);
-                whenCompletedSource.TrySetResult(modalReference);
-                modalReference.ModalCloseRequest += (s, e) => {
-                    e.Handled = true;
-                    _ = HistoryUI.GoBack();
-                };
-            },
-            () => {
-                modalReference?.Close();
-            });
-        return whenCompletedSource.Task;
+        var options = new ModalOptions() {
+            OverlayClass = isFullScreen ? "modal-overlay-fullscreen" : "",
+        };
+        return await Show(model, options);
     }
 
-    private IModalRef ShowInternal<TModel>(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType,
-        TModel model,
-        bool isFullScreen)
+    public async Task<ModalRef> Show<TModel>(TModel model, ModalOptions options)
         where TModel : class
     {
-        var modalOptions = new ModalOptions {
-            Class = "blazored-modal modal",
-        };
-        if (isFullScreen)
-            modalOptions.PositionCustomClass = "modal-fullscreen";
-        var modalContent = new RenderFragment(builder => {
+        var componentType = GetComponentType(model);
+        return await Show(componentType, model, options);
+    }
+
+    // Private methods
+
+    private async ValueTask<ModalRef> Show<TModel>(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType,
+        TModel model,
+        ModalOptions options)
+        where TModel : class
+    {
+        await WhenReady;
+        var content = new RenderFragment(builder => {
             builder.OpenComponent(0, componentType);
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
             builder.CloseComponent();
         });
-        return ModalService.Show(modalContent, modalOptions);
+        return Host.Open(options, content);
     }
-#pragma warning restore IL2072
+
+#pragma warning disable IL2073
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    private Type GetComponentType<TModel>(TModel model)
+        where TModel : class
+    {
+        var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
+        return componentType
+            ?? throw StandardError.NotFound<IModalView>(
+                $"No modal view component for '{model.GetType().GetName()}' model.");
+    }
+#pragma warning restore IL2073
 }

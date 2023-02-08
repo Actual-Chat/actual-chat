@@ -79,6 +79,9 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
             lock (cache) cache.Clear();
     }
 
+    public IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false)
+        => throw StandardError.NotSupported($"{GetType().Name} doesn't support this method.");
+
     // Private methods
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

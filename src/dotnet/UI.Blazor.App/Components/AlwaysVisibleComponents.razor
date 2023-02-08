@@ -1,3 +1,9 @@
+<ModalHost />
+<MenuHost />
+@if (ScreenSize.IsWide()) {
+    <TooltipHost />
+}
+
 <RenderIntoSlot Name="MainLeftDrawer">
     <LeftPanel/>
 </RenderIntoSlot>
@@ -10,3 +16,6 @@
     <RecordingSubFooter/>
 </RenderIntoStack>
 
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}

@@ -1,6 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
-using Blazored.Modal;
+using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -114,7 +114,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
         return isConfirmed;
     }
 
-    private Task<IModalRef> ShowModal()
+    private Task<ModalRef> ShowModal()
     {
         var modalRefTask = Dispatcher.InvokeAsync(() => ModalUI.Show(DemandUserInteractionModal.Model.Instance));
         modalRefTask.ContinueWith(async _ => {
@@ -137,6 +137,6 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public sealed record ActiveDemandModel(
         ImmutableList<string> Operations,
-        Task<IModalRef> WhenModalRef,
+        Task<ModalRef> WhenModalRef,
         Task<Unit> WhenConfirmed);
 }

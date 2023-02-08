@@ -1,23 +1,32 @@
-.blazored-modal-focus-trap {
+/* Inherited from Blazored Modal */
+
+.modal-overlay {
+    @apply z-modal-overlay fixed;
+    @apply flex-1 flex-y justify-center;
+    @apply top-0 left-0 h-full w-full;
+    @apply overflow-x-hidden overflow-y-hidden;
+    @apply outline-0;
+    background-color: rgba(0,0,0,0.8);
+}
+
+.modal-focus-trap {
     @apply h-full w-full md:h-auto md:w-auto;
 }
 
-.modal-fullscreen {
-    @apply h-full w-full;
-}
-
-.modal-fullscreen .blazored-modal-focus-trap {
+.modal-overlay-fullscreen .modal-focus-trap {
     @apply h-full w-full;
 }
 
 .modal {
+    @apply flex-y;
     @apply h-full w-full md:h-auto md:w-auto;
     @apply border-0 rounded-none;
     @apply p-0 m-0 bg-transparent;
+    /* @apply bg-white; */
     box-shadow: none;
 }
 
-.modal .bm-content {
+.modal .modal-content {
     @apply h-full w-full;
 }
 
@@ -137,33 +146,33 @@
     @apply max-w-full grow;
 }
 
-div.bm-content > form {
+div.modal-content > form {
     @apply h-full;
 }
 
 /* Fullscreen Modal */
-.modal-fullscreen .modal {
+.modal-overlay-fullscreen .modal {
     @apply md:w-full md:h-full;
 }
-.modal-fullscreen .modal-frame.modal-chrome {
+.modal-overlay-fullscreen .modal-frame.modal-chrome {
     @apply w-full h-full p-0 gap-y-0 rounded-none;
 }
-.modal-fullscreen .dialog-body {
+.modal-overlay-fullscreen .dialog-body {
     @apply p-0;
 }
-.modal-fullscreen .btn-x {
+.modal-overlay-fullscreen .btn-x {
     @apply absolute right-4 top-4;
     @apply hidden md:flex-x;
 }
-.modal-fullscreen .modal-header {
+.modal-overlay-fullscreen .modal-header {
     @apply hidden;
 }
-.modal-fullscreen input {
+.modal-overlay-fullscreen input {
     @apply cursor-text;
 }
-.modal-fullscreen .user-avatar-editor-item,
-.modal-fullscreen .user-avatar-editor-item *,
-.modal-fullscreen button,
-.modal-fullscreen button * {
+.modal-overlay-fullscreen .user-avatar-editor-item,
+.modal-overlay-fullscreen .user-avatar-editor-item *,
+.modal-overlay-fullscreen button,
+.modal-overlay-fullscreen button * {
     @apply cursor-pointer;
 }

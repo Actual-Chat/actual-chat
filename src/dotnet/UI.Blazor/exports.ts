@@ -5,7 +5,6 @@ export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
-export * from './Services/HistoryUI/history-ui';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';
@@ -20,7 +19,7 @@ export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/ImageViewerModal/image-viewer';
 export * from './Components/Menu/menu-host';
-export * from './Components/Modal/BlazoredModal/blazored-modal.js';
+export * from './Components/Modal/modal-host';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';

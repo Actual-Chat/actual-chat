@@ -8,10 +8,9 @@
 }
 
 <SideNav
-    Direction="SideNavDirection.RightToLeft"
-    Opened="@(() => RightPanelUI.ChangeVisibility(true))"
-    Closed="@(() => RightPanelUI.ChangeVisibility(false))"
-    IsOpen="@m.IsVisible">
+    Side="SideNavSide.Right"
+    IsOpen="@m.IsVisible"
+    VisibilityChanged="@(isOpen => RightPanelUI.SetIsVisible(isOpen))">
     <div class="flex-y w-full md:w-80 h-full border-l border-bg-04">
         <RightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">
@@ -63,12 +62,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
+        var isVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMembers = rules.CanSeeMembers();
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
         return new () {
-            IsVisible = isRightPanelVisible,
+            IsVisible = isVisible,
             ShowMembers = showMembers,
             EnableIncompleteUI = enableIncompleteUI,
         };

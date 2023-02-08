@@ -59,4 +59,9 @@ public class ThreadSafeLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
     {
         lock (Lock) Cache.Clear();
     }
+
+    public IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false)
+    {
+        lock (Lock) return Cache.List(recentFirst).ToList();
+    }
 }

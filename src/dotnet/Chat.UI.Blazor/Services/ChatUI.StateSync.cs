@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Chat.UI.Blazor.Services;
+﻿using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatUI
 {
@@ -8,6 +10,7 @@ public partial class ChatUI
     {
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
+            new(nameof(HardRedirectOnFixableChat), HardRedirectOnFixableChat),
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
@@ -40,7 +43,32 @@ public partial class ChatUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<bool> MustKeepAwake()
+    protected virtual async Task<string> GetFixableChatRedirectUrl(CancellationToken cancellationToken)
+    {
+        var chatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var fixedChatId = await FixChatId(chatId, cancellationToken);
+        var wasFixed = fixedChatId != chatId;
+        return wasFixed ? Links.Chat(fixedChatId) : "";
+    }
+
+    private async Task HardRedirectOnFixableChat(CancellationToken cancellationToken)
+    {
+        var cRedirectUrl = await Computed
+            .Capture(() => GetFixableChatRedirectUrl(cancellationToken))
+            .ConfigureAwait(false);
+        cRedirectUrl = await cRedirectUrl
+            .When(x => !x.IsNullOrEmpty(), cancellationToken)
+            .ConfigureAwait(false);
+
+        // Quite rare case, so it's sub-optimal to resolve this dependency in .ctor
+        var redirectUrl = cRedirectUrl.Value;
+        var browserInfo = Services.GetRequiredService<BrowserInfo>();
+        var dispatcher = Services.GetRequiredService<Dispatcher>();
+        _ = dispatcher.InvokeAsync(() => browserInfo.HardRedirect(redirectUrl));
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> MustKeepAwake(CancellationToken cancellationToken)
     {
         var activeChats = await ActiveChatsUI.ActiveChats.Use().ConfigureAwait(false);
         return activeChats.Any(c => c.IsListening || c.IsRecording);
@@ -50,7 +78,7 @@ public partial class ChatUI
     {
         var lastMustKeepAwake = false;
         var cMustKeepAwake0 = await Computed
-            .Capture(MustKeepAwake)
+            .Capture(() => MustKeepAwake(cancellationToken))
             .ConfigureAwait(false);
 
         var changes = cMustKeepAwake0.Changes(FixedDelayer.Get(1), cancellationToken);

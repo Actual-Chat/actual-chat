@@ -18,6 +18,7 @@ public partial class ChatUI : WorkerBase
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
 
+    private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private Session Session { get; }
@@ -47,6 +48,7 @@ public partial class ChatUI : WorkerBase
 
     public ChatUI(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         StateFactory = services.StateFactory();
         ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();

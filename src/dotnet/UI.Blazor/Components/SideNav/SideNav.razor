@@ -2,34 +2,32 @@
 @using ActualChat.UI.Blazor.Components.SideNav
 @implements IAsyncDisposable
 
-<div @ref="ElementRef" class="@Class side-nav">
+<div @ref="ElementRef" class="@_class">
     <div class="side-nav-drawer"></div>
     @ChildContent
 </div>
 
 @code {
+    private string _class = "";
+
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter] public SideNavDirection Direction { get; set; } = SideNavDirection.LeftToRight;
+    [Parameter] public SideNavSide Side { get; set; } = SideNavSide.Left;
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter] public EventCallback Closed { get; set; }
-    [Parameter] public EventCallback Opened { get; set; }
-
-    private string Class { get; set; } = "";
+    [Parameter] public EventCallback<bool> VisibilityChanged { get; set; }
 
     private ElementReference ElementRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<SideNav> BlazorRef { get; set; } = null!;
 
     protected override void OnParametersSet() {
-        Class = "side-nav-animate";
-        Class += Direction == SideNavDirection.LeftToRight
+        _class = "side-nav";
+        _class += Side == SideNavSide.Left
             ? " side-nav-left"
             : " side-nav-right";
-        Class += IsOpen
-            ? " side-nav-open"
-            : " side-nav-closed";
+        if (!IsOpen)
+            _class += " closed";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -37,7 +35,7 @@
             BlazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.SideNav.create";
             var options = new SideNavOptions {
-                Direction = Direction,
+                Side = Side,
             };
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 identifier,
@@ -55,8 +53,6 @@
     }
 
     [JSInvokable]
-    public Task OnClosed() => Closed.InvokeAsync();
-
-    [JSInvokable]
-    public Task OnOpened() => Opened.InvokeAsync();
+    public Task OnVisibilityChanged(bool isOpen)
+        => VisibilityChanged.InvokeAsync(isOpen);
 }

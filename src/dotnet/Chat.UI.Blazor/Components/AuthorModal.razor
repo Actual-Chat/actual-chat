@@ -21,7 +21,7 @@
     </div>
     </Body>
     <Buttons>
-        <Button Class="btn-primary" Click="@(_ => ModalInstance.CloseAsync())">Close</Button>
+        <Button Class="btn-primary" Click="@(_ => Modal.Close())">Close</Button>
     </Buttons>
 </DialogFrame>
 
@@ -33,7 +33,7 @@
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
     private ChatId ChatId => AuthorId.ChatId; // Shortcut
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()

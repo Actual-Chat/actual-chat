@@ -104,7 +104,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var entryIdString = Nav.Uri.ToUri().Fragment.TrimStart('#');
         if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
             var uriWithoutEntryId = new UriBuilder(Nav.Uri) {Fragment = ""}.ToString();
-            Nav.ExecuteOnSameLocationWithDelay(TimeSpan.FromSeconds(3),
+            Nav.ExecuteUnlessLocationChanged(TimeSpan.FromSeconds(3),
                 () => Nav.NavigateTo(uriWithoutEntryId, false, true)
             );
             NavigateToEntry(entryId);

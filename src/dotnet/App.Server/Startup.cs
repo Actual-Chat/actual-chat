@@ -29,6 +29,15 @@ public class Startup
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.AddConsole();
+            var devLogPath = Environment.GetEnvironmentVariable("DevLog");
+            if (!devLogPath.IsNullOrEmpty())
+                logging.AddFile(
+                    devLogPath,
+                    LogLevel.Debug,
+                    retainedFileCountLimit: 1,
+                    outputTemplate: "{Timestamp:mm:ss.fff} {Level:u3}-{SourceContext} {Message}{NewLine}{Exception}"
+                    );
+
 #pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
 #pragma warning restore IL2026

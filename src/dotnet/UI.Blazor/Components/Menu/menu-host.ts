@@ -20,7 +20,6 @@ import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
-import { HistoryUI } from '../../Services/HistoryUI/history-ui';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
 import { Log, LogLevel, LogScope } from 'logging';
@@ -51,7 +50,6 @@ export class MenuHost implements Disposable {
     private readonly hoverMenuDelayMs = 50;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
-    private isHistoryEnabled: boolean = true;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -103,7 +101,7 @@ export class MenuHost implements Disposable {
         if (this.isShown(menu))
             void this.position(this.menu, menu);
         else
-            this.render(menu);
+            this.show(menu);
     }
 
     public hideById(id: string): void {
@@ -166,24 +164,13 @@ export class MenuHost implements Disposable {
             && m.isHoverMenu === menu.isHoverMenu;
     }
 
-    private render(menu: Menu): void {
-        debugLog?.log('render:', menu)
+    private show(menu: Menu): void {
+        debugLog?.log('show:', menu)
         if (!menu)
-            throw `${LogScope}.render: menu == null.`;
+            throw `${LogScope}.show: menu == null.`;
 
-        let oldMenu = this.menu;
         this.menu = menu;
-
-        // Maybe add history step
-        if (this.isHistoryEnabled && !menu.historyStepId && !menu.isHoverMenu) {
-            if (oldMenu?.historyStepId)
-                menu.historyStepId = oldMenu.historyStepId;
-            else
-                menu.historyStepId = HistoryUI.pushBackStep(true, () => this.hide());
-            debugLog?.log('render: added history step', history.state);
-        }
-
-        this.blazorRef.invokeMethodAsync('OnRenderRequest', menu.id, menu.menuRef, menu.isHoverMenu);
+        this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
         if (ScreenSize.isNarrow())
             VibrationUI.vibrate();
     }
@@ -205,19 +192,6 @@ export class MenuHost implements Disposable {
         }
 
         this.menu = null;
-
-        // Remove history step
-        if (this.isHistoryEnabled && menu?.historyStepId) {
-            const historyStepId = menu.historyStepId;
-            menu.historyStepId = null;
-            if (HistoryUI.isCurrentStep(historyStepId)) {
-                history.back();
-                debugLog?.log('hide: removed history step');
-            } else {
-                debugLog?.log('hide: history step has already been replaced');
-            }
-        }
-
         // Hide (un-render) it
         this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
     }
@@ -344,7 +318,7 @@ export class MenuHost implements Disposable {
                 void this.position(this.menu, menu)
         }
         else
-            this.render(menu);
+            this.show(menu);
 
         stopEvent(event);
     }
@@ -376,7 +350,7 @@ export class MenuHost implements Disposable {
         if (this.isShown(menu))
             return;
 
-        this.render(menu);
+        this.show(menu);
     }
 }
 

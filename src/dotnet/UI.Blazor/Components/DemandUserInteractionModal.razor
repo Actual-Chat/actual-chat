@@ -26,7 +26,7 @@
 
     [Inject] private InteractiveUI InteractiveUI { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public override ValueTask DisposeAsync() {
@@ -60,7 +60,7 @@
         _autoCloseCts = new CancellationTokenSource();
         var cancellationToken = _autoCloseCts.Token;
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-        _ = ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
     private string GetOperationsText(ImmutableList<string>? operations)
@@ -69,14 +69,14 @@
     // Event handlers
 
     private void OnCancelClick()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     private void OnContinueClick() {
         var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmed;
         if (whenConfirmed?.IsCompleted is false)
             TaskSource.For(whenConfirmed).TrySetResult(default);
 
-        _ = ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
     // Nested types

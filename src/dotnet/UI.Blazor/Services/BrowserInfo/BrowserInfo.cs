@@ -16,6 +16,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     private ILogger Log { get; }
 
     private HostInfo HostInfo { get; }
+    private HistoryUI HistoryUI { get; }
     private UrlMapper UrlMapper { get; }
     private IJSRuntime JS { get; }
     private UICommander UICommander { get; }
@@ -39,6 +40,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
         Log = services.LogFor(GetType());
 
         HostInfo = services.GetRequiredService<HostInfo>();
+        HistoryUI = services.GetRequiredService<HistoryUI>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         JS = services.GetRequiredService<IJSRuntime>();
         UICommander = services.GetRequiredService<UICommander>();
@@ -59,6 +61,9 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
             _backendRef,
             AppKind.ToString());
     }
+
+    public ValueTask HardRedirect(LocalUrl url)
+        => HardRedirect(url.ToAbsolute(UrlMapper));
 
     public async ValueTask HardRedirect(string url)
     {
@@ -84,9 +89,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
         }
     }
 
-    public void HardRedirect(LocalUrl url)
-        => HardRedirect(url.ToAbsolute(UrlMapper));
-
     [JSInvokable]
     public void OnInitialized(IBrowserInfoBackend.InitResult initResult) {
         // Log.LogInformation("Init: {InitResult}", initResult);
@@ -111,12 +113,16 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
             screenSize = Blazor.Services.ScreenSize.Unknown;
         // Log.LogInformation("ScreenSize = {ScreenSize}", screenSize);
 
+        bool wasNarrow;
         lock (_lock) {
             if (_screenSize.Value == screenSize)
                 return;
 
+            wasNarrow = _screenSize.Value.IsNarrow();
             _screenSize.Value = screenSize;
         }
+        if (wasNarrow != screenSize.IsNarrow())
+            HistoryUI.Fix(); // Some states depend on ScreenSize.IsNarrow / IsWide
         UICommander.RunNothing(); // To instantly update everything
     }
 }

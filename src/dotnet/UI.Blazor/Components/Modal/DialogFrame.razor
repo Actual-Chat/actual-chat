@@ -21,7 +21,7 @@
 
     [Inject] private Escapist Escapist { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public string CloseButtonClass { get; set; } = "";
@@ -36,7 +36,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender && HasEscapeHandler)
-            _escapeSubscription = await Escapist.Subscribe(() => _ = ModalInstance.CloseAsync());
+            _escapeSubscription = await Escapist.Subscribe(() => _ = Modal.Close());
     }
 
     public async ValueTask DisposeAsync() {

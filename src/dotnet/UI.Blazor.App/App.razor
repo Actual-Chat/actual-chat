@@ -8,8 +8,6 @@
 }
 
 <ScreenSizeProvider>
-    <BlazoredModal ActivateFocusTrap="true" />
-
     <AlwaysVisibleComponents/>
 
     <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
@@ -123,9 +121,6 @@
 
         // Finishing w/ theme
         await themeUI.WhenReady.WaitAsync(cancellationToken);
-
-        // Finishing w/ history ui
-        await HistoryUI.WhenReady.WaitAsync(cancellationToken);
     }
 
     private async Task Loaded()

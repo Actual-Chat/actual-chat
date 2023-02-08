@@ -46,10 +46,9 @@
 }
 
 <SideNav
-    Direction="SideNavDirection.RightToLeft"
-    Opened="@(() => RightPanelUI.ChangeVisibility(true))"
-    Closed="@(() => RightPanelUI.ChangeVisibility(false))"
-    IsOpen="@(!isNarrow)">
+    Side="SideNavSide.Right"
+    IsOpen="@RightPanelUI.IsVisible.Value"
+    VisibilityChanged="@(isOpen => RightPanelUI.SetIsVisible(isOpen))">
     <div class="docs-right-panel">
         <DocsRightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">

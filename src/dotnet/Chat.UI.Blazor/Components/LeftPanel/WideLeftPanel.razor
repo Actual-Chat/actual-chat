@@ -43,7 +43,7 @@
         => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
 
     private void OnHideLeftPanelClick()
-        => NavbarUI.ChangeVisibility(false);
+        => NavbarUI.SetIsVisible(false);
 
     private void OnSearchBoxTextChanged(string text)
         => SearchUI.Text.Value = text;

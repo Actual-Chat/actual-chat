@@ -42,7 +42,7 @@
     [Inject] private ComponentIdGenerator IdGenerator { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
@@ -59,7 +59,7 @@
     }
 
     private void CloseModal()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     public sealed record Model(
         string Url,

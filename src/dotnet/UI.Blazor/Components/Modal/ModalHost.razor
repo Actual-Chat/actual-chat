@@ -1,0 +1,112 @@
+﻿@using System.Collections.ObjectModel
+@using ActualChat.UI.Blazor.Components.Internal
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@using Microsoft.AspNetCore.Components.Routing
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var renderedRefs = _renderedRefs;
+    _renderedRefs = _refs;
+    if (renderedRefs != _refs) {
+        var hadModals = renderedRefs.Count != 0;
+        var hasModals = _refs.Count != 0;
+        if (hadModals != hasModals)
+            JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ModalHost.updateBodyStyle", hasModals);
+        if (hasModals || hadModals) {
+            var tuneName = _refs.Count >= renderedRefs.Count ? "open-modal" : "close-modal";
+            TuneUI.Play(tuneName);
+        }
+    }
+}
+
+<CascadingValue Value="this">
+    @foreach (IModalRefImpl modalRef in _refs) {
+        @(modalRef.View)
+    }
+</CascadingValue>
+
+@code {
+    private string _lastLocation = "";
+    private ImmutableList<ModalRef> _renderedRefs = ImmutableList<ModalRef>.Empty;
+    private ImmutableList<ModalRef> _refs = ImmutableList<ModalRef>.Empty;
+
+    [Inject] private ModalUI ModalUI { get; set; } = null!;
+    [Inject] private TuneUI TuneUI { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    public IServiceProvider Services => ModalUI.Services;
+    public ModalOptions DefaultOptions { get; private set; } = null!;
+    public IReadOnlyCollection<ModalRef> Refs => _refs;
+
+    public event Action? OnModalClosed;
+
+    protected override void OnInitialized()
+    {
+        DefaultOptions = (Services.GetService<ModalOptions>() ?? new()).WithDefaults(ModalOptions.Default);
+        _lastLocation = Nav.Uri;
+        Nav.LocationChanged += OnLocationChanged;
+        ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
+    }
+
+    public ModalRef? FindRef(Symbol id)
+        => Refs.SingleOrDefault(x => x.Id == id);
+
+    public ModalRef Open(ModalOptions options, RenderFragment content)
+    {
+        options = options.WithDefaults(DefaultOptions);
+        var modalRef = new ModalRef(options, this);
+        var modalRefImpl = (IModalRefImpl)modalRef;
+        var view = new RenderFragment(builder => {
+            builder.OpenComponent<Modal>(0);
+            builder.SetKey(modalRef);
+            builder.AddAttribute(1, "Ref", modalRef);
+            builder.AddAttribute(2, "Content", content);
+            builder.AddComponentReferenceCapture(3, modal => modalRefImpl.SetModal((Modal)modal));
+            builder.CloseComponent();
+        });
+        modalRefImpl.SetView(view);
+        _refs = _refs.Add(modalRef);
+        StateHasChanged();
+        return modalRef;
+    }
+
+    public bool Close(Symbol id, bool forceClose = false) {
+        var modalRef = FindRef(id);
+        if (modalRef == null)
+            return true;
+
+        var mustClose = forceClose || (modalRef.Options.Closing?.Invoke(modalRef) ?? true);
+        if (!mustClose)
+            return false;
+
+        _refs = _refs.Remove(modalRef);
+        StateHasChanged();
+        OnModalClosed?.Invoke();
+        return true;
+    }
+
+    public bool CloseAll(bool forceClose = false) {
+        if (_refs.Count == 0)
+            return true;
+
+        var modalRefs = _refs.ToList(); // Copy to another list
+        modalRefs.Reverse(); // In-place reverse
+        foreach (var modalRef in modalRefs) {
+            if (!modalRef.Close(forceClose))
+                return false;
+        }
+        return true;
+    }
+
+    // Event handlers
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        var isLocationChanged = !OrdinalEquals(_lastLocation, e.Location);
+        _lastLocation = e.Location;
+        if (!isLocationChanged)
+            return;
+
+        CloseAll();
+    }
+}

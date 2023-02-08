@@ -40,7 +40,7 @@
         => Chats.GetRules(Session, Chat.Id, default);
 
     private void OnHideRightPanelClick()
-        => RightPanelUI.ChangeVisibility(false);
+        => RightPanelUI.SetIsVisible(false);
 
     private Task OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.Model(Chat));

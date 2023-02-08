@@ -49,7 +49,7 @@
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
@@ -67,14 +67,11 @@
             return;
 
         _form.CopyToBase();
-        CloseModal();
+        Modal.Close();
     }
 
     private void OnCancel()
-        => CloseModal();
-
-    private void CloseModal()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     public sealed class FormModel : FormModel<FormModel> {
 

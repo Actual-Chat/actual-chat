@@ -16,6 +16,7 @@ public static partial class Constants
 
         // UI
         public static bool VirtualList { get; } = true;
+        public static bool HistoryUI { get; } = true;
         public static bool ChatUI { get; } = false;
 
         // Audio

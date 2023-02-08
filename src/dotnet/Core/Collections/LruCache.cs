@@ -1,13 +1,10 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.Collections;
 
-public interface ILruCache<in TKey, TValue>
+public interface ILruCache<TKey, TValue>
     where TKey : notnull
 {
     int Capacity { get; }
     int Count { get; }
-
     TValue this[TKey key] { get; set; }
 
     bool TryGetValue(TKey key, out TValue value);
@@ -16,6 +13,7 @@ public interface ILruCache<in TKey, TValue>
     void Add(TKey key, TValue value);
     bool Remove(TKey key);
     void Clear();
+    IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false);
 }
 
 public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
@@ -104,6 +102,24 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     {
         _dictionary.Clear();
         _list.Clear();
+    }
+
+
+    public IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false)
+    {
+        if (recentFirst) {
+            var item = _list.First;
+            while (item != null) {
+                yield return item.Value;
+                item = item.Next;
+            }
+        } else {
+            var item = _list.Last;
+            while (item != null) {
+                yield return item.Value;
+                item = item.Previous;
+            }
+        }
     }
 
     // Private methods
