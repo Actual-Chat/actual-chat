@@ -1,14 +1,11 @@
-@using System.Security.Claims
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    var user = account.User;
     var avatar = account.Avatar;
     var link = Links.User(account.Id).ToDisplayUrl(UrlMapper);
-    user.Claims.TryGetValue(ClaimTypes.Email, out var email);
 }
 
 <Tile>
@@ -24,10 +21,10 @@
             <TileButtons HideSetDefaultButton="true" OnEditClick="@OnEditClick"/>
         </Right>
         <Content>
-            @account.User.Name
+            @account.FullName
         </Content>
         <Caption>
-            Username
+            Name
         </Caption>
     </TileItem>
 
@@ -36,13 +33,13 @@
             <i class="icon-at text-xl"></i>
         </Icon>
         <Content>
-            @email
+            @account.Email
         </Content>
         <Caption>
-            Identity
+            Email
         </Caption>
         <Right>
-            <CopyToClipboard InputClass="hidden" ButtonClass="btn-sm transparent tile-hidden-btn" Text="@email" HideCopiedTag="true"/>
+            <CopyToClipboard InputClass="hidden" ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Email" HideCopiedTag="true"/>
         </Right>
     </TileItem>
 
@@ -104,19 +101,19 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
-            InitialValue = AccountUI.OwnAccount.Value,
+            InitialValue = AccountFull.Loading,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken);
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => Accounts.GetOwn(Session, cancellationToken);
 
     private Task OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);

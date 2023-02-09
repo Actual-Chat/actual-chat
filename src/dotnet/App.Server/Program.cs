@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services;
 using Grpc.Core;
 
 namespace ActualChat.App.Server;
@@ -9,6 +10,16 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        RootTraceAccessor.Instance.Trace = TraceSession.Default = TraceSession.IsTracingEnabled
+            ? TraceSession.New("webserver").ConfigureOutput(TraceOutput).Start()
+            : TraceSession.Null;
+        CircuitTraceAccessor.Factory = () => {
+            if (!TraceSession.IsTracingEnabled)
+                return TraceSession.Null;
+            var traceId = string.Concat("circuit_", Guid.NewGuid().ToString().AsSpan(0, 8));
+            return TraceSession.New(traceId).ConfigureOutput(TraceOutput).Start();
+        };
+
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;
@@ -70,5 +81,8 @@ internal static class Program
             // true is dangerous: if user block in async code, this can easily lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
         }
+
+        static void TraceOutput(string m)
+            => Console.WriteLine(m);
     }
 }

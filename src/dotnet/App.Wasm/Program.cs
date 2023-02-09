@@ -1,10 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.Performance;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sentry;
 using Stl.Interception.Interceptors;
 
 namespace ActualChat.App.Wasm;
@@ -18,17 +21,37 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<,>))]
     public static async Task Main(string[] args)
     {
-        var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        var baseUrl = builder.HostEnvironment.BaseAddress;
-        await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
+        var trace = TraceSession.Default = TraceSession.IsTracingEnabled
+            ? TraceSession.New("main").ConfigureOutput(m => Console.Out.WriteLine(m)).Start()
+            : TraceSession.Null;
+        trace.Track("Wasm.Program.Main");
+        // Capture blazor bootstrapping errors
+        using var sdk = SentrySdk.Init(options => options.ConfigureForApp());
+        try {
+            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+            var baseUrl = builder.HostEnvironment.BaseAddress;
+            builder.Services.AddTraceSession(trace);
+            var step = trace.TrackStep("ConfigureServices");
+            await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
+            step.Complete();
 
-        var host = builder.Build();
-        Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
-        if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
+            step = trace.TrackStep("Building wasm host");
+            var host = builder.Build();
+            step.Complete();
+            Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
+            if (Constants.DebugMode.WebMReader)
+                WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
-        await host.Services.HostedServices().Start().ConfigureAwait(false);
-        await host.RunAsync().ConfigureAwait(false);
+            step = trace.TrackStep("Starting host services");
+            await host.Services.HostedServices().Start().ConfigureAwait(false);
+            step.Complete();
+            await host.RunAsync().ConfigureAwait(false);
+        }
+        catch (Exception exc) {
+            SentrySdk.CaptureException(exc);
+            await SentrySdk.FlushAsync().ConfigureAwait(false);
+            throw;
+        }
     }
 
     public static async Task ConfigureServices(
@@ -60,6 +83,6 @@ public static class Program
             BaseUrl = baseUrl,
         });
 
-        await AppStartup.ConfigureServices(services).ConfigureAwait(false);
+        await AppStartup.ConfigureServices(services, AppKind.WasmApp).ConfigureAwait(false);
     }
 }

@@ -136,6 +136,8 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('AudioContextSource', LogLevel.Debug);
     // minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
+    minLevels.set('OpusMediaRecorder', LogLevel.Debug);
+    minLevels.set('AudioVadWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
     // minLevels.set('HistoryUI', LogLevel.Debug);

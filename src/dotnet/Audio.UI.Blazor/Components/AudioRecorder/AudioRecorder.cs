@@ -62,7 +62,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     {
         await _messageProcessor.Complete().SuppressExceptions();
         await _messageProcessor.DisposeAsync();
-        await StopRecordingInternal();
+        await StopRecordingInternal(CancellationToken.None);
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
@@ -77,53 +77,62 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 
     public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken = default)
     {
+        DebugLog?.LogDebug(nameof(StartRecording) + ": chat #{ChatId}", chatId);
+
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
+        var recordingCts = cancellationToken.CreateLinkedTokenSource();
         try {
-            var recordingCts = cancellationToken.CreateLinkedTokenSource();
-            _messageProcessor.Enqueue(new StartAudioRecorderCommand(chatId, recordingCts), cancellationToken);
+            _messageProcessor.Enqueue(new StartAudioRecorderCommand(chatId, recordingCts), recordingCts.Token);
 
             await State.When(state => state?.IsRecording ?? false, recordingCts.Token)
                 .WaitAsync(TimeSpan.FromSeconds(5), recordingCts.Token);
         }
         catch (TimeoutException e) {
             Log.LogWarning(e, nameof(StartRecording) + " failed with timeout");
+            recordingCts.Cancel();
             var currentValue = State.Value;
             if (currentValue is { Error: null })
                 State.Value = currentValue with { Error = AudioRecorderError.Timeout };
         }
+        DebugLog?.LogDebug(nameof(StartRecording) + ": completed for chat #{ChatId}", chatId);
     }
 
     public async Task StopRecording(CancellationToken cancellationToken = default)
     {
+        DebugLog?.LogDebug(nameof(StopRecording));
+
         _messageProcessor.Enqueue(StopAudioRecorderCommand.Instance);
 
         await State.When(state => state == null, cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+           .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
     }
 
     private async Task<object?> ProcessCommand(IAudioRecorderCommand command, CancellationToken cancellationToken)
     {
+        DebugLog?.LogDebug(nameof(ProcessCommand));
         switch (command) {
         case StartAudioRecorderCommand startCommand:
             var (chatId, recordingCancellation) = startCommand;
             await WhenInitialized;
-            await StartRecordingInternal(chatId, recordingCancellation);
-            break;
+            await StartRecordingInternal(chatId, recordingCancellation, cancellationToken);
+            return nameof(StartAudioRecorderCommand);
         case StopAudioRecorderCommand:
             if (!WhenInitialized.IsCompletedSuccessfully)
                 throw StandardError.StateTransition(GetType(), "Recorder is not initialized yet.");
 
-            await StopRecordingInternal();
-            break;
+            await StopRecordingInternal(cancellationToken);
+            return nameof(StopAudioRecorderCommand);
         default:
             throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
         }
-        return null;
     }
 
-    private async Task StartRecordingInternal(ChatId chatId, CancellationTokenSource recordingCancellation)
+    private async Task StartRecordingInternal(
+        ChatId chatId,
+        CancellationTokenSource recordingCancellation,
+        CancellationToken cancellationToken)
     {
         if (State.Value != null)
             return;
@@ -132,7 +141,11 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         State.Value = new AudioRecorderState(chatId);
         try {
             if (_jsRef != null) {
-                var hasMicrophone = await _jsRef.InvokeAsync<bool>("startRecording", chatId).ConfigureAwait(false);
+                var hasMicrophone = await _jsRef.InvokeAsync<bool>(
+                        "startRecording",
+                        cancellationToken,
+                        chatId)
+                    .ConfigureAwait(false);
                 if (!hasMicrophone) {
                     Log.LogWarning($"{nameof(StartRecordingInternal)}: there is no microphone available");
                     // Cancel recording
@@ -149,7 +162,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         }
     }
 
-    private async Task StopRecordingInternal()
+    private async Task StopRecordingInternal(CancellationToken cancellationToken)
     {
         if (State.Value == null)
             return;
@@ -157,7 +170,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         DebugLog?.LogDebug(nameof(StopRecordingInternal));
 
         var state = State.Value;
-        _ = Task.Delay(TimeSpan.FromSeconds(5))
+        _ = Task.Delay(TimeSpan.FromSeconds(5), cancellationToken)
             .ContinueWith(_ => {
                 if (State.Value?.Id != state?.Id)
                     return; // We don't want to stop the next recording here
@@ -167,7 +180,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             }, TaskScheduler.Current);
 
         if (_jsRef != null)
-            await _jsRef.InvokeVoidAsync("stopRecording");
+            await _jsRef.InvokeVoidAsync("stopRecording", cancellationToken);
     }
 
     // JS backend callback handlers
@@ -176,7 +189,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     public void OnRecordingStarted(string chatId)
     {
         var recorderState = State.Value;
-        if (recorderState == null)
+        if (recorderState is not { Error: null })
             return;
 
         DebugLog?.LogDebug(nameof(OnRecordingStarted) + ": chat #{ChatId}", chatId);

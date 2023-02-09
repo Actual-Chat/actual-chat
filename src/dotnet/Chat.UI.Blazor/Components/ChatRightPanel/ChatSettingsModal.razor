@@ -63,7 +63,7 @@
                 @{
                     var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-secondary" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </div>
         </Buttons>

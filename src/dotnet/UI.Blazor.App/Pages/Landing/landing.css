@@ -14,7 +14,7 @@
 /* General styles */
 
 .landing ul {
-    @apply m-4 ml-5 mr-0;
+    @apply m-4;
     @apply md:ml-6;
     @apply list-disc;
 }
@@ -35,7 +35,7 @@
 }
 .landing .title-text {
     @apply text-start;
-    @apply text-7xl font-semibold;
+    @apply text-7xl md:text-6xl lg:text-7xl font-semibold;
 }
 .landing .title-text.highlight {
     @apply font-bold;
@@ -205,7 +205,7 @@ body.narrow .landing-header .header-text {
 
 /* Page styles */
 .landing .page {
-    @apply text-base md:text-2xl;
+    @apply text-base md:text-xl lg:text-2xl;
 }
 .landing .page .features-text {
     @apply text-base md:text-lg;
@@ -244,7 +244,7 @@ body.narrow .landing .page-1 .main-text {
 .signin-button-group {
     @apply flex-x items-center;
     @apply px-2;
-    @apply h-12;
+    @apply h-12 w-fit;
     @apply rounded-full;
     @apply bg-01;
     @apply text-01 font-semibold;
@@ -394,6 +394,73 @@ body.narrow .landing .landing-menu {
 }
 body.narrow .landing-links {
     @apply flex-y;
+}
+.download-btn {
+    @apply flex-x gap-x-4 items-center;
+    @apply h-12;
+    @apply px-4;
+    @apply rounded-full;
+    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
+}
+
+.page-container {
+    @apply flex-y;
+    @apply h-full;
+    @apply p-14;
+}
+.page-container.with-header {
+    @apply pt-0;
+}
+.page-container.with-footer {
+    @apply pb-0;
+}
+body.narrow .page-container {
+    @apply px-4 pb-4;
+}
+.page-container .c-content {
+    @apply justify-around;
+    @apply h-full;
+}
+.page .c-header {
+    @apply flex-x justify-center;
+    @apply pt-16 pb-8;
+    @apply text-5xl font-semibold;
+}
+body.narrow .c-header {
+    @apply flex-y items-center;
+    @apply pt-14 pb-4;
+    @apply text-title-1;
+}
+.page-container img {
+    @apply h-full;
+}
+.features-grid {
+    @apply flex-col gap-y-12;
+    @apply mt-8;
+}
+body.wide .features-grid {
+    @apply justify-around gap-y-4;
+}
+.features-grid .c-row {
+    @apply flex-y md:flex-x justify-around gap-y-12;
+}
+.features-grid .c-cell {
+    @apply flex-y gap-y-2;
+    @apply md:w-72;
+}
+.features-grid .c-image {
+    @apply flex justify-start md:items-end;
+    @apply md:h-36;
+}
+.features-grid .c-image img {
+    @apply flex-1 md:flex-none;
+}
+.features-grid .c-text {
+    @apply flex-y;
+    @apply px-2;
+}
+body.narrow .features-grid .c-text {
+    @apply text-2xl;
 }
 
 /* Docs */

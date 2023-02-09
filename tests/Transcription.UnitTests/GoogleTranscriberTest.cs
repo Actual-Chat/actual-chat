@@ -191,15 +191,27 @@ public class GoogleTranscriberTest : TestBase
         transcript.TimeRange.End.Should().BeLessThan(23f);
     }
 
-    [Fact(Skip = "Needs to be fixed")]
+    [Fact]
     public async Task LongTranscriptProducesCorrectDiff()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"), CancellationToken.None);
 
         var transcripts = process.GetTranscripts();
-        var diffs = transcripts.GetDiffs(CancellationToken.None);
-        await foreach (var diff in diffs)
+        var memoizedTranscripts = transcripts.Memoize();
+        var diffs = memoizedTranscripts.Replay().GetDiffs(CancellationToken.None);
+        var memoizedDiffs = diffs.Memoize();
+        await foreach (var diff in memoizedDiffs.Replay())
             Out.WriteLine(diff.ToString());
+
+        var transcript = await memoizedTranscripts.Replay()
+            .LastAsync();
+        var restoredTranscript = await memoizedDiffs.Replay()
+            .ApplyDiffs(CancellationToken.None)
+            .LastAsync();
+
+        transcript.Text.Should().Be(restoredTranscript.Text);
+        transcript.TextToTimeMap.Data.Should().BeSubsetOf(restoredTranscript.TextToTimeMap.Data);
+        restoredTranscript.TextToTimeMap.Data.Should().BeSubsetOf(transcript.TextToTimeMap.Data);
     }
 }

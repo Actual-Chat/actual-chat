@@ -3,23 +3,28 @@ namespace ActualChat.App.Maui.Services;
 public class MobileAuthClient
 {
     private ClientAppSettings AppSettings { get; }
-    private UrlMapper UrlMapper { get; }
+    private HttpClient HttpClient { get; }
+    private BaseUrlProvider BaseUrlProvider { get; }
     private ILogger<MobileAuthClient> Log { get; }
 
-    public MobileAuthClient(IServiceProvider services)
+    public MobileAuthClient(
+        ClientAppSettings clientAppSettings,
+        BaseUrlProvider baseUrlProvider,
+        HttpClient httpClient,
+        ILogger<MobileAuthClient> log)
     {
-        AppSettings = services.GetRequiredService<ClientAppSettings>();
-        UrlMapper = services.GetRequiredService<UrlMapper>();
-        Log = services.GetRequiredService<ILogger<MobileAuthClient>>();
+        AppSettings = clientAppSettings;
+        HttpClient = httpClient;
+        BaseUrlProvider = baseUrlProvider;
+        Log = log;
     }
 
     public async Task<bool> SetupSession()
     {
-        var sessionId = AppSettings.SessionId;
-        var requestUri = $"{UrlMapper.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
         try {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(true);
+            var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+            var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
@@ -32,11 +37,10 @@ public class MobileAuthClient
     {
         if (string.IsNullOrEmpty(code))
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
-        var sessionId = AppSettings.SessionId;
-        var requestUri = $"{UrlMapper.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
+        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+        var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(true);
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
@@ -47,11 +51,10 @@ public class MobileAuthClient
 
     public async Task<bool> SignOut()
     {
-        var sessionId = AppSettings.SessionId;
-        var requestUri = $"{UrlMapper.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
+        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+        var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(requestUri).ConfigureAwait(true);
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {

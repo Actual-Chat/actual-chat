@@ -76,7 +76,7 @@
         <div class="btn-group">
             <Button
                 Click="@(() => Modal.Close())"
-                Class="btn-outline">
+                Class="btn-cancel">
                 Cancel
             </Button>
             <Button
@@ -180,8 +180,10 @@
             if (createAuthorsError != null)
                 return;
 
-            Modal.Close();
             Nav.NavigateTo(Links.Chat(chat.Id));
+            // Required for proper navigation to the newly created chat
+            await Task.Delay(100);
+            Modal.Close();
         }
         catch { // Intended: command errors are shown in the UI anyway
         }

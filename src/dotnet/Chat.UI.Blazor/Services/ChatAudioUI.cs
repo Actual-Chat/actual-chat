@@ -13,8 +13,6 @@ public partial class ChatAudioUI : WorkerBase
     private AudioSettings AudioSettings { get; }
     private AudioRecorder AudioRecorder { get; }
     private ChatPlayers ChatPlayers { get; }
-    private IdleAudioMonitor IdleRecordingMonitor { get; }
-    private IdleAudioMonitor IdleListeningMonitor { get; }
     private IChats Chats { get; }
     private ActiveChatsUI ActiveChatsUI { get; }
     private TuneUI TuneUI { get; }
@@ -35,8 +33,6 @@ public partial class ChatAudioUI : WorkerBase
         AudioSettings = services.GetRequiredService<AudioSettings>();
         AudioRecorder = services.GetRequiredService<AudioRecorder>();
         ChatPlayers = services.GetRequiredService<ChatPlayers>();
-        IdleRecordingMonitor = services.GetRequiredService<IdleAudioMonitor>();
-        IdleListeningMonitor = services.GetRequiredService<IdleAudioMonitor>();
         Clocks = services.Clocks();
         Chats = services.GetRequiredService<IChats>();
         LanguageUI = services.GetRequiredService<LanguageUI>();

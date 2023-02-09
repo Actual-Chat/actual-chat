@@ -84,6 +84,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     {
         var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
+            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(RunInternal) + " cycle");
             var message = process.Message;
             process.MarkStarted();
             try {

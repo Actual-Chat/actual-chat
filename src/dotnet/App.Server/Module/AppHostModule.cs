@@ -6,6 +6,7 @@ using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
@@ -91,7 +92,9 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
+        app.UseDistFiles();
         app.UseStaticFiles();
+
         /*
         app.UseSwagger();
         app.UseSwaggerUI(c => {

@@ -105,9 +105,9 @@
     </div>
 
     @* Page 1 *@
-    <div class="page page-1">
+    <div class="page page-1 h-screen">
         <div class="page-1-wrapper overflow-hidden">
-            <div class="flex-x h-screen overflow-hidden @(isNarrow ? "px-8" : "px-16")">
+            <div class="flex-x h-full overflow-hidden @(isNarrow ? "px-8" : "px-16")">
                 <div class="main-text">
                     <div class="md:text-4xl font-normal text-04 pt-12">
                         <div class="title-text main">To call, to text, or<br/>to voice message?</div>
@@ -120,7 +120,7 @@
                             <strong>We are here to redefine the meaning of "Chat".</strong>
                         </p>
                     </div>
-                    <div class="flex @(isNarrow ? "justify-center" : "") pt-8">
+                    <div class="flex gap-x-8 @(isNarrow ? "flex-col items-center" : "") pt-8">
                         @if (isGuest) {
                             <button class="signin-button-group bg-01" onclick="@(() => SignIn(googleScheme.Name))">
                                 <span class="px-2 text-xl font-semibold">Sign in with</span>
@@ -139,6 +139,7 @@
                             @*     </AppleIcon> *@
                             @* </SigninButtonGroup> *@
                         }
+                        <DownloadButton/>
                     </div>
                 </div>
                 <div class="flex w-2/5 justify-center @(isNarrow ? "hidden" : "")">
@@ -149,85 +150,76 @@
     </div>
 
     @* Page 2 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-01 @(isNarrow ? "grid pt-14" : "flex-x")">
-            <div class="flex items-center @(isNarrow ? "p-4" : "flex-1 p-16 pr-4")">
-                <div class="flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/evolution.svg" alt="evolution">
-                </div>
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 gap-y-8 p-16 pl-4 text-4xl")">
-                <div class="title-text">
-                    We used to speak, laugh, and cry
-                </div>
-                <p>
-                    But now we text, "like", and send emojis.
-                </p>
-                <p>
-                    It's slower, inconvenient, and less expressive.
-                </p>
-                <p>
-                    With all the progress in technology and AI,<br/>
-                    how it happened that <strong>we can't just talk</strong> in chats?
-                </p>
-            </div>
-        </div>
-    </div>
+<LandingItem
+    ImagePositionMobile="ImagePosition.Top"
+    ImagePositionDesktop="ImagePosition.Left"
+    Class="h-screen">
+    <ChildContent>
+        <LandingItemImage>
+            <img src="/dist/images/landing/evolution.svg" alt="evolution">
+        </LandingItemImage>
+        <LandingItemDescription Title="We used to speak, laugh, and cry">
+            <p>
+                But now we text, "like", and send emojis.
+            </p>
+            <p>
+                It's slower, inconvenient, and less expressive.
+            </p>
+            <p>
+                With all the progress in technology and AI,<br/>
+                how it happened that <strong>we can't just talk</strong> in chats?
+            </p>
+        </LandingItemDescription>
+    </ChildContent>
+</LandingItem>
 
     @* Page 3 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="bg-[#EEEEF6] @(isNarrow ? "h-full flex-y pt-14" : "h-screen flex-x pt-20")">
-            <div class="grid h-full gap-y-5 @(isNarrow ? "px-4" : "w-3/5 justify-center p-16 pb-24 pr-6")">
-                <div class="title-text !-mb-8 md:mb-0">
-                    We reimagine calls, texts and voice messages
-                </div>
-                @if (isNarrow) {
-                    <div class="flex justify-center p-4">
-                        <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
-                    </div>
-                }
-                <div class="flex-none flex-y">
-                    <div class="font-semibold">
-                        By blending voice and text into a single medium.
-                    </div>
-                    <p>
-                        Watch your words come to life as you talk -
-                        anything you say is transcribed and instantly available, word-by-word.
-                    </p>
-                    <p>
-                        And it's not just a transcript - <strong>it's voice + text, streamed in real time</strong>.
-                        Listen to chats like a call, without the need for a call.
-                    </p>
-                    @if (!isNarrow) {
-                        <p>
-                            Effortlessly catch up on missed moments - every conversation
-                            is captured in text and audio for later playback or reading.
-                        </p>
-                    }
-                </div>
-            </div>
-            @if (!isNarrow) {
-                <div class="flex justify-center w-2/5 p-16 pb-24 pl-0">
-                    <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
-                </div>
-            }
-        </div>
-    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="h-screen bg-[#EEEEF6]">
+        <ChildContent>
+            <LandingItemTitle Class="flex md:hidden">
+                We reimagine calls, texts and voice messages
+            </LandingItemTitle>
+            <LandingItemImage>
+                <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
+            </LandingItemImage>
+            <LandingItemDescription Title="We reimagine calls, texts and voice messages" TitleClass="hidden md:flex">
+                <p class="font-semibold">
+                    By blending voice and text into a single medium.
+                </p>
+                <p>
+                    Watch your words come to life as you talk -
+                    anything you say is transcribed and instantly available, word-by-word.
+                </p>
+                <p>
+                    And it's not just a transcript - <strong>it's voice + text, streamed in real time</strong>.
+                    Listen to chats like a call, without the need for a call.
+                </p>
+                <p>
+                    Effortlessly catch up on missed moments - every conversation
+                    is captured in text and audio for later playback or reading.
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 4 *@
-    <div class="page @(isNarrow ? "h-screen" : "") overflow-hidden">
-        <div class="flex w-full items-center justify-center pb-4 px-16 @(isNarrow ? "pt-14" : "h-56 pt-16")">
-            <div class="@(isNarrow ? "flex-y items-center pb-4 text-title-1" : "flex-x text-5xl font-semibold")">
-                <span>We believe&nbsp;</span>
-                <span>communication must be...</span>
-            </div>
-        </div>
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "grid px-4" : "flex-x")">
-            <div class="flex justify-center p-8 @(isNarrow ? "py-4" : "w-1/2")">
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen bg-[#EEEEF6]"
+        HeaderClass="bg-01">
+        <HeaderContent>
+            <span>We believe&nbsp;</span>
+            <span>communication must be...</span>
+        </HeaderContent>
+        <ChildContent>
+            <LandingItemImage>
                 <img src="/dist/images/landing/stressless.svg" alt="stressless">
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "" : "w-1/2 p-8")">
-                <div class="title-text">Stressless</div>
+            </LandingItemImage>
+            <LandingItemDescription Title="Stressless">
                 <ul>
                     <li>
                         <strong>61%</strong> of the millennials and
@@ -241,32 +233,20 @@
                         Most even need to work up the courage to press the "Call" button.
                     </li>
                 </ul>
-                @if (!isNarrow) {
-                    <div>
-                        Believe it or not, but there is no “Call” button in Actual Chat.
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+                <p>
+                    Believe it or not, but there is no “Call” button in Actual Chat.
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 5 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden @(isNarrow ? "-flex-y pt-14 justify-around" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
-                <div class="title-text">Seamless &amp; Frictionless</div>
-                <ul>
-                    <li>
-                        Typing is great, but sometimes it's not practical or feasible
-                    </li>
-                    <li>
-                        Driving, jogging, or about to sleep, but need to respond?
-                        Just hit the microphone button & start talking &ndash;
-                        we'll do the rest!
-                    </li>
-                </ul>
-            </div>
-            <div class="@(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="h-screen">
+        <ChildContent>
+            <LandingItemImage>
                 <div class="flex-y gap-y-4 justify-center w-full h-full">
                     <div class="flex-x gap-x-8">
                         <div class="flex overflow-hidden justify-center items-center">
@@ -285,20 +265,32 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
+            </LandingItemImage>
+            <LandingItemDescription Title="Seamless &amp; Frictionless">
+                <ul>
+                    <li>
+                        Typing is great, but sometimes it's not practical or feasible
+                    </li>
+                    <li>
+                        Driving, jogging, or about to sleep, but need to respond?
+                        Just hit the microphone button & start talking &ndash;
+                        we'll do the rest!
+                    </li>
+                </ul>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 6 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full overflow-hidden bg-[#EEEEF6] @(isNarrow ? "grid pt-14" : "flex-x")">
-            <div class="flex items-center @(isNarrow ? "p-4" : "w-1/2 p-16 pr-6")">
-                <div class="flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
-                </div>
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-[60%] p-16 pb-24 pl-6")">
-                <div class="title-text">Real-time + asynchronous</div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen bg-[#EEEEF6]">
+        <ChildContent>
+            <LandingItemImage>
+                <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
+            </LandingItemImage>
+            <LandingItemDescription Title="Real-time + asynchronous">
                 <ul>
                     <li>
                         Start any conversation as asynchronous,
@@ -312,50 +304,20 @@
                         as in regular chats in this case.
                     </li>
                 </ul>
-            </div>
-        </div>
-    </div>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 7 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full @(isNarrow ? "-flex-y pt-14 justify-around" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pr-6")">
-                <div class="title-text">Productive</div>
-                <ul>
-                    <li>
-                        Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
-                    </li>
-                    <li>
-                        "I explained the problem to your colleague in December. Do you have any notes on this?"
-                        &ndash; "Sorry, but no... Could you explain it again?"
-                    </li>
-                    <li>
-                        Have you ever dreamed of highlighting the important parts of a voice conversation
-                        to have the summary later?
-                    </li>
-                </ul>
-                @if (!isNarrow) {
-                    <div>
-                        Actual Chat shines in these scenarios.
-                    </div>
-                }
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                <div class="flex-1 flex overflow-hidden justify-center items-center">
-                    <img src="/dist/images/landing/productive.svg" alt="productive" class="h-full max-h-96">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @* Page 7.5 *@
-    <div class="page @(isNarrow ? "h-screen" : "")">
-        <div class="h-full bg-[#EEEEF6] @(isNarrow ? "grid pt-14" : "flex-x")">
-            <div class="flex-y justify-center @(isNarrow ? "p-4" : "w-1/2 p-16")">
-                <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly" class="max-h-120">
-            </div>
-            <div class="flex-y justify-center @(isNarrow ? "px-4" : "w-1/2 p-16 pl-6")">
-                <div class="title-text">Team-friendly</div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen">
+        <ChildContent>
+            <LandingItemImage>
+                <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly">
+            </LandingItemImage>
+            <LandingItemDescription Title="Team-friendly">
                 <p>
                     The dilemma of real-time vs asynchronous communication style
                     is a common issue in almost any team:
@@ -374,24 +336,54 @@
                            target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
                     </li>
                 </ul>
-                @if (!isNarrow) {
-                    <p>
-                        Is there a solution helping to address some of these issues?
-                        We hope you just found it!
-                    </p>
-                }
-            </div>
-        </div>
-    </div>
+                <p>
+                    Is there a solution helping to address some of these issues?
+                    We hope you just found it!
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
+
+    @* Page 7.5 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="h-screen bg-[#EEEEF6]">
+        <ChildContent>
+            <LandingItemImage>
+                <img src="/dist/images/landing/productive.svg" alt="productive">
+            </LandingItemImage>
+            <LandingItemDescription Title="Productive">
+                <ul>
+                    <li>
+                        Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
+                    </li>
+                    <li>
+                        "I explained the problem to your colleague in December. Do you have any notes on this?"
+                        &ndash; "Sorry, but no... Could you explain it again?"
+                    </li>
+                    <li>
+                        Have you ever dreamed of highlighting the important parts of a voice conversation
+                        to have the summary later?
+                    </li>
+                </ul>
+                <p>
+                    Actual Chat shines in these scenarios.
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 8 *@
-    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y items-center justify-center overflow-hidden @(isNarrow ? "h-full px-4 pt-14 pb-8 gap-y-4" : "h-screen px-16 py-24 gap-y-8")">
-            <div class="flex font-semibold @(isNarrow ? "self-center text-4.5xl" : "self-start text-7xl")">
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="@(isNarrow ? "no-auto-scroll" : "h-screen")">
+        <ChildContent>
+            <LandingItemTitle>
                 Enjoyable and Fun
-            </div>
-            <div class="@(isNarrow ? "grid grid-rows-3 gap-y-8" : "grid grid-cols-3 gap-x-8")">
-
+            </LandingItemTitle>
+            <LandingItemImage Class="flex-col gap-y-12 md:flex-row">
                 <div class="flex-y gap-y-2">
                     <div class="flex h-60 items-center justify-center">
                         <img src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
@@ -410,7 +402,7 @@
                     </div>
                 </div>
 
-                <div class="flex-y">
+                <div class="flex-y gap-y-2">
                     <div class="flex h-60 items-center justify-center">
                         <img src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
                     </div>
@@ -418,90 +410,38 @@
                         Jokes are almost always more fun when delivered verbally
                     </div>
                 </div>
-
-            </div>
-        </div>
-        <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
-    </div>
+            </LandingItemImage>
+        </ChildContent>
+        <FooterContent>
+            <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
+        </FooterContent>
+    </LandingItem>
 
     @* Page 9 *@
-    <div class="page @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y overflow-hidden pt-16 @(isNarrow ? "text-4.5xl px-4 gap-y-12" : "px-16 pb-8 min-h-screen")">
-            <div class="flex self-start font-semibold @(isNarrow ? "text-4.5xl " : "text-7xl")">
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="@(isNarrow ? "no-auto-scroll" : "h-screen")">
+        <ChildContent>
+            <LandingItemTitle>
                 Actual Chat Features
-            </div>
-            <div class="justify-around @(isNarrow ? "flex-y gap-y-12" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-01.svg" alt="description" class="md:h-48">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Voice and text</span>
-                        <span class="features-text">are blended together </span>
-                        <span class="features-text">&ndash; everywhere!</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-02.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Markdown-style markup</span>
-                        <span class="features-text">
-                            **bold**, *italic*, `preformatted` text and ```code blocks```
-                        </span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-03.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Replies, @@mentions, and reactions</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="justify-around @(isNarrow ? "flex-y gap-y-12" : "flex-x")">
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-04.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Group and peer-to-peer</span>
-                        <span class="font-bold">chats</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-07.png" alt="description" class="max-w-4/5 md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Unlimited image & file uploads</span>
-                    </div>
-                </div>
-                <div class="flex-y gap-y-2 @(isNarrow ? "" : "w-80")">
-                    <div class="flex @(isNarrow ? "justify-center" : "h-48 items-end")">
-                        <img src="/dist/images/landing/dialog-06.svg" alt="description" class="md:h-40">
-                    </div>
-                    <div class="flex-y px-2 @(isNarrow ? "text-2xl" : "")">
-                        <span class="font-bold">Avatars</span>
-                        <span class="features-text">
-                            change name, picture, and bio on per-chat basis
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+            </LandingItemTitle>
+            <LandingItemImage Class="features-grid">
+                <LandingFeatures/>
+            </LandingItemImage>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 10 *@
-    <div class="page justify-center bg-[#EEEEF6]) @(isNarrow ? "no-auto-scroll" : "")">
-        <div class="flex-y justify-center items-start overflow-hidden @(isNarrow ? "px-4 pb-8 pt-14 gap-y-8" : "p-16 gap-y-16")">
-            <div class="font-semibold @(isNarrow ? "flex-y text-4.5xl" : "flex-x text-7xl")">
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="@(isNarrow ? "no-auto-scroll bg-[#EEEEF6]" : "h-screen bg-[#EEEEF6]")">
+        <ChildContent>
+            <LandingItemTitle>
                 <span>What`s&nbsp;</span><span>upcoming?</span>
-            </div>
-            <div class="flex-x w-full justify-between @(isNarrow ? "flex-y gap-y-8" : "flex-x")">
+            </LandingItemTitle>
+            <LandingItemImage Class="justify-between flex-col gap-y-8 md:flex-row md:mt-16">
                 <div class="flex-y gap-y-8 min-w-1/3">
                     <LandingUpcomingItem Text="Highlights & conversations"/>
                     <LandingUpcomingItem Text="Action items"/>
@@ -517,72 +457,34 @@
                     <LandingUpcomingItem Text="Phone integration"/>
                     <LandingUpcomingItem Text="Search everywhere"/>
                 </div>
-            </div>
-        </div>
-    </div>
+            </LandingItemImage>
+        </ChildContent>
+    </LandingItem>
 
     @* Page 11 *@
-    <div class="page no-auto-scroll">
-        <div class="h-full @(isNarrow ? "grid" : "flex-y")">
-            <div class="@(isNarrow ? "flex-y" : "flex-x")">
-                <div class="@(isNarrow ? "flex-y px-4" : "flex-x w-1/2 p-16 pr-6")">
-                    <div class="font-semibold @(isNarrow ? "flex-x flex-wrap text-4.5xl text-center" : "flex-y justify-center text-7xl")">
-                        <span>Are there any fees?</span>
-                    </div>
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Left"
+        Class="h-screen">
+        <ChildContent>
+            <LandingItemImage Class="flex-col gap-y-12 md:flex-row">
+                <div class="flex-x flex-wrap title-text @(isNarrow ? "text-center" : "items-center")">
+                    <span>Are there any fees?</span>
                 </div>
-                <div class="flex-y gap-y-4 justify-center @(isNarrow ? "p-4" : "w-1/2 p-16 pl-6")">
-                    <span>Right now Actual Chat is <strong>completely free</strong>.</span>
-                    <span>We see corporate subscriptions and advanced features
-                        as our primary revenue sources.</span>
-                    <span>So if you use Actual Chat for daily communications,
-                        you shouldn’t expect any significant changes related to pricing.</span>
-                </div>
-            </div>
+            </LandingItemImage>
+            <LandingItemDescription>
+                <span>Right now Actual Chat is <strong>completely free</strong>.</span>
+                <span>We see corporate subscriptions and advanced features
+                    as our primary revenue sources.</span>
+                <span>So if you use Actual Chat for daily communications,
+                    you shouldn’t expect any significant changes related to pricing.</span>
+            </LandingItemDescription>
+        </ChildContent>
+        <FooterContent>
             <LandingLinks IsNarrow="@isNarrow" EnableIncompleteUI="@m.EnableIncompleteUI"/>
-            <div class="flex-x bg-07 @(isNarrow ? "p-4" : "py-12 px-16")">
-                <div class="flex-y flex-1">
-                    <div class="h-full justify-start text-04 @(isNarrow ? "flex-y" : "flex-x gap-x-12")">
-                        <a href="/docs/privacy" class="footer-link">
-                            Privacy
-                        </a>
-                        <a href="/docs/terms" class="footer-link">
-                            Terms
-                        </a>
-                        <a href="/docs/cookies" class="footer-link">
-                            Cookie Preferences
-                        </a>
-                        <a href="mailto:support@actual.chat" class="footer-link">
-                            Contact us
-                        </a>
-                        @if (m.EnableIncompleteUI) {
-                            <a href="#" class="footer-link">
-                                Region
-                            </a>
-                        }
-                    </div>
-                    <div class="flex items-center text-05 @(isNarrow ? "min-h-8 text-sm" : "min-h-16")">
-                        © 2023 Actual Chat Inc. All rights reserved.
-                    </div>
-                </div>
-                <div class="flex-y justify-between items-start text-04 @(isNarrow ? "hidden" : "")">
-                    <a class="footer-link" href="https://actual.chat/chat/announcements">
-                        Announcements
-                    </a>
-                    <a class="footer-link" href="https://github.com/Actual-Chat/actual-chat">
-                        GitHub
-                    </a>
-                    @if (m.EnableIncompleteUI) {
-                        <button class="footer-info-btn">
-                            Twitter
-                        </button>
-                        <button class="footer-info-btn">
-                            Medium
-                        </button>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
+            <LandingFooter/>
+        </FooterContent>
+    </LandingItem>
 </div>
 
 @code {

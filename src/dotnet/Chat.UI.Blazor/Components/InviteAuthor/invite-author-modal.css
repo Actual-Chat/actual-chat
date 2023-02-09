@@ -1,5 +1,5 @@
 .invite-author-modal.modal-frame {
-    @apply md:min-h-160 md:max-h-160;
+    @apply md:min-w-90 md:max-w-90 md:h-160 md:max-h-160;
 }
 .invite-author-modal .dialog-body {
     @apply flex-y;

@@ -42,7 +42,21 @@
     <meta name="theme-color" content="#444444">
     <title>Actual Chat</title>
     <base href="~/"/>
-    <link href="/dist/bundle.css" rel="stylesheet"/>
+    <link rel="preload" href="/dist/fonts/forkawesome-webfont.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/fonts/icon.woff2?t=1675797561189" as="font" crossorigin />
+    <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/fonts/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
+    <link rel="preload" href="/dist/onDeviceAwakeWorker.js" as="script" crossorigin />
+    <link rel="preload" href="/dist/opusDecoderWorker.js" as="script" crossorigin />
+    <link rel="preload" href="/dist/opusEncoderWorker.js" as="script" crossorigin />
+    <link rel="preload" href="/dist/vadWorker.js" as="script" crossorigin />
+    <link href="/dist/bundle.css" rel="stylesheet" />
+    <link rel="prefetch" href="/dist/wasm/codec.wasm" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/wasm/soxr_wasm.wasm" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/wasm/ort-wasm-simd.wasm" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/wasm/vad.bin" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
     <script>
         history.scrollRestoration = "manual";

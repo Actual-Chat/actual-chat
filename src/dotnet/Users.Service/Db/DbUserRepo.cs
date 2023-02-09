@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ActualChat.Users.Module;
 using Stl.Fusion.EntityFramework.Authentication;
 
@@ -24,6 +25,9 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
             Id = user.Id,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
+            Name = user.Claims.TryGetValue(ClaimTypes.GivenName, out var name) ? name : "",
+            LastName = user.Claims.TryGetValue(ClaimTypes.Surname, out var surname) ? surname : "",
+            Email = user.Claims.TryGetValue(ClaimTypes.Email, out var email) ? email : "",
         };
         dbContext.Accounts.Add(dbAccount);
 
