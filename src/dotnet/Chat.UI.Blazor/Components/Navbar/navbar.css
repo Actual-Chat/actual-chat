@@ -77,7 +77,12 @@
 .navbar-item:hover .pin-toggle.off {
     @apply visible;
 }
-
+.navbar-item .btn.btn-round.pin-toggle {
+    @apply hidden;
+}
+.navbar-item:hover .btn.btn-round.pin-toggle {
+    @apply flex;
+}
 .navbar-item .btn.btn-round.pin-toggle,
 .navbar-item:hover .btn.btn-round.pin-toggle {
     @apply text-icons-01 bg-transparent;
