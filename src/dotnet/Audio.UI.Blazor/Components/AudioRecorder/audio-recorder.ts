@@ -1,5 +1,5 @@
 import DetectRTC from 'detectrtc';
-import { OpusMediaRecorder } from './opus-media-recorder';
+import { opusMediaRecorder } from './opus-media-recorder';
 import { Log, LogLevel, LogScope } from 'logging';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { PromiseSource } from 'promises';
@@ -13,7 +13,6 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly sessionId: string;
-    private readonly opusMediaRecorder: OpusMediaRecorder;
 
     private whenInitialized: Promise<void>;
     private isRecording: boolean = false;
@@ -29,12 +28,11 @@ export class AudioRecorder {
         errorLog?.assert(blazorRef != null, `blazorRef == null`);
 
         this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
-        this.opusMediaRecorder = new OpusMediaRecorder();
 
     }
 
     public async dispose(): Promise<void> {
-        await this.opusMediaRecorder.dispose();
+        await opusMediaRecorder.stop();
     }
 
     public async canRecord(): Promise<boolean> {
@@ -104,7 +102,7 @@ export class AudioRecorder {
             }
 
             const { blazorRef, sessionId } = this;
-            await this.opusMediaRecorder.start(sessionId, chatId);
+            await opusMediaRecorder.start(sessionId, chatId);
             this.isRecording = true;
             await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
@@ -120,7 +118,7 @@ export class AudioRecorder {
         try {
             debugLog?.log(`-> stopRecording`);
 
-            await this.opusMediaRecorder.stop();
+            await opusMediaRecorder.stop();
 
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
         }
