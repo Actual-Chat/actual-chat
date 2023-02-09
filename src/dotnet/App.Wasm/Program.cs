@@ -83,6 +83,6 @@ public static class Program
             BaseUrl = baseUrl,
         });
 
-        await AppStartup.ConfigureServices(services).ConfigureAwait(false);
+        await AppStartup.ConfigureServices(services, AppKind.WasmApp).ConfigureAwait(false);
     }
 }

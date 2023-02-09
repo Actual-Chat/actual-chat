@@ -52,7 +52,7 @@ namespace ActualChat.UI.Blazor.App
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationBlazorUIModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUIAppModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatModule))]
-        public static async Task ConfigureServices(IServiceCollection services, params Type[] platformPluginTypes)
+        public static async Task ConfigureServices(IServiceCollection services, AppKind appKind, params Type[] platformPluginTypes)
         {
             // Commander - it must be added first to make sure its options are set
             var commander = services.AddCommander().Configure(new CommanderOptions() {
@@ -91,21 +91,34 @@ namespace ActualChat.UI.Blazor.App
             // Fusion services
             var fusion = services.AddFusion();
             var fusionClient = fusion.AddRestEaseClient();
-            fusionClient.ConfigureHttpClient((c, name, o) => {
-                var urlMapper = c.GetRequiredService<UrlMapper>();
-                var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
-                var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
-                o.HttpClientActions.Add(client => {
-                    client.BaseAddress = clientBaseUrl.ToUri();
-                    client.DefaultRequestVersion = HttpVersion.Version30;
-                    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-                    client.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{SessionAffinityKey}\"");
+            if (appKind == AppKind.WasmApp)
+                fusionClient.ConfigureHttpClient((c, name, o) => {
+                    var urlMapper = c.GetRequiredService<UrlMapper>();
+                    var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
+                    var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
+                    o.HttpClientActions.Add(client => {
+                        client.BaseAddress = clientBaseUrl.ToUri();
+                        client.DefaultRequestVersion = HttpVersion.Version30;
+                        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                    });
                 });
-                o.HttpMessageHandlerBuilderActions.Add(b => {
-                    if (b.PrimaryHandler is HttpClientHandler h)
-                        h.UseCookies = false;
+            else
+                fusionClient.ConfigureHttpClient((c, name, o) => {
+                    var urlMapper = c.GetRequiredService<UrlMapper>();
+                    var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
+                    var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
+                    o.HttpClientActions.Add(client => {
+                        client.BaseAddress = clientBaseUrl.ToUri();
+                        client.DefaultRequestVersion = HttpVersion.Version30;
+                        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                        client.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{SessionAffinityKey}\"");
+                    });
+                    o.HttpMessageHandlerBuilderActions.Add(b => {
+                        if (b.PrimaryHandler is HttpClientHandler h)
+                            h.UseCookies = false;
+                    });
                 });
-            });
+
             fusionClient.ConfigureWebSocketChannel(c => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
                 return new () {

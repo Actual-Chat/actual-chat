@@ -261,7 +261,7 @@ public static class MauiProgram
         services.TryAddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
         services.TryAddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
-        AppStartup.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
+        AppStartup.ConfigureServices(services, AppKind.MauiApp, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
