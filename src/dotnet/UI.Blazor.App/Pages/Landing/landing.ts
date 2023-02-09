@@ -37,22 +37,24 @@ export class Landing {
         this.header = landing.querySelector('.landing-header');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
         landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
-        this.scrollContainer = getScrollContainer(this.pages[0]);
+        if (!ScreenSize.isNarrow()) {
+            this.scrollContainer = getScrollContainer(this.pages[0]);
 
-        fromEvent(document, 'keydown')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
+            fromEvent(document, 'keydown')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
 
-        fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: WheelEvent) => this.onWheel(event));
+            fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: WheelEvent) => this.onWheel(event));
 
-        // Scroll event bubbles only to document.defaultView
-        fromEvent(this.scrollContainer, 'scroll', { capture: true, passive: true })
-            .pipe(
-                takeUntil(this.disposed$),
-                debounceTime(100),
-            ).subscribe(() => this.onScroll(false));
+            // Scroll event bubbles only to document.defaultView
+            fromEvent(this.scrollContainer, 'scroll', { capture: true, passive: true })
+                .pipe(
+                    takeUntil(this.disposed$),
+                    debounceTime(100),
+                ).subscribe(() => this.onScroll(false));
+        }
     }
 
     public dispose() {
