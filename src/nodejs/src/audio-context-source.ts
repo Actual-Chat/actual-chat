@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'promises';
+import { delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
@@ -15,6 +15,7 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 const MaintainCyclePeriodMs = 2000;
 const MaxWarmupTimeMs = 1000;
 const MaxResumeTimeMs = 600;
+const MaxResumeAttemptsDurationMs = 3000;
 const MaxSuspendTimeMs = 300;
 const MaxInteractionWaitTimeMs = 60_000;
 const TestIntervalMs = 40;
@@ -26,6 +27,7 @@ export class AudioContextSource implements Disposable {
     private _deviceWokeUpAt = 0;
     private _isInteractiveWasReset = false;
     private _changeCount = 0;
+    private _isBeingResumed = false;
     private _whenReady = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
     private readonly _whenDisposed: Promise<void>;
@@ -290,9 +292,29 @@ export class AudioContextSource implements Disposable {
                     latencyHint: 'interactive',
                     sampleRate: 48000,
                 });
-            this.tryResume(audioContext).then(
-                () => contextTask.resolve(audioContext),
-                () => contextTask.resolve(null));
+            this.tryResume(audioContext)
+                .then(
+                    success => {
+                        // Let's wait for yet another interaction attempt if not resumed
+                        if (success)
+                            contextTask.resolve(audioContext);
+                        else {
+                            // Recreate AudioContext if failed several resume attempts during MaxResumeAttemptsDurationMs
+                            const lastResumeAttemptAt = audioContext['lastResumeAttemptAt'] as number;
+                            const now = Date.now();
+                            if (lastResumeAttemptAt && now - lastResumeAttemptAt > MaxResumeAttemptsDurationMs) {
+                                void audioContext.close();
+                                contextTask.resolve(null);
+                            }
+                            else
+                                audioContext['lastResumeAttemptAt'] = Date.now();
+                        }
+                    },
+                    reason => {
+                        warnLog?.log(reason, 'tryResume failed');
+                        void audioContext.close();
+                        contextTask.resolve(null);
+                    });
         });
         try {
             const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => null as (AudioContext | null));
@@ -337,27 +359,36 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async tryResume(audioContext: AudioContext): Promise<boolean> {
-        if (audioContext.state === 'running') {
-            debugLog?.log(`tryResume(): already resumed, AudioContext:`, audioContext);
-            return true;
-        }
+        if (this._isBeingResumed)
+            return false;
 
-        debugLog?.log(`tryResume(): AudioContext:`, audioContext);
-        const resumeTask = audioContext.resume().then(() => true);
-        const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
-        if (await Promise.race([resumeTask, timerTask])) {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            if (audioContext.state !== 'running') {
-                debugLog?.log(`tryResume: completed resume, but AudioContext.state != 'running'`);
+        try {
+            this._isBeingResumed = true;
+
+            if (audioContext.state === 'running') {
+                debugLog?.log(`tryResume(): already resumed, AudioContext:`, audioContext);
+                return true;
+            }
+
+            debugLog?.log(`tryResume(): AudioContext:`, audioContext);
+            const resumeTask = audioContext.resume().then(() => true);
+            const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
+            if (await Promise.race([resumeTask, timerTask])) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                if (audioContext.state !== 'running') {
+                    debugLog?.log(`tryResume: completed resume, but AudioContext.state != 'running'`);
+                    return false;
+                }
+                debugLog?.log(`tryResume: success`);
+                return true;
+            } else {
+                debugLog?.log(`tryResume: timed out`);
                 return false;
             }
-            debugLog?.log(`tryResume: success`);
-            return true;
         }
-        else {
-            debugLog?.log(`tryResume: timed out`);
-            return false;
+        finally {
+            this._isBeingResumed = false;
         }
     }
 
