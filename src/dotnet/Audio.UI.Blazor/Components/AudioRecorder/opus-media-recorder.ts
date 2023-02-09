@@ -79,9 +79,12 @@ export class OpusMediaRecorder {
         await this.init(this.contextRef.context);
         this.contextRef.whenContextChanged().then(context => {
             if (context && this.state === 'recording') {
-                this.contextRef?.dispose();
-                this.contextRef = null;
-                void this.start(sessionId, chatId); // This call is recursive!
+                this.stop()
+                    .then(() => {
+                        this.contextRef?.dispose();
+                        this.contextRef = null;
+                        void this.start(sessionId, chatId); // This call is recursive!
+                    });
             }
         });
 
