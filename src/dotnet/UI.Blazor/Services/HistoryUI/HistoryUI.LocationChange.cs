@@ -123,8 +123,13 @@ public partial class HistoryUI
 
         // Adding "Back" item
         DebugLog?.LogDebug("Transition: adding Back item");
+        AddBackItem(item);
+    }
+
+    private void AddBackItem(HistoryItem item)
+    {
         var nextPosition = _position + 1;
-        backItem = FindValidBackItem(item) with {
+        var backItem = FindValidBackItem(item) with {
             OnNavigate = () => AddNavigationHistoryEntry(nextPosition),
         };
         item = item with {

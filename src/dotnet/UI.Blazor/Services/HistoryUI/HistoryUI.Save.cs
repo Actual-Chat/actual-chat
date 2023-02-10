@@ -89,34 +89,48 @@ public partial class HistoryUI
             return;
         }
 
-        switch (newItem.CompareBackStepCount(oldItem)) {
+        var backStepDelta = newItem.CompareBackStepCount(oldItem);
+        DebugLog?.LogDebug(
+            "EndSave: back step count: {Old} -> {New} ({Delta})",
+            oldItem.BackStepCount, newItem.BackStepCount, backStepDelta);
+
+        switch (backStepDelta) {
         case 0:
-            // Replace
-            ReplaceHistoryItem(newItem);
-            DebugLog?.LogDebug("EndSave: == 0 -> ReplaceHistoryItem");
+            ReplaceOrAddBackItem(newItem);
             break;
         case > 0:
-            // Move forward
+            // Forward state
             newItem = newItem with {
                 Id = NextItemId(),
                 PrevId = oldItem.Id,
             };
             AddHistoryItem(newItem);
             _afterSave = () => AddNavigationHistoryEntry(_position);
-            DebugLog?.LogDebug("EndSave: > 0 -> AddHistoryItem");
+            DebugLog?.LogDebug("EndSave: AddHistoryItem");
             break;
         case < 0:
-            // Try move back, otherwise replace
+            // Backward state
             var backItem = BackItemUnsafe;
             if (backItem != null && backItem.IsIdenticalTo(newItem)) {
                 _afterSave = NavigateBack;
-                DebugLog?.LogDebug("EndSave: < 0 -> NavigateBack");
+                DebugLog?.LogDebug("EndSave: NavigateBack");
+            }
+            ReplaceOrAddBackItem(newItem);
+            break;
+        }
+
+        void ReplaceOrAddBackItem(HistoryItem item)
+        {
+            if (item.HasBackSteps && BackItemUnsafe == null) {
+                var position = _position;
+                AddBackItem(item);
+                _afterSave = () => AddNavigationHistoryEntry(position);
+                DebugLog?.LogDebug("EndSave: AddBackItem");
             }
             else {
-                ReplaceHistoryItem(newItem);
-                DebugLog?.LogDebug("EndSave: < 0 -> ReplaceHistoryItem");
+                ReplaceHistoryItem(item);
+                DebugLog?.LogDebug("EndSave: ReplaceHistoryItem");
             }
-            break;
         }
     }
 

@@ -12,22 +12,35 @@ public partial class HistoryUI
     private void NavigateBack()
         => Hub.JS.EvalVoid("window.history.back()");
 
-    private void ReplaceNavigationHistoryEntry(int position, string? uri = null)
-        => Hub.Nav.NavigateTo(uri ?? Hub.Nav.Uri,
+    private void ReplaceNavigationHistoryEntry(int position)
+        => Hub.Nav.NavigateTo(Hub.Nav.Uri,
             new NavigationOptions {
                 ForceLoad = false,
                 ReplaceHistoryEntry = true,
                 HistoryEntryState = Hub.PositionFormatter.Format(position),
             });
 
-    private void AddNavigationHistoryEntry(int position, string? uri = null)
-        => Hub.Nav.NavigateTo(uri ?? Hub.Nav.Uri,
+    private void AddNavigationHistoryEntry(int position)
+        => Hub.Nav.NavigateTo(Hub.Nav.Uri,
             new NavigationOptions {
                 ForceLoad = false,
                 ReplaceHistoryEntry = false,
                 HistoryEntryState = Hub.PositionFormatter.Format(position),
             });
 
+    /*
+    private void ReplaceNavigationHistoryEntry(int position)
+    {
+        var sPosition = Hub.PositionFormatter.Format(position);
+        Hub.JS.EvalVoid($"window.history.replaceState('{sPosition}', '')");
+    }
+
+    private void AddNavigationHistoryEntry(int position)
+    {
+        var sPosition = Hub.PositionFormatter.Format(position);
+        Hub.JS.EvalVoid($"window.history.pushState('{sPosition}', '')");
+    }
+    */
 
     // History manipulation
 

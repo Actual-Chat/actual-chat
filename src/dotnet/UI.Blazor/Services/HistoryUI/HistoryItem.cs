@@ -10,6 +10,9 @@ public sealed record HistoryItem(
     Action? OnNavigate = null
     ) : IEnumerable<KeyValuePair<Type, HistoryState>>
 {
+    public int BackStepCount => States.Values.Sum(s => s.BackStepCount);
+    public bool HasBackSteps => States.Values.Any(s => s.BackStepCount > 0);
+
     public HistoryState? this[Type stateType]
         => States.GetValueOrDefault(stateType);
 
