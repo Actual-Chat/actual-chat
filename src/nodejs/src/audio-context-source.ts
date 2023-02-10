@@ -70,14 +70,6 @@ export class AudioContextSource implements Disposable {
         }
     }
 
-    public async get(): Promise<AudioContext> {
-        debugLog?.log('get()');
-        this.throwIfDisposed();
-        const audioContext = await this._whenReady;
-        this.throwIfDisposed();
-        return audioContext;
-    }
-
     // NOTE(AY): both markReady and markNotReady are written so that
     // they can be called repeatedly. Subsequent calls to them produce no effect.
 
