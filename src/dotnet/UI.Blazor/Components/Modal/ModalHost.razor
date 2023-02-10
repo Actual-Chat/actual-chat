@@ -52,10 +52,10 @@
     public ModalRef? FindRef(Symbol id)
         => Refs.SingleOrDefault(x => x.Id == id);
 
-    public ModalRef Open(ModalOptions options, RenderFragment content)
+    public ModalRef Show(ModalOptions options, object model, RenderFragment content)
     {
         options = options.WithDefaults(DefaultOptions);
-        var modalRef = new ModalRef(options, this);
+        var modalRef = new ModalRef(options, model, this);
         var modalRefImpl = (IModalRefImpl)modalRef;
         var view = new RenderFragment(builder => {
             builder.OpenComponent<Modal>(0);
@@ -76,7 +76,7 @@
         if (modalRef == null)
             return true;
 
-        var mustClose = forceClose || (modalRef.Options.Closing?.Invoke(modalRef) ?? true);
+        var mustClose = forceClose || modalRef.Model is not IOptionallyClosable oc || oc.CanClose;
         if (!mustClose)
             return false;
 

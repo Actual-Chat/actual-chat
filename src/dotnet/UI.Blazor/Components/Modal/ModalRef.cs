@@ -12,15 +12,17 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     public Symbol Id { get; }
     public ModalOptions Options { get; }
     public ModalHost Host { get; }
+    public object Model { get; }
     public Modal? Modal { get; private set; }
 
     public Task WhenShown => _whenShownSource.Task;
     public Task WhenClosed => _whenClosedSource.Task;
 
-    public ModalRef(ModalOptions options, ModalHost host)
+    public ModalRef(ModalOptions options, object model, ModalHost host)
     {
         Id = $"modal-{Ulid.NewUlid().ToString()}";
         Options = options;
+        Model = model;
         Host = host;
     }
 

@@ -57,7 +57,7 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
             builder.CloseComponent();
         });
-        return Host.Open(options, content);
+        return Host.Show(options, model, content);
     }
 
 #pragma warning disable IL2073
