@@ -1,9 +1,9 @@
 namespace ActualChat.UI.Blazor;
 
-public class UILifetimeEvents
+public sealed class UILifetimeEvents
 {
-    public event Action<IServiceProvider> OnCircuitContextCreated = _ => { };
-    public event Action<IServiceProvider> OnAppInitialized = _ => { };
+    public event Action<IServiceProvider>? OnCircuitContextCreated;
+    public event Action<IServiceProvider>? OnAppInitialized;
 
     public UILifetimeEvents(IEnumerable<Action<UILifetimeEvents>> configureActions)
     {
@@ -12,8 +12,8 @@ public class UILifetimeEvents
     }
 
     internal void RaiseOnCircuitContextCreated(IServiceProvider services)
-        => OnCircuitContextCreated.Invoke(services);
+        => OnCircuitContextCreated?.Invoke(services);
 
     public void RaiseOnAppInitialized(IServiceProvider services)
-        => OnAppInitialized.Invoke(services);
+        => OnAppInitialized?.Invoke(services);
 }

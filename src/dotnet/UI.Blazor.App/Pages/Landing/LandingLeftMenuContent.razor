@@ -5,7 +5,7 @@
 @{
     var m = State.Value;
     var account = m.Account;
-    var isGuest = account is not {IsGuest: false };
+    var isGuest = account is not {IsGuestOrNone: false };
     const string privacyUrl = "/docs/privacy";
     const string termsUrl = "/docs/terms";
     const string cookiesUrl = "/docs/cookies";

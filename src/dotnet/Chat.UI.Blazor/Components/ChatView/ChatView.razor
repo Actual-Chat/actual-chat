@@ -11,9 +11,7 @@
         <ChatMessage Message="@context" />
     </Item>
     <Empty>
-        @if (Chat.Id != Constants.Chat.AnnouncementsChatId) {
-            <EmptyChatContent/>
-        }
+        <EmptyChatContent/>
     </Empty>
     <Skeleton>
         @{

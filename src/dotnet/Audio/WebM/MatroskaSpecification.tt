@@ -96,7 +96,7 @@ namespace ActualChat.Audio.WebM
         new
         {
             Name = "Unknown",
-            Path = string.Empty,
+            Path = "",
             Id = "0x7FFF",
             IsList = false,
             ElementType = "None",

@@ -119,7 +119,7 @@ namespace ActualChat.Audio.WebM.Models
             IsList = false,
             IsRoot = false,
             IsBlock = false,
-            Path = string.Empty,
+            Path = "",
             Level = 0,
             Id = "0x7FFF",
             ElementType = "None",
@@ -230,7 +230,7 @@ namespace ActualChat.Audio.WebM.Models
                     field = "ContentEncodingItem";
                 }
 
-                var stringEncoding = string.Empty;
+                var stringEncoding = "";
                 if (sub.ElementType == "string")
                 {
                     stringEncoding = ", true";
@@ -351,7 +351,7 @@ namespace ActualChat.Audio.WebM.Models
                     field = "ContentEncodingItem";
                 }
 
-                var stringEncoding = string.Empty;
+                var stringEncoding = "";
                 if (sub.ElementType == "string")
                 {
                     stringEncoding = ", true";
@@ -546,7 +546,7 @@ namespace ActualChat.Audio.WebM.Models
                     };
                 var methodPrefix = sub.Name == "TrackType"
                     ? "(TrackType?)"
-                    : string.Empty;
+                    : "";
 #>
             case MatroskaSpecification.<#= sub.Name #>:
                 model.<#= propertyName #> = <#= methodPrefix #>reader.Read<#= methodSuffix #>;
@@ -584,7 +584,7 @@ namespace ActualChat.Audio.WebM.Models
                     field = "ContentEncodingItem";
                 }
                 var propertyName = Pluralize(sub, field);
-                var optionalSuffix = sub.Required ? string.Empty : "?";
+                var optionalSuffix = sub.Required ? "" : "?";
                 var cast = $"({field}{optionalSuffix})";
 #>
             case MatroskaSpecification.<#= sub.Name #>:

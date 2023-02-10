@@ -3,7 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
-using Blazored.Modal.Services;
+using ActualChat.UI.Blazor.Services.Internal;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -31,7 +31,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
-        services.AddScoped<ModalService>(c => new ModalService(c));
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
         ComputedStateComponent.DefaultOptions =
@@ -99,6 +98,8 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<ErrorUI>(c => new ErrorUI(
             c.GetRequiredService<UIActionTracker>()));
         services.AddScoped<HistoryUI>(c => new HistoryUI(c));
+        services.AddScoped<HistoryHub>(c => new HistoryHub(c));
+        services.AddScoped<HistoryPositionFormatter>(_ => new HistoryPositionFormatter());
         services.AddScoped<AutoNavigationUI>(c => new AutoNavigationUI(c));
         services.AddScoped<ModalUI>(c => new ModalUI(c));
         services.AddScoped<BannerUI>(c => new BannerUI(c));

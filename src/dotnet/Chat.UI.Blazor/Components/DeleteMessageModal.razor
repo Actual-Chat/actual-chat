@@ -57,7 +57,7 @@
     private Markup Markup { get; set; } = Markup.Empty;
     private ChatEntry Entry => ModalModel.MessageModel.Entry; // Shortcut
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
@@ -70,10 +70,10 @@
     }
 
     private void OnCancel()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     private async Task OnDelete() {
-        await ModalInstance.CloseAsync();
+        Modal.Close();
         var command = new IChats.RemoveTextEntryCommand(Session, Entry.ChatId, ModalModel.MessageModel.Entry.LocalId);
         await UICommander.Run(command);
     }

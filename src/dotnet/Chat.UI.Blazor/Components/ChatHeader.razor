@@ -62,8 +62,8 @@
         => ModalUI.Show(new InviteAuthor.Model(Chat));
 
     private void OnSwitchRightPanelClick()
-        => RightPanelUI.Switch();
+        => RightPanelUI.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => NavbarUI.ChangeVisibility(true);
+        => NavbarUI.SetIsVisible(true);
 }

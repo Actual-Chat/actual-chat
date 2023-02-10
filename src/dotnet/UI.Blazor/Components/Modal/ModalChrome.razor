@@ -8,10 +8,10 @@
 </div>
 
 @code {
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private void OnCloseClick()
-        => _ = ModalInstance.CloseAsync();
+        => _ = Modal.Close();
 }

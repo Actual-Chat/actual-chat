@@ -5,13 +5,19 @@ public static class NavigationManagerExt
     public static LocalUrl GetLocalUrl(this NavigationManager nav)
         => new(nav.ToBaseRelativePath(nav.Uri));
 
-    public static void ExecuteOnSameLocationWithDelay(this NavigationManager nav, TimeSpan delay, Action action)
+    public static void ExecuteUnlessLocationChanged(this NavigationManager nav, TimeSpan delay, Action action)
         => new NavigatorDelayedExecutor(nav).ExecuteAfter(delay, action);
 
     private class NavigatorDelayedExecutor
     {
         private readonly NavigationManager _nav;
         private bool _navigated;
+
+        public NavigatorDelayedExecutor(NavigationManager nav)
+        {
+            _nav = nav;
+            _nav.LocationChanged += OnLocationChanged;
+        }
 
         public void ExecuteAfter(TimeSpan delay, Action action)
             => _ = ExecuteAfterInternal(delay, action);
@@ -29,12 +35,6 @@ public static class NavigationManagerExt
         {
             _nav.LocationChanged -= OnLocationChanged;
             _navigated = true;
-        }
-
-        public NavigatorDelayedExecutor(NavigationManager nav)
-        {
-            _nav = nav;
-            _nav.LocationChanged += OnLocationChanged;
         }
     }
 }

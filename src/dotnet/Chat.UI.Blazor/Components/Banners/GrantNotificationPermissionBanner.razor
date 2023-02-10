@@ -7,6 +7,9 @@
 @inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
     var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
 }
 
@@ -56,7 +59,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
@@ -81,6 +84,6 @@
         PermissionState State,
         bool IsDismissed
     ) {
-        public  static readonly Model None = new(PermissionState.Denied, true);
+        public static readonly Model Loading = new(PermissionState.Denied, true);
     }
 }

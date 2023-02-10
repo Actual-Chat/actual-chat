@@ -41,7 +41,7 @@
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ViewModel>.Options GetStateOptions()
@@ -63,7 +63,7 @@
     private async Task Join(AvatarFull avatar) {
         var command = new IAuthors.JoinCommand(Session, ModalModel.Chat.Id, avatar.Id);
         await UICommander.Run(command);
-        await ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
     public record Model(Chat Chat);

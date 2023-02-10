@@ -15,7 +15,7 @@
     <div class="invite-author-modal-contact-list">
         @foreach (var contact in FilteredContacts) {
             <div class="invite-author-modal-contact-list-item"
-                 @key="@contact.Account.Id"
+                 @key="@contact.Account.Id.Value"
                  @onclick="@(_ => OnContactClick(contact))">
                 <AvatarBadge
                     Class="grow"
@@ -72,7 +72,7 @@
     private CancellationTokenSource DisposeTokenSource { get; }
     private CancellationToken DisposeToken { get; }
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public InviteAuthor()
@@ -145,11 +145,11 @@
         if (error != null)
             return;
 
-        await ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
-    private Task OnCancel()
-        => ModalInstance.CloseAsync();
+    private void OnCancel()
+        => Modal.Close();
 
     // Nested types
 

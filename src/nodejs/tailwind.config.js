@@ -1493,7 +1493,7 @@ module.exports = {
       80: '80',
       90: '90',
       'minus': '-1',
-      'modal-container': '100',
+      'modal-overlay': '100',
       'error-container': '200',
       'menu-container': '900',
       'menu-overlay': '901',

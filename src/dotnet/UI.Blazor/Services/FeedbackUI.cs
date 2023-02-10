@@ -1,5 +1,5 @@
 ﻿using ActualChat.Feedback;
-using Blazored.Modal;
+using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -8,7 +8,7 @@ public class FeedbackUI
     private readonly Session _session;
     private readonly ModalUI _modalUI;
     private readonly UICommander _uiCommander;
-    private IModalRef? _modal;
+    private ModalRef? _modal;
 
     public FeedbackUI(IServiceProvider services)
     {

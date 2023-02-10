@@ -55,7 +55,7 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public async ValueTask DisposeAsync()
@@ -76,12 +76,11 @@
         ModalModel.Comment = _comment;
         ModalModel.Rating = _rating;
         ModalModel.HasSubmitted = true;
-        _ = ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
-    private void OnCancel() {
-        _ = ModalInstance.CloseAsync();
-    }
+    private void OnCancel()
+        => Modal.Close();
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

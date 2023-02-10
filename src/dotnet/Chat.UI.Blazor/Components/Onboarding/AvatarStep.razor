@@ -39,7 +39,7 @@
                     </div>
                 </Button>
                 <FileUpload
-                    @key="@_stepModel.AvatarId"
+                    @key="@_stepModel.AvatarId.Value"
                     id="fileUpload"
                     UploadUrl="@($"/api/user-avatars/{_stepModel.AvatarId}/upload-picture")"
                     Uploaded="OnImagePicked"

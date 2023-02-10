@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class SignOutReloader : WorkerBase
@@ -35,10 +37,6 @@ public class SignOutReloader : WorkerBase
 
                 // Wait for sign-out
                 await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);
-                await UICommander.RunNothing().ConfigureAwait(false); // Reset all update delays
-
-                // Wait 0.5 seconds before we force page refresh
-                await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
                 break;
             }
             catch (OperationCanceledException) {
@@ -50,7 +48,7 @@ public class SignOutReloader : WorkerBase
         }
 
         Log.LogInformation("Forcing reload on sign-out");
-        var nav = Services.GetRequiredService<NavigationManager>();
-        nav.NavigateTo(Links.Home, true);
+        var accountUI = Services.GetRequiredService<AccountUI>();
+        accountUI.SignOut();
     }
 }

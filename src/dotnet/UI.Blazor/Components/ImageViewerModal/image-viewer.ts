@@ -28,7 +28,7 @@ export class ImageViewer {
         private readonly blazorRef: DotNet.DotNetObject
     ) {
         this.image = imageViewer.querySelector('img');
-        this.overlay = this.imageViewer.closest('.bm-container');
+        this.overlay = this.imageViewer.closest('.modal-overlay');
         this.imageViewer.classList.add('bg-01');
 
         imageViewer.addEventListener('wheel', this.onWheel);

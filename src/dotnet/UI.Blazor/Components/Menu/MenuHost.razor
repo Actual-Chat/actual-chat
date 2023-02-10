@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
+@implements IHasServices
 @{
     RenderFragment RenderMenu(MenuModel menu) =>
         @<div
@@ -9,7 +10,7 @@
              @key="menu.Id"
              class="@(GetMenuCssClass(menu))">
             <ul class="ac-menu-list">
-                <DynamicComponent Type="@menu.Type" Parameters="@menu.Parameters"/>
+                <DynamicComponent Type="@menu.Ref.MenuType" Parameters="@menu.Parameters"/>
             </ul>
         </div>;
     var menu = _menu;
@@ -33,28 +34,25 @@
 
 @code {
     private MenuModel? _menu;
+    private string? _jsMenuId;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
-    private EventHandler<LocationChangedEventArgs> _onLocationChanged = null!;
 
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] public IServiceProvider Services { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     public async ValueTask DisposeAsync() {
-        Nav.LocationChanged -= _onLocationChanged;
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
         _blazorRef = null!;
     }
 
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        _onLocationChanged = OnLocationChanged;
-        Nav.LocationChanged += _onLocationChanged;
-    }
+    protected override void OnInitialized()
+        => HistoryUI.Register(new OwnHistoryState(this, false));
 
     public ValueTask Show(
         MenuRef menuRef,
@@ -70,43 +68,65 @@
         bool isHoverMenu = false)
         => _jsRef.InvokeVoidAsync("showOrPosition", menuRef, isHoverMenu, triggerElement, placement);
 
-    public ValueTask Hide(IMenu menu)
-        => Hide(menu.Id);
-    public ValueTask Hide(string menuId)
-        => _jsRef.InvokeVoidAsync("hideById", menuId);
+    public async ValueTask Hide() {
+        var menu = _menu;
+        if (menu != null) {
+            _menu = null;
+            StateHasChanged();
+            if (!menu.IsHoverMenu)
+                HistoryUI.Save<OwnHistoryState>();
+        }
+
+        if (_jsMenuId != null) {
+            _jsMenuId = null;
+            await _jsRef.InvokeVoidAsync("hideById", _jsMenuId);
+        }
+    }
 
     public ValueTask Position(IMenu menu)
         => Position(menu.Id);
-    public ValueTask Position(string menuId)
-        => _jsRef.InvokeVoidAsync("positionById", menuId);
+    public ValueTask Position(string menuId) {
+        if (_jsMenuId != menuId)
+            return ValueTask.CompletedTask;
+
+        return _jsRef.InvokeVoidAsync("positionById", menuId);
+    }
 
     // JS interface
 
     [JSInvokable]
-    public Task OnRenderRequest(string id, string menuRef, bool isHoverMenu) {
+    public Task OnShowRequest(string id, string menuRefValue, bool isHoverMenu) {
         if (_menu?.Id == id)
             return Task.CompletedTask;
 
-        var parsedMenuRef = MenuRef.Parse(menuRef);
-        _menu = new MenuModel(
+        _jsMenuId = id;
+        var menuRef = MenuRef.Parse(menuRefValue);
+        var menu = new MenuModel(
             id,
-            parsedMenuRef.MenuType,
+            menuRef,
             new Dictionary<string, object>() {
                 { nameof(IMenu.Id), id },
-                { nameof(IMenu.Arguments), parsedMenuRef.Arguments },
+                { nameof(IMenu.Arguments), menuRef.Arguments },
             },
             isHoverMenu);
 
+        _menu = menu;
+        if (!menu.IsHoverMenu)
+            HistoryUI.Save<OwnHistoryState>();
         StateHasChanged();
         return Task.CompletedTask;
     }
 
     [JSInvokable]
     public Task OnHideRequest(string id) {
-        if (_menu?.Id != id)
+        var menu = _menu;
+        if (menu?.Id != id)
             return Task.CompletedTask;
 
+        _jsMenuId = null;
         _menu = null;
+        if (!menu.IsHoverMenu)
+            HistoryUI.Save<OwnHistoryState>();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -121,12 +141,9 @@
         }
     }
 
-    protected override void OnParametersSet() {
-        if (ScreenSize.IsNarrow() && _menu?.IsHoverMenu == true) {
-            Hide(_menu.Id);
-            _menu = null;
-        }
-        StateHasChanged();
+    protected override async Task OnParametersSetAsync() {
+        if (ScreenSize.IsNarrow() && _menu?.IsHoverMenu == true)
+            await Hide();
     }
 
     private bool IsOverlayVisible()
@@ -144,14 +161,33 @@
         return cls;
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-        if (_menu != null)
-            Hide(_menu.Id);
+    // Nested types
+
+    private sealed record OwnHistoryState(MenuHost Host, bool IsMenuShown) : HistoryState
+    {
+        public override int BackStepCount => IsMenuShown ? 1 : 0;
+
+        public override string ToString()
+            => $"{nameof(MenuHost)}.{GetType().Name}({IsMenuShown})";
+
+        public override HistoryState Save()
+            => With(Host._menu is { IsHoverMenu: false });
+
+        public override void Apply(HistoryTransition transition) {
+            var menu = Host._menu;
+            if (!IsMenuShown && menu is { IsHoverMenu: false })
+                _ = Host.Hide();
+        }
+
+        // "With" helpers
+
+        public OwnHistoryState With(bool isMenuShown)
+            => IsMenuShown == isMenuShown ? this : this with { IsMenuShown = isMenuShown };
     }
 
     private sealed record MenuModel(
         string Id,
-        Type Type,
+        MenuRef Ref,
         Dictionary<string, object> Parameters,
         bool IsHoverMenu);
 }

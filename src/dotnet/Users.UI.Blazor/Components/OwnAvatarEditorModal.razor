@@ -94,7 +94,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     private string UploadUrl => $"/api/user-avatars/{ModalModel.AvatarId}/upload-picture";
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
@@ -177,7 +177,7 @@
             Remove = true,
         });
         await UICommander.Run(command);
-        _ = ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
     private void OnGenerateAvatarClick() {
@@ -187,7 +187,7 @@
     }
 
     private void CloseModal()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     private void ChangeDefaultAvatar()
         => _form.IsDefault = !_form.IsDefault;

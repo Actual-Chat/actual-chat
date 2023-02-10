@@ -114,7 +114,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     private static AccountFull? GetGuestAccount(UserId userId)
     {
-        if (userId.IsNone || !userId.IsGuestId)
+        if (!userId.IsGuest)
             return null;
 
         var name = RandomNameGenerator.Default.Generate(userId);

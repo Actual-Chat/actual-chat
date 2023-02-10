@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Collections;
 
 public class ThreadSafeLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>
@@ -30,12 +32,12 @@ public class ThreadSafeLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
         }
     }
 
-    public bool TryGetValue(TKey key, out TValue value)
+    public bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value)
     {
         lock (Lock) return Cache.TryGetValue(key, out value);
     }
 
-    public TValue GetValueOrDefault(TKey key)
+    public TValue? GetValueOrDefault(TKey key)
     {
         lock (Lock) return Cache.GetValueOrDefault(key);
     }
@@ -58,5 +60,10 @@ public class ThreadSafeLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
     public void Clear()
     {
         lock (Lock) Cache.Clear();
+    }
+
+    public IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false)
+    {
+        lock (Lock) return Cache.List(recentFirst).ToList();
     }
 }

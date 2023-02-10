@@ -15,7 +15,7 @@ public sealed class AutoNavigationUI
             return false;
 
         MustNavigateToChatsOnSignIn = false;
-        Nav.NavigateTo(Links.Chat(default));
+        Nav.NavigateTo(Links.Chats);
         return true;
     }
 }

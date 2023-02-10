@@ -16,17 +16,21 @@ public record Account(
 
     public static Requirement<Account> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
-        (Account? a) => a is { Id.IsNone: false });
+        (Account? a) => a is { IsNone: false });
     public static Requirement<Account> MustNotBeGuest { get; } = Requirement.New(
         new(() => StandardError.Account.Guest()),
-        (Account? a) => a?.IsGuest == false);
+        (Account? a) => a?.IsGuestOrNone == false);
 
     [DataMember] public AccountStatus Status { get; init; }
     [DataMember] public Avatar Avatar { get; init; } = null!; // Populated only on reads
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsGuest => Id.IsGuestId;
+    public bool IsNone => Id.IsNone;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsGuest => Id.IsGuest;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsGuestOrNone => Id.IsGuestOrNone;
 
     public Account() : this(UserId.None) { }
 

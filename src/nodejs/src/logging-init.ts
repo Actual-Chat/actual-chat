@@ -20,6 +20,7 @@ export type LogScope =
     | 'OnDeviceAwake'
     | 'OnDeviceAwakeWorker'
     | 'MenuHost'
+    | 'ModalHost'
     | 'UndoStack'
     | 'LocalSettings'
     | 'VirtualList'
@@ -47,6 +48,7 @@ export type LogScope =
     | 'AudioVad'
     | 'AudioRecorder'
     // Isolated components
+    | 'SideNav'
     | 'MarkupEditor'
     | 'ChatMessageEditor'
     | 'ImageViewer'

@@ -75,7 +75,7 @@
     <Buttons>
         <div class="btn-group">
             <Button
-                Click="ModalInstance.CloseAsync"
+                Click="@(() => Modal.Close())"
                 Class="btn-cancel">
                 Cancel
             </Button>
@@ -104,7 +104,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
@@ -183,7 +183,7 @@
             Nav.NavigateTo(Links.Chat(chat.Id));
             // Required for proper navigation to the newly created chat
             await Task.Delay(100);
-            await ModalInstance.CloseAsync();
+            Modal.Close();
         }
         catch { // Intended: command errors are shown in the UI anyway
         }

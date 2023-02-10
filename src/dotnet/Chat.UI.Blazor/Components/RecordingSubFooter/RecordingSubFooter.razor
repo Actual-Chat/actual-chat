@@ -4,7 +4,7 @@
 @using ActualChat.MediaPlayback
 @{
     var m = State.Value;
-    if (m == Model.None)
+    if (ReferenceEquals(m, Model.NotRecording))
         return;
 }
 
@@ -37,16 +37,16 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = Model.NotRecording,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var recordingChat = await GetRecordingChat(cancellationToken);
+        var recordingChat = await GetRecordingElsewhereChat(cancellationToken);
         var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken);
         if (recordingChat == null && stopRecordingAt == null)
-            return Model.None;
+            return Model.NotRecording;
 
         return new Model {
             RecordingChat = recordingChat,
@@ -55,7 +55,7 @@
         };
     }
 
-    private async Task<Chat?> GetRecordingChat(CancellationToken cancellationToken)
+    private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken)
     {
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         if (recordingChatId.IsNone)
@@ -72,7 +72,7 @@
         => _ = ChatAudioUI.SetRecordingChatId(default);
 
     public sealed record Model {
-        public static Model None { get; } = new();
+        public static Model NotRecording { get; } = new();
 
         public Chat? RecordingChat { get; init; }
         public string? RecordingChatUrl { get; init; }

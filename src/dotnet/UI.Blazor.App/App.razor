@@ -10,8 +10,6 @@
 }
 
 <ScreenSizeProvider>
-    <BlazoredModal ActivateFocusTrap="true" />
-
     <AlwaysVisibleComponents/>
 
     <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
@@ -131,8 +129,8 @@
         await themeUI.WhenReady.WaitAsync(cancellationToken);
         step2.Complete();
 
-        // Finishing w/ history ui
-        await HistoryUI.WhenReady.WaitAsync(cancellationToken);
+        // Initialize HistoryUI
+        HistoryUI.Initialize();
     }
 
     private async Task Loaded()

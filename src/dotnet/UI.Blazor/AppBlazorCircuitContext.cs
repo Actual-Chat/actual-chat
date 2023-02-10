@@ -18,7 +18,8 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         Clocks = services.Clocks();
 
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
-        services.GetRequiredService<UILifetimeEvents>().RaiseOnCircuitContextCreated(Services);
+        services.GetRequiredService<UILifetimeEvents>()
+            .RaiseOnCircuitContextCreated(Services);
     }
 
     protected override void Dispose(bool disposing)

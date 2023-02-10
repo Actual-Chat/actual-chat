@@ -24,6 +24,9 @@ public readonly struct LocalUrl : IEquatable<LocalUrl>
         _value = value;
     }
 
+    public LocalUrl(string value, ParseOrNone _)
+        => _value = value;
+
     public string ToAbsolute(UrlMapper urlMapper)
         => urlMapper.ToAbsolute(this);
     public string ToAbsolute(NavigationManager nav)

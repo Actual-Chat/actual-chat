@@ -55,7 +55,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<LanguageUI>(c => new LanguageUI(c));
         services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
 
-        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
+        services.ConfigureUILifetimeEvents(events
+            => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }
 
     private void RegisterShowSettingsHandler(IServiceProvider services)

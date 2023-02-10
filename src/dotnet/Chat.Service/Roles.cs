@@ -40,7 +40,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         if (author is null or { HasLeft: true })
             return ImmutableArray<Role>.Empty;
 
-        var isGuest = account.IsGuest;
+        var isGuest = account.IsGuestOrNone;
         var isAnonymous = author is { IsAnonymous: true };
         return await Backend
             .List(chatId, author.Id, isGuest, isAnonymous, cancellationToken)

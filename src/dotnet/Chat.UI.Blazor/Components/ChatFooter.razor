@@ -5,7 +5,7 @@
 }
 
 <div class="writable-chat-footer">
-    @if (m == Model.None) {
+    @if (ReferenceEquals(m, Model.Loading)) {
         // Render skeletons until State is computed
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
             <div class="-flex-y w-full overflow-x-hidden">
@@ -92,8 +92,13 @@
                         <div class="inline-flex">
                             <SignInMenu ButtonClass="w-full"/>
                         </div>
-                        <span class="inline-flex mx-2 items-center">or</span>
-                        <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                        @if (!m.OtherUserId.IsNone) {
+                            <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
+                            <AccountName UserSid="@m.OtherUserId.Id"/>
+                        } else {
+                            <span class="inline-flex mx-2 items-center">or</span>
+                            <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                        }
                     </div>
                 }
             </div>
@@ -117,20 +122,29 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
-            InitialValue = Model.None,
+            InitialValue = Model.Loading,
             Category = GetStateCategory(),
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (ReferenceEquals(Chat, Chat.Loading))
+            return Model.Loading;
+        if (ReferenceEquals(Chat, Chat.None))
+            return Model.None;
+
         var account = await Accounts.GetOwn(Session, cancellationToken);
+        var otherUserId = Chat.Id.IsPeerChat(out var peerChatId)
+            ? peerChatId.UserIds.OtherThan(account.Id)
+            : default;
         var canPost = Chat.Rules.CanWrite();
         var canJoin = !canPost && Chat.Rules.CanJoin();
         var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
         return new () {
+            OtherUserId = otherUserId,
+            IsGuest = account.IsGuestOrNone,
             CanPost = canPost,
             CanJoin = canJoin,
-            IsGuest = account.IsGuest,
             HasMultipleAvatars = avatars.Length > 1,
         };
     }
@@ -147,11 +161,13 @@
     }
 
     public sealed class Model {
+        public static Model Loading { get; } = new();
         public static Model None { get; } = new();
 
+        public UserId OtherUserId { get; init; }
+        public bool IsGuest { get; init; }
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
-        public bool IsGuest { get; init; }
         public bool HasMultipleAvatars { get; init; }
     }
 }

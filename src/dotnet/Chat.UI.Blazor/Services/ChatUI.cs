@@ -18,10 +18,12 @@ public partial class ChatUI : WorkerBase
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
 
+    private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private Session Session { get; }
     private IUserPresences UserPresences { get; }
+    private IAccounts Accounts { get; }
     private IChats Chats { get; }
     private IContacts Contacts { get; }
     private IChatPositions ChatPositions { get; }
@@ -46,12 +48,14 @@ public partial class ChatUI : WorkerBase
 
     public ChatUI(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         StateFactory = services.StateFactory();
         ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();
 
         Session = services.GetRequiredService<Session>();
         UserPresences = services.GetRequiredService<IUserPresences>();
+        Accounts = services.GetRequiredService<IAccounts>();
         Chats = services.GetRequiredService<IChats>();
         Contacts = services.GetRequiredService<IContacts>();
         ChatPositions = services.GetRequiredService<IChatPositions>();
@@ -68,7 +72,7 @@ public partial class ChatUI : WorkerBase
 
         var type = GetType();
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)) {
-            InitialValue = Constants.Chat.AnnouncementsChatId,
+            Corrector = FixChatId,
         });
         _relatedChatEntry = StateFactory.NewMutable(
             (RelatedChatEntry?)null,
@@ -296,6 +300,21 @@ public partial class ChatUI : WorkerBase
     }
 
     // Helpers
+
+    // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
+    // a guest UserId there with OwnAccount.Id.
+    // It must be used mainly in Navbar, which renders independently from ChatPage content,
+    // because ChatPage fixes SelectedChatId anyway for any of its nested components.
+    public async ValueTask<ChatId> FixChatId(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        // Trying to do as many checks as we can before resorting to Accounts.GetOwn access
+        if (!chatId.IsPeerChat(out var peerChatId) || !peerChatId.HasSingleNonGuestUserId(out _))
+            return chatId;
+
+        var owner = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        chatId = peerChatId.FixOwnerId(owner.Id);
+        return chatId;
+    }
 
     public void SelectChat(ChatId chatId)
     {

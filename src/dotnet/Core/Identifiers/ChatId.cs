@@ -53,7 +53,9 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
         UserId2 = userId2;
     }
 
-    public bool IsPeerChatId(out PeerChatId peerChatId)
+    // Helpers
+
+    public bool IsPeerChat(out PeerChatId peerChatId)
     {
         if (UserId1.IsNone) {
             peerChatId = default;

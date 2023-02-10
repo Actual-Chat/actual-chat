@@ -62,7 +62,7 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
     protected override bool PrintMembers(StringBuilder builder)
     {
         builder.Append("Items = [");
-        builder.Append(Items.ToDelimitedString(", "));
+        builder.Append(Items.ToDelimitedString());
         builder.Append(']');
         return true;
     }

@@ -3,59 +3,74 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class RightPanelUI
+public class RightPanelUI : IHasServices
 {
-    private readonly IMutableState<bool> _isVisible;
+    private readonly IStoredState<bool> _isVisible;
+    private readonly object _lock = new();
 
     private HistoryUI HistoryUI { get; }
     private BrowserInfo BrowserInfo { get; }
 
-    public IState<bool> IsVisible
-        => _isVisible;
+    public IServiceProvider Services { get; }
+    // ReSharper disable once InconsistentlySynchronizedField
+    public IState<bool> IsVisible => _isVisible;
 
     public RightPanelUI(IServiceProvider services)
     {
+        Services = services;
         HistoryUI = services.GetRequiredService<HistoryUI>();
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
 
         var stateFactory = services.StateFactory();
-        // TODO: On Desktop we can switch between 2 wide and narrow layout. Decide how to better handle this?
-        var type = GetType();
-        if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            _isVisible = stateFactory.NewMutable(
-                false,
-                StateCategories.Get(type, nameof(IsVisible)));
-        else {
-            var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanelUI));
-            _isVisible = stateFactory.NewKvasStored<bool>(
-                new (localSettings, nameof(IsVisible)) {
-                    InitialValue = false,
-                    Category = StateCategories.Get(type, nameof(IsVisible)),
-                });
-        }
+        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanelUI));
+        _isVisible = stateFactory.NewKvasStored<bool>(
+            new (localSettings, nameof(IsVisible)) {
+                InitialValue = false,
+                Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !IsNarrow()),
+                Category = StateCategories.Get(GetType(), nameof(IsVisible)),
+            });
+        HistoryUI.Register(new OwnHistoryState(this, false));
+        _isVisible.WhenRead.ContinueWith(
+            _ => HistoryUI.Hub.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
+            TaskScheduler.Default);
     }
 
-    public void Switch()
-        => ChangeVisibility(!IsVisible.Value);
+    public void Toggle()
+        => SetIsVisible(!IsVisible.Value);
 
-    public void ChangeVisibility(bool visible)
+    public void SetIsVisible(bool value)
     {
-        if (_isVisible.Value == visible)
-            return;
-
-        var screenSize = BrowserInfo.ScreenSize.Value;
-        if (screenSize.IsNarrow()) {
-            if (visible)
-                HistoryUI.NavigateTo(
-                    () => ChangeVisibilityInternal(true),
-                    () => ChangeVisibilityInternal(false));
-            else
-                _ = HistoryUI.GoBack();
+        bool oldIsVisible;
+        lock (_lock) {
+            oldIsVisible = _isVisible.Value;
+            if (oldIsVisible != value)
+                _isVisible.Value = value;
         }
-        else
-            ChangeVisibilityInternal(visible);
+        if (oldIsVisible != value)
+            HistoryUI.Save<OwnHistoryState>();
     }
 
-    private void ChangeVisibilityInternal(bool visible)
-        => _isVisible.Value = visible;
+    private bool IsNarrow()
+        => BrowserInfo.ScreenSize.Value.IsNarrow();
+
+    // Nested types
+
+    private sealed record OwnHistoryState(RightPanelUI Host, bool IsVisible) : HistoryState
+    {
+        public override int BackStepCount => IsVisible ? 1 : 0;
+
+        public override string ToString()
+            => $"{nameof(RightPanelUI)}.{GetType().Name}({IsVisible})";
+
+        public override HistoryState Save()
+            => With(Host.IsVisible.Value);
+
+        public override void Apply(HistoryTransition transition)
+            => Host.SetIsVisible(IsVisible);
+
+        // "With" helpers
+
+        public OwnHistoryState With(bool isVisible)
+            => IsVisible == isVisible ? this : this with { IsVisible = isVisible };
+    }
 }

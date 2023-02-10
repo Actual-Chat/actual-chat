@@ -4,18 +4,19 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI : WorkerBase
 {
-    private readonly TaskSource<Unit> _whenLoaded;
+    private readonly TaskSource<Unit> _whenLoadedSource;
     private readonly IMutableState<AccountFull> _ownAccount;
 
     private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
+    private BrowserInfo BrowserInfo { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
     private ILogger Log { get; }
 
-    public Task WhenLoaded => _whenLoaded.Task;
+    public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
 
     public AccountUI(IServiceProvider services)
@@ -26,9 +27,10 @@ public partial class AccountUI : WorkerBase
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
+        BrowserInfo = services.GetRequiredService<BrowserInfo>();
         Clocks = services.Clocks();
 
-        _whenLoaded = TaskSource.New<Unit>(true);
+        _whenLoadedSource = TaskSource.New<Unit>(true);
         var ownAccountTask = Accounts.GetOwn(Session, default);
  #pragma warning disable VSTHRD002
         var ownAccount = ownAccountTask.IsCompletedSuccessfully
@@ -41,4 +43,7 @@ public partial class AccountUI : WorkerBase
         });
         Start();
     }
+
+    public void SignOut(LocalUrl redirectUrl = default)
+        => BrowserInfo.HardRedirect(Links.SignOut(redirectUrl));
 }
