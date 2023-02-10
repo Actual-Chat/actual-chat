@@ -29,7 +29,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    private Task WhenInitialized => _whenInitializedSource.Task;
+    internal IState<bool> IsViewportAboveUnreadEntryState { get; private set; } = null!;
+    internal Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
     private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
@@ -48,6 +49,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(GetType(), nameof(ItemVisibility)));
             ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
+            IsViewportAboveUnreadEntryState = StateFactory.NewComputed(
+                new ComputedState<bool>.Options {
+                    UpdateDelayer = FixedDelayer.Instant,
+                    InitialValue = false,
+                    Category = StateCategories.Get(GetType(), nameof(IsViewportAboveUnreadEntryState)),
+                },
+                ComputeIsViewportAboveUnreadEntry);
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
         }
         finally {
@@ -73,8 +81,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         long navigateToEntryLid;
         var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
-        if (readEntryLid > 0)
+        if (readEntryLid > 0) {
             navigateToEntryLid = readEntryLid;
+        }
         else {
             var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, _disposeToken.Token);
             navigateToEntryLid = chatIdRange.ToInclusive().End;
@@ -92,8 +101,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         NavigateToEntryLid.Value = null;
         NavigateToEntryLid.Value = entryLid;
     }
-
-
 
     public void TryNavigateToEntry()
     {
@@ -287,5 +294,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (@event.ChatEntryId.ChatId == Chat.Id)
             NavigateToEntry(@event.ChatEntryId.LocalId);
         return Task.CompletedTask;
+    }
+
+    private async Task<bool> ComputeIsViewportAboveUnreadEntry(IComputedState<bool> state, CancellationToken cancellationToken)
+    {
+        var readPositionState = ReadPositionState;
+        var chatPosition = readPositionState != null ? await readPositionState.Use(cancellationToken) : null;
+        var readEntryLid = chatPosition?.EntryLid ?? 0;
+        var visibility = await ItemVisibility.Use(cancellationToken);
+        return readEntryLid > 0 && visibility.MaxEntryLid > 0 && visibility.MaxEntryLid < readEntryLid;
     }
 }

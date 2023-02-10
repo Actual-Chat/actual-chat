@@ -42,5 +42,8 @@
 </VirtualList>
 
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
-    <NavigateToEnd ChatSid="@Chat.Id" IsVisible="@(!ItemVisibility.Value.IsEndAnchorVisible)"/>
+    <NavigateToUnreadOrEnd
+        ChatSid="@Chat.Id"
+        IsVisible="@(!ItemVisibility.Value.IsEndAnchorVisible)"
+        ChatView="this" />
 </RenderIntoStack>

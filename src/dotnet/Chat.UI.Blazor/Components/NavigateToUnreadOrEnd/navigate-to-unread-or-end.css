@@ -13,9 +13,17 @@
     @apply opacity-0 translate-y-4;
 }
 
+.navigate-to-end .c-content {
+    @apply absolute bottom-3 md:bottom-0 right-3 md:mb-2 z-10;
+    @apply flex-y items-center justify-center shadow-scrollbar;
+}
+.navigate-to-end .unread-counter {
+    @apply -mb-2 z-10;
+    /*@apply bg-unread;*/ /* too washy color */
+    @apply text-04 cursor-pointer;
+}
 .navigate-to-end .btn.btn-round {
-    @apply absolute bottom-3 md:bottom-0 right-3 z-10;
-    @apply flex items-center justify-center shadow-scrollbar shadow-md md:shadow-none;
+    @apply shadow-md md:shadow-none;
 }
 .navigate-to-end .btn.btn-round .btn-content {
     @apply font-bold text-4xl;
