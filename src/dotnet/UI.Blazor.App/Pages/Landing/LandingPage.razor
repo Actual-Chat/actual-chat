@@ -1,0 +1,17 @@
+@namespace ActualChat.UI.Blazor.App
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@using System.Security.Cryptography
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Module
+@layout NoLayout
+
+@if (ScreenSize.IsNarrow()) {
+    <LandingNarrow/>
+} else {
+    <LandingWide/>
+}
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}

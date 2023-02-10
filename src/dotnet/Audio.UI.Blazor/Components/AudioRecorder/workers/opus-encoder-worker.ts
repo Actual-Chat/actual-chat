@@ -16,7 +16,7 @@ import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-me
 import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage, StartMessage } from './opus-encoder-worker-message';
-import { PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'promises';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'OpusEncoderWorker';
@@ -31,10 +31,19 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
-const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
-    codecModule = val;
-    self['codec'] = codecModule;
-});
+const codecModuleReady = loadCodec();
+
+function loadCodec(): Promise<void> {
+    // wrapped promise to avoid exceptions with direct call to codec(...)
+    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
+        .then(
+            val => {
+                codecModule = val;
+                self['codec'] = codecModule;
+                resolve();
+            },
+            reason => reject(reason)));
+}
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
@@ -134,8 +143,21 @@ async function onCreate(message: CreateEncoderMessage): Promise<void> {
     silenceChunk = new Float32Array(CHUNK_SIZE);
 
     // Setting encoder module
+    let retryCount = 0;
+    let whenCodecModuleCreated = codecModuleReady;
+    while (codecModule == null && retryCount++ < 3) {
+        try {
+            await whenCodecModuleCreated;
+            break;
+        }
+        catch (e) {
+            warnLog.log(e, "error loading codec WASM module.")
+            await delayAsync(300);
+            whenCodecModuleCreated = loadCodec();
+        }
+    }
     if (codecModule == null)
-        await codecModuleReady;
+        throw new Error("Unable to load codec WASM module.");
 
     // warmup encoder
     encoder = new codecModule.Encoder();

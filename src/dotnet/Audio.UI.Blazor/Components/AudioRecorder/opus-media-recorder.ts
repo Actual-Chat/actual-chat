@@ -48,7 +48,6 @@ export class OpusMediaRecorder {
     public static origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
-    private readonly channelCount: number = 1;
     private readonly whenLoaded: Promise<void>;
 
     private contextRef: AudioContextRef | null = null;
@@ -80,9 +79,12 @@ export class OpusMediaRecorder {
         await this.init(this.contextRef.context);
         this.contextRef.whenContextChanged().then(context => {
             if (context && this.state === 'recording') {
-                this.contextRef?.dispose();
-                this.contextRef = null;
-                void this.start(sessionId, chatId); // This call is recursive!
+                this.stop()
+                    .then(() => {
+                        this.contextRef?.dispose();
+                        this.contextRef = null;
+                        void this.start(sessionId, chatId); // This call is recursive!
+                    });
             }
         });
 
@@ -140,12 +142,6 @@ export class OpusMediaRecorder {
         this.contextRef?.dispose();
         this.contextRef = null;
         this.state = 'inactive';
-    }
-
-    public async dispose(): Promise<void> {
-        debugLog?.log( `dispose()`);
-        if (this.state !== 'inactive')
-            await this.stop();
     }
 
     // Private methods
@@ -295,3 +291,8 @@ export class OpusMediaRecorder {
         errorLog?.log(`onWorkerError: unhandled error:`, error);
     };
 }
+
+// Init
+
+export const opusMediaRecorder = new OpusMediaRecorder();
+globalThis['opusMediaRecorder'] = opusMediaRecorder;

@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Messaging;
+﻿using TimeoutException = System.TimeoutException;
+
+namespace ActualChat.Messaging;
 
 public interface IMessageProcessor<TMessage> : IAsyncDisposable
     where TMessage : class
@@ -17,8 +19,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
     public int QueueSize { get; init; } = Constants.Queues.MessageProcessorQueueDefaultSize;
+    public int MaxProcessCallDurationMs { get; init; } = Constants.Queues.MessageProcessorMaxProcessCallDurationMs;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
-    public bool UseMessageProcessingWrapper { get; init; } = false;
 
     protected MessageProcessorBase(CancellationTokenSource? stopTokenSource = null)
         : base(stopTokenSource) { }
@@ -87,11 +89,13 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
             DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(RunInternal) + " cycle");
             var message = process.Message;
             process.MarkStarted();
+            Task<object?>? processTask = null;
             try {
                 process.CancellationToken.ThrowIfCancellationRequested();
-                var result = UseMessageProcessingWrapper
-                    ? MessageProcessingWrapper.Process(message, Process, process.CancellationToken)
-                    : await Process(message, process.CancellationToken).ConfigureAwait(false);
+                processTask = Process(message, process.CancellationToken);
+                var result = await processTask
+                    .WaitAsync(TimeSpan.FromMilliseconds(MaxProcessCallDurationMs), process.CancellationToken)
+                    .ConfigureAwait(false);
                 if (result is Task<object?> resultTask) {
                     // Special case: Process may return Task<Task<object?>>,
                     // in this case we assume the rest of the processing will
@@ -109,6 +113,13 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
                     if (IsTerminator(message))
                         break;
                 }
+            }
+            catch (TimeoutException) {
+                if (processTask != null)
+                    process.MarkCompletedAfter(processTask); // Notice we don't await here!
+
+                if (IsTerminator(message))
+                    break;
             }
             catch (Exception e) {
                 process.MarkFailed(e);

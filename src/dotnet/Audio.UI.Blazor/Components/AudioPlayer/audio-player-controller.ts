@@ -102,6 +102,7 @@ export class AudioPlayerController implements Resettable {
         this.contextRef = await audioContextSource.getRef();
         this.contextRef.whenContextChanged().then(context => {
             if (context && !this.isReset) {
+                this.reset();
                 this.contextRef?.dispose();
                 this.contextRef = null;
                 void this.init(callbacks); // Note that this call is recursive!

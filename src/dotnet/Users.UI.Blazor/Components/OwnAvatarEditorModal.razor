@@ -1,6 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Chat
 @using Stl.CommandR.Internal
+@using Stl.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
@@ -19,6 +20,15 @@
                 <AnonymousIcon Class="w-32 h-32"/>
             </NoPicture>
         </PicUpload>
+
+        <Button Class="transparent border-none self-center" Click="OnGenerateAvatarClick">
+            <div class="flex min-w-10 items-center justify-center">
+                <i class="icon-sync text-xl text-primary"></i>
+            </div>
+            <div class="flex items-center text-headline-1 text-primary">
+                Generate random avatar
+            </div>
+        </Button>
 
         <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
@@ -72,6 +82,7 @@
 </Form>
 
 @code {
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private Form _formRef = null!;
     private FormModel _form = null!;
 
@@ -167,6 +178,12 @@
         });
         await UICommander.Run(command);
         Modal.Close();
+    }
+
+    private void OnGenerateAvatarClick() {
+        _form.Picture = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
+        _form.CopyToBase();
+        StateHasChanged();
     }
 
     private void CloseModal()
