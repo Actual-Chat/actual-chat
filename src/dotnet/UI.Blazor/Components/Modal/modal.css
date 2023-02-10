@@ -23,7 +23,8 @@
 }
 
 .modal .modal-content {
-    /* h-[90vh] here is to make modals look nicer on small screens, modal-overlay-fullscreen cancels it */
+    /* h-[90vh] adds top+bottom gap between the modal frame & screen edge on smaller screens */
+    /* Note that modal-overlay-fullscreen selector below cancels it */
     @apply h-[90vh] w-full;
 }
 
