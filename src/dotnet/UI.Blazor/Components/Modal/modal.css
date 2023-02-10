@@ -13,10 +13,6 @@
     @apply h-full w-full md:h-auto md:w-auto;
 }
 
-.modal-overlay-fullscreen .modal-focus-trap {
-    @apply h-full w-full;
-}
-
 .modal {
     @apply flex-y;
     @apply h-full w-full md:h-auto md:w-auto;
@@ -27,7 +23,14 @@
 }
 
 .modal .modal-content {
+    /* h-[90vh] here is to make modals look nicer on small screens, modal-overlay-fullscreen cancels it */
     @apply h-[90vh] w-full;
+}
+
+/* Full-screen mode overrides */
+.modal-overlay-fullscreen .modal-focus-trap,
+.modal-overlay-fullscreen .modal .modal-content {
+    @apply h-full w-full;
 }
 
 .modal-chrome-wrapper {
