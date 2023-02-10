@@ -51,13 +51,13 @@
     <link rel="preload" href="/dist/opusDecoderWorker.js" as="script" crossorigin />
     <link rel="preload" href="/dist/opusEncoderWorker.js" as="script" crossorigin />
     <link rel="preload" href="/dist/vadWorker.js" as="script" crossorigin />
-    <link href="/dist/bundle.css" rel="stylesheet" />
+    <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
     <link rel="prefetch" href="/dist/wasm/codec.wasm" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/wasm/soxr_wasm.wasm" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/wasm/ort-wasm-simd.wasm" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/wasm/vad.bin" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
-    <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
+    <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js" asp-append-version="true"></script>
     <script>
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";
@@ -154,7 +154,7 @@
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
-    <script src="/dist/bundle.js"></script>
+    <script src="/dist/bundle.js" asp-append-version="true"></script>
     @if (isServerSideBlazor) {
         <script src="_framework/blazor.server@(blazorUtilsVersion).js" autostart="false"></script>
         <script>
