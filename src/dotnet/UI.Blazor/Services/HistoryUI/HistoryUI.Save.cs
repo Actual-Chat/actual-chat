@@ -85,7 +85,7 @@ public partial class HistoryUI
         if (_afterLocationChange != null) {
             // Processing OnLocationChange
             ReplaceHistoryItem(newItem);
-            DebugLog?.LogDebug("EndSave: OnLocationChange -> ReplaceHistoryItem");
+            DebugLog?.LogDebug("EndSave: done (OnLocationChange)");
             return;
         }
 
@@ -106,14 +106,14 @@ public partial class HistoryUI
             };
             AddHistoryItem(newItem);
             _afterSave = () => AddNavigationHistoryEntry(_position);
-            DebugLog?.LogDebug("EndSave: AddHistoryItem");
+            DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
             break;
         case < 0:
             // Backward state
             var backItem = BackItemUnsafe;
             if (backItem != null && backItem.IsIdenticalTo(newItem)) {
                 _afterSave = NavigateBack;
-                DebugLog?.LogDebug("EndSave: NavigateBack");
+                DebugLog?.LogDebug("EndSave: +NavigateBack");
             }
             ReplaceOrAddBackItem(newItem);
             break;
@@ -125,11 +125,11 @@ public partial class HistoryUI
                 var position = _position;
                 AddBackItem(item);
                 _afterSave = () => AddNavigationHistoryEntry(position);
-                DebugLog?.LogDebug("EndSave: AddBackItem");
+                DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
             }
             else {
                 ReplaceHistoryItem(item);
-                DebugLog?.LogDebug("EndSave: ReplaceHistoryItem");
+                DebugLog?.LogDebug("EndSave: done");
             }
         }
     }

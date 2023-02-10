@@ -19,6 +19,14 @@ public partial class HistoryUI
                 throw StandardError.Internal("OnLocationChanged is called recursively.");
             _afterLocationChange = NoAction;
 
+            using (SuppressSave()) {
+                try {
+                    LocationChanging?.Invoke(this, e);
+                }
+                catch (Exception ex) {
+                    Log.LogError(ex, "One of LocationChanging handlers failed");
+                }
+            }
             // Saving pre-transition state
             Save();
 
@@ -58,22 +66,38 @@ public partial class HistoryUI
 
             { // The new scope is needed just to be able to use "item" here
                 var (item, position) = (CurrentItemUnsafe, _position);
-                DebugLog?.LogDebug("<- OnLocationChanged: {Kind} #{PrevPosition}/Id={PrevId} -> #{Position}/Id={Id}",
-                    locationChangeKind, prevPosition, prevItem.Id, position, item.Id);
-                Transition(item, prevItem, locationChangeKind);
+                var transition = new HistoryTransition(item, prevItem, locationChangeKind);
+                DebugLog?.LogDebug(
+                    "<- OnLocationChanged: transition to #{Position} <- #{PrevPosition}, {Transition}",
+                    position, prevPosition, transition);
+                Transition(transition);
+            }
+
+            try {
+                LocationChanged?.Invoke(this, e);
+            }
+            catch (Exception ex) {
+                Log.LogError(ex, "One of LocationChanged handlers failed");
             }
         }
         finally {
             var afterLocationChange = _afterLocationChange;
             _afterLocationChange = null;
             Monitor.Exit(Lock);
+
+            try {
+                afterLocationChange?.Invoke();
+            }
+            catch (Exception ex) {
+                Log.LogError(ex, "AfterLocationChange action failed");
+            }
             DebugLog?.LogDebug("<- OnLocationChanged");
-            afterLocationChange?.Invoke();
         }
     }
 
-    private void Transition(HistoryItem item, HistoryItem prevItem, LocationChangeKind locationChangeKind)
+    private void Transition(HistoryTransition transition)
     {
+        var (item, prevItem, locationChangeKind) = transition;
         if (item.States.Count != _defaultItem.States.Count)
             throw StandardError.Internal(
                 "Count of history states doesn't match to count of registered states.");
@@ -89,7 +113,7 @@ public partial class HistoryUI
                     "Change {Number}:\r\n- From: {PrevState}\r\n- To:   {State}",
                     n++, stateChange.PrevState, state);
                 try {
-                    state.Apply();
+                    state.Apply(transition);
                 }
                 catch (Exception e) {
                     Log.LogError(e, "Transition: Apply has failed for history state '{State}'", state);

@@ -173,7 +173,7 @@
         public override HistoryState Save()
             => With(Host._menu is { IsHoverMenu: false });
 
-        public override void Apply() {
+        public override void Apply(HistoryTransition transition) {
             var menu = Host._menu;
             if (!IsMenuShown && menu is { IsHoverMenu: false })
                 _ = Host.Hide();

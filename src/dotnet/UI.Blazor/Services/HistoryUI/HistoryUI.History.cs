@@ -86,8 +86,9 @@ public partial class HistoryUI
  #pragma warning disable CA2254
         DebugLog?.LogDebug(
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            $"{(mustReplace ? "Replace" : "Add")}HistoryItem: [{{Items}}]",
-            _history.ToDelimitedString(", "));
+            $"{(mustReplace ? "Replace" : "Add")}HistoryItem: "
+            + $"[{_history.Take(_position + 1).ToDelimitedString()}] .. "
+            + $"[{_history.Skip(_position + 1).ToDelimitedString()}]");
  #pragma warning restore CA2254
     }
 
@@ -115,7 +116,7 @@ public partial class HistoryUI
 
     private void ExpandHistory(int position)
     {
-        var lastItem = _history.Count > 0 ? _history[^1] : default;
+        var lastItem = _history.Count > 0 ? _history[^1] : 0;
         while (position >= _history.Count)
             _history.Add(lastItem);
     }

@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -33,6 +32,9 @@ public partial class HistoryUI : IHasServices
     public string Uri => LocalUrl.Value;
     public LocalUrl LocalUrl => new LocalUrl(_uri, ParseOrNone.Option);
 
+    public event EventHandler<LocationChangedEventArgs>? LocationChanging;
+    public event EventHandler<LocationChangedEventArgs>? LocationChanged;
+
     public HistoryUI(IServiceProvider services)
     {
         Services = services;
@@ -47,6 +49,9 @@ public partial class HistoryUI : IHasServices
         if (!Hub.HostInfo.AppKind.IsTestServer())
             Hub.Nav.LocationChanged += OnLocationChanged;
     }
+
+    public void Initialize()
+        => OnLocationChanged(Hub.Nav, new LocationChangedEventArgs(Hub.Nav.Uri, true));
 
     public void Register<TState>(TState defaultState, bool ignoreIfAlreadyRegistered = false)
         where TState : HistoryState

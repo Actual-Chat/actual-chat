@@ -26,13 +26,12 @@
 </CascadingValue>
 
 @code {
-    private string _lastLocation = "";
     private ImmutableList<ModalRef> _renderedRefs = ImmutableList<ModalRef>.Empty;
     private ImmutableList<ModalRef> _refs = ImmutableList<ModalRef>.Empty;
 
     [Inject] private ModalUI ModalUI { get; set; } = null!;
     [Inject] private TuneUI TuneUI { get; set; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     public IServiceProvider Services => ModalUI.Services;
@@ -44,8 +43,7 @@
     protected override void OnInitialized()
     {
         DefaultOptions = (Services.GetService<ModalOptions>() ?? new()).WithDefaults(ModalOptions.Default);
-        _lastLocation = Nav.Uri;
-        Nav.LocationChanged += OnLocationChanged;
+        HistoryUI.Register(new OwnHistoryState(this, "", ImmutableSortedSet<Symbol>.Empty));
         ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
     }
 
@@ -67,6 +65,7 @@
         });
         modalRefImpl.SetView(view);
         _refs = _refs.Add(modalRef);
+        HistoryUI.Save<OwnHistoryState>();
         StateHasChanged();
         return modalRef;
     }
@@ -81,32 +80,69 @@
             return false;
 
         _refs = _refs.Remove(modalRef);
+        HistoryUI.Save<OwnHistoryState>();
         StateHasChanged();
         OnModalClosed?.Invoke();
         return true;
     }
 
     public bool CloseAll(bool forceClose = false) {
-        if (_refs.Count == 0)
-            return true;
-
-        var modalRefs = _refs.ToList(); // Copy to another list
-        modalRefs.Reverse(); // In-place reverse
-        foreach (var modalRef in modalRefs) {
+        var modalRefs = _refs;
+        for (var i = modalRefs.Count - 1; i >= 0; i--) {
+            var modalRef = modalRefs[i];
             if (!modalRef.Close(forceClose))
                 return false;
         }
         return true;
     }
 
-    // Event handlers
+    // Nested types
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-        var isLocationChanged = !OrdinalEquals(_lastLocation, e.Location);
-        _lastLocation = e.Location;
-        if (!isLocationChanged)
-            return;
+    private sealed record OwnHistoryState(ModalHost Host, string Uri, ImmutableSortedSet<Symbol> MenuIds) : HistoryState
+    {
+        public override int BackStepCount => MenuIds.Count;
 
-        CloseAll();
+        public override string ToString()
+            => $"{nameof(MenuHost)}.{GetType().Name}({MenuIds.ToDelimitedString()})";
+
+        public override HistoryState Save()
+            => this with {
+                Uri = Host.HistoryUI.Uri,
+                MenuIds = Host._refs.Select(x => x.Id).ToImmutableSortedSet(),
+            };
+
+        public override void Apply(HistoryTransition transition) {
+            var prevState = transition.PrevItem.GetState<OwnHistoryState>();
+            var isUriChanged = !OrdinalEquals(Uri, prevState.Uri);
+            var menuIds = isUriChanged ? ImmutableSortedSet<Symbol>.Empty : MenuIds;
+            var modalRefs = Host._refs;
+            for (var i = modalRefs.Count - 1; i >= 0; i--) {
+                var modalRef = modalRefs[i];
+                if (!menuIds.Contains(modalRef.Id)) {
+                    if (!modalRef.Close())
+                        return;
+                }
+            }
+        }
+
+        // Equality
+
+        public bool Equals(OwnHistoryState? other)
+        {
+            if (ReferenceEquals(null, other))
+                return false;
+            if (ReferenceEquals(this, other))
+                return true;
+            return Host.Equals(other.Host)
+                && OrdinalEquals(Uri, other.Uri)
+                && MenuIds.SequenceEqual(other.MenuIds);
+        }
+
+        public override int GetHashCode() {
+            var result = HashCode.Combine(Host, Uri.OrdinalHashCode());
+            foreach (var menuId in MenuIds)
+                result = HashCode.Combine(result, menuId);
+            return result;
+        }
     }
 }

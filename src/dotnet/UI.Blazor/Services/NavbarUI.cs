@@ -77,7 +77,7 @@ public class NavbarUI
         public override HistoryState Save()
             => With(Host.IsVisible.Value);
 
-        public override void Apply()
+        public override void Apply(HistoryTransition transition)
             => Host.SetIsVisible(IsVisible);
 
         // "With" helpers
