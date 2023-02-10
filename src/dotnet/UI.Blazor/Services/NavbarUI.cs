@@ -41,7 +41,24 @@ public class NavbarUI
     }
 
     public void SetIsVisible(bool value)
-        => HistoryUI.Update<OwnHistoryState>((_, state) => state.With(value));
+    {
+        value |= !IsNarrow();
+        if (!value) {
+            var localUrl = HistoryUI.LocalUrl;
+            var isAtRoot = localUrl.IsChatRoot() || localUrl.IsDocsRoot();
+            value = isAtRoot;
+        }
+        bool oldIsVisible;
+        lock (_lock) {
+            oldIsVisible = _isVisible.Value;
+            if (oldIsVisible != value)
+                _isVisible.Value = value;
+        }
+        if (oldIsVisible != value) {
+            HistoryUI.Save<OwnHistoryState>();
+            VisibilityChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     // Private methods
 
@@ -52,34 +69,16 @@ public class NavbarUI
 
     private sealed record OwnHistoryState(NavbarUI Host, bool IsVisible) : HistoryState
     {
-        public override int BackCount => IsVisible ? 0 : 1;
+        public override int BackStepCount => IsVisible ? 0 : 1;
 
         public override string ToString()
             => $"{nameof(NavbarUI)}.{GetType().Name}({IsVisible})";
 
-        public override HistoryState Fix(HistoryChange change)
-        {
-            if (!Host.IsNarrow())
-                return With(true);
+        public override HistoryState Save()
+            => With(Host.IsVisible.Value);
 
-            var localUrl = change.Item.LocalUrl;
-            var isAtRoot = localUrl.IsChatRoot() || localUrl.IsDocsRoot();
-            return isAtRoot ? With(true) : this;
-        }
-
-        public override HistoryState Apply(HistoryChange change)
-        {
-            bool isChanged;
-            lock (Host._lock) {
-                isChanged = Host._isVisible.Value != IsVisible;
-                Host._isVisible.Value = IsVisible;
-            }
-            if (isChanged) {
-                Host.Log.LogDebug("OwnHistoryState.Apply: {State}", this);
-                Host.VisibilityChanged?.Invoke(this, EventArgs.Empty);
-            }
-            return this;
-        }
+        public override void Apply()
+            => Host.SetIsVisible(IsVisible);
 
         // "With" helpers
 

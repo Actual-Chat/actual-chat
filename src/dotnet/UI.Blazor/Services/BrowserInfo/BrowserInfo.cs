@@ -122,7 +122,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
             _screenSize.Value = screenSize;
         }
         if (wasNarrow != screenSize.IsNarrow())
-            HistoryUI.Fix(); // Some states depend on ScreenSize.IsNarrow / IsWide
+            HistoryUI.Save(); // Some states depend on ScreenSize.IsNarrow / IsWide
         UICommander.RunNothing(); // To instantly update everything
     }
 }

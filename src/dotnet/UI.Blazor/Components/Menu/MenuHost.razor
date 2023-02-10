@@ -74,7 +74,7 @@
             _menu = null;
             StateHasChanged();
             if (!menu.IsHoverMenu)
-                HistoryUI.Update<OwnHistoryState>(_ => new OwnHistoryState(this, false));
+                HistoryUI.Save<OwnHistoryState>();
         }
 
         if (_jsMenuId != null) {
@@ -111,9 +111,9 @@
             isHoverMenu);
 
         _menu = menu;
-        StateHasChanged();
         if (!menu.IsHoverMenu)
-            HistoryUI.Update<OwnHistoryState>(_ => new OwnHistoryState(this, true));
+            HistoryUI.Save<OwnHistoryState>();
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
@@ -125,9 +125,9 @@
 
         _jsMenuId = null;
         _menu = null;
-        StateHasChanged();
         if (!menu.IsHoverMenu)
-            HistoryUI.Update<OwnHistoryState>(_ => new OwnHistoryState(this, false));
+            HistoryUI.Save<OwnHistoryState>();
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
@@ -165,27 +165,24 @@
 
     private sealed record OwnHistoryState(MenuHost Host, bool IsMenuShown) : HistoryState
     {
-        public override int BackCount => IsMenuShown ? 1 : 0;
+        public override int BackStepCount => IsMenuShown ? 1 : 0;
 
         public override string ToString()
             => $"{nameof(MenuHost)}.{GetType().Name}({IsMenuShown})";
 
-        public override HistoryState Fix(HistoryChange change)
-            => change.Reason is HistoryChangeReason.NavigateToNewUri
-                ? With(false)
-                : this;
+        public override HistoryState Save()
+            => With(Host._menu is { IsHoverMenu: false });
 
-        public override HistoryState Apply(HistoryChange change) {
+        public override void Apply() {
             var menu = Host._menu;
             if (!IsMenuShown && menu is { IsHoverMenu: false })
-                _ = Host.InvokeAsync(async () => await Host.Hide()); // Apply must be fast
-            return this;
+                _ = Host.Hide();
         }
 
         // "With" helpers
 
-        public OwnHistoryState With(bool hasMenu)
-            => IsMenuShown == hasMenu ? this : this with { IsMenuShown = hasMenu };
+        public OwnHistoryState With(bool isMenuShown)
+            => IsMenuShown == isMenuShown ? this : this with { IsMenuShown = isMenuShown };
     }
 
     private sealed record MenuModel(

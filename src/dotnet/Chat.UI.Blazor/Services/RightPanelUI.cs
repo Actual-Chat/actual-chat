@@ -12,6 +12,7 @@ public class RightPanelUI : IHasServices
     private BrowserInfo BrowserInfo { get; }
 
     public IServiceProvider Services { get; }
+    // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
 
     public RightPanelUI(IServiceProvider services)
@@ -38,7 +39,16 @@ public class RightPanelUI : IHasServices
         => SetIsVisible(!IsVisible.Value);
 
     public void SetIsVisible(bool value)
-        => HistoryUI.Update<OwnHistoryState>((_, state) => state.With(value));
+    {
+        bool oldIsVisible;
+        lock (_lock) {
+            oldIsVisible = _isVisible.Value;
+            if (oldIsVisible != value)
+                _isVisible.Value = value;
+        }
+        if (oldIsVisible != value)
+            HistoryUI.Save<OwnHistoryState>();
+    }
 
     private bool IsNarrow()
         => BrowserInfo.ScreenSize.Value.IsNarrow();
@@ -47,17 +57,16 @@ public class RightPanelUI : IHasServices
 
     private sealed record OwnHistoryState(RightPanelUI Host, bool IsVisible) : HistoryState
     {
-        public override int BackCount => IsVisible ? 1 : 0;
+        public override int BackStepCount => IsVisible ? 1 : 0;
 
         public override string ToString()
             => $"{nameof(RightPanelUI)}.{GetType().Name}({IsVisible})";
 
-        public override HistoryState Apply(HistoryChange change)
-        {
-            lock (Host._lock)
-                Host._isVisible.Value = IsVisible;
-            return this;
-        }
+        public override HistoryState Save()
+            => With(Host.IsVisible.Value);
+
+        public override void Apply()
+            => Host.SetIsVisible(IsVisible);
 
         // "With" helpers
 

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Collections;
 
 public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>
@@ -43,13 +45,13 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
         }
     }
 
-    public bool TryGetValue(TKey key, out TValue value)
+    public bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value)
     {
         var cache = GetCache(key);
         lock (cache) return cache.TryGetValue(key, out value);
     }
 
-    public TValue GetValueOrDefault(TKey key)
+    public TValue? GetValueOrDefault(TKey key)
     {
         var cache = GetCache(key);
         lock (cache) return cache.GetValueOrDefault(key);

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.Collections;
 
 public interface ILruCache<TKey, TValue>
@@ -7,8 +9,8 @@ public interface ILruCache<TKey, TValue>
     int Count { get; }
     TValue this[TKey key] { get; set; }
 
-    bool TryGetValue(TKey key, out TValue value);
-    TValue GetValueOrDefault(TKey key);
+    bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value);
+    TValue? GetValueOrDefault(TKey key);
     bool TryAdd(TKey key, TValue value);
     void Add(TKey key, TValue value);
     bool Remove(TKey key);
@@ -54,20 +56,20 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
         _list = new LinkedList<KeyValuePair<TKey, TValue>>();
     }
 
-    public bool TryGetValue(TKey key, out TValue value)
+    public bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value)
     {
         if (!_dictionary.TryGetValue(key, out var node)) {
             value = default!;
             return false;
         }
 
-        value = node.Value.Value;
+        value = node.Value.Value!;
         PopUp(node);
         return true;
     }
 
-    public TValue GetValueOrDefault(TKey key)
-        => TryGetValue(key, out var value) ? value : default!;
+    public TValue? GetValueOrDefault(TKey key)
+        => TryGetValue(key, out var value) ? value : default;
 
     public bool TryAdd(TKey key, TValue value)
     {

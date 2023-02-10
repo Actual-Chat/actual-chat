@@ -5,10 +5,10 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class HistoryUI : IHasServices
 {
-    private const int MaxFixCount = 16;
-
     public const int MaxPosition = 1000;
-    public const int MaxItemCount = 100;
+    public const int MaxItemCount = 200;
+
+    private volatile string _uri;
 
     private object Lock { get; } = new();
     private ILogger Log { get; }
@@ -30,8 +30,8 @@ public partial class HistoryUI : IHasServices
         get { lock (Lock) return _defaultItem; }
     }
 
-    public string Uri => CurrentItem.Uri;
-    public LocalUrl LocalUrl => CurrentItem.LocalUrl;
+    public string Uri => LocalUrl.Value;
+    public LocalUrl LocalUrl => new LocalUrl(_uri, ParseOrNone.Option);
 
     public HistoryUI(IServiceProvider services)
     {
@@ -39,11 +39,10 @@ public partial class HistoryUI : IHasServices
         Log = services.LogFor(GetType());
         Hub = services.GetRequiredService<HistoryHub>();
 
-        _defaultItem = new HistoryItem(0, 0, ImmutableDictionary<Type, HistoryState>.Empty);
-        var uriState = new UriState(Hub.Nav);
-        Register(uriState);
-        var firstItem = new HistoryItem(NextItemId(), 0, ImmutableDictionary<Type, HistoryState>.Empty).With(uriState);
-        AddOrReplaceHistoryItem(firstItem, false);
+        var uri = _uri = Hub.Nav.GetLocalUrl().Value;
+        _defaultItem = new HistoryItem(0, 0, uri, ImmutableDictionary<Type, HistoryState>.Empty);
+        var firstItem = new HistoryItem(NextItemId(), 0, uri, ImmutableDictionary<Type, HistoryState>.Empty);
+        AddHistoryItem(firstItem);
 
         if (!Hub.HostInfo.AppKind.IsTestServer())
             Hub.Nav.LocationChanged += OnLocationChanged;

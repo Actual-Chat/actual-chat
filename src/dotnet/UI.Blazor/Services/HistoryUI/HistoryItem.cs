@@ -1,23 +1,24 @@
+using ActualChat.UI.Blazor.Services.Internal;
+
 namespace ActualChat.UI.Blazor.Services;
 
-public readonly record struct HistoryItem(
+public sealed record HistoryItem(
     int Id,
     int PrevId,
+    string Uri,
     ImmutableDictionary<Type, HistoryState> States,
-    Action? FollowUpAction = null
-    ) : ICanBeNone<HistoryItem>, IEnumerable<KeyValuePair<Type, HistoryState>>
+    Action? OnNavigate = null
+    ) : IEnumerable<KeyValuePair<Type, HistoryState>>
 {
-    public static HistoryItem None { get; } = default;
-
-    public bool IsNone => Id == 0;
-    public string Uri => GetState<UriState>().Uri;
-    public LocalUrl LocalUrl => new(Uri);
-
     public HistoryState? this[Type stateType]
         => States.GetValueOrDefault(stateType);
 
-    public HistoryItem(int id, int prevId, IEnumerable<HistoryState> states)
-        : this(id, prevId, states.ToImmutableDictionary(s => s.GetType(), s => s))
+    public HistoryItem(
+        int id, int prevId,
+        NavigationManager nav,
+        ImmutableDictionary<Type, HistoryState> states,
+        Action? followUpAction = null)
+        : this(id, prevId, nav.GetLocalUrl().Value, states, followUpAction)
     { }
 
     public override string ToString()
@@ -33,18 +34,51 @@ public readonly record struct HistoryItem(
 
     public bool IsIdenticalTo(HistoryItem other)
     {
-        if (ReferenceEquals(States, other.States))
-            return true; // Quick way to check if they're 100% equal
+        if (ReferenceEquals(States, other.States)) // Quick way to check if they're 100% equal
+            return OrdinalEquals(Uri, other.Uri);
 
         foreach (var (stateType, state) in States) {
             var otherState = other[stateType];
             if (!ReferenceEquals(state, otherState) && !Equals(state, otherState))
                 return false;
         }
-        return true;
+        return OrdinalEquals(Uri, other.Uri);
+    }
+
+    public int CompareBackStepCount(HistoryItem otherItem)
+    {
+        var hasStatesWithMoreBackSteps = false;
+        var hasStatesWithLessBackSteps = false;
+        foreach (var (stateType, state) in States) {
+            var otherState = otherItem[stateType];
+            var backStepCount = state.BackStepCount;
+            var otherBackStepCount = otherState?.BackStepCount ?? 0;
+            if (backStepCount > otherBackStepCount)
+                hasStatesWithMoreBackSteps = true;
+            else if (backStepCount < otherBackStepCount)
+                hasStatesWithLessBackSteps = true;
+        }
+        return hasStatesWithMoreBackSteps
+            ? hasStatesWithLessBackSteps ? 0 : 1
+            : hasStatesWithLessBackSteps ? -1 : 0;
+    }
+
+    public IEnumerable<HistoryStateChange> GetChanges(HistoryItem prevItem)
+    {
+        foreach (var (stateType, state) in States) {
+            var prevState = prevItem[stateType];
+            var change = new HistoryStateChange(state, prevState!);
+            if (change.HasChanges)
+                yield return change;
+        }
     }
 
     // "With" helpers
+
+    public HistoryItem WithUri(NavigationManager nav)
+        => WithUri(nav.GetLocalUrl().Value);
+    public HistoryItem WithUri(string uri)
+        => OrdinalEquals(uri, Uri) ? this : this with { Uri = uri };
 
     public HistoryItem With<TState>(TState state)
         where TState : HistoryState
@@ -61,7 +95,7 @@ public readonly record struct HistoryItem(
             : this with { States = States.SetItem(stateType, state) };
     }
 
-    // Equality - based solely on Id
-    public bool Equals(HistoryItem other) => Id == other.Id;
-    public override int GetHashCode() => Id;
+    // This record relies on referential equality
+    public bool Equals(HistoryItem? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
