@@ -22,6 +22,7 @@ const TestIntervalMs = 40;
 const WakeUpDetectionIntervalMs = 5000;
 
 export class AudioContextSource implements Disposable {
+    private _audioContext: AudioContext | null = null;
     private _isDisposed = false;
     private _onDeviceAwakeHandler: EventHandler<void>;
     private _deviceWokeUpAt = 0;
@@ -76,10 +77,10 @@ export class AudioContextSource implements Disposable {
     // Must be private, but good to keep it near markNotReady
     private markReady(audioContext: AudioContext | null) {
         Interactive.isInteractive = true;
-
         if (this._whenReady.isCompleted())
             return; // Already ready
 
+        this._audioContext = audioContext;
         this._changeCount++;
         debugLog?.log(`markReady(): #${this._changeCount}, AudioContext:`, audioContext);
 
@@ -108,13 +109,13 @@ export class AudioContextSource implements Disposable {
     // Protected methods
 
     protected async maintain(): Promise<void> {
-        let audioContext: AudioContext | null = null;
         let lastTestTimestamp = Date.now();
 
         for (;;) { // Renew loop
             if (this._isDisposed)
                 return;
 
+            let audioContext = this._audioContext;
             try {
                 if (audioContext === null || audioContext.state === 'closed') {
                     audioContext = await this.create();
@@ -145,8 +146,14 @@ export class AudioContextSource implements Disposable {
                         await this.test(audioContext);
 
                         // Test passed, we're fine to keep it
-                        if (this._whenNotReady.isCompleted()) // Might be in "not ready" state here
+                        if (this._whenNotReady.isCompleted()) {
+                            // Might be in "not ready" state here
                             this.markReady(audioContext);
+                        }
+                        else if(!this._whenReady.isCompleted()) {
+                            // Was not ready yet
+                            this.markReady(audioContext);
+                        }
                         continue;
                     }
                     catch (e) {
@@ -411,8 +418,11 @@ export class AudioContextSource implements Disposable {
     // Event handlers
 
     private onDeviceAwake() {
+        debugLog?.log(`onDeviceAwake()`);
         this._deviceWokeUpAt = Date.now();
         this._isInteractiveWasReset = false;
+        // close current AudioContext as it might be corrupted and can produce clicking sound
+        void this._audioContext.close();
         this.markNotReady();
     }
 }
