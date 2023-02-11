@@ -21,9 +21,10 @@ public partial class MainPage : ContentPage
         Log = log;
 
         InitializeComponent();
-        _blazorWebView.BlazorWebViewInitializing += BlazorWebViewInitializing;
-        _blazorWebView.BlazorWebViewInitialized += BlazorWebViewInitialized;
+        _blazorWebView.BlazorWebViewInitializing += OnBlazorWebViewInitializing;
+        _blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
         _blazorWebView.UrlLoading += OnUrlLoading;
+        _blazorWebView.Loaded += OnBlazorWebViewLoaded;
 
         _blazorWebView.RootComponents.Add(
             new Microsoft.AspNetCore.Components.WebView.Maui.RootComponent {
@@ -34,6 +35,8 @@ public partial class MainPage : ContentPage
                 },
             });
     }
+
+    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e);
 
     private void OnUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
@@ -46,6 +49,6 @@ public partial class MainPage : ContentPage
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
     }
 
-    private partial void BlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);
-    private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e);
+    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);
+    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e);
 }

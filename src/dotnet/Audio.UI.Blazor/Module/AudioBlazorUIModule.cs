@@ -20,9 +20,9 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
-        var fusion = services.AddFusion();
+        services.AddFusion();
 
-        services.AddScoped<ITrackPlayerFactory, AudioTrackPlayerFactory>();
-        services.AddScoped<AudioRecorder>();
+        services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
+        services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
     }
 }

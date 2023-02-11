@@ -25,10 +25,10 @@ public partial class MainPage
     // to define what happens when the WebView requests a set of permissions. See
     // PermissionManagingBlazorWebChromeClient.cs to explore the approach taken in this example.
 
-    private partial void BlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
+    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     { }
 
-    private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
+    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
         PlatformWebView = e.WebView;
 
@@ -44,4 +44,7 @@ public partial class MainPage
         //e.WebView.Settings.SetGeolocationDatabasePath(e.WebView.Context?.FilesDir?.Path);
         e.WebView.SetWebChromeClient(new PermissionManagingBlazorWebChromeClient(e.WebView.WebChromeClient!, activity));
     }
+
+    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
+    { }
 }
