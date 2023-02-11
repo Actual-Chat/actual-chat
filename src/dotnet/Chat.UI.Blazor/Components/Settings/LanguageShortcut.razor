@@ -1,11 +1,23 @@
 @inherits ComputedStateComponent<UserLanguageSettings>
+@{
+    var m = State.Value;
+    var text = m.Primary.Code.Value.ToSentenceCase();
+    if (m.Secondary is { } secondary)
+        text += ", " + secondary.Code.Value.ToSentenceCase();
+}
 
 <div class="text-primary text-sm">
-    @State.ValueOrDefault?.Primary.Title
+    @text
 </div>
 
 @code{
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+
+    protected override ComputedState<UserLanguageSettings>.Options GetStateOptions()
+        => new() {
+            InitialValue = new UserLanguageSettings(),
+            Category = GetStateCategory(),
+        };
 
     protected override Task<UserLanguageSettings> ComputeState(CancellationToken cancellationToken)
         => LanguageUI.Settings.Use(cancellationToken).AsTask();
