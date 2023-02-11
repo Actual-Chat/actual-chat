@@ -23,8 +23,8 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "Error:";
     [Parameter] public double? AutoDismissDelay { get; set; }
-    [Parameter] public EventCallback Dismissed { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback Dismissed { get; set; }
 
     private async Task Dismiss()
     {

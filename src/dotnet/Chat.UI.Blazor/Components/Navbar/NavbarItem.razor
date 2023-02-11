@@ -26,6 +26,4 @@
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> InputAttributes { get; set; } = new();
 }

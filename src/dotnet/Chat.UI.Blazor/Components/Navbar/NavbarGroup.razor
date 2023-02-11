@@ -3,11 +3,10 @@
 @using ActualChat.UI.Blazor.Services
 @{
     var isVisible = NavbarUI.SelectedGroupId == Id;
+    if (!isVisible)
+        return;
 }
 
-@if (!isVisible) {
-    return;
-}
 <div class="@Class navbar-group flex-1 flex-y gap-y-1">
     @ChildContent
 </div>
@@ -21,7 +20,6 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? Icons { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public Action? AddClick { get; set; }
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();

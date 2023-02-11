@@ -55,16 +55,16 @@
     private bool _isBusy;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public EventCallback<string> TextChanged { get; set; }
-    [Parameter] public EventCallback<string> Triggered { get; set; }
-    [Parameter] public EventCallback Cancelled { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool IsCollapsed { get; set; }
     [Parameter] public bool ShowSpinner { get; set; }
     [Parameter] public bool ShowClose{ get; set; }
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
     [Parameter] public string TabIndex { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<string> Triggered { get; set; }
+    [Parameter] public EventCallback Cancelled { get; set; }
 
     private bool CanBeTriggered => !_isBusy && !_text.IsNullOrEmpty();
 
