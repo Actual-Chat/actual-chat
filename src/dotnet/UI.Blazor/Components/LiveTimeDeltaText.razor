@@ -1,7 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<string>
 @{
-    var m = State.ValueOrDefault;
+    var m = State.Value;
     var tooltip = "";
     if (Moment.HasValue) {
         var localTime = TimeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());

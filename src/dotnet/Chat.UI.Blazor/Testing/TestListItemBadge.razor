@@ -1,8 +1,7 @@
 @inherits ComputedStateComponent<TestListItem>
 @inject VirtualListTestService Service
-
 @{
-    var item = State.ValueOrDefault ?? new(0, "Loading...");
+    var item = State.Value;
 }
 
 <div class="m-1" style="font-size: @(item.FontSize)em">
@@ -12,6 +11,12 @@
 
 @code {
     [Parameter] public TestListItemRef ItemRef { get; set; } = null!;
+
+    protected override ComputedState<TestListItem>.Options GetStateOptions()
+        => new() {
+            InitialValue = new(0, "Loading..."),
+            Category = GetStateCategory(),
+        };
 
     protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)
         => Service.GetItem(ItemRef, cancellationToken);

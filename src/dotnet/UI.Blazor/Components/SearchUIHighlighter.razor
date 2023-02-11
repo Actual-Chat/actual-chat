@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<SearchMatch>
 
-<SearchMatchHighlighter Match="@State.ValueOrDefault"/>
+<SearchMatchHighlighter Match="@State.Value"/>
 
 @code {
     private static IUpdateDelayer UpdateDelayer { get; } = FixedDelayer.Get(0.333);
@@ -13,15 +13,14 @@
 
     protected override ComputedState<SearchMatch>.Options GetStateOptions()
         => new() {
-            InitialValue = Text,
-            // Just to de-bounce re-renders
-            UpdateDelayer = UpdateDelayer,
+            InitialValue = new SearchMatch(Text),
+            UpdateDelayer = UpdateDelayer, // De-bounces the re-renders
             Category = GetStateCategory(),
         };
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {
         if (Text.IsNullOrEmpty())
-            return "";
+            return new SearchMatch();
 
         var text = Text;
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);

@@ -7,6 +7,8 @@ public readonly record struct SearchMatch(
     [property: DataMember(Order = 1)] double Rank,
     [property: DataMember(Order = 2)] SearchMatchPart[] Parts)
 {
+    public static SearchMatch Empty { get; } = new("");
+
     public IEnumerable<SearchMatchPart> PartsWithGaps {
         get {
             var lastIndex = 0;
@@ -22,8 +24,8 @@ public readonly record struct SearchMatch(
         }
     }
 
-    public SearchMatch(string text)
-        : this(text, 0, Array.Empty<SearchMatchPart>())
+    public SearchMatch(string? text)
+        : this(text ?? "", 0, Array.Empty<SearchMatchPart>())
     { }
 
     public override string ToString()
@@ -33,8 +35,4 @@ public readonly record struct SearchMatch(
         return
             $"{GetType().GetName()}(\"{Text}\", {Rank:F3}, {{ {parts} }})";
     }
-
-    // Operators
-
-    public static implicit operator SearchMatch(string text) => new(text);
 }

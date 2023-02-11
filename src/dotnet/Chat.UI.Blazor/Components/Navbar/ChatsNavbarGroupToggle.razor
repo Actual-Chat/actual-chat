@@ -2,7 +2,7 @@
 @using ActualChat.Contacts
 @inherits ComputedStateComponent<ChatsNavbarGroupToggle.Model>
 @{
-    var m = State.ValueOrDefault ?? new();
+    var m = State.Value;
 }
 <NavbarGroupToggle
     Id="@NavbarGroupIds.Chats"

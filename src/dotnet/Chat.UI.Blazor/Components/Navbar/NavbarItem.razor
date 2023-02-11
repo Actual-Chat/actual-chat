@@ -4,8 +4,7 @@
     var activeClass = IsSelected ? "active" : "inactive";
 }
 
-<div class="@Class @activeClass navbar-item group"
-     @attributes="InputAttributes">
+<div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
     @if (Url.IsNullOrEmpty()) {
         <div class="navbar-item-content">
             @ChildContent
@@ -26,4 +25,6 @@
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> Attributes { get; set; } = new();
 }

@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<MessageMenuPlay.Model>
 @{
-    var m = State.ValueOrDefault ?? Model.NotPlaying;
+    var m = State.Value;
     var canPlay = m.CanPlay;
 }
 
@@ -67,8 +67,12 @@
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
-        if (playback == null)
-            return State.ValueOrDefault ?? Model.NotPlaying;
+        var lastValue = State.Value;
+        if (playback == null) {
+            // This happens when player is being disposed, which means this method
+            // will soon recompute anyway.
+            return lastValue; // Keep the last state to avoid blinking
+        }
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
@@ -87,11 +91,10 @@
                 }
             }
         }
-        if (!playingAt.HasValue && State.ValueOrDefault != null) {
-            // Try to keep last state to avoid blinks
-            var m = State.Value;
-            if (m.CanPlay == canPlay)
-                return m;
+        if (!playingAt.HasValue && !ReferenceEquals(lastValue, Model.NotPlaying)) {
+            // Try to keep last state to avoid blinking
+            if (lastValue.CanPlay == canPlay)
+                return lastValue;
         }
 
         return new Model {

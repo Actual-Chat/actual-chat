@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<bool>
 @{
-    var isPinned = State.ValueOrDefault;
+    var isPinned = State.Value;
     var cls = "pin-toggle pin-chat off";
 }
 
@@ -38,5 +38,5 @@
     }
 
     private void OnToggle()
-        => _ = ChatUI.SetPinState(ChatId, !State.ValueOrDefault);
+        => _ = ChatUI.SetPinState(ChatId, !State.Value);
 }

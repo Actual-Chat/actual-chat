@@ -1,6 +1,6 @@
 @inherits ComputedStateComponent<Moment>
 @{
-    var time = State.ValueOrDefault;
+    var time = State.Value;
     var second = (long) time.ToDateTime().TimeOfDay.TotalSeconds;
 }
 
@@ -26,6 +26,12 @@ Content: @DateTime.Now.ToString("F")
 
 @code {
     [Inject] private IFusionTime FusionTime { get; init; } = null!;
+
+    protected override ComputedState<Moment>.Options GetStateOptions()
+        => new() {
+            InitialValue = MomentClockSet.Default.SystemClock.Now,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
         => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(1)).ConfigureAwait(false);

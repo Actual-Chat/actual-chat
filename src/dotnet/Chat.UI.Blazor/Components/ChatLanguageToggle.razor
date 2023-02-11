@@ -1,6 +1,6 @@
 @inherits ComputedStateComponent<Language>
 @{
-    var m = State.ValueOrDefault.Or(Languages.Main);
+    var m = State.Value.Or(Languages.Main);
 }
 
 <ButtonRound
