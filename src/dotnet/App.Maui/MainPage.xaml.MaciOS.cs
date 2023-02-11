@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using AVFoundation;
 using Microsoft.AspNetCore.Components.WebView;
 using WebKit;
@@ -21,34 +16,50 @@ public partial class MainPage
     // the APIs required by your app. You may have to perform additional configuration to enable
     // use of those APIs from the WebView, as is done below.
 
-    private partial void BlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
+    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     {
         e.Configuration.AllowsInlineMediaPlayback = true;
         e.Configuration.MediaTypesRequiringUserActionForPlayback = WebKit.WKAudiovisualMediaTypes.None;
-        e.Configuration.MediaPlaybackRequiresUserAction = false;
-        e.Configuration.RequiresUserActionForMediaPlayback = false;
         e.Configuration.UpgradeKnownHostsToHttps = true;
-
-        // TODO: request only when it's required
-        var audioCaptureStatus = AVCaptureDevice.GetAuthorizationStatus(AVAuthorizationMediaType.Audio);
-        Log.LogInformation("AudioCaptureStatus={AudioCaptureStatus}", audioCaptureStatus);
-        switch (audioCaptureStatus)
-        {
-        case AVAuthorizationStatus.NotDetermined:
-        case AVAuthorizationStatus.Authorized:
-            AVCaptureDevice.RequestAccessForMediaType(AVAuthorizationMediaType.Audio,
-                granted => {
-                    Log.LogInformation("AVCaptureDeviceRequestSuccess={Success}", granted);
-                });
-            break;
-        case AVAuthorizationStatus.Restricted:
-        case AVAuthorizationStatus.Denied:
-            break;
-        default:
-            throw new ArgumentOutOfRangeException();
-        }
     }
 
-    private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
+    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
         => PlatformWebView = e.WebView;
+
+    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
+    {
+        PlatformWebView.UIDelegate = new UIDelegate();
+    }
+
+    private sealed class UIDelegate : WKUIDelegate
+    {
+        public override void RequestMediaCapturePermission(WKWebView webView, WKSecurityOrigin origin, WKFrameInfo frame, WKMediaCaptureType type, Action<WKPermissionDecision> decisionHandler)
+        {
+            if (IsMediaCaptureGranted(origin, type)) {
+                decisionHandler(WKPermissionDecision.Grant);
+                return;
+            }
+
+            base.RequestMediaCapturePermission(webView, origin, frame, type, decisionHandler);
+        }
+
+        private bool IsMediaCaptureGranted(
+            WKSecurityOrigin origin,
+            WKMediaCaptureType type)
+        {
+            if (!origin.Host.IsNullOrEmpty())
+                return false;
+
+            return type switch {
+                WKMediaCaptureType.Camera => IsGranted(AVAuthorizationMediaType.Video),
+                WKMediaCaptureType.Microphone => IsGranted(AVAuthorizationMediaType.Audio),
+                WKMediaCaptureType.CameraAndMicrophone => IsGranted(AVAuthorizationMediaType.Audio)
+                    && IsGranted(AVAuthorizationMediaType.Video),
+                _ => false,
+            };
+
+            bool IsGranted(AVAuthorizationMediaType type)
+                => AVCaptureDevice.GetAuthorizationStatus(type) == AVAuthorizationStatus.Authorized;
+        }
+    }
 }

@@ -24,7 +24,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     private IJSObjectReference? _jsRef;
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
 
-    private ILogger<AudioRecorder> Log { get; }
+    private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.AudioRecording;
     private Session Session { get; }
@@ -33,17 +33,13 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     public Task WhenInitialized { get; }
     public IMutableState<AudioRecorderState?> State { get; }
 
-    public AudioRecorder(
-        ILogger<AudioRecorder> log,
-        Session session,
-        IStateFactory stateFactory,
-        IJSRuntime js)
+    public AudioRecorder(IServiceProvider services)
     {
-        Log = log;
-        Session = session;
-        Js = js;
+        Log = services.LogFor<AudioRecorder>();
+        Session = services.GetRequiredService<Session>();
+        Js = services.GetRequiredService<IJSRuntime>();
         _messageProcessor = new MessageProcessor<IAudioRecorderCommand>(ProcessCommand);
-        State = stateFactory.NewMutable(
+        State = services.StateFactory().NewMutable(
             (AudioRecorderState?)null,
             StateCategories.Get(GetType(), nameof(State)));
         WhenInitialized = Initialize();
