@@ -2,18 +2,17 @@
 @layout NoLayout
 
 <AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true">
-    @{ _renderedContent = true; }
+    @{ _isContentRendered = true; }
     <LandingPage/>
 </AutoNavigateToChatsOnSignIn>
 
-
 @code {
-    private bool _renderedContent;
+    private bool _isContentRendered;
 
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     protected override void OnAfterRender(bool firstRender) {
-        if (_renderedContent)
+        if (_isContentRendered)
             LoadingUI.MarkLoaded();
     }
 }

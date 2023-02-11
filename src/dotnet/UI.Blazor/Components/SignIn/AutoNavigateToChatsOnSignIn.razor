@@ -2,24 +2,23 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services;
 @inherits ComputedStateComponent<AccountFull>
-
 @{
     var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
         return;
     if (ChildContent == null)
         return;
-    if (!_renderedContent && _navigated)
+    if (!_isContentRendered && _isNavigated)
         return;
-    _renderedContent = true;
+    _isContentRendered = true;
 }
 
 @ChildContent
 
 @code {
     private AccountFull? _lastAccount;
-    private bool _navigated;
-    private bool _renderedContent;
+    private bool _isContentRendered;
+    private bool _isNavigated;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
@@ -57,8 +56,8 @@
         _lastAccount = account;
 
         if (isSignedIn && (NavigateIfAlreadySignedIn || !wasSignedIn)) {
-            if (!_navigated && AutoNavigationUI.TryNavigateToChatsOnSignIn())
-                _navigated = true;
+            if (!_isNavigated && AutoNavigationUI.TryNavigateToChatsOnSignIn())
+                _isNavigated = true;
         }
     }
 }
