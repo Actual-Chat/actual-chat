@@ -2,16 +2,17 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using System.Security.Cryptography
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.Module
 @layout NoLayout
 
-@if (ScreenSize.IsNarrow()) {
-    <LandingNarrow/>
+@if (HostInfo.AppKind.IsMauiApp()) {
+    <LandingShort/>
 } else {
-    <LandingWide/>
+    <LandingFull/>
 }
 
 @code {
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 }
