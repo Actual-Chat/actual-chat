@@ -52,7 +52,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
     public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
     {
         if (ReadCache.TryGetValue(key, out var value))
-            return ValueTask.FromResult(value);
+            return ValueTask.FromResult(value)!;
         return Reader.Process(key, cancellationToken).ToValueTask();
     }
 
