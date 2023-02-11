@@ -237,13 +237,13 @@ public partial class ChatAudioUI
                 if (mustShowError)
                     switch (recorderError) {
                     case AudioRecorderError.Microphone:
-                        ErrorUI.ShowError("Microphone is not ready");
+                        ErrorUI.ShowError("Microphone is not ready.");
                         break;
                     case AudioRecorderError.Timeout:
-                        ErrorUI.ShowError("Unable to start recording in time");
+                        ErrorUI.ShowError("Unable to start recording in time.");
                         break;
                     default:
-                        ErrorUI.ShowError("Voice recording failed");
+                        ErrorUI.ShowError("Voice recording failed.");
                         break;
                     }
                 if (mustSync) {
@@ -270,7 +270,7 @@ public partial class ChatAudioUI
                 // mark recording stopped in case of timeout
                 if (!current.RecordingChatId.IsNone) {
                     await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
-                    ErrorUI.ShowError("Recording failed");
+                    ErrorUI.ShowError("Recording failed.");
                 }
             }
             finally {
