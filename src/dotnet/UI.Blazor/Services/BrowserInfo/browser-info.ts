@@ -26,6 +26,8 @@ export class BrowserInfo {
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
         this.windowId = (globalThis['App'] as { windowId: string }).windowId;
+        if (this.appKind == 'MauiApp')
+            Interactive.isAlwaysInteractive = true;
         this.initBodyClasses();
 
         // Call OnInitialized
@@ -39,13 +41,11 @@ export class BrowserInfo {
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
-        log?.log(`init:`, initResult);
+        log?.log(`init:`, JSON.stringify(initResult));
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
         ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
-        if (this.appKind == 'MauiApp')
-            Interactive.isAlwaysInteractive = true;
         globalThis["browserInfo"] = this;
     }
 

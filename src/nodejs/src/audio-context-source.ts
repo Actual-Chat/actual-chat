@@ -1,10 +1,11 @@
 import { Disposable } from 'disposable';
-import { delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize } from 'promises';
+import { delayAsync, PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { AudioContextRef } from 'audio-context-ref';
 import { Log, LogLevel, LogScope } from 'logging';
+import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 
 const LogScope: LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -177,6 +178,8 @@ export class AudioContextSource implements Disposable {
 
     protected async create(): Promise<AudioContext> {
         debugLog?.log(`create()`);
+        // wait for Interactive.isAlwaysInteractive
+        await BrowserInfo.whenReady;
 
         const audioContext = await this.refreshContext(null);
         if (audioContext.state !== 'running') {
