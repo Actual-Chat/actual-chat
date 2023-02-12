@@ -426,7 +426,7 @@ body.narrow .page-container {
     @apply pt-16 pb-8;
     @apply text-5xl font-semibold;
 }
-body.narrow .c-header {
+body.narrow .landing .c-header {
     @apply flex-y items-center;
     @apply pt-14 pb-4;
     @apply text-title-1;
