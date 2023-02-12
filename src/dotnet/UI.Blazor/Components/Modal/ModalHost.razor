@@ -75,13 +75,14 @@
         if (modalRef == null)
             return true;
 
-        var mustClose = forceClose || modalRef.Model is not IOptionallyClosable oc || oc.CanClose;
+        var mustClose = forceClose || modalRef.Model is not IOptionallyClosable oc || oc.CanBeClosed;
         if (!mustClose)
             return false;
 
         _refs = _refs.Remove(modalRef);
         HistoryUI.Save<OwnHistoryState>();
         StateHasChanged();
+        ((IModalRefImpl)modalRef).MarkClosed();
         OnModalClosed?.Invoke();
         return true;
     }

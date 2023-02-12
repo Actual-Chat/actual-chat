@@ -11,5 +11,5 @@ public interface IModalView<TModel> : IModalView
 
 public interface IOptionallyClosable
 {
-    bool CanClose { get; }
+    bool CanBeClosed { get; }
 }

@@ -5,8 +5,8 @@
 <ModalFrame
     Class="@Class" Title="@Title"
     CloseButtonClass="@CloseButtonClass"
-    HasHeader="HasHeader"
-    HasCloseButton="HasCloseButton"
+    HasHeader="@HasHeader"
+    HasCloseButton="@HasCloseButton"
     NoNarrowHeader="@NoNarrowHeader">
     <div class="dialog-body">
         @Body
@@ -27,8 +27,8 @@
     [Parameter] public string CloseButtonClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public bool NoNarrowHeader { get; set; }
     [Parameter] public bool HasEscapeHandler { get; set; } = true;
+    [Parameter] public bool NoNarrowHeader { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }

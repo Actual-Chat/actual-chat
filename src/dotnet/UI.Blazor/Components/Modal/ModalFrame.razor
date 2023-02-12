@@ -17,9 +17,11 @@
             </div>
         } else if (!NoNarrowHeader) {
             <div class="modal-mobile-header">
-                <ButtonRound Click="OnCloseClick" Class="transparent">
-                    <i class="icon-arrow-left text-2xl"></i>
-                </ButtonRound>
+                @if (HasCloseButton) {
+                    <ButtonRound Click="OnCloseClick" Class="transparent">
+                        <i class="icon-arrow-left text-2xl"></i>
+                    </ButtonRound>
+                }
                 <div class="text-xl font-semibold md:text-lg md:font-medium">
                     @Title
                 </div>
