@@ -25,7 +25,7 @@
 .modal .modal-content {
     /* h-[90vh] adds top+bottom gap between the modal frame & screen edge on smaller screens */
     /* Note that modal-overlay-fullscreen selector below cancels it */
-    @apply h-[90vh] w-full;
+    @apply h-full md:h-[90vh] w-full;
 }
 
 /* Full-screen mode overrides */
