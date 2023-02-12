@@ -112,14 +112,6 @@
         // UICommander.RunNothing() anyway
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender)
-            return Task.CompletedTask;
-
-        _ = OnboardingUI.TryShow();
-        return Task.CompletedTask;
-    }
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Loading,

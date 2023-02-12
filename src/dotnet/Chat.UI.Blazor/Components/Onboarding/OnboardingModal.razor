@@ -5,11 +5,17 @@
 
 <DialogFrame
     Class="onboarding-modal"
-    NoNarrowHeader="true"
-    HasHeader="false">
+    HasHeader="false"
+    NoNarrowHeader="true">
+
     <Body>
+
     <Stepper Context="stepper">
-        <HeaderContent>
+        <Steps>
+            <PhoneStep/>
+            <AvatarStep/>
+        </Steps>
+        <Header>
             @if (stepper.CanMoveBack) {
                 <ButtonRound
                     Class="transparent"
@@ -19,30 +25,26 @@
                 <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
             }
             <div class="grow"></div>
-            <ButtonX Click="@(() => Modal.Close())"/>
-        </HeaderContent>
-        <ChildContent>
-            <PhoneStep/>
-            <AvatarStep/>
-        </ChildContent>
-        <FooterContent>
-            @if (stepper.IsLast) {
-                <Button
-                    Class="btn-primary btn-w-full"
-                    Click="() => OnLastStepComplete(stepper)">
-                    Start messaging
-                </Button>
-            } else if (stepper.CanMoveForward) {
-                <Button
-                    Class="btn-primary btn-w-full"
-                    Click="stepper.MoveForward">
-                    Next
-                </Button>
+
+            @if (ModalModel.CanBeClosed) {
+                <ButtonX Click="@(() => Modal.Close())"/>
             }
+        </Header>
+        <Footer>
+            <Button
+                Class="btn-primary btn-w-full"
+                Click="() => OnMoveForwardClick(stepper)">
+
+                @if (stepper.CurrentStepIndex == stepper.LastStepIndex) {
+                    <span>Start messaging</span>
+                } else if (stepper.CanMoveForward) {
+                    <span>Next</span>
+                }
+            </Button>
             <div class="flex w-full justify-center mt-6">
                 <LineProgress
-                    TotalSteps="stepper.TotalSteps"
-                    CurrentStep="stepper.CurrentStepIndex"
+                    StepCount="stepper.StepCount"
+                    CurrentStepIndex="stepper.CurrentStepIndex"
                     Decoration="LineProgress.LineProgressDecoration.Blue">
                 </LineProgress>
             </div>
@@ -67,8 +69,9 @@
             @*         } *@
             @*     </RoundProgress> *@
             @* </div> *@
-        </FooterContent>
+        </Footer>
     </Stepper>
+
     </Body>
 </DialogFrame>
 
@@ -76,13 +79,20 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private async Task OnLastStepComplete(Stepper stepper) {
-        var stepCompleted = await stepper.MoveForward();
-        if (!stepCompleted)
+    // Event handlers
+
+    private async Task OnMoveForwardClick(Stepper stepper) {
+        var wasAtTheLastStep = stepper.CurrentStepIndex == stepper.LastStepIndex;
+        if (!await stepper.TryMoveForward())
             return;
 
-        Modal.Close();
+        if (wasAtTheLastStep) {
+            ModalModel.CanBeClosed = true;
+            Modal.Close(true);
+        }
     }
 
-    public sealed record Model;
+    public sealed record Model : IOptionallyClosable {
+        public bool CanBeClosed { get; set; }
+    }
 }

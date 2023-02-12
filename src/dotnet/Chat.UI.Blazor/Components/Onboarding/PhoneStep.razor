@@ -6,16 +6,15 @@
     return;
 }
 
-@if (CurrentStep.IsCompleted) {
-    <CompletedStep/>
-    return;
-}
-
 <div>
-    <p class="text-title-1 text-center">Your phone number and email</p>
-    <p class="text-headline-1 mb-8">Please confirm your country code and enter your phone number</p>
+    <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    <p class="text-headline-1 mt-6">
+        Please confirm your country code and enter your phone number.
+        We collect this information to help you find your friends here.
+    </p>
     <Form
         @ref="_formRef"
+        Class="mt-6"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
         <FormSection
@@ -72,9 +71,8 @@
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted;
 
-    protected override void SetCompleted() {
-        OnboardingUI.Settings.Value = OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true };
-    }
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(x => x with { IsPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
@@ -109,12 +107,8 @@
             }
         }
 
-        [Required]
-        public string? Code { get; set; } = PhoneCodes.Default.Code;
-
-        [Required]
-        public string? Number { get; set; }
-
+        [Required] public string? Code { get; set; } = PhoneCodes.Default.Code;
+        [Required] public string? Number { get; set; }
         public string? Email { get; set; }
     }
 }

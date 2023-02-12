@@ -2,20 +2,20 @@
 
 <div class="stepper">
     <CascadingValue Value="@this" IsFixed="true">
-        @if (HeaderContent != null) {
+        @if (Header != null) {
             <div class="stepper-header">
-                @HeaderContent.Invoke(this)
+                @Header.Invoke(this)
             </div>
         }
         <div class="stepper-body">
-            @if (ChildContent != null) {
+            @if (Steps != null) {
                 <div class="stepper-content">
-                    @ChildContent.Invoke(this)
+                    @Steps.Invoke(this)
                 </div>
             }
-            @if (FooterContent != null) {
+            @if (Footer != null) {
                 <div class="stepper-footer">
-                    @FooterContent.Invoke(this)
+                    @Footer.Invoke(this)
                 </div>
             }
         </div>
@@ -26,11 +26,9 @@
     private readonly List<Step> _steps = new();
     private Step? _currentStep;
 
-    [Parameter] public RenderFragment<Stepper>? HeaderContent { get; set; }
-    [Parameter] public RenderFragment<Stepper>? ChildContent { get; set; }
-    [Parameter] public RenderFragment<Stepper>? FooterContent { get; set; }
-
-    internal Step? CurrentStep => _currentStep;
+    [Parameter] public RenderFragment<Stepper>? Header { get; set; }
+    [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
+    [Parameter] public RenderFragment<Stepper>? Steps { get; set; }
 
     public void AddStep(Step step) {
         _steps.Add(step);
@@ -40,33 +38,27 @@
         StateHasChanged();
     }
 
-    public bool IsLast
-        => _currentStep != null && _steps.IndexOf(_currentStep) == _steps.Count - 1;
+    public int StepCount => _steps.Count;
+    public int LastStepIndex => Math.Max(0, _steps.Count - 1);
+    public int CurrentStepIndex => _currentStep is { } currentStep ? _steps.IndexOf(currentStep) : -1;
+    public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
+    public bool CanMoveBack => CurrentStepIndex > 0;
+    public Step? CurrentStep => _currentStep;
 
-    public bool IsFirst
-        => _currentStep != null && _steps.IndexOf(_currentStep) == 0;
-
-    public bool CanMoveForward => _currentStep != null && !IsLast;
-
-    public bool CanMoveBack => _currentStep != null && !IsFirst;
-
-    public int CurrentStepIndex => _currentStep != null ? _steps.IndexOf(_currentStep) + 1 : -1;
-
-    public int TotalSteps => _steps.Count;
-
-    public async Task<bool> MoveForward() {
+    public async ValueTask<bool> TryMoveForward() {
         if (_currentStep == null)
             return false;
-
-        var isStepCompleted = await _currentStep.Complete();
-        if (!isStepCompleted)
+        if (!await _currentStep.TryComplete())
             return false;
 
-        var index = _steps.IndexOf(_currentStep);
+        var nextStepIndex = CurrentStepIndex + 1;
+        if (nextStepIndex >= StepCount)
+            return true;
+
         var previousStep = _currentStep;
-        _currentStep = _steps.ElementAtOrDefault(index + 1);
-        previousStep.Refresh();
-        _currentStep?.Refresh();
+        _currentStep = _steps[nextStepIndex];
+        _ = previousStep.StateHasChangedAsync();
+        _ = _currentStep.StateHasChangedAsync();
         return true;
     }
 
@@ -74,10 +66,13 @@
         if (_currentStep == null)
             return;
 
-        var index = _steps.IndexOf(_currentStep);
+        var nextStepIndex = CurrentStepIndex - 1;
+        if (nextStepIndex < 0)
+            return;
+
         var previousStep = _currentStep;
-        _currentStep = _steps.ElementAtOrDefault(index - 1);
-        previousStep.Refresh();
-        _currentStep?.Refresh();
+        _currentStep = _steps[nextStepIndex];
+        previousStep.StateHasChangedAsync();
+        _currentStep.StateHasChangedAsync();
     }
 }

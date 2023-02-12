@@ -16,15 +16,10 @@ public abstract class Step : ComponentBase
     }
 
     protected abstract Task<bool> Validate();
-
     protected abstract Task Save();
+    protected abstract void MarkCompleted();
 
-    protected abstract void SetCompleted();
-
-    public void Refresh()
-        => StateHasChanged();
-
-    public async Task<bool> Complete()
+    public async ValueTask<bool> TryComplete()
     {
         if (IsCompleted)
             return true;
@@ -34,7 +29,7 @@ public abstract class Step : ComponentBase
             return false;
 
         await Save();
-        SetCompleted();
+        MarkCompleted();
         return true;
     }
 }

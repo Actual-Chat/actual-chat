@@ -9,19 +9,16 @@ public sealed record UserOnboardingSettings : IHasOrigin
 
     [DataMember] public bool IsPhoneStepCompleted { get; init; }
     [DataMember] public bool IsAvatarStepCompleted { get; init; }
-    [DataMember] public DateTime? LastShownAt { get; init; }
+    [DataMember] public Moment LastShownAt { get; init; }
     [DataMember] public string Origin { get; init; } = "";
 
-    public bool ShouldBeShown() {
-        if (LastShownAt.HasValue && DateTime.UtcNow < LastShownAt.Value.AddDays(1))
-            return false;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool HasUncompletedSteps
+        => this is not {
+            IsAvatarStepCompleted: true,
+            IsPhoneStepCompleted: true,
+        };
 
-        if (!IsPhoneStepCompleted)
-            return true;
-
-        if (!IsAvatarStepCompleted)
-            return true;
-
-        return false;
-    }
+    public UserOnboardingSettings Clear()
+        => new() { Origin = Origin };
 }

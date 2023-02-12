@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -34,6 +35,10 @@ public class SignOutReloader : WorkerBase
                     await cAuthInfo0.When(i => i?.IsAuthenticated() ?? false, updateDelayer, cancellationToken).ConfigureAwait(false);
                     await UICommander.RunNothing().ConfigureAwait(false); // Reset all update delays
                 }
+
+                var onboardingUI = Services.GetRequiredService<OnboardingUI>();
+                var dispatcher = Services.GetRequiredService<Dispatcher>();
+                _ = dispatcher.InvokeAsync(() => onboardingUI.TryShow());
 
                 // Wait for sign-out
                 await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);

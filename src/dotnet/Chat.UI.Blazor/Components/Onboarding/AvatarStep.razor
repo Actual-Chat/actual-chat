@@ -9,18 +9,13 @@
     return;
 }
 
-@if (CurrentStep.IsCompleted) {
-    <CompletedStep/>
-    return;
-}
-
 <div>
-    <p class="text-title-1 text-center mb-8">Set up your avatar and name</p>
+    <p class="text-title-1 text-center">Your user name and avatar</p>
     <Form
         @ref="_formRef"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
-        <div class="flex-x mb-8">
+        <div class="flex-none flex-x my-8">
             <Pic
                 Title="@_stepModel.Name"
                 ContentId="@_stepModel.AvatarPicture"
@@ -90,9 +85,8 @@
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsAvatarStepCompleted;
 
-    protected override void SetCompleted() {
-        OnboardingUI.Settings.Value = OnboardingUI.Settings.Value with { IsAvatarStepCompleted = true };
-    }
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(x => x with { IsAvatarStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
@@ -159,8 +153,7 @@
     }
 
     public class AvatarStepModel {
-        [Required]
-        public string Name { get; set; } = "";
+        [Required] public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
         public string AvatarPicture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";

@@ -10,16 +10,16 @@
 }
 
 <div class="line-progress">
-    @for (var i = 1; i <= TotalSteps; i++) {
-        var cls = i == CurrentStep ? "line-progress-item-current" : "";
+    @for (var i = 0; i < StepCount; i++) {
+        var cls = i == CurrentStepIndex ? "line-progress-item-current" : "";
         <div class="line-progress-item @decorationCls @cls"></div>
     }
 </div>
 
 @code {
+    [Parameter, EditorRequired] public int StepCount { get; set; }
+    [Parameter, EditorRequired] public int CurrentStepIndex { get; set; } = 1;
     [Parameter] public LineProgressDecoration Decoration { get; set; } = LineProgressDecoration.White;
-    [Parameter] public int TotalSteps { get; set; }
-    [Parameter] public int CurrentStep { get; set; } = 1;
 
     public enum LineProgressDecoration {
         White = 0,

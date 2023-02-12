@@ -6,21 +6,27 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class OnboardingUI
 {
+    private readonly ISyncedState<UserOnboardingSettings> _settings;
+    private object Lock => _settings;
+
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private ModalUI ModalUI { get; }
+    private MomentClockSet Clocks { get; }
+    private Moment Now => Clocks.SystemClock.Now;
 
-    public ISyncedState<UserOnboardingSettings> Settings { get; }
+    public IMutableState<UserOnboardingSettings> Settings => _settings;
 
     public OnboardingUI(IServiceProvider services)
     {
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
         ModalUI = services.GetRequiredService<ModalUI>();
+        Clocks = services.GetRequiredService<MomentClockSet>();
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.GetRequiredService<AccountSettings>();
-        Settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
+        _settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
@@ -28,19 +34,39 @@ public class OnboardingUI
             });
     }
 
-    public async Task TryShow()
+    public async ValueTask TryShow()
     {
+        if (!await ShouldBeShown())
+            return;
+
+        UpdateSettings(x => x with { LastShownAt = Now });
+        await ModalUI.Show(new OnboardingModal.Model());
+    }
+
+    public void UpdateSettings(Func<UserOnboardingSettings, UserOnboardingSettings> updater)
+    {
+        lock (Lock)
+            _settings.Value = updater.Invoke(_settings.Value);
+    }
+
+    // Private methods
+
+    private async ValueTask<bool> ShouldBeShown()
+    {
+        // Uncomment to debug OnboardingUI:
+        // UpdateSettings(x => x.Clear());
+
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         if (account.IsGuestOrNone)
-            return;
+            return false;
 
-        await Settings.WhenFirstTimeRead;
-        if (!Settings.Value.ShouldBeShown())
-            return;
+        await _settings.WhenFirstTimeRead;
+        var settings = _settings.Value;
 
-        Settings.Value = Settings.Value with {
-            LastShownAt = DateTime.UtcNow,
-        };
-        await ModalUI.Show(new OnboardingModal.Model());
+        // NOTE(AY): We should stick to the typical UX as much as we can, otherwise we won't see the bugs
+        // if (account.IsAdmin && settings.LastShownAt is { } lastShownAt && lastShownAt + TimeSpan.FromDays(1) < Now)
+        //     return false;
+
+        return settings.HasUncompletedSteps;
     }
 }
