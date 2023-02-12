@@ -2,141 +2,124 @@ using Stl.Internal;
 
 namespace ActualChat.IO;
 
-public class LazyWriter<T> : IAsyncDisposable
+public class LazyWriter<T> : WorkerBase
 {
-    private readonly List<T> _buffer = new();
-    private long _itemIndex;
-    private long _flushedItemIndex;
-    private Task _flushTask = Task.CompletedTask;
-    private CancellationTokenSource? _cancelFlushDelayCts;
-    private bool _isDisposed;
-    private object Lock => _buffer;
+    private readonly Channel<Command> _commands;
 
     public int FlushMaxItemCount { get; init; } = 64;
     public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(1);
     public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
     public RetryDelaySeq FlushRetryDelays { get; init; } = new();
     public Func<List<T>, Task> Implementation { get; init; } = _ => Task.CompletedTask;
+    public Func<Exception, LogLevel> FlushErrorSeverityProvider { get; init; } = static _ => LogLevel.Error;
     public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
     public ILogger Log { get; init; } = NullLogger.Instance;
 
-    public async ValueTask DisposeAsync()
+    public LazyWriter()
     {
-        lock (Lock) {
-            if (_isDisposed)
-                return;
-            _isDisposed = true;
-            UnsafeEndFlushDelay();
-        }
-        try {
-            using var disposeDelayCts = new CancellationTokenSource(DisposeTimeout);
-            await Flush(disposeDelayCts.Token).ConfigureAwait(false);
-        }
-        catch {
-            // Intended
-        }
+        _commands = Channel.CreateUnbounded<Command>(new UnboundedChannelOptions() {
+            SingleReader = true,
+            SingleWriter = false,
+        });
+        Start();
     }
 
     public void Add(T item)
     {
-        lock (Lock) {
-            if (_isDisposed)
-                throw Errors.AlreadyDisposedOrDisposing();
-            _buffer.Add(item);
-            _itemIndex++;
-            if (_buffer.Count < FlushMaxItemCount) {
-                UnsafeDelayedFlush(FlushDelay);
-                return;
-            }
-        }
-        Flush();
+        var command = new ItemCommand(item);
+        if (!_commands.Writer.TryWrite(command))
+            throw Errors.AlreadyDisposed();
     }
 
     public Task Flush(CancellationToken cancellationToken = default)
     {
-        lock (Lock) // Lock is needed here b/c of _itemIndex access
-            return Flush(_itemIndex, cancellationToken);
+        var command = new FlushCommand();
+        if (!_commands.Writer.TryWrite(command))
+            throw Errors.AlreadyDisposed();
+
+        return command.WhenFlushed.WaitAsync(cancellationToken);
     }
 
-    // Private methods
-
-    private async Task Flush(long expectedFlushedItemIndex, CancellationToken cancellationToken)
+    protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        while (true) {
-            Task flushTask;
-            lock (Lock) {
-                if (expectedFlushedItemIndex <= _flushedItemIndex)
-                    return;
-                flushTask = UnsafeDelayedFlush(TimeSpan.Zero).WaitAsync(cancellationToken);
-            }
-            await flushTask.ConfigureAwait(false);
-        }
+        using var abortCts = new CancellationTokenSource();
+        var abortToken = abortCts.Token;
+        await using var delayedAbortRegistration = cancellationToken.Register(() => {
+            _commands.Writer.TryWrite(new FlushCommand());
+            _commands.Writer.Complete();
+            // ReSharper disable once AccessToDisposedClosure
+            Task.Delay(DisposeTimeout, CancellationToken.None)
+                .ContinueWith(_ => abortCts.CancelAndDisposeSilently(), TaskScheduler.Default);
+        }).ConfigureAwait(false);
+
+        await ProcessCommands(abortToken).ConfigureAwait(false);
     }
 
-    private Task UnsafeDelayedFlush(TimeSpan delay)
+    private async Task ProcessCommands(CancellationToken cancellationToken)
     {
-        // This method has to be called from inside lock (Lock) block!
-
-        if (!_flushTask.IsCompleted) {
-            if (delay <= TimeSpan.Zero && _cancelFlushDelayCts != null)
-                UnsafeEndFlushDelay();
-            return _flushTask;
-        }
-        if (_buffer.Count == 0)
-            return _flushTask;
-
-        var delayTask = Task.CompletedTask;
-        if (delay > TimeSpan.Zero && !_isDisposed) {
-            UnsafeEndFlushDelay();
-            _cancelFlushDelayCts = new CancellationTokenSource();
-            delayTask = Clock.Delay(FlushDelay, _cancelFlushDelayCts.Token);
-        }
-        return _flushTask = DelayedFlush(delayTask);
-    }
-
-    private async Task DelayedFlush(Task delayTask)
-    {
-        if (!delayTask.IsCompleted)
-            try {
-                await delayTask.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                // Intended
-            }
-
-        var flushBuffer = new List<T>();
-        var failedTryCount = 0;
-        while (true) {
-            try {
-                long flushedItemIndex;
-                lock (Lock) {
-                    if (_isDisposed)
-                        return;
-                    UnsafeEndFlushDelay();
-                    flushBuffer.AddRange(_buffer);
-                    _buffer.Clear();
-                    flushedItemIndex = _itemIndex;
+        var batch = new List<T>();
+        CancellationTokenSource? upcomingFlushCts = null;
+        try {
+            await foreach (var command in _commands.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                switch (command) {
+                case ItemCommand itemCommand:
+                    batch.Add(itemCommand.Item);
+                    if (batch.Count >= FlushMaxItemCount)
+                        await FlushInternal().ConfigureAwait(false);
+                    else if (upcomingFlushCts == null) {
+                        // Start the task pushing FlushCommand into the queue after FlushDelay
+                        upcomingFlushCts = new CancellationTokenSource();
+                        _ = Task.Delay(FlushDelay, upcomingFlushCts.Token).ContinueWith(t => {
+                            if (!t.IsCanceled)
+                                _commands.Writer.TryWrite(new FlushCommand());
+                        }, TaskScheduler.Default);
+                    }
+                    break;
+                case FlushCommand flushCommand:
+                    var flushTask = FlushInternal();
+                    _ = TaskSource.For(flushCommand.WhenFlushed).TrySetFromTaskAsync(flushTask, cancellationToken);
+                    await flushTask.ConfigureAwait(false);
+                    break;
                 }
-                await Implementation.Invoke(flushBuffer).ConfigureAwait(false);
-                lock (Lock) {
-                    _flushedItemIndex = flushedItemIndex;
+            }
+        }
+        finally {
+            upcomingFlushCts.CancelAndDisposeSilently();
+        }
+        return;
+
+        async Task<Unit> FlushInternal()
+        {
+            // ReSharper disable once AccessToModifiedClosure
+            upcomingFlushCts?.CancelAndDisposeSilently();
+            upcomingFlushCts = null;
+            var failedTryCount = 0;
+            while (true) {
+                try {
+                    await Implementation.Invoke(batch).ConfigureAwait(false);
+                    break;
                 }
-                return;
+                catch (Exception e) {
+                    failedTryCount++;
+                    var retryDelay = FlushRetryDelays[failedTryCount];
+                    var severity = FlushErrorSeverityProvider.Invoke(e);
+                    if (severity != LogLevel.None)
+                        Log.Log(severity, e,
+                            "Error #{ErrorCount} while flushing a batch of {ItemCount} items, will retry in {RetryDelay}",
+                            failedTryCount, batch.Count, retryDelay.ToShortString());
+                    await Clock.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
+                }
             }
-            catch (Exception e) {
-                failedTryCount++;
-                var retryDelay = FlushRetryDelays[failedTryCount];
-                Log.LogError(e,
-                    "Error #{ErrorCount} while flushing a batch of {ItemCount} items, will retry in {RetryDelay}",
-                    failedTryCount, flushBuffer.Count, retryDelay.ToShortString());
-                await Clock.Delay(retryDelay).ConfigureAwait(false);
-            }
+            batch.Clear();
+            return default;
         }
     }
 
-    private void UnsafeEndFlushDelay()
-    {
-        _cancelFlushDelayCts.CancelAndDisposeSilently(); // Instant flush in this case
-        _cancelFlushDelayCts = null;
+    // Nested types
+
+    private abstract record Command;
+    private record ItemCommand(T Item) : Command;
+    private record FlushCommand(Task<Unit> WhenFlushed) : Command {
+        public FlushCommand() : this(TaskSource.New<Unit>(true).Task) { }
     }
 }

@@ -1,4 +1,5 @@
 using ActualChat.IO;
+using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
 
@@ -21,7 +22,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
     protected IBatchingKvasBackend Backend { get; }
     protected IThreadSafeLruCache<Symbol, string?> ReadCache { get; }
     protected BatchProcessor<string, string?> Reader { get; }
-    protected LazyWriter2<(string Key, string? Value)> Writer { get; }
+    protected LazyWriter<(string Key, string? Value)> Writer { get; }
     protected ILogger Log { get; }
 
     public BatchingKvas(Options options, IBatchingKvasBackend backend, ILogger<BatchingKvas>? log = null)
@@ -36,12 +37,16 @@ public class BatchingKvas : IKvas, IAsyncDisposable
             BatchingDelayTaskFactory = options.ReadBatchDelayTaskFactory,
             Implementation = BatchRead,
         };
-        Writer = new LazyWriter2<(string Key, string? Value)>() {
+        Writer = new LazyWriter<(string Key, string? Value)>() {
             FlushDelay = options.FlushDelay,
             FlushMaxItemCount = options.FlushMaxItemCount,
             FlushRetryDelays = options.FlushRetryDelays,
             DisposeTimeout = options.DisposeTimeout,
             Implementation = BatchWrite,
+            FlushErrorSeverityProvider = e =>
+                e is JSDisconnectedException or ObjectDisposedException or OperationCanceledException
+                    ? LogLevel.None
+                    : LogLevel.Warning,
             Log = Log,
         };
     }
