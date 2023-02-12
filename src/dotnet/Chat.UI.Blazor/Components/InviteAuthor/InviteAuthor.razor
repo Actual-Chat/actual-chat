@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using Stl.Extensibility
 @using ActualChat.Contacts
+@using ActualChat.Search
 @implements IModalView<InviteAuthor.Model>
 @implements IDisposable
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
@@ -17,11 +18,12 @@
             <div class="invite-author-modal-contact-list-item"
                  @key="@contact.Account.Id.Value"
                  @onclick="@(_ => OnContactClick(contact))">
-                <AvatarBadge
-                    Class="grow"
-                    Avatar="@contact.Account.Avatar"
-                    Presence="@contact.Presence"
-                    Size="SquareSize.Size8"/>
+                <AccountCircle UserSid="@contact.Account.Id" ShowPresence="true"/>
+                <div class="flex-y grow gap-y-1 overflow-hidden">
+                    <span class="text-headline-1 text-02 truncate">
+                        <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
+                    </span>
+                </div>
                 @if (contact.IsExisting) {
                     <Checkbox
                         IsChecked="true"
@@ -60,12 +62,12 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private Chat Chat => ModalModel.Chat; // Shortcut
+    private string Filter { get; set; } = "";
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
     private bool CanInvite { get; set; }
@@ -118,11 +120,18 @@
         => DisposeTokenSource.Cancel();
 
     private void OnFilter(string filter) {
+        Filter = filter;
+
         FilteredContacts = string.IsNullOrWhiteSpace(filter)
             ? AllContacts.ToArray()
             : AllContacts
                 .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
                 .ToArray();
+    }
+
+    private SearchMatch GetMatch(string text) {
+        var searchPhrase = Filter.ToSearchPhrase(true, false);
+        return searchPhrase.GetMatch(text);
     }
 
     private void OnContactClick(Contact contact) {

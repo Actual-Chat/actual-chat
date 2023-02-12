@@ -11,8 +11,13 @@
     @apply overflow-y-auto custom-scrollbar;
 }
 .invite-author-modal-contact-list-item {
-    @apply flex-x w-full;
-    @apply items-center gap-x-2 px-1;
-    @apply hover:bg-02;
+    @apply flex-x items-center;
+    @apply gap-x-2 py-1 px-2;
     @apply rounded-md;
+    @apply hover:bg-secondary;
+}
+
+.invite-author-modal-contact-list-item,
+.invite-author-modal-contact-list-item * {
+    @apply cursor-pointer;
 }
