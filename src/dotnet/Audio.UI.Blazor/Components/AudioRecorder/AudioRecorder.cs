@@ -154,7 +154,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
                 }
             }
         }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(StartRecordingInternal)}: start recording failed");
             State.Value = State.Value with { Error = AudioRecorderError.Generic };
             recordingCancellation.Cancel();

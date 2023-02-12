@@ -15,7 +15,7 @@ export class AudioRecorder {
     private readonly sessionId: string;
 
     private whenInitialized: Promise<void>;
-    private isRecording: boolean = false;
+    private state: 'starting' | 'recording' | 'stopped' = 'stopped';
 
     public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
         return new AudioRecorder(blazorRef, sessionId);
@@ -63,12 +63,14 @@ export class AudioRecorder {
     }
 
     public async startRecording(chatId: string): Promise<boolean> {
+        debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         await this.whenInitialized;
 
         try {
-            if (this.isRecording)
+            if (this.state === 'recording' || this.state === 'starting')
                 return true;
 
+            this.state = 'starting';
             const isMaui = BrowserInfo.appKind == 'MauiApp';
             if (!DetectRTC.hasMicrophone) {
                 errorLog?.log(`startRecording: microphone is unavailable`);
@@ -103,12 +105,19 @@ export class AudioRecorder {
 
             const { blazorRef, sessionId } = this;
             await opusMediaRecorder.start(sessionId, chatId);
-            this.isRecording = true;
+            if (this.state !== 'starting')
+                // noinspection ExceptionCaughtLocallyJS
+                throw new Error('Recording has been stopped.')
+            this.state = 'recording';
             await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
         catch (error) {
             errorLog?.log(`startRecording: unhandled error:`, error);
+            await this.stopRecording();
             throw error;
+        }
+        finally {
+            debugLog?.log(`<- startRecording()`);
         }
 
         return true;
@@ -126,7 +135,7 @@ export class AudioRecorder {
             errorLog?.log(`stopRecording: unhandled error:`, error);
         }
         finally {
-            this.isRecording = false;
+            this.state = 'stopped';
             debugLog?.log(`<- stopRecording`);
         }
     }
