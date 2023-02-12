@@ -230,15 +230,21 @@ export class AudioContextSource implements Disposable {
         }
     }
 
-    protected async test(audioContext: AudioContext): Promise<void> {
+    protected async test(audioContext: AudioContext, isFirstTest = false): Promise<void> {
         if (audioContext.state !== 'running')
             throw `${LogScope}.test: AudioContext isn't running.`;
 
-        const now = audioContext.currentTime;
-        await delayAsync(TestIntervalMs);
-        if (audioContext.state !== 'running')
-            throw `${LogScope}.test: AudioContext isn't running.`;
-        if (audioContext.currentTime == now) // AudioContext isn't running
+        let lastTime: number;
+        const testCycleCount = isFirstTest ? 5 : 1;
+        for (let i = 0; i < testCycleCount; i++) {
+            lastTime = audioContext.currentTime;
+            await delayAsync(TestIntervalMs);
+            if (audioContext.state !== 'running')
+                throw `${LogScope}.test: AudioContext isn't running.`;
+            if (audioContext.currentTime != lastTime)
+                break;
+        }
+        if (audioContext.currentTime == lastTime) // AudioContext isn't running
             throw `${LogScope}.test: AudioContext is running, but didn't pass currentTime test.`;
 
         // Since AudioContext is fine, we should report we're interactive at this point
