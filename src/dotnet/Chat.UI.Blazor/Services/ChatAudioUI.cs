@@ -77,15 +77,18 @@ public partial class ChatAudioUI : WorkerBase
         if (chatId.IsNone)
             return ValueTask.CompletedTask;
 
+        var now = Now;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             var oldActiveChats = activeChats;
             if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
-                activeChats = activeChats.Remove(chat);
-                chat = chat with { IsListening = mustListen };
-                activeChats = activeChats.Add(chat);
+                chat = chat with {
+                    IsListening = mustListen,
+                    ListeningRecency = mustListen ? now : chat.ListeningRecency,
+                };
+                activeChats = activeChats.AddOrUpdate(chat);
             }
             else if (mustListen)
-                activeChats = activeChats.Add(new ActiveChat(chatId, true, false, Now));
+                activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now));
             if (oldActiveChats != activeChats)
                 UICommander.RunNothing();
 
@@ -97,11 +100,8 @@ public partial class ChatAudioUI : WorkerBase
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
             var oldActiveChats = activeChats;
             foreach (var chat in oldActiveChats) {
-                if (chat.IsListening) {
-                    activeChats = activeChats.Remove(chat);
-                    var updatedChat = chat with { IsListening = false };
-                    activeChats = activeChats.Add(updatedChat);
-                }
+                if (chat.IsListening)
+                    activeChats = activeChats.AddOrUpdate(chat with { IsListening = false });
             }
             if (oldActiveChats != activeChats)
                 UICommander.RunNothing();

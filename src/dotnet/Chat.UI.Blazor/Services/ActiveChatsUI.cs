@@ -7,6 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ActiveChatsUI
 {
     public const int MaxActiveChatCount = 3;
+    public static TimeSpan MaxContinueListeningRecency { get; } = TimeSpan.FromMinutes(5);
 
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
 
@@ -75,11 +76,16 @@ public class ActiveChatsUI
         if (_isActiveChatsFirstLoad) {
             // Turn off stored recording on restoring state during app start
             _isActiveChatsFirstLoad = false;
-            if (activeChats.Count > 0) {
-                activeChats = activeChats
-                    .Select(c => c.IsRecording ? c with {IsRecording = false} : c)
-                    .ToImmutableHashSet();
-            }
+            activeChats = activeChats
+                .Select(c => {
+                    if (c.IsRecording)
+                        c = c with { IsRecording = false };
+                    var listeningRecency = Moment.Max(c.Recency, c.ListeningRecency);
+                    if (c.IsListening && Now - listeningRecency > MaxContinueListeningRecency)
+                        c = c with { IsListening = false };
+                    return c;
+                })
+                .ToImmutableHashSet();
         }
         return FixActiveChats(activeChats, cancellationToken);
     }

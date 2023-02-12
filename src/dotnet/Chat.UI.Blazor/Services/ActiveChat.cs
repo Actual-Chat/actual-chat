@@ -1,11 +1,13 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 [StructLayout(LayoutKind.Auto)]
+[DataContract]
 public readonly record struct ActiveChat(
-    ChatId ChatId,
-    bool IsListening = false,
-    bool IsRecording = false,
-    Moment Recency = default)
+    [property: DataMember] ChatId ChatId,
+    [property: DataMember] bool IsListening = false,
+    [property: DataMember] bool IsRecording = false,
+    [property: DataMember] Moment Recency = default,
+    [property: DataMember] Moment ListeningRecency = default)
 {
     public static implicit operator ActiveChat(ChatId chatId) => new(chatId);
 
