@@ -1,4 +1,4 @@
-@using ActualChat.Chat.UI.Blazor.Events
+@namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.Value;
@@ -27,7 +27,7 @@
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y min-h-min">
-            <ActiveChatsNavbarWidget/>
+            <ActiveChatList/>
             <div class="border-t-4 border-bg-04"></div>
             <TabPanel
                 @ref="@_tabPanel"
@@ -37,7 +37,7 @@
                 SelectedTabIdChanged="@OnSelectedTabIdChanged">
                 <AdditionalButton>
                     <ButtonRound
-                        Class="sort-btn btn-sm"
+                        Class="chat-list-sort-btn btn-sm"
                         data-menu="@(MenuRef.New<ChatListSortMenu>())"
                         data-menu-trigger="@MenuTrigger.Primary"
                         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">

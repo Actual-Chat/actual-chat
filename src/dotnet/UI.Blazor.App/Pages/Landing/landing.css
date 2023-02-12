@@ -497,9 +497,7 @@ body.narrow .docs-left-panel {
     @apply gap-x-0;
 }
 .docs-left-panel .navbar-item .navbar-item-content {
-    @apply flex-x;
-    @apply gap-x-4;
-    @apply items-center;
+    @apply flex-x gap-x-4 items-center;
     @apply mx-2;
 }
 .docs-left-panel .navbar-item-content {

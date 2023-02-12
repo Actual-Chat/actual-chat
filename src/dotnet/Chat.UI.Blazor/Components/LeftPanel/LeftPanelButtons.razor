@@ -1,21 +1,21 @@
 @using ActualChat.Chat.UI.Blazor.Components.NewChat
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<div class="thin-left-panel">
-    <div class="thin-left-panel-space"></div>
-    <div class="thin-left-panel-content">
+<div class="left-panel-buttons">
+    <div class="c-spacer"></div>
+    <div class="c-content">
         <div class="flex w-full py-3 justify-center cursor-pointer" @onclick="@OnLogoClick">
             <img class="w-8 h-8 fill-current" alt="Actual Chat" src="/favicon.svg"/>
         </div>
         <div class="flex-y w-full grow items-center gap-y-3 md:gap-y-2">
             <ButtonSquare
                 Click="OnCreateChatClick"
-                ContentClass="navbar-navigation-button-content"
+                ContentClass="navbar-button-content"
                 Tooltip="Create"
                 TooltipPosition="FloatingPosition.Right">
                 <i class="icon-plus text-2xl font-medium"></i>
             </ButtonSquare>
-            <NavbarGroupToggles/>
+            <NavbarButtons/>
         </div>
         <div class="flex w-full py-2 justify-center">
             <AccountDropdown/>

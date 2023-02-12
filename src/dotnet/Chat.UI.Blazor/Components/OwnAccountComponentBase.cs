@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public abstract class NavbarContentBase : ComputedStateComponent<AccountFull>
+public abstract class OwnAccountComponentBase : ComputedStateComponent<AccountFull>
 {
     [Inject] protected AccountUI AccountUI { get; init; } = null!;
     [Inject] protected HostInfo HostInfo { get; init; } = null!;

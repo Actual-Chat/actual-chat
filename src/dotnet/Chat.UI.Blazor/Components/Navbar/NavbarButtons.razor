@@ -2,28 +2,28 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits NavbarContentBase
+@inherits OwnAccountComponentBase
 @{
     var m = State.Value;
 }
 
-<ChatsNavbarGroupToggle/>
+<ChatsNavbarButton/>
 
 @if (m.IsAdmin) {
-    <NavbarGroupToggle
+    <NavbarButton
         Title="Administration"
         Id="@NavbarGroupIds.Administration"
         Tooltip="Administration"
         TooltipPosition="FloatingPosition.Right">
         <i class="icon-adminx-1 text-2xl font-medium"></i>
-    </NavbarGroupToggle>
+    </NavbarButton>
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <NavbarGroupToggle
+    <NavbarButton
         Title="Test Pages"
         Id="@NavbarGroupIds.TestPages"
         Tooltip="Test Pages"
         TooltipPosition="FloatingPosition.Right">
         <i class="icon-alert-triangle text-2xl font-medium"></i>
-    </NavbarGroupToggle>
+    </NavbarButton>
 }

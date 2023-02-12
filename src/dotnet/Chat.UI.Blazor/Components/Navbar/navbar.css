@@ -1,31 +1,39 @@
-.navbar-navigation-button-content.btn-content {
-    @apply p-1 justify-center rounded-xl md:rounded-lg;
-}
-.thin-left-panel .btn.btn-square .navbar-navigation-button-content.btn-content {
+.left-panel-buttons .btn.btn-square .navbar-button-content.btn-content {
     @apply w-10 md:w-12 h-10 md:h-12 bg-white;
 }
 
-.navbar-group-toggle {
+/* Group toggle button on the left side of the navbar */
+.navbar-button {
     @apply relative;
     @apply flex-none flex-x items-stretch;
 }
-
-.navbar-group-toggle .left-line {
+.navbar-button .left-line {
     @apply self-center h-8;
 }
-.navbar-group-toggle:not(.selected) .left-line {
+.navbar-button:not(.selected) .left-line {
     @apply invisible;
 }
+.navbar-button-content.btn-content {
+    @apply p-1 justify-center rounded-xl md:rounded-lg;
+}
 
-.navbar-group-toggle .badge {
+.navbar-button .badge {
     @apply absolute -right-0.5 -top-0.5;
     @apply min-w-4 min-h-4 w-4 h-4;
     @apply text-[10px];
     @apply bg-counter-navgroup;
 }
 
-.first-pinned.btn .btn-content {
-    @apply bg-yellow-500 text-icons-01;
+/* Navbar content */
+.navbar-content {
+    @apply flex-auto flex-y overflow-y-hidden;
+    @apply h-full;
+}
+
+/* Navbar group - the right part of the navbar */
+.navbar-group {
+    @apply flex-1 flex-y gap-y-1;
+    @apply overflow-auto custom-scrollbar;
 }
 
 /* Navgar subgroup */
@@ -48,6 +56,7 @@
 
 /* Navbar item */
 .navbar-item {
+    @apply relative;
     @apply flex-x justify-start items-center gap-x-1;
     @apply px-1 py-0.5;
     @apply rounded-lg;
@@ -62,35 +71,9 @@
     @apply flex-x justify-end items-center gap-x-2;
     @apply h-8 overflow-hidden;
 }
-
-.navbar-subgroup .btn.pin-toggle .btn-content .btn-content-inner,
-.navbar-item .btn.pin-toggle .btn-content .btn-content-inner {
-    @apply p-0.25;
-}
-.navbar-subgroup .pin-toggle.off,
-.navbar-item .pin-toggle.off {
-    @apply invisible;
-}
-.pinned-chats .navbar-subgroup .pin-toggle,
-.pinned-chats .navbar-item .pin-toggle,
-.navbar-subgroup:hover .pin-toggle.off,
-.navbar-item:hover .pin-toggle.off {
-    @apply visible;
-}
-.navbar-item .btn.btn-round.pin-toggle {
-    @apply hidden;
-}
-.navbar-item:hover .btn.btn-round.pin-toggle {
-    @apply flex;
-}
-.navbar-item .btn.btn-round.pin-toggle,
-.navbar-item:hover .btn.btn-round.pin-toggle {
-    @apply text-icons-01 bg-transparent;
-}
-.navbar-item .btn.btn-round.recording-in-chat.on .btn-content,
-.navbar-item:hover .btn.btn-round.recording-in-chat.on .btn-content,
-.navbar-item .btn.btn-round.recording-in-chat.on:hover .btn-content {
-    @apply text-recorder-on bg-transparent;
+.navbar-item .navbar-item-ending .slot {
+    @apply flex-none flex-x items-center gap-x-2;
+    @apply h-8 overflow-hidden;
 }
 
 .navbar-item:hover {

@@ -8,13 +8,13 @@
     var buttonClass = $"{(isSelected ? "on" : "")} {Class}";
 }
 
-<div class="navbar-group-toggle @selectedClass @Class">
+<div class="navbar-button @selectedClass @Class">
     <LeftLine/>
     <ButtonSquare
         Click="@OnClick"
         Class="@buttonClass"
         Tooltip="@Tooltip"
-        ContentClass="navbar-navigation-button-content"
+        ContentClass="navbar-button-content"
         TooltipPosition="@TooltipPosition">
         @ChildContent
     </ButtonSquare>

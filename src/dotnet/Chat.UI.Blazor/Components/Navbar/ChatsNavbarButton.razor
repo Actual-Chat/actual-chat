@@ -1,10 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<ChatsNavbarGroupToggle.Model>
+@inherits ComputedStateComponent<ChatsNavbarButton.Model>
 @{
     var m = State.Value;
 }
-<NavbarGroupToggle
+
+<NavbarButton
     Id="@NavbarGroupIds.Chats"
     Title="Chats"
     Tooltip="Chats"
@@ -16,7 +17,7 @@
     <BadgeContent>
         @m.Count
     </BadgeContent>
-</NavbarGroupToggle>
+</NavbarButton>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;

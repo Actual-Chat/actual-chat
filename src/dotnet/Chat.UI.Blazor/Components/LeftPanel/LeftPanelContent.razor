@@ -3,19 +3,17 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat.UI.Blazor.Events
 
-<div class="wide-left-panel -flex-y md:flex-y w-full md:w-80 h-full overflow-hidden bg-03 border-r border-bg-04">
-    <div class="flex-x justify-center items-center min-h-14 border-b border-t border-bg-04 px-2 gap-x-1">
-        <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
+<OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
+<div class="left-panel-content">
+    <div class="c-search">
         <SearchBox
             @ref="_searchBoxRef"
             Placeholder="Find chat..."
             TextChanged="OnSearchBoxTextChanged"/>
     </div>
-    <div class="navbar-content flex-auto flex-y overflow-y-hidden h-full ">
-        <NavbarContent/>
-    </div>
+    <NavbarContent/>
     @if (ScreenSize.IsNarrow()) {
-        <div class="flex-x justify-center items-center min-h-14 border-b border-bg-04 pr-2 pl-4 gap-x-1">
+        <div class="c-title">
             <div class="text-02 text-title-1">@NavbarUI.SelectedGroupTitle</div>
             <div class="flex grow"></div>
             <div class="flex">

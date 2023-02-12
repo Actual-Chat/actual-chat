@@ -7,8 +7,8 @@
     IsOpen="@NavbarUI.IsVisible.Value"
     VisibilityChanged="@(isOpen => NavbarUI.SetIsVisible(isOpen))">
     <div class="flex-x h-full w-full bg-04">
-        <ThinLeftPanel/>
-        <WideLeftPanel/>
+        <LeftPanelButtons/>
+        <LeftPanelContent/>
     </div>
 </SideNav>
 

@@ -2,15 +2,16 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits NavbarContentBase
+@inherits OwnAccountComponentBase
 @{
     var m = State.Value;
 }
 
+<div class="navbar-content">
+
 @if (NavbarUI.SelectedGroupId == NavbarGroupIds.Chats) {
     <ChatListNavbarWidget />
 }
-
 @if (m.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/admin/user-invites">Invite Users</NavbarItem>
@@ -34,6 +35,8 @@
         <NavbarItem Url="/test/system">System</NavbarItem>
     </NavbarGroup>
 }
+
+</div>
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;

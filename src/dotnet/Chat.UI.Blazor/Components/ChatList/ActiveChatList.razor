@@ -1,4 +1,5 @@
-@inherits ComputedStateComponent<ActiveChatsNavbarWidget.Model>
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ActiveChatList.Model>
 @{
     var m = State.Value;
     var title = "Recent Chats" + (m.IsSearchModeOn ? " — filtered on search" : "");

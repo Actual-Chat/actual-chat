@@ -115,69 +115,6 @@
     @apply bg-round-hover;
 }
 
-.left-panel-tabs {
-    @apply max-h-14 p-0 m-0;
-    @apply border-b border-bg-04;
-}
-.left-panel-tabs .chats-tab {
-    @apply flex-y h-full overflow-y-visible md:overflow-y-auto custom-scrollbar;
-}
-.left-panel-tabs .btn-group {
-    @apply min-h-14 justify-start px-4 gap-x-0;
-}
-.left-panel-tabs .btn-group .btn-group-container {
-    @apply min-h-14 self-center;
-}
-.left-panel-tabs .btn {
-    @apply min-w-0 min-h-0 p-0 rounded-lg;
-}
-.left-panel-tabs .btn.tab-btn.on .btn-content {
-    @apply text-02;
-}
-.left-panel-tabs .tab-btn:hover .btn-content {
-    @apply bg-round-hover text-primary;
-}
-.left-panel-tabs .tab-btn.on:hover .btn-content {
-    @apply bg-transparent cursor-default;
-}
-.left-panel-tabs .tab-btn .btn-content {
-    @apply py-1.5 px-2 rounded-xl;
-}
-.left-panel-tabs .tab-btn .btn-content .message-counter-badge {
-    @apply ml-1;
-}
-.sort-btn .btn-content {
-    @apply -mb-1;
-}
-
-.wide-left-panel-tabs .btn-group {
-    @apply min-h-14 justify-between px-4 overflow-x-hidden;
-}
-
-.navbar-pages,
-.navbar-chats,
-.navbar-contacts {
-    @apply overflow-auto custom-scrollbar;
-}
-.navbar-chats .sort-btn.btn {
-    @apply min-w-fit max-w-fit min-h-fit rounded-full;
-}
-.navbar-chats .sort-btn:hover .btn-content {
-    @apply text-primary;
-}
-.navbar-chats .left-panel-tabs,
-.navbar-chats .left-panel-tabs .btn-group,
-.navbar-chats .left-panel-tabs .btn-group .btn-group-container,
-.navbar-chats .left-panel-tabs .btn-group .btn-group-container .btn.tab-btn {
-    @apply min-h-10 max-h-10;
-}
-.navbar-chats .left-panel-tabs .btn-group .btn-group-container .shape {
-    @apply min-h-1 -mt-1;
-}
-.navbar-chats .left-panel-tabs .message-counter-badge {
-    @apply h-4 min-w-6;
-}
-
 .navbar-pages {
     @apply gap-y-1;
     @apply p-1;
@@ -189,67 +126,6 @@
 .navbar-pages .navbar-item .navbar-item-content {
     @apply mx-2;
     @apply font-medium;
-}
-
-.navbar-pages .navbar-item,
-.tab-panel .chats-tab.tab .navbar-item,
-.tab-panel .contacts-tab.tab .navbar-item {
-    @apply relative;
-}
-.chats-tab .navbar-item-content,
-.contacts-tab .navbar-item-content,
-.active-chats .navbar-item-content {
-    @apply w-full;
-}
-.chats-tab .btn-round,
-.contacts-tab .btn-round,
-.active-chats .btn-round {
-    @apply w-6 h-6;
-}
-.recording-in-chat.btn.btn-round {
-    @apply hidden;
-}
-.active-chats .recording-in-chat.btn.btn-round.on {
-    @apply flex visible;
-}
-.chats-tab .btn.btn-round .btn-content,
-.contacts-tab .btn.btn-round .btn-content,
-.active-chats .btn.btn-round .btn-content {
-    @apply bg-transparent;
-}
-.chats-tab .btn.btn-round.pin-toggle.btn-content,
-.contacts-tab .btn.btn-round.pin-toggle.btn-content {
-    @apply bg-transparent;
-}
-.chats-tab .btn.btn-round.pin-toggle.play-pinned.on,
-.contacts-tab .btn.btn-round.pin-toggle.play-pinned.on {
-    @apply text-primary;
-}
-.pinned-chats,
-.pinned-contacts {
-    @apply flex-none flex-y pb-2 px-2 gap-y-0.5;
-}
-
-.unpinned-chats,
-.unpinned-contacts {
-    @apply flex-1 flex-y px-2 gap-y-0.5;
-}
-
-.active-chats {
-    @apply relative flex-y bottom-0 p-2;
-}
-.active-chats .navbar-item.active {
-    @apply bg-selected;
-}
-.active-chats .navbar-item.active .navbar-item-content {
-    @apply font-normal;
-}
-.all-chats .navbar-item.active {
-    @apply bg-transparent;
-}
-.all-chats .navbar-item:hover,
-.all-chats .navbar-item.active:hover {
-    @apply bg-round-hover;
 }
 
 .writable-chat-footer {
