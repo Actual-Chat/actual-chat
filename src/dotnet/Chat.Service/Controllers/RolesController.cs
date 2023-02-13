@@ -28,6 +28,10 @@ public class RolesController : ControllerBase, IRoles
     public Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
         => Service.ListAuthorIds(session, chatId, roleId, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<ImmutableArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken)
+        => Service.ListOwnerIds(session, chatId, cancellationToken);
+
     // Commands
 
     [HttpPost]

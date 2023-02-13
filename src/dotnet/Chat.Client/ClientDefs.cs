@@ -97,6 +97,8 @@ public interface IRolesClientDef
     Task<ImmutableArray<Role>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
     [Get(nameof(ListAuthorIds))]
     Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
+    [Get(nameof(ListOwnerIds))]
+    Task<ImmutableArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
     Task<Role> Change([Body] IRoles.ChangeCommand command, CancellationToken cancellationToken);
