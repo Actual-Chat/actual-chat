@@ -5,7 +5,6 @@
         return;
 
     var avatar = account.Avatar;
-    var link = Links.User(account.Id).ToDisplayUrl(UrlMapper);
 }
 
 <Tile>
@@ -70,29 +69,7 @@
         </Caption>
     </TileItem>
 
-    <TileItem>
-        <Icon>
-            <i class="icon-link-2 text-xl"></i>
-        </Icon>
-        <Right>
-            <CopyToClipboard
-                InputClass="hidden"
-                ButtonClass="btn-sm transparent tile-hidden-btn"
-                Text="@link.ShortLocalUrl"
-                CopyText="@link.AbsoluteUrl"
-                HideCopiedTag="true"/>
-        </Right>
-        <Content>
-            <div class="user-page-link flex-x justify-start items-center gap-x-1">
-                <div class="flex-none">
-                    <a class="text-02" href="@link.AbsoluteUrl">@link.ShortAbsoluteUrl</a>
-                </div>
-            </div>
-        </Content>
-        <Caption>
-            Link
-        </Caption>
-    </TileItem>
+    <LinkTileItem Link="@Links.User(account.Id)" Caption="Link"/>
 </Tile>
 
 <TileTopic Topic="My avatars"/>

@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var link = new LocalUrl(Link).ToDisplayUrl(UrlMapper);
+}
+
+<TileItem>
+    <Icon>
+        <i class="icon-link-2 text-xl"></i>
+    </Icon>
+    <Right>
+        <CopyToClipboard
+            InputClass="hidden"
+            ButtonClass="btn-sm transparent tile-hidden-btn"
+            Text="@link.ShortLocalUrl"
+            CopyText="@link.AbsoluteUrl"
+            HideCopiedTag="true"/>
+    </Right>
+    <Content>
+        <div class="user-page-link flex-x justify-start items-center gap-x-1">
+            <div class="flex-none">
+                <a class="text-02" href="@link.AbsoluteUrl">@link.ShortLocalUrl</a>
+            </div>
+        </div>
+    </Content>
+    <Caption>@Caption</Caption>
+</TileItem>
+
+@code {
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Link { get; set; } = "";
+    [Parameter] public string Caption { get; set; } = "";
+}
