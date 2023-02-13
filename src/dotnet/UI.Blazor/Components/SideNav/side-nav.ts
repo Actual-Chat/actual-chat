@@ -1,19 +1,19 @@
+import { clamp, Vector2D } from 'math';
 import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
-import { DocumentEvents } from 'event-handling';
-import { clamp, Vector2D } from 'math';
+import { delayAsync, serialize } from 'promises';
 import { Log, LogLevel, LogScope } from 'logging';
-import { serialize } from '../../../../nodejs/src/promises';
 
 const LogScope: LogScope = 'SideNav';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-const magnetRange = 0.25;
-const magnetPower = 2;
 const deceleration = 4; // 1 = full width, per second
+const startDurationMs = 100;
+const minMoveDurationMs = 300;
+const maxSetVisibilityWaitDurationMs = 1000;
 
 enum SideNavSide {
     Left,
@@ -25,7 +25,10 @@ interface SideNavOptions {
 }
 
 class MoveState {
-    public readonly capturedAt = Date.now();
+    public static readonly ended = new MoveState(0, 0, null);
+
+    public readonly startedAt: number;
+    public readonly capturedAt: number
     public readonly velocity: number;
     public readonly terminalOpenRatio: number;
 
@@ -34,6 +37,9 @@ class MoveState {
         public readonly openRatio: number,
         public prevMoveState: MoveState | null = null,
     ) {
+        const now = Date.now();
+        this.capturedAt = now;
+        this.startedAt = prevMoveState?.startedAt ?? now;
         this.velocity = 0;
         this.terminalOpenRatio = openRatio;
         const s = prevMoveState?.prevMoveState;
@@ -99,32 +105,70 @@ export class SideNav implements Disposable {
     // Private methods
 
     private beginMove(e: TouchEvent) {
-        if (!(e.target instanceof Element))
+        if (this.moveState) // Already started or ended
             return;
 
+        // debugLog?.log('beginMove:', e);
         this.origin = getCoords(e);
         this.moveState = new MoveState(0, this.isOpen ? 1 : 0);
         this.element.classList.add('side-nav-dragging');
         this.element.style.transform = null;
     }
 
-    private endMove(e: TouchEvent) {
+    private endMove(e: TouchEvent, isCancelled = false) {
+        if (this.moveState === MoveState.ended)
+            return;
+
+        // debugLog?.log('endMove:', e);
+        const moveState = this.moveState;
         this.origin = null;
-        this.moveState = null;
+        this.moveState = MoveState.ended;
+        if (Date.now() - moveState.startedAt < minMoveDurationMs)
+            isCancelled = true;
+
+        let mustBeOpen = this.isOpen;
+        if (moveState && !isCancelled && !ScreenSize.isWide())
+            mustBeOpen = moveState.terminalOpenRatio > 0.5;
+
+        this.setTransform(mustBeOpen ? 1 : 0);
         this.element.classList.remove('side-nav-dragging');
-        this.element.style.transform = null;
+        (async () => {
+            try {
+                if (this.isOpen == mustBeOpen)
+                    return;
+
+                await this.setVisibility(mustBeOpen);
+                // Make sure changes are applied to DOM
+                const endTime = Date.now() + maxSetVisibilityWaitDurationMs;
+                while (this.isOpen != mustBeOpen && Date.now() < endTime)
+                    await delayAsync(50);
+            }
+            finally {
+                this.moveState = null; // Re-enables beginMove again
+                this.element.style.transform = null;
+            }
+        })();
     }
 
     private continueMove(e: TouchEvent) {
-        if (!this.moveState) // Already ended
+        const moveState = this.moveState;
+        if (moveState === MoveState.ended)
             return;
+
+        // debugLog?.log('continueMove:', e);
+        if (!moveState) {
+            this.beginMove(e);
+            return;
+        }
 
         const coords = getCoords(e);
         const offset = coords.sub(this.origin);
         if (Math.abs(offset.y) > 0.5 * Math.abs(offset.x)) {
-            this.endMove(e);
+            this.endMove(e, true);
             return;
         }
+        if (Date.now() - moveState.startedAt < startDurationMs)
+            return;
 
         const dx = offset.x;
         const isLeft = this.options.side == SideNavSide.Left;
@@ -138,16 +182,27 @@ export class SideNav implements Disposable {
             this.moveState = new MoveState(0, this.isOpen ? 1 : 0);
         }
         else {
-            const pullRatio = magnet(clamp(pdx / (this.element.clientWidth + 0.01), 0, 1));
+            const pullRatio = clamp(pdx / (this.element.clientWidth + 0.01), 0, 1);
             const openRatio = isOpen ? 1 - pullRatio : pullRatio;
-            this.moveState = new MoveState(pullRatio, openRatio, this.moveState);
+            this.moveState = new MoveState(pullRatio, openRatio, moveState);
         }
-        const closeRatio = 1 - this.moveState.openRatio;
-        const translateRatio = -openDirectionSign * closeRatio;
-        this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
+        this.setTransform(moveState.openRatio);
     }
 
-    // Event handlers
+    setTransform(openRatio: number): void {
+        if (ScreenSize.isWide()) {
+            this.element.style.transform = null;
+            return;
+        }
+
+        const isLeft = this.options.side == SideNavSide.Left;
+        const closeDirectionSign = isLeft ? -1 : 1;
+        const closeRatio = 1 - openRatio;
+        const translateRatio = closeDirectionSign * closeRatio;
+        const transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
+        this.element.style.transform = transform
+        // debugLog?.log('transform:', transform);
+    }
 
     setVisibility = serialize(async (isOpen: boolean): Promise<void> => {
         if (this.isOpen === isOpen)
@@ -156,6 +211,8 @@ export class SideNav implements Disposable {
         debugLog?.log(`setVisibility:`, isOpen);
         await this.blazorRef.invokeMethodAsync('OnVisibilityChanged', isOpen);
     });
+
+    // Event handlers
 
     onTouchStart = (e: TouchEvent): void => {
         if (ScreenSize.isWide())
@@ -172,37 +229,14 @@ export class SideNav implements Disposable {
     }
 
     onTouchEnd = (e: TouchEvent): void => {
-        if (ScreenSize.isWide())
-            return;
-
-        const moveState = this.moveState;
-        if (!moveState) // Already ended
-            return;
-
-        const mustBeOpen = moveState.terminalOpenRatio > 0.5;
-        if (this.isOpen !== mustBeOpen)
-            void this.setVisibility(mustBeOpen);
         this.endMove(e);
     }
 
     onTouchCancel = (e: TouchEvent): void => {
-        if (ScreenSize.isWide())
-            return;
-
-        this.endMove(e);
+        this.endMove(e, true);
     }
 }
 
 function getCoords(e: TouchEvent): Vector2D {
     return new Vector2D(e.touches[0].clientX, e.touches[0].clientY);
-}
-
-function magnet(x: number): number {
-    if (x > 0.5)
-        return 1 - magnet(1 - x); // Mirror magnet on another boundary
-
-    if (x > magnetRange)
-        return x;
-
-    return magnetRange * Math.pow(x / magnetRange, magnetPower);
 }

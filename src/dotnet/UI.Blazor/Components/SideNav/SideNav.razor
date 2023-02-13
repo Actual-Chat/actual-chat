@@ -26,8 +26,9 @@
         _class += Side == SideNavSide.Left
             ? " side-nav-left"
             : " side-nav-right";
-        if (!IsOpen)
-            _class += " closed";
+        _class += IsOpen
+            ? " open"
+            : " closed";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
