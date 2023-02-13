@@ -21,7 +21,6 @@
 
     <!-- App Identifier -->
     <ApplicationId>chat.actual.app</ApplicationId>
-    <ApplicationId Condition="$(TargetFramework.Contains('-ios')) OR $(TargetFramework.Contains('-maccatalyst'))">chat.actual.messenger</ApplicationId>
     <ApplicationIdGuid>7AC72B49-8FEA-45AB-B7B8-C32719677E9D</ApplicationIdGuid>
 
     <!-- Required for C# Hot Reload -->
@@ -50,7 +49,6 @@
     <ApplicationTitle>Actual Chat (Dev)</ApplicationTitle>
     <!-- App Identifier -->
     <ApplicationId>chat.actual.dev.app</ApplicationId>
-    <ApplicationId Condition="$(TargetFramework.Contains('-ios')) OR $(TargetFramework.Contains('-maccatalyst'))">chat.actual.dev.messenger</ApplicationId>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsDevMaui)' != 'true'">
   </PropertyGroup>
