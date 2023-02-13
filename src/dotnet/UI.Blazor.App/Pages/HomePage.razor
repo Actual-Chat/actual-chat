@@ -2,8 +2,10 @@
 @layout NoLayout
 
 <AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true">
-    @{ _isContentRendered = true; }
-    <Landing/>
+     @{ _isContentRendered = true; }
+    <AfterRenderEventDecorator AfterRenderCallback="OnLandingRendered">
+        <Landing/>
+    </AfterRenderEventDecorator>
 </AutoNavigateToChatsOnSignIn>
 
 @code {
@@ -11,7 +13,14 @@
 
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
-    protected override void OnAfterRender(bool firstRender) {
+    protected override void OnAfterRender(bool firstRender)
+        => MarkLoaded();
+
+    private void OnLandingRendered(bool isFirstRender)
+        => MarkLoaded();
+
+    private void MarkLoaded()
+    {
         if (_isContentRendered)
             LoadingUI.MarkLoaded();
     }
