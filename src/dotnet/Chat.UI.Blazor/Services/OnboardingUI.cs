@@ -7,7 +7,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class OnboardingUI
 {
     private readonly ISyncedState<UserOnboardingSettings> _settings;
-    private object Lock => _settings;
 
     private Session Session { get; }
     private IAccounts Accounts { get; }
@@ -15,7 +14,7 @@ public class OnboardingUI
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
-    public IMutableState<UserOnboardingSettings> Settings => _settings;
+    public IState<UserOnboardingSettings> Settings => _settings;
 
     public OnboardingUI(IServiceProvider services)
     {
@@ -39,22 +38,19 @@ public class OnboardingUI
         if (!await ShouldBeShown())
             return;
 
-        UpdateSettings(x => x with { LastShownAt = Now });
+        UpdateSettings(Settings.Value with { LastShownAt = Now });
         await ModalUI.Show(new OnboardingModal.Model());
     }
 
-    public void UpdateSettings(Func<UserOnboardingSettings, UserOnboardingSettings> updater)
-    {
-        lock (Lock)
-            _settings.Value = updater.Invoke(_settings.Value);
-    }
+    public void UpdateSettings(UserOnboardingSettings value)
+        => _settings.Value = value.SetOrigin("");
 
     // Private methods
 
     private async ValueTask<bool> ShouldBeShown()
     {
         // Uncomment to debug OnboardingUI:
-        // UpdateSettings(x => x.Clear());
+        // UpdateSettings(new());
 
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         if (account.IsGuestOrNone)

@@ -18,7 +18,4 @@ public sealed record UserOnboardingSettings : IHasOrigin
             IsAvatarStepCompleted: true,
             IsPhoneStepCompleted: true,
         };
-
-    public UserOnboardingSettings Clear()
-        => new() { Origin = Origin };
 }

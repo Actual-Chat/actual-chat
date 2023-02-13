@@ -86,7 +86,7 @@
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsAvatarStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(x => x with { IsAvatarStepCompleted = true });
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsAvatarStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);

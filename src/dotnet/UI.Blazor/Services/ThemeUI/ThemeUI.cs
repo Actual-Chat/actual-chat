@@ -13,10 +13,10 @@ public class ThemeUI : WorkerBase
     private IJSRuntime JS { get; }
     private ITraceSession Trace { get; }
 
-    public IMutableState<ThemeSettings> Settings => _settings;
+    public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
-        get => Settings.Value.Theme;
-        set => Settings.Value = Settings.Value with { Theme = value };
+        get => _settings.Value.Theme;
+        set => _settings.Value = new ThemeSettings(value);
     }
     public Task WhenReady { get; }
 

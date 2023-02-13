@@ -55,7 +55,7 @@
         if (languages.Secondary == language)
             languages = languages with { Secondary = languages.Primary };
 
-        LanguageUI.Settings.Value = languages with { Primary = language };
+        LanguageUI.UpdateSettings(languages with { Primary = language });
     }
 
     private void SetSecondary(Language? language) {
@@ -63,7 +63,7 @@
         if (languages.Primary == language && languages.Secondary != null)
             languages = languages with { Primary = languages.Secondary.Value };
 
-        LanguageUI.Settings.Value = languages with { Secondary = language };
+        LanguageUI.UpdateSettings(languages with { Secondary = language });
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()

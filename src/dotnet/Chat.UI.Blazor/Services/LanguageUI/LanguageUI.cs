@@ -7,12 +7,14 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class LanguageUI
 {
+    private readonly ISyncedState<UserLanguageSettings> _settings;
+
     private TuneUI TuneUI { get; }
     private AccountSettings AccountSettings { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
-    public ISyncedState<UserLanguageSettings> Settings { get; }
+    public IState<UserLanguageSettings> Settings => _settings;
 
     public LanguageUI(IServiceProvider services)
     {
@@ -22,7 +24,7 @@ public class LanguageUI
         var stateFactory = services.StateFactory();
         TuneUI = services.GetRequiredService<TuneUI>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
-        Settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
+        _settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
@@ -39,7 +41,7 @@ public class LanguageUI
 
     public async Task<Language> ChangeChatLanguage(ChatId chatId)
     {
-        await Settings.WhenFirstTimeRead.ConfigureAwait(false);
+        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = Settings.Value;
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default).ConfigureAwait(false);
         var language = userChatSettings.Language.Or(settings.Primary);
@@ -56,6 +58,9 @@ public class LanguageUI
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
         return language;
     }
+
+    public void UpdateSettings(UserLanguageSettings value)
+        => _settings.Value = value.SetOrigin("");
 
     // Private methods
 
