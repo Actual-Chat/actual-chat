@@ -59,6 +59,27 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         return await Backend.ListAuthorIds(chatId, roleId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<AuthorId>> ListOwnerIds(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor == null)
+            return ImmutableArray<AuthorId>.Empty;
+
+        var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
+        var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
+        if (!rules.CanSeeMembers())
+            return ImmutableArray<AuthorId>.Empty;
+
+        var ownerRole = await Backend
+            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        return await Backend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<Role> Change(IRoles.ChangeCommand command, CancellationToken cancellationToken)
     {
