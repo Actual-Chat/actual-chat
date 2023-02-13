@@ -5,6 +5,7 @@
     var m = State.Value;
     if (m.Title == null)
         return;
+    var isPublicGroupChat = Chat is { Kind: ChatKind.Group, IsPublic: true };
 }
 
 <div class="px-5 py-3 space-y-3">
@@ -17,7 +18,7 @@
                 @m.Title
             </div>
             <div class="text-03 text-caption-2">
-                @(m.Link.HasValue ? "Public" : "Private")
+                @(isPublicGroupChat ? "Public" : "Private")
             </div>
         </div>
     </div>
@@ -33,7 +34,7 @@
                     @publicUrl.ShortLocalUrl
                 </div>
                 <div class="text-03 text-caption-2">
-                    Public join link
+                    @(isPublicGroupChat ? "Public join link" : "User link")
                 </div>
             </div>
         </div>
@@ -62,6 +63,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -76,14 +78,23 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var publicUrl = Chat.IsPublic ? Links.Chat(Chat.Id).ToDisplayUrl(UrlMapper) : (DisplayUrl?)null;
+        var link = await GetLink(cancellationToken);
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
-        return new Model {
+        return new() {
             Title = Chat.Title,
-            Picture = Chat.Picture,
-            Link = publicUrl,
+            Link = link?.ToDisplayUrl(UrlMapper),
             NotificationMode = userChatSettings.NotificationMode,
         };
+    }
+
+    private async Task<LocalUrl?> GetLink(CancellationToken cancellationToken) {
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        if (Chat.Id.IsPeerChat(out var peerChatId)) {
+            var otherUserId = peerChatId.UserIds.OtherThan(account.Id);
+            return Links.User(otherUserId);
+        }
+
+        return Chat.IsPublic ? Links.Chat(Chat.Id) : (LocalUrl?)null;
     }
 
     private ValueTask OnPublicUrlClick(DisplayUrl publicUrl)
@@ -101,7 +112,6 @@
     public sealed record Model {
         public static Model None { get; } = new();
 
-        public string? Picture { get; init; }
         public string? Title { get; init; }
         public DisplayUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
