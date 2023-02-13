@@ -30,7 +30,7 @@ public partial class HistoryUI : IHasServices
     }
 
     public string Uri => LocalUrl.Value;
-    public LocalUrl LocalUrl => new LocalUrl(_uri, ParseOrNone.Option);
+    public LocalUrl LocalUrl => new(_uri, ParseOrNone.Option);
 
     public event EventHandler<LocationChangedEventArgs>? LocationChanging;
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
