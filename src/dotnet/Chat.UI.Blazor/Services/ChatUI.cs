@@ -9,7 +9,7 @@ using ActualChat.Users;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : WorkerBase
+public partial class ChatUI : WorkerBase, IHasServices
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
@@ -18,7 +18,6 @@ public partial class ChatUI : WorkerBase
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
 
-    private IServiceProvider Services { get; }
     private IStateFactory StateFactory { get; }
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private Session Session { get; }
@@ -40,6 +39,7 @@ public partial class ChatUI : WorkerBase
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
+    public IServiceProvider Services { get; }
     public IStoredState<ChatListSettings> ListSettings { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
@@ -316,11 +316,11 @@ public partial class ChatUI : WorkerBase
         return chatId;
     }
 
-    public void SelectChat(ChatId chatId)
+    public bool SelectChat(ChatId chatId)
     {
         lock (_lock) {
             if (_selectedChatId.Value == chatId)
-                return;
+                return false;
 
             _selectedChatId.Value = chatId;
         }
@@ -329,6 +329,7 @@ public partial class ChatUI : WorkerBase
         _ = TuneUI.Play("select-chat");
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
         UICommander.RunNothing();
+        return true;
     }
 
     public void ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)

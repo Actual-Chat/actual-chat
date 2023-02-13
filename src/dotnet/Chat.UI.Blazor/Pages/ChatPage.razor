@@ -103,9 +103,11 @@
             }
         }
 
-        if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            NavbarUI.SetIsVisible(chatId.IsNone);
-        ChatUI.SelectChat(chatId);
+        if (ChatUI.SelectChat(chatId))
+            _ = Task.Run(async () => {
+                await Task.Delay(100); // NOTE(AY): Due to issue in HistoryUI (to be resolved)
+                NavbarUI.SetIsVisible(chatId.IsNone);
+            });
 
         // No need to call base.OnParametersSetAsync() here, coz
         // FixChatId calls ChatUI.SelectChat(...), which triggers

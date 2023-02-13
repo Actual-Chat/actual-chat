@@ -54,6 +54,8 @@
     }
 
     [JSInvokable]
-    public Task OnVisibilityChanged(bool isOpen)
-        => VisibilityChanged.InvokeAsync(isOpen);
+    public async Task OnVisibilityChanged(bool isOpen) {
+        if (IsOpen != isOpen)
+            await VisibilityChanged.InvokeAsync(isOpen);
+    }
 }

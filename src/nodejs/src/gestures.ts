@@ -3,11 +3,11 @@ import { Disposable } from 'disposable';
 import { DocumentEvents, preventDefaultForEvent, stopEvent } from 'event-handling';
 import { fromEvent, Subscription } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
+import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
 import { Vector2D } from 'math';
 import { Log, LogLevel, LogScope } from 'logging';
-import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 
 const LogScope: LogScope = 'Gestures';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -96,6 +96,14 @@ class DataHrefGesture extends Gesture {
     public static use(): void {
         debugLog?.log(`DataHrefGesture.use`);
 
+        DocumentEvents.active.pointerDown$.subscribe((event: PointerEvent) => {
+            if (event.button !== 0) // Only primary button on wide screen
+                return;
+
+            debugLog?.log(`DataHrefGesture.use: pointerDown:`, event);
+            this.tryHandle(event, false);
+        });
+
         // We attach this event to pointerUp instead of click solely because
         // click somehow doesn't trigger on iOS for such divs, and none of
         // suggested workarounds helped.
@@ -103,24 +111,33 @@ class DataHrefGesture extends Gesture {
         // For issue w/ click & workarounds, see "Safari Mobile" section here:
         // - https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event
         DocumentEvents.active.pointerUp$.subscribe((event: PointerEvent) => {
-            debugLog?.log(`DataHrefGesture.use: pointerUp:`, event);
             if (event.button !== 0) // Only primary button
                 return;
 
-            this.tryHandle(event);
+            debugLog?.log(`DataHrefGesture.use: pointerUp:`, event);
+            this.tryHandle(event, true);
         });
     }
 
-    public static tryHandle(event: Event) {
-        if (this.blazor == null)
+    public static tryHandle(event: Event, isPointerUp: boolean) {
+        // ContextMenuGesture's capturing handler may cancel this event
+        if (event.defaultPrevented)
             return;
 
         const [, href] = getOrInheritData(event.target, 'href');
         if (href === null)
             return;
 
-        // ContextMenuGesture's capturing handler may cancel this event
-        if (event.defaultPrevented)
+        // Check if we can process it as part of pointerDown event
+        const [triggerElement, menuRef] = getOrInheritData(event.target, 'menu');
+        let menuTrigger = 0;
+        if (triggerElement && menuRef)
+            menuTrigger = parseInt(triggerElement.dataset['menuTrigger'] ?? '2');
+        const requiresPointerUp = !ScreenSize.isWide() || menuTrigger !== 2;
+        if (isPointerUp !== requiresPointerUp)
+            return;
+
+        if (this.blazor == null)
             return;
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);

@@ -14,7 +14,7 @@
     data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <ChildContent>
-        <div class="flex-x items-center gap-x-2">
+        <div class="flex-1 flex-x items-center gap-x-2" @onclick="@OnClick">
             <ChatIcon Chat="m.Chat"/>
             <div class="grid justify-start items-start gap-y-1">
                 <span class="text-headline-1 text-02 truncate">
@@ -91,5 +91,15 @@
         var chatId = await ChatUI.FixChatId(ChatInfo.Id, cancellationToken).ConfigureAwait(false);
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         return chatState ?? ChatState.None;
+    }
+
+    private async Task OnClick() {
+        // This handler hides Navbar when you click on selected chat
+        if (ScreenSize.IsWide() || !State.Value.IsSelected)
+            return;
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        var navbarUI = ChatUI.Services.GetRequiredService<NavbarUI>();
+        navbarUI.SetIsVisible(false);
     }
 }

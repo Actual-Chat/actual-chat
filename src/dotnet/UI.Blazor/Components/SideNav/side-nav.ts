@@ -3,6 +3,7 @@ import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { delayAsync, serialize } from 'promises';
+import { DeviceInfo } from 'device-info';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'SideNav';
@@ -75,6 +76,9 @@ export class SideNav implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly options: SideNavOptions,
     ) {
+        if (DeviceInfo.isIos)
+            return; // No way to turn off overscroll in Safari, so...
+
         const captureOptions = { passive: true };
         fromEvent(element, 'touchstart', captureOptions)
             .pipe(takeUntil(this.disposed$))
