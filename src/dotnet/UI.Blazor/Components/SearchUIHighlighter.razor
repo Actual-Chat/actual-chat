@@ -20,7 +20,7 @@
 
     protected override async Task<SearchMatch> ComputeState(CancellationToken cancellationToken) {
         if (Text.IsNullOrEmpty())
-            return new SearchMatch();
+            return SearchMatch.Empty;
 
         var text = Text;
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
