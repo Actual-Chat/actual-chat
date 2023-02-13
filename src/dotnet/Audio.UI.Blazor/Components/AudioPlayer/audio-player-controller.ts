@@ -135,13 +135,23 @@ export class AudioPlayerController implements Resettable {
 
         // recreating nodes due to memory leaks in not disconnected nodes
         if (isAecWorkaroundNeeded()) {
-            debugLog?.log(`init: isAecWorkaroundNeeded() == true`);
+            debugLog?.log(`init(): isAecWorkaroundNeeded() == true`);
+            if (!this.contextRef) {
+                // audio context has been recreated
+                warnLog?.log(`init(): audio context has been recreated`);
+                return;
+            }
             this.destinationNode = this.contextRef.context.createMediaStreamDestination();
             feederNode.connect(this.destinationNode);
             this.cleanup = await enableChromiumAec(this.destinationNode.stream);
         }
         else {
             debugLog?.log(`init(): isAecWorkaroundNeeded == false`);
+            if (!this.contextRef) {
+                // audio context has been recreated
+                warnLog?.log(`init(): audio context has been recreated`);
+                return;
+            }
             feederNode.connect(this.contextRef.context.destination);
         }
         await this.initWorker();

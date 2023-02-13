@@ -14,7 +14,7 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const MaintainCyclePeriodMs = 2000;
-const MaxWarmupTimeMs = 1000;
+const MaxWarmupTimeMs = 2000;
 const MaxResumeTimeMs = 600;
 const MaxResumeAttemptsDurationMs = 3000;
 const MaxSuspendTimeMs = 300;
@@ -63,7 +63,13 @@ export class AudioContextSource implements Disposable {
         debugLog?.log('-> getRef()');
         this.throwIfDisposed();
         try {
-            const audioContext = await this._whenReady;
+            let audioContext = await this._whenReady;
+            while (!audioContext && !this._isDisposed) {
+                warnLog?.log(`getRef(): audioContext is null`)
+                // request AudioContext again
+                this.markNotReady();
+                audioContext = await this._whenReady;
+            }
             this.throwIfDisposed();
             return new AudioContextRef(this, audioContext);
         }
@@ -121,7 +127,7 @@ export class AudioContextSource implements Disposable {
                 if (audioContext === null || audioContext.state === 'closed') {
                     audioContext = await this.create();
                     await this.warmup(audioContext);
-                    await this.test(audioContext);
+                    await this.test(audioContext, true);
                     this.markReady(audioContext);
                 }
                 this.throwIfDisposed();
@@ -190,10 +196,10 @@ export class AudioContextSource implements Disposable {
         const resumedAudioContext = await this.refreshContext(audioContext);
         if (resumedAudioContext.state !== 'running') {
             await this.close(resumedAudioContext);
-            throw `${LogScope}.create: AudioContext.resume failed.`;
+            throw `${LogScope}.create(): AudioContext.resume failed.`;
         }
 
-        debugLog?.log(`create: loading modules`);
+        debugLog?.log(`create(): loading modules`);
         const whenModule1 = resumedAudioContext.audioWorklet.addModule('/dist/feederWorklet.js');
         const whenModule2 = resumedAudioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
         const whenModule3 = resumedAudioContext.audioWorklet.addModule('/dist/vadWorklet.js');
@@ -287,8 +293,11 @@ export class AudioContextSource implements Disposable {
 
     protected async refreshContext(audioContext: AudioContext | null): Promise<AudioContext> {
         debugLog?.log(`refreshContext(): AudioContext:`, audioContext);
-        if (audioContext && audioContext.state === 'running')
+        if (audioContext && audioContext.state === 'running') {
+            // Chromium 110 AudioContext can have state 'running' after calling ctor even without user interaction
+            this.warmupSynchronous(audioContext);
             return audioContext;
+        }
 
         // Resume audio context without waiting for user interaction iof not required
         if (Interactive.isAlwaysInteractive) {

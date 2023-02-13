@@ -91,8 +91,15 @@ export class OpusMediaRecorder {
         if (this.source)
             this.source.disconnect();
         this.stream = await OpusMediaRecorder.getMicrophoneStream();
-        this.source = this.contextRef.context.createMediaStreamSource(this.stream);
-        this.state = 'recording';
+        if (!this.contextRef) {
+            // audio context has been recreated
+            warnLog?.log(`start(): audio context has been recreated`);
+            await this.stop();
+        }
+        else {
+            this.source = this.contextRef.context.createMediaStreamSource(this.stream);
+            this.state = 'recording';
+        }
 
         await rpc((rpcResult) => {
             const initMessage: StartMessage = {
