@@ -108,6 +108,7 @@ public class MobileAuthController : Controller
     [HttpGet("signIn/{sessionId}/{scheme}")]
     public async Task SignIn(string sessionId, string scheme, CancellationToken cancellationToken)
     {
+        // TODO(DF): Check why sign in works with empty scheme.
         if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
         else {

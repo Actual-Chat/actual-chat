@@ -113,6 +113,9 @@
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
+    protected override async Task OnInitializedAsync()
+        => AuthSchemas = await ClientAuth.GetSchemas();
+
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountUI.OwnAccount.Value,

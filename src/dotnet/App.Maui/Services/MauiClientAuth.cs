@@ -20,6 +20,8 @@ internal sealed class MauiClientAuth : IClientAuth
 
     public async ValueTask SignIn(string scheme)
     {
+        if (scheme.IsNullOrEmpty()) throw new ArgumentException(nameof(scheme));
+
         if (OrdinalEquals(IClientAuth.GoogleSchemeName, scheme)) {
 #if ANDROID
             var activity = (MainActivity)Platform.CurrentActivity!;
