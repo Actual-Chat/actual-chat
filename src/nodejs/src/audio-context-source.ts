@@ -178,21 +178,39 @@ export class AudioContextSource implements Disposable {
 
     protected async create(): Promise<AudioContext> {
         debugLog?.log(`create()`);
+        // create audio context earlier, not waiting for user interaction, so it can have 'suspended' state
+        const audioContext = new AudioContext({
+            latencyHint: 'interactive',
+            sampleRate: 48000,
+        });
+
         // wait for Interactive.isAlwaysInteractive
         await BrowserInfo.whenReady;
 
-        const audioContext = await this.refreshContext(null);
-        if (audioContext.state !== 'running') {
-            await this.close(audioContext);
+        const resumedAudioContext = await this.refreshContext(audioContext);
+        if (resumedAudioContext.state !== 'running') {
+            await this.close(resumedAudioContext);
             throw `${LogScope}.create: AudioContext.resume failed.`;
         }
 
         debugLog?.log(`create: loading modules`);
-        const whenModule1 = audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
-        const whenModule2 = audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
-        const whenModule3 = audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
+        const whenModule1 = resumedAudioContext.audioWorklet.addModule('/dist/feederWorklet.js');
+        const whenModule2 = resumedAudioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
+        const whenModule3 = resumedAudioContext.audioWorklet.addModule('/dist/vadWorklet.js');
         await Promise.all([whenModule1, whenModule2, whenModule3]);
-        return audioContext;
+        return resumedAudioContext;
+    }
+
+    protected warmupSynchronous(audioContext: AudioContext): void {
+        debugLog?.log(`warmupSynchronous(), AudioContext:`, audioContext);
+        // Safari doesn't start incrementing 'currentTime' after 'resume' call - let's warmup with silent audio
+        const buffer = audioContext.createBuffer(1, 1, 48000);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        // Play sound
+        source.start(0);
+        source.disconnect();
     }
 
     protected async warmup(audioContext: AudioContext): Promise<void> {
@@ -234,10 +252,9 @@ export class AudioContextSource implements Disposable {
         if (audioContext.state !== 'running')
             throw `${LogScope}.test: AudioContext isn't running.`;
 
-        let lastTime: number;
-        const testCycleCount = isFirstTest ? 5 : 1;
+        const lastTime = audioContext.currentTime;
+        const testCycleCount = isFirstTest ? 6 : 2;
         for (let i = 0; i < testCycleCount; i++) {
-            lastTime = audioContext.currentTime;
             await delayAsync(TestIntervalMs);
             if (audioContext.state !== 'running')
                 throw `${LogScope}.test: AudioContext isn't running.`;
@@ -256,7 +273,7 @@ export class AudioContextSource implements Disposable {
 
         try {
             if (!await this.trySuspend(audioContext))
-                throw `${LogScope}.resume: couldn't suspend AudioContext`;
+                throw `${LogScope}.fix: couldn't suspend AudioContext`;
             const refreshedContext = await this.refreshContext(audioContext);
             await this.test(refreshedContext);
             debugLog?.log(`fix: success`, );
@@ -273,15 +290,10 @@ export class AudioContextSource implements Disposable {
         if (audioContext && audioContext.state === 'running')
             return audioContext;
 
-        // Create and resume audio context without waiting for user interaction iof not required
+        // Resume audio context without waiting for user interaction iof not required
         if (Interactive.isAlwaysInteractive) {
-            if (!audioContext)
-                audioContext = new AudioContext({
-                    latencyHint: 'interactive',
-                    sampleRate: 48000,
-                });
             if (!await this.tryResume(audioContext))
-                throw `${LogScope}.resume: couldn't resume w/o interaction, but tryInteractive == false`;
+                throw `${LogScope}.refreshContext(): couldn't resume w/o interaction, but tryInteractive == false`;
             return audioContext;
         }
 
@@ -292,14 +304,9 @@ export class AudioContextSource implements Disposable {
             Interactive.isInteractive = false;
         }
 
-        debugLog?.log(`resume: waiting for interaction`);
+        debugLog?.log(`refreshContext(): waiting for interaction`);
         const contextTask = new PromiseSource<AudioContext | null>();
         const handler = Interactive.interactionEvents.add( () => {
-            if (!audioContext)
-                audioContext = new AudioContext({
-                    latencyHint: 'interactive',
-                    sampleRate: 48000,
-                });
             this.tryResume(audioContext)
                 .then(
                     success => {
@@ -308,9 +315,11 @@ export class AudioContextSource implements Disposable {
                             contextTask.resolve(audioContext);
                         else {
                             // Recreate AudioContext if failed several resume attempts during MaxResumeAttemptsDurationMs
+                            debugLog?.log(`refreshContext(): tryResume call without success`);
                             const lastResumeAttemptAt = audioContext['lastResumeAttemptAt'] as number;
                             const now = Date.now();
                             if (lastResumeAttemptAt && now - lastResumeAttemptAt > MaxResumeAttemptsDurationMs) {
+                                warnLog?.log(`refreshContext(): unable to resume - let's close`);
                                 void audioContext.close();
                                 contextTask.resolve(null);
                             }
@@ -319,7 +328,7 @@ export class AudioContextSource implements Disposable {
                         }
                     },
                     reason => {
-                        warnLog?.log(reason, 'tryResume failed');
+                        warnLog?.log(reason, 'tryResume failed with an error');
                         void audioContext.close();
                         contextTask.resolve(null);
                     });
@@ -375,11 +384,23 @@ export class AudioContextSource implements Disposable {
 
             if (audioContext.state === 'running') {
                 debugLog?.log(`tryResume(): already resumed, AudioContext:`, audioContext);
+                // warmup synchronous to start currentTime ticking
+                this.warmupSynchronous(audioContext);
+                // some magical hack - currentTime starts ticking if log context - the issue happens sporadically
+                console.log(`AudioContext is`, audioContext, ` with currentTime=`, audioContext.currentTime);
                 return true;
             }
 
             debugLog?.log(`tryResume(): AudioContext:`, audioContext);
-            const resumeTask = audioContext.resume().then(() => true);
+            const resumeTask = audioContext.resume()
+                .then(() => {
+                    // warmup synchronous to start currentTime ticking
+                    this.warmupSynchronous(audioContext);
+                    // some magical hack - currentTime starts ticking if log context - the issue happens sporadically
+                    console.log(`AudioContext is`, audioContext, ` with currentTime=`, audioContext.currentTime);
+
+                    return true;
+                });
             const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
             if (await Promise.race([resumeTask, timerTask])) {
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
