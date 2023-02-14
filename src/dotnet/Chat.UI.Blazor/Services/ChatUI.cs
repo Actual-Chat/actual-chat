@@ -326,7 +326,6 @@ public partial class ChatUI : WorkerBase, IHasServices
         }
 
         HideRelatedEntry(false);
-        _ = TuneUI.Play("select-chat");
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
         UICommander.RunNothing();
         return true;

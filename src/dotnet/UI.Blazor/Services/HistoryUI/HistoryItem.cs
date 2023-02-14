@@ -71,7 +71,7 @@ public sealed record HistoryItem(
         foreach (var (stateType, state) in States) {
             var prevState = prevItem[stateType];
             var change = new HistoryStateChange(state, prevState!);
-            if (change.HasChanges)
+            if (state.MustApplyUnconditionally || change.HasChanges)
                 yield return change;
         }
     }

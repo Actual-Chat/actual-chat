@@ -43,7 +43,7 @@
     protected override void OnInitialized()
     {
         DefaultOptions = (Services.GetService<ModalOptions>() ?? new()).WithDefaults(ModalOptions.Default);
-        HistoryUI.Register(new OwnHistoryState(this, "", ImmutableSortedSet<Symbol>.Empty));
+        HistoryUI.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
         ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
     }
 
@@ -99,23 +99,21 @@
 
     // Nested types
 
-    private sealed record OwnHistoryState(ModalHost Host, string Uri, ImmutableSortedSet<Symbol> ModalIds) : HistoryState
+    private sealed record OwnHistoryState(ModalHost Host, ImmutableSortedSet<Symbol> ModalIds) : HistoryState
     {
         public override int BackStepCount => ModalIds.Count;
+        public override bool MustApplyUnconditionally => true;
 
         public override string ToString()
             => $"{nameof(ModalHost)}.{GetType().Name}({ModalIds.ToDelimitedString()})";
 
         public override HistoryState Save()
             => this with {
-                Uri = Host.HistoryUI.Uri,
                 ModalIds = Host._refs.Select(x => x.Id).ToImmutableSortedSet(),
             };
 
         public override void Apply(HistoryTransition transition) {
-            var prevState = transition.PrevItem.GetState<OwnHistoryState>();
-            var isUriChanged = !OrdinalEquals(Uri, prevState.Uri);
-            var modalIds = isUriChanged ? ImmutableSortedSet<Symbol>.Empty : ModalIds;
+            var modalIds = transition.IsUriChanged ? ImmutableSortedSet<Symbol>.Empty : ModalIds;
             var modalRefs = Host._refs;
             for (var i = modalRefs.Count - 1; i >= 0; i--) {
                 var modalRef = modalRefs[i];
@@ -135,12 +133,11 @@
             if (ReferenceEquals(this, other))
                 return true;
             return Host.Equals(other.Host)
-                && OrdinalEquals(Uri, other.Uri)
                 && ModalIds.SequenceEqual(other.ModalIds);
         }
 
         public override int GetHashCode() {
-            var result = HashCode.Combine(Host, Uri.OrdinalHashCode());
+            var result = Host.GetHashCode();
             foreach (var modalId in ModalIds)
                 result = HashCode.Combine(result, modalId);
             return result;

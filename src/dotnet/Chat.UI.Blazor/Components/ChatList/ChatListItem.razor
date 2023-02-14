@@ -94,11 +94,14 @@
     }
 
     private async Task OnClick() {
-        // This handler hides Navbar when you click on selected chat
+        var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
+        _ = tuneUI.Play("select-chat");
+
         if (ScreenSize.IsWide() || !State.Value.IsSelected)
             return;
 
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        // This part hides Navbar when you click on selected chat
+        await Task.Delay(TimeSpan.FromMilliseconds(200));
         var navbarUI = ChatUI.Services.GetRequiredService<NavbarUI>();
         navbarUI.SetIsVisible(false);
     }
