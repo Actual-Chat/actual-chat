@@ -321,6 +321,8 @@ public static class MauiProgram
             if (sessionId.IsEmpty) {
                 sessionId = new SessionFactory().CreateSession().Id;
                 try {
+                    if (storage.Remove(sessionIdStorageKey))
+                        Log.Information("Removed stored Session ID");
                     await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
                 }
                 catch (Exception e) {
