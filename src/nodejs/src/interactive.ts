@@ -2,7 +2,6 @@ import { Observable } from 'rxjs';
 import { ResolvedPromise } from 'promises';
 import { EventHandlerSet } from 'event-handling';
 import { Log, LogLevel, LogScope } from 'logging';
-import { InteractiveUI } from '../../dotnet/UI.Blazor/Services/InteractiveUI/interactive-ui';
 
 const LogScope: LogScope = 'Interactive';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

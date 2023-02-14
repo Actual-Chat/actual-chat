@@ -1,6 +1,8 @@
 import { fromEvent, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
 import { Log, LogLevel, LogScope } from 'logging';
+import { Timeout } from 'timeout';
+import { PromiseSource, TimedOut } from 'promises';
 
 const LogScope: LogScope = 'event-handling';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -9,7 +11,7 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 export class EventHandler<T> implements Disposable {
     constructor(
         private readonly event: EventHandlerSet<T>,
-        private readonly handler: (T) => void,
+        private readonly handler: (T) => unknown,
         private readonly justOnce: boolean = false,
     ) { }
 
@@ -19,7 +21,7 @@ export class EventHandler<T> implements Disposable {
 
     public trigger(argument: T): void {
         try {
-            return this.handler(argument);
+            this.handler(argument);
         }
         finally {
             if (this.justOnce)
@@ -29,7 +31,7 @@ export class EventHandler<T> implements Disposable {
 
     public triggerSilently(argument: T): void {
         try {
-            return this.handler(argument);
+            this.handler(argument);
         }
         catch (error) {
             errorLog?.log(`triggerSilently: event handler failed with an error:`, error);
@@ -52,8 +54,16 @@ export class EventHandlerSet<T> {
         return this.handlers.size;
     }
 
-    public add(handler: (value: T) => void, justOnce = false): EventHandler<T> {
-        const eventHandler = new EventHandler<T>(this, handler, justOnce);
+    public add(handler: (value: T) => unknown): EventHandler<T> {
+        const eventHandler = new EventHandler<T>(this, handler, false);
+        this.handlers.add(eventHandler);
+        if (this.handlersChanged)
+            this.handlersChanged(this.handlers);
+        return eventHandler;
+    }
+
+    public addJustOnce(handler: (value: T) => unknown): EventHandler<T> {
+        const eventHandler = new EventHandler<T>(this, handler, true);
         this.handlers.add(eventHandler);
         if (this.handlersChanged)
             this.handlersChanged(this.handlers);
@@ -70,11 +80,25 @@ export class EventHandlerSet<T> {
     }
 
     public whenNext(): Promise<T> {
-        return new Promise<T>(resolve => this.add(value => resolve(value), true))
+        return new Promise<T>(resolve => this.addJustOnce(value => resolve(value)))
     }
 
     public whenNextVoid(): Promise<void> {
-        return new Promise<void>(resolve => this.add(() => resolve(undefined), true))
+        return new Promise<void>(resolve => this.addJustOnce(() => resolve(undefined)))
+    }
+
+    public whenNextWithTimeout(timeoutMs: number): Promise<T | TimedOut> {
+        const result = new PromiseSource<T | TimedOut>();
+        let timeout: Timeout = null;
+        const handler = this.addJustOnce(value => {
+            timeout.clear();
+            result.resolve(value)
+        });
+        timeout = new Timeout(timeoutMs, () => {
+            handler.dispose()
+            result.resolve(TimedOut.instance);
+        });
+        return result;
     }
 
     public trigger(argument: T): void {

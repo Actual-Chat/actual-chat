@@ -7,6 +7,10 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
+export class TimedOut {
+    public static readonly instance: TimedOut = new TimedOut();
+}
+
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
 }
