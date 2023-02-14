@@ -1,12 +1,11 @@
+import { AudioContextRef } from 'audio-context-ref';
+import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 import { Disposable } from 'disposable';
 import { delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize, TimedOut } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
-import { AudioContextRef } from 'audio-context-ref';
-import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 import { Log, LogLevel, LogScope } from 'logging';
-import { InteractiveUI } from '../../dotnet/UI.Blazor/Services/InteractiveUI/interactive-ui';
 
 const LogScope: LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -90,9 +89,9 @@ export class AudioContextSource implements Disposable {
         if (this._whenReady.isCompleted())
             return; // Already ready
 
-        this._audioContext = audioContext;
         this._changeCount++;
-        debugLog?.log(`markReady(): #${this._changeCount}, AudioContext:`, audioContext);
+        this._audioContext = audioContext;
+        debugLog?.log(`markReady: #${this._changeCount}, AudioContext:`, audioContext);
 
         // _whenNotReady must be replaced first
         if (this._whenNotReady.isCompleted())
@@ -112,8 +111,9 @@ export class AudioContextSource implements Disposable {
         if (!this._whenReady.isCompleted())
             return; // Already not ready
 
-        debugLog?.log(`markNotReady()`);
+        debugLog?.log(`markNotReady`);
 
+        this._audioContext = null;
         // _whenReady must be replaced first
         this._whenReady = new PromiseSource<AudioContext>();
 
@@ -130,14 +130,12 @@ export class AudioContextSource implements Disposable {
             if (this._isDisposed)
                 return;
 
-            let audioContext = this._audioContext;
+            let audioContext: AudioContext = null;
             try {
-                if (audioContext === null || audioContext.state === 'closed') {
-                    audioContext = await this.create();
-                    await this.warmup(audioContext);
-                    await this.test(audioContext, true);
-                    this.markReady(audioContext);
-                }
+                audioContext = await this.create();
+                await this.warmup(audioContext);
+                await this.test(audioContext, true);
+                this.markReady(audioContext);
                 this.throwIfDisposed();
 
                 // noinspection InfiniteLoopJS
@@ -171,7 +169,7 @@ export class AudioContextSource implements Disposable {
 
                     for(;;) {
                         this.throwIfDisposed();
-                        this.throwIfTooManuResumes();
+                        this.throwIfTooManyResumes();
                         try {
                             await this.fix(audioContext);
                             break;
@@ -188,12 +186,13 @@ export class AudioContextSource implements Disposable {
             }
             finally {
                 this.markNotReady();
+                await this.closeSilently(audioContext);
             }
         }
     }
 
     protected async create(): Promise<AudioContext> {
-        debugLog?.log(`create()`);
+        debugLog?.log(`create`);
 
         this._resumeCount = 0;
         this._interactiveResumeCount = 0;
@@ -207,7 +206,7 @@ export class AudioContextSource implements Disposable {
             await this.interactiveResume(audioContext);
             await this.test(audioContext);
 
-            debugLog?.log(`create(): loading modules`);
+            debugLog?.log(`create: loading modules`);
             const whenModule1 = audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
             const whenModule2 = audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
             const whenModule3 = audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
@@ -221,7 +220,7 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async warmup(audioContext: AudioContext): Promise<void> {
-        debugLog?.log(`warmup(), AudioContext:`, audioContext);
+        debugLog?.log(`warmup, AudioContext:`, audioContext);
 
         await audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
         const nodeOptions: AudioWorkletNodeOptions = {
@@ -273,7 +272,7 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async fix(audioContext: AudioContext): Promise<void> {
-        debugLog?.log(`fix(): AudioContext:`, audioContext);
+        debugLog?.log(`fix:`, audioContext);
 
         try {
             if (!await this.trySuspend(audioContext)) {
@@ -291,15 +290,15 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async interactiveResume(audioContext: AudioContext): Promise<void> {
-        debugLog?.log(`interactiveResume(): AudioContext:`, audioContext);
+        debugLog?.log(`interactiveResume:`, audioContext);
         if (audioContext && this.isRunning(audioContext)) {
-            debugLog?.log(`interactiveResume(): succeeded (AudioContext is already in running state)`);
+            debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
             return;
         }
 
         await BrowserInfo.whenReady; // This is where isAlwaysInteractive flag gets set - it checked further
         if (Interactive.isAlwaysInteractive) {
-            debugLog?.log(`interactiveResume(): Interactive.isAlwaysInteractive == true`);
+            debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
         }
         else {
             // Resume can be called during user interaction only
@@ -307,35 +306,35 @@ export class AudioContextSource implements Disposable {
             if (isWakeUp && !this._isInteractiveWasReset) {
                 this._isInteractiveWasReset = true;
                 Interactive.isInteractive = false;
-                debugLog?.log(`interactiveResume(): Interactive.isInteractive was reset on wake up`);
+                debugLog?.log(`interactiveResume: Interactive.isInteractive was reset on wake up`);
             }
         }
 
         if (Interactive.isInteractive) {
             await this.resume(audioContext, false);
-            debugLog?.log(`interactiveResume(): succeeded w/o interaction`);
+            debugLog?.log(`interactiveResume: succeeded w/o interaction`);
         }
         else {
-            debugLog?.log(`interactiveResume(): waiting for interaction`);
+            debugLog?.log(`interactiveResume: waiting for interaction`);
             const e = await Interactive.interactionEvents.whenNextWithTimeout(MaxInteractionWaitTimeMs);
             if (e instanceof TimedOut) {
                 // noinspection ExceptionCaughtLocallyJS
                 throw `${LogScope}.interactiveResume: timed out while waiting for interaction`;
             }
             await this.resume(audioContext, true);
-            debugLog?.log(`interactiveResume(): succeeded on interaction`);
+            debugLog?.log(`interactiveResume: succeeded on interaction`);
         }
     }
 
     private async resume(audioContext: AudioContext, isInteractive: boolean): Promise<void> {
-        debugLog?.log(`resume(): AudioContext:`, audioContext);
+        debugLog?.log(`resume:`, audioContext);
 
         this._resumeCount++;
         if (isInteractive)
             this._interactiveResumeCount++;
 
         if (this.isRunning(audioContext)) {
-            debugLog?.log(`resume(): already resumed, AudioContext:`, audioContext);
+            debugLog?.log(`resume: already resumed, AudioContext:`, audioContext);
             return;
         }
 
@@ -346,16 +345,16 @@ export class AudioContextSource implements Disposable {
         if (!this.isRunning(audioContext))
             throw `${LogScope}.resume: completed resume, but AudioContext.state != 'running'`;
 
-        debugLog?.log(`resume(): resumed, AudioContext:`, audioContext);
+        debugLog?.log(`resume: resumed, AudioContext:`, audioContext);
     }
 
     protected async trySuspend(audioContext: AudioContext): Promise<boolean> {
         if (audioContext.state === 'suspended') {
-            debugLog?.log(`trySuspend(): already suspended, AudioContext:`, audioContext);
+            debugLog?.log(`trySuspend: already suspended, AudioContext:`, audioContext);
             return true;
         }
 
-        debugLog?.log(`trySuspend(): AudioContext:`, audioContext);
+        debugLog?.log(`trySuspend:`, audioContext);
         const suspendTask = audioContext.suspend().then(() => true);
         const timerTask = delayAsync(MaxSuspendTimeMs).then(() => false);
         if (await Promise.race([suspendTask, timerTask])) {
@@ -396,7 +395,7 @@ export class AudioContextSource implements Disposable {
     }
 
     protected async closeSilently(audioContext?: AudioContext): Promise<void> {
-        debugLog?.log(`close(): AudioContext:`, audioContext);
+        debugLog?.log(`close:`, audioContext);
         if (!audioContext)
             return;
         if (audioContext.state === 'closed')
@@ -410,7 +409,7 @@ export class AudioContextSource implements Disposable {
         }
     }
 
-    private throwIfTooManuResumes(): void {
+    private throwIfTooManyResumes(): void {
         if (this._resumeCount >= MaxResumeCount)
             throw `maintain: resume attempt count is too high (${this._resumeCount})`;
         if (this._interactiveResumeCount >= MaxInteractiveResumeCount)
@@ -429,7 +428,7 @@ export class AudioContextSource implements Disposable {
     // Event handlers
 
     private onDeviceAwake() {
-        debugLog?.log(`onDeviceAwake()`);
+        debugLog?.log(`onDeviceAwake`);
         this._deviceWokeUpAt = Date.now();
         this._isInteractiveWasReset = false;
         // close current AudioContext as it might be corrupted and can produce clicking sound
