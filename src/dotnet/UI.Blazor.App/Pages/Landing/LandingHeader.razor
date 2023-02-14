@@ -1,0 +1,123 @@
+@namespace ActualChat.UI.Blazor.App
+@inherits LandingShort
+
+@{
+    var account = State.Value;
+    var isGuest = account is not {IsGuestOrNone: false };
+    var user = account.User.OrGuest();
+    var avatar = account.Avatar;
+    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
+    var isNarrow = ScreenSize.IsNarrow();
+}
+
+@* Header *@
+<div class="landing-header blur-bg">
+    @if (isNarrow) {
+        <ButtonRound Class="menu-button flex-none" Click="@OnClick">
+            <i class="icon-menu text-2xl"></i>
+        </ButtonRound>
+        <div class="flex-x flex-1">
+            <div class="min-w-fit">
+                <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+            </div>
+            <div class="flex-x flex-1">
+                <div class="px-2 self-center -mt-1.5 max-w-40">
+                    <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-0.5 -ml-1">
+                    <img src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
+            </div>
+            <div class="header-text"></div>
+        </div>
+        <div class="flex-none justify-end">
+            @if (isGuest) {
+                <ButtonRound Class="signin-button" Click="@(() => SignIn(googleScheme.Name))">
+                    <i class="icon-log-in text-xl"></i>
+                </ButtonRound>
+            } else {
+                <button
+                    class="context-menu-btn md:mx-4"
+                    data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                    <AvatarCircle
+                        Avatar="@avatar"
+                        Size="SquareSize.Size9"/>
+                </button>
+            }
+        </div>
+    } else {
+        <div class="flex-x flex-1">
+            <div class="min-w-fit">
+                <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+            </div>
+            <div class="flex-x flex-1">
+                <div class="px-2 self-center -mt-1.5 min-w-fit">
+                    <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-0.5 -ml-1">
+                    <img src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
+            </div>
+            <div class="header-text">
+                <Button
+                    Click="@(_ => Nav.NavigateTo(Links.Docs))"
+                    Class="header-text text-headline-1 btn-transparent">Docs
+                </Button>
+                @if (isGuest) {
+                    <button class="signin-button-group" onclick="@(() => SignIn(googleScheme.Name))">
+                        <span class="px-2 font-medium">Sign in with</span>
+                        <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                    </button>
+                    // Don't remove this button group
+                @* <SigninButtonGroup> *@
+                @*     <GoogleIcon> *@
+                @*         <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
+                @*     </GoogleIcon> *@
+                @*     <FacebookIcon> *@
+                @*         <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8"> *@
+                @*     </FacebookIcon> *@
+                @*     <AppleIcon> *@
+                @*         <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8"> *@
+                @*     </AppleIcon> *@
+                @* </SigninButtonGroup> *@
+                } else {
+                    <div
+                        class="context-menu-btn"
+                        data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                        <AvatarCircle
+                            Avatar="@avatar"
+                            Size="SquareSize.Size10"/>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    protected override async Task OnInitializedAsync()
+        => AuthSchemas = await ClientAuth.GetSchemas();
+
+    private Task SignIn(string name) =>
+        ClientAuth.SignIn(name).AsTask();
+}

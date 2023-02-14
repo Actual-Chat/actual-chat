@@ -37,24 +37,41 @@ export class Landing {
         this.header = landing.querySelector('.landing-header');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
         landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
-        if (!ScreenSize.isNarrow()) {
-            this.scrollContainer = getScrollContainer(this.pages[0]);
 
-            fromEvent(document, 'keydown')
+        this.scrollContainer = getScrollContainer(this.pages[0]);
+
+        if (ScreenSize.isNarrow()) {
+            this.getNarrowScreenSize();
+
+            fromEvent(window.screen.orientation, 'change')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
+                .subscribe(() => this.getNarrowScreenSize());
 
-            fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
+            fromEvent(window, 'resize')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe((event: WheelEvent) => this.onWheel(event));
+                .subscribe(() => this.getNarrowScreenSize());
+        } else {
+            this.getWideScreenSize();
 
-            // Scroll event bubbles only to document.defaultView
-            fromEvent(this.scrollContainer, 'scroll', { capture: true, passive: true })
-                .pipe(
-                    takeUntil(this.disposed$),
-                    debounceTime(100),
-                ).subscribe(() => this.onScroll(false));
+            fromEvent(window, 'resize')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.getWideScreenSize());
         }
+
+        fromEvent(document, 'keydown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
+
+        fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: WheelEvent) => this.onWheel(event));
+
+        // Scroll event bubbles only to document.defaultView
+        fromEvent(this.scrollContainer, 'scroll', { capture: true, passive: true })
+            .pipe(
+                takeUntil(this.disposed$),
+                debounceTime(100),
+            ).subscribe(() => this.onScroll(false));
     }
 
     public dispose() {
@@ -63,6 +80,39 @@ export class Landing {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    public getNarrowScreenSize() {
+        let h = window.innerHeight;
+        let w = window.innerWidth;
+        if (h / w > 2.25 || h / w < 1.85) {
+            this.removeScrollClass();
+        } else {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            this.addScrollClass();
+        }
+    }
+
+    public getWideScreenSize() {
+        let h = window.innerHeight;
+        if (h < 700) {
+            this.removeScrollClass();
+        } else {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            this.addScrollClass();
+        }
+    }
+
+    public removeScrollClass() {
+        if (!this.landing.classList.contains('no-scroll')) {
+            this.landing.classList.add('no-scroll');
+        }
+    }
+
+    public addScrollClass() {
+        this.landing.classList.remove('no-scroll');
     }
 
     private updateHeader(): void {
@@ -106,6 +156,11 @@ export class Landing {
 
         const nextPage = this.getNextPage(page, isScrollDown, isScrolling);
         if (nextPage == null)
+            return;
+
+        let pageHeight = Math.round(page.getBoundingClientRect().height);
+        let nextPageHeight = Math.round(nextPage.getBoundingClientRect().height);
+        if (pageHeight != window.innerHeight || nextPageHeight != window.innerHeight)
             return;
 
         debugLog?.log(`autoScroll: starting`);
