@@ -32,7 +32,9 @@
                     console.log('App.initPage: baseUri =', baseUri);
                 window.App.baseUri = baseUri;
                 window.App.sessionHash = sessionHash;
-                audio.OpusMediaRecorder.origin = baseUri;
+                const opusMediaRecorder = window['opusMediaRecorder'];
+                if (opusMediaRecorder)
+                    opusMediaRecorder.origin = baseUri;
             },
             postMessage: function (data) {
                 try {
