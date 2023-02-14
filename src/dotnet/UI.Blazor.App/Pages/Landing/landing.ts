@@ -182,9 +182,6 @@ export class Landing {
     }
 
     private getNextPage(page: HTMLElement, isScrollDown: boolean, isScrolling = false): HTMLElement | null {
-        if (page.classList.contains('no-auto-scroll'))
-            return null;
-
         const pageIndex = this.pages.indexOf(page);
         const nextPageOffset = isScrollDown ? 1 : isScrolling ? 0 : -1;
         const nextPageIndex = clamp(pageIndex + nextPageOffset, 0, this.pages.length - 1);

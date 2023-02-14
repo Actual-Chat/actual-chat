@@ -6,9 +6,6 @@
     @apply flex-y;
     @apply overflow-hidden;
 }
-.landing .page.no-auto-scroll {
-    @apply h-full;
-}
 
 /* General styles */
 
@@ -215,6 +212,9 @@ body.narrow .landing-header .header-text {
 .landing .page.height-screen {
     height: 100vh;
     height: calc(var(--vh, 1vh) * 100);
+}
+body.narrow .landing .page.height-screen.no-auto-scroll {
+    @apply h-full;
 }
 .landing.no-scroll .page.height-screen {
     @apply h-full;
