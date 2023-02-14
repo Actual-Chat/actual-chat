@@ -45,13 +45,6 @@
     @apply bg-transparent;
 }
 
-.unread-messages-sub-header {
-    @apply relative mx-4 px-2 pb-0.5;
-    @apply bg-unread rounded-b-lg shadow;
-    @apply text-04 font-semibold;
-    @apply animate-display-from-top-slow cursor-pointer;
-}
-
 .btn-round.attach-btn {
     @apply self-start;
 }

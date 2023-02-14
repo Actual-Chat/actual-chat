@@ -1,0 +1,120 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<NavigateToUnreadOrEnd.Model>
+@{
+    var m = State.Value;
+    _animator.State = m.IsVisible;
+    if (_animator.MustHideComponent)
+        return;
+    var tooltip = m.IsAboveUnreadEntry ? "Navigate to the new message" : "Navigate to the last message";
+}
+
+<div class="navigate-to-end @_animator.Class">
+    <div class="c-content">
+        @if (m.UnreadCount > 0) {
+            var text = m.UnreadCount.FormatK();
+            <Badge Class="unread-counter" Click="OnClick">@text</Badge>
+        }
+        <ButtonRound Tooltip="@tooltip" Click="OnClick">
+            <i class="icon-arrow-down text-2xl font-thin"></i>
+        </ButtonRound>
+    </div>
+</div>
+
+@code {
+    private ShowHideAnimator _animator = null!;
+    private IMutableState<bool> _overrideToZero = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+    [Parameter, EditorRequired] public bool IsVisible { get; set; }
+    [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+
+    protected override void OnInitialized() {
+
+        _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
+        _overrideToZero = StateFactory.NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_overrideToZero)));
+        base.OnInitialized();
+    }
+
+    public override ValueTask DisposeAsync() {
+        _animator.Dispose();
+        return base.DisposeAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Invisible,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = new ChatId(ChatSid, ParseOrNone.Option);
+        if (!IsVisible || chatId.IsNone)
+            return Model.Invisible;
+
+        var chat = await ChatUI.Get(chatId, cancellationToken);
+        if (chat == null)
+            return Model.Invisible;
+
+        var lastEntryId = chat.News.LastTextEntry?.Id ?? default;
+        if (lastEntryId.IsNone)
+            return Model.Invisible;
+
+        var unreadCount = await GetUnreadCount(chatId, cancellationToken);
+
+        var isAboveUnread = await IsViewportAboveUnreadEntryState(cancellationToken);
+
+        return new(true, lastEntryId, unreadCount, isAboveUnread);
+    }
+
+    private async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken) {
+        var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken);
+        if (unreadCount == 0) {
+            _overrideToZero.Value = true;
+            return 0;
+        }
+
+        // Switch from zero to positive value with delay 1 second.
+        if (_overrideToZero.Value) {
+            var snapshot = _overrideToZero.Snapshot;
+            _ = Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)
+                .ContinueWith(_ => {
+                    if (_overrideToZero.Snapshot == snapshot) // Only first task like this one will "win"
+                        _overrideToZero.Value = false;
+                }, TaskScheduler.Default);
+        }
+
+        var overrideToZero = await _overrideToZero.Use(cancellationToken);
+        return overrideToZero ? 0 : unreadCount;
+    }
+
+    private async Task<bool> IsViewportAboveUnreadEntryState(CancellationToken cancellationToken) {
+        await ChatView.WhenInitialized;
+        return await ChatView.IsViewportAboveUnreadEntryState.Use(cancellationToken);
+    }
+
+    private async Task OnClick() {
+        if (await IsViewportAboveUnreadEntryState(default))
+            await ChatView.NavigateToUnreadEntry();
+        else {
+            var chatId = new ChatId(ChatSid, ParseOrNone.Option);
+            var chatInfo = await ChatUI.Get(chatId, default).ConfigureAwait(true);
+            if (chatInfo != null) {
+                var lastEntryId = chatInfo.News.LastTextEntry?.Id ?? ChatEntryId.None;
+                if (!lastEntryId.IsNone)
+                    ChatUI.HighlightEntry(lastEntryId, navigate: true);
+            }
+        }
+    }
+
+    public sealed record Model(bool IsVisible, ChatEntryId LastEntryId, Trimmed<int> UnreadCount, bool IsAboveUnreadEntry)
+    {
+        public static Model Invisible { get; } = new(false, default, default, default);
+    }
+}

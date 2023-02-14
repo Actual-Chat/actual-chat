@@ -10,7 +10,7 @@
 @import './Components/ChatSearchBox/chat-search-box.css';
 @import './Components/InviteAuthor/invite-author-modal.css';
 @import './Components/MarkupParts/markup-parts.css';
-@import './Components/NavigateToEnd/navigate-to-end.css';
+@import './Components/NavigateToUnreadOrEnd/navigate-to-unread-or-end.css';
 @import './Components/NewChat/new-chat-modal.css';
 @import './Components/Notifications/notifications.css';
 @import './Components/ChatAudioPanel/chat-audio-panel.css';
