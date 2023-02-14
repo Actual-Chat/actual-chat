@@ -8,16 +8,21 @@
     <ButtonRound Click="OnHideRightPanelClick" Class="md:!hidden transparent">
         <i class="icon-arrow-left text-2xl"></i>
     </ButtonRound>
-    <div class="flex grow text-02 text-title-1 self-center">Chat Settings</div>
-    @if (m.CanEditProperties()) {
-        <ButtonRound
-            Class="transparent"
-            Click="@OnEditChatSettingsClick"
-            Tooltip="Edit"
-            TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-edit text-2xl"></i>
-        </ButtonRound>
-    }
+    <div class="flex gap-x-2 grow">
+        <div class="flex flex-1 md:flex-auto text-02 text-title-1 self-center">Chat Settings</div>
+        @if (m.CanEditProperties()) {
+            <ButtonRound
+                Class="transparent"
+                Click="@OnEditChatSettingsClick"
+                Tooltip="Edit"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-edit text-2xl"></i>
+            </ButtonRound>
+        }
+    </div>
+    <ButtonRound Click="OnHideRightPanelClick" Class="!hidden md:!flex transparent">
+        <i class="icon-close text-2xl"></i>
+    </ButtonRound>
 </div>
 
 @code {
