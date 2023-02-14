@@ -45,7 +45,6 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class OpusMediaRecorder {
-    public static origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
     private readonly whenLoaded: Promise<void>;
@@ -54,6 +53,7 @@ export class OpusMediaRecorder {
     private encoderWorklet: AudioWorkletNode | null = null;
     private vadWorklet: AudioWorkletNode | null = null;
 
+    public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
 
@@ -154,7 +154,11 @@ export class OpusMediaRecorder {
     // Private methods
 
     private async load(): Promise<void> {
-        const audioHubUrl = new URL('/api/hub/audio', OpusMediaRecorder.origin).toString();
+        if (this.origin.includes('0.0.0.0')) {
+            // use server address if the app is MAUI
+            this.origin = window['App'].baseUri;
+        }
+        const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
 
         await rpc((rpcResult) => {
             const msg: CreateEncoderMessage = {
