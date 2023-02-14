@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using Stl.Plugins;
@@ -24,5 +25,6 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
 
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
+        services.AddScoped<AudioInfo>(c => new AudioInfo(c));
     }
 }

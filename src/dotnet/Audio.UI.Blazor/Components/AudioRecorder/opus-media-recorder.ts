@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { completeRpc, RpcResultMessage, rpc } from 'rpc';
 import { audioContextSource } from 'audio-context-source';
+import { Log, LogLevel, LogScope } from 'logging';
+import { PromiseSource } from 'promises';
 
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
@@ -13,7 +15,7 @@ import {
     StartMessage,
 } from './workers/opus-encoder-worker-message';
 import { AudioContextRef } from 'audio-context-ref';
-import { Log, LogLevel, LogScope } from 'logging';
+
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -45,10 +47,10 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class OpusMediaRecorder {
-    private readonly worker: Worker;
-    private readonly vadWorker: Worker;
-    private readonly whenLoaded: Promise<void>;
+    private readonly whenLoaded: PromiseSource<void>;
 
+    private worker: Worker | null = null;
+    private vadWorker: Worker | null = null;
     private contextRef: AudioContextRef | null = null;
     private encoderWorklet: AudioWorkletNode | null = null;
     private vadWorklet: AudioWorkletNode | null = null;
@@ -61,13 +63,35 @@ export class OpusMediaRecorder {
     public state: RecordingState = 'inactive';
 
     constructor() {
+        this.whenLoaded = new PromiseSource<void>();
+    }
+
+    public async load(baseUri: string): Promise<void> {
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
         this.worker.onerror = this.onWorkerError;
 
         this.vadWorker = new Worker('/dist/vadWorker.js');
 
-        this.whenLoaded = this.load();
+        if (this.origin.includes('0.0.0.0')) {
+            // use server address if the app is MAUI
+            this.origin = baseUri;
+        }
+        const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
+
+        await rpc((rpcResult) => {
+            const msg: CreateEncoderMessage = {
+                type: 'create',
+                audioHubUrl: audioHubUrl,
+                rpcResultId: rpcResult.id,
+            };
+            this.worker.postMessage(msg);
+
+            // it's OK to not wait for vadWorker create
+            const msgVad: VadMessage = { type: 'create', };
+            this.vadWorker.postMessage(msgVad);
+        });
+        this.whenLoaded.resolve(undefined);
     }
 
     public async start(sessionId: string, chatId: string): Promise<void> {
@@ -152,27 +176,6 @@ export class OpusMediaRecorder {
     }
 
     // Private methods
-
-    private async load(): Promise<void> {
-        if (this.origin.includes('0.0.0.0')) {
-            // use server address if the app is MAUI
-            this.origin = window['App'].baseUri;
-        }
-        const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
-
-        await rpc((rpcResult) => {
-            const msg: CreateEncoderMessage = {
-                type: 'create',
-                audioHubUrl: audioHubUrl,
-                rpcResultId: rpcResult.id,
-            };
-            this.worker.postMessage(msg);
-
-            // it's OK to not wait for vadWorker create
-            const msgVad: VadMessage = { type: 'create', };
-            this.vadWorker.postMessage(msgVad);
-        });
-    }
 
     private async init(context: AudioContext): Promise<void> {
         if (context['initialized'])
