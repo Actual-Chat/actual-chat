@@ -300,15 +300,19 @@ public static class MauiProgram
             var step = _trace.TrackStep("Getting session id");
             Symbol sessionId = Symbol.Empty;
             const string sessionIdStorageKey = "Fusion.SessionId";
+            Log.Information("About to read stored Session ID");
             var storage = SecureStorage.Default;
             try {
                 var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(storedSessionId))
+                if (!string.IsNullOrEmpty(storedSessionId)) {
                     sessionId = storedSessionId;
+                    Log.Information("Successfully read stored Session ID");
+                }
+                else
+                    Log.Information("No stored Session ID");
             }
- #pragma warning disable RCS1075
-            catch (Exception) {
- #pragma warning restore RCS1075
+            catch (Exception e) {
+                Log.Warning(e, "Failed to read stored Session ID");
                 // ignored
                 // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
                 // TODO: configure selective backup, to prevent app crashes after re-installing
@@ -319,10 +323,10 @@ public static class MauiProgram
                 try {
                     await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
                 }
- #pragma warning disable RCS1075
-                catch (Exception) {
- #pragma warning restore RCS1075
+                catch (Exception e) {
+                    Log.Warning(e, "Failed to store Session ID");
                     // ignored
+                    // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
                 }
             }
             step.Complete();
