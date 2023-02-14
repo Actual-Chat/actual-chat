@@ -70,7 +70,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
         // IsInteractive update hasn't made it to Blazor yet.
         await IsInteractive
             .When(x => x, cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(0.5), cancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .SuppressExceptions(e => e is TimeoutException)
             .ConfigureAwait(false);
         if (IsInteractive.Value)

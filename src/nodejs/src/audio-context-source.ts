@@ -21,7 +21,9 @@ const MaxResumeCount = 60;
 const MaxInteractiveResumeCount = 3;
 const MaxSuspendTimeMs = 300;
 const MaxInteractionWaitTimeMs = 60_000;
-const TestIntervalMs = 40;
+const ShortTestIntervalMs = 60;
+const LongTestIntervalMs = 1000;
+const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
 
 export class AudioContextSource implements Disposable {
@@ -134,7 +136,6 @@ export class AudioContextSource implements Disposable {
             try {
                 audioContext = await this.create();
                 await this.warmup(audioContext);
-                await this.test(audioContext, true);
                 this.markReady(audioContext);
                 this.throwIfDisposed();
 
@@ -156,7 +157,7 @@ export class AudioContextSource implements Disposable {
                     // Let's try to test whether AudioContext is broken and fix
                     try {
                         lastTestTimestamp = Date.now();
-                        await this.test(audioContext);
+                        await this.test(audioContext, true);
                         // See the description of markReady/markNotReady to understand the invariant it maintains
                         this.markReady(audioContext);
                         continue;
@@ -254,14 +255,15 @@ export class AudioContextSource implements Disposable {
         }
     }
 
-    protected async test(audioContext: AudioContext, isFirstTest = false): Promise<void> {
+    protected async test(audioContext: AudioContext, isLongTest = false): Promise<void> {
         if (audioContext.state !== 'running')
             throw `${LogScope}.test: AudioContext isn't running.`;
 
         const lastTime = audioContext.currentTime;
-        const testCycleCount = isFirstTest ? 6 : 2;
+        const testCycleCount = 5;
+        const testIntervalMs = isLongTest ? ShortTestIntervalMs : LongTestIntervalMs;
         for (let i = 0; i < testCycleCount; i++) {
-            await delayAsync(TestIntervalMs);
+            await delayAsync(testIntervalMs);
             if (audioContext.state !== 'running')
                 throw `${LogScope}.test: AudioContext isn't running.`;
             if (audioContext.currentTime != lastTime)
@@ -382,12 +384,20 @@ export class AudioContextSource implements Disposable {
         if (audioContext.state !== 'running')
             return false;
 
-        const buffer = audioContext.createBuffer(1, 1, 48000);
+        const silenceBuffer = audioContext['silenceBuffer'] as AudioBuffer ?? this.createSilenceBuffer(audioContext);
         const source = audioContext.createBufferSource();
-        source.buffer = buffer;
+        source.buffer = silenceBuffer;
         source.connect(audioContext.destination);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        source.onended = () => {
+            source.disconnect();
+            console.log('disconnected!!!');
+        }
+        audioContext['silenceBuffer'] = silenceBuffer;
         source.start(0);
-        source.disconnect();
+        // Schedule to stop silence playback in the future
+        source.stop(audioContext.currentTime + SilencePlaybackDuration);
         // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
         console.log(`AudioContext is:`, audioContext, `, its currentTime:`, audioContext.currentTime);
         return audioContext.state === 'running';
@@ -406,6 +416,10 @@ export class AudioContextSource implements Disposable {
         catch (e) {
             warnLog?.log(`close: failed to close AudioContext:`, e)
         }
+    }
+
+    private createSilenceBuffer(audioContext: AudioContext): AudioBuffer {
+        return audioContext.createBuffer(1, 1, 48000);
     }
 
     private throwIfTooManyResumes(): void {
