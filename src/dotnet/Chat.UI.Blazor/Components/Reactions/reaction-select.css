@@ -8,7 +8,7 @@
     @apply h-5 w-5;
 }
 .reaction-select-menu .reaction-select-reaction {
-    @apply p-0 h-6 w-8 justify-center;
+    @apply h-6 w-8 justify-center;
 }
 .reaction-select-menu .reaction-select-reaction-emoji {
     @apply h-5 w-5;
