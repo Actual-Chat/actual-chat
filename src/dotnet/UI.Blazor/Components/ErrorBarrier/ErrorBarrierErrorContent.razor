@@ -4,7 +4,7 @@
 @{
     var text = "Reload";
     if (IsAutoReloadEnabled)
-        text += $" (auto reload in {_countdown} sec)";
+        text += $" (auto reload in {_countdown}s)";
     var cls = Kind == ErrorBarrierKind.Full ? "error-barrier-full" : "error-barrier-compact";
 }
 
@@ -14,7 +14,7 @@
     }
     <div class="error-barrier-text">
         <h4>Aw, Snap!</h4>
-        <p>Something went wrong<br/>while displaying this page</p>
+        <p>Something went wrong<br/>while displaying this area</p>
     </div>
     <Button Class="btn-primary" Click="OnReloadClicked">@text</Button>
 </div>
