@@ -120,7 +120,7 @@ export class SideNav implements Disposable {
     }
 
     private endMove(e: TouchEvent, isCancelled = false) {
-        if (this.moveState === MoveState.ended)
+        if (this.moveState == null || this.moveState === MoveState.ended)
             return;
 
         // debugLog?.log('endMove:', e);
