@@ -1,7 +1,7 @@
 import { AudioContextRef } from 'audio-context-ref';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
 import { Disposable } from 'disposable';
-import { delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize, TimedOut } from 'promises';
+import { delayAsync, PromiseSource, PromiseSourceWithTimeout, TimedOut } from 'promises';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
@@ -266,6 +266,10 @@ export class AudioContextSource implements Disposable {
                 throw `${LogScope}.test: AudioContext isn't running.`;
             if (audioContext.currentTime != lastTime)
                 break;
+            // play silent audio and check state
+            else if (this.isRunning(audioContext)) {
+                debugLog?.log(`test: AudioContext is running, but currentTime is not changing.`);
+            }
         }
         if (audioContext.currentTime == lastTime) // AudioContext isn't running
             throw `${LogScope}.test: AudioContext is running, but didn't pass currentTime test.`;
@@ -299,6 +303,7 @@ export class AudioContextSource implements Disposable {
         await BrowserInfo.whenReady; // This is where isAlwaysInteractive flag gets set - it checked further
         if (Interactive.isAlwaysInteractive) {
             debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
+            await this.resume(audioContext, false);
         }
         else {
             // Resume can be called during user interaction only
@@ -310,20 +315,14 @@ export class AudioContextSource implements Disposable {
             }
         }
 
-        if (Interactive.isInteractive) {
-            await this.resume(audioContext, false);
-            debugLog?.log(`interactiveResume: succeeded w/o interaction`);
+        debugLog?.log(`interactiveResume: waiting for interaction`);
+        const e = await Interactive.interactionEvents.whenNextWithTimeout(MaxInteractionWaitTimeMs);
+        if (e instanceof TimedOut) {
+            // noinspection ExceptionCaughtLocallyJS
+            throw `${LogScope}.interactiveResume: timed out while waiting for interaction`;
         }
-        else {
-            debugLog?.log(`interactiveResume: waiting for interaction`);
-            const e = await Interactive.interactionEvents.whenNextWithTimeout(MaxInteractionWaitTimeMs);
-            if (e instanceof TimedOut) {
-                // noinspection ExceptionCaughtLocallyJS
-                throw `${LogScope}.interactiveResume: timed out while waiting for interaction`;
-            }
-            await this.resume(audioContext, true);
-            debugLog?.log(`interactiveResume: succeeded on interaction`);
-        }
+        await this.resume(audioContext, true);
+        debugLog?.log(`interactiveResume: succeeded on interaction`);
     }
 
     private async resume(audioContext: AudioContext, isInteractive: boolean): Promise<void> {
@@ -432,7 +431,7 @@ export class AudioContextSource implements Disposable {
         this._deviceWokeUpAt = Date.now();
         this._isInteractiveWasReset = false;
         // close current AudioContext as it might be corrupted and can produce clicking sound
-        void this._audioContext.close();
+        void this.closeSilently(this._audioContext);
         this.markNotReady();
     }
 }
