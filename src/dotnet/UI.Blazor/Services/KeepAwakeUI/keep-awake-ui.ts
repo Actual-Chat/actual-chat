@@ -1,5 +1,5 @@
 import { Interactive } from 'interactive';
-import { default as NoSleep } from 'nosleep.js';
+import { default as NoSleep } from '@uriopass/nosleep.js';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'KeepAwakeUI';
