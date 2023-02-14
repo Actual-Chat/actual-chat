@@ -10,24 +10,34 @@
     <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
         <DataAnnotationsValidator/>
         <div class="new-chat-modal-form-section">
-            @if (_form.Title.IsNullOrEmpty()) {
-                <AnonymousIcon Class="w-20 h-20"></AnonymousIcon>
-            } else {
-                <Pic Title="@_form.Title" Size="SquareSize.Size20"/>
-            }
-            <FormSection
-                For="() => _form.Title"
-                Label="Group name"
-                InputId="@_form.TitleId"
-                IsLabelInsideInput="true"
-                Class="!mt-0 grow"
-                IsRequired="true">
-                <TextBox
-                    @bind-Value="@_form.Title"
-                    Id="@_form.TitleId"
-                    Autofocus="true"
-                    Autocomplete="false"/>
-            </FormSection>
+            <div class="flex">
+                @if (_form.Title.IsNullOrEmpty()) {
+                    <AnonymousIcon Class="w-20 h-20"></AnonymousIcon>
+                } else {
+                    <Pic Title="@_form.Title" Size="SquareSize.Size20"/>
+                }
+            </div>
+            <div class="flex-y grow">
+                <FormSection
+                    For="() => _form.Title"
+                    Label="Group name"
+                    InputId="@_form.TitleId"
+                    IsLabelInsideInput="true"
+                    Class="!mt-0 grow"
+                    IsRequired="true">
+                    <TextBox
+                        @bind-Value="@_form.Title"
+                        Id="@_form.TitleId"
+                        Autofocus="true"
+                        Autocomplete="false"/>
+                </FormSection>
+                <FormSection
+                    For="() => _form.IsPublic">
+                    <ToggleEdit Id="@_form.IsPublicId"
+                                Label="Public chat &ndash; anyone can join"
+                                @bind-Value="_form.IsPublic"/>
+                </FormSection>
+            </div>
         </div>
     </Form>
     @if (_selectedContacts.Any()) {
@@ -162,7 +172,7 @@
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Kind = ChatKind.Group,
-                    IsPublic = false,
+                    IsPublic = _form.IsPublic,
                 },
             });
             var (chat, createChatError) = await UICommander.Run(command, CancellationToken.None);
@@ -192,15 +202,19 @@
     public sealed record Model;
 
     private sealed class FormModel {
+        public string FormId { get; }
+
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
-
-        public string FormId { get; }
         public string TitleId { get; }
+
+        public bool IsPublic { get; set; }
+        public string IsPublicId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            IsPublicId = $"{FormId}-public";
         }
     }
 
