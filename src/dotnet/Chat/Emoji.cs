@@ -25,13 +25,6 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
         Surprise,
         Sad,
         Angry,
-        Poo,
-        OkHand,
-        Fire,
-        BeamingFace,
-        ThumbsDown,
-        ScreamingFaceInFear,
-        JackOLantern,
     }.ToDictionary(x => x.Id);
 
     public static Requirement<Emoji> MustExist { get; } = Requirement.New(
