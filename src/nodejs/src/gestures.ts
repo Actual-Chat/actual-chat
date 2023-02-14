@@ -150,9 +150,11 @@ class SuppressDefaultContextMenuGesture extends Gesture {
     public static use(): void {
         debugLog?.log(`SuppressDefaultContextMenuGesture.use`);
         DocumentEvents.capturedActive.contextmenu$.subscribe((event: PointerEvent) => {
-            // Suppress browser context menu anywhere but on images
-            const target = event.target as HTMLElement;
-            if (!target || target.nodeName !== 'IMG')
+            // Suppress browser context menu anywhere but on images and inputs
+            const shouldStopEvent = !elementHasNameOrClass(
+                event.target as HTMLElement,
+                ['IMG', 'INPUT', 'editor-content']);
+            if (shouldStopEvent)
                 event.preventDefault();
         });
     }
@@ -196,7 +198,7 @@ class ContextMenuGesture extends Gesture {
             DocumentEvents.capturedPassive.pointerUp$.subscribe(() => this.dispose()),
             DocumentEvents.capturedPassive.pointerCancel$.subscribe(() => this.dispose()),
             // We cancel it in on 'onpointerdown' handler, but it might trigger earlier on some devices
-            Gestures.addActive(new SuppressEventGesture('contextmenu', 1000)),
+            Gestures.addActive(new SuppressEventGesture('contextmenu', 1000, true, ['INPUT', 'editor-content'])),
 
             // This timeout actually triggers 'contextmenu'
             new Timeout(delayMs, () => {
@@ -237,14 +239,14 @@ class ContextMenuGesture extends Gesture {
                     mustCancelClick = event.defaultPrevented || event.cancelBubble || !mustHandleDefault;
                 }
                 finally {
-                    const suppressContextMenuGesture = Gestures.addActive(new SuppressEventGesture('contextmenu', 300));
+                    const suppressContextMenuGesture = Gestures.addActive(new SuppressEventGesture('contextmenu', 300, true, ['INPUT', 'editor-content']));
                     let cancelGesture: Gesture = null;
                     const suppressGesture = Gestures.addActive(
                         new WaitForEventGesture('pointerup', (e: PointerEvent) => {
                             preventDefaultForEvent(e);
                             suppressContextMenuGesture.dispose();
                             cancelGesture?.dispose();
-                            Gestures.addActive(new SuppressEventGesture('contextmenu', 300));
+                            Gestures.addActive(new SuppressEventGesture('contextmenu', 300, true, ['INPUT', 'editor-content']));
                             if (mustCancelClick)
                                 Gestures.addActive(new SuppressEventGesture('click', 300));
                         }, true, false));
@@ -279,16 +281,31 @@ class SuppressEventGesture extends Gesture {
         public readonly eventName: string,
         public readonly timeoutMs: number,
         public readonly justOnce: boolean = true,
+        public readonly targetExclusions: string[] = null,
     ) {
         super();
         this.toDispose.push(
             new Timeout(timeoutMs, () => this.dispose()),
             fromEvent(document, eventName, { capture: true, passive: false })
                 .subscribe((e: Event) => {
-                    stopEvent(e);
+                    const shouldStopEvent = !elementHasNameOrClass(e.target as HTMLElement, this.targetExclusions);
+                    if (shouldStopEvent)
+                        stopEvent(e);
                     if (justOnce)
                         this.dispose();
                 }),
         );
     }
+}
+
+function elementHasNameOrClass(target: HTMLElement | null, strings: string[] | null): boolean {
+    if (!target)
+        return false;
+    if (!strings)
+        return false;
+    if (strings.indexOf(target.nodeName) > -1)
+        return true;
+    if (strings.some(x => target.classList.contains(x)) )
+        return true;
+    return false;
 }
