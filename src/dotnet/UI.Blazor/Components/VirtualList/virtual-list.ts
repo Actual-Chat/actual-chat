@@ -546,8 +546,8 @@ export class VirtualList {
         }
     }
 
-    private updateViewportThrottled = throttle(() => this.updateViewport(), UpdateViewportInterval, 'delayHead');
-    private updateViewport = serialize(async () => {
+    private readonly updateViewportThrottled = throttle(() => this.updateViewport(), UpdateViewportInterval, 'delayHead');
+    private readonly updateViewport = serialize(async () => {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
             return;
@@ -592,8 +592,8 @@ export class VirtualList {
             this.updateViewportThrottled();
     }, 2);
 
-    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead', 'updateVisibleKeys');
-    private updateVisibleKeys = serialize(async () => {
+    private readonly updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead', 'updateVisibleKeys');
+    private readonly updateVisibleKeys = serialize(async () => {
         if (this._isDisposed)
             return;
 
