@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -37,7 +38,7 @@ public partial class AccountUI : WorkerBase
             ? ownAccountTask.Result
             : AccountFull.Loading;
  #pragma warning restore VSTHRD002
-        _ownAccount = StateFactory.NewMutable<AccountFull>(new() {
+        _ownAccount = StateFactory.NewMutable<AccountFull>(new () {
             InitialValue = ownAccount,
             Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
         });
@@ -45,5 +46,43 @@ public partial class AccountUI : WorkerBase
     }
 
     public void SignOut(LocalUrl redirectUrl = default)
+    {
+        var isMauiApp = Services.GetRequiredService<HostInfo>().AppKind.IsMauiApp();
+        if (isMauiApp)
+            _ = SignOutInMaui(redirectUrl, default);
+        else
+            _ = HardRedirect(redirectUrl);
+    }
+
+    public void ReloadOnSignOut()
+    {
+        var isMauiApp = Services.GetRequiredService<HostInfo>().AppKind.IsMauiApp();
+        if (isMauiApp)
+            RedirectOnSignOut();
+        else
+            _ = HardRedirect();
+    }
+
+    private async Task SignOutInMaui(LocalUrl redirectUrl, CancellationToken cancellationToken)
+    {
+        var account = await OwnAccount.Use(cancellationToken).ConfigureAwait(true);
+        var isGuest = account.IsGuest;
+        await Services.GetRequiredService<IClientAuth>().SignOut().ConfigureAwait(true);
+        if (isGuest)
+            RedirectOnSignOut(redirectUrl);
+        else {
+            // Do nothing here now.
+            // SignOutReloader should initiate redirect after OwnAccount is invalidated.
+        }
+    }
+
+    private ValueTask HardRedirect(LocalUrl redirectUrl = default)
         => BrowserInfo.HardRedirect(Links.SignOut(redirectUrl));
+
+    private void RedirectOnSignOut(LocalUrl redirectUrl = default)
+    {
+        if (redirectUrl.IsHome())
+            Services.GetRequiredService<AutoNavigationUI>().MustNavigateToChatsOnSignIn = true;
+        Services.GetRequiredService<NavigationManager>().NavigateTo(redirectUrl);
+    }
 }

@@ -54,6 +54,6 @@ public class SignOutReloader : WorkerBase
 
         Log.LogInformation("Forcing reload on sign-out");
         var accountUI = Services.GetRequiredService<AccountUI>();
-        accountUI.SignOut();
+        accountUI.ReloadOnSignOut();
     }
 }
