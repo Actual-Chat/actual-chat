@@ -11,10 +11,12 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-const deceleration = 4; // 1 = full width, per second
-const startDurationMs = 100;
-const minMoveDurationMs = 300;
-const maxSetVisibilityWaitDurationMs = 1000;
+const Deceleration = 4; // 1 = full width, per second
+const MinDragOffset = 5; // DeviceInfo.isAndroid ? 5 : 10; // In CSS pixels
+const OpenStartDurationMs = 100;
+const ClosedStartDurationMs = 50;
+const MinMoveDurationMs = 100;
+const MaxSetVisibilityWaitDurationMs = 1000;
 
 enum SideNavSide {
     Left,
@@ -49,11 +51,15 @@ class MoveState {
 
         const dt = this.capturedAt - s.capturedAt;
         this.velocity = (openRatio - s.openRatio) / dt * 1000;
-        const decelerationTime = Math.abs(this.velocity / deceleration);
+        const decelerationTime = Math.abs(this.velocity / Deceleration);
         const decelerationDistance = this.velocity * decelerationTime / 2; // a*t^2/2
         this.terminalOpenRatio = openRatio + decelerationDistance;
         s.prevMoveState = null;
         // debugLog?.log(`MoveState: ${openRatio} + ${decelerationDistance} (v = ${this.velocity}) = ${this.terminalOpenRatio}`);
+    }
+
+    public get isInitial(): boolean {
+        return !!this.prevMoveState;
     }
 }
 
@@ -120,16 +126,17 @@ export class SideNav implements Disposable {
     }
 
     private endMove(e: TouchEvent, isCancelled = false) {
-        if (this.moveState == null || this.moveState === MoveState.ended)
+        const moveState = this.moveState;
+        if (moveState == null || moveState === MoveState.ended)
             return;
 
-        // debugLog?.log('endMove:', e);
-        const moveState = this.moveState;
         this.origin = null;
         this.moveState = MoveState.ended;
-        if (Date.now() - moveState.startedAt < minMoveDurationMs)
+        const moveDuration = Date.now() - moveState.startedAt;
+        if (moveDuration < MinMoveDurationMs)
             isCancelled = true;
 
+        debugLog?.log('endMove:', e, ', isCancelled:', isCancelled, ', moveDuration:', moveDuration);
         let mustBeOpen = this.isOpen;
         if (moveState && !isCancelled && !ScreenSize.isWide())
             mustBeOpen = moveState.terminalOpenRatio > 0.5;
@@ -143,7 +150,7 @@ export class SideNav implements Disposable {
 
                 await this.setVisibility(mustBeOpen);
                 // Make sure changes are applied to DOM
-                const endTime = Date.now() + maxSetVisibilityWaitDurationMs;
+                const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
                 while (this.isOpen != mustBeOpen && Date.now() < endTime)
                     await delayAsync(50);
             }
@@ -165,21 +172,27 @@ export class SideNav implements Disposable {
             return;
         }
 
+        const isOpen = this.isOpen;
         const coords = getCoords(e);
         const offset = coords.sub(this.origin);
         if (Math.abs(offset.y) > 0.5 * Math.abs(offset.x)) {
+            // Moved too far vertically
             this.endMove(e, true);
             return;
         }
-        if (Date.now() - moveState.startedAt < startDurationMs)
-            return;
+        if (moveState.isInitial) {
+            if (offset.length < MinDragOffset)
+                return; // Too small offset to start drag animation
+            const startDurationMs = isOpen ? OpenStartDurationMs : ClosedStartDurationMs;
+            if (Date.now() - moveState.startedAt < startDurationMs)
+                return; // Too early to start drag animation
+        }
 
-        const dx = offset.x;
         const isLeft = this.options.side == SideNavSide.Left;
-        const isOpen = this.isOpen;
         const isOpenSign = isOpen ? 1 : -1;
         const openDirectionSign = isLeft ? 1 : -1;
         const allowedDirectionSign = openDirectionSign * -isOpenSign;
+        const dx = isOpen ? offset.x : coords.x - (isLeft ? 0 : ScreenSize.width);
         const pdx = dx * allowedDirectionSign; // Must be positive
         if (pdx < -5) {
             this.origin = new Vector2D(coords.x, this.origin.y);
@@ -242,5 +255,5 @@ export class SideNav implements Disposable {
 }
 
 function getCoords(e: TouchEvent): Vector2D {
-    return new Vector2D(e.touches[0].clientX, e.touches[0].clientY);
+    return new Vector2D(e.touches[0].pageX, e.touches[0].pageY);
 }
