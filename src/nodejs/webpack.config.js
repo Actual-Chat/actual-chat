@@ -133,11 +133,23 @@ module.exports = (env, args) => {
             // @ts-ignore
             new FileManagerPlugin({
                 events: {
-                    onEnd: {
-                        copy: [
-                            { source: outputPath, destination: mauiOutputPath },
-                        ],
-                    },
+                    onEnd: [
+						{
+							delete: [
+								{
+									source: mauiOutputPath,
+									options: {
+										force: true,
+									},
+								}
+							],
+						},
+						{
+							copy: [
+								{ source: outputPath, destination: mauiOutputPath },
+							],
+						},
+					]
                 },
             }),
             // @ts-ignore
