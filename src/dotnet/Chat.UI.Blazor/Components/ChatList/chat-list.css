@@ -77,6 +77,9 @@
 .active-chats .message-counter-badge {
     @apply hidden;
 }
+.active-chats .message-counter-with-time {
+    @apply hidden;
+}
 .navbar-item .message-counter-badge {
     @apply self-end;
 }

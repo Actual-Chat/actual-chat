@@ -42,6 +42,12 @@
             var hasMenu = !isActiveChatList && isWide;
             var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
         }
+        <UnreadCountWithTime
+            Value="@m.Info.UnreadCount"
+            LastEntry="@m.Info.LastTextEntry"
+            HideLastEntryTime="@isListeningOrRecording"
+            NotificationMode="@m.Info.UserSettings.NotificationMode"
+            HasMentions="m.Info.HasUnreadMentions"/>
         <div class="@(isHoverable ? "hoverable" : "") slot">
             @if (hasButtons) {
                 @if (m.IsRecording) {
@@ -64,7 +70,6 @@
                 </div>
             }
         </div>
-        <UnreadCount Value="@m.Info.UnreadCount" NotificationMode="@m.Info.UserSettings.NotificationMode" HasMentions="m.Info.HasUnreadMentions"/>
     </Ending>
 </NavbarItem>
 

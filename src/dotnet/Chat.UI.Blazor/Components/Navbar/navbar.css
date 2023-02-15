@@ -69,7 +69,7 @@
 .navbar-item .navbar-item-ending {
     @apply flex-none justify-self-end;
     @apply flex-x justify-end items-center gap-x-2;
-    @apply h-8 overflow-hidden;
+    @apply overflow-hidden;
 }
 .navbar-item .navbar-item-ending .slot {
     @apply flex-none flex-x items-center gap-x-2;
