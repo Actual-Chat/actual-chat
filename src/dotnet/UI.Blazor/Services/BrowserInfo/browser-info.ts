@@ -33,6 +33,7 @@ export class BrowserInfo {
         // Call OnInitialized
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
+            isHoverable: ScreenSize.isHoverable,
             utcOffset: this.utcOffset,
             isMobile: DeviceInfo.isMobile,
             isAndroid: DeviceInfo.isAndroid,
@@ -45,7 +46,7 @@ export class BrowserInfo {
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
-        ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
+        ScreenSize.change$.subscribe(_ => this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable))
         globalThis["browserInfo"] = this;
     }
 
@@ -56,9 +57,9 @@ export class BrowserInfo {
 
     // Backend methods
 
-    private static onScreenSizeChanged(screenSize: string): void {
+    private static onScreenSizeChanged(screenSize: string, isHoverable: boolean): void {
         log?.log(`onScreenSizeChanged, screenSize:`, screenSize);
-        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize)
+        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable)
     };
 
     private static initBodyClasses() {
@@ -78,6 +79,7 @@ export class BrowserInfo {
             break;
         }
 
+
         if (DeviceInfo.isMobile)
             classList.add('device-mobile');
         else
@@ -91,12 +93,15 @@ export class BrowserInfo {
             classList.add('device-chrome');
 
         if (DeviceInfo.isTouchCapable)
-            classList.add('device-touch-capable');
+            classList.add('touch-capable');
+        else
+            classList.add('touch-incapable');
     }
 }
 
 export interface InitResult {
     screenSizeText: string;
+    isHoverable: boolean,
     utcOffset: number;
     isMobile: boolean;
     isAndroid: boolean;

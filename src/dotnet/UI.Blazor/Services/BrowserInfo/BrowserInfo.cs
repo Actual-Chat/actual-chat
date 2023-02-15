@@ -8,6 +8,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
 {
     private DotNetObjectReference<IBrowserInfoBackend>? _backendRef;
     private readonly IMutableState<ScreenSize> _screenSize;
+    private readonly IMutableState<bool> _isHoverable;
     private readonly TaskSource<Unit> _whenReadySource;
     private bool _hardRedirectCompleted;
     private readonly object _lock = new();
@@ -24,6 +25,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     public AppKind AppKind { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
+    public IState<bool> IsHoverable => _isHoverable;
     public TimeSpan UtcOffset { get; private set; }
     public bool IsMobile { get; private set; }
     public bool IsAndroid { get; private set; }
@@ -46,7 +48,9 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
         UICommander = services.GetRequiredService<UICommander>();
         AppKind = HostInfo.AppKind;
 
-        _screenSize = services.StateFactory().NewMutable<ScreenSize>();
+        var stateFactory = services.StateFactory();
+        _screenSize = stateFactory.NewMutable<ScreenSize>();
+        _isHoverable = stateFactory.NewMutable(false);
         _whenReadySource = TaskSource.New<Unit>(true);
     }
 
@@ -92,7 +96,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     [JSInvokable]
     public void OnInitialized(IBrowserInfoBackend.InitResult initResult) {
         // Log.LogInformation("Init: {InitResult}", initResult);
-        SetScreenSize(initResult.ScreenSizeText);
+        SetScreenSize(initResult.ScreenSizeText, initResult.IsHoverable);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
@@ -104,25 +108,28 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     }
 
     [JSInvokable]
-    public void OnScreenSizeChanged(string screenSizeText)
-        => SetScreenSize(screenSizeText);
+    public void OnScreenSizeChanged(string screenSizeText, bool isHoverable)
+        => SetScreenSize(screenSizeText, isHoverable);
 
-    private void SetScreenSize(string screenSizeText)
+    private void SetScreenSize(string screenSizeText, bool isHoverable)
     {
         if (!Enum.TryParse<ScreenSize>(screenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;
         // Log.LogInformation("ScreenSize = {ScreenSize}", screenSize);
 
-        bool wasNarrow;
+        bool mustSaveHistory;
         lock (_lock) {
-            if (_screenSize.Value == screenSize)
+            if (_screenSize.Value == screenSize && _isHoverable.Value == isHoverable)
                 return;
 
-            wasNarrow = _screenSize.Value.IsNarrow();
+            mustSaveHistory =
+                _screenSize.Value.IsNarrow() != screenSize.IsNarrow()
+                || _isHoverable.Value != isHoverable;
             _screenSize.Value = screenSize;
+            _isHoverable.Value = isHoverable;
         }
-        if (wasNarrow != screenSize.IsNarrow())
-            HistoryUI.Save(); // Some states depend on ScreenSize.IsNarrow / IsWide
+        if (mustSaveHistory)
+            HistoryUI.Save(); // Some states depend on ScreenSize.IsNarrow / IsWide, or IsHoverable
         UICommander.RunNothing(); // To instantly update everything
     }
 }

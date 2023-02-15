@@ -8,6 +8,7 @@ body {
     -webkit-touch-callout: none;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
 }
+
 /* Styled inputs */
 
 input.input-imprinted {
