@@ -41,6 +41,14 @@ public class Startup
                 logging.AddFile(
                     devLogPath,
                     LogLevel.Debug,
+                    new Dictionary<string, LogLevel>(StringComparer.Ordinal) {
+                        { "ActualChat", LogLevel.Debug },
+                        { "Microsoft", LogLevel.Warning },
+                        // { "Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Debug },
+                        // { "Microsoft.AspNetCore.Components", LogLevel.Debug },
+                        { "Stl", LogLevel.Warning },
+                        { "Stl.Fusion", LogLevel.Information },
+                    },
                     retainedFileCountLimit: 1,
                     outputTemplate: "{Timestamp:mm:ss.fff} {Level:u3}-{SourceContext} {Message}{NewLine}{Exception}"
                     );
