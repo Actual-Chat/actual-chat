@@ -4,17 +4,19 @@
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.ContentId);
     var previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
-    var imgStyle = $"max-width: {MaxWidth}px; max-height: {MaxHeight}px";
+    var wrapperStyle = DefaultWrapperStyle;
+    var imgStyle = DefaultImgStyle;
     if (attachment.Height > 0 && attachment.Width > 0) {
         var (width, height) = (attachment.Width, attachment.Height)
             .ToVector2()
             .ScaleToFitInto(MaxSize)
             .ToIntPair();
+        wrapperStyle += $" aspect-ratio: {width} / {height};";
         imgStyle = $"max-width: {width}px; max-height: {height}px; width:100%; display:block; aspect-ratio: {width} / {height};";
     }
 }
 
-<div class="image-attachment">
+<div class="image-attachment" style="@wrapperStyle">
     <a class="cursor-pointer"
        href="@url"
        role="button"
@@ -27,6 +29,8 @@
 @code {
     private const int MaxWidth = 400; // In pixels
     private const int MaxHeight = 300; // In pixels
+    private static readonly string DefaultImgStyle = $"max-width: {MaxWidth}px; max-height: {MaxHeight}px";
+    private static readonly string DefaultWrapperStyle = $"max-width: {MaxWidth}px; width: 100%;";
     private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
     private const int ActualResolutionMultiplier = 2;
 
