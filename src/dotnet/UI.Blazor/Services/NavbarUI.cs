@@ -42,12 +42,11 @@ public class NavbarUI
 
     public void SetIsVisible(bool value)
     {
-        value |= !IsNarrow();
-        if (!value) {
-            var localUrl = HistoryUI.LocalUrl;
-            var isAtRoot = localUrl.IsChatRoot() || localUrl.IsDocsRoot();
-            value = isAtRoot;
-        }
+        var localUrl = HistoryUI.LocalUrl;
+        value |= localUrl.IsChatRoot(); // Always visible if @ /chat
+        value &= !localUrl.IsDocsOrDocsRoot(); // Always invisible if @ /docs*
+        value |= IsWide(); // Always visible if wide
+
         bool oldIsVisible;
         lock (_lock) {
             oldIsVisible = _isVisible.Value;
@@ -55,7 +54,7 @@ public class NavbarUI
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value) {
-            // Log.LogDebug("Visibility changed: {IsVisible}", value);
+            Log.LogDebug("Visibility changed: {IsVisible}", value);
             HistoryUI.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -63,8 +62,8 @@ public class NavbarUI
 
     // Private methods
 
-    private bool IsNarrow()
-        => BrowserInfo.ScreenSize.Value.IsNarrow();
+    private bool IsWide()
+        => BrowserInfo.ScreenSize.Value.IsWide();
 
     // Nested types
 

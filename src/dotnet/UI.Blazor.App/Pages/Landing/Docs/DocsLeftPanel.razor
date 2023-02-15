@@ -1,4 +1,3 @@
-@namespace ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Components.SideNav
 @using ActualChat.Chat.UI.Blazor.Services
 @implements IDisposable
@@ -39,7 +38,7 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [CascadingParameter] public DocsCommonLayout.DocsPage ActivePage { get; set; }
+    [CascadingParameter] public DocsPage ActivePage { get; set; }
 
     protected override void OnInitialized()
         => NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;

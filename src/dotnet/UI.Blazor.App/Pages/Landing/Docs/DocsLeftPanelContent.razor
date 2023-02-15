@@ -1,9 +1,7 @@
-@namespace ActualChat.UI.Blazor.App
-
 <NavbarItem
     Url="/docs/privacy"
     Class="my-0.5"
-    IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Privacy)">
+    IsSelected="@(ActivePage == DocsPage.Privacy)">
     <i class="icon-file-text text-xl"></i>
     <span class="c-title">
         Privacy Policy
@@ -12,7 +10,7 @@
 <NavbarItem
     Url="/docs/terms"
     Class="my-0.5"
-    IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Terms)">
+    IsSelected="@(ActivePage == DocsPage.Terms)">
     <i class="icon-list text-xl"></i>
     <span class="c-title">
         Terms & Conditions
@@ -21,7 +19,7 @@
 <NavbarItem
     Url="/docs/cookies"
     Class="my-0.5"
-    IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Cookies)">
+    IsSelected="@(ActivePage == DocsPage.Cookies)">
     <i class="icon-info text-xl"></i>
     <span class="c-title">
         Cookies
@@ -31,7 +29,7 @@
     <NavbarItem
         Url="/docs/faq"
         Class="my-0.5"
-        IsSelected="@(ActivePage == DocsCommonLayout.DocsPage.Faq)">
+        IsSelected="@(ActivePage == DocsPage.Faq)">
         <i class="icon-info text-xl"></i>
         <span class="c-title">
             FAQ
@@ -44,7 +42,7 @@
 
     [Inject] private Features Features { get; init; } = null!;
 
-    [CascadingParameter] public DocsCommonLayout.DocsPage ActivePage { get; set; }
+    [CascadingParameter] public DocsPage ActivePage { get; set; }
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);

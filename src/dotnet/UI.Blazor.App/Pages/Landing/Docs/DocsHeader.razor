@@ -1,14 +1,12 @@
-@namespace ActualChat.UI.Blazor.App
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using System.Security.Cryptography
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.Module
-
 @{
     var title = Page switch {
-        DocsCommonLayout.DocsPage.Terms => "Terms and Conditions",
-        DocsCommonLayout.DocsPage.Cookies => "Cookies",
+        DocsPage.Terms => "Terms and Conditions",
+        DocsPage.Cookies => "Cookies",
         _ => "Privacy Policy",
     };
 }
@@ -35,7 +33,7 @@
 
     [CascadingParameter] private ScreenSize ScreenSize { get; set; }
 
-    [Parameter] public DocsCommonLayout.DocsPage Page { get; set; }
+    [Parameter] public DocsPage Page { get; set; }
 
     private void OnMenuHandleClick()
         => _landingLeftMenu?.Open();

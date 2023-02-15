@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App;
+namespace ActualChat.UI.Blazor.App.Pages.Landing;
 
 public enum ImagePosition
 {

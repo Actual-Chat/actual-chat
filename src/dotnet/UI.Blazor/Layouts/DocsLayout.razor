@@ -1,7 +1,7 @@
 @inherits LayoutComponentBase
 @layout BaseLayout
 
-<PageWithHeaderAndFooter Class="default-layout">
+<PageWithHeaderAndFooter @key="@Key" Class="default-layout">
     <LeftDrawer><RenderSlot Name="DocsLeftDrawer"/></LeftDrawer>
     <Header><RenderSlot Name="MainHeader"/></Header>
     <SubHeader><RenderStack Name="SubHeader"/></SubHeader>
@@ -11,4 +11,7 @@
     <RightDrawer><RenderSlot Name="MainRightDrawer"/></RightDrawer>
 </PageWithHeaderAndFooter>
 
+@code{
+    private static readonly object Key = new();
+}
 

@@ -1,6 +1,4 @@
-@namespace ActualChat.UI.Blazor.App
 @using ActualChat.Chat.UI.Blazor.Services
-
 @{
     var links = Array.Empty<(string, string)>();
     var pageUrl = "";
@@ -32,13 +30,13 @@
         ("CalOPPA", "caloppa"),
     };
 
-    if (Page == DocsCommonLayout.DocsPage.Cookies) {
+    if (Page == DocsPage.Cookies) {
         links = cookiesLinks;
         pageUrl = "cookies";
-    } else if (Page == DocsCommonLayout.DocsPage.Terms) {
+    } else if (Page == DocsPage.Terms) {
         links = termsLinks;
         pageUrl = "terms";
-    } else if (Page == DocsCommonLayout.DocsPage.Privacy) {
+    } else if (Page == DocsPage.Privacy) {
         links = privacyLinks;
         pageUrl = "privacy";
     }
@@ -54,5 +52,5 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter] public DocsCommonLayout.DocsPage Page { get; set; }
+    [Parameter] public DocsPage Page { get; set; }
 }
