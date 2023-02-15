@@ -101,7 +101,7 @@
     @apply bg-transparent font-medium text-02;
 }
 .tile-item {
-    @apply flex-x items-center gap-x-2;
+    @apply flex-x items-center justify-center gap-x-2;
     @apply h-10 w-full;
     @apply rounded-lg;
     @apply hover:bg-hover;
@@ -130,7 +130,7 @@
     @apply text-xs font-normal text-03;
 }
 .tile-item-right {
-    @apply flex-1 flex-x justify-end;
+    @apply flex-1 flex-x justify-end items-center;
     @apply h-6;
 }
 .tile-hidden-btn {
