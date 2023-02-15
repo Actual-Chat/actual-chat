@@ -157,7 +157,10 @@ export class AudioContextSource implements Disposable {
                     // Let's try to test whether AudioContext is broken and fix
                     try {
                         lastTestTimestamp = Date.now();
-                        await this.test(audioContext, true);
+                        if (BrowserInfo.appKind !== 'MauiApp')
+                            // Skip test for MAUI as it doesn't exclusively use audio output or microphone
+                            // nevertheless `test` will be called as part of `fix` call
+                            await this.test(audioContext, true);
                         // See the description of markReady/markNotReady to understand the invariant it maintains
                         this.markReady(audioContext);
                         continue;
@@ -205,7 +208,6 @@ export class AudioContextSource implements Disposable {
         });
         try {
             await this.interactiveResume(audioContext);
-            await this.test(audioContext);
 
             debugLog?.log(`create: loading modules`);
             const whenModule1 = audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
@@ -390,10 +392,7 @@ export class AudioContextSource implements Disposable {
         source.connect(audioContext.destination);
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        source.onended = () => {
-            source.disconnect();
-            console.log('disconnected!!!');
-        }
+        source.onended = () => source.disconnect();
         audioContext['silenceBuffer'] = silenceBuffer;
         source.start(0);
         // Schedule to stop silence playback in the future
