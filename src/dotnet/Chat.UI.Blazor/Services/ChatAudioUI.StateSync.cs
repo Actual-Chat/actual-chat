@@ -4,6 +4,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatAudioUI
 {
+    private static readonly TimeSpan Eps = TimeSpan.FromMilliseconds(50);
+
     protected override Task RunInternal(CancellationToken cancellationToken)
     {
         var baseChains = new AsyncChain[] {
@@ -170,12 +172,12 @@ public partial class ChatAudioUI
             var timeBeforeStop = (willBeIdleAt - clock.Now).Positive();
             var timeBeforeCountdown =
                 (lastEntryAt + options.IdleTimeoutBeforeCountdown - clock.Now).Positive();
-            if (timeBeforeStop == TimeSpan.Zero) {
+            if (timeBeforeStop <= Eps) {
                 // notify is idle and stop counting down
                 yield return null;
                 yield break;
             }
-            if (timeBeforeCountdown == TimeSpan.Zero) {
+            if (timeBeforeCountdown <= Eps) {
                 // continue counting down
                 yield return willBeIdleAt;
                 await Task.Delay(TimeSpanExt.Min(timeBeforeStop, options.CheckInterval),
@@ -209,8 +211,10 @@ public partial class ChatAudioUI
             cancellationToken);
     }
 
-    private static Moment GetEndsAt(ChatEntry lastEntry)
-        => lastEntry.EndsAt ?? lastEntry.ContentEndsAt ?? lastEntry.BeginsAt;
+    private Moment GetEndsAt(ChatEntry lastEntry)
+        => lastEntry.IsStreaming
+            ? Clocks.SystemClock.Now
+            : lastEntry.EndsAt ?? lastEntry.ContentEndsAt ?? lastEntry.BeginsAt;
 
     private async Task SyncRecordingState(CancellationToken cancellationToken)
     {
