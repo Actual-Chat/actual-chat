@@ -55,6 +55,7 @@ public class NavbarUI
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value) {
+            // Log.LogDebug("Visibility changed: {IsVisible}", value);
             HistoryUI.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke(this, EventArgs.Empty);
         }
