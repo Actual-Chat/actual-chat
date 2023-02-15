@@ -13,10 +13,11 @@ public static partial class Constants
         public static bool StoredState { get; } = false;
         public static bool SyncedState { get; } = false;
         public static bool MarkupParser { get; } = false;
+        public static bool ServerFusionMonitor { get; } = false; // Applies only to dev server
 
         // UI
         public static bool VirtualList { get; } = true;
-        public static bool HistoryUI { get; } = false;
+        public static bool HistoryUI { get; } = true;
         public static bool ChatUI { get; } = false;
 
         // Audio

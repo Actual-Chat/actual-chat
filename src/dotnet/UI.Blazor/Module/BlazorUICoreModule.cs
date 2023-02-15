@@ -185,7 +185,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
                 }
             }
         });
-        if (isServer) // Auto-start FusionMonitor on server
+        if (isServer && (!isDev || Constants.DebugMode.ServerFusionMonitor)) // Auto-start FusionMonitor on server
             services.AddHostedService(c => c.GetRequiredService<FusionMonitor>());
     }
 }
