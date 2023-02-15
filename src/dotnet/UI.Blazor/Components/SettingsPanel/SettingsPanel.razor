@@ -20,12 +20,10 @@
             </Button>;
     }
 
-    RenderFragment RenderSignOutBtn(SettingsTab tab) {
-        return
-            @<Button Class="" Click="@OnSignOutClick" data-tab-id="@tab.Id" role="tab">
-                @RenderTabTitle(tab)
-            </Button>;
-    }
+    RenderFragment RenderSignOutBtn(SettingsTab tab)
+        => @<Button Class="" Click="@OnSignOutClick" data-tab-id="@tab.Id" role="tab">
+               @RenderTabTitle(tab)
+           </Button>;
 
     RenderFragment RenderTabTitle(SettingsTab tab) =>
         @<div class="flex-x gap-x-4 items-center justify-between w-full">
@@ -73,8 +71,10 @@
                     <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                 }
             </div>
-            <div class="c-footer">
+            <div class="pl-1 pr-2">
                 <LinkTileItem Link="@link" Caption="Link to your account" IsHoverable="false"/>
+            </div>
+            <div class="c-footer">
                 <div class="flex-none flex-x items-center justify-between px-4 gap-x-2 text-xxs">
                     <div class="flex-1 text-03 font-medium truncate">@Version</div>
                     @if (HostInfo.AppKind != AppKind.MauiApp) {
