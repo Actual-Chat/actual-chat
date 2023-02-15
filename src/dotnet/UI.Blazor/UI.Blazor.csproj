@@ -9,7 +9,6 @@
   <ItemGroup>
     <PackageReference Include="Blazored.SessionStorage" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Sentry" />
     <PackageReference Include="Stl.Fusion.Blazor" />
     <PackageReference Include="Stl" />
