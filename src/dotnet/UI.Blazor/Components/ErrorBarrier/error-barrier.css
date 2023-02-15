@@ -1,25 +1,40 @@
 ﻿.error-barrier {
-    @apply grow place-self-center;
-    @apply flex-y justify-center items-center;
+    @apply flex-1 place-self-center;
+    @apply flex-y justify-center items-center gap-y-2 p-4;
     @apply text-icons-01;
+    @apply overflow-hidden;
 }
-
-.error-barrier-full {
+.error-barrier.compact {
+    @apply flex-x gap-x-2 p-1;
+    @apply min-h-12 max-h-12;
+}
+.error-barrier.full {
     min-width: 260px;
 }
 
-.error-barrier .c-image {
+.error-barrier > .c-image {
     height: 168px;
     width: 239px;
     background-image: url('/dist/images/error-barrier-image.svg');
     background-repeat: no-repeat;
 }
 
-.error-barrier-text {
+.error-barrier > .c-text {
     @apply flex-y justify-center items-center;
     @apply my-2;
 }
 
-.error-barrier p {
+.error-barrier > .c-text p {
     @apply text-center;
+}
+.error-barrier > .c-text .c-header {
+    @apply font-bold text-lg;
+}
+.error-barrier.compact > .c-text .c-header {
+    @apply hidden;
+}
+
+.error-barrier .btn {
+    @apply min-w-20 md:min-w-20 max-w-max md:max-w-max;
+    @apply h-8 md:h-8 min-h-8 md:min-h-8 max-h-8 md:max-h-8;
 }
