@@ -1,6 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="tile-item @(Unselected ? "unselected" : "") group @Class">
+@{
+    var unselectedCls = IsHoverable ? "" : "unselected";
+}
+<div class="tile-item @unselectedCls group @Class">
     <div class="tile-item-icon">
         @Icon
     </div>
@@ -24,6 +27,6 @@
     [Parameter] public RenderFragment? Right { get; set; }
     [Parameter] public RenderFragment? Content { get; set; }
     [Parameter] public RenderFragment? Caption { get; set; }
-    [Parameter] public bool Unselected { get; set; }
+    [Parameter] public bool IsHoverable { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
 }
