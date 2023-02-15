@@ -45,4 +45,4 @@ export class KeepAwakeUI {
     }
 }
 
-Interactive.whenInteractive().then(() => KeepAwakeUI.warmup);
+Interactive.whenInteractive().then(() => KeepAwakeUI.warmup());
