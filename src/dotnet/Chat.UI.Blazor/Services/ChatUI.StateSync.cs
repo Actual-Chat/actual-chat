@@ -70,7 +70,7 @@ public partial class ChatUI
     [ComputeMethod]
     protected virtual async Task<bool> MustKeepAwake(CancellationToken cancellationToken)
     {
-        var activeChats = await ActiveChatsUI.ActiveChats.Use().ConfigureAwait(false);
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         return activeChats.Any(c => c.IsListening || c.IsRecording);
     }
 
