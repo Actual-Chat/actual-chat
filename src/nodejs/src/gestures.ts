@@ -150,7 +150,10 @@ class SuppressDefaultContextMenuGesture extends Gesture {
     public static use(): void {
         debugLog?.log(`SuppressDefaultContextMenuGesture.use`);
         DocumentEvents.capturedActive.contextmenu$.subscribe((event: PointerEvent) => {
-            // Suppress browser context menu anywhere but on images and inputs
+            // Suppress browser context menu anywhere except:
+            // - Images
+            // - Inputs (otherwise copy-paste menu gets disabled there on mobile)
+            // - editor-content - this is a contentEditable div used by message editor
             const shouldStopEvent = !elementHasNameOrClass(
                 event.target as HTMLElement,
                 ['IMG', 'INPUT', 'editor-content']);
