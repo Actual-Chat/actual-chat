@@ -10,7 +10,7 @@
 }
 
 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal">
+    <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal" HasCloseButton="true">
         <Body>
         <div class="flex-y text-03 p-3 overflow-y-auto custom-scrollbar">
             @if (m.Rules != null) {
