@@ -17,6 +17,8 @@ export type Size = 'Unknown' | 'Small' | 'Medium' | 'Large' | 'ExtraLarge' | 'Ex
 export class ScreenSize {
     private static screenSizeMeasureDiv: HTMLDivElement;
 
+    public static width: number;
+    public static height: number;
     public static size: Size;
     public static change$ = new Subject<Size>();
     public static size$: Observable<Size>;
@@ -69,6 +71,8 @@ export class ScreenSize {
     }
 
     private static measure(): Size {
+        this.width = visualViewport.width;
+        this.height = visualViewport.height;
         let itemDiv: HTMLDivElement = null;
         for (const item of this.screenSizeMeasureDiv.children) {
             itemDiv = item as HTMLDivElement;
