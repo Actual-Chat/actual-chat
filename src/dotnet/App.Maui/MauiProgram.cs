@@ -320,15 +320,32 @@ public static class MauiProgram
             }
             if (sessionId.IsEmpty) {
                 sessionId = new SessionFactory().CreateSession().Id;
+                bool saved = false;
                 try {
                     if (storage.Remove(sessionIdStorageKey))
                         Log.Information("Removed stored Session ID");
+                    else
+                        Log.Information("Did not Remove stored Session ID");
                     await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                    saved = true;
                 }
                 catch (Exception e) {
+                    saved = false;
                     Log.Warning(e, "Failed to store Session ID");
                     // ignored
                     // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                }
+                if (!saved) {
+                    Log.Information("Second attempt to store Session ID");
+                    try {
+                        storage.RemoveAll();
+                        await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        Log.Warning(e, "Failed to store Session ID second time");
+                        // ignored
+                        // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                    }
                 }
             }
             step.Complete();
