@@ -7,6 +7,14 @@
     <Icon>
         <i class="icon-link-2 text-xl"></i>
     </Icon>
+    <Content>
+        <div class="flex-x justify-start items-center gap-x-1">
+            <div class="flex-none">
+                <a class="text-02">@link.ShortAbsoluteUrl</a>
+            </div>
+        </div>
+    </Content>
+    <Caption>@Caption</Caption>
     <Right>
         <CopyToClipboard
             InputClass="hidden"
@@ -15,14 +23,6 @@
             CopyText="@link.AbsoluteUrl"
             HideCopiedTag="true"/>
     </Right>
-    <Content>
-        <div class="user-page-link flex-x justify-start items-center gap-x-1">
-            <div class="flex-none">
-                <a class="text-02" href="@link.AbsoluteUrl">@link.ShortLocalUrl</a>
-            </div>
-        </div>
-    </Content>
-    <Caption>@Caption</Caption>
 </TileItem>
 
 @code {
