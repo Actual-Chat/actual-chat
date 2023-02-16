@@ -36,11 +36,15 @@ export class KeepAwakeUI {
 
     public static async warmup() {
         debugLog?.log(`warmup`);
-        if (!noSleep.isEnabled) {
-            await noSleep.enable();
-        }
-        if (!this._mustKeepAwake) {
-            noSleep.disable();
+        try {
+            if (!noSleep.isEnabled) {
+                await noSleep.enable();
+            }
+            if (!this._mustKeepAwake) {
+                noSleep.disable();
+            }
+        } catch (e) {
+            errorLog?.log(`warmup: error:`, e);
         }
     }
 }
