@@ -52,7 +52,6 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '7.0.103'
-          dotnet-quality: 'ga'
 
       - name: Set up Docker Buildx
         id: buildx
@@ -116,7 +115,6 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '7.0.103'
-          dotnet-quality: 'ga'
 
       - name: Debug Build for tests
         run: |-
@@ -200,7 +198,6 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '7.0.103'
-          dotnet-quality: 'ga'
 
       - name: Debug Build for tests
         run: |-
