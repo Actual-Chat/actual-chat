@@ -320,13 +320,29 @@ export class AudioContextSource implements Disposable {
         }
 
         debugLog?.log(`interactiveResume: waiting for interaction`);
-        const e = await Interactive.interactionEvents.whenNextWithTimeout(MaxInteractionWaitTimeMs);
-        if (e instanceof TimedOut) {
-            // noinspection ExceptionCaughtLocallyJS
-            throw `${LogScope}.interactiveResume: timed out while waiting for interaction`;
+        const resumeTask = new PromiseSource<boolean>();
+        // Keep user gesture stack without async!!!
+        const handler = Interactive.interactionEvents.add( () => {
+            // this resume should be called without async in the same sync stack as user gesture!!!
+            this.resume(audioContext, true)
+                .then(
+                    () => resumeTask.resolve(true),
+                    reason => {
+                        warnLog?.log(reason, 'resume() failed with an error');
+                        resumeTask.reject(reason);
+                    });
+        });
+        try {
+            const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
+            const success = await Promise.race([resumeTask, timerTask]);
+            if (!success)
+                throw `${LogScope}.interactiveResume: timed out while waiting for interaction`;
+
+            debugLog?.log(`interactiveResume: succeeded on interaction`);
         }
-        await this.resume(audioContext, true);
-        debugLog?.log(`interactiveResume: succeeded on interaction`);
+        finally {
+            handler.dispose();
+        }
     }
 
     private async resume(audioContext: AudioContext, isInteractive: boolean): Promise<void> {
