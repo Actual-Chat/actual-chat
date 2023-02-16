@@ -46,6 +46,10 @@ svg.own-avatar-card-picture {
     @apply max-w-full md:max-w-90 rounded-none md:rounded-lg;
 }
 
+.modal-frame.own-account-editor-modal .dialog-body {
+    @apply overflow-y-auto custom-scrollbar;
+}
+
 .is-default-avatar {
     @apply h-12 my-2;
 }
