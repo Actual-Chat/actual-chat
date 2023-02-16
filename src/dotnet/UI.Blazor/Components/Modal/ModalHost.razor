@@ -99,7 +99,7 @@
 
     // Nested types
 
-    private sealed record OwnHistoryState(ModalHost Host, ImmutableSortedSet<Symbol> ModalIds) : HistoryState
+    private sealed record OwnHistoryState(ModalHost Host, IReadOnlyList<Symbol> ModalIds) : HistoryState
     {
         public override int BackStepCount => ModalIds.Count;
         public override bool MustApplyUnconditionally => true;
@@ -109,7 +109,7 @@
 
         public override HistoryState Save()
             => this with {
-                ModalIds = Host._refs.Select(x => x.Id).ToImmutableSortedSet(),
+                ModalIds = Host._refs.Select(x => x.Id).ToList(),
             };
 
         public override void Apply(HistoryTransition transition) {
@@ -124,6 +124,11 @@
             }
         }
 
+        public override HistoryState? Back()
+            => ModalIds.Count == 0
+                ? null
+                : this with { ModalIds = ModalIds.Take(ModalIds.Count - 1).ToList() };
+
         // Equality
 
         public bool Equals(OwnHistoryState? other)
@@ -137,7 +142,7 @@
         }
 
         public override int GetHashCode() {
-            var result = Host.GetHashCode();
+            var result = HashCode.Combine(Host.GetHashCode(), ModalIds.Count);
             foreach (var modalId in ModalIds)
                 result = HashCode.Combine(result, modalId);
             return result;

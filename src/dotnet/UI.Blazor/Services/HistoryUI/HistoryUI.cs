@@ -1,3 +1,4 @@
+using ActualChat.Concurrency;
 using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -7,8 +8,6 @@ public partial class HistoryUI : IHasServices
     public const int MaxPosition = 1000;
     public const int MaxItemCount = 200;
 
-    private volatile string _uri;
-
     private object Lock { get; } = new();
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.HistoryUI ? Log : null;
@@ -17,12 +16,12 @@ public partial class HistoryUI : IHasServices
     public IServiceProvider Services { get; }
     public HistoryHub Hub { get; }
 
-    public int Position {
-        get { lock (Lock) return _position; }
+    public HistoryItem? this[long itemId] {
+        get { lock (Lock) return GetItemByIdUnsafe(itemId); }
     }
 
     public HistoryItem CurrentItem {
-        get { lock (Lock) return CurrentItemUnsafe; }
+        get { lock (Lock) return _currentItem; }
     }
 
     public HistoryItem DefaultItem {
@@ -31,8 +30,6 @@ public partial class HistoryUI : IHasServices
 
     public string Uri => LocalUrl.Value;
     public LocalUrl LocalUrl => new(_uri, ParseOrNone.Option);
-
-    public event EventHandler<LocationChangedEventArgs>? LocationChanging;
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
 
     public HistoryUI(IServiceProvider services)
@@ -40,18 +37,20 @@ public partial class HistoryUI : IHasServices
         Services = services;
         Log = services.LogFor(GetType());
         Hub = services.GetRequiredService<HistoryHub>();
+        _isSaveSuppressed = new LocalValue<bool>(false);
+        _saveRegion = new LockedRegionWithExitAction("Save", Lock);
+        _locationChangeRegion = new LockedRegionWithExitAction("LocationChange", Lock);
 
-        var uri = _uri = Hub.Nav.GetLocalUrl().Value;
-        _defaultItem = new HistoryItem(0, 0, uri, ImmutableDictionary<Type, HistoryState>.Empty);
-        var firstItem = new HistoryItem(NextItemId(), 0, uri, ImmutableDictionary<Type, HistoryState>.Empty);
-        AddHistoryItem(firstItem);
+        _uri = Hub.Nav.GetLocalUrl().Value;
+        _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
+        _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
 
         if (!Hub.HostInfo.AppKind.IsTestServer())
-            Hub.Nav.LocationChanged += OnLocationChanged;
+            Hub.Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);
     }
 
     public void Initialize()
-        => OnLocationChanged(Hub.Nav, new LocationChangedEventArgs(Hub.Nav.Uri, true));
+        => LocationChange(new LocationChangedEventArgs(Hub.Nav.Uri, true));
 
     public void Register<TState>(TState defaultState, bool ignoreIfAlreadyRegistered = false)
         where TState : HistoryState
@@ -66,13 +65,22 @@ public partial class HistoryUI : IHasServices
             }
 
             _defaultItem = _defaultItem.With(defaultState);
+            var currentItem = _currentItem;
             foreach (var kv in _itemById.List(true).ToList()) {
                 var item = kv.Value;
                 var existingState = item[stateType];
                 if (!Equals(existingState, defaultState)) {
-                    item = item.With(defaultState);
-                    _itemById[kv.Key] = item;
+                    var newItem = item.With(defaultState);
+                    _itemById[kv.Key] = newItem;
+                    if (ReferenceEquals(_currentItem, item))
+                        _currentItem = newItem;
                 }
+            }
+            if (ReferenceEquals(currentItem, _currentItem)) {
+                Log.LogError("CurrentItem doesn't exist in item list");
+                var existingState = _currentItem[stateType];
+                if (!Equals(existingState, defaultState))
+                    _currentItem = _currentItem.With(defaultState);
             }
         }
     }

@@ -58,7 +58,7 @@ public partial class AccountUI : WorkerBase
     {
         var isMauiApp = Services.GetRequiredService<HostInfo>().AppKind.IsMauiApp();
         if (isMauiApp)
-            RedirectOnSignOut();
+            SoftRedirect();
         else
             _ = HardRedirect();
     }
@@ -69,7 +69,7 @@ public partial class AccountUI : WorkerBase
         var isGuest = account.IsGuest;
         await Services.GetRequiredService<IClientAuth>().SignOut().ConfigureAwait(true);
         if (isGuest)
-            RedirectOnSignOut(redirectUrl);
+            SoftRedirect(redirectUrl);
         else {
             // Do nothing here now.
             // SignOutReloader should initiate redirect after OwnAccount is invalidated.
@@ -79,7 +79,7 @@ public partial class AccountUI : WorkerBase
     private ValueTask HardRedirect(LocalUrl redirectUrl = default)
         => BrowserInfo.HardRedirect(Links.SignOut(redirectUrl));
 
-    private void RedirectOnSignOut(LocalUrl redirectUrl = default)
+    private void SoftRedirect(LocalUrl redirectUrl = default)
     {
         if (redirectUrl.IsHome())
             Services.GetRequiredService<AutoNavigationUI>().MustNavigateToChatsOnSignIn = true;

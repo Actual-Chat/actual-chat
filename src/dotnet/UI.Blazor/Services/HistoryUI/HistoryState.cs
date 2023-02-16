@@ -7,4 +7,5 @@ public abstract record HistoryState
 
     public abstract HistoryState Save();
     public abstract void Apply(HistoryTransition transition);
+    public abstract HistoryState? Back();
 }

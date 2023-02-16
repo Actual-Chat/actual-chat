@@ -99,7 +99,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             c.GetRequiredService<UIActionTracker>()));
         services.AddScoped<HistoryUI>(c => new HistoryUI(c));
         services.AddScoped<HistoryHub>(c => new HistoryHub(c));
-        services.AddScoped<HistoryPositionFormatter>(_ => new HistoryPositionFormatter());
+        services.AddScoped<HistoryItemIdFormatter>(_ => new HistoryItemIdFormatter());
         services.AddScoped<AutoNavigationUI>(c => new AutoNavigationUI(c));
         services.AddScoped<ModalUI>(c => new ModalUI(c));
         services.AddScoped<BannerUI>(c => new BannerUI(c));

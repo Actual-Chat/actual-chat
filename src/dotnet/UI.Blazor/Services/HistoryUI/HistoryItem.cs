@@ -3,29 +3,26 @@ using ActualChat.UI.Blazor.Services.Internal;
 namespace ActualChat.UI.Blazor.Services;
 
 public sealed record HistoryItem(
-    int Id,
-    int PrevId,
+    HistoryUI HistoryUI,
+    long BackItemId,
     string Uri,
     ImmutableDictionary<Type, HistoryState> States,
-    Action? OnNavigate = null
+    NavigationAction OnNavigation = default
     ) : IEnumerable<KeyValuePair<Type, HistoryState>>
 {
+    public long Id { get; init; }
+    public bool IsStored => Id != 0;
+
     public int BackStepCount => States.Values.Sum(s => s.BackStepCount);
     public bool HasBackSteps => States.Values.Any(s => s.BackStepCount > 0);
+
+    public HistoryItem? BackItem => HistoryUI[BackItemId];
 
     public HistoryState? this[Type stateType]
         => States.GetValueOrDefault(stateType);
 
-    public HistoryItem(
-        int id, int prevId,
-        NavigationManager nav,
-        ImmutableDictionary<Type, HistoryState> states,
-        Action? followUpAction = null)
-        : this(id, prevId, nav.GetLocalUrl().Value, states, followUpAction)
-    { }
-
     public override string ToString()
-        => $"{GetType().Name}(Id: {Id}, PrevId: {PrevId})";
+        => $"{GetType().Name}(#{Id}, BackItemId: #{BackItemId})";
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     public IEnumerator<KeyValuePair<Type, HistoryState>> GetEnumerator() => States.GetEnumerator();
@@ -74,6 +71,19 @@ public sealed record HistoryItem(
             if (state.MustApplyUnconditionally || change.HasChanges)
                 yield return change;
         }
+    }
+
+    public HistoryItem? GenerateBackItem()
+    {
+        if (!HasBackSteps)
+            return null;
+
+        foreach (var state in States.Values) {
+            var backState = state.Back();
+            if (backState != null)
+                return With(backState);
+        }
+        return null;
     }
 
     // "With" helpers

@@ -2,34 +2,25 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class HistoryUI
 {
-    private int _nextItemId;
+    public HistoryChangeTracker TrackChanges(Action<HistoryItem> onChange)
+        => new HistoryChangeTracker(this, onChange).Start();
 
-    private HistoryItem CurrentItemUnsafe
-        => GetItemById(_history[_position]) ?? GetDefaultItem(_history[_position], Uri);
-
-    private HistoryItem? BackItemUnsafe
-        => _position <= 1 ? null : GetItemByPosition(_position - 1);
-
-    private int NextItemId()
-        => Interlocked.Increment(ref _nextItemId);
-
-    private HistoryItem NewItem(string uri)
+    public CancellationTokenSource TrackChangesAndCancel(Func<HistoryItem, bool> whenPredicate)
     {
-        var currentItem = CurrentItemUnsafe;
-        return new (NextItemId(), currentItem.Id, uri, currentItem.States);
+        var cts = new CancellationTokenSource();
+        var tracker = new HistoryChangeTracker(this,
+            item => {
+                if (whenPredicate.Invoke(item) && !cts.IsCancellationRequested) {
+                    try {
+                        cts.Cancel();
+                    }
+                    catch {
+                        // Intended
+                    }
+                }
+            });
+        cts.Token.Register(() => tracker.Dispose());
+        tracker.Start();
+        return cts;
     }
-
-    private HistoryItem? GetItemByPosition(int position)
-        => position < 0 || position >= _history.Count
-            ? null
-            : GetItemById(_history[position]);
-
-    private HistoryItem? GetItemById(int id)
-        => _itemById.GetValueOrDefault(id);
-
-    private HistoryItem GetDefaultItem(int id, string uri)
-        => _defaultItem with {
-            Id = NextItemId(),
-            Uri = uri,
-        };
 }

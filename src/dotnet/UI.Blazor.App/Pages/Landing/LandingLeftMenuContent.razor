@@ -70,7 +70,7 @@
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
     [Parameter] public LandingLeftMenu Owner { get; init; } = null!;
     [Parameter] public bool ShowHome { get; init; }
@@ -90,7 +90,7 @@
 
     private void NavigateTo(string url) {
         Owner.Close();
-        Nav.NavigateTo(url);
+        HistoryUI.NavigateTo(url);
     }
 
     private void SignIn()

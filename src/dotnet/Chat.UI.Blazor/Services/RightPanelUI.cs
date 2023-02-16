@@ -68,6 +68,9 @@ public class RightPanelUI : IHasServices
         public override void Apply(HistoryTransition transition)
             => Host.SetIsVisible(IsVisible);
 
+        public override HistoryState? Back()
+            => BackStepCount == 0 ? null : With(!IsVisible);
+
         // "With" helpers
 
         public OwnHistoryState With(bool isVisible)

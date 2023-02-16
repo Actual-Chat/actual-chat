@@ -1,142 +1,106 @@
+using ActualChat.Concurrency;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class HistoryUI
 {
-    private static readonly Action NoAction = () => {};
+    private readonly LocalValue<bool> _isSaveSuppressed;
+    private readonly LockedRegionWithExitAction _saveRegion;
 
-    private bool _isSaveSuppressed;
-    private Action? _afterSave;
-
-    public void Save()
+    public HistoryItem? Save()
     {
-        DebugLog?.LogDebug("Save");
-        using var _ = BeginSave();
-        var oldItem = CurrentItemUnsafe;
-        if (_isSaveSuppressed || oldItem.OnNavigate != null) {
-            DebugLog?.LogDebug("Save: suppressed {Reason}", _isSaveSuppressed ? "directly" : "via OnNavigate");
-            return;
+        using var _ = _saveRegion.Enter();
+        if (_isSaveSuppressed.Value) {
+            DebugLog?.LogDebug("Save: suppressed");
+            return null;
         }
+        DebugLog?.LogDebug("Save");
 
-        var newItem = oldItem;
-        foreach (var (stateKey, state) in oldItem.States) {
+        var baseItem = _currentItem;
+        var item = baseItem;
+        foreach (var (stateKey, state) in baseItem.States) {
             var newState = state.Save();
             if (ReferenceEquals(newState, state) || Equals(newState, state))
                 continue;
 
-            newItem = newItem with { States = newItem.States.SetItem(stateKey, newState) };
+            item = item with { States = item.States.SetItem(stateKey, newState) };
         }
-        EndSave(newItem, oldItem);
+        return EndSave(item, baseItem);
     }
 
-    public void Save<TState>() => Save(typeof(TState));
-    public void Save(Type stateType)
+    public HistoryItem? Save<TState>() => Save(typeof(TState));
+    public HistoryItem? Save(Type stateType)
     {
-        DebugLog?.LogDebug("Save: stateType: {StateType}", stateType.GetName(true));
-        using var _ = BeginSave();
-        var oldItem = CurrentItemUnsafe;
-        if (_isSaveSuppressed || oldItem.OnNavigate != null) {
-            DebugLog?.LogDebug("Save: suppressed {Reason}", _isSaveSuppressed ? "directly" : "via OnNavigate");
-            return;
+        using var _ = _saveRegion.Enter();
+        if (_isSaveSuppressed.Value) {
+            DebugLog?.LogDebug("Save {StateType}: suppressed", stateType.GetName(true));
+            return null;
         }
+        DebugLog?.LogDebug("Save {StateType}:", stateType.GetName(true));
 
-        var state = oldItem.States[stateType];
+        var baseItem = _currentItem;
+        var state = baseItem.States[stateType];
         var newState = state.Save();
         if (ReferenceEquals(newState, state) || Equals(newState, state))
-            return;
+            return baseItem;
 
-        var newItem = oldItem.With(newState);
-        EndSave(newItem, oldItem);
+        var item = baseItem.With(newState);
+        return EndSave(item, baseItem);
     }
 
     // Private methods
 
-    private ClosedDisposable<HistoryUI> BeginSave()
+    private HistoryItem? EndSave(HistoryItem item, HistoryItem baseItem)
     {
-        Monitor.Enter(Lock);
-        try {
-            ThrowIfSaving();
-            _afterSave = NoAction;
-        }
-        catch (Exception) {
-            Monitor.Exit(Lock);
-            throw;
-        }
-
-        return new ClosedDisposable<HistoryUI>(this, static self => {
-            var afterSave = self._afterSave;
-            self._afterSave = null;
-            Monitor.Exit(self.Lock);
-            afterSave?.Invoke();
-        });
-    }
-
-    private ClosedDisposable<(HistoryUI, bool)> SuppressSave(bool mustSuppress = true)
-    {
-        var wasSaveSuppressed = _isSaveSuppressed;
-        _isSaveSuppressed = mustSuppress;
-        return new ClosedDisposable<(HistoryUI, bool)>((this, wasSaveSuppressed), static arg => {
-            var (self, wasSaveSuppressed1) = arg;
-            self._isSaveSuppressed = wasSaveSuppressed1;
-        });
-    }
-
-    private void EndSave(HistoryItem newItem, HistoryItem oldItem)
-    {
-        if (_afterLocationChange != null) {
+        if (_locationChangeRegion.IsInside) {
             // Processing OnLocationChange
-            ReplaceHistoryItem(newItem);
-            DebugLog?.LogDebug("EndSave: done (OnLocationChange)");
-            return;
+            ReplaceItem(ref item);
+            DebugLog?.LogDebug("EndSave: exit (LocationChange)");
+            return item;
         }
 
-        var backStepDelta = newItem.CompareBackStepCount(oldItem);
+        var backStepDelta = item.CompareBackStepCount(baseItem);
         DebugLog?.LogDebug(
             "EndSave: back step count: {Old} -> {New} ({Delta})",
-            oldItem.BackStepCount, newItem.BackStepCount, backStepDelta);
+            baseItem.BackStepCount, item.BackStepCount, backStepDelta);
 
         switch (backStepDelta) {
         case 0:
-            ReplaceOrAddBackItem(newItem);
+            EndSave(ref item);
             break;
         case > 0:
             // Forward state
-            newItem = newItem with {
-                Id = NextItemId(),
-                PrevId = oldItem.Id,
+            item = item with {
+                Id = NewItemId(), // Will be set by AddHistoryItem
+                BackItemId = baseItem.Id,
             };
-            AddHistoryItem(newItem);
-            _afterSave = () => AddNavigationHistoryEntry(_position);
+            AddItem(ref item);
+            _saveRegion.ExitAction = () => AddNavigationHistoryEntry(item);
             DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
             break;
         case < 0:
             // Backward state
-            var backItem = BackItemUnsafe;
-            if (backItem != null && backItem.IsIdenticalTo(newItem)) {
-                _afterSave = NavigateBack;
+            var backItem = GetItemByIdUnsafe(baseItem.BackItemId);
+            if (backItem != null && backItem.IsIdenticalTo(item)) {
+                item = _currentItem = backItem;
+                _saveRegion.ExitAction = NavigateBack;
                 DebugLog?.LogDebug("EndSave: +NavigateBack");
             }
-            ReplaceOrAddBackItem(newItem);
+            else
+                EndSave(ref item);
             break;
         }
-
-        void ReplaceOrAddBackItem(HistoryItem item)
-        {
-            if (item.HasBackSteps && BackItemUnsafe == null) {
-                var position = _position;
-                AddBackItem(item);
-                _afterSave = () => AddNavigationHistoryEntry(position);
-                DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
-            }
-            else {
-                ReplaceHistoryItem(item);
-                DebugLog?.LogDebug("EndSave: done");
-            }
-        }
+        return item;
     }
 
-    private void ThrowIfSaving()
+    private void EndSave(ref HistoryItem item)
     {
-        if (_afterSave != null)
-            throw StandardError.Constraint("Save cannot be called recursively.");
+        if (ReplaceItem(ref item, out var _)) {
+            var itemCopy = item;
+            _saveRegion.ExitAction = () => AddNavigationHistoryEntry(itemCopy);
+            DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
+        }
+        else
+            DebugLog?.LogDebug("EndSave: done");
     }
 }

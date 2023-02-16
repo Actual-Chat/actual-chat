@@ -68,7 +68,6 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
@@ -95,7 +94,7 @@
                 chatId = Constants.Chat.AnnouncementsChatId;
             }
             if (!chatId.IsNone)
-                Nav.NavigateTo(Links.Chat(chatId));
+                HistoryUI.NavigateTo(Links.Chat(chatId));
         }
 
         ChatUI.SelectChat(chatId);

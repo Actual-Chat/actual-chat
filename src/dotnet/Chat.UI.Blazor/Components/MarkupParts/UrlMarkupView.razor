@@ -38,8 +38,7 @@ default:
     private LocalUrl? _chatUrl;
 
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private HistoryHub HistoryHub { get; init; } = null!;
 
     protected override void OnParametersSet() {
         _message = new ChatMessageModel(Entry);
@@ -50,12 +49,12 @@ default:
 
     private bool IsLocalUrl(string url, out LocalUrl? localUrl)
     {
-        if (Markup.Url.StartsWith(Nav.BaseUri)) {
-            localUrl = new LocalUrl(Nav.ToBaseRelativePath(url));
+        if (Markup.Url.StartsWith(HistoryHub.Nav.BaseUri)) {
+            localUrl = new LocalUrl(HistoryHub.Nav.ToBaseRelativePath(url));
             return true;
         }
-        if (Markup.Url.StartsWith(UrlMapper.BaseUrl)) {
-            localUrl = new LocalUrl(UrlMapper.ToBaseRelativePath(url));
+        if (Markup.Url.StartsWith(HistoryHub.UrlMapper.BaseUrl)) {
+            localUrl = new LocalUrl(HistoryHub.UrlMapper.ToBaseRelativePath(url));
             return true;
         }
         localUrl = null;
@@ -66,7 +65,7 @@ default:
         if (_kind == MarkupUrlKind.Image)
             await ImageViewerUI.Show(Markup.Url);
         else
-            Nav.NavigateTo(Markup.Url);
+            HistoryHub.HistoryUI.NavigateTo(Markup.Url);
     }
 
     private enum MarkupUrlKind {

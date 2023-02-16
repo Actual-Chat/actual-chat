@@ -3,30 +3,30 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
     [Parameter] public string? UserSid { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         var userId = new UserId(UserSid, ParseOrNone.Option);
         if (userId.IsGuestOrNone) {
-            Nav.NavigateTo(Links.NotFound);
+            HistoryUI.NavigateTo(Links.NotFound);
             return;
         }
 
         var ownAccount = await Accounts.GetOwn(Session, default);
         var account = await Accounts.Get(Session, userId, default);
         if (account == null || account.IsGuestOrNone) {
-            Nav.NavigateTo(Links.NotFound);
+            HistoryUI.NavigateTo(Links.NotFound);
             return;
         }
 
         if (ownAccount.Id == account.Id) { // Own account
-            Nav.NavigateTo(Links.Chats);
+            HistoryUI.NavigateTo(Links.Chats);
             return;
         }
 
         var chatId = new PeerChatId(ownAccount.Id, account.Id);
-        Nav.NavigateTo(Links.Chat(chatId));
+        HistoryUI.NavigateTo(Links.Chat(chatId));
     }
 }

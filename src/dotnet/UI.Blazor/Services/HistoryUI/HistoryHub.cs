@@ -6,26 +6,30 @@ namespace ActualChat.UI.Blazor.Services;
 // A convenience helper to speed up & simplify access to history-related services
 public sealed class HistoryHub : IServiceProvider, IHasServices
 {
+    private Session? _session;
     private Dispatcher? _dispatcher;
     private HistoryUI? _historyUI;
 
     // Some handy internal shortcuts
-    internal HistoryPositionFormatter PositionFormatter { get; }
+    internal HistoryItemIdFormatter ItemIdFormatter { get; }
 
     public IServiceProvider Services { get; }
-    public HistoryUI HistoryUI => _historyUI ??= Services.GetRequiredService<HistoryUI>();
+    public Session Session => _session ??= Services.GetRequiredService<Session>();
     public HostInfo HostInfo { get; }
+    public UrlMapper UrlMapper { get; }
+    public NavigationManager Nav { get; }
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     public IJSRuntime JS { get; }
-    public NavigationManager Nav { get; }
+    public HistoryUI HistoryUI => _historyUI ??= Services.GetRequiredService<HistoryUI>();
 
     public HistoryHub(IServiceProvider services)
     {
         Services = services;
+        ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
         HostInfo = services.GetRequiredService<HostInfo>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
         Nav = services.GetRequiredService<NavigationManager>();
-        PositionFormatter = services.GetRequiredService<HistoryPositionFormatter>();
+        JS = services.GetRequiredService<IJSRuntime>();
     }
 
     public object? GetService(Type serviceType)

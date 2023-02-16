@@ -179,7 +179,10 @@
                 _ = Host.Hide();
         }
 
-        // "With" helpers
+        public override HistoryState? Back()
+            => BackStepCount == 0 ? null : With(false);
+
+    // "With" helpers
 
         public OwnHistoryState With(bool isMenuShown)
             => IsMenuShown == isMenuShown ? this : this with { IsMenuShown = isMenuShown };

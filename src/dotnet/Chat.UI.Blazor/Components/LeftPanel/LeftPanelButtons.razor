@@ -25,11 +25,11 @@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
     private Task OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model());
 
     private void OnLogoClick()
-        => Nav.NavigateTo(Links.Home);
+        => HistoryUI.NavigateTo(Links.Home);
 }

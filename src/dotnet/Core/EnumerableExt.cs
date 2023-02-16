@@ -22,6 +22,11 @@ public static class EnumerableExt
         where T : class
         => source!;
 
+    public static bool SetEquals<T>(this IReadOnlySet<T> first, IReadOnlyCollection<T> second)
+        => first.Count == second.Count && second.All(first.Contains);
+    public static bool SmallSetEquals<T>(this IReadOnlyCollection<T> first, IReadOnlyCollection<T> second)
+        => first.Count == second.Count && second.All(first.Contains);
+
     // Constructs "a, b, and c" strings
     public static string ToCommaPhrase(this IEnumerable<string> source)
     {

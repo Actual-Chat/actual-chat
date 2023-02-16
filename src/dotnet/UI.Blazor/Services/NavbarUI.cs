@@ -76,12 +76,17 @@ public class NavbarUI
             => $"{nameof(NavbarUI)}.{GetType().Name}({IsVisible})";
 
         public override HistoryState Save()
-        {
-            var isVisible = Host.IsVisible.Value;
-            return isVisible == IsVisible ? this : new OwnHistoryState(Host, isVisible);
-        }
+            => With(Host.IsVisible.Value);
 
         public override void Apply(HistoryTransition transition)
             => Host.SetIsVisible(IsVisible && !transition.IsUriChanged);
+
+        public override HistoryState? Back()
+            => BackStepCount == 0 ? null : With(!IsVisible);
+
+        // "With" helpers
+
+        public OwnHistoryState With(bool isVisible)
+            => IsVisible == isVisible ? this : this with { IsVisible = isVisible };
     }
 }

@@ -1,12 +1,13 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
 @using Stl.Reflection
 @inherits FusionComponentBase
 @{
     var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
     if (needsSignIn) {
-        Nav.NavigateTo(Links.Home);
+        HistoryUI.NavigateTo(Links.Home);
         return;
     }
 }
@@ -27,7 +28,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
 
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;

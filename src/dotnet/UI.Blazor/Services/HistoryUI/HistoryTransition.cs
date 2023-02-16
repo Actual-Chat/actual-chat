@@ -4,11 +4,11 @@ namespace ActualChat.UI.Blazor.Services;
 
 public readonly record struct HistoryTransition(
     HistoryItem Item,
-    HistoryItem PrevItem,
+    HistoryItem BaseItem,
     LocationChangeKind LocationChangeKind)
 {
-    public bool IsUriChanged => !OrdinalEquals(Item.Uri, PrevItem.Uri);
+    public bool IsUriChanged => !OrdinalEquals(Item.Uri, BaseItem.Uri);
 
     public override string ToString()
-        => $"{GetType().Name}({Item} <- {PrevItem}, {LocationChangeKind})";
+        => $"({LocationChangeKind}: {BaseItem} -> {Item})";
 }

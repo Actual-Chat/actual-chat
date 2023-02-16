@@ -16,7 +16,7 @@
     private Result<Invite>? _useResult;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
@@ -29,6 +29,6 @@
 
         var invite = useResult.Value;
         var chatInvite = invite.Details.Chat.Require();
-        Nav.NavigateTo(Links.Chat(chatInvite.ChatId));
+        HistoryUI.NavigateTo(Links.Chat(chatInvite.ChatId));
     }
 }
