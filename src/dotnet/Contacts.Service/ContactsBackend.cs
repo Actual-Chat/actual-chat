@@ -185,14 +185,14 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var (author, oldAuthor) = eventCommand;
         var oldHasLeft = oldAuthor?.HasLeft ?? true;
-        if (oldHasLeft == author.HasLeft)
+        if (oldHasLeft == author.HasLeft && (oldAuthor?.Version ?? 0) != 0)
             return;
 
         var chatId = author.ChatId;
         var userId = author.UserId;
         if (chatId.IsNone || userId.IsNone) // Weird case
             return;
-        if (chatId.Kind == ChatKind.Peer) // Users can't leave peer chats
+        if (chatId.Kind == ChatKind.Peer && author.HasLeft) // Users can't leave peer chats
             return;
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
@@ -201,8 +201,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return; // No need to make any changes
 
         var change = author.HasLeft
-            ? new Change<Contact>() { Remove = true }
-            : new Change<Contact>() { Create = new Contact(contactId) };
+            ? new Change<Contact> { Remove = true }
+            : new Change<Contact> { Create = new Contact(contactId) };
         var command = new IContactsBackend.ChangeCommand(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
