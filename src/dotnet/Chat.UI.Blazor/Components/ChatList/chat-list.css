@@ -53,7 +53,7 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 
 /* Buttons - listening, recording, etc. */
 .chat-list .navbar-item-content {
-    @apply w-full;
+    @apply flex-1;
 }
 .chat-list .navbar-item .btn {
     /* @apply w-8 h-12; */

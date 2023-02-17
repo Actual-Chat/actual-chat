@@ -15,7 +15,7 @@
         <RightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">
             <RightPanelChatInfo/>
-            <div class="flex flex-col border-t border-bg-04">
+            <div class="flex flex-col border-t-4 border-bg-04">
                 @if (m.ShowMembers || m.EnableIncompleteUI) {
                     <TabPanel
                         @key="@Chat.Id.Value"

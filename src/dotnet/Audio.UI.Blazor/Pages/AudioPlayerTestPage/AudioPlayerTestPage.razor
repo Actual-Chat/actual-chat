@@ -7,9 +7,9 @@
 
 <MainHeader>Audio Player Test Page</MainHeader>
 
-<div class="text-xl text-bold">
+<div class="flex items-baseline text-xl text-bold">
     <label for="url">URL:</label>
-    <input id="url" class="w-full mt-1 p-1 text-lg bg-gray-50 focus:outline-none border border-gray-200 rounded text-gray-600" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
+    <input id="url" class="flex-1 mt-1 p-1 text-lg bg-gray-50 focus:outline-none border border-gray-200 rounded text-gray-600" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
 </div>
 <div class="text-xl text-bold bg-green-50 rounded-2xl">
     <p class="text-2xl text-bold mb-3 text-indigo-500">Our players:</p>

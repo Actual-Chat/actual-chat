@@ -6,8 +6,7 @@
     background: transparent;
 }
 .post-panel-wrapper {
-    @apply -flex-y;
-    @apply w-full;
+    @apply flex-1 -flex-y;
     @apply overflow-x-hidden;
     @apply bg-transparent;
 }
@@ -26,7 +25,7 @@
 }
 .post-panel {
     @apply flex-x;
-    @apply w-full min-h-12;
+    @apply min-h-12;
     @apply justify-between items-center;
     @apply border-bg-01  md:rounded-3xl outline-none;
     @apply bg-07 md:bg-03;
@@ -202,10 +201,7 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply border-y bg-01;
 }
 .attachment-list {
-    @apply flex-1 flex-x;
-    @apply w-full;
-    @apply justify-start;
-    @apply gap-x-4;
+    @apply flex-1 flex-x justify-start gap-x-4;
     @apply my-1 p-2;
     @apply overflow-x-auto;
 }
@@ -217,18 +213,7 @@ body.hoverable .clear-attachments-btn.btn:hover {
     @apply border-error;
 }
 .clear-attachments-btn.btn .btn-content {
-    @apply min-w-full;
     @apply text-error font-medium;
-}
-.post-attachments-btn.btn.btn-round {
-    @apply relative;
-    @apply min-w-12;
-    @apply self-center;
-}
-.post-attachments-btn.btn.btn-round .btn-content {
-    @apply min-w-full;
-    @apply bg-primary;
-    @apply text-primary-title;
 }
 .attachment-wrapper {
     @apply relative;
@@ -237,10 +222,8 @@ body.hoverable .clear-attachments-btn.btn:hover {
     @apply bg-03;
 }
 .attachment-item {
-    @apply relative flex-y;
+    @apply relative flex-y justify-center gap-x-1;
     @apply min-h-34 max-h-34 min-w-34 max-w-34;
-    @apply justify-center;
-    @apply gap-x-1;
     @apply mt-auto;
     @apply rounded-t-lg;
     @apply overflow-hidden;
@@ -251,13 +234,14 @@ body.hoverable .clear-attachments-btn.btn:hover {
 }
 .remove-attachment-btn.btn {
     @apply absolute;
+    @apply self-center;
     @apply min-w-9 max-w-9 min-h-9 max-h-9;
     @apply top-0 right-0;
-    @apply self-center;
     @apply text-04;
 }
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
+    @apply hover:bg-error hover:opacity-80;
     background: rgba(0,0,0,0.4);
 }
 .remove-attachment-btn.btn .btn-content i {
@@ -267,7 +251,6 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
     @apply bg-error opacity-80;
 }
 .attachment-filename {
-    @apply flex-1;
     @apply w-full max-w-34;
     @apply self-center text-center;
     @apply truncate;
@@ -297,15 +280,13 @@ body.hoverable .add-attachment.btn:hover .btn-content {
 
 .related-chat-entry-panel {
     @apply flex-x;
-    @apply w-full h-10;
+    @apply h-10;
     @apply py-0;
     @apply outline-none;
     @apply bg-03;
 }
 .related-chat-entry {
-    @apply flex-x;
-    @apply w-full;
-    @apply items-center;
+    @apply flex-1 flex-x items-center;
     @apply px-2 md:py-2;
     @apply bg-03;
     @apply text-base;
