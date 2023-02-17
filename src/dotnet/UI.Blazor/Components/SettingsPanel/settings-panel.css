@@ -4,8 +4,10 @@
 }
 .settings-panel > .c-tabs {
     @apply flex-1 md:flex-none flex-y;
-    @apply md:w-1/4 p-0;
+    @apply md:w-110;
+    @apply p-0 md:pl-30;
     @apply bg-02 md:bg-03;
+    @apply border-r border-bg-04;
 }
 .hide-panel.settings-panel > .c-tabs {
     @apply hidden md:flex-y;
