@@ -7,7 +7,6 @@
 }
 /* ChatAudioPanel, Mobile view */
 .narrow .chat-audio-panel {
-    @apply w-full;
     @apply self-stretch items-center;
     @apply gap-x-6;
     @apply py-2 mb-0.5;
