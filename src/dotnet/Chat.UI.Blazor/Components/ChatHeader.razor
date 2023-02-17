@@ -27,15 +27,6 @@
         <div class="chat-header-control-panel mx-2">
             <div class="flex-x gap-x-1">
                 <ChatSearch/>
-                @if(canInvite) {
-                    <ButtonRound
-                        Click="OnInviteClick"
-                        Class="transparent"
-                        Tooltip="Add participants..."
-                        TooltipPosition="FloatingPosition.Bottom">
-                        <i class="icon-person-add text-2xl ml-1"></i>
-                    </ButtonRound>
-                }
             </div>
             <ChatHeaderRightPanelToggle OnClick="OnSwitchRightPanelClick"/>
         </div>
@@ -51,9 +42,6 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    private Task OnInviteClick()
-        => ModalUI.Show(new InviteAuthor.Model(Chat));
 
     private void OnSwitchRightPanelClick()
         => RightPanelUI.Toggle();
