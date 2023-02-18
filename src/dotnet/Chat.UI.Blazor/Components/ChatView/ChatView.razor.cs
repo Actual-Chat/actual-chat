@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
@@ -30,7 +31,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    internal IState<bool> IsViewportAboveUnreadEntryState { get; private set; } = null!;
+    internal IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
     internal Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
@@ -50,11 +51,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(GetType(), nameof(ItemVisibility)));
             ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
-            IsViewportAboveUnreadEntryState = StateFactory.NewComputed(
+            IsViewportAboveUnreadEntry = StateFactory.NewComputed(
                 new ComputedState<bool>.Options {
                     UpdateDelayer = FixedDelayer.Instant,
                     InitialValue = false,
-                    Category = StateCategories.Get(GetType(), nameof(IsViewportAboveUnreadEntryState)),
+                    Category = StateCategories.Get(GetType(), nameof(IsViewportAboveUnreadEntry)),
                 },
                 ComputeIsViewportAboveUnreadEntry);
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
@@ -109,16 +110,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeToken.IsCancellationRequested)
             return;
 
-        var entryIdString = Nav.Uri.ToUri().Fragment.TrimStart('#');
-        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
-            var uriWithoutEntryId = new UriBuilder(Nav.Uri) { Fragment = "" }.ToString();
-            var originalUri = History.Uri;
+        var originalUri = History.Uri;
+        var fragment = new LocalUrl(originalUri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
+        if (long.TryParse(fragment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
+            var newUri = Regex.Replace(originalUri, "#.*$", "");
             var cts = History.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, originalUri));
             var cancellationToken = cts.Token;
             _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    History.NavigateTo(uriWithoutEntryId);
+                    History.NavigateTo(newUri);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();
