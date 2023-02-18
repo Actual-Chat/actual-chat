@@ -19,7 +19,7 @@
                 </ButtonRound>
             }
             @if (m.IsPaused) {
-                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon">
+                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon" MustKeepAwake="true">
                     <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
             } else {

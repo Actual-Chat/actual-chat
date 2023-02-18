@@ -22,7 +22,8 @@
         ContentClass="!bg-transparent"
         Click="@(_ => ChatAudioUI.SetRecordingChatId(Chat.Id))"
         Tooltip="Start"
-        TooltipPosition="FloatingPosition.Top">
+        TooltipPosition="FloatingPosition.Top"
+        MustKeepAwake="true">
         <i class="icon-mic text-2xl"></i>
     </ButtonRound>
 }

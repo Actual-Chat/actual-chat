@@ -20,7 +20,7 @@
 }
 
 <div class="@wrapperCls playback-wrapper">
-    <ButtonRound Click="@OnListenClick" Class="@cls">
+    <ButtonRound Click="@OnListenClick" Class="@cls" MustKeepAwake="@(!audioState.IsListening)">
         <i class="icon-listen text-2xl"></i>
     </ButtonRound>
     <ButtonRound Click="@OnToggleAudioOutputClick" Class="@loudBtnCls">
