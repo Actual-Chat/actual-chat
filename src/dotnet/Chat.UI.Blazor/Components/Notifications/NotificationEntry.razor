@@ -82,7 +82,7 @@
             Title = notification.Title,
             Content = notification.Content,
             NavigateToUrl = chatId.IsNone ? null
-                : Links.Chat(chatId, entryId.IsNone ? null : entryId.LocalId).ToAbsolute(UrlMapper),
+                : Links.Chat(chatId, entryId.LocalId).ToAbsolute(UrlMapper),
             AuthorId = authorId,
         });
     }
