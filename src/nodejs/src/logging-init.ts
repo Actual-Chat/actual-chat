@@ -15,6 +15,7 @@ export type LogScope =
     | 'Rpc'
     | 'ScreenSize'
     | 'BrowserInfo'
+    | 'History'
     | 'Interactive'
     | 'Gestures'
     | 'OnDeviceAwake'
@@ -26,12 +27,13 @@ export type LogScope =
     | 'VirtualList'
     // XxxUI
     | 'DebugUI'
-    | 'NotificationUI'
-    | 'History'
+    | 'FocusUI'
     | 'InteractiveUI'
+    | 'KeepAwakeUI'
+    | 'NotificationUI'
     | 'TuneUI'
-    | 'VibrationUI'
     | 'UserActivityUI'
+    | 'VibrationUI'
     // Audio
     | 'AudioContextSource'
     | 'AudioContextRef'
@@ -127,11 +129,9 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
 
     // Bumping down levels of in-dev scopes
     // minLevels.set('Gestures', LogLevel.Debug);
-    // minLevels.set('FocusUI', LogLevel.Debug);
     // minLevels.set('event-handling', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
-    minLevels.set('NotificationUI', LogLevel.Debug);
     minLevels.set('AudioPlayerController', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
     // minLevels.set('AudioContextRef', LogLevel.Debug);
@@ -139,13 +139,18 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     minLevels.set('AudioVadWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    // minLevels.set('TuneUI', LogLevel.Debug);
     // minLevels.set('History', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
+
+    // XxxUI
+    // minLevels.set('FocusUI', LogLevel.Debug);
+    // minLevels.set('KeepAwakeUI', LogLevel.Debug);
+    minLevels.set('NotificationUI', LogLevel.Debug);
+    // minLevels.set('TuneUI', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);

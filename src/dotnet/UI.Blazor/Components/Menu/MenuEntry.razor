@@ -5,7 +5,8 @@
     data-tooltip="@Tooltip"
     data-editor-focus="@(FocusOnEditor.ToString())"
     data-tooltip-position="@(TooltipPosition.ToPositionString())"
-    @onclick="@Click">
+    @onclick="@Click"
+    data-must-keep-awake="@MustKeepAwake.ToString()">
     <div class="ac-menu-content">
         <div class="ac-menu-icon">
             @if (IconContent == null ) {
@@ -36,4 +37,5 @@
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public bool FocusOnEditor { get; set; } = false;
+    [Parameter] public bool MustKeepAwake { get; set; }
 }

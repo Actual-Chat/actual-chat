@@ -6,7 +6,7 @@
     var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
 }
 
-<ButtonRound Class="@cls" Click="@OnListenClick">
+<ButtonRound Class="@cls" Click="@OnListenClick" MustKeepAwake="@(!m.IsListening)">
     <i class="icon-listen text-2xl"></i>
 </ButtonRound>
 

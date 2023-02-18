@@ -11,7 +11,8 @@
     ContentClass="!bg-transparent"
     Click="@OnListenClick"
     Tooltip="@(m.IsListening ? "Stop listening" : "Listen")"
-    TooltipPosition="FloatingPosition.Top">
+    TooltipPosition="FloatingPosition.Top"
+    MustKeepAwake="@(!m.IsListening)">
     <i class="icon-listen text-2xl"></i>
 </ButtonRound>
 
