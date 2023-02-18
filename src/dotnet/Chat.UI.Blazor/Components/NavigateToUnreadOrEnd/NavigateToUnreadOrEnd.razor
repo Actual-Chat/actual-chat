@@ -67,9 +67,7 @@
             return Model.Invisible;
 
         var unreadCount = await GetUnreadCount(chatId, cancellationToken);
-
         var isAboveUnread = await IsViewportAboveUnreadEntryState(cancellationToken);
-
         return new(true, lastEntryId, unreadCount, isAboveUnread);
     }
 
@@ -96,7 +94,7 @@
 
     private async Task<bool> IsViewportAboveUnreadEntryState(CancellationToken cancellationToken) {
         await ChatView.WhenInitialized;
-        return await ChatView.IsViewportAboveUnreadEntryState.Use(cancellationToken);
+        return await ChatView.IsViewportAboveUnreadEntry.Use(cancellationToken);
     }
 
     private async Task OnClick() {
