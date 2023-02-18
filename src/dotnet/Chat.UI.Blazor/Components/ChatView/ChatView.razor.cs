@@ -110,16 +110,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeToken.IsCancellationRequested)
             return;
 
-        var originalUri = History.Uri;
-        var fragment = new LocalUrl(originalUri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
+        var uri = History.Uri;
+        var fragment = new LocalUrl(uri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
         if (long.TryParse(fragment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
-            var newUri = Regex.Replace(originalUri, "#.*$", "");
-            var cts = History.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, originalUri));
+            var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
+            var cts = History.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, uri));
             var cancellationToken = cts.Token;
             _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    History.NavigateTo(newUri);
+                    History.NavigateTo(uriWithoutFragment);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();
