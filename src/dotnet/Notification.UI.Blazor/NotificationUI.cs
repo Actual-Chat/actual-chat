@@ -12,13 +12,12 @@ public class NotificationUI : INotificationUIBackend
     private string? _deviceId;
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
-    private HistoryHub HistoryHub { get; }
-    private Session Session => HistoryHub.Session;
-    private HistoryUI HistoryUI => HistoryHub.HistoryUI;
-    private HostInfo HostInfo => HistoryHub.HostInfo;
-    private UrlMapper UrlMapper => HistoryHub.UrlMapper;
-    private Dispatcher Dispatcher => HistoryHub.Dispatcher;
-    private IJSRuntime JS => HistoryHub.JS;
+    private History History { get; }
+    private Session Session => History.Session;
+    private HostInfo HostInfo => History.HostInfo;
+    private UrlMapper UrlMapper => History.UrlMapper;
+    private Dispatcher Dispatcher => History.Dispatcher;
+    private IJSRuntime JS => History.JS;
     private UICommander UICommander { get; }
 
     public Task WhenInitialized { get; }
@@ -26,7 +25,7 @@ public class NotificationUI : INotificationUIBackend
 
     public NotificationUI(IServiceProvider services)
     {
-        HistoryHub = services.GetRequiredService<HistoryHub>();
+        History = services.GetRequiredService<History>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
 
@@ -101,7 +100,7 @@ public class NotificationUI : INotificationUIBackend
 
             var chatIdGroup = match.Groups["chatid"];
             if (chatIdGroup.Success)
-                HistoryUI.NavigateTo(relativeUrl);
+                History.NavigateTo(relativeUrl);
         });
         return Task.CompletedTask;
 
@@ -124,7 +123,7 @@ public class NotificationUI : INotificationUIBackend
     }
 
     public bool IsAlreadyThere(ChatId chatId)
-        => HistoryUI.LocalUrl == Links.Chat(chatId);
+        => History.LocalUrl == Links.Chat(chatId);
 
     private async Task RegisterDevice(string deviceId, CancellationToken cancellationToken) {
         lock (_lock)

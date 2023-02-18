@@ -2,7 +2,7 @@ using ActualChat.Concurrency;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class HistoryUI
+public partial class History
 {
     private readonly LocalValue<bool> _isSaveSuppressed;
     private readonly LockedRegionWithExitAction _saveRegion;
@@ -52,6 +52,9 @@ public partial class HistoryUI
 
     private HistoryItem? EndSave(HistoryItem item, HistoryItem baseItem)
     {
+        DebugLog?.LogDebug(
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+            "EndSave: changes:" + item.GetChanges(baseItem, false).Select(c => "\r\n- " + c).ToDelimitedString(""));
         if (_locationChangeRegion.IsInside) {
             // Processing OnLocationChange
             ReplaceItem(ref item);

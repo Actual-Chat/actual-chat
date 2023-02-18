@@ -47,7 +47,7 @@
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private AudioInfo AudioInfo { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private UILifetimeEvents UILifetimeEvents { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<App> Log { get; init; } = null!;
@@ -61,7 +61,7 @@
 
     protected override void OnInitialized() {
         var circuitTraceAccessor = Services.GetService<CircuitTraceAccessor>();
-        circuitTraceAccessor?.Init();
+        circuitTraceAccessor?.Initialize();
         _trace = Services.GetRequiredService<ITraceSession>();
         _trace.Track("App.OnInitialized");
         UIAssembly ??= typeof(App).Assembly;
@@ -109,10 +109,10 @@
 
         // Starting BrowserInfo
         var step = _trace.TrackStep("BrowserInfo.Init");
-        _ = BrowserInfo.Init();
+        _ = BrowserInfo.Initialize();
 
         // Starting Audio pipeline, load Workers and connect to Audio channel
-        _ = AudioInfo.Init();
+        _ = AudioInfo.Initialize();
 
         // Starting ThemeUI
         var step2 = _trace.TrackStep("ThemeUI.Start");
@@ -134,8 +134,8 @@
         await themeUI.WhenReady.WaitAsync(cancellationToken);
         step2.Complete();
 
-        // Initialize HistoryUI
-        HistoryUI.Initialize();
+        // Initialize History
+        await History.Initialize();
     }
 
     private async Task Loaded()

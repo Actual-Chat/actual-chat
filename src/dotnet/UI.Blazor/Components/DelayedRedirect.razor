@@ -15,7 +15,7 @@
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public string To { get; set; } = "";
     [Parameter] public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(3);
@@ -37,6 +37,6 @@
         if (_delayTask != delayTask)
             return;
 
-        HistoryUI.NavigateTo(_url.LocalUrl);
+        History.NavigateTo(_url.LocalUrl);
     }
 }

@@ -39,7 +39,7 @@
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
 
     [Inject] public IServiceProvider Services { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
@@ -52,7 +52,7 @@
     }
 
     protected override void OnInitialized()
-        => HistoryUI.Register(new OwnHistoryState(this, false));
+        => History.Register(new OwnHistoryState(this, false));
 
     public ValueTask Show(
         MenuRef menuRef,
@@ -74,7 +74,7 @@
             _menu = null;
             StateHasChanged();
             if (!menu.IsHoverMenu)
-                HistoryUI.Save<OwnHistoryState>();
+                History.Save<OwnHistoryState>();
         }
 
         if (_jsMenuId != null) {
@@ -112,7 +112,7 @@
 
         _menu = menu;
         if (!menu.IsHoverMenu)
-            HistoryUI.Save<OwnHistoryState>();
+            History.Save<OwnHistoryState>();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -126,7 +126,7 @@
         _jsMenuId = null;
         _menu = null;
         if (!menu.IsHoverMenu)
-            HistoryUI.Save<OwnHistoryState>();
+            History.Save<OwnHistoryState>();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -167,8 +167,8 @@
     {
         public override int BackStepCount => IsMenuShown ? 1 : 0;
 
-        public override string ToString()
-            => $"{nameof(MenuHost)}.{GetType().Name}({IsMenuShown})";
+        public override string Format()
+            => IsMenuShown.ToString();
 
         public override HistoryState Save()
             => With(Host._menu is { IsHoverMenu: false });

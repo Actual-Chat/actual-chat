@@ -66,7 +66,7 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
@@ -94,7 +94,7 @@
                 chatId = Constants.Chat.AnnouncementsChatId;
             }
             if (!chatId.IsNone)
-                HistoryUI.NavigateTo(Links.Chat(chatId));
+                History.NavigateTo(Links.Chat(chatId));
         }
 
         ChatUI.SelectChat(chatId);

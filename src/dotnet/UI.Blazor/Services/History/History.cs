@@ -1,20 +1,32 @@
 using ActualChat.Concurrency;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class HistoryUI : IHasServices
+public partial class History : IHasServices, IDisposable
 {
-    public const int MaxPosition = 1000;
     public const int MaxItemCount = 200;
+
+    private Session? _session;
+    private Dispatcher? _dispatcher;
+    private DotNetObjectReference<History>? _backendRef;
 
     private object Lock { get; } = new();
     private ILogger Log { get; }
-    private ILogger? DebugLog => Constants.DebugMode.HistoryUI ? Log : null;
+    private ILogger? DebugLog => Constants.DebugMode.History ? Log : null;
 
-    // We intentionally expose a number of services here, coz it's convenient to access them via HistoryUI
+    internal HistoryItemIdFormatter ItemIdFormatter { get; }
+
+    // We intentionally expose a number of services here, coz it's convenient to access them via History
     public IServiceProvider Services { get; }
-    public HistoryHub Hub { get; }
+    public Session Session => _session ??= Services.GetRequiredService<Session>();
+    public HostInfo HostInfo { get; }
+    public UrlMapper UrlMapper { get; }
+    public NavigationManager Nav { get; }
+    public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    public IJSRuntime JS { get; }
 
     public HistoryItem? this[long itemId] {
         get { lock (Lock) return GetItemByIdUnsafe(itemId); }
@@ -32,25 +44,39 @@ public partial class HistoryUI : IHasServices
     public LocalUrl LocalUrl => new(_uri, ParseOrNone.Option);
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
 
-    public HistoryUI(IServiceProvider services)
+    public History(IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
-        Hub = services.GetRequiredService<HistoryHub>();
+        ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
+        HostInfo = services.GetRequiredService<HostInfo>();
+        UrlMapper = services.GetRequiredService<UrlMapper>();
+        Nav = services.GetRequiredService<NavigationManager>();
+        JS = services.GetRequiredService<IJSRuntime>();
+
         _isSaveSuppressed = new LocalValue<bool>(false);
         _saveRegion = new LockedRegionWithExitAction("Save", Lock);
         _locationChangeRegion = new LockedRegionWithExitAction("LocationChange", Lock);
-
-        _uri = Hub.Nav.GetLocalUrl().Value;
+        _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
 
-        if (!Hub.HostInfo.AppKind.IsTestServer())
-            Hub.Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);
+        if (!HostInfo.AppKind.IsTestServer())
+            Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);
     }
 
-    public void Initialize()
-        => LocationChange(new LocationChangedEventArgs(Hub.Nav.Uri, true));
+    public void Dispose()
+        => _backendRef.DisposeSilently();
+
+    public async Task Initialize()
+    {
+        LocationChange(new LocationChangedEventArgs(Nav.Uri, true));
+
+        _backendRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync(
+            $"{BlazorUICoreModule.ImportName}.History.init",
+            _backendRef);
+    }
 
     public void Register<TState>(TState defaultState, bool ignoreIfAlreadyRegistered = false)
         where TState : HistoryState

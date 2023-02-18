@@ -2,29 +2,29 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class HistoryChangeTracker : IDisposable
 {
-    private readonly HistoryUI _historyUI;
+    private readonly History _history;
     private readonly Action<HistoryItem>? _onChange;
     private readonly EventHandler<LocationChangedEventArgs> _onLocationChanged;
 
-    public HistoryChangeTracker(HistoryUI historyUI, Action<HistoryItem> onChange)
+    public HistoryChangeTracker(History history, Action<HistoryItem> onChange)
     {
-        _historyUI = historyUI;
+        _history = history;
         _onChange = onChange;
         _onLocationChanged = OnLocationChanged;
     }
 
     public void Dispose()
-        => _historyUI.LocationChanged -= _onLocationChanged;
+        => _history.LocationChanged -= _onLocationChanged;
 
     public HistoryChangeTracker Start()
     {
-        _historyUI.LocationChanged += _onLocationChanged;
+        _history.LocationChanged += _onLocationChanged;
         return this;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        var item = _historyUI.CurrentItem;
+        var item = _history.CurrentItem;
         _onChange?.Invoke(item);
     }
 }

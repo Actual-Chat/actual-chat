@@ -25,7 +25,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChatPositions ChatPositions { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -112,13 +112,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var entryIdString = Nav.Uri.ToUri().Fragment.TrimStart('#');
         if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
             var uriWithoutEntryId = new UriBuilder(Nav.Uri) { Fragment = "" }.ToString();
-            var originalUri = HistoryUI.Uri;
-            var cts = HistoryUI.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, originalUri));
+            var originalUri = History.Uri;
+            var cts = History.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, originalUri));
             var cancellationToken = cts.Token;
             _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    HistoryUI.NavigateTo(uriWithoutEntryId);
+                    History.NavigateTo(uriWithoutEntryId);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();

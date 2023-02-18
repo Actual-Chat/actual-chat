@@ -8,7 +8,7 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
     private readonly Acceptor<ModalHost> _hostAcceptor = new(true);
 
     private BrowserInfo BrowserInfo { get; }
-    private HistoryUI HistoryUI { get; }
+    private History History { get; }
     private TuneUI TuneUI { get; }
     private IMatchingTypeFinder MatchingTypeFinder { get; }
 
@@ -22,7 +22,7 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
     {
         Services = services;
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
-        HistoryUI = services.GetRequiredService<HistoryUI>();
+        History = services.GetRequiredService<History>();
         TuneUI = services.GetRequiredService<TuneUI>();
         MatchingTypeFinder = services.GetRequiredService<IMatchingTypeFinder>();
     }

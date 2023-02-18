@@ -8,7 +8,7 @@ public class RightPanelUI : IHasServices
     private readonly IStoredState<bool> _isVisible;
     private readonly object _lock = new();
 
-    private HistoryUI HistoryUI { get; }
+    private History History { get; }
     private BrowserInfo BrowserInfo { get; }
 
     public IServiceProvider Services { get; }
@@ -18,7 +18,7 @@ public class RightPanelUI : IHasServices
     public RightPanelUI(IServiceProvider services)
     {
         Services = services;
-        HistoryUI = services.GetRequiredService<HistoryUI>();
+        History = services.GetRequiredService<History>();
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
 
         var stateFactory = services.StateFactory();
@@ -29,9 +29,9 @@ public class RightPanelUI : IHasServices
                 Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !IsNarrow()),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
-        HistoryUI.Register(new OwnHistoryState(this, false));
+        History.Register(new OwnHistoryState(this, false));
         _isVisible.WhenRead.ContinueWith(
-            _ => HistoryUI.Hub.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
+            _ => History.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
             TaskScheduler.Default);
     }
 
@@ -47,7 +47,7 @@ public class RightPanelUI : IHasServices
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value)
-            HistoryUI.Save<OwnHistoryState>();
+            History.Save<OwnHistoryState>();
     }
 
     private bool IsNarrow()
@@ -59,8 +59,8 @@ public class RightPanelUI : IHasServices
     {
         public override int BackStepCount => IsVisible ? 1 : 0;
 
-        public override string ToString()
-            => $"{nameof(RightPanelUI)}.{GetType().Name}({IsVisible})";
+        public override string Format()
+            => IsVisible.ToString();
 
         public override HistoryState Save()
             => With(Host.IsVisible.Value);

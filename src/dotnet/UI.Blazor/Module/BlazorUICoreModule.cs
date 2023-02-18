@@ -97,8 +97,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<InteractiveUI>(c => new InteractiveUI(c));
         services.AddScoped<ErrorUI>(c => new ErrorUI(
             c.GetRequiredService<UIActionTracker>()));
-        services.AddScoped<HistoryUI>(c => new HistoryUI(c));
-        services.AddScoped<HistoryHub>(c => new HistoryHub(c));
+        services.AddScoped<History>(c => new History(c));
         services.AddScoped<HistoryItemIdFormatter>(_ => new HistoryItemIdFormatter());
         services.AddScoped<AutoNavigationUI>(c => new AutoNavigationUI(c));
         services.AddScoped<ModalUI>(c => new ModalUI(c));
@@ -124,9 +123,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Host-specific services
         services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
 
-        // Initializes HistoryUI
+        // Initializes History
         services.ConfigureUILifetimeEvents(
-            events => events.OnCircuitContextCreated += c => c.GetRequiredService<HistoryUI>());
+            events => events.OnCircuitContextCreated += c => c.GetRequiredService<History>());
 
         InjectDiagnosticsServices(services);
     }

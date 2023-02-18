@@ -18,7 +18,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -33,7 +33,7 @@
         if (!result.HasError) {
             Modal.Close();
             if (isSelectedChat && !ModalModel.Chat.IsPublic)
-                HistoryUI.NavigateTo(Links.Chats);
+                History.NavigateTo(Links.Chats);
         }
     }
 

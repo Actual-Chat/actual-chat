@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class HistoryUI
+public partial class History
 {
     private readonly LockedRegionWithExitAction _locationChangeRegion;
 
@@ -31,14 +31,14 @@ public partial class HistoryUI
             // Saving current state
             Save();
 
-            var uri = _uri = Hub.Nav.GetLocalUrl().Value;
+            var uri = _uri = Nav.GetLocalUrl().Value;
             var lastItem = _currentItem;
             if (lastItem.Id == 0)
                 throw StandardError.Internal("Something is off: CurrentItem.Id == 0");
 
             HistoryItem currentItem;
             var locationChangeKind = LocationChangeKind.HistoryMove;
-            var parsedItemId = Hub.ItemIdFormatter.Parse(eventArgs.HistoryEntryState);
+            var parsedItemId = ItemIdFormatter.Parse(eventArgs.HistoryEntryState);
             if (parsedItemId is { } itemId && GetItemByIdUnsafe(itemId) is { } existingItem) {
                 currentItem = _currentItem = existingItem;
                 if (!OrdinalEquals(uri, currentItem.Uri)) {
@@ -90,10 +90,8 @@ public partial class HistoryUI
 
             var transition = new HistoryTransition(currentItem, lastItem, locationChangeKind);
             DebugLog?.LogDebug(
-                "<- LocationChange: transition #{LastItemId} -> #{CurrentItemId}, {Transition}",
-                lastItem.Id,
-                currentItem.Id,
-                transition);
+                // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+                $"<- LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
             Transition(transition);
         }
         finally {
@@ -114,20 +112,18 @@ public partial class HistoryUI
                 "Count of history states doesn't match to count of registered states.");
 
         // Applying changes
-        var changes = item.GetChanges(baseItem).ToList();
+        var changes = item.GetChanges(baseItem, true).ToList();
         DebugLog?.LogDebug("Transition: applying {ChangeCount} change(s):", changes.Count);
-        int n = 1;
         using (_isSaveSuppressed.Change(true)) {
-            foreach (var stateChange in changes) {
-                var state = stateChange.State;
-                DebugLog?.LogDebug(
-                    "Change {Number}:\r\n- From: {PrevState}\r\n- To:   {State}",
-                    n++, stateChange.PrevState, state);
+            foreach (var change in changes) {
+                var state = change.State;
+                // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+                DebugLog?.LogDebug("- " + change);
                 try {
                     state.Apply(transition);
                 }
                 catch (Exception e) {
-                    Log.LogError(e, "Transition: Apply has failed for history state '{State}'", state);
+                    Log.LogError(e, "Transition: Apply has failed for history state {State}", state);
                     // And we must still go on here
                 }
             }

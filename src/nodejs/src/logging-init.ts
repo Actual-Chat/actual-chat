@@ -27,7 +27,7 @@ export type LogScope =
     // XxxUI
     | 'DebugUI'
     | 'NotificationUI'
-    | 'HistoryUI'
+    | 'History'
     | 'InteractiveUI'
     | 'TuneUI'
     | 'VibrationUI'
@@ -140,7 +140,7 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('AudioVadWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
-    // minLevels.set('HistoryUI', LogLevel.Debug);
+    // minLevels.set('History', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);

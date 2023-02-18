@@ -62,9 +62,7 @@ public partial class ChatUI
 
         // Quite rare case, so it's sub-optimal to resolve this dependency in .ctor
         var redirectUrl = cRedirectUrl.Value;
-        var browserInfo = Services.GetRequiredService<BrowserInfo>();
-        var dispatcher = Services.GetRequiredService<Dispatcher>();
-        _ = dispatcher.InvokeAsync(() => browserInfo.HardRedirect(redirectUrl));
+        _ = History.HardNavigateTo(redirectUrl);
     }
 
     [ComputeMethod]

@@ -62,7 +62,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -130,7 +130,7 @@
         if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatUI.SelectedChatId.Value)
             return;
 
-        HistoryUI.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));
+        History.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));
     }
 
     public sealed record Model {

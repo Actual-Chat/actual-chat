@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class HistoryUI
+public partial class History
 {
     public HistoryChangeTracker TrackChanges(Action<HistoryItem> onChange)
         => new HistoryChangeTracker(this, onChange).Start();

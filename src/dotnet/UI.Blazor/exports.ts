@@ -5,6 +5,7 @@ export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
+export * from './Services/History/history'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';

@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Services.Internal
 @using Microsoft.AspNetCore.Components.Routing
 @namespace ActualChat.UI.Blazor.Components
 @{
@@ -31,7 +32,7 @@
 
     [Inject] private ModalUI ModalUI { get; set; } = null!;
     [Inject] private TuneUI TuneUI { get; set; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     public IServiceProvider Services => ModalUI.Services;
@@ -43,7 +44,7 @@
     protected override void OnInitialized()
     {
         DefaultOptions = (Services.GetService<ModalOptions>() ?? new()).WithDefaults(ModalOptions.Default);
-        HistoryUI.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
+        History.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
         ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
     }
 
@@ -65,7 +66,7 @@
         });
         modalRefImpl.SetView(view);
         _refs = _refs.Add(modalRef);
-        HistoryUI.Save<OwnHistoryState>();
+        History.Save<OwnHistoryState>();
         StateHasChanged();
         return modalRef;
     }
@@ -80,7 +81,7 @@
             return false;
 
         _refs = _refs.Remove(modalRef);
-        HistoryUI.Save<OwnHistoryState>();
+        History.Save<OwnHistoryState>();
         StateHasChanged();
         ((IModalRefImpl)modalRef).MarkClosed();
         OnModalClosed?.Invoke();
@@ -102,10 +103,10 @@
     private sealed record OwnHistoryState(ModalHost Host, IReadOnlyList<Symbol> ModalIds) : HistoryState
     {
         public override int BackStepCount => ModalIds.Count;
-        public override bool MustApplyUnconditionally => true;
+        public override bool IsUriDependent => true;
 
-        public override string ToString()
-            => $"{nameof(ModalHost)}.{GetType().Name}({ModalIds.ToDelimitedString()})";
+        public override string Format()
+            => ModalIds.ToDelimitedString();
 
         public override HistoryState Save()
             => this with {
@@ -113,7 +114,8 @@
             };
 
         public override void Apply(HistoryTransition transition) {
-            var modalIds = transition.IsUriChanged ? ImmutableSortedSet<Symbol>.Empty : ModalIds;
+            var isHistoryMove = transition.LocationChangeKind is LocationChangeKind.HistoryMove;
+            var modalIds = isHistoryMove ? ModalIds : ImmutableSortedSet<Symbol>.Empty;
             var modalRefs = Host._refs;
             for (var i = modalRefs.Count - 1; i >= 0; i--) {
                 var modalRef = modalRefs[i];

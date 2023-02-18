@@ -4,7 +4,8 @@ public class CircuitTraceAccessor : ITraceAccessor, IDisposable
 {
     public ITraceSession? Trace { get; private set; }
     public static Func<ITraceSession>? Factory { get; set; }
-    public void Init()
+
+    public void Initialize()
         => Trace = Factory?.Invoke();
 
     public void Dispose()

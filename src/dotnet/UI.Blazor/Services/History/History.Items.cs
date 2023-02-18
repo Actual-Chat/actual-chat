@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class HistoryUI
+public partial class History
 {
     private long _nextItemId;
     private volatile string _uri;

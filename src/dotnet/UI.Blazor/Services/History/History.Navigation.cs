@@ -1,7 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class HistoryUI
+public partial class History
 {
+    [JSInvokable]
     public void NavigateTo(string uri)
     {
         lock (Lock) {
@@ -28,25 +29,40 @@ public partial class HistoryUI
         }
     }
 
+    public ValueTask HardNavigateTo(LocalUrl url)
+        => HardNavigateTo(url.ToAbsolute(UrlMapper));
+
+    public async ValueTask HardNavigateTo(string url)
+    {
+        try {
+            Log.LogInformation("HardRedirect: -> '{Url}'", url);
+            await JS.EvalVoid($"window.location.assign({JsonFormatter.Format(url)})");
+        }
+        catch (Exception e) {
+            Log.LogError(e, "HardRedirect failed");
+            throw;
+        }
+    }
+
     // Private methods
 
     private void NavigateBack()
-        => Hub.JS.EvalVoid("window.history.back()");
+        => JS.EvalVoid("window.history.back()");
 
     private void ReplaceNavigationHistoryEntry(HistoryItem item)
-        => Hub.Nav.NavigateTo(item.Uri,
+        => Nav.NavigateTo(item.Uri,
             new NavigationOptions {
                 ForceLoad = false,
                 ReplaceHistoryEntry = true,
-                HistoryEntryState = Hub.ItemIdFormatter.Format(item.Id),
+                HistoryEntryState = ItemIdFormatter.Format(item.Id),
             });
 
     private void AddNavigationHistoryEntry(HistoryItem item)
-        => Hub.Nav.NavigateTo(item.Uri,
+        => Nav.NavigateTo(item.Uri,
             new NavigationOptions {
                 ForceLoad = false,
                 ReplaceHistoryEntry = false,
-                HistoryEntryState = Hub.ItemIdFormatter.Format(item.Id),
+                HistoryEntryState = ItemIdFormatter.Format(item.Id),
             });
 
     /*

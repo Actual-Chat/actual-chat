@@ -3,6 +3,7 @@ import { Disposable } from 'disposable';
 import { DocumentEvents, preventDefaultForEvent, stopEvent } from 'event-handling';
 import { fromEvent, Subscription } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
+import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
@@ -137,12 +138,9 @@ class DataHrefGesture extends Gesture {
         if (isPointerUp !== requiresPointerUp)
             return;
 
-        if (this.blazor == null)
-            return;
-
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
         FocusUI.blur();
-        this.blazor.navigateTo(href);
+        void History.navigateTo(href);
     }
 }
 

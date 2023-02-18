@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services.Internal;
 namespace ActualChat.UI.Blazor.Services;
 
 public sealed record HistoryItem(
-    HistoryUI HistoryUI,
+    History History,
     long BackItemId,
     string Uri,
     ImmutableDictionary<Type, HistoryState> States,
@@ -16,7 +16,7 @@ public sealed record HistoryItem(
     public int BackStepCount => States.Values.Sum(s => s.BackStepCount);
     public bool HasBackSteps => States.Values.Any(s => s.BackStepCount > 0);
 
-    public HistoryItem? BackItem => HistoryUI[BackItemId];
+    public HistoryItem? BackItem => History[BackItemId];
 
     public HistoryState? this[Type stateType]
         => States.GetValueOrDefault(stateType);
@@ -63,12 +63,13 @@ public sealed record HistoryItem(
             : hasStatesWithLessBackSteps ? -1 : 0;
     }
 
-    public IEnumerable<HistoryStateChange> GetChanges(HistoryItem prevItem)
+    public IEnumerable<HistoryStateChange> GetChanges(HistoryItem prevItem, bool includeUriDependencies)
     {
+        var isUriChanged = includeUriDependencies && !OrdinalEquals(Uri, prevItem.Uri);
         foreach (var (stateType, state) in States) {
             var prevState = prevItem[stateType];
             var change = new HistoryStateChange(state, prevState!);
-            if (state.MustApplyUnconditionally || change.HasChanges)
+            if ((isUriChanged && state.IsUriDependent) || change.HasChanges)
                 yield return change;
         }
     }
