@@ -24,7 +24,12 @@
     </div>
 
     @if (m.Link is { } publicUrl) {
+        var linkText = isPublicGroupChat ? "Public join link" : "User link";
+        if (ScreenSize.IsNarrow()) {
+            linkText += " - click to copy";
+        }
         <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
+            data-tooltip="Click to copy to the clipboard"
             @onclick="@(_ => OnPublicUrlClick(publicUrl))">
             <div class="flex min-w-14 min-h-14 mr-3 items-center justify-center">
                 <i class="icon-link-2 text-2xl text-icons-03"></i>
@@ -34,7 +39,7 @@
                     @publicUrl.ShortLocalUrl
                 </div>
                 <div class="text-03 text-caption-2">
-                    @(isPublicGroupChat ? "Public join link" : "User link")
+                    @(linkText)
                 </div>
             </div>
         </div>
@@ -92,6 +97,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
