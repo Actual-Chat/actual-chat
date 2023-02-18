@@ -13,7 +13,7 @@ public static class Links
             : $"/chat/{entryId.ChatId.Value}#{entryId.LocalId.Format()}";
 
     public static LocalUrl Chat(ChatId chatId, long? entryId = null)
-        => entryId is { } vEntryId
+        => entryId is { } vEntryId and > 0
             ? $"/chat/{chatId.Value}#{vEntryId.Format()}"
             : $"/chat/{chatId.Value}";
 
