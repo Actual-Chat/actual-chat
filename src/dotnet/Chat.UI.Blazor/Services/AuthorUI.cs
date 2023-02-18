@@ -9,7 +9,7 @@ public sealed class AuthorUI
     public IAccounts Accounts { get; }
     public IAuthors Authors { get; }
     public ModalUI ModalUI { get; }
-    public NavigationManager Nav { get; }
+    public History History { get; }
 
     public AuthorUI(IServiceProvider services)
     {
@@ -17,7 +17,7 @@ public sealed class AuthorUI
         Accounts = services.GetRequiredService<IAccounts>();
         Authors = services.GetRequiredService<IAuthors>();
         ModalUI = services.GetRequiredService<ModalUI>();
-        Nav = services.GetRequiredService<NavigationManager>();
+        History = services.GetRequiredService<History>();
     }
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)
@@ -35,7 +35,7 @@ public sealed class AuthorUI
             await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
         else {
             var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
-            Nav.NavigateTo(Links.Chat(peerChatId));
+            History.NavigateTo(Links.Chat(peerChatId));
         }
     }
 }

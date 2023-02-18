@@ -111,7 +111,7 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -190,7 +190,7 @@
             if (createAuthorsError != null)
                 return;
 
-            Nav.NavigateTo(Links.Chat(chat.Id));
+            History.NavigateTo(Links.Chat(chat.Id));
             // Required for proper navigation to the newly created chat
             await Task.Delay(100);
             Modal.Close();

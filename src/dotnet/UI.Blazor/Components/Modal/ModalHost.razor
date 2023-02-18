@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Services.Internal
 @using Microsoft.AspNetCore.Components.Routing
 @namespace ActualChat.UI.Blazor.Components
 @{
@@ -31,7 +32,7 @@
 
     [Inject] private ModalUI ModalUI { get; set; } = null!;
     [Inject] private TuneUI TuneUI { get; set; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     public IServiceProvider Services => ModalUI.Services;
@@ -43,7 +44,7 @@
     protected override void OnInitialized()
     {
         DefaultOptions = (Services.GetService<ModalOptions>() ?? new()).WithDefaults(ModalOptions.Default);
-        HistoryUI.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
+        History.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
         ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
     }
 
@@ -65,7 +66,7 @@
         });
         modalRefImpl.SetView(view);
         _refs = _refs.Add(modalRef);
-        HistoryUI.Save<OwnHistoryState>();
+        History.Save<OwnHistoryState>();
         StateHasChanged();
         return modalRef;
     }
@@ -80,7 +81,7 @@
             return false;
 
         _refs = _refs.Remove(modalRef);
-        HistoryUI.Save<OwnHistoryState>();
+        History.Save<OwnHistoryState>();
         StateHasChanged();
         ((IModalRefImpl)modalRef).MarkClosed();
         OnModalClosed?.Invoke();
@@ -99,21 +100,22 @@
 
     // Nested types
 
-    private sealed record OwnHistoryState(ModalHost Host, ImmutableSortedSet<Symbol> ModalIds) : HistoryState
+    private sealed record OwnHistoryState(ModalHost Host, IReadOnlyList<Symbol> ModalIds) : HistoryState
     {
         public override int BackStepCount => ModalIds.Count;
-        public override bool MustApplyUnconditionally => true;
+        public override bool IsUriDependent => true;
 
-        public override string ToString()
-            => $"{nameof(ModalHost)}.{GetType().Name}({ModalIds.ToDelimitedString()})";
+        public override string Format()
+            => ModalIds.ToDelimitedString();
 
         public override HistoryState Save()
             => this with {
-                ModalIds = Host._refs.Select(x => x.Id).ToImmutableSortedSet(),
+                ModalIds = Host._refs.Select(x => x.Id).ToList(),
             };
 
         public override void Apply(HistoryTransition transition) {
-            var modalIds = transition.IsUriChanged ? ImmutableSortedSet<Symbol>.Empty : ModalIds;
+            var isHistoryMove = transition.LocationChangeKind is LocationChangeKind.HistoryMove;
+            var modalIds = isHistoryMove ? ModalIds : ImmutableSortedSet<Symbol>.Empty;
             var modalRefs = Host._refs;
             for (var i = modalRefs.Count - 1; i >= 0; i--) {
                 var modalRef = modalRefs[i];
@@ -123,6 +125,11 @@
                 }
             }
         }
+
+        public override HistoryState? Back()
+            => ModalIds.Count == 0
+                ? null
+                : this with { ModalIds = ModalIds.Take(ModalIds.Count - 1).ToList() };
 
         // Equality
 
@@ -137,7 +144,7 @@
         }
 
         public override int GetHashCode() {
-            var result = Host.GetHashCode();
+            var result = HashCode.Combine(Host.GetHashCode(), ModalIds.Count);
             foreach (var modalId in ModalIds)
                 result = HashCode.Combine(result, modalId);
             return result;

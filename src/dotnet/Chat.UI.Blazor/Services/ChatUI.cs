@@ -33,6 +33,7 @@ public partial class ChatUI : WorkerBase, IHasServices
     private ModalUI ModalUI { get; }
     private ActiveChatsUI ActiveChatsUI { get; }
     private ChatAudioUI ChatAudioUI { get; }
+    private History History { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
     private ICommander Commander { get; }
@@ -66,6 +67,7 @@ public partial class ChatUI : WorkerBase, IHasServices
         ModalUI = services.GetRequiredService<ModalUI>();
         ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
         ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
+        History = services.GetRequiredService<History>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
         Commander = services.Commander();

@@ -15,9 +15,9 @@ public static partial class Constants
         public static bool MarkupParser { get; } = false;
         public static bool ServerFusionMonitor { get; } = false; // Applies only to dev server
 
-        // UI
+        // UI services
         public static bool VirtualList { get; } = true;
-        public static bool HistoryUI { get; } = true;
+        public static bool History { get; } = false;
         public static bool ChatUI { get; } = false;
 
         // Audio

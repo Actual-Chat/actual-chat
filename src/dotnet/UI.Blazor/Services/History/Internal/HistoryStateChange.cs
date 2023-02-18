@@ -6,4 +6,7 @@ public readonly record struct HistoryStateChange(
     HistoryState PrevState)
 {
     public bool HasChanges => !ReferenceEquals(State, PrevState) && !Equals(State, PrevState);
+
+    public override string ToString()
+        => $"{State.Name}({PrevState.Format()} -> {State.Format()})";
 }

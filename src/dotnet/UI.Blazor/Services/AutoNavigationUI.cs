@@ -2,12 +2,12 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class AutoNavigationUI
 {
-    private NavigationManager Nav { get; }
+    private History History { get; }
 
     public bool MustNavigateToChatsOnSignIn { get; set; } = true;
 
     public AutoNavigationUI(IServiceProvider services)
-        => Nav = services.GetRequiredService<NavigationManager>();
+        => History = services.GetRequiredService<History>();
 
     public bool TryNavigateToChatsOnSignIn()
     {
@@ -15,7 +15,7 @@ public sealed class AutoNavigationUI
             return false;
 
         MustNavigateToChatsOnSignIn = false;
-        Nav.NavigateTo(Links.Chats);
+        History.NavigateTo(Links.Chats);
         return true;
     }
 }

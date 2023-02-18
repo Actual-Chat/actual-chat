@@ -1,4 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -6,6 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class SignOutReloader : WorkerBase
 {
     private IServiceProvider Services { get; }
+    private History History { get; }
     private UICommander UICommander { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
@@ -14,6 +16,7 @@ public class SignOutReloader : WorkerBase
     {
         Services = services;
         Log = services.LogFor(GetType());
+        History = services.GetRequiredService<History>();
         UICommander = Services.UICommander();
         Clocks = services.Clocks();
     }
@@ -37,8 +40,7 @@ public class SignOutReloader : WorkerBase
                 }
 
                 var onboardingUI = Services.GetRequiredService<OnboardingUI>();
-                var dispatcher = Services.GetRequiredService<Dispatcher>();
-                _ = dispatcher.InvokeAsync(() => onboardingUI.TryShow());
+                _ = History.Dispatcher.InvokeAsync(() => onboardingUI.TryShow());
 
                 // Wait for sign-out
                 await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);
@@ -53,7 +55,20 @@ public class SignOutReloader : WorkerBase
         }
 
         Log.LogInformation("Forcing reload on sign-out");
-        var accountUI = Services.GetRequiredService<AccountUI>();
-        accountUI.ReloadOnSignOut();
+        _ = History.Dispatcher.InvokeAsync(() => {
+            if (History.HostInfo.AppKind.IsMauiApp()) {
+                // MAUI scenario:
+                // - Reset MustNavigateToChatsOnSignIn
+                // - Go to home page
+                var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
+                autoNavigationUI.MustNavigateToChatsOnSignIn = true;
+                History.NavigateTo(Links.Home);
+                return ValueTask.CompletedTask;
+            }
+
+            // Blazor Server/WASM scenario:
+            // - Hard reload of home page
+            return History.HardNavigateTo(Links.Home);
+        });
     }
 }

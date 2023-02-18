@@ -68,7 +68,7 @@
             </div>
             <div class="header-text">
                 <Button
-                    Click="@(_ => Nav.NavigateTo(Links.Docs))"
+                    Click="@(_ => History.NavigateTo(Links.Docs))"
                     Class="header-text text-headline-1 btn-transparent">Docs
                 </Button>
                 @if (isGuest) {
@@ -108,7 +108,7 @@
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }

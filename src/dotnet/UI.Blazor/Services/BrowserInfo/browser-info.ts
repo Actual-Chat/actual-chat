@@ -50,11 +50,6 @@ export class BrowserInfo {
         globalThis["browserInfo"] = this;
     }
 
-    public static hardRedirect(url: string) {
-        // We want this method to return immediately to report Blazor that it completed successfully
-        Timeout.startRegular(50, () => window.location.assign(url));
-    }
-
     // Backend methods
 
     private static onScreenSizeChanged(screenSize: string, isHoverable: boolean): void {

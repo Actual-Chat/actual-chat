@@ -2,24 +2,24 @@ using Cysharp.Text;
 
 namespace ActualChat.UI.Blazor.Services.Internal;
 
-public sealed record HistoryPositionFormatter(string Prefix)
+public sealed record HistoryItemIdFormatter(string Prefix)
 {
-    public HistoryPositionFormatter()
+    public HistoryItemIdFormatter()
         : this(Alphabet.AlphaNumericLower.Generator8.Next() + "-")
     { }
 
-    public string Format(int position)
-        => ZString.Concat(Prefix, position);
+    public string Format(long id)
+        => ZString.Concat(Prefix, id);
 
-    public int? Parse(string? value)
+    public long? Parse(string? value)
     {
         if (value?.OrdinalStartsWith(Prefix) != true)
             return null;
 
         var suffix = value.AsSpan(Prefix.Length);
-        if (!int.TryParse(suffix, CultureInfo.InvariantCulture, out var result))
+        if (!long.TryParse(suffix, CultureInfo.InvariantCulture, out var result))
             return null;
-        if (result is < 0 or > HistoryUI.MaxPosition)
+        if (result < 0)
             return null;
 
         return result;

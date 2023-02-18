@@ -1,14 +1,15 @@
+using ActualChat.UI.Blazor.Services.Internal;
+
 namespace ActualChat.UI.Blazor.Services;
 
-public class NavbarUI
+public class NavbarUI : WorkerBase
 {
     private readonly IMutableState<bool> _isVisible;
     private readonly object _lock = new();
 
     private ILogger Log { get; }
-    private HistoryUI HistoryUI { get; }
-    private NavigationManager Nav { get; }
-    private BrowserInfo BrowserInfo { get; }
+    private History History { get; }
+    private IState<ScreenSize> ScreenSize { get; }
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
@@ -20,12 +21,12 @@ public class NavbarUI
     public NavbarUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        HistoryUI = services.GetRequiredService<HistoryUI>();
-        Nav = services.GetRequiredService<NavigationManager>();
-        BrowserInfo = services.GetRequiredService<BrowserInfo>();
+        History = services.GetRequiredService<History>();
+        ScreenSize = services.GetRequiredService<BrowserInfo>().ScreenSize;
 
         _isVisible = services.StateFactory().NewMutable(true);
-        HistoryUI.Register(new OwnHistoryState(this, true));
+        History.Register(new OwnHistoryState(this, true));
+        Start();
     }
 
     // NOTE(AY): Any public member of this type can be used only from Blazor Dispatcher's thread
@@ -42,7 +43,7 @@ public class NavbarUI
 
     public void SetIsVisible(bool value)
     {
-        var localUrl = HistoryUI.LocalUrl;
+        var localUrl = History.LocalUrl;
         value |= localUrl.IsChatRoot(); // Always visible if @ /chat
         value &= !localUrl.IsDocsOrDocsRoot(); // Always invisible if @ /docs*
         value |= IsWide(); // Always visible if wide
@@ -55,33 +56,53 @@ public class NavbarUI
         }
         if (oldIsVisible != value) {
             Log.LogDebug("Visibility changed: {IsVisible}", value);
-            HistoryUI.Save<OwnHistoryState>();
+            History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    // Private methods
+    // Private & protected methods
+
+    protected override Task RunInternal(CancellationToken cancellationToken)
+        => History.Dispatcher.InvokeAsync(async () => {
+            var lastIsWide = IsWide();
+            await foreach (var _ in ScreenSize.Changes(cancellationToken)) {
+                var isWide = IsWide();
+                if (lastIsWide != isWide) {
+                    lastIsWide = isWide;
+                    SetIsVisible(IsVisible.Value); // It changes to the right one anyway
+                }
+            }
+        });
 
     private bool IsWide()
-        => BrowserInfo.ScreenSize.Value.IsWide();
+        => ScreenSize.Value.IsWide();
 
     // Nested types
 
     private sealed record OwnHistoryState(NavbarUI Host, bool IsVisible) : HistoryState
     {
         public override int BackStepCount => IsVisible ? 0 : 1;
-        public override bool MustApplyUnconditionally => true;
+        public override bool IsUriDependent => true;
 
-        public override string ToString()
-            => $"{nameof(NavbarUI)}.{GetType().Name}({IsVisible})";
+        public override string Format()
+            => IsVisible.ToString();
 
         public override HistoryState Save()
-        {
-            var isVisible = Host.IsVisible.Value;
-            return isVisible == IsVisible ? this : new OwnHistoryState(Host, isVisible);
-        }
+            => With(Host.IsVisible.Value);
 
         public override void Apply(HistoryTransition transition)
-            => Host.SetIsVisible(IsVisible && !transition.IsUriChanged);
+        {
+            var isHistoryMove = transition.LocationChangeKind is LocationChangeKind.HistoryMove;
+            Host.SetIsVisible(IsVisible && isHistoryMove);
+        }
+
+        public override HistoryState? Back()
+            => BackStepCount == 0 ? null : With(!IsVisible);
+
+        // "With" helpers
+
+        public OwnHistoryState With(bool isVisible)
+            => IsVisible == isVisible ? this : this with { IsVisible = isVisible };
     }
 }

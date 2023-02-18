@@ -10,6 +10,6 @@
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    private void OnSignOutClick()
+    private Task OnSignOutClick()
         => AccountUI.SignOut();
 }

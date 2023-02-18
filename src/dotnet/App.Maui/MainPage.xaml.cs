@@ -43,9 +43,11 @@ public partial class MainPage : ContentPage
         var uri = eventArgs.Url;
         TraceSession.Default.Track($"MainPage.OnUrlLoading. Url: '{uri}'");
         if (NavInterceptor.TryIntercept(uri))
-            // On Windows platform load cancellation seems not working while issues are closed a while ago. Uri is opened in WebView.
-            // https://github.com/MicrosoftEdge/WebView2Feedback/issues/560
-            // https://github.com/MicrosoftEdge/WebView2Feedback/issues/2072
+            // Load cancellation seems not working On Windows platform,
+            // even though the issues were closed a while ago, and  Uri gets opened in WebView.
+            // See:
+            // - https://github.com/MicrosoftEdge/WebView2Feedback/issues/560
+            // - https://github.com/MicrosoftEdge/WebView2Feedback/issues/2072
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
     }
 

@@ -1,37 +1,33 @@
 using System.Text.RegularExpressions;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Notification.UI.Blazor;
 
 public class NotificationUI : INotificationUIBackend
 {
     private readonly object _lock = new();
+    private readonly IMutableState<PermissionState> _state;
     private string? _deviceId;
-    private IMutableState<PermissionState> _state;
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
-    private Session Session { get; }
-    private UICommander UiCommander { get; }
-    private IJSRuntime JS { get; }
-    private HostInfo HostInfo { get; }
-    private UrlMapper UrlMapper { get; }
-    private Dispatcher Dispatcher { get; }
-    private NavigationManager Nav { get; }
+    private History History { get; }
+    private Session Session => History.Session;
+    private HostInfo HostInfo => History.HostInfo;
+    private UrlMapper UrlMapper => History.UrlMapper;
+    private Dispatcher Dispatcher => History.Dispatcher;
+    private IJSRuntime JS => History.JS;
+    private UICommander UICommander { get; }
 
     public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
 
     public NotificationUI(IServiceProvider services)
     {
-        Session = services.GetRequiredService<Session>();
+        History = services.GetRequiredService<History>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
-        UiCommander = services.GetRequiredService<UICommander>();
-        JS = services.GetRequiredService<IJSRuntime>();
-        HostInfo = services.GetRequiredService<HostInfo>();
-        UrlMapper = services.GetRequiredService<UrlMapper>();
-        Dispatcher = services.GetRequiredService<Dispatcher>();
-        Nav = services.GetRequiredService<NavigationManager>();
+        UICommander = services.GetRequiredService<UICommander>();
 
         _state = services.StateFactory().NewMutable<PermissionState>();
 
@@ -104,7 +100,7 @@ public class NotificationUI : INotificationUIBackend
 
             var chatIdGroup = match.Groups["chatid"];
             if (chatIdGroup.Success)
-                Nav.NavigateTo(relativeUrl);
+                History.NavigateTo(relativeUrl);
         });
         return Task.CompletedTask;
 
@@ -127,7 +123,7 @@ public class NotificationUI : INotificationUIBackend
     }
 
     public bool IsAlreadyThere(ChatId chatId)
-        => Nav.GetLocalUrl() == Links.Chat(chatId);
+        => History.LocalUrl == Links.Chat(chatId);
 
     private async Task RegisterDevice(string deviceId, CancellationToken cancellationToken) {
         lock (_lock)
@@ -138,6 +134,6 @@ public class NotificationUI : INotificationUIBackend
         }
 
         var command = new INotifications.RegisterDeviceCommand(Session, deviceId, DeviceType.WebBrowser);
-        await UiCommander.Run(command, cancellationToken);
+        await UICommander.Run(command, cancellationToken);
     }
 }

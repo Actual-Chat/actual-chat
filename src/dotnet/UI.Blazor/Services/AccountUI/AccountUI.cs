@@ -12,9 +12,7 @@ public partial class AccountUI : WorkerBase
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
-    private BrowserInfo BrowserInfo { get; }
-    private MomentClockSet Clocks { get; }
-    private Moment Now => Clocks.SystemClock.Now;
+    private History History { get; }
     private ILogger Log { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
@@ -28,8 +26,7 @@ public partial class AccountUI : WorkerBase
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
-        BrowserInfo = services.GetRequiredService<BrowserInfo>();
-        Clocks = services.Clocks();
+        History = services.GetRequiredService<History>();
 
         _whenLoadedSource = TaskSource.New<Unit>(true);
         var ownAccountTask = Accounts.GetOwn(Session, default);
@@ -45,44 +42,22 @@ public partial class AccountUI : WorkerBase
         Start();
     }
 
-    public void SignOut(LocalUrl redirectUrl = default)
+    public async Task SignOut()
     {
-        var isMauiApp = Services.GetRequiredService<HostInfo>().AppKind.IsMauiApp();
-        if (isMauiApp)
-            _ = SignOutInMaui(redirectUrl, default);
-        else
-            _ = HardRedirect(redirectUrl);
-    }
+        if (OwnAccount.Value.IsGuest)
+            return;
 
-    public void ReloadOnSignOut()
-    {
-        var isMauiApp = Services.GetRequiredService<HostInfo>().AppKind.IsMauiApp();
-        if (isMauiApp)
-            RedirectOnSignOut();
-        else
-            _ = HardRedirect();
-    }
-
-    private async Task SignOutInMaui(LocalUrl redirectUrl, CancellationToken cancellationToken)
-    {
-        var account = await OwnAccount.Use(cancellationToken).ConfigureAwait(true);
-        var isGuest = account.IsGuest;
-        await Services.GetRequiredService<IClientAuth>().SignOut().ConfigureAwait(true);
-        if (isGuest)
-            RedirectOnSignOut(redirectUrl);
-        else {
-            // Do nothing here now.
-            // SignOutReloader should initiate redirect after OwnAccount is invalidated.
+        if (History.HostInfo.AppKind.IsMauiApp()) {
+            // MAUI scenario:
+            // - Sign-out natively
+            // - Do nothing, coz SignOutReloader will do the rest
+            await Services.GetRequiredService<IClientAuth>().SignOut();
+            return;
         }
-    }
 
-    private ValueTask HardRedirect(LocalUrl redirectUrl = default)
-        => BrowserInfo.HardRedirect(Links.SignOut(redirectUrl));
-
-    private void RedirectOnSignOut(LocalUrl redirectUrl = default)
-    {
-        if (redirectUrl.IsHome())
-            Services.GetRequiredService<AutoNavigationUI>().MustNavigateToChatsOnSignIn = true;
-        Services.GetRequiredService<NavigationManager>().NavigateTo(redirectUrl);
+        // Blazor Server/WASM scenario:
+        // - Redirect to sign-out page, which redirects to home page after sign-out completion
+        // - SignOutReloader doesn't get a chance to reload anything in this case - which is fine.
+        await History.HardNavigateTo(Links.SignOut());
     }
 }

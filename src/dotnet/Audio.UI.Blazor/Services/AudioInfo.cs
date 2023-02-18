@@ -20,7 +20,10 @@ public sealed class AudioInfo : IAudioInfoBackend, IDisposable
         UrlMapper = services.GetRequiredService<UrlMapper>();
     }
 
-    public async Task Init()
+    public void Dispose()
+        => _backendRef.DisposeSilently();
+
+    public async Task Initialize()
     {
         try {
             _backendRef = DotNetObjectReference.Create<IAudioInfoBackend>(this);
@@ -29,12 +32,8 @@ public sealed class AudioInfo : IAudioInfoBackend, IDisposable
                 _backendRef);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Failed to initialize audio pipeline");
+            Log.LogError(e, "Audio pipeline initialization failed");
             throw;
         }
-
     }
-
-    public void Dispose()
-        => _backendRef.DisposeSilently();
 }
