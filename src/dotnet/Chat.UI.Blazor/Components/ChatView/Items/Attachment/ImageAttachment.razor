@@ -11,7 +11,7 @@
             .ToVector2()
             .ScaleToFitInto(MaxSize)
             .ToIntPair();
-        wrapperStyle += $" aspect-ratio: {width} / {height};";
+        wrapperStyle += $"max-width: {width}px; width: 100%; aspect-ratio: {width} / {height};";
         imgStyle = $"max-width: {width}px; max-height: {height}px; width:100%; display:block; aspect-ratio: {width} / {height};";
     }
 }

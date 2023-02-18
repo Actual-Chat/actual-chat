@@ -39,7 +39,7 @@ public static class DbContextBuilderExt
         var services = dbContext.Services;
         services.AddSingleton(c => {
             var redisDb = c.GetRequiredService<RedisDb<TDbContext>>();
-            var sequenceSet = redisDb.GetSequenceSet<TEntity>($"seq.{nameof(TEntity)}");
+            var sequenceSet = redisDb.GetSequenceSet<TEntity>($"seq.{typeof(TEntity)}");
             return sequenceSet;
         });
         services.AddSingleton(c => {

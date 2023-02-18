@@ -32,7 +32,7 @@ export class Interactive {
         debugLog?.log(`init`);
 
         // Initialize interactionEvents
-        const onInteractionEvents = ['touchend', 'keydown', 'click', 'doubleclick'];
+        const onInteractionEvents = ['touchend', 'click'];
         let onInteractionHandlersAttached = false;
         this.interactionEvents = new EventHandlerSet<Event>(handlers => {
             const requiresOnInteractionHandlers = handlers.size != 0;

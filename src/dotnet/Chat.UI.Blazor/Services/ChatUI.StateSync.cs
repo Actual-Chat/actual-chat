@@ -86,7 +86,7 @@ public partial class ChatUI
             var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
                 Log.LogDebug("PushKeepAwakeState: *");
-                await KeepAwakeUI.SetKeepAwake(mustKeepAwake);
+                await KeepAwakeUI.SetKeepAwake(mustKeepAwake).ConfigureAwait(false);
                 lastMustKeepAwake = mustKeepAwake;
             }
         }
