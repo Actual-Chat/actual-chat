@@ -23,7 +23,7 @@
 .btn.btn-primary {
     @apply bg-primary border-primary text-primary-title;
 }
-.btn.btn-primary:hover,
+body.hoverable .btn.btn-primary:hover,
 .btn.btn-primary:focus {
     @apply bg-primary-hover border-primary-hover;
 }
@@ -42,7 +42,7 @@
 .btn.btn-secondary:focus:active {
     @apply bg-secondary border-secondary text-secondary-title;
 }
-.btn.btn-secondary:hover,
+body.hoverable .btn.btn-secondary:hover,
 .btn.btn-secondary:focus {
     @apply bg-secondary-hover border-secondary-hover;
 }
@@ -53,7 +53,7 @@
 .btn.btn-cancel:focus:active {
     @apply bg-cancel border-cancel text-cancel-title;
 }
-.btn.btn-cancel:hover,
+body.hoverable .btn.btn-cancel:hover,
 .btn.btn-cancel:focus {
     @apply bg-cancel-hover border-cancel-hover;
 }
@@ -64,8 +64,8 @@
 .btn.btn-outline:focus:active {
     @apply bg-outline border-primary text-outline-title;
 }
-.btn.btn-outline:hover,
-.btn.btn-outline:focus:hover {
+body.hoverable .btn.btn-outline:hover,
+body.hoverable .btn.btn-outline:focus:hover {
     @apply bg-secondary-hover border-primary;
 }
 .btn.btn-outline:disabled {
@@ -76,8 +76,8 @@
 .btn.btn-error {
     @apply bg-error border-error text-error-title;
 }
-.btn.btn-error:hover,
-.btn.btn-error:focus:hover {
+body.hoverable .btn.btn-error:hover,
+body.hoverable .btn.btn-error:focus:hover {
     @apply bg-error-hover border-error-hover text-error;
 }
 .btn.btn-error:active,
@@ -92,8 +92,8 @@
 .btn.btn-error-outline {
     @apply bg-01 border-error text-error-outline-title;
 }
-.btn.btn-error-outline:hover,
-.btn.btn-error-outline:focus:hover {
+body.hoverable .btn.btn-error-outline:hover,
+body.hoverable .btn.btn-error-outline:focus:hover {
     @apply bg-error-outline-hover border-error-hover;
 }
 .btn.btn-error-outline:active,
@@ -107,8 +107,8 @@
 .btn.btn-text {
     @apply bg-transparent border-transparent font-semibold text-02;
 }
-.btn.btn-text:hover,
-.btn.btn-text:focus:hover {
+body.hoverable .btn.btn-text:hover,
+body.hoverable .btn.btn-text:focus:hover {
     @apply bg-04 border-bg-03;
 }
 .btn.btn-text:active,
@@ -167,7 +167,7 @@
 .btn.btn-square:active > .btn-content {
     @apply bg-square-active;
 }
-.btn.btn-square:hover > .btn-content {
+body.hoverable .btn.btn-square:hover > .btn-content {
     @apply bg-square-hover;
 }
 .btn.btn-square.show-on-hover {
@@ -212,11 +212,11 @@
 .btn.btn-round.transparent:active .btn-content {
     @apply bg-round-focus;
 }
-.btn.btn-round:hover .btn-content,
-.btn.btn-round.transparent:hover .btn-content {
+body.hoverable .btn.btn-round:hover .btn-content,
+body.hoverable .btn.btn-round.transparent:hover .btn-content {
     @apply hover:bg-round-focus;
 }
-.btn.blackout:hover .btn-content,
+body.hoverable .btn.blackout:hover .btn-content,
 .btn.blackout:focus .btn-content,
 .btn.blackout:active .btn-content {
     @apply text-03;

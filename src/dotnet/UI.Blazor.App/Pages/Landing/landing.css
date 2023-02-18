@@ -499,7 +499,7 @@ body.narrow .side-nav-left:has(.docs-left-panel){
 .docs-left-panel .navbar-item.active .navbar-item-content {
     @apply text-primary;
 }
-.docs-left-panel .navbar-item.inactive:hover {
+body.hoverable .docs-left-panel .navbar-item.inactive:hover {
     @apply bg-secondary;
 }
 .docs-left-panel .navbar-item {

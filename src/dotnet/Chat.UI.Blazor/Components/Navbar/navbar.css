@@ -76,7 +76,7 @@
     @apply h-8 overflow-hidden;
 }
 
-.navbar-item:hover {
+body.hoverable .navbar-item:hover {
     @apply bg-round-hover;
 }
 .navbar-item:active {

@@ -213,7 +213,7 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply min-h-6 max-h-6;
     @apply border-transparent;
 }
-.clear-attachments-btn.btn:hover {
+body.hoverable .clear-attachments-btn.btn:hover {
     @apply border-error;
 }
 .clear-attachments-btn.btn .btn-content {
@@ -263,7 +263,7 @@ body.wide .attachment-mode .btn.btn-round.post-message {
 .remove-attachment-btn.btn .btn-content i {
     @apply opacity-80;
 }
-.remove-attachment-btn.btn:hover .btn-content {
+body.hoverable .remove-attachment-btn.btn:hover .btn-content {
     @apply bg-error opacity-80;
 }
 .attachment-filename {
@@ -280,7 +280,7 @@ body.wide .attachment-mode .btn.btn-round.post-message {
 .add-attachment.btn .btn-content {
     @apply bg-04;
 }
-.add-attachment.btn:hover .btn-content {
+body.hoverable .add-attachment.btn:hover .btn-content {
     @apply bg-03;
 }
 .attach-btn.btn.btn-round {
@@ -315,12 +315,12 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply min-w-12 md:min-w-0;
     @apply mx-1 md:mx-2;
 }
-.related-chat-entry .btn.btn-round:hover .btn-content {
+body.hoverable .related-chat-entry .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }
 .related-chat-entry-panel .btn.btn-round .btn-content {
     @apply min-h-8 max-h-8;
 }
-.related-chat-entry-panel .btn.btn-round:hover .btn-content {
+body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }

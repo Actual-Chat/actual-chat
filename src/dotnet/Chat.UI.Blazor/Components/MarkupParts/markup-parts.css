@@ -38,7 +38,7 @@
 .playable-text-markup > span {
     @apply inline-block;
 }
-.playable-text-markup > span:hover {
+body.hoverable .playable-text-markup > span:hover {
 }
 
 .playable-text-markup .playing-start {

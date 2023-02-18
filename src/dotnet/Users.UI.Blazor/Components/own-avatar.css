@@ -59,7 +59,7 @@ svg.own-avatar-card-picture {
 .default-avatar-btn {
     @apply flex-x h-12 w-full px-2 items-center justify-between rounded-lg;
 }
-.default-avatar-btn:hover {
+body.hoverable .default-avatar-btn:hover {
     @apply bg-hover;
 }
 .default-avatar-btn,
@@ -71,7 +71,7 @@ svg.own-avatar-card-picture {
 .delete-avatar-btn {
     @apply flex-x h-12 w-full px-2 items-center justify-between rounded-lg;
 }
-.delete-avatar-btn:hover {
+body.hoverable .delete-avatar-btn:hover {
     @apply bg-error-hover;
 }
 

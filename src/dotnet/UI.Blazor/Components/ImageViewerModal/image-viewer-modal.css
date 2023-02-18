@@ -26,7 +26,7 @@
 .image-viewer-header .image-header-btn .btn-content i {
     @apply text-3xl md:text-2xl;
 }
-.image-viewer-header .image-header-btn.btn.btn-round:hover .btn-content {
+body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-content {
     @apply bg-06 text-04;
 }
 

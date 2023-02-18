@@ -40,7 +40,7 @@ body.narrow .ac-menu {
     @apply min-h-8 min-w-8 max-h-8 min-h-8;
     @apply bg-01;
 }
-.ac-menu-hover .btn.btn-round:hover .btn-content {
+body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
     @apply bg-round-hover;
 }
 
@@ -71,7 +71,7 @@ body.narrow .ac-menu-icon > i {
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
 }
-.ac-menu-item:hover .ac-menu-icon {
+body.hoverable .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
 }
 .ac-menu-item.important-item .ac-menu-icon > i,
@@ -84,14 +84,14 @@ body.narrow .ac-menu-icon > i {
 .ac-menu-item.important-item.on .ac-menu-text {
     @apply text-error;
 }
-.ac-menu-item.important-item.on:hover {
+body.hoverable .ac-menu-item.important-item.on:hover {
     @apply bg-error-hover;
 }
-.ac-menu-item.warning-item:hover {
+body.hoverable .ac-menu-item.warning-item:hover {
     @apply bg-error-hover;
 }
-.ac-menu-item.warning-item:hover .ac-menu-icon > i,
-.ac-menu-item.warning-item:hover .ac-menu-text {
+body.hoverable .ac-menu-item.warning-item:hover .ac-menu-icon > i,
+body.hoverable .ac-menu-item.warning-item:hover .ac-menu-text {
     @apply text-error;
 }
 .touch-capable .ac-menu-item.warning-item .ac-menu-icon > i,

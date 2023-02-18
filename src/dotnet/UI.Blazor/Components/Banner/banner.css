@@ -10,7 +10,7 @@
 .banner-buttons-close {
     @apply flex w-6 h-6  ml-3 rounded-full items-center justify-center;
 }
-.banner-buttons-close:hover i {
+body.hoverable .banner-buttons-close:hover i {
     @apply text-03;
 }
 .severity-icon {

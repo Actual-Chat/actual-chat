@@ -1,7 +1,7 @@
 .pic-upload {
     @apply relative self-center;
 }
-.pic-upload:hover .pic-upload-picker {
+body.hoverable .pic-upload:hover .pic-upload-picker {
     @apply visible;
 }
 

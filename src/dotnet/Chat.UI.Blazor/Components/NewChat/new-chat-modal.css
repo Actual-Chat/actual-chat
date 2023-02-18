@@ -44,12 +44,12 @@
     @apply w-6 h-6;
     @apply bg-transparent;
 }
-.new-chat-modal-selected-contact:hover {
+body.hoverable .new-chat-modal-selected-contact:hover {
     @apply bg-error text-04;
 }
-.new-chat-modal-selected-contact:hover .new-chat-modal-remove-contact-icon {
+body.hoverable .new-chat-modal-selected-contact:hover .new-chat-modal-remove-contact-icon {
     @apply flex;
 }
-.new-chat-modal-selected-contact:hover .author-avatar-badge {
+body.hoverable .new-chat-modal-selected-contact:hover .author-avatar-badge {
     @apply hidden;
 }

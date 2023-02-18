@@ -4,10 +4,10 @@
     @apply md:select-text;
     transform: translateZ(0);
 }
-.message-wrapper:hover {
+body.hoverable .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
 }
-.message-wrapper:hover .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
 }
 
@@ -48,7 +48,7 @@
     @apply animate-highlight;
 }
 
-.message-wrapper:hover .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-inherit;
 }
 
@@ -56,8 +56,8 @@
 .message-wrapper.mention.replied-message {
     @apply bg-replied-message border-l-2 border-replied-message-border;
 }
-.message-wrapper.replied-message:hover,
-.message-wrapper.mention.replied-message:hover {
+body.hoverable .message-wrapper.replied-message:hover,
+body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply bg-replied-message-hover border-l-2 border-replied-message-border;
 }
 
@@ -68,10 +68,10 @@
     @apply invisible;
     @apply text-03 text-xs;
 }
-.chat-message:hover .chat-message-timestamp-on-hover {
+body.hoverable .chat-message:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }
-.chat-message.mention:hover .chat-message-timestamp-on-hover {
+body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }
 
@@ -88,7 +88,7 @@ body.narrow .message-menu .reaction-select {
 body.narrow .message-menu .reaction-select-reaction-emoji {
     @apply w-6 h-6;
 }
-.chat-message:hover .message-reactions-add {
+body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
 }
 .chat-message-transcript {
@@ -102,7 +102,7 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
     @apply underline;
 }
 
-.chat-header-title:hover {
+body.hoverable .chat-header-title:hover {
     @apply text-02;
 }
 
@@ -121,7 +121,7 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 .message-hover-menu .btn.btn-round .btn-content {
     @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;
 }
-.message-hover-menu .btn.btn-round:hover .btn-content {
+body.hoverable .message-hover-menu .btn.btn-round:hover .btn-content {
     @apply bg-round-hover;
 }
 

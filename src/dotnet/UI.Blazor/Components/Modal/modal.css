@@ -83,7 +83,7 @@
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
-.btn.btn-square.modal-close:hover > .btn-content {
+body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply bg-transparent opacity-90;
 }
 
