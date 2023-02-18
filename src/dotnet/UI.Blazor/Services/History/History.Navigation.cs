@@ -3,11 +3,11 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class History
 {
     [JSInvokable]
-    public void NavigateTo(string uri)
+    public void NavigateTo(string uri, bool mustAddHistoryItem = false)
     {
         lock (Lock) {
             var newUri = new LocalUrl(uri).Value;
-            if (OrdinalEquals(newUri, _uri)) {
+            if (!mustAddHistoryItem && OrdinalEquals(newUri, _uri)) {
                 DebugLog?.LogDebug("Navigate: skipped (same URI): {Uri}", uri);
                 return;
             }

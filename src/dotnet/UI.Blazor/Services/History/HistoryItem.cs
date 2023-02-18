@@ -63,13 +63,12 @@ public sealed record HistoryItem(
             : hasStatesWithLessBackSteps ? -1 : 0;
     }
 
-    public IEnumerable<HistoryStateChange> GetChanges(HistoryItem prevItem, bool includeUriDependencies)
+    public IEnumerable<HistoryStateChange> GetChanges(HistoryItem prevItem, bool includeUriDependentStates)
     {
-        var isUriChanged = includeUriDependencies && !OrdinalEquals(Uri, prevItem.Uri);
         foreach (var (stateType, state) in States) {
             var prevState = prevItem[stateType];
             var change = new HistoryStateChange(state, prevState!);
-            if ((isUriChanged && state.IsUriDependent) || change.HasChanges)
+            if ((includeUriDependentStates && state.IsUriDependent) || change.HasChanges)
                 yield return change;
         }
     }
