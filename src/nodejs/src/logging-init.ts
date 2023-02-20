@@ -10,20 +10,20 @@ export enum LogLevel {
 export type LogScope =
     'default'
     // Library
-    | 'promises'
-    | 'event-handling'
-    | 'Rpc'
-    | 'ScreenSize'
     | 'BrowserInfo'
+    | 'Clipboard'
+    | 'Gestures'
+    | 'event-handling'
     | 'History'
     | 'Interactive'
-    | 'Gestures'
-    | 'OnDeviceAwake'
-    | 'OnDeviceAwakeWorker'
+    | 'LocalSettings'
     | 'MenuHost'
     | 'ModalHost'
+    | 'OnDeviceAwake'
+    | 'OnDeviceAwakeWorker'
+    | 'promises'
+    | 'Rpc'
     | 'UndoStack'
-    | 'LocalSettings'
     | 'VirtualList'
     // XxxUI
     | 'DebugUI'
@@ -50,13 +50,14 @@ export type LogScope =
     | 'AudioVad'
     | 'AudioRecorder'
     // Isolated components
-    | 'SideNav'
-    | 'MarkupEditor'
     | 'ChatMessageEditor'
+    | 'CopyToClipboard'
     | 'ImageViewer'
-    | 'PicUpload'
     | 'Landing'
     | 'LandingLeftMenu'
+    | 'MarkupEditor'
+    | 'PicUpload'
+    | 'SideNav'
     | string;
 
 const GlobalThisKey = 'logLevels';
