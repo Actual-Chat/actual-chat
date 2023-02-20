@@ -15,9 +15,6 @@ public class ClipboardUI
     public virtual ValueTask WriteText(string text)
         => _js.InvokeVoidAsync("navigator.clipboard.writeText", text);
 
-    public virtual ValueTask CopyTextFrom(ElementReference inputRef, string? text = null)
-        => _js.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.selectAndCopy", inputRef, text);
-
     protected virtual ValueTask<string> GetTextFrom(ElementReference inputRef)
         => _js.InvokeAsync<string>($"{BlazorUICoreModule.ImportName}.selectAndGet", inputRef);
 }
