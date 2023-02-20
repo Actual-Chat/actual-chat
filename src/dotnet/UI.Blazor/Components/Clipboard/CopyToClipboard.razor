@@ -38,10 +38,13 @@
     [Parameter] public string? CopyText { get; set; }
     [Parameter] public bool HideCopiedTag { get; set; }
 
-    private async Task OnClick() {
+    // experimentally made it "synchronous" to check if it fixes ios issue
+    private void OnClick() {
         var copyText = GetCopyText();
-        await ClipboardUI.CopyTextFrom(InputRef, copyText);
-        _lastCopiedText = copyText;
+        _ = BackgroundTask.Run(async () => {
+            await ClipboardUI.CopyTextFrom(InputRef, copyText);
+            _lastCopiedText = copyText;
+        });
     }
 
     private string GetCopyText()
