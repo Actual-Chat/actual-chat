@@ -29,8 +29,8 @@
             linkText += " - click to copy";
         }
         <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-            data-tooltip="Click to copy to the clipboard"
-            @onclick="@(_ => OnPublicUrlClick(publicUrl))">
+             data-tooltip="Click to copy to the clipboard"
+             data-clipboard-text="@publicUrl.AbsoluteUrl">
             <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
                 <i class="icon-link-2 text-2xl text-icons-03"></i>
             </div>
@@ -165,9 +165,6 @@
 
     private Task OnOwnerClick(AuthorId id)
         => AuthorUI.Show(id);
-
-    private ValueTask OnPublicUrlClick(DisplayUrl publicUrl)
-        => ClipboardUI.WriteText(publicUrl.AbsoluteUrl);
 
     private Task OnValueChanged(bool isMuted)
         => UICommander.RunLocal(async cancellationToken => {
