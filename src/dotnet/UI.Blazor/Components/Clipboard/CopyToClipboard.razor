@@ -1,50 +1,48 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
+@implements IAsyncDisposable
+@inherits FusionComponentBase
 
 <div class="@Class copy-to-clipboard">
     <input
-        @ref="InputRef"
+        @ref="_inputRef"
         class="@InputClass"
         type="text"
         value="@Text"
-        @onclick="@OnClick"/>
+        data-copy-text="@CopyText"/>
     <ButtonRound
-        Click="OnClick"
+        @ref="_buttonRef"
         ContentClass="flex-x gap-x-1"
         Class="@ButtonClass"
         Tooltip="Copy"
         TooltipPosition="FloatingPosition.Top">
-        @if (OrdinalEquals(_lastCopiedText, GetCopyText()) && !HideCopiedTag) {
-            <div class="c-copied">
-                copied!
-            </div>
-        } else {
-            <i class="icon-copy text-xl" aria-hidden="true"></i>
-        }
+        <i class="icon-copy text-xl" aria-hidden="true"></i>
     </ButtonRound>
 </div>
 
 @code {
-    private string? _lastCopiedText = null;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-
-    private ElementReference InputRef { get; set; }
+    private ElementReference _inputRef;
+    private ButtonRound _buttonRef = null!;
+    private IJSObjectReference _jsRef = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string? CopyText { get; set; }
-    [Parameter] public bool HideCopiedTag { get; set; }
+    [Parameter] public bool HideCopiedTag { get; set; } // TODO: use it inside ts
 
-    private async Task OnClick() {
-        var copyText = GetCopyText();
-        await ClipboardUI.CopyTextFrom(InputRef, copyText);
-        _lastCopiedText = copyText;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.CopyToClipboard.create", _inputRef, _buttonRef.ButtonRef);
     }
 
-    private string GetCopyText()
-        => CopyText ?? Text;
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+    }
 }
 

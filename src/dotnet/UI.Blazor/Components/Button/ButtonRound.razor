@@ -1,7 +1,8 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="@Class btn btn-round"
+<button @ref="ButtonRef"
+        class="@Class btn btn-round"
         name="@Name"
         type="@GetButtonType()"
         disabled="@IsDisabled"
@@ -33,6 +34,7 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+    public ElementReference ButtonRef { get; private set; }
 
     private string GetButtonType()
         => Type.ToString().ToLower();

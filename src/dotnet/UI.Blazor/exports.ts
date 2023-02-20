@@ -1,5 +1,6 @@
 // Please sort the imports alphabetically!
 export * from './Services/BrowserInfo/browser-info';
+export * from './Services/ClipboardUI/clipboard';
 export * from './Services/DebugUI/debug-ui';
 export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';
@@ -15,7 +16,7 @@ export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 export * from './Services/VibrationUI/vibration-ui';
 
-export * from './Components/Clipboard/clipboard';
+export * from './Components/Clipboard/copy-to-clipboard';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/ImageViewerModal/image-viewer';
