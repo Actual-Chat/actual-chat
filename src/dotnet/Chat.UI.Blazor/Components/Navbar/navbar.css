@@ -1,5 +1,6 @@
 .left-panel-buttons .btn.btn-square .navbar-button-content.btn-content {
-    @apply w-10 md:w-12 h-10 md:h-12 bg-white;
+    @apply w-10 md:w-12 h-10 md:h-12;
+    @apply bg-white;
 }
 
 /* Group toggle button on the left side of the navbar */
@@ -8,7 +9,8 @@
     @apply flex-none flex-x items-stretch;
 }
 .navbar-button .left-line {
-    @apply self-center h-12;
+    @apply self-center;
+    @apply h-12;
     @apply py-2;
     @apply rounded-full;
 }
@@ -16,7 +18,9 @@
     @apply invisible;
 }
 .navbar-button-content.btn-content {
-    @apply p-1 justify-center rounded-xl md:rounded-lg;
+    @apply justify-center;
+    @apply p-1;
+    @apply rounded-xl md:rounded-lg;
 }
 
 .navbar-button .badge {
