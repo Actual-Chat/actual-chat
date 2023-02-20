@@ -3,6 +3,7 @@
     @apply pr-0.5;
 }
 .left-line > div {
-    @apply w-0.5 min-w-0.5 max-w-0.5;
+    @apply w-0.75;
     @apply bg-primary;
+    @apply rounded-full;
 }

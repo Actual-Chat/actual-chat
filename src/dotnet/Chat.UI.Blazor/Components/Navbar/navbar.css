@@ -8,7 +8,9 @@
     @apply flex-none flex-x items-stretch;
 }
 .navbar-button .left-line {
-    @apply self-center h-8;
+    @apply self-center h-12;
+    @apply py-2;
+    @apply rounded-full;
 }
 .navbar-button:not(.selected) .left-line {
     @apply invisible;
