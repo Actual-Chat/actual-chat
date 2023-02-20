@@ -173,6 +173,7 @@ export class AudioContextSource implements Disposable {
 
                     for(;;) {
                         this.throwIfDisposed();
+                        this.throwIfClosed(audioContext);
                         this.throwIfTooManyResumes();
                         try {
                             await this.fix(audioContext);
@@ -372,6 +373,10 @@ export class AudioContextSource implements Disposable {
             debugLog?.log(`trySuspend: already suspended, AudioContext:`, audioContext);
             return true;
         }
+        if (audioContext.state === 'closed') {
+            debugLog?.log(`trySuspend: unable to suspend closed AudioContext`);
+            return false;
+        }
 
         debugLog?.log(`trySuspend:`, audioContext);
         const suspendTask = audioContext.suspend().then(() => true);
@@ -447,6 +452,11 @@ export class AudioContextSource implements Disposable {
     private throwIfDisposed(): void {
         if (this._isDisposed)
             throw `${LogScope}.throwIfDisposed: already disposed.`;
+    }
+
+    private throwIfClosed(audioContext: AudioContext): void {
+        if (audioContext.state === 'closed')
+            throw `${LogScope}.throwIfClosed: context is closed.`;
     }
 
     private isWakeUp(): boolean {
