@@ -17,7 +17,8 @@
         Class="@ButtonClass"
         Tooltip="Copy"
         TooltipPosition="FloatingPosition.Top">
-        <i class="icon-copy text-xl" aria-hidden="true"></i>
+        <i class="c-copy icon-copy text-xl" aria-hidden="true"></i>
+        <i class="c-copied fa fa-check text-xl" aria-hidden="true"></i>
     </ButtonRound>
 </div>
 
@@ -33,7 +34,7 @@
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string? CopyText { get; set; }
-    [Parameter] public bool HideCopiedTag { get; set; } // TODO: use it inside ts
+    [Parameter] public bool HideCopiedTag { get; set; } // TODO: remove it as redundant
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)

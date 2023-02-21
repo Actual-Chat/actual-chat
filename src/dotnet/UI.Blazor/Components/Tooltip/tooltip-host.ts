@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, empty } from 'rxjs';
+import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, EMPTY } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
 import {
     Placement,
@@ -50,36 +50,36 @@ export class TooltipHost implements Disposable {
     }
 
     private listenForMouseOverEvent(): void {
-        let activeTooltipElement: HTMLElement | null = null;
+        let activeTooltip: { element: HTMLElement | SVGElement, text: string } | null;
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
                 map((event: Event) => {
-                    const [tooltipElement, _] = getOrInheritData(event.target, 'tooltip');
-                    if (tooltipElement === activeTooltipElement)
+                    const [element, text] = getOrInheritData(event.target, 'tooltip');
+                    if (element === activeTooltip?.element && text === activeTooltip?.text)
                         return null;
 
-                    if (!tooltipElement && activeTooltipElement) {
-                        activeTooltipElement = null;
+                    if (!element && activeTooltip) {
+                        activeTooltip = null;
                         this.hideTooltip();
                         return null;
                     }
-                    if (tooltipElement == null)
+                    if (element == null)
                         return null;
 
-                    return tooltipElement;
+                    return { element, text };
                 }),
-                switchMap((tooltipElement: HTMLElement | null) => {
-                    return tooltipElement ? of(tooltipElement).pipe(delay(300)) : empty();
+                switchMap(tooltip => {
+                    return tooltip ? of(tooltip).pipe(delay(300)) : EMPTY;
                 }),
             )
-            .subscribe((tooltipElement: HTMLElement) => {
-                activeTooltipElement = tooltipElement;
-                this.showTooltip(activeTooltipElement);
+            .subscribe(tooltip => {
+                activeTooltip = tooltip;
+                this.showTooltip(activeTooltip.element);
             });
     }
 
-    private showTooltip(triggerRef: HTMLElement) {
+    private showTooltip(triggerRef: HTMLElement | SVGElement) {
         const tooltipText = triggerRef.dataset['tooltip'];
         if (!tooltipText)
             return;
@@ -93,12 +93,12 @@ export class TooltipHost implements Disposable {
         this.tooltipRef.style.display = '';
     }
 
-    private getPlacement(triggerRef: HTMLElement): Placement {
+    private getPlacement(triggerRef: HTMLElement | SVGElement): Placement {
         const placement = triggerRef.dataset['tooltipPosition'];
         return placement ? placement as Placement : 'top';
     }
 
-    private updatePosition(triggerRef: HTMLElement): void {
+    private updatePosition(triggerRef: HTMLElement | SVGElement): void {
         const placement = this.getPlacement(triggerRef);
         computePosition(triggerRef, this.tooltipRef, {
             placement: placement,
