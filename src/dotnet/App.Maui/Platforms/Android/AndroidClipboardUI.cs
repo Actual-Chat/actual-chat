@@ -16,7 +16,4 @@ internal class AndroidClipboardUI : ClipboardUI
             return await Clipboard.Default.GetTextAsync().ConfigureAwait(true) ?? "";
         return "";
     }
-
-    public override async ValueTask WriteText(string text)
-        => await Clipboard.Default.SetTextAsync(text).ConfigureAwait(true);
 }
