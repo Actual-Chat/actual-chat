@@ -18,7 +18,7 @@ export class CopyToClipboard {
             tap(stopEvent),
             switchMap(() => this.copy()),
             tap(() => this.showCopiedHint()),
-            delay(5000),
+            delay(3000),
             tap(() => this.hideCopiedHint())
         ).subscribe();
     }
