@@ -61,7 +61,7 @@ public partial class MauiBlazorWebViewHandler
         public override void DoUpdateVisitedHistory(WebView? view, string? url, bool isReload)
         {
             base.DoUpdateVisitedHistory(view, url, isReload);
-            var canGoBack = view.CanGoBack();
+            var canGoBack = view!.CanGoBack();
             // It seems at this point we can not trust CanGoBack value, when it's navigated to a new address.
             Log.LogDebug("WebViewClientOverride.DoUpdateVisitedHistory. Url: '{Url}'. IsReload: '{IsReload}'. CanGoBack: '{CanGoBack}'", url, isReload, canGoBack);
         }

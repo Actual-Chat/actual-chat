@@ -147,7 +147,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()
-            .OrderBy(a => a.Avatar.Name)
+            .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
             .ToImmutableArray();
     }
 

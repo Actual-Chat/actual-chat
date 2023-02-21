@@ -22,13 +22,13 @@ internal class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
         var authors = await Chats.ListMentionableAuthors(Session, ChatId, cancellationToken).ConfigureAwait(false);
         // Default scheduler is used from here
 
-        var mentions = (
-            from author in authors
-            let searchMatch = searchPhrase.GetMatch(author.Avatar.Name)
-            where searchMatch.Rank > 0 || searchPhrase.IsEmpty
-            orderby searchMatch.Rank descending, author.Avatar.Name
-            select new MentionSearchResult($"a:{author.Id}", searchMatch, author.Avatar.Picture)
-            ).Take(limit)
+        var mentions = authors
+            .Select(author => new { author, searchMatch = searchPhrase.GetMatch(author.Avatar.Name) })
+            .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
+            .OrderByDescending(x => x.searchMatch.Rank)
+            .ThenBy(x => x.author.Avatar.Name, StringComparer.Ordinal)
+            .Select(x => new MentionSearchResult($"a:{x.author.Id}", x.searchMatch, x.author.Avatar.Picture))
+            .Take(limit)
             .ToArray();
         return mentions;
     }
