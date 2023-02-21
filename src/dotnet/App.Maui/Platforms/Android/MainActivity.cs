@@ -11,6 +11,8 @@ using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
+using AndroidX.Activity.Result;
+using AndroidX.Activity.Result.Contract;
 
 namespace ActualChat.App.Maui;
 
@@ -41,13 +43,17 @@ public class MainActivity : MauiAppCompatActivity
     internal static readonly int NotificationPermissionID = 832;
     private readonly ITraceSession _trace = TraceSession.Default;
 
-    private GoogleSignInClient mGoogleSignInClient = null!;
+    private GoogleSignInClient _googleSignInClient = null!;
+    private ActivityResultLauncher _requestPermissionLauncher = null!;
 
     private ILogger Log { get; set; } = NullLogger.Instance;
+
+    public static MainActivity? CurrentActivity { get; private set; }
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         var isLoaded = false;
+        CurrentActivity = this;
         if (ScopedServicesAccessor.IsInitialized) {
             var loadingUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>();
             isLoaded = loadingUI.WhenLoaded.IsCompleted;
@@ -83,7 +89,15 @@ public class MainActivity : MauiAppCompatActivity
             .Build();
 
         // Build a GoogleSignInClient with the options specified by gso.
-        mGoogleSignInClient = GoogleSignIn.GetClient(this, gso);
+        _googleSignInClient = GoogleSignIn.GetClient(this, gso);
+
+        // Create launcher to request permissions
+        _requestPermissionLauncher = RegisterForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            new ActivityResultCallback(result => {
+                // TODO(AK): Set permission request result!!
+                var x = result;
+            }));
         // ContextCompat.CheckSelfPermission(ApplicationContext,  Manifest.Permission.PostNotifications)
         // if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
         // {
@@ -134,6 +148,9 @@ public class MainActivity : MauiAppCompatActivity
         TryProcessNotificationTap(intent);
     }
 
+    public void RequestPermissions(string permission)
+        => _requestPermissionLauncher.Launch(permission);
+
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -153,7 +170,7 @@ public class MainActivity : MauiAppCompatActivity
 
     public Task SignInWithGoogle()
     {
-        StartActivityForResult(mGoogleSignInClient.SignInIntent, RC_SIGN_IN_GOOGLE);
+        StartActivityForResult(_googleSignInClient.SignInIntent, RC_SIGN_IN_GOOGLE);
         return Task.CompletedTask;
     }
 
@@ -166,7 +183,7 @@ public class MainActivity : MauiAppCompatActivity
     }
 
     public async Task SignOutWithGoogle()
-        => await mGoogleSignInClient.SignOutAsync().ConfigureAwait(true);
+        => await _googleSignInClient.SignOutAsync().ConfigureAwait(true);
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
