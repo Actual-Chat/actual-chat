@@ -25,7 +25,7 @@ public partial class MauiBlazorWebViewHandler
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
         var jsInterface = new JavascriptInterface(this, platformView);
         platformView.AddJavascriptInterface(jsInterface, "Android");
-        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<JavascriptInterface>()));
+        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
     }
 
     private class JavascriptInterface : Java.Lang.Object

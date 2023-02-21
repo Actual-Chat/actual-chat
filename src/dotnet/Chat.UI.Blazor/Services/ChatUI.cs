@@ -139,6 +139,7 @@ public partial class ChatUI : WorkerBase, IHasServices
     {
         DebugLog?.LogDebug("-> ListUnordered");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug("-> ListUnordered.Contacts ({IdsLength})", contactIds.Length);
         var contacts = await contactIds
             .Select(contactId => Get(contactId.ChatId, cancellationToken))
             .Collect()

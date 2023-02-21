@@ -66,8 +66,10 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     }
 
     [JSInvokable]
-    public void OnInitialized(IBrowserInfoBackend.InitResult initResult) {
-        // Log.LogInformation("Init: {InitResult}", initResult);
+    public void OnInitialized(IBrowserInfoBackend.InitResult initResult)
+    {
+        Log.LogDebug("OnInitialized: {InitResult}", initResult);
+        var step = Services.GetRequiredService<ITraceSession>().TrackStep("BrowserInfo.OnInitialized");
         SetScreenSize(initResult.ScreenSizeText, initResult.IsHoverable);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
@@ -77,6 +79,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
         _whenReadySource.SetResult(default);
+        step.Complete();
     }
 
     [JSInvokable]

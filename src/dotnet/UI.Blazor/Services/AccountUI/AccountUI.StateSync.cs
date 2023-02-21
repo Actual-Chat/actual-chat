@@ -1,3 +1,5 @@
+using ActualChat.Users;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI
@@ -11,6 +13,7 @@ public partial class AccountUI
 
     private async Task SyncOwnAccount(CancellationToken cancellationToken)
     {
+        TraceSession.Track("[AccountUI] Start SyncOwnAccount");
         var cOwnAccount0 = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
@@ -23,8 +26,12 @@ public partial class AccountUI
             if (ownAccount is not { Id.IsNone: false })
                 continue;
 
+            var hasLoaded = _ownAccount.Value == AccountFull.Loading;
+
             _ownAccount.Value = ownAccount;
             _whenLoadedSource.TrySetResult(default);
+            if (hasLoaded)
+                TraceSession.Track("[AccountUI] OwnAccount has loaded");
         }
     }
 }

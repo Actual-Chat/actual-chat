@@ -64,6 +64,7 @@
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+    [Inject] private ITraceSession Trace { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -73,13 +74,19 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var trace = State.Value == Model.Loading ? Trace : TraceSession.Null;
+        var step = trace.TrackStep("[ChatListNavbarWidget] Getting ChatUI.List");
         var chats = await ChatUI.List(cancellationToken);
+        step.Complete();
+        step = trace.TrackStep("[ChatListNavbarWidget] Getting ChatUI.GetUnreadCount");
         var unreadCounts = await ChatListFilter.All
             .Select(async x => new {
                 FilterId = x.Id,
                 UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken),
             })
             .Collect();
+        step.Complete();
+        step = trace.TrackStep("[ChatListNavbarWidget] Chore list");
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
@@ -100,6 +107,7 @@
         var unpinnedChats = chats
             .Skip(pinnedChats.Count)
             .ToList();
+        step.Complete();
 
         return new Model {
             PinnedChats = pinnedChats,

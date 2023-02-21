@@ -12,8 +12,8 @@ public partial class AccountUI : WorkerBase
     private IStateFactory StateFactory { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
-    private History History { get; }
     private ILogger Log { get; }
+    private ITraceSession TraceSession { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
@@ -22,18 +22,24 @@ public partial class AccountUI : WorkerBase
     {
         Services = services;
         Log = services.LogFor(GetType());
+        TraceSession = services.GetRequiredService<ITraceSession>();
 
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
-        History = services.GetRequiredService<History>();
 
         _whenLoadedSource = TaskSource.New<Unit>(true);
         var ownAccountTask = Accounts.GetOwn(Session, default);
  #pragma warning disable VSTHRD002
-        var ownAccount = ownAccountTask.IsCompletedSuccessfully
-            ? ownAccountTask.Result
-            : AccountFull.Loading;
+        AccountFull ownAccount;
+        if (ownAccountTask.IsCompletedSuccessfully) {
+            ownAccount = ownAccountTask.Result;
+            TraceSession.Track("[AccountUI] OwnAccount has already loaded");
+        }
+        else {
+            ownAccount = AccountFull.Loading;
+            TraceSession.Track("[AccountUI] OwnAccount is not loaded yet");
+        }
  #pragma warning restore VSTHRD002
         _ownAccount = StateFactory.NewMutable<AccountFull>(new () {
             InitialValue = ownAccount,
@@ -47,7 +53,9 @@ public partial class AccountUI : WorkerBase
         if (OwnAccount.Value.IsGuest)
             return;
 
-        if (History.HostInfo.AppKind.IsMauiApp()) {
+        var history = Services.GetRequiredService<History>();
+
+        if (history.HostInfo.AppKind.IsMauiApp()) {
             // MAUI scenario:
             // - Sign-out natively
             // - Do nothing, coz SignOutReloader will do the rest
@@ -58,6 +66,6 @@ public partial class AccountUI : WorkerBase
         // Blazor Server/WASM scenario:
         // - Redirect to sign-out page, which redirects to home page after sign-out completion
         // - SignOutReloader doesn't get a chance to reload anything in this case - which is fine.
-        await History.HardNavigateTo(Links.SignOut());
+        await history.HardNavigateTo(Links.SignOut());
     }
 }

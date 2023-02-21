@@ -12,11 +12,37 @@ public sealed class LoadingUI
 
     public Task WhenLoaded => _whenLoadedSource.Task;
 
+    public TimeSpan LoadingTime { get; private set; } = TimeSpan.Zero;
+    public static TimeSpan MauiAppBuildTime { get; private set; } = TimeSpan.Zero;
+    public TimeSpan AppInitTime { get; private set; } = TimeSpan.Zero;
+    public TimeSpan AppAboutRenderContentTime { get; private set; } = TimeSpan.Zero;
+
     public LoadingUI(ILogger<LoadingUI> log, ITraceSession trace)
     {
         Log = log;
         Trace = trace;
         _whenLoadedSource = TaskSource.New<Unit>(true);
+    }
+
+    public static void ReportMauiAppBuildTime(TimeSpan mauiAppBuildTime)
+    {
+        if (MauiAppBuildTime > TimeSpan.Zero)
+            return;
+        MauiAppBuildTime = mauiAppBuildTime;
+    }
+
+    public void ReportAppInitialized()
+    {
+        if (AppInitTime > TimeSpan.Zero)
+            return;
+        AppInitTime = Trace.Elapsed;
+    }
+
+    public void ReportAppAboutRenderContent()
+    {
+        if (AppAboutRenderContentTime > TimeSpan.Zero)
+            return;
+        AppAboutRenderContentTime = Trace.Elapsed;
     }
 
     public void MarkLoaded()
@@ -25,5 +51,6 @@ public sealed class LoadingUI
 
         Log.LogDebug("MarkLoaded");
         Trace.Track("MarkLoaded");
+        LoadingTime = Trace.Elapsed;
     }
 }

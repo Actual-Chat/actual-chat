@@ -234,8 +234,26 @@ public class MainActivity : MauiAppCompatActivity
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
+        private readonly object _syncObject = new ();
+        private IServiceProvider? _serviceProvider;
+        private LoadingUI? _loadingUI;
+
         public bool OnPreDraw()
-            => ScopedServicesAccessor.IsInitialized
-                && ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>().WhenLoaded.IsCompleted;
+        {
+            lock (_syncObject) {
+                if (!ScopedServicesAccessor.IsInitialized)
+                    return false;
+
+                var svpHasChanged = false;
+                var svp = ScopedServicesAccessor.ScopedServices;
+                if (_serviceProvider == null || !ReferenceEquals(svp, _serviceProvider)) {
+                    svpHasChanged = true;
+                    _serviceProvider = svp;
+                }
+                if (_loadingUI == null || svpHasChanged)
+                    _loadingUI = _serviceProvider.GetRequiredService<LoadingUI>();
+                return _loadingUI.WhenLoaded.IsCompleted;
+            }
+        }
     }
 }

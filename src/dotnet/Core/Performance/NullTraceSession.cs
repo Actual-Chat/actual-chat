@@ -8,6 +8,8 @@ public sealed class NullTraceSession : ITraceSession
     {
     }
 
+    public TimeSpan Elapsed  => TimeSpan.Zero;
+
     public string Name => "Null";
 
     public void Track(string message)

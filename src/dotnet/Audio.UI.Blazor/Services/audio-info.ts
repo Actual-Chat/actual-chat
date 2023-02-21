@@ -21,6 +21,7 @@ export class AudioInfo {
         await opusMediaRecorder.load(baseUri);
         this.whenReady.resolve(undefined);
         globalThis["audioInfo"] = this;
+        log?.log(`ready`);
     }
 }
 

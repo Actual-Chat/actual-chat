@@ -77,6 +77,9 @@
             <div class="c-footer">
                 <div class="flex-none flex-x items-center justify-between px-4 gap-x-2 text-xxs">
                     <div class="flex-1 text-03 font-medium truncate">@Version</div>
+                    <div class="flex-none">
+                        <LoadingTime/>
+                    </div>
                     @if (HostInfo.AppKind != AppKind.MauiApp) {
                         <div class="flex-none">
                             <BlazorModeToggle/>

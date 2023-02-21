@@ -22,6 +22,7 @@ export class BrowserInfo {
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public static init(backendRef1: DotNet.DotNetObject, appKind: AppKind): void {
+        log?.log(`initializing`);
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();

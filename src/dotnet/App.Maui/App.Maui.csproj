@@ -167,6 +167,7 @@
     <PackageReference Include="Sentry.Maui" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
     <!--
       MAUI msbuild tasks doesn't work with

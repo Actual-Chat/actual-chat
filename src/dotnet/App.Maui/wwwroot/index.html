@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Actual Chat</title>
     <base href="/" />
+    <script>
+        console.log('script in head');
+    </script>
     <link rel="preload" href="/dist/fonts/forkawesome-webfont.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/icon.woff2?t=1675797561189" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
@@ -23,6 +26,7 @@
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
 
     <script>
+        console.log('about to define window.App');
         window.App = {
             debug: true,
             baseUri: null,
@@ -121,8 +125,10 @@
 
     <div id="app" class="flex flex-col h-full">MAUI index. App is loading...</div>
 
+    <script>console.log('about to load bundle.js');</script>
     <script src="/dist/bundle.js"></script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
+    <script>console.log('after loading blazor.webview.js');</script>
 </body>
 
 </html>

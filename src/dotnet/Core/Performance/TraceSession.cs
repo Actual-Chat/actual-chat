@@ -6,7 +6,14 @@ public sealed class TraceSession : ITraceSession
     private bool _hasStarted;
     private Action<string> _output;
 
-    public static bool IsTracingEnabled { get; set; } = true;
+    static TraceSession()
+    {
+#if DEBUG || DEBUG_MAUI
+        IsTracingEnabled = true;
+#endif
+    }
+
+    public static bool IsTracingEnabled { get; set; }
 
     public static ITraceSession Default { get; set; } = Null;
 
@@ -47,8 +54,9 @@ public sealed class TraceSession : ITraceSession
         if (!_hasStarted)
             Start();
         var ts = _stopwatch.Elapsed;
-        var tid = Thread.CurrentThread.ManagedThreadId;
-        var formattedMessage = $"Trace [{Name}] [{tid:000}] {ts:c} {message}";
+        // var tid = Thread.CurrentThread.ManagedThreadId;
+        // var formattedMessage = $"Trace [{Name}] [{tid:000}] {ts:c} {message}";
+        var formattedMessage = $"({Name}) {ts:c} {message}";
         _output(formattedMessage);
     }
 
