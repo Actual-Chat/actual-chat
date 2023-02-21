@@ -1,4 +1,4 @@
-import { fromEvent, Subject, takeUntil, switchMap, merge, tap, delay } from 'rxjs';
+import { fromEvent, Subject, takeUntil, switchMap, tap, delay } from 'rxjs';
 import { Log, LogLevel, LogScope } from 'logging';
 import { stopEvent } from 'event-handling';
 
@@ -13,7 +13,7 @@ export class CopyToClipboard {
     public constructor(inputRef: HTMLInputElement, buttonRef: HTMLButtonElement) {
         this.inputRef = inputRef;
         this.buttonRef = buttonRef;
-        merge(fromEvent(this.buttonRef, 'click'), fromEvent(this.inputRef, 'click')).pipe(
+        fromEvent(this.buttonRef, 'click').pipe(
             takeUntil(this.disposed$),
             tap(stopEvent),
             switchMap(() => this.copy()),
