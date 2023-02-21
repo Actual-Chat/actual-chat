@@ -127,6 +127,12 @@
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Android\**\*.cs" />
     <None Include="**\Android\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Update="Platforms\iOS\IOSNotificationPermissions.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\MacCatalyst\MacNotificationPermissions.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
   </ItemGroup>
 
   <!-- Both iOS and Mac Catalyst -->
