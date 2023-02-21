@@ -1,4 +1,4 @@
-import { fromEvent, Subject, takeUntil, exhaustMap, merge, tap } from 'rxjs';
+import { fromEvent, Subject, takeUntil, switchMap, merge, tap, delay } from 'rxjs';
 import { Log, LogLevel, LogScope } from 'logging';
 import { stopEvent } from 'event-handling';
 
@@ -16,7 +16,10 @@ export class CopyToClipboard {
         merge(fromEvent(this.buttonRef, 'click'), fromEvent(this.inputRef, 'click')).pipe(
             takeUntil(this.disposed$),
             tap(stopEvent),
-            exhaustMap(() => this.onClick()),
+            switchMap(() => this.copy()),
+            tap(() => this.showCopiedHint()),
+            delay(5000),
+            tap(() => this.hideCopiedHint())
         ).subscribe();
     }
 
@@ -32,9 +35,26 @@ export class CopyToClipboard {
         this.disposed$.complete();
     }
 
-    private async onClick() {
+    private async copy() {
         this.inputRef.select();
         const text = this.inputRef.dataset.copyText ?? this.inputRef.value;
-        return navigator.clipboard.writeText(text).catch(e => errorLog?.log(`onClick: failed to write to clipboard`, e));
+        return navigator.clipboard.writeText(text).catch(e => errorLog?.log(`copy: failed to write to clipboard`, e));
+    }
+
+    private showCopiedHint() {
+        this.buttonRef.classList.add('copied');
+        this.redrawTooltip('Copied');
+    }
+
+    private hideCopiedHint() {
+        this.buttonRef.classList.remove('copied');
+        this.redrawTooltip('Copy');
+    }
+
+    private redrawTooltip(text: string) {
+        this.buttonRef.setAttribute('data-tooltip', text);
+        if (!this.buttonRef.dispatchEvent(new Event('mouseover'))) {
+            errorLog?.log('showAsCopied: failed to dispatch mouseover');
+        }
     }
 }

@@ -14,8 +14,13 @@
 .copy-to-clipboard .btn.btn-round .btn-content-inner {
     @apply flex-none flex-x gap-x-1;
 }
-
 .copy-to-clipboard input:focus {
     @apply rounded-sm border-0 outline-none;
     @apply ring-0;
+}
+.copy-to-clipboard .btn:not(.copied) .c-copied {
+    @apply hidden;
+}
+.copy-to-clipboard .btn.copied .c-copy {
+    @apply hidden;
 }
