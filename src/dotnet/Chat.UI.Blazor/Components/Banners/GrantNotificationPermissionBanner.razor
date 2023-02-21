@@ -44,9 +44,6 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (HostInfo.AppKind == AppKind.MauiApp)
-            return;
-
         if (_hasHandlerRegistered)
             return;
 

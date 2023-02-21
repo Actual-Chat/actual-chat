@@ -2,14 +2,12 @@ using ActualChat.Notification.UI.Blazor;
 using Android;
 using Android.App;
 using Android.Content.PM;
-using AndroidX.Core.App;
 using AndroidX.Core.Content;
 
 namespace ActualChat.App.Maui;
 
 public class AndroidNotificationPermissions : INotificationPermissions
 {
-
     public AndroidNotificationPermissions()
     { }
 
@@ -37,13 +35,20 @@ public class AndroidNotificationPermissions : INotificationPermissions
                 .SetMessage("Grant notifications permission to receive push notifications for new messages")!
                 .SetNegativeButton("No thanks", (_, _) => { })!
                 .SetPositiveButton("Continue",
-                    (_, _) => ActivityCompat.RequestPermissions(activity,
-                        new[] { Manifest.Permission.PostNotifications },
-                        MainActivity.NotificationPermissionID))!
+                    (_, _) =>  RequestPermission())!
                 .Show();
             return;
         }
         // else
-        ActivityCompat.RequestPermissions(activity, new[] { Manifest.Permission.PostNotifications }, MainActivity.NotificationPermissionID);
+        RequestPermission();
     }
+
+    private void RequestPermission()
+    {
+        if (Platform.CurrentActivity is MainActivity activity)
+            activity.RequestPermissions( Manifest.Permission.PostNotifications);
+        // Code below doesn't work
+        // ActivityCompat.RequestPermissions(activity, new[] { Manifest.Permission.PostNotifications }, MainActivity.NotificationPermissionID);
+    }
+
 }

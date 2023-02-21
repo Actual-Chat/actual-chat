@@ -20,7 +20,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private Dispatcher Dispatcher => History.Dispatcher;
     private IJSRuntime JS => History.JS;
     private UICommander UICommander { get; }
-    private INotificationPermissions NotificationPermissions { get; }
 
     public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
@@ -30,7 +29,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         History = services.GetRequiredService<History>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
-        NotificationPermissions = services.GetRequiredService<INotificationPermissions>();
 
         _state = services.StateFactory().NewMutable<PermissionState>();
         _whenStateReady = TaskSource.New<Unit>(true);
@@ -40,11 +38,20 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
         async Task Initialize()
         {
-            var backendRef = DotNetObjectReference.Create<INotificationUIBackend>(this);
-            await JS.InvokeVoidAsync(
-                $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init",
-                backendRef,
-                HostInfo.AppKind.ToString());
+            if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp) {
+                var backendRef = DotNetObjectReference.Create<INotificationUIBackend>(this);
+                await JS.InvokeVoidAsync(
+                    $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init",
+                    backendRef,
+                    HostInfo.AppKind.ToString());
+            }
+            else if (HostInfo.AppKind == AppKind.MauiApp) {
+                // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
+                var notificationPermissions = services.GetRequiredService<INotificationPermissions>();
+                var permissionState = await notificationPermissions.GetNotificationPermissionState(CancellationToken.None);
+                UpdateNotificationStatus(permissionState);
+            }
+
             await _whenStateReady.Task.ConfigureAwait(false);
         }
     }
@@ -126,7 +133,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     }
 
-    public Task UpdateNotificationStatus(PermissionState newState)
+    public void UpdateNotificationStatus(PermissionState newState)
     {
         if (newState != _state.Value)
             _state.Value = newState;
@@ -134,7 +141,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
             _ = EnsureDeviceRegistered(CancellationToken.None);
 
         _whenStateReady.SetResult(Unit.Default);
-        return Task.CompletedTask;
     }
 
     [JSInvokable]
