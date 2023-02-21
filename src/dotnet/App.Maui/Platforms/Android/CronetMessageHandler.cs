@@ -148,7 +148,7 @@ public class CronetMessageHandler : HttpMessageHandler
                 ReasonPhrase = p1.HttpStatusText,
                 Version = string.IsNullOrWhiteSpace(p1.NegotiatedProtocol)
                     ? HttpVersion.Version11
-                    : p1.NegotiatedProtocol == "h2"
+                    : OrdinalEquals(p1.NegotiatedProtocol, "h2")
                         ? HttpVersion.Version20
                         : HttpVersion.Version30,
             };

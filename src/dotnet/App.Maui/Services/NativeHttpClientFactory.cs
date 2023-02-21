@@ -6,7 +6,7 @@ namespace ActualChat.App.Maui.Services;
 
 public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageHandlerFactory
 {
-    private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new ();
+    private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new (StringComparer.Ordinal);
 
     private IServiceProvider Services { get; }
     private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; }
