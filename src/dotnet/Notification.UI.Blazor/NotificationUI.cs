@@ -5,10 +5,11 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Notification.UI.Blazor;
 
-public class NotificationUI : INotificationUIBackend
+public class NotificationUI : INotificationUIBackend, INotificationPermissions
 {
     private readonly object _lock = new();
     private readonly IMutableState<PermissionState> _state;
+    private readonly TaskSource<Unit> _whenStateReady;
     private string? _deviceId;
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
@@ -19,6 +20,7 @@ public class NotificationUI : INotificationUIBackend
     private Dispatcher Dispatcher => History.Dispatcher;
     private IJSRuntime JS => History.JS;
     private UICommander UICommander { get; }
+    private INotificationPermissions NotificationPermissions { get; }
 
     public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
@@ -28,10 +30,13 @@ public class NotificationUI : INotificationUIBackend
         History = services.GetRequiredService<History>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
+        NotificationPermissions = services.GetRequiredService<INotificationPermissions>();
 
         _state = services.StateFactory().NewMutable<PermissionState>();
+        _whenStateReady = TaskSource.New<Unit>(true);
 
         WhenInitialized = Initialize();
+
 
         async Task Initialize()
         {
@@ -40,8 +45,10 @@ public class NotificationUI : INotificationUIBackend
                 $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init",
                 backendRef,
                 HostInfo.AppKind.ToString());
+            await _whenStateReady.Task.ConfigureAwait(false);
         }
     }
+
 
     [ComputeMethod]
     public virtual async Task<string?> GetDeviceId()
@@ -75,11 +82,24 @@ public class NotificationUI : INotificationUIBackend
             _ = RegisterDevice(deviceId, cancellationToken);
     }
 
-    public ValueTask RegisterRequestNotificationHandler(ElementReference reference)
-        => JS.InvokeVoidAsync(
-            $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
-            reference
-        );
+    public async ValueTask RegisterRequestNotificationHandler(ElementReference reference)
+    {
+        if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp)
+            await JS.InvokeVoidAsync(
+                $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
+                reference
+            ).ConfigureAwait(false);
+    }
+
+    public async Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.ConfigureAwait(false);
+        return _state.Value;
+    }
+
+    public Task RequestNotificationPermissions(CancellationToken cancellationToken)
+        // Web browser notification permission requests are handled at notification-ui.ts
+        => Task.CompletedTask;
 
     [JSInvokable]
     public Task HandleNotificationNavigation(string url)
@@ -106,6 +126,17 @@ public class NotificationUI : INotificationUIBackend
 
     }
 
+    public Task UpdateNotificationStatus(PermissionState newState)
+    {
+        if (newState != _state.Value)
+            _state.Value = newState;
+        if (newState == PermissionState.Granted)
+            _ = EnsureDeviceRegistered(CancellationToken.None);
+
+        _whenStateReady.SetResult(Unit.Default);
+        return Task.CompletedTask;
+    }
+
     [JSInvokable]
     public Task UpdateNotificationStatus(string permissionState)
     {
@@ -119,6 +150,7 @@ public class NotificationUI : INotificationUIBackend
         if (newState == PermissionState.Granted)
             _ = EnsureDeviceRegistered(CancellationToken.None);
 
+        _whenStateReady.SetResult(Unit.Default);
         return Task.CompletedTask;
     }
 

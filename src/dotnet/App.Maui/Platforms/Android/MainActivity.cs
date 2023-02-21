@@ -38,6 +38,7 @@ public class MainActivity : MauiAppCompatActivity
 #endif
 
     internal static readonly int NotificationID = 101;
+    internal static readonly int NotificationPermissionID = 832;
     private readonly ITraceSession _trace = TraceSession.Default;
 
     private GoogleSignInClient mGoogleSignInClient = null!;
@@ -83,7 +84,11 @@ public class MainActivity : MauiAppCompatActivity
 
         // Build a GoogleSignInClient with the options specified by gso.
         mGoogleSignInClient = GoogleSignIn.GetClient(this, gso);
-
+        // ContextCompat.CheckSelfPermission(ApplicationContext,  Manifest.Permission.PostNotifications)
+        // if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
+        // {
+        //     ActivityCompat.RequestPermissions(this, new[] { Manifest.Permission.PostNotifications }, 0);
+        // }
         CreateNotificationChannel();
 
         TryProcessNotificationTap(Intent);
@@ -127,6 +132,23 @@ public class MainActivity : MauiAppCompatActivity
         base.OnNewIntent(intent);
 
         TryProcessNotificationTap(intent);
+    }
+
+    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+    {
+        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NotificationPermissionID) {
+            var (_, notificationGrant) = permissions
+                .Zip(grantResults)
+                .FirstOrDefault(tuple => tuple.First == Manifest.Permission.PostNotifications);
+            var notificationState = notificationGrant switch {
+                Permission.Denied => PermissionState.Denied,
+                Permission.Granted => PermissionState.Granted,
+                _ => throw new ArgumentOutOfRangeException(),
+            };
+            var notificationUi = AppServices.GetRequiredService<NotificationUI>();
+            notificationUi.UpdateNotificationStatus(notificationState);
+        }
     }
 
     public Task SignInWithGoogle()

@@ -10,6 +10,7 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Notification.UI.Blazor;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor;
 using Microsoft.JSInterop;
@@ -322,14 +323,20 @@ public static partial class MauiProgram
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
+        services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
+        services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
+        services.AddScoped<ClipboardUI>(c => new AndroidClipboardUI(
+            c.GetRequiredService<IJSRuntime>()));
 #elif IOS
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(_ => new IOSDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>(_ => new IOSDeviceTokenRetriever());
+        services.AddScoped<INotificationPermissions>(c => new IOSNotificationPermissions());
 #elif MACCATALYST
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
+                services.AddScoped<INotificationPermissions>(c => new MacNotificationPermissions());
 #elif WINDOWS
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
+        services.AddScoped<INotificationPermissions>(c => new WindowsNotificationPermissions());
 #endif
 
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
