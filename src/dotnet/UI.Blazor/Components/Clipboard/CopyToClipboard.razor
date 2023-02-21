@@ -34,7 +34,6 @@
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string? CopyText { get; set; }
-    [Parameter] public bool HideCopiedTag { get; set; } // TODO: remove it as redundant
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
