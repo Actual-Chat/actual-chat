@@ -51,7 +51,7 @@ export type LogScope =
     | 'AudioRecorder'
     // Isolated components
     | 'ChatMessageEditor'
-    | 'CopyToClipboard'
+    | 'CopyTrigger'
     | 'ImageViewer'
     | 'Landing'
     | 'LandingLeftMenu'

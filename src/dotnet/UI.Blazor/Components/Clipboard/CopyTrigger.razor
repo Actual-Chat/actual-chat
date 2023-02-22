@@ -1,0 +1,36 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
+@implements IAsyncDisposable
+@inherits FusionComponentBase
+
+<div @ref="_ref"
+     class="@Class copy-trigger"
+     data-tooltip="@Tooltip"
+     data-toooltip-position="@FloatingPosition.Top">
+    @ChildContent
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    private ElementReference _ref;
+    private IJSObjectReference _jsRef = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Tooltip { get; set; } = "Copy";
+    [Parameter] public string CopyText { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public ElementReference? CopyTextInputSource { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.{nameof(CopyTrigger)}.create", _ref, CopyText, Tooltip, CopyTextInputSource);
+    }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+    }
+}
+
