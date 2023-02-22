@@ -2,9 +2,9 @@ using ActualChat.Notification.UI.Blazor;
 
 namespace ActualChat.App.Maui;
 
-public class IOSNotificationPermissions : INotificationPermissions
+public class IosNotificationPermissions : INotificationPermissions
 {
-    public IOSNotificationPermissions()
+    public IosNotificationPermissions()
     { }
 
     public Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)

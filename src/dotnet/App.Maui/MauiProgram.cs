@@ -329,8 +329,8 @@ public static partial class MauiProgram
         services.AddScoped<ClipboardUI>(c => new AndroidClipboardUI(
             c.GetRequiredService<IJSRuntime>()));
 #elif IOS
-        services.AddTransient<IDeviceTokenRetriever, IOSDeviceTokenRetriever>(_ => new IOSDeviceTokenRetriever());
-        services.AddScoped<INotificationPermissions>(c => new IOSNotificationPermissions());
+        services.AddTransient<IDeviceTokenRetriever, IosDeviceTokenRetriever>(_ => new IosDeviceTokenRetriever());
+        services.AddScoped<INotificationPermissions>(c => new IosNotificationPermissions());
 #elif MACCATALYST
         services.AddTransient<IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
                 services.AddScoped<INotificationPermissions>(c => new MacNotificationPermissions());

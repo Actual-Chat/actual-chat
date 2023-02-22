@@ -31,10 +31,14 @@ public class AndroidNotificationPermissions : INotificationPermissions
 
         if (state == PermissionState.Denied) {
             new AlertDialog.Builder(activity)
-                .SetTitle("Enable app permissions")!
-                .SetMessage("Grant notifications permission to receive push notifications for new messages")!
-                .SetNegativeButton("No thanks", (_, _) => { })!
-                .SetPositiveButton("Continue",
+                .SetTitle("Notification permission isn't granted")!
+                .SetMessage("""
+                    Actual Chat can send notifications about the new content in chats, new friend requests, and other activities related to your account.
+
+                    Do you want to allow Actual Chat sending notifications to this device?
+                    """)!
+                .SetNegativeButton("Decline", (_, _) => { })!
+                .SetPositiveButton("Allow",
                     (_, _) =>  RequestPermission())!
                 .Show();
             return;
