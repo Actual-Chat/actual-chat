@@ -5,13 +5,13 @@ namespace ActualChat.App.Maui;
 
 public class ActivityResultCallback : Object, IActivityResultCallback
 {
-    private readonly Action<ActivityResult> _callback;
+    private readonly Action<Object?> _callback;
 
-    public ActivityResultCallback(Action<ActivityResult> callback)
+    public ActivityResultCallback(Action<Object?> callback)
         => _callback = callback;
 
-    public ActivityResultCallback(TaskCompletionSource<ActivityResult> tcs)
+    public ActivityResultCallback(TaskCompletionSource<Object?> tcs)
         => _callback = tcs.SetResult;
 
-    public void OnActivityResult(Object? p0) => _callback((ActivityResult)p0!);
+    public void OnActivityResult(Object? p0) => _callback(p0);
 }
