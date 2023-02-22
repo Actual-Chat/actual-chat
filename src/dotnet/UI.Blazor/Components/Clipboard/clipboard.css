@@ -1,3 +1,14 @@
+.copy-trigger {
+    @apply flex-x items-center gap-x-2;
+}
+.copy-trigger:not(.copied) .copied-hint {
+    @apply hidden;
+}
+.copy-trigger.copied .hide-on-copied-hint {
+    @apply hidden;
+}
+
+/* CopyText */
 .copy-to-clipboard {
     @apply flex-x items-center gap-x-2;
 }
@@ -17,10 +28,4 @@
 .copy-to-clipboard input:focus {
     @apply rounded-sm border-0 outline-none;
     @apply ring-0;
-}
-.copy-to-clipboard .btn:not(.copied) .c-copied {
-    @apply hidden;
-}
-.copy-to-clipboard .btn.copied .c-copy {
-    @apply hidden;
 }

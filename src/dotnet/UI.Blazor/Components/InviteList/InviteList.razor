@@ -7,10 +7,11 @@
         var link = GetLink(invite);
 
         <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-02">
+
             <CopyToClipboard
                 Class="flex-auto"
-                Text="@invite.Id"
-                CopyText="@link.AbsoluteUrl"/>
+                Caption="@invite.Id"
+                Text="@link.AbsoluteUrl"/>
             <div class="flex-auto text-xxs">
                 @if (invite.Remaining > 1) {
                     <span><b>@(invite.Remaining)</b> activations remaining, </span>

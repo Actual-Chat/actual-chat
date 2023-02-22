@@ -39,17 +39,19 @@
     </MenuEntry>
     *@
     @if (!ClickedLinkUrl.IsNullOrEmpty()) {
-        <MenuEntry
-            Icon="icon-copy"
-            Text="Copy link"
-            CopyToClipboardText="@ClickedLinkUrl">
-        </MenuEntry>
+        <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl">
+            <MenuEntry
+                Icon="icon-copy"
+                Text="Copy link">
+            </MenuEntry>
+        </CopyTrigger>
     }
-    <MenuEntry
-        Icon="icon-link-2"
-        Text="Copy message link"
-        CopyToClipboardText="@messageLink">
-    </MenuEntry>
+    <CopyTrigger Tooltip="" CopyText="@messageLink">
+        <MenuEntry
+            Icon="icon-link-2"
+            Text="Copy message link">
+        </MenuEntry>
+    </CopyTrigger>
     @if (canEditOrDelete) {
         <MenuEntrySeparator />
         <MenuEntry

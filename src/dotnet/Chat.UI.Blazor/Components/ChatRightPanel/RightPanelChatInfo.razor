@@ -24,25 +24,25 @@
     </div>
 
     @if (m.Link is { } publicUrl) {
-        var linkText = isPublicGroupChat ? "Public join link" : "User link";
+        var linkCaption = isPublicGroupChat ? "Public join link" : "User link";
         if (ScreenSize.IsNarrow()) {
-            linkText += " - click to copy";
+            linkCaption += " - click to copy";
         }
-        <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-             data-tooltip="Click to copy to the clipboard"
-             data-clipboard-text="@publicUrl.AbsoluteUrl">
-            <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-                <i class="icon-link-2 text-2xl text-icons-03"></i>
-            </div>
-            <div class="flex-y min-w-0 self-center">
-                <div class="text-01 text-headline-1 truncate">
-                    @publicUrl.ShortLocalUrl
+        <CopyTrigger Tooltip="Click to copy to the clipboard" CopyText="@publicUrl.AbsoluteUrl">
+            <div class="flex-x flex-1 overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg">
+                <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
+                    <i class="icon-link-2 text-2xl text-icons-03"></i>
                 </div>
-                <div class="text-03 text-caption-2">
-                    @(linkText)
+                <div class="flex-y min-w-0 self-center">
+                    <div class="text-01 text-headline-1 truncate">
+                        @publicUrl.ShortLocalUrl
+                    </div>
+                    <div class="text-03 text-caption-2">
+                        @(linkCaption)
+                    </div>
                 </div>
             </div>
-        </div>
+        </CopyTrigger>
     }
 
     @if (m.Owners is not null) {
