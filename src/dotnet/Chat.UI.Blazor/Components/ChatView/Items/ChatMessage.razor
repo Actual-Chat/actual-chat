@@ -93,7 +93,7 @@
                 }
             </div>
             @if (entry.Attachments.Length > 0) {
-                <div class="message-attachments mx-1">
+                <div class="message-attachments">
                     @foreach (var attachment in entry.Attachments) {
                         @if (attachment.IsImage()) {
                             <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>

@@ -1,10 +1,11 @@
 import * as ort from 'onnxruntime-web';
 import { ExponentialMovingAverage } from './streamed-moving-average';
 import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
-import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
-import wasmSimdPath from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
-import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
+import wasmThreaded from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
+import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
+import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 import { LogScope } from 'logging';
+import { getVersionedArtifactPath } from 'versioning';
 
 const LogScope: LogScope = 'AudioVad';
 
@@ -62,6 +63,10 @@ export class VoiceActivityDetector {
 
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
         this.c0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
+
+        const wasmThreadedPath = getVersionedArtifactPath(wasmThreaded);
+        const wasmSimdPath = getVersionedArtifactPath(wasmSimd);
+        const wasmSimdThreadedPath = getVersionedArtifactPath(wasmSimdThreaded);
 
         ort.env.wasm.numThreads = 4;
         ort.env.wasm.simd = true;

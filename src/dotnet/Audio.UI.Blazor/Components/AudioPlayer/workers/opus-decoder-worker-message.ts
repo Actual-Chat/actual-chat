@@ -9,6 +9,7 @@ export interface CreateDecoderMessage extends DecoderMessage {
     controllerId: number;
     callbackId: number;
     workletPort: MessagePort;
+    artifactVersions: Map<string,string>;
 }
 
 export interface InitDecoderMessage extends DecoderMessage {

@@ -53,7 +53,7 @@ export type LogScope =
     | 'AudioRecorder'
     // Isolated components
     | 'ChatMessageEditor'
-    | 'CopyToClipboard'
+    | 'CopyTrigger'
     | 'ImageViewer'
     | 'Landing'
     | 'LandingLeftMenu'
@@ -143,6 +143,7 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
+    minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     minLevels.set('AudioVad', LogLevel.Debug);
     minLevels.set('AudioVadWorker', LogLevel.Debug);
     minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);

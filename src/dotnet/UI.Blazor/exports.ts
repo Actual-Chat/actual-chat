@@ -16,7 +16,7 @@ export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 export * from './Services/VibrationUI/vibration-ui';
 
-export * from './Components/Clipboard/copy-to-clipboard';
+export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
 export * from './Components/ImageViewerModal/image-viewer';

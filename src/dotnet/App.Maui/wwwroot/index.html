@@ -53,6 +53,36 @@
             }
         }
 
+        if (window.Android) {
+            // In Android WebView read text and write text operations fail with insufficient permissions
+            // and there is no way to grant these permissions.
+            // https://stackoverflow.com/questions/61243646/clipboard-api-call-throws-notallowederror-without-invoking-onpermissionrequest
+            // So we replace `navigator.clipboard` functions with our own implementation
+            // based on Js-to-Native-Android interop.
+            navigator.clipboard.writeText = function(newClipText) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        window.Android.writeTextToClipboard(newClipText);
+                        resolve();
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            navigator.clipboard.readText = function() {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const clipText = window.Android.readTextFromClipboard();
+                        resolve(clipText);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+        }
+
         // Set App.windowId
         window.addEventListener("beforeunload", function (e) {
             let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");

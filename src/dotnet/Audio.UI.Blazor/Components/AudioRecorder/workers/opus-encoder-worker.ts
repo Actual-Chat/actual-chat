@@ -20,6 +20,7 @@ import { Log, LogLevel, LogScope } from 'logging';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad';
+import { getVersionedArtifactPath } from 'versioning';
 
 const LogScope: LogScope = 'OpusEncoderWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -33,7 +34,6 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
-const codecModuleReady = loadCodec();
 
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 4;
 const FADE_CHUNKS = 2;
@@ -41,6 +41,8 @@ const CHUNK_SIZE = 960;
 
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
+const worker = self as unknown as Worker;
+
 let hubConnection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
@@ -60,7 +62,12 @@ let serverImpl: OpusEncoderWorker = {
     create: async (audioHubUrl: string): Promise<void> => {
         if (encoderWorklet != null || vadWorker != null)
             throw 'Already initialized.';
+
         debugLog?.log(`-> onCreate`);
+        // initialize artifact versions for 'getVersionedArtifactPath' call
+        globalThis.App = {
+            artifactVersions: message.artifactVersions,
+        }
 
         const retryPolicy: signalR.IRetryPolicy = {
             nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
@@ -90,22 +97,22 @@ let serverImpl: OpusEncoderWorker = {
         lowNoiseChunk = initPinkNoiseBuffer(0.005);
         silenceChunk = new Float32Array(CHUNK_SIZE);
 
-        // Setting encoder module
-        let retryCount = 0;
-        let whenCodecModuleCreated = codecModuleReady;
-        while (codecModule == null && retryCount++ < 3) {
-            try {
-                await whenCodecModuleCreated;
-                break;
-            }
-            catch (e) {
-                warnLog.log(e, "error loading codec WASM module.")
-                await delayAsync(300);
-                whenCodecModuleCreated = loadCodec();
-            }
+    // Setting encoder module
+    let retryCount = 0;
+    let whenCodecModuleCreated = loadCodec();
+    while (codecModule == null && retryCount++ < 3) {
+        try {
+            await whenCodecModuleCreated;
+            break;
         }
-        if (codecModule == null)
-            throw new Error("Unable to load codec WASM module.");
+        catch (e) {
+            warnLog.log(e, "Error loading codec WASM module.")
+            await delayAsync(300);
+            whenCodecModuleCreated = loadCodec();
+        }
+    }
+    if (codecModule == null)
+        throw new Error("Unable to load codec WASM module.");
 
         // warmup encoder
         encoder = new codecModule.Encoder();
@@ -191,7 +198,7 @@ let serverImpl: OpusEncoderWorker = {
         }
     }
 }
-const server = rpcServer(globalThis as unknown as Worker, serverImpl);
+const server = rpcServer(worker, serverImpl);
 
 // Helpers
 
@@ -210,8 +217,9 @@ function loadCodec(): Promise<void> {
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
+            const codecWasmPath = getVersionedArtifactPath(codecWasm);
             if (filename.slice(-4) === 'wasm')
-                return codecWasm;
+                return codecWasmPath;
             /// #if MEM_LEAK_DETECTION
             else if (filename.slice(-3) === 'map')
                 return codecWasmMap;
@@ -220,8 +228,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             // emscripten 1.37.25 loads memory initializers as data: URI
             else if (filename.slice(0, 5) === 'data:')
                 return filename;
-            else
-                throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
+            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
         },
     };
 }

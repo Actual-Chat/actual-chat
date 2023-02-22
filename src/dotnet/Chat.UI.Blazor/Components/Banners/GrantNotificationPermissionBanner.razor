@@ -18,7 +18,7 @@
         Actual Chat can notify you about new messages
     </Body>
     <Buttons>
-        <Button @ref="_configureButton" Class="btn-transparent on">Configure</Button>
+        <Button @ref="_configureButton" Class="btn-transparent on" Click="@OnConfigureClick" >Configure</Button>
     </Buttons>
 </Banner>
 
@@ -34,6 +34,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -43,9 +44,6 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (HostInfo.AppKind == AppKind.MauiApp)
-            return;
-
         if (_hasHandlerRegistered)
             return;
 
@@ -78,7 +76,12 @@
     private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
+
+    private Task OnConfigureClick(MouseEventArgs arg)
+        => NotificationPermissions.RequestNotificationPermissions(CancellationToken.None);
+
     // Nested types
+
 
     public sealed record Model(
         PermissionState State,
@@ -86,4 +89,5 @@
     ) {
         public static readonly Model Loading = new(PermissionState.Denied, true);
     }
+
 }

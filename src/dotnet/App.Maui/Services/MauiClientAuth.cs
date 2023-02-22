@@ -24,8 +24,11 @@ internal sealed class MauiClientAuth : IClientAuth
 
         if (OrdinalEquals(IClientAuth.GoogleSchemeName, scheme)) {
 #if ANDROID
-            var activity = (MainActivity)Platform.CurrentActivity!;
-            await activity.SignInWithGoogle().ConfigureAwait(false);
+            // Sometimes Platform.CurrentActivity is not MainActivity but GoogleSignIn activity
+            var mainActivity = Platform.CurrentActivity as MainActivity ?? MainActivity.CurrentActivity;
+            if (mainActivity != null)
+                await mainActivity.SignInWithGoogle().ConfigureAwait(false);
+
             return;
 #endif
         }

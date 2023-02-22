@@ -10,6 +10,8 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #endif
 import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
+import { getVersionedArtifactPath } from 'versioning';
+import { delayAsync } from 'promises';
 
 const LogScope: LogScope = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -21,16 +23,25 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
 
 let codecModule: Codec | null = null;
-const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
-    codecModule = val;
-    self['codec'] = codecModule;
-});
+
+function loadCodec(): Promise<void> {
+    // wrapped promise to avoid exceptions with direct call to codec(...)
+    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
+        .then(
+            val => {
+                codecModule = val;
+                self['codec'] = codecModule;
+                resolve();
+            },
+            reason => reject(reason)));
+}
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
+            const codecWasmPath = getVersionedArtifactPath(codecWasm);
             if (filename.slice(-4) === 'wasm')
-                return codecWasm;
+                return codecWasmPath;
             /// #if MEM_LEAK_DETECTION
             else if (filename.slice(-3) === 'map')
                 return codecWasmMap;
@@ -59,8 +70,25 @@ export class OpusDecoder {
 
     public static async create(workletPort: MessagePort): Promise<OpusDecoder> {
         if (codecModule == null) {
-            await codecModuleReady;
+            // Setting encoder module
+            let retryCount = 0;
+            let whenCodecModuleCreated = loadCodec();
+            while (codecModule == null && retryCount++ < 3) {
+                try {
+                    await whenCodecModuleCreated;
+                    break;
+                }
+                catch (e) {
+                    warnLog.log(e, "error loading codec WASM module.")
+                    await delayAsync(300);
+                    whenCodecModuleCreated = loadCodec();
+                }
+            }
         }
+
+        if (codecModule == null)
+            throw new Error("Unable to load codec WASM module.");
+
         const decoder = new codecModule.Decoder();
         return new OpusDecoder(decoder, workletPort);
     }

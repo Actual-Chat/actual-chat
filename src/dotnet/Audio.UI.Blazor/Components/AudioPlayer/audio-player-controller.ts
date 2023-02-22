@@ -5,13 +5,15 @@ import { audioContextSource } from 'audio-context-source';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 import { Log, LogLevel, LogScope } from 'logging';
 import { AudioContextRef } from 'audio-context-ref';
+import { getVersionedArtifactPath } from 'versioning';
 
 const LogScope: LogScope = 'AudioPlayerController';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-const worker = new Worker('/dist/opusDecoderWorker.js');
+const opusDecoderWorkerPath = getVersionedArtifactPath('/dist/opusDecoderWorker.js');
+const worker = new Worker(opusDecoderWorkerPath);
 const workerCallbacks = new Map<number, () => void>();
 let workerLastCallbackId = 0;
 
@@ -74,7 +76,9 @@ export class AudioPlayerController implements Resettable {
                 type: 'create',
                 controllerId: controller.id,
                 callbackId: callbackId,
-                workletPort: controller.decoderChannel.port1
+                workletPort: controller.decoderChannel.port1,
+                // @ts-ignore
+                artifactVersions: window.App.artifactVersions,
             };
             // let's create a decoder object on the web worker side
             worker.postMessage(msg, [controller.decoderChannel.port1]);

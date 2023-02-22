@@ -1,48 +1,34 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Module
-@implements IAsyncDisposable
-@inherits FusionComponentBase
 
-<div class="@Class copy-to-clipboard">
-    <input
-        @ref="_inputRef"
-        class="@InputClass"
-        type="text"
-        value="@Text"
-        data-copy-text="@CopyText"/>
-    <ButtonRound
-        @ref="_buttonRef"
-        ContentClass="flex-x gap-x-1"
-        Class="@ButtonClass"
-        Tooltip="Copy"
-        TooltipPosition="FloatingPosition.Top">
-        <i class="c-copy icon-copy text-xl" aria-hidden="true"></i>
-        <i class="c-copied fa fa-check text-xl" aria-hidden="true"></i>
-    </ButtonRound>
+<div class="copy-to-clipboard">
+    @if (ShowInput) {
+        <input
+            @ref="_inputRef"
+            readonly="readonly"
+            class="@InputClass flex-1"
+            type="text"
+            value="@(Caption.NullIfEmpty() ?? Text)"/>
+    }
+
+    <CopyTrigger Tooltip="@Tooltip" CopyText="@Text">
+        <ButtonRound
+            ContentClass="flex-x gap-x-1"
+            Class="@ButtonClass">
+            <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+            <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
+        </ButtonRound>
+    </CopyTrigger>
 </div>
 
 @code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-
     private ElementReference _inputRef;
-    private ButtonRound _buttonRef = null!;
-    private IJSObjectReference _jsRef = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string InputClass { get; set; } = "";
-    [Parameter] public string Text { get; set; } = "";
-    [Parameter] public string? CopyText { get; set; }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender)
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.CopyToClipboard.create", _inputRef, _buttonRef.ButtonRef);
-    }
-
-    public async ValueTask DisposeAsync() {
-        await _jsRef.DisposeSilentlyAsync("dispose");
-        _jsRef = null!;
-    }
+    [Parameter] public string Tooltip { get; set; } = "Copy";
+    [Parameter] public bool ShowInput { get; set; }
+    [Parameter, EditorRequired] public string Text { get; set; }
+    [Parameter] public string? Caption { get; set; }
 }
 

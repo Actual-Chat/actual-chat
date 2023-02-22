@@ -115,7 +115,7 @@ public partial class ChatUI : WorkerBase, IHasServices
                 .ThenByDescending(c => c.News.LastTextEntry?.Version),
             ChatListOrder.ByAlphabet => filteredChats
                 .OrderByDescending(c => c.Contact.IsPinned)
-                .ThenBy(c => c.Chat.Title),
+                .ThenBy(c => c.Chat.Title, StringComparer.Ordinal),
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
         var result = orderedChats.ToList();

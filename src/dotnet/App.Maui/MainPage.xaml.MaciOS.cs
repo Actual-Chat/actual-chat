@@ -27,9 +27,7 @@ public partial class MainPage
         => PlatformWebView = e.WebView;
 
     private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
-    {
-        PlatformWebView.UIDelegate = new UIDelegate();
-    }
+        => PlatformWebView!.UIDelegate = new UIDelegate();
 
     private sealed class UIDelegate : WKUIDelegate
     {

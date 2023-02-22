@@ -9,13 +9,12 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
     public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {
         var searchPhrase = filter.ToSearchPhrase(true, true);
-        var mentions = (
-            from name in Names
-            let searchMatch = searchPhrase.GetMatch(name)
-            where searchMatch.Rank > 0 || searchPhrase.IsEmpty
-            orderby searchMatch.Rank descending, name
-            select new MentionSearchResult(name, searchMatch)
-            ).Take(limit)
+        var mentions = Names.Select(name => new { name, searchMatch = searchPhrase.GetMatch(name) })
+            .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
+            .OrderByDescending(@t => t.searchMatch.Rank)
+            .ThenBy(x => x.name, StringComparer.Ordinal)
+            .Select(x => new MentionSearchResult(x.name, x.searchMatch))
+            .Take(limit)
             .ToArray();
         return Task.FromResult(mentions);
     }
