@@ -181,8 +181,8 @@ public class MainActivity : MauiAppCompatActivity
         return account != null;
     }
 
-    public async Task SignOutWithGoogle()
-        => await _googleSignInClient.SignOutAsync().ConfigureAwait(true);
+    public Task SignOutWithGoogle()
+        => _googleSignInClient.SignOutAsync();
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
