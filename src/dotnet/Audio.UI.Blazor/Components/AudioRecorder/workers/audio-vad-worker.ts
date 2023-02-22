@@ -1,12 +1,13 @@
 import Denque from 'denque';
 import SoxrResampler, { SoxrDatatype, SoxrQuality } from 'wasm-audio-resampler';
 import { adjustChangeEventsToSeconds, VoiceActivityDetector } from './audio-vad';
-import { VadMessage } from './audio-vad-worker-message';
+import { CreateVadMessage, VadMessage } from './audio-vad-worker-message';
 import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
 import { Log, LogLevel, LogScope } from 'logging';
+import { getVersionedArtifactPath } from 'versioning';
 
 const LogScope: LogScope = 'AudioVadWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -35,7 +36,7 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
 
         switch (type) {
         case 'create':
-            await onCreate();
+            await onCreate(ev.data as CreateVadMessage);
             break;
         case 'init':
             await onInit(ev.ports[0], ev.ports[1]);
@@ -51,7 +52,7 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
     }
 };
 
-async function onCreate(): Promise<void> {
+async function onCreate(message: CreateVadMessage): Promise<void> {
     if (workletPort != null) {
         throw new Error('workletPort has already been specified.');
     }
@@ -59,6 +60,10 @@ async function onCreate(): Promise<void> {
         throw new Error('encoderPort has already been specified.');
     }
     debugLog?.log(`-> onCreate`);
+    // initialize artifact versions for 'getVersionedArtifactPath' call
+    globalThis.App = {
+        artifactVersions: message.artifactVersions,
+    }
 
     queue.clear();
     resampler = new SoxrResampler(
@@ -69,7 +74,8 @@ async function onCreate(): Promise<void> {
         outputDatatype,
         SoxrQuality.SOXR_MQ,
     );
-    await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
+    const soxrWasmPath = getVersionedArtifactPath(SoxrWasm);
+    await resampler.init(SoxrModule, { 'locateFile': () => soxrWasmPath });
     voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
     await voiceDetector.init();
     debugLog?.log(`<- onCreate`);

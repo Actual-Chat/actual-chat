@@ -57,6 +57,11 @@ async function onCreate(message: CreateDecoderMessage) {
     const { callbackId, workletPort, controllerId } = message;
     // decoders are pooled with the parent object, so we don't need an object pool here
     debugLog?.log(`-> onCreate(#${controllerId})`);
+    // initialize artifact versions for 'getVersionedArtifactPath' call
+    globalThis.App = {
+        artifactVersions: message.artifactVersions,
+    }
+
     const decoder = await OpusDecoder.create(workletPort);
     decoders.set(controllerId, decoder);
     const msg: OperationCompletedDecoderWorkerMessage = {

@@ -18,6 +18,7 @@ import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { CreateEncoderMessage, EndMessage, InitEncoderMessage, StartMessage } from './opus-encoder-worker-message';
 import { delayAsync, PromiseSource } from 'promises';
 import { Log, LogLevel, LogScope } from 'logging';
+import { getVersionedArtifactPath } from 'versioning';
 
 const LogScope: LogScope = 'OpusEncoderWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -31,7 +32,6 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 // TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
-const codecModuleReady = loadCodec();
 
 function loadCodec(): Promise<void> {
     // wrapped promise to avoid exceptions with direct call to codec(...)
@@ -48,8 +48,9 @@ function loadCodec(): Promise<void> {
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
+            const codecWasmPath = getVersionedArtifactPath(codecWasm);
             if (filename.slice(-4) === 'wasm')
-                return codecWasm;
+                return codecWasmPath;
             /// #if MEM_LEAK_DETECTION
             else if (filename.slice(-3) === 'map')
                 return codecWasmMap;
@@ -113,6 +114,10 @@ async function onCreate(message: CreateEncoderMessage): Promise<void> {
     if (vadPort != null)
         throw new Error('vadPort has already been set.');
     debugLog?.log(`-> onCreate`);
+    // initialize artifact versions for 'getVersionedArtifactPath' call
+    globalThis.App = {
+        artifactVersions: message.artifactVersions,
+    }
 
     const retryPolicy: signalR.IRetryPolicy = {
         nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
@@ -144,7 +149,7 @@ async function onCreate(message: CreateEncoderMessage): Promise<void> {
 
     // Setting encoder module
     let retryCount = 0;
-    let whenCodecModuleCreated = codecModuleReady;
+    let whenCodecModuleCreated = loadCodec();
     while (codecModule == null && retryCount++ < 3) {
         try {
             await whenCodecModuleCreated;

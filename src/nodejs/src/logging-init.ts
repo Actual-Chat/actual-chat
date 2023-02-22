@@ -140,6 +140,7 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     minLevels.set('AudioVadWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
+    minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('History', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('MarkupEditor', LogLevel.Debug);

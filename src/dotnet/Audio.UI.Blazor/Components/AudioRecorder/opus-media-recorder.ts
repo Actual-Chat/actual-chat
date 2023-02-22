@@ -6,7 +6,7 @@ import { PromiseSource } from 'promises';
 
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
-import { VadMessage } from './workers/audio-vad-worker-message';
+import { CreateVadMessage, VadMessage } from './workers/audio-vad-worker-message';
 import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 import {
     CreateEncoderMessage,
@@ -15,6 +15,7 @@ import {
     StartMessage,
 } from './workers/opus-encoder-worker-message';
 import { AudioContextRef } from 'audio-context-ref';
+import { getVersionedArtifactPath } from 'versioning';
 
 
 /*
@@ -67,11 +68,12 @@ export class OpusMediaRecorder {
     }
 
     public async load(baseUri: string): Promise<void> {
-        this.worker = new Worker('/dist/opusEncoderWorker.js');
+        const opusEncoderWorkerPath = getVersionedArtifactPath('/dist/opusEncoderWorker.js');
+        this.worker = new Worker(opusEncoderWorkerPath);
         this.worker.onmessage = this.onWorkerMessage;
         this.worker.onerror = this.onWorkerError;
-
-        this.vadWorker = new Worker('/dist/vadWorker.js');
+        const vadWorkerPath = getVersionedArtifactPath('/dist/vadWorker.js');
+        this.vadWorker = new Worker(vadWorkerPath);
 
         if (this.origin.includes('0.0.0.0')) {
             // use server address if the app is MAUI
@@ -84,11 +86,17 @@ export class OpusMediaRecorder {
                 type: 'create',
                 audioHubUrl: audioHubUrl,
                 rpcResultId: rpcResult.id,
+                // @ts-ignore
+                artifactVersions: window.App.artifactVersions,
             };
             this.worker.postMessage(msg);
 
             // it's OK to not wait for vadWorker create
-            const msgVad: VadMessage = { type: 'create', };
+            const msgVad: CreateVadMessage = {
+                type: 'create',
+                // @ts-ignore
+                artifactVersions: window.App.artifactVersions,
+            };
             this.vadWorker.postMessage(msgVad);
         });
         this.whenLoaded.resolve(undefined);
