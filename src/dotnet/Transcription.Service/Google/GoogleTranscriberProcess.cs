@@ -64,6 +64,7 @@ public class GoogleTranscriberProcess : WorkerBase
                 ProcessResponse(response);
         }
         catch (Exception e) {
+            Log.LogWarning(e, $"{nameof(GoogleTranscriberProcess)}.{nameof(ProcessResponses)} failed. IsCancelled={{IsCancelled}}", cancellationToken.IsCancellationRequested);
             error = e;
             throw;
         }

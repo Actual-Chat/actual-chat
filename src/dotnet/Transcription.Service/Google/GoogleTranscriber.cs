@@ -48,7 +48,7 @@ public class GoogleTranscriber : ITranscriber
         var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
         var recognizeRequests = speechClient
             .StreamingRecognize(
-                new CallSettings(cancellationToken, Expiration.FromTimeout(TimeSpan.FromMinutes(3)), null, null, null, null),
+                new CallSettings(cancellationToken, Expiration.FromTimeout(TimeSpan.FromMinutes(30)), null, null, null, null),
                 new BidirectionalStreamingSettings(1));
         var streamingRecognitionConfig = new StreamingRecognitionConfig {
             Config = new RecognitionConfig {
