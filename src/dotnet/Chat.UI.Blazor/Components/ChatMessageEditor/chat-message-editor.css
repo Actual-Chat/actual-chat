@@ -309,7 +309,3 @@ body.hoverable .related-chat-entry .btn.btn-round:hover .btn-content {
 body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }
-.attach-dropdown {
-    @apply self-end;
-}
-
