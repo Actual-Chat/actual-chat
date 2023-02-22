@@ -1,6 +1,7 @@
 import { Log, LogLevel, LogScope } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
+import { Resettable } from 'resettable';
 
 const LogScope: LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);

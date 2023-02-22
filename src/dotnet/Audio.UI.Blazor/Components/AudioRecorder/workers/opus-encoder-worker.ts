@@ -10,14 +10,16 @@ import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { HttpTransportType } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { handleRpc } from 'rpc';
+import { rpcClientServer, rpcServer } from 'rpc';
 
-import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
-import { VoiceActivityChanged } from './audio-vad';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
-import { CreateEncoderMessage, EndMessage, InitEncoderMessage, StartMessage } from './opus-encoder-worker-message';
-import { delayAsync, PromiseSource } from 'promises';
+import { OpusEncoderWorker } from './opus-encoder-worker-contract';
+import { delayAsync } from 'promises';
+import { Disposable } from 'disposable';
 import { Log, LogLevel, LogScope } from 'logging';
+import { AudioVadWorker } from './audio-vad-worker-contract';
+import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
+import { VoiceActivityChange } from './audio-vad';
 
 const LogScope: LogScope = 'OpusEncoderWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -33,50 +35,18 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 let codecModule: Codec | null = null;
 const codecModuleReady = loadCodec();
 
-function loadCodec(): Promise<void> {
-    // wrapped promise to avoid exceptions with direct call to codec(...)
-    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
-        .then(
-            val => {
-                codecModule = val;
-                self['codec'] = codecModule;
-                resolve();
-            },
-            reason => reject(reason)));
-}
-
-function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
-    return {
-        locateFile: (filename: string) => {
-            if (filename.slice(-4) === 'wasm')
-                return codecWasm;
-            /// #if MEM_LEAK_DETECTION
-            else if (filename.slice(-3) === 'map')
-                return codecWasmMap;
-            /// #endif
-            // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
-            // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
-                return filename;
-            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-        },
-    };
-}
-
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 4;
 const FADE_CHUNKS = 2;
 const CHUNK_SIZE = 960;
 
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
-const worker = self as unknown as Worker;
-
 let hubConnection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'voice';
-let workletPort: MessagePort = null;
-let vadPort: MessagePort = null;
+let encoderWorklet: OpusEncoderWorklet & Disposable = null;
+let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder;
 let lastInitArguments: { sessionId: string, chatId: string } | null = null;
 let isEncoding = false;
@@ -86,135 +56,96 @@ let lowNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
-worker.onmessage = async (ev: MessageEvent<CreateEncoderMessage | InitEncoderMessage | StartMessage | EndMessage>) => handleRpc(
-    ev.data.rpcResultId,
-    (message) => worker.postMessage(message),
-    async () => {
-        const request = ev.data;
-        switch (request.type) {
-            case 'create':
-                return await onCreate(request as CreateEncoderMessage);
-            case 'init':
-                return await onInit(request as InitEncoderMessage, ev.ports[0], ev.ports[1]);
-            case 'start':
-                return await onStart(request as StartMessage);
-            case 'end':
-                return onEnd();
-            default:
-                throw new Error(`Unsupported message type: ${request['type'] as string}`);
+let serverImpl: OpusEncoderWorker = {
+    create: async (audioHubUrl: string): Promise<void> => {
+        if (encoderWorklet != null || vadWorker != null)
+            throw 'Already initialized.';
+        debugLog?.log(`-> onCreate`);
+
+        const retryPolicy: signalR.IRetryPolicy = {
+            nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
+                if (retryContext.previousRetryCount < 5)
+                    return 100;
+
+                const averageDelay = Math.min(5000, retryContext.elapsedMilliseconds / retryContext.previousRetryCount);
+                return averageDelay * (1.2 + Math.random());
+            },
+        };
+
+        // Connect to SignalR Hub
+        hubConnection = new signalR.HubConnectionBuilder()
+            .withUrl(audioHubUrl, {
+                skipNegotiation: true,
+                transport: signalR.HttpTransportType.WebSockets
+            })
+            .withAutomaticReconnect(retryPolicy)
+            .withHubProtocol(new MessagePackHubProtocol())
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+        await hubConnection.start();
+
+        // Get fade-in window
+        kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
+        pinkNoiseChunk = initPinkNoiseBuffer(1.0);
+        lowNoiseChunk = initPinkNoiseBuffer(0.005);
+        silenceChunk = new Float32Array(CHUNK_SIZE);
+
+        // Setting encoder module
+        let retryCount = 0;
+        let whenCodecModuleCreated = codecModuleReady;
+        while (codecModule == null && retryCount++ < 3) {
+            try {
+                await whenCodecModuleCreated;
+                break;
+            }
+            catch (e) {
+                warnLog.log(e, "error loading codec WASM module.")
+                await delayAsync(300);
+                whenCodecModuleCreated = loadCodec();
+            }
         }
+        if (codecModule == null)
+            throw new Error("Unable to load codec WASM module.");
+
+        // warmup encoder
+        encoder = new codecModule.Encoder();
+        for (let i=0; i < 2; i++) {
+            encoder.encode(pinkNoiseChunk.buffer);
+        }
+        encoder.delete();
+        encoder = null;
+
+        debugLog?.log(`<- onCreate`);
+
+        state = 'created';
     },
-    error => errorLog?.log(`worker.onmessage: unhandled error:`, error),
-);
 
-async function onCreate(message: CreateEncoderMessage): Promise<void> {
-    if (workletPort != null)
-        throw new Error('workletPort has already been set.');
-    if (vadPort != null)
-        throw new Error('vadPort has already been set.');
-    debugLog?.log(`-> onCreate`);
+    init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
+        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(workletPort, this);
+        vadWorker = rpcClientServer<AudioVadWorker>(vadPort, this);
 
-    const retryPolicy: signalR.IRetryPolicy = {
-        nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
-            if (retryContext.previousRetryCount < 5)
-                return 100;
+        state = 'ended';
+    },
 
-            const averageDelay = Math.min(5000, retryContext.elapsedMilliseconds / retryContext.previousRetryCount);
-            return averageDelay * (1.2 + Math.random());
-        },
-    };
+    start: async (sessionId: string, chatId: string): Promise<void> => {
+        lastInitArguments = { sessionId, chatId };
+        debugLog?.log(`onStart`);
+        encoder = new codecModule.Encoder();
 
-    // Connect to SignalR Hub
-    hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(message.audioHubUrl, {
-            skipNegotiation: true,
-            transport: signalR.HttpTransportType.WebSockets
-        })
-        .withAutomaticReconnect(retryPolicy)
-        .withHubProtocol(new MessagePackHubProtocol())
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
-    await hubConnection.start();
+        state = 'encoding';
+        vadState = 'silence';
+    },
 
-    // Get fade-in window
-    kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
-    pinkNoiseChunk = initPinkNoiseBuffer(1.0);
-    lowNoiseChunk = initPinkNoiseBuffer(0.005);
-    silenceChunk = new Float32Array(CHUNK_SIZE);
+    stop: async (): Promise<void> => {
+        state = 'ended';
+        processQueue('out');
+        recordingSubject.complete();
+        encoder?.delete();
+        encoder = null;
+    },
 
-    // Setting encoder module
-    let retryCount = 0;
-    let whenCodecModuleCreated = codecModuleReady;
-    while (codecModule == null && retryCount++ < 3) {
-        try {
-            await whenCodecModuleCreated;
-            break;
-        }
-        catch (e) {
-            warnLog.log(e, "error loading codec WASM module.")
-            await delayAsync(300);
-            whenCodecModuleCreated = loadCodec();
-        }
-    }
-    if (codecModule == null)
-        throw new Error("Unable to load codec WASM module.");
-
-    // warmup encoder
-    encoder = new codecModule.Encoder();
-    for (let i=0; i < 2; i++) {
-        encoder.encode(pinkNoiseChunk.buffer);
-    }
-    encoder.delete();
-    encoder = null;
-
-    debugLog?.log(`<- onCreate`);
-
-    state = 'created';
-}
-
-async function onInit(message: InitEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
-    workletPort = workletMessagePort;
-    vadPort = vadMessagePort;
-    workletPort.onmessage = onWorkletMessage;
-    vadPort.onmessage = onVadMessage;
-
-    state = 'ended';
-}
-
-async function onStart(message: StartMessage): Promise<void> {
-    const { sessionId, chatId } = message;
-    lastInitArguments = { sessionId, chatId };
-
-    debugLog?.log(`onStart`);
-
-    encoder = new codecModule.Encoder();
-
-    state = 'encoding';
-    vadState = 'silence';
-}
-
-function onEnd(): void {
-    state = 'ended';
-    processQueue('out');
-    recordingSubject.complete();
-    encoder?.delete();
-    encoder = null;
-}
-
-// Worklet sends messages with raw audio
-const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
-    try {
-        const { type, buffer } = ev.data;
-        // TODO: add offset & length to the message type
-        let audioBuffer: ArrayBuffer;
-        switch (type) {
-        case 'buffer':
-            audioBuffer = buffer;
-            break;
-        default:
-            break;
-        }
-        if (audioBuffer.byteLength === 0)
+    onEncoderWorkletOutput: async (buffer: ArrayBuffer): Promise<void> => {
+        if (buffer.byteLength === 0)
             return;
 
         if (state === 'encoding') {
@@ -224,21 +155,12 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
             else if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME)
                 queue.shift();
         }
-    }
-    catch (error) {
-        errorLog?.log(`onWorkletMessage: unhandled error:`, error);
-    }
-};
+    },
 
-const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
-    try {
-        const vadEvent = ev.data;
-        debugLog?.log(`onVadMessage, data:`, vadEvent);
+    onVoiceActivityChange: async (change: VoiceActivityChange) => {
+        debugLog?.log(`onVoiceActivityChange:`, change);
 
-        const newVadState = vadEvent.kind === 'end'
-            ? 'silence'
-            : 'voice';
-
+        const newVadState = change.kind === 'end' ? 'silence' : 'voice';
         if (vadState === newVadState)
             return;
         if (state !== 'encoding')
@@ -268,10 +190,41 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             processQueue('in');
         }
     }
-    catch (error) {
-        errorLog?.log(`onVadMessage: unhandled error:`, error);
-    }
-};
+}
+const server = rpcServer(globalThis as unknown as Worker, serverImpl);
+
+// Helpers
+
+function loadCodec(): Promise<void> {
+    // wrapped promise to avoid exceptions with direct call to codec(...)
+    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
+        .then(
+            val => {
+                codecModule = val;
+                self['codec'] = codecModule;
+                resolve();
+            },
+            reason => reject(reason)));
+}
+
+function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+    return {
+        locateFile: (filename: string) => {
+            if (filename.slice(-4) === 'wasm')
+                return codecWasm;
+            /// #if MEM_LEAK_DETECTION
+            else if (filename.slice(-3) === 'map')
+                return codecWasmMap;
+                /// #endif
+                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            // emscripten 1.37.25 loads memory initializers as data: URI
+            else if (filename.slice(0, 5) === 'data:')
+                return filename;
+            else
+                throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
+        },
+    };
+}
 
 function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (isEncoding)
@@ -294,9 +247,9 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         }
 
         while (!queue.isEmpty()) {
-            const item = queue.shift();
+            const buffer = queue.shift();
             if (fadeWindowIndex !== null) {
-                const samples = new Float32Array(item);
+                const samples = new Float32Array(buffer);
                 if (fade === 'in')
                     for (let i = 0; i < samples.length; i++)
                         samples[i] *= kbdWindow[fadeWindowIndex + i];
@@ -309,9 +262,8 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     fadeWindowIndex = null;
             }
 
-            const result = encoder.encode(item);
-            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
-            workletPort.postMessage(workletMessage, [item]);
+            const result = encoder.encode(buffer);
+            void encoderWorklet.append(buffer);
             recordingSubject.next(result);
             chunkTimeOffset += 20;
         }

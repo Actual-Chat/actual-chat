@@ -64,13 +64,13 @@ export class AudioContextSource implements Disposable {
         return this._whenDisposed;
     }
 
-    public async getRef(): Promise<AudioContextRef> {
+    public async getRef(onChange?: (context: AudioContext) => unknown): Promise<AudioContextRef> {
         debugLog?.log('-> getRef()');
         this.throwIfDisposed();
         try {
             const audioContext = await this._whenReady;
             this.throwIfDisposed();
-            return new AudioContextRef(this, audioContext);
+            return new AudioContextRef(this, audioContext, onChange);
         }
         finally {
             debugLog?.log('<- getRef, refCount:', this.refCount);

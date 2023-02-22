@@ -1,6 +1,6 @@
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
 import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
-import { Resettable } from 'object-pool';
+import { Resettable } from 'resettable';
 import { audioContextSource } from 'audio-context-source';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 import { Log, LogLevel, LogScope } from 'logging';

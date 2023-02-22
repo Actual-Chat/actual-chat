@@ -1,6 +1,9 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
-import { BufferEncoderWorkletMessage, EncoderWorkletMessage } from './opus-encoder-worklet-message';
+import { Disposable } from 'disposable';
+import { rpcClientServer, rpcServer } from 'rpc';
+import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
+import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'OpusEncoderWorkletProcessor';
@@ -14,16 +17,17 @@ export interface ProcessorOptions {
     timeSlice: number;
 }
 
-export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
+export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implements OpusEncoderWorklet {
     private static allowedTimeSlice = [20, 40, 60, 80];
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferDeque: Denque<ArrayBuffer>;
-
-    private workerPort: MessagePort;
+    private server: Disposable;
+    private worker: OpusEncoderWorker & Disposable;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
+        warnLog?.log('ctor');
         const { timeSlice } = options.processorOptions as ProcessorOptions;
 
         if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
@@ -38,7 +42,15 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
-        this.port.onmessage = this.onRecorderMessage;
+        this.server = rpcServer(this.port, this);
+    }
+
+    public async init(workerPort: MessagePort): Promise<void> {
+        this.worker = rpcClientServer<OpusEncoderWorker>(workerPort, this);
+    }
+
+    public async append(buffer: ArrayBuffer): Promise<void> {
+        this.bufferDeque.push(buffer);
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
@@ -69,15 +81,10 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
                 audioBuffer.push(new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow));
 
                 if (this.buffer.pull(audioBuffer)) {
-                    if (this.workerPort !== undefined) {
-                        const bufferMessage: BufferEncoderWorkletMessage = {
-                            type: 'buffer',
-                            buffer: audioArrayBuffer,
-                        };
-                        this.workerPort.postMessage(bufferMessage, [audioArrayBuffer]);
-                    } else {
+                    if (this.worker != null)
+                        void this.worker.onEncoderWorkletOutput(audioArrayBuffer);
+                    else
                         warnLog?.log('process: worklet port is still undefined!');
-                    }
                 } else {
                     this.bufferDeque.unshift(audioArrayBuffer);
                 }
@@ -88,41 +95,6 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         }
 
         return true;
-    }
-
-    private onWorkerMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
-        try {
-            const { type, buffer } = ev.data;
-
-            switch (type) {
-            case 'buffer':
-                this.bufferDeque.push(buffer);
-                break;
-            default:
-                break;
-            }
-        }
-        catch (error) {
-            errorLog?.log(`onWorkerMessage: unhandled error:`, error);
-        }
-    }
-
-    private onRecorderMessage = (ev: MessageEvent<EncoderWorkletMessage>) => {
-        try {
-            const { type } = ev.data;
-
-            switch (type) {
-            case 'init':
-                this.workerPort = ev.ports[0];
-                this.workerPort.onmessage = this.onWorkerMessage;
-                break;
-            default:
-                break;
-            }
-        }
-        catch (error) {
-            errorLog?.log(`onRecorderMessage: unhandled error:`, error);
-        }
     }
 }
 

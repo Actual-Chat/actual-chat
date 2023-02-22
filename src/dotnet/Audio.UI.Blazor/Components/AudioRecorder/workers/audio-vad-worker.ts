@@ -1,11 +1,14 @@
 import Denque from 'denque';
+import { Disposable } from 'disposable';
 import SoxrResampler, { SoxrDatatype, SoxrQuality } from 'wasm-audio-resampler';
 import { adjustChangeEventsToSeconds, VoiceActivityDetector } from './audio-vad';
-import { VadMessage } from './audio-vad-worker-message';
+import { AudioVadWorker } from './audio-vad-worker-contract';
 import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
-import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
+import { rpcClientServer, rpcServer } from 'rpc';
+import { OpusEncoderWorker } from './opus-encoder-worker-contract';
+import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'AudioVadWorker';
@@ -22,100 +25,62 @@ const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const resampleBuffer = new Uint8Array(512 * 4 * 2);
 
-let workletPort: MessagePort = null;
-let isActive: boolean = false;
-let encoderPort: MessagePort = null;
+let vadWorklet: AudioVadWorklet & Disposable = null;
+let encoderWorker: OpusEncoderWorker & Disposable = null;
 let resampler: SoxrResampler = null;
 let voiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
+let isActive = false;
 
-onmessage = async (ev: MessageEvent<VadMessage>) => {
-    try {
-        const { type } = ev.data;
+const serverImpl: AudioVadWorker = {
+    create: async (): Promise<void> => {
+        if (vadWorklet != null || encoderWorker != null)
+            throw 'Already initialized.';
+        debugLog?.log(`-> onCreate`);
 
-        switch (type) {
-        case 'create':
-            await onCreate();
-            break;
-        case 'init':
-            await onInit(ev.ports[0], ev.ports[1]);
-            break;
-        case 'reset':
-            onReset();
-            break;
-        default:
-            throw new Error(`Unsupported message type: ${type as string}`);
-        }
-    } catch (error) {
-        errorLog?.log(`onmessage: unhandled error:`, error);
-    }
-};
+        queue.clear();
+        resampler = new SoxrResampler(
+            CHANNELS,
+            IN_RATE,
+            OUT_RATE,
+            inputDatatype,
+            outputDatatype,
+            SoxrQuality.SOXR_MQ,
+        );
+        await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
+        voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
+        await voiceDetector.init();
+        debugLog?.log(`<- onCreate`);
+    },
 
-async function onCreate(): Promise<void> {
-    if (workletPort != null) {
-        throw new Error('workletPort has already been specified.');
-    }
-    if (encoderPort != null) {
-        throw new Error('encoderPort has already been specified.');
-    }
-    debugLog?.log(`-> onCreate`);
+    init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
+        vadWorklet = rpcClientServer<AudioVadWorklet>(workletPort, this);
+        encoderWorker = rpcClientServer<OpusEncoderWorker>(encoderWorkerPort, this);
+        isActive = true;
+    },
 
-    queue.clear();
-    resampler = new SoxrResampler(
-        CHANNELS,
-        IN_RATE,
-        OUT_RATE,
-        inputDatatype,
-        outputDatatype,
-        SoxrQuality.SOXR_MQ,
-    );
-    await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
-    voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
-    await voiceDetector.init();
-    debugLog?.log(`<- onCreate`);
-}
+    reset: async (): Promise<void> => {
+        // it is safe to skip init while it still not active
+        if (!isActive)
+            return;
 
-async function onInit(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
-    workletPort = workletMessagePort;
-    encoderPort = encoderMessagePort;
-    workletPort.onmessage = onWorkletMessage;
-    isActive = true;
-}
+        // resample silence to clean up internal isActive
+        const silence = new Uint8Array(768 * 4);
+        resampler.processChunk(silence, resampleBuffer);
+        voiceDetector.reset();
+    },
 
-function onReset(): void {
-    // it is safe to skip init while it still not active
-    if (!isActive)
-        return;
+    append: async (buffer: ArrayBuffer): Promise<void> => {
+        if (!isActive)
+            return;
 
-    // resample silence to clean up internal isActive
-    const silence = new Uint8Array(768 * 4);
-    resampler.processChunk(silence, resampleBuffer);
-    voiceDetector.reset();
-}
-
-const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
-    if (!isActive)
-        return;
-
-    try {
-        const { type, buffer } = ev.data;
-
-        let vadBuffer: ArrayBuffer;
-        switch (type) {
-        case 'buffer':
-            vadBuffer = buffer;
-            break;
-        default:
-            break;
-        }
-        if (vadBuffer && vadBuffer.byteLength !== 0) {
+        if (buffer && buffer.byteLength !== 0) {
             queue.push(buffer);
             await processQueue();
         }
-    } catch (error) {
-        errorLog?.log(`onWorkletMessage: unhandled error:`, error);
-    }
+    },
 };
+const server = rpcServer(globalThis as unknown as Worker, serverImpl);
 
 async function processQueue(): Promise<void> {
     if (isVadRunning || resampler == null)
@@ -131,19 +96,13 @@ async function processQueue(): Promise<void> {
             const buffer = queue.shift();
             const dataToResample = new Uint8Array(buffer);
             const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
-
-            const bufferMessage: BufferVadWorkletMessage = {
-                type: 'buffer',
-                buffer: buffer,
-            };
-
-            workletPort.postMessage(bufferMessage, [buffer]);
+            void vadWorklet.append(buffer);
 
             const monoPcm = new Float32Array(resampled, 0, 512);
             const vadEvent = await voiceDetector.appendChunk(monoPcm);
             if (vadEvent) {
                 const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
-                encoderPort.postMessage(adjustedVadEvent);
+                void encoderWorker.onVoiceActivityChange(adjustedVadEvent);
             }
         }
     }

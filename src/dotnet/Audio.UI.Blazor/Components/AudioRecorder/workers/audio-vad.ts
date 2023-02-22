@@ -8,16 +8,23 @@ import { LogScope } from 'logging';
 
 const LogScope: LogScope = 'AudioVad';
 
+const SAMPLE_RATE = 16000;
+const MIN_SILENCE_SAMPLES = 8000; // 500ms
+const MIN_SPEECH_SAMPLES = 8000; // 500ms
+const MAX_SPEECH_SAMPLES = 16000 * 60 * 2; // 2m
+const PAD_SAMPLES = 512;
+const SAMPLES_PER_WINDOW = 512; // 32ms
+
 export type VoiceActivityKind = 'start' | 'end';
 
-export interface VoiceActivityChanged {
+export interface VoiceActivityChange {
     kind: VoiceActivityKind;
     offset: number;
     duration?: number;
     speechProb: number;
 }
 
-export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate = SAMPLE_RATE): VoiceActivityChanged {
+export function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate = SAMPLE_RATE): VoiceActivityChange {
     return {
         kind: event.kind,
         offset: event.offset / sampleRate,
@@ -25,13 +32,6 @@ export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleR
         duration: event.duration === null ? null : event.duration / sampleRate
     };
 }
-
-const SAMPLE_RATE = 16000;
-const MIN_SILENCE_SAMPLES = 8000; // 500ms
-const MIN_SPEECH_SAMPLES = 8000; // 500ms
-const MAX_SPEECH_SAMPLES = 16000 * 60 * 2; // 2m
-const PAD_SAMPLES = 512;
-const SAMPLES_PER_WINDOW = 512; // 32ms
 
 export class VoiceActivityDetector {
     private readonly modelUri: URL;
@@ -41,7 +41,7 @@ export class VoiceActivityDetector {
 
     private session: ort.InferenceSession = null;
     private sampleCount = 0;
-    private lastActivityEvent: VoiceActivityChanged;
+    private lastActivityEvent: VoiceActivityChange;
     private endOffset?: number = null;
     private speechSteps = 0;
     private speechProbabilities: StreamedMedian | null = null;
@@ -73,7 +73,7 @@ export class VoiceActivityDetector {
         };
     }
 
-    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged | null> {
+    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | null> {
         const { movingAverages, speechBoundaries, h0, c0 } = this;
         if (this.session == null) {
             // skip processing until initialized
