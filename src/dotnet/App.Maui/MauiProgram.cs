@@ -326,8 +326,6 @@ public static partial class MauiProgram
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
-        services.AddScoped<ClipboardUI>(c => new AndroidClipboardUI(
-            c.GetRequiredService<IJSRuntime>()));
 #elif IOS
         services.AddTransient<IDeviceTokenRetriever, IosDeviceTokenRetriever>(_ => new IosDeviceTokenRetriever());
         services.AddScoped<INotificationPermissions>(c => new IosNotificationPermissions());

@@ -17,7 +17,6 @@
     <PackageReference Include="FirebaseAdmin" />
     <PackageReference Include="Google.Apis" />
     <PackageReference Include="Google.Api.Gax.Rest" />
-    <PackageReference Include="Google.Api.Gax.Grpc.GrpcCore" />
   </ItemGroup>
 
 </Project>

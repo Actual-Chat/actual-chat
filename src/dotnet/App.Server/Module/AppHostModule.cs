@@ -293,7 +293,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             );
         }
         otelBuilder.ConfigureResource(builder => builder
-                .AddService("App", "actualchat", AppVersion))
-            .StartWithHost();
+            .AddService("App", "actualchat", AppVersion));
     }
 }
