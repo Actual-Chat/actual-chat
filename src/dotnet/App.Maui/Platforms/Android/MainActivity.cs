@@ -95,14 +95,13 @@ public class MainActivity : MauiAppCompatActivity
         _requestPermissionLauncher = RegisterForActivityResult(
             new ActivityResultContracts.RequestPermission(),
             new ActivityResultCallback(result => {
-                // TODO(AK): Set permission request result!!
-                var x = result;
+                var isGranted = (bool)result!;
+                var notificationState = isGranted
+                    ? PermissionState.Granted
+                    : PermissionState.Denied;
+                var notificationUI = AppServices.GetRequiredService<NotificationUI>();
+                notificationUI.UpdateNotificationStatus(notificationState);
             }));
-        // ContextCompat.CheckSelfPermission(ApplicationContext,  Manifest.Permission.PostNotifications)
-        // if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
-        // {
-        //     ActivityCompat.RequestPermissions(this, new[] { Manifest.Permission.PostNotifications }, 0);
-        // }
         CreateNotificationChannel();
 
         TryProcessNotificationTap(Intent);
@@ -163,8 +162,8 @@ public class MainActivity : MauiAppCompatActivity
                 Permission.Granted => PermissionState.Granted,
                 _ => throw new ArgumentOutOfRangeException(),
             };
-            var notificationUi = AppServices.GetRequiredService<NotificationUI>();
-            notificationUi.UpdateNotificationStatus(notificationState);
+            var notificationUI = AppServices.GetRequiredService<NotificationUI>();
+            notificationUI.UpdateNotificationStatus(notificationState);
         }
     }
 

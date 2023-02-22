@@ -46,9 +46,7 @@ public class AndroidNotificationPermissions : INotificationPermissions
     private void RequestPermission()
     {
         if (Platform.CurrentActivity is MainActivity activity)
-            activity.RequestPermissions( Manifest.Permission.PostNotifications);
-        // Code below doesn't work
-        // ActivityCompat.RequestPermissions(activity, new[] { Manifest.Permission.PostNotifications }, MainActivity.NotificationPermissionID);
+            activity.RequestPermissions(Manifest.Permission.PostNotifications);
     }
 
 }
