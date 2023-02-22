@@ -1,5 +1,4 @@
 using Android.Webkit;
-using Java.Interop;
 using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
@@ -23,50 +22,10 @@ public partial class MauiBlazorWebViewHandler
         var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
-        var jsInterface = new JavascriptInterface(this, platformView);
+        var jsInterface = new JavascriptToAndroidInterface(this, platformView);
+        // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");
         platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
-    }
-
-    private class JavascriptInterface : Java.Lang.Object
-    {
-        private readonly MauiBlazorWebViewHandler _handler;
-        private readonly Android.Webkit.WebView _webView;
-
-        public event Action<string> MessageReceived = m => { };
-
-        public JavascriptInterface(MauiBlazorWebViewHandler handler, Android.Webkit.WebView webView)
-        {
-            _handler = handler;
-            _webView = webView;
-        }
-
-        [JavascriptInterface]
-        [Export("DOMContentLoaded")]
-        public void OnDOMContentLoaded()
-        {
-            _trace.Track("OnDOMContentLoaded");
-            _webView.Post(() => {
-                try {
-                    _trace.Track("window.App.initPage");
-                    var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
-                    var script = $"window.App.initPage('{_handler.UrlMapper.BaseUrl}', '{sessionHash}')";
-                    _webView.EvaluateJavascript(script, null);
-                }
-                catch (Exception ex) {
-                    Debug.WriteLine(ex.ToString());
-                }
-            });
-        }
-
-        [JavascriptInterface]
-        [Export("postMessage")]
-        public void OnPostMessage(string data)
-        {
-            _webView.Post(() => {
-                MessageReceived.Invoke(data);
-            });
-        }
     }
 
     private class WebViewClientOverride : WebViewClient

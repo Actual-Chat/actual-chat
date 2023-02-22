@@ -324,8 +324,6 @@ public static partial class MauiProgram
 #if ANDROID
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
-        services.AddScoped<ClipboardUI>(c => new AndroidClipboardUI(
-            c.GetRequiredService<IJSRuntime>()));
 #elif IOS
         services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(_ => new IOSDeviceTokenRetriever());
 #elif MACCATALYST
