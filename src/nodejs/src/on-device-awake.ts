@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Log, LogLevel, LogScope } from 'logging';
-import { getVersionedArtifactPath, Versioning } from 'versioning';
+import { Versioning } from 'versioning';
 
 const LogScope: LogScope = 'OnDeviceAwake';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
