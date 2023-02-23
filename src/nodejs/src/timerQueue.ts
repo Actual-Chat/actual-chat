@@ -25,8 +25,15 @@ export class TimerQueue {
     private readonly heap = new Heap<TimerQueueTimer>((a: TimerQueueTimer, b: TimerQueueTimer) => b.time - a.time);
 
     public enqueue(delayMs: number, callback: () => unknown): TimerQueueTimer {
+        const handle = nextHandle++;
+        if (handle & 15) {
+            // We want to make sure expired timers trigger even if triggerExpired()
+            // somehow isn't invoked explicitly.
+            this.triggerExpired();
+        }
+
         const now = Date.now();
-        const timer = new TimerQueueTimer(nextHandle++, callback, now + delayMs);
+        const timer = new TimerQueueTimer(handle, callback, now + delayMs);
         this.map.set(timer.handle, timer);
         this.heap.add(timer);
         return timer;
