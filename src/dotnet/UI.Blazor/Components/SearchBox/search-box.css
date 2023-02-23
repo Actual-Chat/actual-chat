@@ -1,14 +1,20 @@
 .search-box {
-    @apply w-full;
+    @apply flex-1;
 }
 .search-box label {
     @apply relative flex-x;
 }
 .search-box i {
-    @apply flex text-icons-01 w-10 h-10 absolute items-center justify-center;
+    @apply absolute;
+    @apply flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply text-icons-01;
 }
 .search-box input {
-    @apply h-10 rounded-full pl-10 pr-4 text-left bg-04;
+    @apply h-10;
+    @apply pl-10 pr-4;
+    @apply rounded-full;
+    @apply text-left bg-04;
 }
 .search-box input::placeholder {
     @apply text-left;
