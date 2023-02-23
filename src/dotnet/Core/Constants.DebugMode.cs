@@ -14,6 +14,7 @@ public static partial class Constants
         public static bool SyncedState { get; } = false;
         public static bool MarkupParser { get; } = false;
         public static bool ServerFusionMonitor { get; } = false; // Applies only to dev server
+        public static bool DisableStaticFileCaching { get; } = false; // Applies only to dev server
 
         // UI services
         public static bool VirtualList { get; } = false;

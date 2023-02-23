@@ -1,10 +1,11 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { Disposable } from 'disposable';
-import { rpcClientServer, rpcServer } from 'rpc';
+import { rpcClient, rpcClientServer, rpcServer } from 'rpc';
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { Log, LogLevel, LogScope } from 'logging';
+import { timerQueue } from 'timerQueue';
 
 const LogScope: LogScope = 'OpusEncoderWorkletProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -42,11 +43,11 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
-        this.server = rpcServer(this.port, this);
+        this.server = rpcServer(`${LogScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
-        this.worker = rpcClientServer<OpusEncoderWorker>(workerPort, this);
+        this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
     }
 
     public async append(buffer: ArrayBuffer): Promise<void> {
@@ -54,6 +55,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+        timerQueue?.triggerExpired();
         try {
             if (inputs == null
                 || inputs.length === 0

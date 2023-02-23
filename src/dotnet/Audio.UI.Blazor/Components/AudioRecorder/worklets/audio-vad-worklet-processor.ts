@@ -5,6 +5,7 @@ import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClientServer, rpcServer } from 'rpc';
 import { Log, LogLevel, LogScope } from 'logging';
+import { timerQueue } from 'timerQueue';
 
 const LogScope: LogScope = 'VadAudioWorkletProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -22,11 +23,11 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         warnLog?.log('ctor');
-        this.server = rpcServer(this.port, this);
+        this.server = rpcServer(`${LogScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
-        this.worker = rpcClientServer<AudioVadWorker>(workerPort, this);
+        this.worker = rpcClientServer<AudioVadWorker>(`${LogScope}.worker`, workerPort, this);
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferDeque = new Denque<ArrayBuffer>();
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
@@ -40,6 +41,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+        timerQueue?.triggerExpired();
         if (inputs == null
             || inputs.length === 0
             || inputs[0].length === 0

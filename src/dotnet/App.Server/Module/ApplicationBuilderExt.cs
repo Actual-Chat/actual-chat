@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using ActualChat.Hosting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Primitives;
@@ -65,6 +66,12 @@ public static class ApplicationBuilderExt
             // type when serving a file with a gz extension. We need to correct that before
             // sending the file.
             OnPrepareResponse = ctx => {
+                var mustDisable = false;
+                if (Constants.DebugMode.DisableStaticFileCaching) {
+                    var hostInfo = ctx.Context.RequestServices.GetRequiredService<HostInfo>();
+                    mustDisable = hostInfo.IsDevelopmentInstance;
+                }
+
                 var request = ctx.Context.Request;
                 var hasVersion = request.Query.TryGetValue("v", out var version) && version.Count > 0;
                 var requestPath = request.Path.Value ?? "";
@@ -73,7 +80,7 @@ public static class ApplicationBuilderExt
                 var isJavaScriptOrWasm =
                     OrdinalIgnoreCaseEquals(fileExtension, ".js")
                     || OrdinalIgnoreCaseEquals(fileExtension, ".wasm");
-                var mustNotCache = isJavaScriptOrWasm && !hasVersion;
+                var mustNotCache = mustDisable || (isJavaScriptOrWasm && !hasVersion);
                 if (mustNotCache) {
                     ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, "no-cache");
                     return;

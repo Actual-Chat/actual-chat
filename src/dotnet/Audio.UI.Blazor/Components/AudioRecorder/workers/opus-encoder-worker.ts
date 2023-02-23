@@ -125,8 +125,8 @@ let serverImpl: OpusEncoderWorker = {
     },
 
     init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
-        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(workletPort, this);
-        vadWorker = rpcClientServer<AudioVadWorker>(vadPort, this);
+        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${LogScope}.encoderWorklet`, workletPort, serverImpl);
+        vadWorker = rpcClientServer<AudioVadWorker>(`${LogScope}.vadWorker`, vadPort, serverImpl);
 
         state = 'ended';
     },
@@ -195,7 +195,7 @@ let serverImpl: OpusEncoderWorker = {
         }
     }
 }
-const server = rpcServer(worker, serverImpl);
+const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
 
 // Helpers
 

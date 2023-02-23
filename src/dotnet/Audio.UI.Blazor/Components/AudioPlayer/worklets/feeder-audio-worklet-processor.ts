@@ -14,6 +14,7 @@ import {
     SamplesDecoderWorkerMessage,
 } from '../workers/opus-decoder-worker-message';
 import { Log, LogLevel, LogScope } from 'logging';
+import { timerQueue } from 'timerQueue';
 
 const LogScope: LogScope = 'FeederProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -67,6 +68,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         outputs: Float32Array[][],
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
+        timerQueue?.triggerExpired();
         const { chunks, isPlaying, isPaused, samplesLowThreshold, tooMuchBuffered } = this;
         let { chunkOffset } = this;
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {

@@ -70,11 +70,11 @@ export class OpusMediaRecorder {
     public async load(baseUri: string): Promise<void> {
         const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
         this.encoderWorkerInstance = new Worker(encoderWorkerPath);
-        this.encoderWorker = rpcClient<OpusEncoderWorker>(this.encoderWorkerInstance)
+        this.encoderWorker = rpcClient<OpusEncoderWorker>(`${LogScope}.encoderWorker`, this.encoderWorkerInstance)
 
         const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
         this.vadWorkerInstance = new Worker(vadWorkerPath);
-        this.vadWorker = rpcClient<AudioVadWorker>(this.vadWorkerInstance)
+        this.vadWorker = rpcClient<AudioVadWorker>(`${LogScope}.vadWorker`, this.vadWorkerInstance)
 
         if (this.origin.includes('0.0.0.0')) {
             // use server address if the app is MAUI
@@ -179,7 +179,7 @@ export class OpusMediaRecorder {
             context,
             'opus-encoder-worklet-processor',
             encoderWorkletOptions);
-        this.encoderWorklet = rpcClient<OpusEncoderWorklet>(this.encoderWorkletInstance.port);
+        this.encoderWorklet = rpcClient<OpusEncoderWorklet>(`${LogScope}.encoderWorklet`, this.encoderWorkletInstance.port);
         void this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
 
         const vadWorkerChannel = new MessageChannel();
@@ -194,7 +194,7 @@ export class OpusMediaRecorder {
             channelCountMode: 'explicit',
         };
         this.vadWorkletInstance = new AudioWorkletNode(context, 'audio-vad-worklet-processor', vadWorkletOptions);
-        this.vadWorklet = rpcClient<AudioVadWorklet>(this.vadWorkletInstance.port);
+        this.vadWorklet = rpcClient<AudioVadWorklet>(`${LogScope}.vadWorklet`, this.vadWorkletInstance.port);
         void this.vadWorklet.init(vadWorkerChannel.port2);
 
         await Promise.all([t1, t2]);

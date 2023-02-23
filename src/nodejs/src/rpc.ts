@@ -84,19 +84,20 @@ export function rpc<T>(sender: (rpcPromise: RpcPromise<T>) => void | PromiseLike
 }
 
 export function completeRpc(result: RpcResult): void {
-    const rpcPromise = RpcPromise.get<unknown>(result.id);
-    if (rpcPromise == null) {
+    const promise = RpcPromise.get<unknown>(result.id);
+    if (promise == null) {
+        // eslint-disable-next-line no-debugger
         warnLog?.log(`completeRpc: RpcPromise #${result.id} is not found`);
         return;
     }
     try {
         if (result.error !== undefined)
-            rpcPromise.reject(result.error);
+            promise.reject(result.error);
         else
-            rpcPromise.resolve(result.value);
+            promise.resolve(result.value);
     }
     catch (error) {
-        rpcPromise.reject(error);
+        promise.reject(error);
     }
 }
 
@@ -144,14 +145,18 @@ function getTransferables(args: unknown[]): Transferable[] | undefined {
 }
 
 export function rpcServer(
+    name: string,
     messagePort: MessagePort | Worker,
     serverImpl: object,
     onUnhandledMessage?: (event: MessageEvent<unknown>) => Promise<void>,
     onDispose?: () => void,
 ) : Disposable {
+    if (!serverImpl)
+        throw new Error(`${name}: serverImpl == null!`);
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onUnhandledMessage ??= (event: MessageEvent<unknown>): Promise<void> => {
-        throw new Error(`rpcServer: unhandled message.`);
+        throw new Error(`${name}: unhandled message.`);
     }
 
     const onMessage = async (event: MessageEvent<RpcCall>): Promise<void> => {
@@ -160,7 +165,7 @@ export function rpcServer(
             await onUnhandledMessage(event);
             return;
         }
-        debugLog?.log(`-> rpcServer.onMessage[#${rpcCall.id}]:`, rpcCall)
+        debugLog?.log(`-> ${name}.onMessage[#${rpcCall.id}]:`, rpcCall)
         let value: unknown = undefined;
         let error: unknown = undefined;
         try {
@@ -170,19 +175,19 @@ export function rpcServer(
                 await onUnhandledMessage(event);
                 return;
             }
-            value = await method.apply(this, rpcCall.args);
+            value = await method.apply(serverImpl, rpcCall.args);
         }
         catch (e) {
             error = e;
         }
         const result = new RpcResult(rpcCall.id, value, error);
-        debugLog?.log(`<- rpcServer.onMessage[#${rpcCall.id}]:`, result)
+        debugLog?.log(`<- ${name}.onMessage[#${rpcCall.id}]:`, result)
         messagePort.postMessage(result);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const onMessageError = (event: MessageEvent): Promise<void> => {
-        throw new Error(`rpcServer: couldn't deserialize the message.`);
+        throw new Error(`${name}: couldn't deserialize the message.`);
     }
 
     let isDisposed = false;
@@ -205,6 +210,7 @@ export function rpcServer(
 }
 
 export function rpcClient<TService extends object>(
+    name: string,
     messagePort: MessagePort | Worker,
     timeoutMs = 5000,
     onDispose?: () => void,
@@ -213,16 +219,20 @@ export function rpcClient<TService extends object>(
         if (isDisposed)
             return;
 
-        const message = event.data;
-        if (message.id)
-            void completeRpc(message);
+        const result = event.data;
+        if (result['method']) {
+            errorLog.log(`${name}: got an RpcCall message:`, result);
+            throw new Error(`${name}: got an RpcCall message.`);
+        }
+        if (result.id)
+            void completeRpc(result);
     }
 
     const onMessageError = (event: MessageEvent<RpcResult>): void => {
         if (isDisposed)
             return;
 
-        errorLog?.log('rpcClient.onMessageError:', event);
+        errorLog?.log(`${name}.onMessageError:`, event);
     }
 
     const proxyMethodCache = new Map<string, ((...args: unknown[]) => RpcPromise<unknown>)>();
@@ -232,16 +242,16 @@ export function rpcClient<TService extends object>(
         if (!result) {
             result = (...args: unknown[]): RpcPromise<unknown> => {
                 if (isDisposed)
-                    throw new Error('rpcClient.call: already disposed.');
+                    throw new Error(`${name}.call: already disposed.`);
 
                 const rpcPromise = new RpcPromise<unknown>();
                 if (timeoutMs)
                     rpcPromise.setTimeout(timeoutMs);
 
-                const message = new RpcCall(rpcPromise.id, method, args);
+                const rpcCall = new RpcCall(rpcPromise.id, method, args);
                 const transferables = getTransferables(args);
-                debugLog?.log(`rpcClient.call:`, message, ', transfer:', transferables);
-                messagePort.postMessage(message, transferables);
+                debugLog?.log(`${name}.call:`, rpcCall, ', transfer:', transferables);
+                messagePort.postMessage(rpcCall, transferables);
                 return rpcPromise;
             }
             proxyMethodCache[method] = result;
@@ -281,11 +291,15 @@ export function rpcClient<TService extends object>(
 }
 
 export function rpcClientServer<TClient extends object>(
+    name: string,
     messagePort: MessagePort | Worker,
     serverImpl: object,
     timeoutMs?: number,
     onUnhandledMessage?: (event: MessageEvent<unknown>) => Promise<void>,
 ) : TClient & Disposable {
+    if (!serverImpl)
+        throw new Error(`${name}: serverImpl == null!`);
+
     const oldOnMessage = messagePort.onmessage;
     const oldOnMessageError = messagePort.onmessageerror;
 
@@ -295,9 +309,9 @@ export function rpcClientServer<TClient extends object>(
         messagePort.onmessageerror = oldOnMessageError;
     }
 
-    const client = rpcClient<TClient>(messagePort, timeoutMs, onDispose);
+    const client = rpcClient<TClient>(name, messagePort, timeoutMs, onDispose);
     const clientOnMessage = messagePort.onmessage;
-    const server = rpcServer(messagePort, serverImpl, onUnhandledMessage);
+    const server = rpcServer(name, messagePort, serverImpl, onUnhandledMessage);
     const serverOnMessage = messagePort.onmessage;
 
     messagePort.onmessage = async (event: MessageEvent<RpcCall | RpcResult>): Promise<void> => {
@@ -376,8 +390,8 @@ if (mustRunSelfTest) {
         }
 
         const channel = new MessageChannel();
-        const client = rpcClient<TestService>(channel.port1, 500);
-        const server = rpcServer(channel.port2, new TestServer());
+        const client = rpcClient<TestService>(`client`, channel.port1, 500);
+        const server = rpcServer(`server`, channel.port2, new TestServer());
 
         // Normal call
         testLog.assert(await client.mul(3, 4) == 12);

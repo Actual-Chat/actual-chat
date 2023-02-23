@@ -21,6 +21,7 @@ const CHANNELS = 1;
 const IN_RATE = 48000;
 const OUT_RATE = 16000;
 
+const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
 const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
@@ -58,8 +59,8 @@ const serverImpl: AudioVadWorker = {
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
-        vadWorklet = rpcClientServer<AudioVadWorklet>(workletPort, this);
-        encoderWorker = rpcClientServer<OpusEncoderWorker>(encoderWorkerPort, this);
+        vadWorklet = rpcClientServer<AudioVadWorklet>(`${LogScope}.vadWorklet`, workletPort, serverImpl);
+        encoderWorker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.encoderWorker`, encoderWorkerPort, serverImpl);
         isActive = true;
     },
 
@@ -84,7 +85,7 @@ const serverImpl: AudioVadWorker = {
         }
     },
 };
-const server = rpcServer(globalThis as unknown as Worker, serverImpl);
+const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
 
 async function processQueue(): Promise<void> {
     if (isVadRunning || resampler == null)

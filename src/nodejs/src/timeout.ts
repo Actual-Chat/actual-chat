@@ -2,23 +2,31 @@
 // [setImmediate](https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate),
 // which we don't use because it relies on setTimeout, which is throttled in background tabs.
 import { Disposable } from 'disposable';
+import { setTimeout, clearTimeout } from 'timerQueue';
 
-export function nextTick(callback: () => unknown) {
-    nextTickCallbacks.push(callback);
-    nextTickChannel.port2.postMessage(null);
+let nextTickImpl: (callback: () => unknown) => void = null;
+
+if (globalThis['MessageChannel']) {
+    const nextTickCallbacks = new Array<() => unknown>();
+    const nextTickChannel = new MessageChannel();
+    nextTickChannel.port1.onmessage = () => {
+        const callback = nextTickCallbacks.shift();
+        callback();
+    };
+
+    nextTickImpl = (callback: () => unknown) => {
+        nextTickCallbacks.push(callback);
+        nextTickChannel.port2.postMessage(null);
+    }
+}
+else {
+    // MessageChannel is unavailable in AudioWorklets, so we use setTimeout-based version here,
+    // which implies ~ 8-9ms delay in average.
+    nextTickImpl = (callback: () => unknown) => setTimeout(callback, 0);
 }
 
-export function nextTickAsync(): Promise<void> {
-    return new Promise<void>(resolve => nextTick(resolve));
-}
-
-const nextTickCallbacks: Array<() => unknown> = [];
-const nextTickChannel = new MessageChannel();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-nextTickChannel.port1.onmessage = _ => {
-    const callback = nextTickCallbacks.shift();
-    callback();
-};
+export const nextTick = nextTickImpl;
+export const nextTickAsync = () => new Promise<void>(resolve => nextTick(resolve));
 
 // Timeout: a nicer wrapper around setTimeout
 
