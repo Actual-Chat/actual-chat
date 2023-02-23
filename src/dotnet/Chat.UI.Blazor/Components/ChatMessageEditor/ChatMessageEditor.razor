@@ -31,7 +31,9 @@
             RemoveClick="@(a => RemoveAttachment(a))"
             ClearClick="@(_ => ClearAttachments())"
             PostClick="@(_ => Post())"/>
-        <RelatedChatEntryPanel />
+        @if (ScreenSize.IsWide()) {
+            <RelatedChatEntryPanel/>
+        }
         <div class="flex-none flex-x justify-items-stretch items-stretch p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="post-panel-wrapper">
                 <div class="flex-x py-1 md:py-0 bg-07 md:bg-01">
@@ -65,6 +67,7 @@
                     </div>
                 </div>
                 @if (ScreenSize.IsNarrow()) {
+                    <RelatedChatEntryPanel/>
                     <div class="audio-panel-wrapper">
                         <ChatAudioPanel/>
                     </div>

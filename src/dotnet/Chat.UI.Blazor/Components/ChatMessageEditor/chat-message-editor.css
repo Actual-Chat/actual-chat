@@ -288,6 +288,31 @@ body.hoverable .add-attachment.btn:hover .btn-content {
     @apply outline-none;
     @apply bg-03;
 }
+body.narrow .related-chat-entry-panel {
+    @apply mt-2 mx-2;
+    @apply overflow-hidden;
+    @apply bg-07;
+}
+body.narrow .related-chat-entry-panel * {
+    @apply bg-06;
+}
+.related-chat-entry-panel .c-content {
+    @apply flex-1 flex-x items-center;
+    @apply max-w-full max-h-10 md:max-h-8;
+}
+body.narrow .related-chat-entry-panel .related-chat-entry {
+    @apply rounded-lg;
+    @apply overflow-hidden;
+}
+body.narrow .related-chat-entry-panel .related-chat-entry .avatar-name,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply {
+    @apply text-selected;
+}
+body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-close,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
+    @apply text-05;
+}
 .related-chat-entry {
     @apply flex-1 flex-x items-center;
     @apply max-w-full;
@@ -297,14 +322,14 @@ body.hoverable .add-attachment.btn:hover .btn-content {
     @apply cursor-pointer;
 }
 .related-chat-entry .btn.btn-round {
-    @apply min-w-12 md:min-w-0;
-    @apply mx-1 md:mx-2;
+    @apply min-w-8 md:min-w-12;
+    @apply md:mx-1;
 }
 body.hoverable .related-chat-entry .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
 }
 .related-chat-entry-panel .btn.btn-round .btn-content {
-    @apply min-h-8 max-h-8;
+    @apply min-h-8 max-h-8 min-w-8 max-w-8;
 }
 body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply bg-transparent;

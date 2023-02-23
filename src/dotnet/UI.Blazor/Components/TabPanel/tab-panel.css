@@ -43,7 +43,7 @@
 /* Tab */
 .tab-panel .tab {
     @apply grow;
-    @apply w-full max-w-full;
+    @apply max-w-full;
 }
 
 /* SideNav tabs */

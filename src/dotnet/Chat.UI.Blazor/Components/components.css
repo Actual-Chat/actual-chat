@@ -2,12 +2,16 @@
 /* DeleteMessageModal */
 
 .delete-message-modal .c-question {
-    @apply flex-none overflow-hidden mb-4;
+    @apply flex-none;
+    @apply mb-4;
+    @apply overflow-hidden;
 }
 .delete-message-modal .c-message {
     @apply flex-initial flex-y;
     @apply overflow-hidden;
-    @apply rounded-lg border border-bg-04 bg-01;
+    @apply rounded-lg;
+    @apply border border-bg-04;
+    @apply bg-01;
 }
 .delete-message-modal .chat-message {
     @apply md:max-h-48;
@@ -30,7 +34,8 @@
     @apply animate-display-from-top-slow;
 }
 .historical-playback-sub-header-content {
-    @apply flex-x w-full items-center;
+    @apply flex-x items-center;
+    @apply w-full;
 }
 .historical-playback-sub-header-content .c-chat-title {
     @apply font-semibold;
@@ -57,39 +62,53 @@
     @apply gap-x-12;
 }
 .people-group .btn-square {
-    @apply min-w-12 bg-transparent rounded-none border-b-2 border-transparent;
+    @apply min-w-12;
+    @apply bg-transparent;
+    @apply border-b-2 border-transparent;
+    @apply rounded-none;
 }
 .people-group .btn-square .btn-content {
-    @apply justify-center bg-transparent;
+    @apply justify-center;
+    @apply bg-transparent;
 }
 body.hoverable .people-group .btn-square:hover {
-    @apply text-02 border-primary;
+    @apply text-02;
+    @apply border-primary;
 }
 body.hoverable .people-group .btn-square:hover .btn-content {
     @apply bg-transparent;
 }
 
 .btn-square.add-user-btn {
-    @apply flex-1 left-0 min-w-8 bg-transparent rounded-none border-b-2 border-transparent;
+    @apply flex-1 left-0;
+    @apply min-w-8;
+    @apply rounded-none;
+    @apply bg-transparent;
+    @apply border-b-2 border-transparent;
 }
 .btn-square.add-user-btn .btn-content {
-    @apply justify-center bg-transparent;
+    @apply justify-center;
+    @apply bg-transparent;
 }
 body.hoverable .btn-square.add-user-btn:hover {
-    @apply text-02 border-primary;
+    @apply text-02;
+    @apply border-primary;
 }
 body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply bg-transparent;
 }
 .btn-square.add-user-btn:focus .btn-content {
-    @apply bg-transparent text-02;
+    @apply bg-transparent;
+    @apply text-02;
 }
 
 .author-settings-modal {
     @apply min-w-full md:min-w-modal max-w-full;
 }
 .author-settings-modal .user-avatar-editor {
-    @apply max-h-96 gap-x-2 overflow-y-auto;
+    @apply gap-x-2;
+    @apply max-h-96;
+    @apply overflow-y-auto;
 }
 .author-settings-modal .dialog-body {
     @apply m-4;
@@ -99,7 +118,9 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 }
 
 .people-tab .avatar-badge {
-    @apply p-0.5 mr-1 rounded-xl cursor-pointer;
+    @apply p-0.5 mr-1;
+    @apply rounded-xl;
+    @apply cursor-pointer;
 }
 .people-tab .avatar-badge .author-avatar-badge {
     @apply m-0.5;
@@ -122,21 +143,28 @@ body.hoverable .people-tab .avatar-badge:hover {
 }
 
 .writable-chat-footer {
-    @apply relative bg-transparent md:bg-transparent;
+    @apply relative;
+    @apply bg-transparent md:bg-transparent;
 }
 .writable-chat-footer.narrow {
     background: transparent;
 }
 
 .chat-footer {
-    @apply flex justify-center items-center w-full h-full bg-01;
+    @apply flex justify-center items-center;
+    @apply w-full h-full;
     @apply py-0 md:py-1.5 px-2;
+    @apply bg-01;
 }
 .signin-footer {
-    @apply flex w-full md:w-auto py-1 justify-center min-h-footer items-center;
+    @apply flex justify-center items-center;
+    @apply w-full md:w-auto min-h-footer;
+    @apply py-1;
 }
 .signin-footer .btn {
-    @apply h-10 min-h-10 min-w-0 px-4 rounded-full md:rounded-md;
+    @apply h-10 min-h-10 min-w-0;
+    @apply px-4;
+    @apply rounded-full md:rounded-md;
 }
 .signin-footer .btn .btn-content {
     @apply text-lg;
@@ -145,18 +173,24 @@ body.hoverable .people-tab .avatar-badge:hover {
 .chat-header-control-panel {
     @apply flex-x gap-x-1;
 }
+.chat-header-control-panel .btn.btn-round {
+    @apply flex-none;
+}
 .chat-header-control-panel .btn.btn-round .btn-content {
+    @apply flex-none;
     @apply min-h-10 min-w-10;
 }
 
 .language-settings {
-    @apply flex-y mb-2;
+    @apply flex-y;
+    @apply mb-2;
 }
 .language-settings legend {
     @apply text-xl;
 }
 .language-settings-item {
-    @apply flex-x items-center my-1;
+    @apply flex-x items-center;
+    @apply my-1;
 }
 
 .message-counter-with-time {
