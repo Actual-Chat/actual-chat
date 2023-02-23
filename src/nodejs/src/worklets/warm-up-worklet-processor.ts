@@ -48,6 +48,6 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
     };
 }
 
-// @ts-ignore
+// @ts-expect-error - registerProcessor exists
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('warmUpWorklet', WarmUpAudioWorkletProcessor);

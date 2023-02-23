@@ -10,6 +10,7 @@ export enum LogLevel {
 export type LogScope =
     'default'
     // Library
+    | 'Versioning'
     | 'BrowserInfo'
     | 'Clipboard'
     | 'Gestures'
@@ -133,11 +134,12 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     // Bumping down levels of in-dev scopes
     // minLevels.set('Gestures', LogLevel.Debug);
     // minLevels.set('event-handling', LogLevel.Debug);
+    minLevels.set('Versioning', LogLevel.Debug);
     minLevels.set('Rpc', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
-    minLevels.set('OnDeviceAwake', LogLevel.Debug);
+    // minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('AudioPlayerController', LogLevel.Debug);
-    minLevels.set('AudioContextSource', LogLevel.Debug);
+    // minLevels.set('AudioContextSource', LogLevel.Debug);
     // minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     minLevels.set('OpusMediaRecorder', LogLevel.Debug);

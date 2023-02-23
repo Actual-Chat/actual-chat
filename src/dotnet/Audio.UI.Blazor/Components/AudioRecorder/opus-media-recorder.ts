@@ -11,7 +11,7 @@ import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { Disposable } from '../../../../nodejs/src/disposable';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
-import { getVersionedArtifactPath } from 'versioning';
+import { Versioning } from 'versioning';
 
 
 /*
@@ -68,13 +68,12 @@ export class OpusMediaRecorder {
     }
 
     public async load(baseUri: string): Promise<void> {
-        const opusEncoderWorkerPath = getVersionedArtifactPath('/dist/opusEncoderWorker.js');
-        const vadWorkerPath = getVersionedArtifactPath('/dist/vadWorker.js');
-        const artifactVersions = window.App.artifactVersions;
-
-        this.encoderWorkerInstance = new Worker('/dist/opusEncoderWorker.js');
+        const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
+        this.encoderWorkerInstance = new Worker(encoderWorkerPath);
         this.encoderWorker = rpcClient<OpusEncoderWorker>(this.encoderWorkerInstance)
-        this.vadWorkerInstance = new Worker('/dist/vadWorker.js');
+
+        const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
+        this.vadWorkerInstance = new Worker(vadWorkerPath);
         this.vadWorker = rpcClient<AudioVadWorker>(this.vadWorkerInstance)
 
         if (this.origin.includes('0.0.0.0')) {
@@ -83,8 +82,8 @@ export class OpusMediaRecorder {
         }
         const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
         await Promise.all([
-            this.encoderWorker.create(audioHubUrl),
-            this.vadWorker.create(),
+            this.encoderWorker.create(Versioning.artifactVersions, audioHubUrl),
+            this.vadWorker.create(Versioning.artifactVersions),
         ]);
         this.whenLoaded.resolve(undefined);
     }

@@ -40,7 +40,6 @@ public static class ApplicationBuilderExt
             throw new ArgumentNullException(nameof(builder));
 
         var webHostEnvironment = builder.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
-
         var options = CreateStaticFilesOptions(webHostEnvironment.WebRootFileProvider);
 
         builder.MapWhen(
@@ -65,26 +64,38 @@ public static class ApplicationBuilderExt
             // Static files middleware will try to use application/x-gzip as the content
             // type when serving a file with a gz extension. We need to correct that before
             // sending the file.
-            OnPrepareResponse = ctx =>
-            {
-                if (ctx.File.Name.EndsWith("config.js", StringComparison.OrdinalIgnoreCase)) {
+            OnPrepareResponse = ctx => {
+                var request = ctx.Context.Request;
+                var hasVersion = request.Query.TryGetValue("v", out var version) && version.Count > 0;
+                var requestPath = request.Path.Value ?? "";
+                var fileExtension = Path.GetExtension(requestPath);
+
+                var isJavaScriptOrWasm =
+                    OrdinalIgnoreCaseEquals(fileExtension, ".js")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".wasm");
+                var mustNotCache = isJavaScriptOrWasm && !hasVersion;
+                if (mustNotCache) {
                     ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, "no-cache");
                     return;
                 }
 
-                ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
+                var cacheControlHeader = hasVersion
+                    ? "public, max-age=518400, stale-while-revalidate=86400" // 6 days + up to 1 for revalidation
+                    : "public, max-age=3600, stale-while-revalidate=86400"; // 1h + up to 1 day for revalidation
+                ctx.Context.Response.Headers.Append("Cache-Control", cacheControlHeader);
 
-                var requestPath = ctx.Context.Request.Path;
-                var fileExtension = Path.GetExtension(requestPath.Value);
-                if (!string.Equals(fileExtension, ".gz") && !string.Equals(fileExtension, ".br"))
+                var isCompressed =
+                    OrdinalIgnoreCaseEquals(fileExtension, ".gz")
+                    || OrdinalIgnoreCaseEquals(fileExtension, ".br");
+                if (!isCompressed)
                     return;
 
-                // Here we simply calculate the original content type by removing the extension and apply it
-                // again.
+                // Here we calculate the uncompressed content type by removing the extension and determining
+                // it based on the remainder of the file name.
                 // When we revisit this, we should consider calculating the original content type and storing it
                 // in the request along with the original target path so that we don't have to calculate it here.
-                var originalPath = Path.GetFileNameWithoutExtension(requestPath.Value);
-                if (originalPath != null && contentTypeProvider.TryGetContentType(originalPath, out var originalContentType))
+                var preCompressionPath = Path.GetFileNameWithoutExtension(requestPath);
+                if (contentTypeProvider.TryGetContentType(preCompressionPath, out var originalContentType))
                     ctx.Context.Response.ContentType = originalContentType;
             },
         };

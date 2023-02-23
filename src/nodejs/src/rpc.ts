@@ -1,6 +1,6 @@
 import { PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
 import { Disposable } from 'disposable';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'Rpc';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -151,7 +151,7 @@ export function rpcServer(
 ) : Disposable {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onUnhandledMessage ??= (event: MessageEvent<unknown>): Promise<void> => {
-        throw `rpcServer: unhandled message.`;
+        throw new Error(`rpcServer: unhandled message.`);
     }
 
     const onMessage = async (event: MessageEvent<RpcCall>): Promise<void> => {
@@ -182,7 +182,7 @@ export function rpcServer(
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const onMessageError = (event: MessageEvent): Promise<void> => {
-        throw `rpcServer: couldn't deserialize the message.`;
+        throw new Error(`rpcServer: couldn't deserialize the message.`);
     }
 
     let isDisposed = false;
@@ -232,7 +232,7 @@ export function rpcClient<TService extends object>(
         if (!result) {
             result = (...args: unknown[]): RpcPromise<unknown> => {
                 if (isDisposed)
-                    throw 'rpcClient.call: already disposed.';
+                    throw new Error('rpcClient.call: already disposed.');
 
                 const rpcPromise = new RpcPromise<unknown>();
                 if (timeoutMs)
@@ -332,7 +332,7 @@ async function whenNextMessage<T>(messagePort: MessagePort | Worker, timeoutMs?:
 if (mustRunSelfTest) {
     const testLog = errorLog;
     if (!testLog)
-        throw 'testLog == null';
+        throw new Error('testLog == null');
     void (async () => {
         return;
         // Basic test

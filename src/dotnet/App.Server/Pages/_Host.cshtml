@@ -50,7 +50,11 @@
     <link rel="preload" href="/dist/onDeviceAwakeWorker.js" as="script" asp-append-version="true" crossorigin />
     <link rel="preload" href="/dist/opusDecoderWorker.js" as="script" asp-append-version="true" crossorigin />
     <link rel="preload" href="/dist/opusEncoderWorker.js" as="script" asp-append-version="true" crossorigin />
+    <link rel="preload" href="/dist/warmUpWorklet.js" as="script" asp-append-version="true" crossorigin />
     <link rel="preload" href="/dist/vadWorker.js" as="script" asp-append-version="true" crossorigin />
+    <link rel="preload" href="/dist/feederWorklet.js" as="script" asp-append-version="true" crossorigin />
+    <link rel="preload" href="/dist/opusEncoderWorklet.js" as="script" asp-append-version="true" crossorigin />
+    <link rel="preload" href="/dist/vadWorklet.js" as="script" asp-append-version="true" crossorigin />
     <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
     <link rel="prefetch" href="/dist/wasm/codec.wasm" as="fetch" asp-append-version="true" crossorigin />
     <link rel="prefetch" href="/dist/wasm/soxr_wasm.wasm" as="fetch" asp-append-version="true" crossorigin />
@@ -59,9 +63,6 @@
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js" asp-append-version="true"></script>
     <script>
-        const origin = document.location.origin;
-        function stripOrigin(v) { if (v.startsWith(origin)) { return v.slice(origin.length); } }
-
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";
         window.App = {
@@ -69,10 +70,6 @@
             baseUri: null,
             sessionHash: '@(session.Hash)',
             windowId: null,
-            artifactVersions: new Map(
-                [...document.head.children]
-                    .filter(e => e.localName === 'link' && (e.rel === 'preload' || e.rel === 'prefetch') && e.href.includes('?v='))
-                    .map(e => stripOrigin(e.href).split('?v='))),
             initPage: function (baseUri, sessionHash) {
                 throw Error("Internal error: App.initPage is available only in mobile apps.");
             },

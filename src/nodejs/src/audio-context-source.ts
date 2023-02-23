@@ -6,6 +6,7 @@ import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { Log, LogLevel, LogScope } from 'logging';
+import { Versioning } from 'versioning';
 
 const LogScope: LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -211,9 +212,12 @@ export class AudioContextSource implements Disposable {
             await this.interactiveResume(audioContext);
 
             debugLog?.log(`create: loading modules`);
-            const whenModule1 = audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
-            const whenModule2 = audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
-            const whenModule3 = audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
+            const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
+            const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
+            const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
+            const whenModule1 = audioContext.audioWorklet.addModule(feederWorkletPath);
+            const whenModule2 = audioContext.audioWorklet.addModule(encoderWorkletPath);
+            const whenModule3 = audioContext.audioWorklet.addModule(vadWorkerPath);
             await Promise.all([whenModule1, whenModule2, whenModule3]);
             return audioContext;
         }
@@ -226,7 +230,8 @@ export class AudioContextSource implements Disposable {
     protected async warmup(audioContext: AudioContext): Promise<void> {
         debugLog?.log(`warmup, AudioContext:`, audioContext);
 
-        await audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
+        const warmUpWorkletPath = Versioning.mapPath('/dist/warmUpWorklet.js');
+        await audioContext.audioWorklet.addModule(warmUpWorkletPath);
         const nodeOptions: AudioWorkletNodeOptions = {
             channelCount: 1,
             channelCountMode: 'explicit',
@@ -260,7 +265,7 @@ export class AudioContextSource implements Disposable {
 
     protected async test(audioContext: AudioContext, isLongTest = false): Promise<void> {
         if (audioContext.state !== 'running')
-            throw `${LogScope}.test: AudioContext isn't running.`;
+            throw new Error(`${LogScope}.test: AudioContext isn't running.`);
 
         const lastTime = audioContext.currentTime;
         const testCycleCount = 5;
@@ -268,7 +273,7 @@ export class AudioContextSource implements Disposable {
         for (let i = 0; i < testCycleCount; i++) {
             await delayAsync(testIntervalMs);
             if (audioContext.state !== 'running')
-                throw `${LogScope}.test: AudioContext isn't running.`;
+                throw new Error(`${LogScope}.test: AudioContext isn't running.`);
             if (audioContext.currentTime != lastTime)
                 break;
             // play silent audio and check state
@@ -277,7 +282,7 @@ export class AudioContextSource implements Disposable {
             }
         }
         if (audioContext.currentTime == lastTime) // AudioContext isn't running
-            throw `${LogScope}.test: AudioContext is running, but didn't pass currentTime test.`;
+            throw new Error(`${LogScope}.test: AudioContext is running, but didn't pass currentTime test.`);
     }
 
     protected async fix(audioContext: AudioContext): Promise<void> {
@@ -286,7 +291,7 @@ export class AudioContextSource implements Disposable {
         try {
             if (!await this.trySuspend(audioContext)) {
                 // noinspection ExceptionCaughtLocallyJS
-                throw `${LogScope}.fix: couldn't suspend AudioContext`;
+                throw new Error(`${LogScope}.fix: couldn't suspend AudioContext`);
             }
             await this.interactiveResume(audioContext);
             await this.test(audioContext);
@@ -337,7 +342,7 @@ export class AudioContextSource implements Disposable {
             const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
             const success = await Promise.race([resumeTask, timerTask]);
             if (!success)
-                throw `${LogScope}.interactiveResume: timed out while waiting for interaction`;
+                throw new Error(`${LogScope}.interactiveResume: timed out while waiting for interaction`);
 
             debugLog?.log(`interactiveResume: succeeded on interaction`);
         }
@@ -361,9 +366,9 @@ export class AudioContextSource implements Disposable {
         const resumeTask = audioContext.resume().then(() => true);
         const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
         if (!await Promise.race([resumeTask, timerTask]))
-            throw `${LogScope}.resume: AudioContext.resume() has timed out`;
+            throw new Error(`${LogScope}.resume: AudioContext.resume() has timed out.`);
         if (!this.isRunning(audioContext))
-            throw `${LogScope}.resume: completed resume, but AudioContext.state != 'running'`;
+            throw new Error(`${LogScope}.resume: completed resume, but AudioContext.state != 'running'.`);
 
         debugLog?.log(`resume: resumed, AudioContext:`, audioContext);
     }
@@ -444,19 +449,19 @@ export class AudioContextSource implements Disposable {
 
     private throwIfTooManyResumes(): void {
         if (this._resumeCount >= MaxResumeCount)
-            throw `maintain: resume attempt count is too high (${this._resumeCount})`;
+            throw new Error(`maintain: resume attempt count is too high (${this._resumeCount}).`);
         if (this._interactiveResumeCount >= MaxInteractiveResumeCount)
-            throw `maintain: interactive resume attempt count is too high (${this._interactiveResumeCount})`;
+            throw new Error(`maintain: interactive resume attempt count is too high (${this._interactiveResumeCount}).`);
     }
 
     private throwIfDisposed(): void {
         if (this._isDisposed)
-            throw `${LogScope}.throwIfDisposed: already disposed.`;
+            throw new Error(`${LogScope}.throwIfDisposed: already disposed.`);
     }
 
     private throwIfClosed(audioContext: AudioContext): void {
         if (audioContext.state === 'closed')
-            throw `${LogScope}.throwIfClosed: context is closed.`;
+            throw new Error(`${LogScope}.throwIfClosed: context is closed.`);
     }
 
     private isWakeUp(): boolean {

@@ -363,13 +363,13 @@ export class AsyncLockReleaser implements Disposable {
     private readonly _whenReleased: PromiseSource<void>;
     constructor(public readonly asyncLock: AsyncLock) {
         if (asyncLock.releaser != null)
-            throw `${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`;
+            throw new Error(`${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`);
 
         asyncLock.releaser = this;
         this._whenReleased = new PromiseSource<void>(
             () => {
                 if (asyncLock.releaser != this)
-                    throw `${LogScope}.AsyncLockReleaser is associated with another releaser.`;
+                    throw new Error(`${LogScope}.AsyncLockReleaser is associated with another releaser.`);
 
                 asyncLock.releaser = null;
                 return;

@@ -9,8 +9,8 @@ import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 import { rpcClientServer, rpcServer } from 'rpc';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
+import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';
-import { getVersionedArtifactPath } from 'versioning';
 
 const LogScope: LogScope = 'AudioVadWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -34,15 +34,12 @@ let isVadRunning = false;
 let isActive = false;
 
 const serverImpl: AudioVadWorker = {
-    create: async (): Promise<void> => {
+    create: async (artifactVersions: Map<string, string>): Promise<void> => {
         if (vadWorklet != null || encoderWorker != null)
-            throw 'Already initialized.';
+            throw new Error('Already initialized.');
 
         debugLog?.log(`-> onCreate`);
-        // initialize artifact versions for 'getVersionedArtifactPath' call
-        globalThis.App = {
-            artifactVersions: message.artifactVersions,
-        }
+        Versioning.init(artifactVersions);
 
         queue.clear();
         resampler = new SoxrResampler(
@@ -53,7 +50,7 @@ const serverImpl: AudioVadWorker = {
             outputDatatype,
             SoxrQuality.SOXR_MQ,
         );
-        const soxrWasmPath = getVersionedArtifactPath(SoxrWasm);
+        const soxrWasmPath = Versioning.mapPath(SoxrWasm);
         await resampler.init(SoxrModule, { 'locateFile': () => soxrWasmPath });
         voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
         await voiceDetector.init();

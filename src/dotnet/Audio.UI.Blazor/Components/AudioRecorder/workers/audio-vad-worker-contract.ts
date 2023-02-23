@@ -1,5 +1,5 @@
 export interface AudioVadWorker {
-    create(): Promise<void>;
+    create(artifactVersions: Map<string, string>): Promise<void>;
     init(workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void>;
     reset(): Promise<void>;
 

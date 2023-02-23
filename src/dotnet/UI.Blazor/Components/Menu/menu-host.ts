@@ -167,7 +167,7 @@ export class MenuHost implements Disposable {
     private show(menu: Menu): void {
         debugLog?.log('show:', menu)
         if (!menu)
-            throw `${LogScope}.show: menu == null.`;
+            throw new Error(`${LogScope}.show: menu == null.`);
 
         this.menu = menu;
         this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
@@ -198,7 +198,7 @@ export class MenuHost implements Disposable {
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {
         if (!menu)
-            throw `${LogScope}.position: menu == null.`;
+            throw new Error(`${LogScope}.position: menu == null.`);
 
         if (updatedMenu) {
             menu.menuElement = updatedMenu.menuElement ?? menu.menuElement;

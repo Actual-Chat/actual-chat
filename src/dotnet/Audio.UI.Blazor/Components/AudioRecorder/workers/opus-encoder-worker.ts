@@ -7,20 +7,20 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 import Denque from 'denque';
+import { delayAsync } from 'promises';
+import { Disposable } from 'disposable';
 import * as signalR from '@microsoft/signalr';
 import { HttpTransportType } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { rpcClientServer, rpcServer } from 'rpc';
+import { Versioning } from 'versioning';
 
+import { AudioVadWorker } from './audio-vad-worker-contract';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
-import { delayAsync } from 'promises';
-import { Disposable } from 'disposable';
-import { Log, LogLevel, LogScope } from 'logging';
-import { AudioVadWorker } from './audio-vad-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad';
-import { getVersionedArtifactPath } from 'versioning';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'OpusEncoderWorker';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -59,15 +59,12 @@ let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
 let serverImpl: OpusEncoderWorker = {
-    create: async (audioHubUrl: string): Promise<void> => {
+    create: async (artifactVersions: Map<string, string>, audioHubUrl: string): Promise<void> => {
         if (encoderWorklet != null || vadWorker != null)
-            throw 'Already initialized.';
+            throw new Error('Already initialized.');
 
         debugLog?.log(`-> onCreate`);
-        // initialize artifact versions for 'getVersionedArtifactPath' call
-        globalThis.App = {
-            artifactVersions: message.artifactVersions,
-        }
+        Versioning.init(artifactVersions);
 
         const retryPolicy: signalR.IRetryPolicy = {
             nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
@@ -217,7 +214,7 @@ function loadCodec(): Promise<void> {
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
-            const codecWasmPath = getVersionedArtifactPath(codecWasm);
+            const codecWasmPath = Versioning.mapPath(codecWasm);
             if (filename.slice(-4) === 'wasm')
                 return codecWasmPath;
             /// #if MEM_LEAK_DETECTION

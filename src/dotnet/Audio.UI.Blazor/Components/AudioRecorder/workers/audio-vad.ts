@@ -1,12 +1,12 @@
 import * as ort from 'onnxruntime-web';
 import { ExponentialMovingAverage } from './streamed-moving-average';
-import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
+import wasm from 'onnxruntime-web/dist/ort-wasm.wasm';
 import wasmThreaded from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
 import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
-import { LogScope } from 'logging';
-import { getVersionedArtifactPath } from 'versioning';
+import { Versioning } from 'versioning';
 
+import { LogScope } from 'logging';
 const LogScope: LogScope = 'AudioVad';
 
 const SAMPLE_RATE = 16000;
@@ -51,7 +51,6 @@ export class VoiceActivityDetector {
     private h0: ort.Tensor;
     private c0: ort.Tensor;
 
-
     constructor(modelUri: URL) {
         this.modelUri = modelUri;
 
@@ -64,17 +63,18 @@ export class VoiceActivityDetector {
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
         this.c0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
 
-        const wasmThreadedPath = getVersionedArtifactPath(wasmThreaded);
-        const wasmSimdPath = getVersionedArtifactPath(wasmSimd);
-        const wasmSimdThreadedPath = getVersionedArtifactPath(wasmSimdThreaded);
+        const wasmPath = Versioning.mapPath(wasm);
+        const wasmThreadedPath = Versioning.mapPath(wasmThreaded);
+        const wasmSimdPath = Versioning.mapPath(wasmSimd);
+        const wasmSimdThreadedPath = Versioning.mapPath(wasmSimdThreaded);
 
         ort.env.wasm.numThreads = 4;
         ort.env.wasm.simd = true;
         ort.env.wasm.wasmPaths = {
-            'ort-wasm.wasm': wasmPath as string,
-            'ort-wasm-threaded.wasm': wasmThreadedPath as string,
-            'ort-wasm-simd.wasm': wasmSimdPath as string,
-            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath as string,
+            'ort-wasm.wasm': wasmPath,
+            'ort-wasm-threaded.wasm': wasmThreadedPath,
+            'ort-wasm-simd.wasm': wasmSimdPath,
+            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
         };
     }
 

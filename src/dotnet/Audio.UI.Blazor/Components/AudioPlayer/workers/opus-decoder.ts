@@ -1,5 +1,7 @@
 import Denque from 'denque';
+import { delayAsync } from 'promises';
 import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-decoder-worker-message';
+import { Versioning } from 'versioning';
 /// #if MEM_LEAK_DETECTION
 import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
@@ -10,8 +12,6 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #endif
 import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
-import { getVersionedArtifactPath } from 'versioning';
-import { delayAsync } from 'promises';
 
 const LogScope: LogScope = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -23,37 +23,6 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
 
 let codecModule: Codec | null = null;
-
-function loadCodec(): Promise<void> {
-    // wrapped promise to avoid exceptions with direct call to codec(...)
-    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
-        .then(
-            val => {
-                codecModule = val;
-                self['codec'] = codecModule;
-                resolve();
-            },
-            reason => reject(reason)));
-}
-
-function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
-    return {
-        locateFile: (filename: string) => {
-            const codecWasmPath = getVersionedArtifactPath(codecWasm);
-            if (filename.slice(-4) === 'wasm')
-                return codecWasmPath;
-            /// #if MEM_LEAK_DETECTION
-            else if (filename.slice(-3) === 'map')
-                return codecWasmMap;
-            /// #endif
-            // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
-            // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
-                return filename;
-            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-        },
-    };
-}
 
 export class OpusDecoder {
     private readonly queue = new Denque<ArrayBuffer | 'end'>();
@@ -176,3 +145,38 @@ export class OpusDecoder {
         }
     }
 }
+
+// Helpers
+
+function loadCodec(): Promise<void> {
+    // Wrapped promise to avoid exceptions with direct call to codec(...)
+    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
+        .then(
+            val => {
+                codecModule = val;
+                self['codec'] = codecModule;
+                resolve();
+            },
+            reason => reject(reason)));
+}
+
+function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+    return {
+        locateFile: (filename: string) => {
+            const codecWasmPath = Versioning.mapPath(codecWasm);
+            if (filename.slice(-4) === 'wasm')
+                return codecWasmPath;
+            /// #if MEM_LEAK_DETECTION
+            else if (filename.slice(-3) === 'map')
+                return codecWasmMap;
+                /// #endif
+                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            // emscripten 1.37.25 loads memory initializers as data: URI
+            else if (filename.slice(0, 5) === 'data:')
+                return filename;
+            else
+                throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
+        },
+    };
+}
+
