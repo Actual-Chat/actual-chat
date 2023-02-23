@@ -6,7 +6,7 @@ import { AudioVadWorker } from './audio-vad-worker-contract';
 import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
-import { rpcClientServer, rpcServer } from 'rpc';
+import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { Versioning } from 'versioning';
@@ -75,7 +75,7 @@ const serverImpl: AudioVadWorker = {
         voiceDetector.reset();
     },
 
-    append: async (buffer: ArrayBuffer): Promise<void> => {
+    onSample: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
         if (!isActive)
             return;
 
@@ -101,13 +101,13 @@ async function processQueue(): Promise<void> {
             const buffer = queue.shift();
             const dataToResample = new Uint8Array(buffer);
             const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
-            void vadWorklet.append(buffer);
+            void vadWorklet.onSample(buffer, rpcNoWait);
 
             const monoPcm = new Float32Array(resampled, 0, 512);
             const vadEvent = await voiceDetector.appendChunk(monoPcm);
             if (vadEvent) {
                 const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
-                void encoderWorker.onVoiceActivityChange(adjustedVadEvent);
+                void encoderWorker.onVoiceActivityChange(adjustedVadEvent, rpcNoWait);
             }
         }
     }

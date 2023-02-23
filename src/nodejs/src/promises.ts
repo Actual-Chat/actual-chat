@@ -97,8 +97,11 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
     }
 
     public setTimeout(timeoutMs: number | null, callback?: () => unknown): void {
-        this.clearTimeout();
-        if (timeoutMs == null)
+        if (this._timeout) {
+            this._timeout.clear();
+            this._timeout = null;
+        }
+        if (timeoutMs == null || this.isCompleted())
             return;
 
         this._timeout = new Timeout(timeoutMs, () => {
@@ -113,8 +116,11 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
     }
 
     public setPreciseTimeout(timeoutMs: number | null, callback?: () => unknown): void {
-        this.clearTimeout();
-        if (timeoutMs == null)
+        if (this._timeout) {
+            this._timeout.clear();
+            this._timeout = null;
+        }
+        if (timeoutMs == null || this.isCompleted())
             return;
 
         this._timeout = new PreciseTimeout(timeoutMs, () => {

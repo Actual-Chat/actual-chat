@@ -12,7 +12,7 @@ import { Disposable } from 'disposable';
 import * as signalR from '@microsoft/signalr';
 import { HttpTransportType } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { rpcClientServer, rpcServer } from 'rpc';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { Versioning } from 'versioning';
 
 import { AudioVadWorker } from './audio-vad-worker-contract';
@@ -148,7 +148,7 @@ let serverImpl: OpusEncoderWorker = {
         encoder = null;
     },
 
-    onEncoderWorkletOutput: async (buffer: ArrayBuffer): Promise<void> => {
+    onEncoderWorkletSample: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
         if (buffer.byteLength === 0)
             return;
 
@@ -161,7 +161,7 @@ let serverImpl: OpusEncoderWorker = {
         }
     },
 
-    onVoiceActivityChange: async (change: VoiceActivityChange) => {
+    onVoiceActivityChange: async (change: VoiceActivityChange, noWait?: RpcNoWait) => {
         debugLog?.log(`onVoiceActivityChange:`, change);
 
         const newVadState = change.kind === 'end' ? 'silence' : 'voice';
@@ -267,7 +267,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             }
 
             const result = encoder.encode(buffer);
-            void encoderWorklet.append(buffer);
+            void encoderWorklet.onSample(buffer, rpcNoWait);
             recordingSubject.next(result);
             chunkTimeOffset += 20;
         }

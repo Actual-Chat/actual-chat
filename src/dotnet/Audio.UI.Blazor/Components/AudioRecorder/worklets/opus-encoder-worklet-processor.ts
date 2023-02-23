@@ -1,7 +1,7 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { Disposable } from 'disposable';
-import { rpcClient, rpcClientServer, rpcServer } from 'rpc';
+import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { Log, LogLevel, LogScope } from 'logging';
@@ -46,11 +46,11 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.server = rpcServer(`${LogScope}.server`, this.port, this);
     }
 
-    public async init(workerPort: MessagePort): Promise<void> {
+    public async init(workerPort: MessagePort, noWait?: RpcNoWait): Promise<void> {
         this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
     }
 
-    public async append(buffer: ArrayBuffer): Promise<void> {
+    public async onSample(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
         this.bufferDeque.push(buffer);
     }
 
@@ -84,7 +84,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.worker != null)
-                        void this.worker.onEncoderWorkletOutput(audioArrayBuffer);
+                        void this.worker.onEncoderWorkletSample(audioArrayBuffer, rpcNoWait);
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {

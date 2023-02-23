@@ -1,4 +1,4 @@
-import { PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
+import { delayAsync, PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
 import { Disposable } from 'disposable';
 import { Log, LogLevel, LogScope } from 'logging';
 
@@ -6,17 +6,26 @@ const LogScope: LogScope = 'Rpc';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
-const mustRunSelfTest = debugLog != null;
+
+export type RpcNoWait = symbol | undefined;
+export const rpcNoWait : RpcNoWait = Symbol('RpcNoWait');
 
 export class RpcCall {
     constructor(
-        public readonly id: number,
+        public id: number,
         public readonly method: string,
         public readonly args: unknown[],
-    ) { }
+        public readonly noWait: boolean = false,
+    ) {
+        if (args?.length > 0) {
+            const lastArg = args[args.length - 1];
+            if (lastArg == rpcNoWait) {
+                args.pop();
+                this.noWait = true;
+            }
+        }
+    }
 }
-
-let nextRpcResultId = 1;
 
 export class RpcResult {
     public static value(id: number, value: unknown): RpcResult {
@@ -34,14 +43,16 @@ export class RpcResult {
     ) { }
 }
 
+let nextRpcPromiseId = 1;
 const rpcPromisesInProgress = new Map<number, RpcPromise<unknown>>();
 
 export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
     public readonly id: number;
+    public static Void = new RpcPromise<void>('Void' as unknown as number);
 
-    constructor() {
+    constructor(id?: number) {
         super();
-        this.id = nextRpcResultId++;
+        this.id = id ?? nextRpcPromiseId++;
         const oldResolve = this.resolve;
         const oldReject = this.reject;
         this.resolve = (value: T) => {
@@ -55,7 +66,7 @@ export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
             oldReject(reason);
         };
         rpcPromisesInProgress.set(this.id, this);
-        debugLog?.log(`RpcPromise.ctor[#${this.id}]`);
+        // debugLog?.log(`RpcPromise.ctor[#${this.id}]`);
     }
 
     public static get<T>(id: number): RpcPromise<T> | null {
@@ -66,6 +77,8 @@ export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
         return rpcPromisesInProgress.delete(this.id);
     }
 }
+
+RpcPromise.Void.resolve(undefined);
 
 export function rpc<T>(sender: (rpcPromise: RpcPromise<T>) => void | PromiseLike<void>, timeoutMs?: number): RpcPromise<T> {
     const result = new RpcPromise<T>();
@@ -182,7 +195,8 @@ export function rpcServer(
         }
         const result = new RpcResult(rpcCall.id, value, error);
         debugLog?.log(`<- ${name}.onMessage[#${rpcCall.id}]:`, result)
-        messagePort.postMessage(result);
+        if (!rpcCall.noWait)
+            messagePort.postMessage(result);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -244,11 +258,11 @@ export function rpcClient<TService extends object>(
                 if (isDisposed)
                     throw new Error(`${name}.call: already disposed.`);
 
-                const rpcPromise = new RpcPromise<unknown>();
-                if (timeoutMs)
+                const rpcCall = new RpcCall(nextRpcPromiseId++, method, args);
+                const rpcPromise = rpcCall.noWait ? RpcPromise.Void : new RpcPromise<unknown>(rpcCall.id);
+                if (timeoutMs && !rpcCall.noWait)
                     rpcPromise.setTimeout(timeoutMs);
 
-                const rpcCall = new RpcCall(rpcPromise.id, method, args);
                 const transferables = getTransferables(args);
                 debugLog?.log(`${name}.call:`, rpcCall, ', transfer:', transferables);
                 messagePort.postMessage(rpcCall, transferables);
@@ -341,14 +355,13 @@ async function whenNextMessage<T>(messagePort: MessagePort | Worker, timeoutMs?:
 }
 
 
-// Self-test
-
+// Self-test - we don't want to run it in workers & worklets
+const mustRunSelfTest = debugLog != null && globalThis['focus'];
 if (mustRunSelfTest) {
     const testLog = errorLog;
     if (!testLog)
         throw new Error('testLog == null');
     void (async () => {
-        return;
         // Basic test
 
         let rpcPromise = rpc<string>(() => undefined);
@@ -373,7 +386,7 @@ if (mustRunSelfTest) {
 
         interface TestService {
             mul(x: number, y: number): Promise<number>;
-            ping(reply: string, port: MessagePort): Promise<void>;
+            ping(reply: string, port: MessagePort, noWait?: RpcNoWait): Promise<void>;
         }
 
         class TestServer implements TestService {
@@ -383,14 +396,16 @@ if (mustRunSelfTest) {
                 return Promise.resolve(x * y);
             }
 
-            ping(reply: string, port: MessagePort): Promise<void> {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            async ping(reply: string, port: MessagePort, noWait?: RpcNoWait): Promise<void> {
+                await delayAsync(500);
                 port.postMessage(reply);
                 return ResolvedPromise.Void;
             }
         }
 
         const channel = new MessageChannel();
-        const client = rpcClient<TestService>(`client`, channel.port1, 500);
+        const client = rpcClient<TestService>(`client`, channel.port1, 300);
         const server = rpcServer(`server`, channel.port2, new TestServer());
 
         // Normal call
@@ -398,8 +413,8 @@ if (mustRunSelfTest) {
 
         // Normal call w/ transferable
         const pingChannel = new MessageChannel();
-        await client.ping('Pong', pingChannel.port2);
-        const sideResult = (await whenNextMessage<string>(pingChannel.port1, 500)).data;
+        await client.ping('Pong', pingChannel.port2, rpcNoWait);
+        const sideResult = (await whenNextMessage<string>(pingChannel.port1, 1000)).data;
         debugLog?.log('Side channel result:', sideResult);
         testLog.assert(sideResult === 'Pong');
 

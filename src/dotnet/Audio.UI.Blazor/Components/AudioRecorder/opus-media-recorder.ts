@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { audioContextSource } from 'audio-context-source';
-import { rpcClient } from 'rpc';
+import { rpcClient, rpcNoWait } from 'rpc';
 import { Log, LogLevel, LogScope } from 'logging';
 import { PromiseSource } from 'promises';
 
@@ -180,7 +180,7 @@ export class OpusMediaRecorder {
             'opus-encoder-worklet-processor',
             encoderWorkletOptions);
         this.encoderWorklet = rpcClient<OpusEncoderWorklet>(`${LogScope}.encoderWorklet`, this.encoderWorkletInstance.port);
-        void this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
+        void this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2, rpcNoWait);
 
         const vadWorkerChannel = new MessageChannel();
         const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
@@ -195,7 +195,7 @@ export class OpusMediaRecorder {
         };
         this.vadWorkletInstance = new AudioWorkletNode(context, 'audio-vad-worklet-processor', vadWorkletOptions);
         this.vadWorklet = rpcClient<AudioVadWorklet>(`${LogScope}.vadWorklet`, this.vadWorkletInstance.port);
-        void this.vadWorklet.init(vadWorkerChannel.port2);
+        void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
 
         await Promise.all([t1, t2]);
         context['initialized'] = true;
