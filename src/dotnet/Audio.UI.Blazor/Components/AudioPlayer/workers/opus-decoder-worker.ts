@@ -7,6 +7,7 @@ import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMes
 import { OpusDecoder } from './opus-decoder';
 import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
+import { Versioning } from 'versioning';
 
 const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -57,10 +58,7 @@ async function onCreate(message: CreateDecoderMessage) {
     const { callbackId, workletPort, controllerId } = message;
     // decoders are pooled with the parent object, so we don't need an object pool here
     debugLog?.log(`-> onCreate(#${controllerId})`);
-    // initialize artifact versions for 'getVersionedArtifactPath' call
-    globalThis.App = {
-        artifactVersions: message.artifactVersions,
-    }
+    Versioning.init(message.artifactVersions);
 
     const decoder = await OpusDecoder.create(workletPort);
     decoders.set(controllerId, decoder);

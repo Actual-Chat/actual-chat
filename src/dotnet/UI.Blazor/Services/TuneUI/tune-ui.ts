@@ -41,7 +41,7 @@ export class TuneUI {
         if (this.vibrationTunes[tuneName])
             return this.playVibration(tuneName);
 
-        throw `${LogScope}.playAndWait: not supported yet.`;
+        throw new Error(`${LogScope}.playAndWait: not supported yet.`);
     }
 
     // Private methods

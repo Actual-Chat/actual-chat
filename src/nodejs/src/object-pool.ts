@@ -1,14 +1,5 @@
 import Denque from 'denque';
-
-/** Object that can be reused after reset() call (for example for object pooling). */
-export interface Resettable {
-    /** Resets the state of the object. */
-    reset(): void | PromiseLike<void>;
-}
-
-export function isResettable<T>(obj: T | Resettable): obj is Resettable {
-    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['reset'] === 'function';
-}
+import { isResettable } from 'resettable';
 
 /** Usage: new ObjectPool<Foo>() => new Foo()); can be async. */
 export class ObjectPool<T>
@@ -32,6 +23,7 @@ export class ObjectPool<T>
     public async release(obj: T): Promise<void> {
         if (isResettable(obj))
             await obj.reset();
+
         this.pool.push(obj);
     }
 }

@@ -1,6 +1,7 @@
 import { Log, LogLevel, LogScope } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
+import { Resettable } from 'resettable';
 
 const LogScope: LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -96,8 +97,11 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
     }
 
     public setTimeout(timeoutMs: number | null, callback?: () => unknown): void {
-        this.clearTimeout();
-        if (timeoutMs == null)
+        if (this._timeout) {
+            this._timeout.clear();
+            this._timeout = null;
+        }
+        if (timeoutMs == null || this.isCompleted())
             return;
 
         this._timeout = new Timeout(timeoutMs, () => {
@@ -112,8 +116,11 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
     }
 
     public setPreciseTimeout(timeoutMs: number | null, callback?: () => unknown): void {
-        this.clearTimeout();
-        if (timeoutMs == null)
+        if (this._timeout) {
+            this._timeout.clear();
+            this._timeout = null;
+        }
+        if (timeoutMs == null || this.isCompleted())
             return;
 
         this._timeout = new PreciseTimeout(timeoutMs, () => {
@@ -362,13 +369,13 @@ export class AsyncLockReleaser implements Disposable {
     private readonly _whenReleased: PromiseSource<void>;
     constructor(public readonly asyncLock: AsyncLock) {
         if (asyncLock.releaser != null)
-            throw `${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`;
+            throw new Error(`${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`);
 
         asyncLock.releaser = this;
         this._whenReleased = new PromiseSource<void>(
             () => {
                 if (asyncLock.releaser != this)
-                    throw `${LogScope}.AsyncLockReleaser is associated with another releaser.`;
+                    throw new Error(`${LogScope}.AsyncLockReleaser is associated with another releaser.`);
 
                 asyncLock.releaser = null;
                 return;

@@ -1,4 +1,5 @@
 import { Log, LogLevel, LogScope } from 'logging';
+import { timerQueue } from 'timerQueue';
 
 const LogScope: LogScope = 'WarmUpAudioWorkletProcessor';
 const warnLog = Log.get(LogScope, LogLevel.Warn);
@@ -23,6 +24,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
+        timerQueue?.triggerExpired();
         // we should write silence at least once
         if (this.isStopped && this.wroteSilence) {
             this.port.postMessage('stopped');
@@ -48,6 +50,6 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
     };
 }
 
-// @ts-ignore
+// @ts-expect-error - registerProcessor exists
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('warmUpWorklet', WarmUpAudioWorkletProcessor);

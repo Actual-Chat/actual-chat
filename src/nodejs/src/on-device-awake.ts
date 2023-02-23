@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 import { EventHandler, EventHandlerSet } from 'event-handling';
 import { Log, LogLevel, LogScope } from 'logging';
-import { getVersionedArtifactPath } from 'versioning';
+import { getVersionedArtifactPath, Versioning } from 'versioning';
 
 const LogScope: LogScope = 'OnDeviceAwake';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -28,8 +28,8 @@ const onWorkerError = (error: ErrorEvent) => {
 };
 
 const createWorker = () => {
-    const onDeviceAwakeWorkerPath = getVersionedArtifactPath('/dist/onDeviceAwakeWorker.js');
-    const worker = new Worker(onDeviceAwakeWorkerPath);
+    const workerPath = Versioning.mapPath('/dist/onDeviceAwakeWorker.js');
+    const worker = new Worker(workerPath);
     worker.onmessage = onWakeUp;
     worker.onerror = onWorkerError;
     return worker;

@@ -19,7 +19,8 @@ export class AudioContextRef implements Disposable {
 
     constructor(
         public source: AudioContextSource,
-        public context: AudioContext
+        public context: AudioContext,
+        _onChange?: (context: AudioContext) => unknown,
     ) {
         this._id = ++nextId;
         debugLog?.log(`constructor(#${this._id}): source:`, source, ', context:', context);
@@ -31,6 +32,8 @@ export class AudioContextRef implements Disposable {
             this._whenContextChanged = new PromiseSource<AudioContext>();
             whenContextChanged.resolve(context);
             this.contextChanged.triggerSilently(context);
+            if (_onChange)
+                void _onChange(context);
         });
     }
 
