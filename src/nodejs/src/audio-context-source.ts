@@ -273,7 +273,7 @@ export class AudioContextSource {
     protected async test(context: AudioContext, isLongTest = false): Promise<void> {
         if (context.state !== 'running')
             throw new Error(`${LogScope}.test: AudioContext isn't running.`);
-        if (this.context[Debug.brokenKey])
+        if (context[Debug.brokenKey])
             throw new Error(`${LogScope}.test: AudioContext is broken via .break() call.`);
 
         const lastTime = context.currentTime;
