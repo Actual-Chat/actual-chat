@@ -129,10 +129,13 @@ export class AudioContextSource {
     }
 
     public break() {
-        if (!this.context)
-            warnLog?.log(`break: no AudioContext`);
-        else
-            this.context[Debug.brokenKey] = true;
+        if (!this.context) {
+            warnLog?.log(`break: no AudioContext, so nothing to break`);
+            return;
+        }
+
+        this.context[Debug.brokenKey] = true;
+        warnLog?.log(`break: done`);
     }
 
     // Protected methods
