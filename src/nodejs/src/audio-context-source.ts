@@ -32,6 +32,10 @@ const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
 
+const Debug = {
+    brokenKey: 'debugging_isBroken',
+}
+
 export class AudioContextSource {
     private _context: AudioContext | null = null;
     private _onDeviceAwakeHandler: EventHandler<void>;
@@ -57,10 +61,16 @@ export class AudioContextSource {
         onNotReady?: (context: AudioContext) => Promise<void> | void,
     ) {
         this._refCount++;
+        if (this._refCount > 100)
+            warnLog?.log(`getRef: high refCount:`, this._refCount);
         debugLog?.log(`+ AudioContextRef, refCount:`, this._refCount);
         const result = new AudioContextRef(this, onReady, onNotReady);
         void result.whenDisposed().then(() => {
             this._refCount--;
+            if (this._refCount < 0) {
+                warnLog?.log(`getRef: negative refCount:`, this._refCount);
+                this._refCount = 0;
+            }
             debugLog?.log(`- AudioContextRef, refCount:`, this._refCount);
         });
         return result;
@@ -118,11 +128,16 @@ export class AudioContextSource {
             this._whenNotReady.resolve(undefined);
     }
 
+    public break() {
+        if (!this.context)
+            warnLog?.log(`break: no AudioContext`);
+        else
+            this.context[Debug.brokenKey] = true;
+    }
+
     // Protected methods
 
     protected async maintain(): Promise<void> {
-        let lastTestTimestamp = Date.now();
-
         // noinspection InfiniteLoopJS
         for (;;) { // Renew loop
             let context: AudioContext = null;
@@ -130,13 +145,13 @@ export class AudioContextSource {
                 context = await this.create();
                 await this.warmup(context);
                 this.markReady(context);
+                let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
                 for (;;) { // Fix loop
-                    const currentTimestamp = Date.now();
-                    const timePassedSinceTest = currentTimestamp - lastTestTimestamp;
-                    if (timePassedSinceTest < MaintainCyclePeriodMs) {
-                        await delayAsync(MaintainCyclePeriodMs - timePassedSinceTest);
+                    const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
+                    if (minDelay > 0) {
+                        await delayAsync(minDelay);
                     }
                     else {
                         const whenDelayCompleted = delayAsync(MaintainCyclePeriodMs);
@@ -145,7 +160,7 @@ export class AudioContextSource {
 
                     // Let's try to test whether AudioContext is broken and fix
                     try {
-                        lastTestTimestamp = Date.now();
+                        lastTestAt = Date.now();
                         if (BrowserInfo.appKind !== 'MauiApp') {
                             // Skip test() call for MAUI as it doesn't exclusively use audio output or microphone;
                             // note that it will be called as part of `fix` call anyway.
@@ -162,6 +177,7 @@ export class AudioContextSource {
                     }
 
                     for(;;) {
+                        this.throwIfUnused();
                         this.throwIfClosed(context);
                         this.throwIfTooManyResumes();
                         try {
@@ -254,6 +270,8 @@ export class AudioContextSource {
     protected async test(context: AudioContext, isLongTest = false): Promise<void> {
         if (context.state !== 'running')
             throw new Error(`${LogScope}.test: AudioContext isn't running.`);
+        if (this.context[Debug.brokenKey])
+            throw new Error(`${LogScope}.test: AudioContext is broken via .break() call.`);
 
         const lastTime = context.currentTime;
         const testCycleCount = 5;
@@ -433,6 +451,11 @@ export class AudioContextSource {
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
         return context.createBuffer(1, 1, 48000);
+    }
+
+    private throwIfUnused(): void {
+        if (this._refCount == 0)
+            throw new Error(`${LogScope}.throwIfUnused: context is unused.`);
     }
 
     private throwIfTooManyResumes(): void {
