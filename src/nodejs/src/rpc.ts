@@ -7,7 +7,7 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-export type RpcNoWait = symbol | undefined;
+export type RpcNoWait = symbol;
 export const rpcNoWait : RpcNoWait = Symbol('RpcNoWait');
 
 export class RpcCall {

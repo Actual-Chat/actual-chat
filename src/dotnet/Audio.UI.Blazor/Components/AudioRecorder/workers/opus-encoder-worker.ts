@@ -7,12 +7,12 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 import Denque from 'denque';
-import { delayAsync } from 'promises';
 import { Disposable } from 'disposable';
+import { retryAsync } from 'promises';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import * as signalR from '@microsoft/signalr';
 import { HttpTransportType } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { Versioning } from 'versioning';
 
 import { AudioVadWorker } from './audio-vad-worker-contract';
@@ -94,33 +94,17 @@ let serverImpl: OpusEncoderWorker = {
         lowNoiseChunk = initPinkNoiseBuffer(0.005);
         silenceChunk = new Float32Array(CHUNK_SIZE);
 
-    // Setting encoder module
-    let retryCount = 0;
-    let whenCodecModuleCreated = loadCodec();
-    while (codecModule == null && retryCount++ < 3) {
-        try {
-            await whenCodecModuleCreated;
-            break;
-        }
-        catch (e) {
-            warnLog.log(e, "Error loading codec WASM module.")
-            await delayAsync(300);
-            whenCodecModuleCreated = loadCodec();
-        }
-    }
-    if (codecModule == null)
-        throw new Error("Unable to load codec WASM module.");
+        // Loading codec
+        codecModule = await retryAsync(3, () => codec(getEmscriptenLoaderOptions()));
 
-        // warmup encoder
+        // Warming up codec
         encoder = new codecModule.Encoder();
-        for (let i=0; i < 2; i++) {
+        for (let i=0; i < 2; i++)
             encoder.encode(pinkNoiseChunk.buffer);
-        }
         encoder.delete();
         encoder = null;
 
         debugLog?.log(`<- onCreate`);
-
         state = 'created';
     },
 
@@ -198,18 +182,6 @@ let serverImpl: OpusEncoderWorker = {
 const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
 
 // Helpers
-
-function loadCodec(): Promise<void> {
-    // wrapped promise to avoid exceptions with direct call to codec(...)
-    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
-        .then(
-            val => {
-                codecModule = val;
-                self['codec'] = codecModule;
-                resolve();
-            },
-            reason => reject(reason)));
-}
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {

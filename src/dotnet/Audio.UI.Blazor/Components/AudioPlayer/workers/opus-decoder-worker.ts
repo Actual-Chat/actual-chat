@@ -48,9 +48,9 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
 
 function getDecoder(controllerId: number): OpusDecoder {
     const decoder = decoders.get(controllerId);
-    if (decoder === undefined) {
+    if (decoder === undefined)
         throw new Error(`Can't find decoder object for controller #${controllerId}`);
-    }
+
     return decoder;
 }
 

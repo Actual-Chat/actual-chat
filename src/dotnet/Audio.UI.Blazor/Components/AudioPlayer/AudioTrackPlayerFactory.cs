@@ -15,7 +15,5 @@ public sealed class AudioTrackPlayerFactory : ITrackPlayerFactory
     public TrackPlayer Create(IMediaSource source) => new AudioTrackPlayer(
         Interlocked.Increment(ref _lastCreatedId).Format(),
         source,
-        Services.GetRequiredService<BlazorCircuitContext>(),
-        Services.GetRequiredService<IJSRuntime>(),
-        Services.GetRequiredService<ILogger<AudioTrackPlayer>>());
+        Services);
 }

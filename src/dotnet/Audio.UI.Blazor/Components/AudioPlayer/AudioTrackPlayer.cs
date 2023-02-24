@@ -10,24 +10,25 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     private readonly string _id;
-    private readonly BlazorCircuitContext _circuitContext;
-    private readonly IJSRuntime _js;
+    private Dispatcher? _dispatcher;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private Task<Unit> _whenBufferReady = TaskSource.New<Unit>(true).Task;
     private bool _isStopSent;
 
+    private IServiceProvider Services { get; }
+    private IJSRuntime JS { get; }
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+
     public AudioTrackPlayer(
         string id,
         IMediaSource source,
-        BlazorCircuitContext circuitContext,
-        IJSRuntime jsRuntime,
-        ILogger<AudioTrackPlayer> log
-    ) : base(source, log)
+        IServiceProvider services
+    ) : base(source, services.LogFor<AudioTrackPlayer>())
     {
+        Services = services;
         _id = id;
-        _circuitContext = circuitContext;
-        _js = jsRuntime;
+        JS = services.GetRequiredService<IJSRuntime>();
         UpdateBufferReadyState(true);
     }
 
@@ -70,7 +71,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     protected override async ValueTask ProcessCommand(IPlayerCommand command, CancellationToken cancellationToken)
-        => await CircuitInvoke(
+        => await InvokeAsync(
             async () => {
                 switch (command) {
                 case PlayCommand:
@@ -78,7 +79,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         throw StandardError.StateTransition(GetType(), "Repeated PlayCommand.");
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
-                    _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                    _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                         $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                         CancellationToken.None,
                         _blazorRef,
@@ -127,7 +128,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             }).ConfigureAwait(false);
 
     protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
-        => await CircuitInvoke(
+        => await InvokeAsync(
             async () => {
                 if (_jsRef == null)
                     throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
@@ -147,7 +148,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     protected override Task PlayInternal(CancellationToken cancellationToken)
         => base.PlayInternal(cancellationToken)
-            .ContinueWith(_ => CircuitInvoke(
+            .ContinueWith(_ => InvokeAsync(
                 async () => {
                     var (jsRef, blazorRef) = (_jsRef, _blazorRef);
                     (_jsRef, _blazorRef) = (null, null);
@@ -166,20 +167,17 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 }
             ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
-    private Task CircuitInvoke(Func<Task> workItem)
-        => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
+    private Task InvokeAsync(Func<Task> workItem)
+        => InvokeAsync(async () => { await workItem().ConfigureAwait(false); return true; });
 
 #pragma warning disable RCS1229
-    private Task<TResult?> CircuitInvoke<TResult>(Func<Task<TResult?>> workItem)
+    private Task<TResult?> InvokeAsync<TResult>(Func<Task<TResult?>> workItem)
     {
         try {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            return _circuitContext.IsDisposing || _circuitContext.RootComponent == null!
-                ? Task.FromResult(default(TResult?))
-                : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
+            return Dispatcher.InvokeAsync(workItem);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, $"[AudioTrackPlayer #{{AudioTrackPlayerId}}] {nameof(CircuitInvoke)} failed", _id);
+            Log.LogError(e, $"[AudioTrackPlayer #{{AudioTrackPlayerId}}] {nameof(InvokeAsync)} failed", _id);
             throw;
         }
     }

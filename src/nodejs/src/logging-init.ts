@@ -37,8 +37,8 @@ export type LogScope =
     | 'UserActivityUI'
     | 'VibrationUI'
     // Audio
-    | 'AudioContextSource'
     | 'AudioContextRef'
+    | 'AudioContextSource'
     | 'ChromiumEchoCancellation'
     | 'WarmUpAudioWorkletProcessor'
     | 'FeederProcessor'
@@ -139,9 +139,9 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     // minLevels.set('Rpc', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
-    minLevels.set('AudioPlayerController', LogLevel.Debug);
+    minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
-    // minLevels.set('AudioContextRef', LogLevel.Debug);
+    minLevels.set('AudioPlayerController', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
     // minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorker', LogLevel.Debug);

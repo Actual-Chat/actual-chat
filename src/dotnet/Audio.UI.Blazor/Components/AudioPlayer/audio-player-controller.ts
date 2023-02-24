@@ -1,11 +1,11 @@
-import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
-import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
-import { Resettable } from 'resettable';
-import { audioContextSource } from 'audio-context-source';
-import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
-import { Log, LogLevel, LogScope } from 'logging';
 import { AudioContextRef } from 'audio-context-ref';
+import { audioContextSource } from 'audio-context-source';
+import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
+import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
+import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
+import { Resettable } from 'resettable';
 import { Versioning } from 'versioning';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'AudioPlayerController';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -49,12 +49,11 @@ let lastControllerId = 0;
 /** The main class of audio player, that controls all parts of the playback */
 export class AudioPlayerController implements Resettable {
     /** The id is used to store related objects on the web worker side */
-    private contextRef: AudioContextRef = null;
+    private contextRef: AudioContextRef;
     private decoderChannel = new MessageChannel();
     private feederNode?: FeederAudioWorkletNode = null;
     private destinationNode?: MediaStreamAudioDestinationNode = null;
-    private cleanup?: () => void = null;
-    private isReset = false;
+    private isAecWorkaroundUsed = isAecWorkaroundNeeded();
 
     public readonly id: number;
 
@@ -65,7 +64,6 @@ export class AudioPlayerController implements Resettable {
 
     /**
      * Create uninitialized object and registers it on the web worker side.
-     * You should call initialize (to create audioContext, etc) later (after an user gesture action).
      */
     public static create(): Promise<AudioPlayerController> {
         const callbackId = workerLastCallbackId++;
@@ -83,84 +81,83 @@ export class AudioPlayerController implements Resettable {
             worker.postMessage(msg, [controller.decoderChannel.port1]);
         });
     }
-    /**
-     * Setups create audio worklet nodes if needed and setups callbacks.
-     * You should initialize @type { AudioPlayerController } close to playing, after an user gesture
-     * because we might use the WebRTC workaround of echo cancellation bugs in chrome and so on.
-     */
-    public async init(callbacks: {
+
+    public async use(callbacks: {
         onBufferTooMuch?: () => void,
         onBufferLow?: () => void,
         onStartPlaying?: () => void,
         onStarving?: () => void,
         onPaused?: () => void;
         onResumed?: () => void;
-        /** If playing was started and now it's stopped */
         onStopped?: () => void,
         /** Called at the end of the queue, even if the playing wasn't started */
         onEnded?: () => void,
     }): Promise<void> {
-        this.isReset = false;
-        /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
-        this.contextRef = await audioContextSource.getRef();
-        this.contextRef.whenContextChanged().then(context => {
-            if (context && !this.isReset) {
-                this.reset();
-                this.contextRef?.dispose();
-                this.contextRef = null;
-                void this.init(callbacks); // Note that this call is recursive!
+        const onReady = async (context: AudioContext) => {
+            if (this.feederNode === null) {
+                const feederNodeOptions: AudioWorkletNodeOptions = {
+                    channelCount: 1,
+                    channelCountMode: 'explicit',
+                    numberOfInputs: 0,
+                    numberOfOutputs: 1,
+                    outputChannelCount: [1],
+                };
+                this.feederNode = await FeederAudioWorkletNode.create(
+                    this.decoderChannel.port2,
+                    context,
+                    'feederWorklet',
+                    feederNodeOptions
+                );
             }
-        });
-        if (this.feederNode === null) {
-            const feederNodeOptions: AudioWorkletNodeOptions = {
-                channelCount: 1,
-                channelCountMode: 'explicit',
-                numberOfInputs: 0,
-                numberOfOutputs: 1,
-                outputChannelCount: [1],
-            };
-            this.feederNode = await FeederAudioWorkletNode.create(
-                this.decoderChannel.port2,
-                this.contextRef.context,
-                'feederWorklet',
-                feederNodeOptions
-            );
-        }
-        const feederNode = this.feederNode;
-        feederNode.onBufferLow = callbacks.onBufferLow;
-        feederNode.onStartPlaying = callbacks.onStartPlaying;
-        feederNode.onBufferTooMuch = callbacks.onBufferTooMuch;
-        feederNode.onStarving = callbacks.onStarving;
-        feederNode.onPaused = callbacks.onPaused;
-        feederNode.onResumed = callbacks.onResumed;
-        feederNode.onStopped = callbacks.onStopped;
-        feederNode.onEnded = callbacks.onEnded;
 
-        // recreating nodes due to memory leaks in not disconnected nodes
-        if (isAecWorkaroundNeeded()) {
-            debugLog?.log(`init(): isAecWorkaroundNeeded() == true`);
-            if (!this.contextRef) {
-                // audio context has been recreated
-                warnLog?.log(`init(): audio context has been recreated`);
-                return;
-            }
-            this.destinationNode = this.contextRef.context.createMediaStreamDestination();
-            feederNode.connect(this.destinationNode);
-            this.cleanup = await enableChromiumAec(this.destinationNode.stream);
-        }
-        else {
-            debugLog?.log(`init(): isAecWorkaroundNeeded == false`);
-            if (!this.contextRef) {
-                // audio context has been recreated
-                warnLog?.log(`init(): audio context has been recreated`);
-                return;
-            }
-            feederNode.connect(this.contextRef.context.destination);
-        }
-        await this.initWorker();
-    }
+            const feederNode = this.feederNode;
+            feederNode.onBufferLow = callbacks.onBufferLow;
+            feederNode.onStartPlaying = callbacks.onStartPlaying;
+            feederNode.onBufferTooMuch = callbacks.onBufferTooMuch;
+            feederNode.onStarving = callbacks.onStarving;
+            feederNode.onPaused = callbacks.onPaused;
+            feederNode.onResumed = callbacks.onResumed;
+            feederNode.onStopped = callbacks.onStopped;
+            feederNode.onEnded = callbacks.onEnded;
 
-    private initWorker(): Promise<void> {
+            debugLog?.log(`init: isAecWorkaroundUsed:`, this.isAecWorkaroundUsed);
+            if (this.isAecWorkaroundUsed) {
+                this.destinationNode = context.createMediaStreamDestination();
+                feederNode.connect(this.destinationNode);
+                await enableChromiumAec(this.destinationNode.stream);
+            }
+            else {
+                feederNode.connect(context.destination);
+            }
+        }
+        const onNotReady = async (context: AudioContext) => {
+            if (this.feederNode != null) {
+                this.feederNode.disconnect();
+                this.feederNode.onBufferLow = null;
+                this.feederNode.onStartPlaying = null;
+                this.feederNode.onBufferTooMuch = null;
+                this.feederNode.onStarving = null;
+                this.feederNode.onPaused = null;
+                this.feederNode.onResumed = null;
+                this.feederNode.onStopped = null;
+                this.feederNode.onEnded = null;
+            }
+            // TODO: do not recreate destinationNode?
+            if (this.destinationNode != null) {
+                const tracks = this.destinationNode.stream.getTracks();
+                for (let i = 0; i < tracks.length; ++i) {
+                    this.destinationNode.stream.removeTrack(tracks[i]);
+                }
+                this.destinationNode.disconnect();
+                this.destinationNode = null;
+            }
+        }
+
+        if (this.contextRef == null)
+            this.contextRef = audioContextSource.getRef(onReady, onNotReady);
+        await this.contextRef.whenReady();
+
+        // Initialize worker
         const callbackId = workerLastCallbackId++;
         return new Promise<void>(resolve => {
             workerCallbacks.set(callbackId, resolve);
@@ -171,6 +168,15 @@ export class AudioPlayerController implements Resettable {
             };
             worker.postMessage(msg);
         });
+    }
+
+    public async reset(): Promise<void> {
+        const contextRef = this.contextRef;
+        if (contextRef == null)
+            return;
+
+        this.contextRef = null;
+        await contextRef.disposeAsync();
     }
 
     public enqueueEnd(): void {
@@ -216,37 +222,5 @@ export class AudioPlayerController implements Resettable {
     public resume(): void {
         warnLog?.assert(this.feederNode !== null, `resume: feederNode isn't created yet. Lifetime error.`);
         this.feederNode.resume();
-    }
-
-    public reset(): void | PromiseLike<void> {
-        this.isReset = true;
-        if (this.feederNode != null) {
-            this.feederNode.disconnect();
-            this.feederNode.onBufferLow = null;
-            this.feederNode.onStartPlaying = null;
-            this.feederNode.onBufferTooMuch = null;
-            this.feederNode.onStarving = null;
-            this.feederNode.onPaused = null;
-            this.feederNode.onResumed = null;
-            this.feederNode.onStopped = null;
-            this.feederNode.onEnded = null;
-        }
-        // TODO: do not recreate destinationNode ?
-        if (this.destinationNode != null) {
-            const tracks = this.destinationNode.stream.getTracks();
-            for (let i = 0; i < tracks.length; ++i) {
-                this.destinationNode.stream.removeTrack(tracks[i]);
-            }
-            this.destinationNode.disconnect();
-            this.destinationNode = null;
-        }
-        if (this.cleanup != null) {
-            this.cleanup();
-            this.cleanup = null;
-        }
-        if (this.contextRef != null) {
-            this.contextRef.dispose();
-            this.contextRef = null;
-        }
     }
 }

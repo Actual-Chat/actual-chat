@@ -13,18 +13,18 @@ public abstract class TrackPlayer : ProcessorBase
     private readonly object _stateUpdateLock = new();
     private readonly Channel<IPlayerCommand> _commandsQueue;
 
-    protected TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(3);
-    protected ILogger<TrackPlayer> Log { get; }
     protected IMediaSource Source { get; }
     protected CancellationTokenSource? PlayTokenSource;
     protected CancellationToken PlayToken;
+    protected TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(3);
+    protected ILogger Log { get; }
 
     public PlayerState State => _state;
     public Task? WhenPlaying => _whenPlaying;
     public Task WhenCompleted => _whenCompletedSource.Task;
     public event Action<PlayerStateChangedEventArgs>? StateChanged;
 
-    protected TrackPlayer(IMediaSource source, ILogger<TrackPlayer> log)
+    protected TrackPlayer(IMediaSource source, ILogger log)
     {
         Log = log;
         Source = source;

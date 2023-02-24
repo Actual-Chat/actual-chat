@@ -1,5 +1,5 @@
 import Denque from 'denque';
-import { delayAsync } from 'promises';
+import { retryAsync } from 'promises';
 import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-decoder-worker-message';
 import { Versioning } from 'versioning';
 /// #if MEM_LEAK_DETECTION
@@ -31,35 +31,16 @@ export class OpusDecoder {
     private readonly workletPort: MessagePort;
     private state: 'uninitialized' | 'waiting' | 'decoding' = 'uninitialized';
 
+    public static async create(workletPort: MessagePort): Promise<OpusDecoder> {
+        codecModule = await retryAsync(3, () => codec(getEmscriptenLoaderOptions()));
+        const decoder = new codecModule.Decoder();
+        return new OpusDecoder(decoder, workletPort);
+    }
+
     /** accepts fully initialized decoder only, use the factory method `create` to construct an object */
     private constructor(decoder: Decoder, workletPort: MessagePort) {
         this.decoder = decoder;
         this.workletPort = workletPort;
-    }
-
-    public static async create(workletPort: MessagePort): Promise<OpusDecoder> {
-        if (codecModule == null) {
-            // Setting encoder module
-            let retryCount = 0;
-            let whenCodecModuleCreated = loadCodec();
-            while (codecModule == null && retryCount++ < 3) {
-                try {
-                    await whenCodecModuleCreated;
-                    break;
-                }
-                catch (e) {
-                    warnLog.log(e, "error loading codec WASM module.")
-                    await delayAsync(300);
-                    whenCodecModuleCreated = loadCodec();
-                }
-            }
-        }
-
-        if (codecModule == null)
-            throw new Error("Unable to load codec WASM module.");
-
-        const decoder = new codecModule.Decoder();
-        return new OpusDecoder(decoder, workletPort);
     }
 
     public init(): void {
@@ -92,16 +73,14 @@ export class OpusDecoder {
     private processQueue(): void {
         const { queue, workletPort } = this;
 
-        if (this.state === 'decoding') {
+        if (this.state === 'decoding')
             return;
-        }
 
         try {
             this.state = 'decoding';
             while(true) {
-                if (queue.isEmpty()) {
+                if (queue.isEmpty())
                     return;
-                }
 
                 const item = queue.shift();
                 if (item === 'end') {
@@ -147,18 +126,6 @@ export class OpusDecoder {
 }
 
 // Helpers
-
-function loadCodec(): Promise<void> {
-    // Wrapped promise to avoid exceptions with direct call to codec(...)
-    return new Promise<void>((resolve,reject) => codec(getEmscriptenLoaderOptions())
-        .then(
-            val => {
-                codecModule = val;
-                self['codec'] = codecModule;
-                resolve();
-            },
-            reason => reject(reason)));
-}
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {

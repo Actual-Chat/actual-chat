@@ -8,7 +8,6 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-
 export class AudioInfo {
     private static backendRef: DotNet.DotNetObject = null;
 
@@ -18,7 +17,7 @@ export class AudioInfo {
         this.backendRef = backendRef1;
         log?.log(`init`);
 
-        await opusMediaRecorder.load(baseUri);
+        await opusMediaRecorder.init(baseUri);
         this.whenReady.resolve(undefined);
         globalThis["audioInfo"] = this;
         log?.log(`ready`);

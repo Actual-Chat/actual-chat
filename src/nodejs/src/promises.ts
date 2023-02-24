@@ -47,10 +47,6 @@ export class PromiseSource<T> implements Promise<T> {
         this[Symbol.toStringTag] = this._promise[Symbol.toStringTag];
     }
 
-    public isResolved(): boolean {
-        return this._isCompleted;
-    }
-
     public isCompleted(): boolean {
         return this._isCompleted;
     }
@@ -141,6 +137,26 @@ export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
         this._timeout.clear();
         this._timeout = null;
     }
+}
+
+// Cancellation
+
+export type Cancelled = symbol;
+export const cancelled : Cancelled = Symbol('Cancelled');
+export class OperationCancelledError extends Error {
+    constructor(message?: string) {
+        super(message ?? 'The operation is cancelled.');
+    }
+}
+
+export async function waitAsync<T>(promise: PromiseLike<T>, cancel?: Promise<Cancelled>): Promise<T> {
+    if (cancel == undefined)
+        return await promise;
+
+    const result = await Promise.race([promise, cancel]);
+    if (result === cancelled)
+        throw new OperationCancelledError();
+    return result as T;
 }
 
 // Async versions of setTimeout
@@ -362,6 +378,30 @@ export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>
                 queueSize--;
             }
         })();
+    }
+}
+
+type RetryDelaySeq = (tryIndex: number) => number;
+const defaultRetryDelays: RetryDelaySeq = () => 300;
+
+export async function retryAsync<T>(
+    tryCount,
+    fn: () => PromiseLike<T> | T,
+    retryDelays?: RetryDelaySeq,
+) : Promise<T> {
+    retryDelays ??= defaultRetryDelays;
+    let lastError: unknown = undefined;
+    for (let tryIndex = 0;;) {
+        if (tryIndex >= tryCount)
+            throw lastError;
+
+        try {
+            return await fn();
+        }
+        catch (e) {
+            lastError = e;
+        }
+        await delayAsync(retryDelays(tryIndex++));
     }
 }
 
