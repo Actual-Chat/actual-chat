@@ -28,7 +28,7 @@
     [Parameter] public string InputClass { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "Copy";
     [Parameter] public bool ShowInput { get; set; }
-    [Parameter, EditorRequired] public string Text { get; set; }
-    [Parameter] public string? Caption { get; set; }
+    [Parameter] public string Caption { get; set; } = "";
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
 }
 
