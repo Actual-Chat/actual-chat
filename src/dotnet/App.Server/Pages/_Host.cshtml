@@ -95,8 +95,6 @@
                 window.sessionStorage.windowIds = JSON.stringify(windowIds);
             return null;
         });
-        // clear state in case page reload was invoked
-        history.replaceState(null, /* ignored title */ '');
     </script>
 </head>
 <body>
