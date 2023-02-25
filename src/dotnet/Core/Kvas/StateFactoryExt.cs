@@ -2,23 +2,7 @@ namespace ActualChat.Kvas;
 
 public static class StateFactoryExt
 {
-    public static readonly string ForeignOrigin = "-";
-
-    public static string GetOrigin(this IStateFactory stateFactory)
-    {
-        var originProvider = stateFactory.Services.GetRequiredService<IOriginProvider>();
-        if (!originProvider.WhenReady.IsCompletedSuccessfully)
-            throw StandardError.Internal("Origin provider isn't ready yet.");
-
-        return originProvider.Origin;
-    }
-
-    public static async ValueTask<string> GetOriginAsync(this IStateFactory stateFactory, CancellationToken cancellationToken)
-    {
-        var originProvider = stateFactory.Services.GetRequiredService<IOriginProvider>();
-        await originProvider.WhenReady.ConfigureAwait(false);
-        return originProvider.Origin;
-    }
+    public static readonly string ExternalOrigin = "-";
 
     // NewStored
 

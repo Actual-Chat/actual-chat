@@ -43,7 +43,7 @@ public class OnboardingUI
     }
 
     public void UpdateSettings(UserOnboardingSettings value)
-        => _settings.Value = value.SetOrigin("");
+        => _settings.Value = value;
 
     // Private methods
 

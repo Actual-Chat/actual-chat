@@ -6,34 +6,20 @@ public static class HasOriginExt
 {
     private static readonly ConcurrentDictionary<Type, Action<object, string>> OriginSetters = new();
 
-    public static T WithOrigin<T>(this T source, IStateFactory stateFactory, bool fixOnly = false)
-        where T: IHasOrigin
-        => fixOnly && !source.Origin.IsNullOrEmpty()
-            ? source
-            : source.WithOrigin(stateFactory.GetOrigin());
-
-    public static T WithOrigin<T>(this T source, string origin, bool fixOnly = false)
+    public static T WithOrigin<T>(this T source, string origin)
         where T: IHasOrigin
     {
-        if (fixOnly && !source.Origin.IsNullOrEmpty())
-            return source;
         if (OrdinalEquals(source.Origin, origin))
             return source;
 
         return MemberwiseCloner.Invoke(source).SetOrigin(origin);
     }
 
-    public static T SetOrigin<T>(this T target, IStateFactory stateFactory, bool fixOnly = false)
-        where T: IHasOrigin
-        => fixOnly && !target.Origin.IsNullOrEmpty()
-            ? target
-            : target.SetOrigin(stateFactory.GetOrigin());
-
-    public static T SetOrigin<T>(this T target, string origin, bool fixOnly = false)
+    public static T SetOrigin<T>(this T target, string origin)
         where T: IHasOrigin
     {
-        if (fixOnly && !target.Origin.IsNullOrEmpty())
-            return target;
+        if (origin.IsNullOrEmpty())
+            throw new ArgumentOutOfRangeException(nameof(origin));
         if (OrdinalEquals(target.Origin, origin))
             return target;
 

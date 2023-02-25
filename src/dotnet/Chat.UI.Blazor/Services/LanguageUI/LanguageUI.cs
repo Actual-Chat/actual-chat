@@ -60,7 +60,7 @@ public class LanguageUI
     }
 
     public void UpdateSettings(UserLanguageSettings value)
-        => _settings.Value = value.SetOrigin("");
+        => _settings.Value = value;
 
     // Private methods
 

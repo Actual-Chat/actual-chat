@@ -55,15 +55,14 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
-        services.AddScoped<AppBlazorCircuitContext>(c => new AppBlazorCircuitContext(c));
-        services.AddScoped(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
-        services.AddScoped(c => c.GetRequiredService<BlazorCircuitContext>().Dispatcher);
+        services.AddScoped(c => new AppBlazorCircuitContext(c));
+        services.AddTransient(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
+        services.AddTransient(c => c.GetRequiredService<AppBlazorCircuitContext>().Dispatcher);
 
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
         services.AddScoped<DisposeMonitor>(_ => new DisposeMonitor());
         services.AddScoped<BrowserInfo>(c => new BrowserInfo(c));
-        services.AddTransient(c => (IOriginProvider)c.GetRequiredService<BrowserInfo>());
 
         // Settings
         services.AddSingleton<LocalSettings.Options>(_ => new LocalSettings.Options());

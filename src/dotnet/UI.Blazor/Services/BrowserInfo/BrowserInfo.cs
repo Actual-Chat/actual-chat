@@ -1,10 +1,9 @@
 using ActualChat.Hosting;
-using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposable
+public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
     private DotNetObjectReference<IBrowserInfoBackend>? _backendRef;
     private readonly IMutableState<ScreenSize> _screenSize;
@@ -33,7 +32,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IOriginProvider, IDisposa
     public bool IsTouchCapable { get; private set; }
     public string WindowId { get; private set; } = "";
     public Task WhenReady => _whenReadySource.Task;
-    string IOriginProvider.Origin => WindowId;
 
     public BrowserInfo(IServiceProvider services)
     {

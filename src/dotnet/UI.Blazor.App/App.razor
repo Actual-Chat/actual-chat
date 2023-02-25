@@ -130,11 +130,6 @@
         await BrowserInfo.WhenReady.WaitAsync(cancellationToken);
         step.Complete();
 
-        // Checking StateFactory.GetOrigin(), which becomes available once BrowserInfo is ready
-        // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-        if (Services.StateFactory().GetOrigin().Length < 4)
-            throw StandardError.Internal("BrowserInfo exposes invalid Origin.");
-
         if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
 
