@@ -55,7 +55,8 @@ public class OnboardingUI
         try {
             await Computed
                 .Capture(() => Accounts.GetOwn(Session, CancellationToken.None))
-                .When(x => !x.IsGuestOrNone, TimeSpan.FromSeconds(3));
+                .When(x => !x.IsGuestOrNone, Clocks.Timeout(3));
+            await Clocks.CpuClock.Delay(TimeSpan.FromMilliseconds(100));
         }
         catch (TimeoutException) {
             return false;

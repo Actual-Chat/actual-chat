@@ -7,11 +7,13 @@ public class ServerKvas : IServerKvas
     private IAuth Auth { get; }
     private IServerKvasBackend Backend { get; }
     private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
     public ServerKvas(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Clocks = services.Clocks();
         Auth = services.GetRequiredService<IAuth>();
         Backend = services.GetRequiredService<IServerKvasBackend>();
         Commander = services.Commander();
@@ -116,7 +118,7 @@ public class ServerKvas : IServerKvas
         try {
             await Computed
                 .Capture(() => Auth.GetUser(session, cancellationToken))
-                .When(u => u?.IsGuest() == false, TimeSpan.FromSeconds(3), cancellationToken)
+                .When(u => u?.IsGuest() == false, Clocks.Timeout(3), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (TimeoutException) {
