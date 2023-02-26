@@ -187,6 +187,7 @@ module.exports = {
         '06': 'var(--background-06)',
         '07': 'var(--background-07)',
         '08': 'var(--background-08)',
+        '09': 'var(--text-03)',
         'banner-warning': 'var(--background-banner-warning)',
         'banner-error': 'var(--background-banner-error)',
         'banner-info': 'var(--background-banner-info)',
@@ -339,6 +340,7 @@ module.exports = {
       'display-from-right-slow': 'display-element-from-right 300ms ease-in-out',
       'display-from-top-slow': 'display-element-from-top 300ms ease-in-out',
       'display-from-bottom-slow': 'display-element-from-bottom 300ms ease-in-out',
+      'opacity-from-0': 'opacity-from-0 150ms ease-in-out',
       'scale-from-left': 'scale-from-left 150ms ease-in-out',
       'scale-from-right': 'scale-from-right 150ms ease-in-out',
       'from-left': 'from-left 150ms ease-in-out',
@@ -1082,6 +1084,16 @@ module.exports = {
           transform: 'translate(0rem, 0rem) scale(1)',
         },
       },
+      'display-element-from-top': {
+        from: {
+          height: 0,
+          transform: 'translateY(-1.5rem)',
+        },
+        to: {
+          height: '100%',
+          transform: 'translateY(0rem)',
+        },
+      },
       'display-element-from-bottom': {
         from: {
           opacity: 0,
@@ -1090,6 +1102,14 @@ module.exports = {
         to: {
           opacity: 1,
           transform: 'translateY(0rem)',
+        },
+      },
+      'opacity-from-0': {
+        from: {
+          opacity: 0,
+        },
+        to: {
+          opacity: 1,
         },
       },
       'scale-icon': {

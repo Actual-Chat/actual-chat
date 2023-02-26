@@ -287,34 +287,33 @@ body.hoverable .add-attachment.btn:hover .btn-content {
     @apply bg-03;
 }
 body.narrow .related-chat-entry-panel {
-    @apply mt-2 mx-2;
+    @apply mt-2 mx-1;
     @apply overflow-hidden;
     @apply bg-07;
 }
 body.narrow .related-chat-entry-panel * {
-    @apply bg-06;
+    @apply bg-09;
 }
 .related-chat-entry-panel .c-content {
-    @apply flex-1 flex-x items-center;
+    @apply flex-1 flex-x items-center gap-x-2;
     @apply max-w-full max-h-10 md:max-h-8;
 }
 body.narrow .related-chat-entry-panel .related-chat-entry {
+    @apply px-1;
     @apply rounded-lg;
     @apply overflow-hidden;
 }
 body.narrow .related-chat-entry-panel .related-chat-entry .avatar-name,
-body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply {
-    @apply text-selected;
-}
-body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-close,
+body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply,
+body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
-    @apply text-05;
+    @apply text-04;
 }
 .related-chat-entry {
     @apply flex-1 flex-x items-center;
     @apply max-w-full;
-    @apply px-2 md:py-2;
+    @apply md:p-2;
     @apply bg-03;
     @apply text-base;
     @apply cursor-pointer;

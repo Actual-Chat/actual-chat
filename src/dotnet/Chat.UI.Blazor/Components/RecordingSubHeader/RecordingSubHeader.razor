@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<RecordingSubFooter.Model>
+@inherits ComputedStateComponent<RecordingSubHeader.Model>
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
@@ -8,11 +8,11 @@
         return;
 }
 
-<div class="recording-sub-footer">
+<div class="recording-sub-header">
     <div class="c-content">
         @if (m.RecordingChat != null) {
-            <div>
-                <i class="icon-mic text-2xl"></i>
+            <div class="flex justify-center w-10 px-1">
+                <div class="w-4 h-4 rounded-full bg-error animate-pulse"></div>
             </div>
             <div class="c-text shrink-0">
                 Recording in
