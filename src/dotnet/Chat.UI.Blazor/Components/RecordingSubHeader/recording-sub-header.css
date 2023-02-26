@@ -1,0 +1,19 @@
+.recording-sub-header {
+    @apply relative;
+    @apply flex-x items-center justify-center;
+    @apply p-0.25;
+    @apply bg-error-hover text-error shadow-lg;
+    @apply animate-opacity-from-0;
+}
+.recording-sub-header > .c-content {
+    @apply flex-1 flex-x flex-wrap md:flex-nowrap;
+    @apply gap-x-2 items-center justify-start;
+    @apply h-8;
+    @apply px-2;
+}
+.recording-sub-header > .c-content a {
+    text-decoration: none;
+}
+.recording-sub-header > .c-content a.c-text {
+    @apply font-semibold;
+}
