@@ -27,13 +27,18 @@ public static class ComputedExt
         Timeout timeout,
         CancellationToken cancellationToken = default)
     {
-        using var cts = cancellationToken.CreateLinkedTokenSource();
-        var computedTask = computed.When(predicate, cts.Token);
-        var timeoutTask = timeout.Wait(cts.Token);
-        await Task.WhenAny(timeoutTask, computedTask).ConfigureAwait(false);
-        if (timeoutTask.IsCompleted)
-            throw new TimeoutException();
+        var cts = cancellationToken.CreateLinkedTokenSource();
+        try {
+            var computedTask = computed.When(predicate, cts.Token);
+            var timeoutTask = timeout.Wait(cts.Token);
+            await Task.WhenAny(timeoutTask, computedTask).ConfigureAwait(false);
+            if (timeoutTask.IsCompleted)
+                throw new TimeoutException();
 
-        return await computedTask.ConfigureAwait(false);
+            return await computedTask.ConfigureAwait(false);
+        }
+        finally {
+            cts.CancelAndDisposeSilently();
+        }
     }
 }
