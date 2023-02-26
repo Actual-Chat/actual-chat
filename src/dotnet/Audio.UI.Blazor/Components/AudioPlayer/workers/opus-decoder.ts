@@ -1,17 +1,14 @@
 import Denque from 'denque';
-import { retryAsync } from 'promises';
-import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-decoder-worker-message';
-import { Versioning } from 'versioning';
 /// #if MEM_LEAK_DETECTION
-import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
-import codecWasm from '@actual-chat/codec/codec.debug.wasm';
-import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
+import { Decoder } from '@actual-chat/codec/codec.debug';
 /// #else
-/// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
-/// #code import codecWasm from '@actual-chat/codec/codec.wasm';
+/// #code import { Decoder } from '@actual-chat/codec';
 /// #endif
 import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
+import { rpcClient } from 'rpc';
+import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
+import { Disposable } from 'disposable';
 
 const LogScope: LogScope = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -22,56 +19,47 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
 
-let codecModule: Codec | null = null;
+export class OpusDecoder implements Disposable {
+    private readonly queue = new Denque<ArrayBufferView | 'end'>();
+    private readonly feederWorklet: FeederAudioWorklet & Disposable;
 
-export class OpusDecoder {
-    private readonly queue = new Denque<ArrayBuffer | 'end'>();
-    private readonly decoder: Decoder;
+    private decoder: Decoder;
+    private state: 'waiting' | 'decoding' = 'waiting';
 
-    private readonly workletPort: MessagePort;
-    private state: 'uninitialized' | 'waiting' | 'decoding' = 'uninitialized';
-
-    public static async create(workletPort: MessagePort): Promise<OpusDecoder> {
-        codecModule = await retryAsync(3, () => codec(getEmscriptenLoaderOptions()));
-        const decoder = new codecModule.Decoder();
+    public static async create(decoder: Decoder, workletPort: MessagePort): Promise<OpusDecoder> {
         return new OpusDecoder(decoder, workletPort);
     }
 
     /** accepts fully initialized decoder only, use the factory method `create` to construct an object */
     private constructor(decoder: Decoder, workletPort: MessagePort) {
         this.decoder = decoder;
-        this.workletPort = workletPort;
-    }
-
-    public init(): void {
-        warnLog?.assert(this.queue.length === 0, `init: queue should be empty, check stop/reset logic`);
+        this.feederWorklet = rpcClient<FeederAudioWorklet>(`${LogScope}.feederWorklet`, workletPort);
         this.state = 'waiting';
     }
 
-    public pushData(data: ArrayBuffer): void {
-        debugLog?.log(`pushData: data size: ${data.byteLength} byte(s)`);
-        const { state, queue } = this;
-        warnLog?.assert(state !== 'uninitialized', `pushData: uninitialized but got data!`);
-        warnLog?.assert(data.byteLength > 0, `pushData: got zero length data message!`);
-        queue.push(data);
-        this.processQueue();
-    }
-
-    public pushEnd(): void {
-        const { state, queue } = this;
-        warnLog?.assert(state !== 'uninitialized', `pushEnd: Uninitialized but got "end of data" message!`);
-        queue.push('end');
+    public decode(buffer: ArrayBuffer, offset: number, length: number,): void {
+        debugLog?.log(`pushData: data size: ${buffer.byteLength} byte(s)`);
+        warnLog?.assert(buffer.byteLength > 0, `pushData: got zero length data message!`);
+        const { queue } = this;
+        const bufferView = new Uint8Array(buffer, offset, length);
+        queue.push(bufferView);
         this.processQueue();
     }
 
     public stop(): void {
+        debugLog?.log(`stop`);
         const { queue } = this;
         queue.clear();
-        this.state = 'uninitialized';
+    }
+
+    public end(): void {
+        const { queue } = this;
+        queue.push('end');
+        this.processQueue();
     }
 
     private processQueue(): void {
-        const { queue, workletPort } = this;
+        const { queue, feederWorklet } = this;
 
         if (this.state === 'decoding')
             return;
@@ -86,8 +74,7 @@ export class OpusDecoder {
                 if (item === 'end') {
                     debugLog?.log(`processQueue: end is reached, sending end to worklet and stopping queue processing`);
                     // tell the worklet, that we are at the end of playing
-                    const msg: EndDecoderWorkerMessage = { type: 'end' };
-                    workletPort.postMessage(msg);
+                    void feederWorklet.onEnd();
                     this.stop();
                     return;
                 }
@@ -106,13 +93,7 @@ export class OpusDecoder {
                 if (samples == null || samples.length === 0)
                     return;
 
-                const msg: SamplesDecoderWorkerMessage = {
-                    type: 'samples',
-                    buffer: samples,
-                    length: samples.byteLength,
-                    offset: samples.byteOffset,
-                };
-                workletPort.postMessage(msg, [samples.buffer]);
+                void feederWorklet.onSamples(samples.buffer, samples.byteOffset, samples.length);
             }
         }
         catch (error) {
@@ -123,27 +104,9 @@ export class OpusDecoder {
                 this.state = 'waiting';
         }
     }
+
+    public dispose(): void {
+        this.decoder?.delete();
+        this.decoder = null;
+    }
 }
-
-// Helpers
-
-function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
-    return {
-        locateFile: (filename: string) => {
-            const codecWasmPath = Versioning.mapPath(codecWasm);
-            if (filename.slice(-4) === 'wasm')
-                return codecWasmPath;
-            /// #if MEM_LEAK_DETECTION
-            else if (filename.slice(-3) === 'map')
-                return codecWasmMap;
-                /// #endif
-                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
-            // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
-                return filename;
-            else
-                throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-        },
-    };
-}
-

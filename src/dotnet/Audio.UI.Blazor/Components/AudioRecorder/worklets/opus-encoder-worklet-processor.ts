@@ -28,7 +28,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        warnLog?.log('ctor');
+        debugLog?.log('ctor');
         const { timeSlice } = options.processorOptions as ProcessorOptions;
 
         if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
@@ -46,7 +46,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.server = rpcServer(`${LogScope}.server`, this.port, this);
     }
 
-    public async init(workerPort: MessagePort, noWait?: RpcNoWait): Promise<void> {
+    public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
     }
 
@@ -84,7 +84,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.worker != null)
-                        void this.worker.onEncoderWorkletSample(audioArrayBuffer, rpcNoWait);
+                        void this.worker.onEncoderWorkletSamples(audioArrayBuffer, rpcNoWait);
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {

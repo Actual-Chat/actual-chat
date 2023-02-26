@@ -1,20 +1,10 @@
 import Denque from 'denque';
-import {
-    GetStateNodeMessage,
-    InitNodeMessage,
-    NodeMessage,
-    OperationCompletedProcessorMessage,
-    ProcessorState,
-    StateChangedProcessorMessage,
-    StateProcessorMessage,
-} from './feeder-audio-worklet-message';
-import {
-    DecoderWorkerMessage,
-    EndDecoderWorkerMessage,
-    SamplesDecoderWorkerMessage,
-} from '../workers/opus-decoder-worker-message';
 import { Log, LogLevel, LogScope } from 'logging';
 import { timerQueue } from 'timerQueue';
+import { FeederAudioNode, FeederAudioWorklet, PlaybackState } from './feeder-audio-worklet-contract';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
+import { OpusDecoderWorker } from '../workers/opus-decoder-worker-contract';
+import { Disposable } from 'disposable';
 
 const LogScope: LogScope = 'FeederProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -23,7 +13,7 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 const SAMPLE_RATE = 48000;
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
-class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
+class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {
     private readonly chunks = new Denque<Float32Array | 'end'>();
     /**
      * 128 samples at 48 kHz ~= 2.67 ms
@@ -38,7 +28,10 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private readonly enoughToStartPlaying: number = 0.1;
     /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
     private readonly tooMuchBuffered: number = 15.0;
-    private workerPort: MessagePort;
+
+    private workletNode: FeederAudioNode & Disposable;
+    private worker: OpusDecoderWorker & Disposable;
+    // private workerPort: MessagePort;
     private chunkOffset = 0;
     /** In seconds from the start of playing, excluding starving time and processing time */
     private playbackTime = 0;
@@ -48,7 +41,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        this.port.onmessage = this.onNodeMessage;
+        debugLog?.log('ctor');
+        this.workletNode = rpcClientServer<FeederAudioNode>(`${LogScope}.server`, this.port, this);
     }
 
     /** Count how many samples are queued up */
@@ -61,6 +55,74 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             result += chunk.length;
         }
         return result;
+    }
+
+    public async init(workerPort: MessagePort): Promise<void> {
+        this.worker = rpcClientServer<OpusDecoderWorker>(`${LogScope}.worker`, workerPort, this);
+    }
+
+    public getState(): Promise<PlaybackState> {
+        const playbackState: PlaybackState = {
+            bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
+            playbackTime: this.playbackTime,
+        };
+        return Promise.resolve(playbackState);
+    }
+
+    public stop(): Promise<void> {
+
+        const { isPlaying: wasPlaying } = this;
+        this.reset();
+
+        if (wasPlaying) {
+            debugLog?.log(`stop`);
+            void this.workletNode.onStateUpdated('stopped', rpcNoWait);
+        }
+        void this.workletNode.onStateUpdated('ended', rpcNoWait);
+
+        return Promise.resolve(undefined);
+    }
+
+    public pause(): Promise<void> {
+        if (this.isPaused) {
+            debugLog?.log(`onPauseMessage: already in pause state:`, this.isPaused);
+            return;
+        }
+        this.isPaused = true;
+        void this.workletNode.onStateUpdated('paused', rpcNoWait);
+
+        return Promise.resolve(undefined);
+    }
+
+    public resume(): Promise<void> {
+        if (!this.isPaused) {
+            debugLog?.log(`onPauseMessage: already in resumed state:`, this.isPaused);
+            return;
+        }
+        this.isPaused = false;
+        void this.workletNode.onStateUpdated('resumed', rpcNoWait);
+
+        return Promise.resolve(undefined);
+    }
+
+    public onEnd(noWait?: RpcNoWait): Promise<void> {
+        this.chunks.push('end');
+        // if we don't start to play and the 'end' is already here
+        // for example if play threshold > number of frames before the end
+        if (!this.isPlaying) {
+            this.reset();
+            void this.workletNode.onStateUpdated('ended', rpcNoWait);
+        }
+
+        return Promise.resolve(undefined);
+    }
+
+    /** Decoded samples from the decoder worker */
+    public onSamples(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
+        this.chunks.push(new Float32Array(buffer, offset, length));
+        this.startPlaybackIfEnoughBuffered();
+
+        return Promise.resolve(undefined);
     }
 
     public process(
@@ -92,7 +154,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 if (chunk === 'end') {
                     channel.fill(0, offset);
                     debugLog?.log(`process: reached end of stream`);
-                    this.onStopMessage();
+                    void this.stop();
                     break;
                 }
                 else {
@@ -122,7 +184,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 channel.fill(0, offset);
                 if (!this.isStarving) {
                     this.isStarving = true;
-                    this.postStateChangedMessage('starving');
+                    void this.workletNode.onStateUpdated('starving', rpcNoWait);
                 }
 
                 break;
@@ -133,55 +195,21 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         const bufferedDuration = sampleCount / SAMPLE_RATE;
         if (this.isPlaying && !this.isStarving) {
             if (sampleCount <= samplesLowThreshold) {
-                this.postStateChangedMessage('playingWithLowBuffer');
+                void this.workletNode.onStateUpdated('playingWithLowBuffer', rpcNoWait);
             }
             if (bufferedDuration > tooMuchBuffered) {
-                this.postStateChangedMessage('playingWithTooMuchBuffer');
+                void this.workletNode.onStateUpdated('playingWithTooMuchBuffer', rpcNoWait);
             }
         } else if (this.isStarving) {
             if (sampleCount > samplesLowThreshold) {
                 this.isStarving = false;
 
                 if (this.isPlaying) {
-                    this.postStateChangedMessage('playing');
+                    void this.workletNode.onStateUpdated('playing', rpcNoWait);
                 }
             }
         }
         return true;
-    }
-
-    private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
-        const msg = ev.data;
-        switch (msg.type) {
-        case 'init':
-            this.onInitMessage(msg as InitNodeMessage);
-            break;
-        case 'stop':
-            this.onStopMessage();
-            break;
-        case 'pause':
-            this.onPauseMessage(true);
-            break;
-        case 'resume':
-            this.onPauseMessage(false);
-            break;
-        case 'getState':
-            this.onGetState(msg as GetStateNodeMessage);
-            break;
-
-        default:
-            throw new Error(`Unsupported message type: ${msg.type}`);
-        }
-    };
-
-    private onInitMessage(message: InitNodeMessage) {
-        this.workerPort = message.decoderWorkerPort;
-        this.workerPort.onmessage = this.onWorkerMessage;
-        const msg: OperationCompletedProcessorMessage = {
-            type: 'operationCompleted',
-            callbackId: message.callbackId,
-        };
-        this.port.postMessage(msg);
     }
 
     private reset(): void {
@@ -194,99 +222,15 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         // we don't set playbackTime = 0, because we want to see it in getState() after a stop.
     }
 
-    private onGetState(message: GetStateNodeMessage) {
-        const msg: StateProcessorMessage = {
-            type: 'state',
-            callbackId: message.callbackId,
-            bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
-            playbackTime: this.playbackTime,
-        };
-        debugLog?.log(`onGetState, message:`, msg);
-        this.port.postMessage(msg);
-    }
-
-    private onStopMessage() {
-        const { isPlaying: wasPlaying } = this;
-        this.reset();
-
-        if (wasPlaying) {
-            debugLog?.log(`onStopMessage`);
-            this.postStateChangedMessage('stopped');
-        }
-        this.postStateChangedMessage('ended');
-    }
-
-    private onPauseMessage(isPause: boolean) {
-        if (this.isPaused === isPause) {
-            debugLog?.log(`onPauseMessage: already in pause state:`, this.isPaused);
-            return;
-        }
-        this.isPaused = isPause;
-        if (isPause) {
-            this.postStateChangedMessage('paused');
-        }
-        else {
-            this.postStateChangedMessage('resumed');
-        }
-    }
-
     private startPlaybackIfEnoughBuffered(): void {
         if (!this.isPlaying) {
             const bufferedDuration = this.bufferedSampleCount / SAMPLE_RATE;
             if (bufferedDuration >= this.enoughToStartPlaying) {
                 this.isPlaying = true;
                 this.playbackTime = 0;
-                const message: StateChangedProcessorMessage = {
-                    type: 'stateChanged',
-                    state: 'playing',
-                };
-                this.port.postMessage(message);
+                void this.workletNode.onStateUpdated('playing', rpcNoWait);
             }
         }
-    }
-
-    private onWorkerMessage = (ev: MessageEvent<DecoderWorkerMessage>): void => {
-        const msg = ev.data;
-        try {
-            switch (msg.type) {
-            case 'samples':
-                this.onSamplesDecoderWorkerMessage(msg as SamplesDecoderWorkerMessage);
-                break;
-            case 'end':
-                this.onEndDecoderWorkerMessage(msg as EndDecoderWorkerMessage);
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
-            }
-        }
-        catch (error) {
-            errorLog?.log(`onWorkerMessage: unhandled error:`, error);
-        }
-    };
-
-    private onEndDecoderWorkerMessage(message: EndDecoderWorkerMessage) {
-        this.chunks.push('end');
-        // if we don't start to play and the 'end' is already here
-        // for example if play threshold > number of frames before the end
-        if (!this.isPlaying) {
-            this.reset();
-            this.postStateChangedMessage('ended');
-        }
-    }
-
-    private onSamplesDecoderWorkerMessage(message: SamplesDecoderWorkerMessage) {
-        const { buffer, length, offset } = message;
-        this.chunks.push(new Float32Array(buffer.slice(offset, offset + length)));
-        this.startPlaybackIfEnoughBuffered();
-    }
-
-    private postStateChangedMessage(state: ProcessorState)
-    {
-        const message: StateChangedProcessorMessage = {
-            type: 'stateChanged',
-            state: state,
-        };
-        this.port.postMessage(message);
     }
 }
 

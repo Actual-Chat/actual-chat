@@ -1,6 +1,7 @@
 import { PromiseSource } from 'promises';
 import { Log, LogLevel, LogScope } from 'logging';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
+import { AudioPlayerController } from '../Components/AudioPlayer/audio-player-controller';
 
 const LogScope: LogScope = 'AudioInfo';
 const log = Log.get(LogScope, LogLevel.Info);
@@ -18,6 +19,7 @@ export class AudioInfo {
         log?.log(`init`);
 
         await opusMediaRecorder.init(baseUri);
+        await AudioPlayerController.init();
         this.whenReady.resolve(undefined);
         globalThis["audioInfo"] = this;
         log?.log(`ready`);

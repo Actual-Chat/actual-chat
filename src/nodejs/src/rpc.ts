@@ -137,8 +137,17 @@ export async function handleRpc<T>(
 }
 
 export function isTransferable(x: unknown): x is Transferable {
-    if (typeof x['postMessage'] === 'function')
-        return true; // MessagePort
+    if (x instanceof ArrayBuffer)
+        return true;
+    if (x instanceof MessagePort)
+        return true;
+    // we don' use those objects yet
+    // if (x instanceof ReadableStream)
+    //     return true;
+    // if (x instanceof WritableStream)
+    //     return true;
+    // if (x instanceof TransformStream)
+    //     return true;
     return false;
 }
 

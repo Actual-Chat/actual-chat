@@ -1,60 +1,34 @@
 import { AudioContextRef } from 'audio-context-ref';
 import { audioContextSource } from 'audio-context-source';
-import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
-import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
-import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 import { Resettable } from 'resettable';
 import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';
+import { AsyncDisposable, Disposable } from 'disposable';
+import { rpcClient, rpcNoWait } from 'rpc';
+import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
+import { enableChromiumAec, isAecWorkaroundNeeded } from './chromium-echo-cancellation';
+import { PlaybackState } from './worklets/feeder-audio-worklet-contract';
+import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 
 const LogScope: LogScope = 'AudioPlayerController';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-const workerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
-const worker = new Worker(workerPath);
-const workerCallbacks = new Map<number, () => void>();
-let workerLastCallbackId = 0;
-
-worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
-    const msg = ev.data;
-    try {
-        switch (msg.type) {
-        case 'operationCompleted':
-            onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
-            break;
-        default:
-            // noinspection ExceptionCaughtLocallyJS
-            throw new Error(`Unsupported message type: ${msg.type}`);
-        }
-    }
-    catch (error) {
-        errorLog?.log(`worker.onmessage: unhandled error:`, error);
-    }
-};
-
-function onOperationCompleted(message: OperationCompletedDecoderWorkerMessage) {
-    const { callbackId: callbackId } = message;
-    const callback = workerCallbacks.get(callbackId);
-    if (callback === undefined)
-        throw new Error(`Callback #${callbackId} is not found.`);
-
-    workerCallbacks.delete(callbackId);
-    callback();
-}
-
 let lastControllerId = 0;
 
 /** The main class of audio player, that controls all parts of the playback */
-export class AudioPlayerController implements Resettable {
-    /** The id is used to store related objects on the web worker side */
-    private contextRef: AudioContextRef;
-    private decoderChannel = new MessageChannel();
+export class AudioPlayerController implements Resettable, AsyncDisposable {
+    private static decoderWorkerInstance: Worker = null;
+    private static decoderWorker: OpusDecoderWorker & Disposable = null;
+
+    private decoderChannel: MessageChannel = null;
+    private contextRef: AudioContextRef = null;
     private feederNode?: FeederAudioWorkletNode = null;
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private isAecWorkaroundUsed = isAecWorkaroundNeeded();
 
+    /** The id is used to store related objects on the web worker side */
     public readonly id: number;
 
     private constructor() {
@@ -62,24 +36,21 @@ export class AudioPlayerController implements Resettable {
         debugLog?.log(`constructor: #${this.id}`);
     }
 
+    public static async init(): Promise<void> {
+        warnLog?.assert(
+            this.decoderWorkerInstance === null,
+            `init: decoderWorkerInstance has already been created. Lifetime error.`);
+        const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
+        this.decoderWorkerInstance = new Worker(decoderWorkerPath);
+        this.decoderWorker = rpcClient<OpusDecoderWorker>(`${LogScope}.vadWorker`, this.decoderWorkerInstance);
+        await this.decoderWorker.create(Versioning.artifactVersions);
+    }
+
     /**
      * Create uninitialized object and registers it on the web worker side.
      */
-    public static create(): Promise<AudioPlayerController> {
-        const callbackId = workerLastCallbackId++;
-        return new Promise<AudioPlayerController>(resolve => {
-            const controller = new AudioPlayerController();
-            workerCallbacks.set(callbackId, () => resolve(controller));
-            const msg: CreateDecoderMessage = {
-                type: 'create',
-                controllerId: controller.id,
-                callbackId: callbackId,
-                workletPort: controller.decoderChannel.port1,
-                artifactVersions: Versioning.artifactVersions,
-            };
-            // let's create a decoder object on the web worker side
-            worker.postMessage(msg, [controller.decoderChannel.port1]);
-        });
+    public static async create(): Promise<AudioPlayerController> {
+        return new AudioPlayerController();
     }
 
     public async use(callbacks: {
@@ -90,11 +61,31 @@ export class AudioPlayerController implements Resettable {
         onPaused?: () => void;
         onResumed?: () => void;
         onStopped?: () => void,
-        /** Called at the end of the queue, even if the playing wasn't started */
         onEnded?: () => void,
     }): Promise<void> {
         const onReady = async (context: AudioContext) => {
+            // context has been replaced, recreate Node and MessageChannel
+            // you can transfer MessagePort only once
+            if (this.feederNode && this.feederNode.context !== context) {
+                await this.feederNode.stop();
+                await AudioPlayerController.decoderWorker.disposeDecoder(this.id);
+                this.decoderChannel?.port1.close();
+                this.decoderChannel?.port2.close();
+                this.feederNode.disconnect();
+                this.feederNode.onBufferLow = null;
+                this.feederNode.onStartPlaying = null;
+                this.feederNode.onBufferTooMuch = null;
+                this.feederNode.onStarving = null;
+                this.feederNode.onPaused = null;
+                this.feederNode.onResumed = null;
+                this.feederNode.onStopped = null;
+                this.feederNode.onEnded = null;
+                this.feederNode = null;
+                this.decoderChannel = null;
+            }
+            // we can reuse exising node and
             if (this.feederNode === null) {
+                this.decoderChannel = new MessageChannel();
                 const feederNodeOptions: AudioWorkletNodeOptions = {
                     channelCount: 1,
                     channelCountMode: 'explicit',
@@ -106,8 +97,10 @@ export class AudioPlayerController implements Resettable {
                     this.decoderChannel.port2,
                     context,
                     'feederWorklet',
-                    feederNodeOptions
+                    feederNodeOptions,
                 );
+                // Initialize worker
+                await AudioPlayerController.decoderWorker.start(this.id, this.decoderChannel.port1);
             }
 
             const feederNode = this.feederNode;
@@ -125,13 +118,13 @@ export class AudioPlayerController implements Resettable {
                 this.destinationNode = context.createMediaStreamDestination();
                 feederNode.connect(this.destinationNode);
                 await enableChromiumAec(this.destinationNode.stream);
-            }
-            else {
+            } else {
                 feederNode.connect(context.destination);
             }
-        }
-        const onNotReady = async (context: AudioContext) => {
+        };
+        const onNotReady = async (_context: AudioContext) => {
             if (this.feederNode != null) {
+                await this.feederNode.stop();
                 this.feederNode.disconnect();
                 this.feederNode.onBufferLow = null;
                 this.feederNode.onStartPlaying = null;
@@ -151,23 +144,11 @@ export class AudioPlayerController implements Resettable {
                 this.destinationNode.disconnect();
                 this.destinationNode = null;
             }
-        }
+        };
 
         if (this.contextRef == null)
             this.contextRef = audioContextSource.getRef(onReady, onNotReady);
         await this.contextRef.whenReady();
-
-        // Initialize worker
-        const callbackId = workerLastCallbackId++;
-        return new Promise<void>(resolve => {
-            workerCallbacks.set(callbackId, resolve);
-            const msg: InitDecoderMessage = {
-                type: 'init',
-                controllerId: this.id,
-                callbackId: callbackId,
-            };
-            worker.postMessage(msg);
-        });
     }
 
     public async reset(): Promise<void> {
@@ -179,48 +160,37 @@ export class AudioPlayerController implements Resettable {
         await contextRef.disposeAsync();
     }
 
-    public enqueueEnd(): void {
-        const msg: EndDecoderMessage = {
-            type: 'end',
-            controllerId: this.id,
-        };
-        worker.postMessage(msg);
-    }
-
-    public enqueue(bytes: Uint8Array): void {
-        const msg: DataDecoderMessage = {
-            type: 'data',
-            controllerId: this.id,
-            buffer: bytes.buffer,
-            length: bytes.byteLength,
-            offset: bytes.byteOffset,
-        };
-        worker.postMessage(msg, [bytes.buffer]);
-    }
-
     public async getState(): Promise<PlaybackState> {
-        warnLog?.assert(this.feederNode !== null, `getState: feederNode isn't created yet. Lifetime error.`);
         return this.feederNode.getState();
     }
 
-    public stop(): void {
-        warnLog?.assert(this.feederNode !== null, `stop: feederNode isn't created yet. Lifetime error.`);
-        const workerMsg: StopDecoderMessage = {
-            type: 'stop',
-            controllerId: this.id,
-        };
-        worker.postMessage(workerMsg);
-        // we sent the stop to worker and worklet (node->processor->onStopped->release to the pool->reset)
-        this.feederNode.stop();
+    public async stop(): Promise<void> {
+        await AudioPlayerController.decoderWorker.stop(this.id);
+        await this.feederNode.stop();
     }
 
-    public pause(): void {
-        warnLog?.assert(this.feederNode !== null, `pause: feederNode isn't created yet. Lifetime error.`);
-        this.feederNode.pause();
+    public end(): Promise<void> {
+        return AudioPlayerController.decoderWorker.end(this.id);
     }
 
-    public resume(): void {
-        warnLog?.assert(this.feederNode !== null, `resume: feederNode isn't created yet. Lifetime error.`);
-        this.feederNode.resume();
+    public pause(): Promise<void> {
+        return this.feederNode.pause();
+    }
+
+    public resume(): Promise<void> {
+        return this.feederNode.resume();
+    }
+
+    async disposeAsync(): Promise<void> {
+        return AudioPlayerController.decoderWorker.disposeDecoder(this.id);
+    }
+
+    public decode(bytes: Uint8Array): void {
+        void AudioPlayerController.decoderWorker.onEncodedChunk(
+            this.id,
+            bytes.buffer,
+            bytes.byteOffset,
+            bytes.length,
+            rpcNoWait);
     }
 }

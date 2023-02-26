@@ -58,12 +58,12 @@ let lowNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
-let serverImpl: OpusEncoderWorker = {
+const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, audioHubUrl: string): Promise<void> => {
         if (encoderWorklet != null || vadWorker != null)
             throw new Error('Already initialized.');
 
-        debugLog?.log(`-> onCreate`);
+        debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
 
         const retryPolicy: signalR.IRetryPolicy = {
@@ -104,7 +104,7 @@ let serverImpl: OpusEncoderWorker = {
         encoder.delete();
         encoder = null;
 
-        debugLog?.log(`<- onCreate`);
+        debugLog?.log(`<- create`);
         state = 'created';
     },
 
@@ -117,7 +117,7 @@ let serverImpl: OpusEncoderWorker = {
 
     start: async (sessionId: string, chatId: string): Promise<void> => {
         lastInitArguments = { sessionId, chatId };
-        debugLog?.log(`onStart`);
+        debugLog?.log(`start`);
         encoder = new codecModule.Encoder();
 
         state = 'encoding';
@@ -132,7 +132,7 @@ let serverImpl: OpusEncoderWorker = {
         encoder = null;
     },
 
-    onEncoderWorkletSample: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
+    onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
         if (buffer.byteLength === 0)
             return;
 
@@ -145,7 +145,7 @@ let serverImpl: OpusEncoderWorker = {
         }
     },
 
-    onVoiceActivityChange: async (change: VoiceActivityChange, noWait?: RpcNoWait) => {
+    onVoiceActivityChange: async (change: VoiceActivityChange, _noWait?: RpcNoWait) => {
         debugLog?.log(`onVoiceActivityChange:`, change);
 
         const newVadState = change.kind === 'end' ? 'silence' : 'voice';

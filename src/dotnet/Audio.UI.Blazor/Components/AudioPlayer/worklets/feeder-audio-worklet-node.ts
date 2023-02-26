@@ -1,22 +1,17 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import {
-    GetStateNodeMessage,
-    InitNodeMessage,
-    OperationCompletedProcessorMessage,
-    ProcessorMessage,
-    StateChangedProcessorMessage,
-    StateProcessorMessage,
-    PauseNodeMessage,
-    ResumeNodeMessage,
-    StopNodeMessage,
-} from './feeder-audio-worklet-message';
+
 import { Log, LogLevel, LogScope } from 'logging';
+import { FeederAudioNode, FeederAudioWorklet, PlaybackState, ProcessorState } from './feeder-audio-worklet-contract';
+import { rpcClientServer, RpcNoWait } from 'rpc';
+import { Disposable } from 'disposable';
 
 const LogScope: LogScope = 'FeederNode';
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
-export class FeederAudioWorkletNode extends AudioWorkletNode {
+export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAudioNode {
+
+    private readonly feederWorklet: FeederAudioWorklet & Disposable = null;
 
     public onStartPlaying?: () => void = null;
     public onBufferLow?: () => void = null;
@@ -29,13 +24,10 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     /** Called at the end of the queue, even if the playing wasn't started */
     public onEnded?: () => void = null;
 
-    private lastCallbackId = 0;
-    private callbacks = new Map<number, Function>();
-
     private constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
         super(context, name, options);
         this.onprocessorerror = this.onProcessorError;
-        this.port.onmessage = this.onProcessorMessage;
+        this.feederWorklet = rpcClientServer<FeederAudioWorklet>(`${LogScope}.feederWorklet`, this.port, this);
     }
 
     public static async create(
@@ -46,127 +38,57 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     ): Promise<FeederAudioWorkletNode> {
 
         const node = new FeederAudioWorkletNode(context, name, options);
-        const callbackId = node.lastCallbackId++;
-        return new Promise<FeederAudioWorkletNode>(resolve => {
-            node.callbacks.set(callbackId, () => resolve(node));
-            const msg: InitNodeMessage = {
-                type: 'init',
-                callbackId: callbackId,
-                decoderWorkerPort: decoderWorkerPort,
-            };
-            node.port.postMessage(msg, [decoderWorkerPort]);
-        });
+        await node.feederWorklet.init(decoderWorkerPort);
+        return node;
     }
 
-    public stop(): void {
-        const msg: StopNodeMessage = { type: 'stop' };
-        this.port.postMessage(msg);
+    public onStateUpdated(state: ProcessorState, noWait?: RpcNoWait): Promise<void> {
+        switch (state) {
+            case 'playing':
+                this.onStartPlaying?.();
+                break;
+            case 'playingWithLowBuffer':
+                this.onBufferLow?.();
+                break;
+            case 'playingWithTooMuchBuffer':
+                this.onBufferTooMuch?.();
+                break;
+            case 'starving':
+                this.onStarving?.();
+                break;
+            case 'paused':
+                this.onPaused?.();
+                break;
+            case 'resumed':
+                this.onResumed?.();
+                break;
+            case 'stopped':
+                this.onStopped?.();
+                break;
+            case 'ended':
+                this.onEnded?.();
+                break;
+        }
+        return Promise.resolve(undefined);
     }
 
-    public pause(): void {
-        const msg: PauseNodeMessage = { type: 'pause' };
-        this.port.postMessage(msg);
+    public stop(): Promise<void> {
+        return this.feederWorklet.stop();
     }
 
-    public resume(): void {
-        const msg: ResumeNodeMessage = { type: 'resume' };
-        this.port.postMessage(msg);
+    public pause(): Promise<void> {
+        return this.feederWorklet.pause();
+    }
+
+    public resume(): Promise<void> {
+        return this.feederWorklet.resume();
     }
 
     public getState(): Promise<PlaybackState> {
-        const callbackId = this.lastCallbackId++;
-        return new Promise<PlaybackState>(resolve => {
-            this.callbacks.set(callbackId, resolve);
-            const msg: GetStateNodeMessage = {
-                type: 'getState',
-                callbackId: callbackId,
-            };
-            this.port.postMessage(msg);
-
-        });
-    }
-
-    private onProcessorMessage = (ev: MessageEvent<ProcessorMessage>): void => {
-        const msg = ev.data;
-        try {
-            switch (msg.type) {
-            case 'stateChanged':
-                this.onStateChanged(msg as StateChangedProcessorMessage);
-                break;
-            case 'state':
-                this.onState(msg as StateProcessorMessage);
-                break;
-            case 'operationCompleted':
-                this.onOperationCompleted(msg as OperationCompletedProcessorMessage);
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
-            }
-        }
-        catch (error) {
-            errorLog?.log(`onProcessMessage: unhandled error:`, error);
-        }
-    };
-
-    private popCallback(callbackId: number): Function {
-        const callback = this.callbacks.get(callbackId);
-        if (callback === undefined) {
-            throw new Error(`Callback #${callbackId} is not found.`);
-        }
-        this.callbacks.delete(callbackId);
-        return callback;
-    }
-
-    private onOperationCompleted(message: OperationCompletedProcessorMessage): void {
-        const callback = this.popCallback(message.callbackId);
-        callback();
-    }
-
-    private onState(message: StateProcessorMessage): void {
-        const callback = this.popCallback(message.callbackId);
-        const result: PlaybackState = {
-            playbackTime: message.playbackTime,
-            bufferedTime: message.bufferedTime,
-        };
-        callback(result);
-    }
-
-    private onStateChanged(message: StateChangedProcessorMessage): void {
-        if (message.state === 'playingWithLowBuffer' && this.onBufferLow !== null) {
-            this.onBufferLow();
-        }
-        else if (message.state === 'starving' && this.onStarving !== null) {
-            this.onStarving();
-        }
-        else if (message.state === 'playingWithTooMuchBuffer' && this.onBufferTooMuch !== null) {
-            this.onBufferTooMuch();
-        }
-        else if (message.state === 'playing' && this.onStartPlaying !== null) {
-            this.onStartPlaying();
-        }
-        else if (message.state === 'stopped' && this.onStopped !== null) {
-            this.onStopped();
-        }
-        else if (message.state === 'ended' && this.onEnded !== null) {
-            this.onEnded();
-        }
-        else if (message.state === 'paused' && this.onPaused !== null) {
-            this.onPaused();
-        }
-        else if (message.state === 'resumed' && this.onResumed !== null) {
-            this.onResumed();
-        }
+        return this.feederWorklet.getState();
     }
 
     private onProcessorError = (ev: Event) => {
         errorLog?.log(`onProcessorError: unhandled error:`, ev);
     };
 }
-
-export interface PlaybackState {
-    /** In seconds from the start of playing, excluding starving time and processing time */
-    playbackTime: number,
-    /** how much seconds do we have in the buffer to play. */
-    bufferedTime: number,
-}
-

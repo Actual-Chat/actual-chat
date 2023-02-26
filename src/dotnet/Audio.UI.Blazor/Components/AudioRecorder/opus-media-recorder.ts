@@ -129,7 +129,7 @@ export class OpusMediaRecorder {
                 'opus-encoder-worklet-processor',
                 encoderWorkletOptions);
             this.encoderWorklet = rpcClient<OpusEncoderWorklet>(`${LogScope}.encoderWorklet`, this.encoderWorkletInstance.port);
-            void this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2, rpcNoWait);
+            await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
 
             const vadWorkerChannel = new MessageChannel();
             const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
