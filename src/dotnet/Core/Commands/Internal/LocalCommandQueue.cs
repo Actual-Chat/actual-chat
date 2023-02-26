@@ -7,7 +7,7 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
     private volatile int _failureCount;
     private volatile int _retryCount;
 
-    public Symbol Name { get; }
+    public QueueId QueueId { get; }
     ICommandQueues ICommandQueue.Queues => Queues;
     public LocalCommandQueues Queues { get; }
     public int SuccessCount => _successCount;
@@ -16,9 +16,9 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
 
     private IMomentClock Clock { get; }
 
-    public LocalCommandQueue(Symbol name, LocalCommandQueues queues)
+    public LocalCommandQueue(QueueId queueId, LocalCommandQueues queues)
     {
-        Name = name;
+        QueueId = queueId;
         Queues = queues;
         Clock = queues.Clock;
         _queue = Channel.CreateBounded<QueuedCommand>(

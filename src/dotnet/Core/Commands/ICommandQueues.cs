@@ -3,7 +3,7 @@ namespace ActualChat.Commands;
 public interface ICommandQueues : IHasServices
 {
     IMomentClock Clock { get; }
-    ICommandQueue this[QueueRef queueRef] { get; }
+    ICommandQueue this[QueueId queueId] { get; }
 
-    ICommandQueueBackend GetBackend(Symbol queueName, Symbol shardKey);
+    ICommandQueueBackend GetBackend(QueueId queueId);
 }

@@ -253,12 +253,12 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .ConfigureAwait(false);
                 var readPosition = new ChatPosition(chatTextIdRange.End - 1);
                 new IChatPositionsBackend.SetCommand(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
-                    .EnqueueOnCompletion(author.UserId);
+                    .EnqueueOnCompletion();
             }
 
             // Raise events
             new AuthorChangedEvent(author, existingAuthor)
-                .EnqueueOnCompletion(author.UserId, chatId);
+                .EnqueueOnCompletion();
             return author;
         }
     }

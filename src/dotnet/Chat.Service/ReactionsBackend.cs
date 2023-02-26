@@ -113,7 +113,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
 
         // Raise events
         new ReactionChangedEvent(reaction, entry, entryAuthor, author, changeKind)
-            .EnqueueOnCompletion(author.UserId, entry.ChatId);
+            .EnqueueOnCompletion();
         return;
 
         async Task<DbReactionSummary> UpsertDbSummary(Emoji emoji1, bool mustIncrementCount)

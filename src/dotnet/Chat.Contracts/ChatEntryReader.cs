@@ -227,7 +227,9 @@ public sealed class ChatEntryReader
 
         while (true) {
             if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
-                (cTile, cIdRange) = await ComputedExt.Update(cTile, cIdRange, cancellationToken).ConfigureAwait(false);
+                (cTile, cIdRange) = await Stl.Fusion.ComputedExt
+                    .Update(cTile, cIdRange, cancellationToken)
+                    .ConfigureAwait(false);
 
             var tile = cTile.Value;
             foreach (var e in tile.Entries) // In fact, .Any, just w/ less allocations

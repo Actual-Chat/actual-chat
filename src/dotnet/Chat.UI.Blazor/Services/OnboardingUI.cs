@@ -52,9 +52,14 @@ public class OnboardingUI
         // Uncomment to debug OnboardingUI:
         // UpdateSettings(new());
 
-        var account = await Accounts.GetOwn(Session, CancellationToken.None);
-        if (account.IsGuestOrNone)
+        try {
+            await Computed
+                .Capture(() => Accounts.GetOwn(Session, CancellationToken.None))
+                .When(x => !x.IsGuestOrNone, TimeSpan.FromSeconds(3));
+        }
+        catch (TimeoutException) {
             return false;
+        }
 
         await _settings.WhenFirstTimeRead;
         var settings = _settings.Value;

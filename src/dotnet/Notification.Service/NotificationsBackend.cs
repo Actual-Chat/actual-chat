@@ -312,7 +312,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
             await new INotificationsBackend.NotifyCommand(notification)
-                .Enqueue(Queues.Users.ShardBy(otherUserId), cancellationToken)
+                .Enqueue(cancellationToken)
                 .ConfigureAwait(false);
         }
     }

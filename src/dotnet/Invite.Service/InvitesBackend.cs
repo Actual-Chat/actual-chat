@@ -131,7 +131,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
             // Follow-up actions
             new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
-                .EnqueueOnCompletion(account.Id);
+                .EnqueueOnCompletion();
             break;
         case ChatInviteOption chatInviteOption:
             var chatId = chatInviteOption.ChatId;

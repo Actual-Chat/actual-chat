@@ -69,7 +69,7 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 
         // Raise events
         new AvatarChangedEvent(avatar, existingAvatar, change.Kind)
-            .EnqueueOnCompletion(avatar.UserId);
+            .EnqueueOnCompletion();
         return avatar;
     }
 }

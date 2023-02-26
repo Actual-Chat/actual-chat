@@ -4,15 +4,11 @@ public class CommandQueueScheduler : WorkerBase
 {
     public sealed class Options
     {
-        public ImmutableHashSet<(Symbol QueueName, Symbol ShardKey)> Queues { get; set; } =
-            ImmutableHashSet<(Symbol QueueName, Symbol ShardKey)>.Empty;
+        public int ShardCount { get; set; } = 1;
         public int Concurrency { get; set; } = HardwareInfo.GetProcessorCountFactor(8);
         public int MaxTryCount { get; set; } = 2;
         public int MaxKnownCommandCount { get; init; } = 10_000;
         public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
-
-        public void AddQueue(Symbol queueName, Symbol shardKey = default)
-            => Queues = Queues.Add((queueName, shardKey));
     }
 
     protected ILogger Log { get; }
@@ -38,15 +34,23 @@ public class CommandQueueScheduler : WorkerBase
 
     protected override Task RunInternal(CancellationToken cancellationToken)
     {
-        var tasks = Settings.Queues
-            .Select(x => ProcessQueue(x.QueueName, x.ShardKey, cancellationToken))
-            .ToList();
+        var priorities = new [] {
+            QueuedCommandPriority.Low,
+            QueuedCommandPriority.Normal,
+            QueuedCommandPriority.High,
+            QueuedCommandPriority.Critical,
+        };
+        var tasks = (from shardKey in Enumerable.Range(0, Settings.ShardCount)
+            from priority in priorities
+            let queueId = new QueueId(shardKey, priority)
+            select ProcessQueue(queueId, cancellationToken)
+            ).ToList();
         return Task.WhenAll(tasks);
     }
 
-    private Task ProcessQueue(Symbol queueName, Symbol shardKey, CancellationToken cancellationToken)
+    private Task ProcessQueue(QueueId queueId, CancellationToken cancellationToken)
     {
-        var queueBackend = Queues.GetBackend(queueName, shardKey);
+        var queueBackend = Queues.GetBackend(queueId);
         var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Settings.Concurrency,
             CancellationToken = cancellationToken,
@@ -61,9 +65,7 @@ public class CommandQueueScheduler : WorkerBase
         CancellationToken cancellationToken)
     {
         lock (Lock) {
-            // We de-duplicate commands not only in QueuedCommand.New, but here as well:
-            // - Some commands are sent to multiple queues
-            // - But all of them have to be processed just once.
+            // We de-duplicate commands here to make sure we process them just once.
             // Note that here we rely on QueuedCommand.Id instead of its Command value,
             // coz Command instance is definitely non-unique here due to deserialization.
             if (!KnownCommands.TryAdd(command.Id))

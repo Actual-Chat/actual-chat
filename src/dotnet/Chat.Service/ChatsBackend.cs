@@ -349,7 +349,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Raise events
         new ChatChangedEvent(chat, oldChat)
-            .EnqueueOnCompletion(UserId.None, chat.Id);
+            .EnqueueOnCompletion();
         return chat;
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff)
@@ -437,7 +437,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Raise events
         new TextEntryChangedEvent(entry, author, changeKind)
-            .EnqueueOnCompletion(userId, chatId);
+            .EnqueueOnCompletion();
         return entry;
     }
 

@@ -37,10 +37,9 @@ public class ScheduledCommandTestService
             return Task.CompletedTask;
 
         new TestEvent(null)
-            .EnqueueOnCompletion(ChatId.None)
             .EnqueueOnCompletion();
         new TestEvent2()
-            .EnqueueOnCompletion(Queues.Default, Queues.Users); // Same as above, actually, but for UserId.None
+            .EnqueueOnCompletion(); // Same as above, actually, but for UserId.None
         return Task.CompletedTask;
     }
 
