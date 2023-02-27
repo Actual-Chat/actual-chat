@@ -1,7 +1,6 @@
 import { audioContextSource } from 'audio-context-source';
 import { AudioContextRef } from 'audio-context-ref';
 import { Disposable } from 'disposable';
-import { enableChromiumAec, isAecWorkaroundNeeded } from './chromium-echo-cancellation';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { rpcClient, rpcNoWait } from 'rpc';
@@ -16,7 +15,6 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 const enableFrequentDebugLog = false;
 
-const isAecWorkaroundUsed = isAecWorkaroundNeeded();
 let decoderWorkerInstance: Worker = null;
 let decoderWorker: OpusDecoderWorker & Disposable = null;
 
@@ -34,7 +32,6 @@ export class AudioPlayer {
     private bufferState: BufferState = 'enough';
     private decoderToFeederNodeChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
-    private destinationNode?: MediaStreamAudioDestinationNode = null;
     private reportPlayedToHandle: number = null;
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
@@ -60,7 +57,7 @@ export class AudioPlayer {
         debugLog?.log(`#${this.id}.constructor`);
 
         const attach = async (context: AudioContext) => {
-            debugLog?.log(`#${this.id}.contextRef.attach: context:`, context, ', isAecWorkaroundUsed: ', isAecWorkaroundUsed);
+            debugLog?.log(`#${this.id}.contextRef.attach: context:`, context);
 
             await AudioPlayer.whenInitialized;
             this.playbackState = 'paused';
@@ -87,13 +84,7 @@ export class AudioPlayer {
             // Create decoder worker
             await decoderWorker.create(this.id, this.decoderToFeederNodeChannel.port1);
 
-            if (isAecWorkaroundUsed) {
-                this.destinationNode = context.createMediaStreamDestination();
-                feederNode.connect(this.destinationNode);
-                await enableChromiumAec(this.destinationNode.stream);
-            } else {
-                feederNode.connect(context.destination);
-            }
+            feederNode.connect(context.destination);
         };
 
         const detach = async () => {
@@ -111,17 +102,6 @@ export class AudioPlayer {
             this.decoderToFeederNodeChannel?.port1.close();
             this.decoderToFeederNodeChannel?.port2.close();
             this.decoderToFeederNodeChannel = null;
-
-            const destinationNode = this.destinationNode;
-            if (!destinationNode)
-                return;
-
-            this.destinationNode = null;
-            const tracks = destinationNode.stream.getTracks();
-            for (let i = 0; i < tracks.length; ++i) {
-                destinationNode.stream.removeTrack(tracks[i]);
-            }
-            destinationNode.disconnect();
         }
 
         if (this.contextRef == null)

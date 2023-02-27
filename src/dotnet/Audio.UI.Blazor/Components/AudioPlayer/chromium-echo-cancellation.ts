@@ -161,6 +161,10 @@ export function isAecWorkaroundNeeded(): boolean {
     if (force !== null && force !== undefined)
         return force;
 
+    // See https://bugs.chromium.org/p/chromium/issues/detail?id=687574#c134 -
+    // it's fixed on Chrome now.
+    return false;
+
     // Mobile phones have a good echoCancellation by default, we don't need anything to do
     const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChrome;
     return !hasBuiltInAec;
