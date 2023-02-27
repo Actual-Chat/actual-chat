@@ -6,5 +6,6 @@ public sealed record ChatListSettings(
     [property: DataMember] Symbol FilterId = default
 )
 {
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatListFilter Filter => ChatListFilter.Parse(FilterId);
 }
