@@ -6,15 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       deployToDev:
-        description: Whether to deploy to dev GAR
+        description: Push image to dev GAR
         type: boolean
-        default: false
-        required: false
       deployToProd:
-        description: Whether to deploy to prod GAR
+        description: Push image to prod GAR
         type: boolean
-        default: false
-        required: false
 
 permissions:
   contents: read
