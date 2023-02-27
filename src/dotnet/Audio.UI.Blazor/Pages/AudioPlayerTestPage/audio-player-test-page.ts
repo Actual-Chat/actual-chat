@@ -51,11 +51,11 @@ export class AudioPlayerTestPage {
     }
 
     public end(): Promise<void> {
-        return this.player.end();
+        return this.player.end(false);
     }
 
     public stop(): Promise<void> {
-        return this.player.abort();
+        return this.player.end(true);
     }
 
     public pause(): Promise<void> {

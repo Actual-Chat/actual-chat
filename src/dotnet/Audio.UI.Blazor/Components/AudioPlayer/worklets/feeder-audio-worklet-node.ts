@@ -55,7 +55,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
     }
 
     public abort(): Promise<void> {
-        return this.feederWorklet.abort();
+        return this.feederWorklet.end(true);
     }
 
     public pause(): Promise<void> {
