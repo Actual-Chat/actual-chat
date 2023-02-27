@@ -1,4 +1,4 @@
-import { AsyncDisposable, ObjectDisposedError } from 'disposable';
+import { AsyncDisposable } from 'disposable';
 import {
     cancelled,
     Cancelled,
