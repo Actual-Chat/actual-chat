@@ -150,13 +150,13 @@ export class OperationCancelledError extends Error {
 }
 
 export async function waitAsync<T>(promise: PromiseLike<T>, cancel?: Promise<Cancelled>): Promise<T> {
-    if (cancel == undefined)
+    if (cancel === undefined)
         return await promise;
 
     const result = await Promise.race([promise, cancel]);
     if (result === cancelled)
         throw new OperationCancelledError();
-    return result as T;
+    return await promise;
 }
 
 // Async versions of setTimeout
@@ -450,3 +450,25 @@ export class ResolvedPromise {
 ResolvedPromise.Void.resolve(undefined);
 ResolvedPromise.True.resolve(true);
 ResolvedPromise.False.resolve(false);
+
+// Self-test - we don't want to run it in workers & worklets
+const mustRunSelfTest = errorLog != null && globalThis['focus'];
+if (mustRunSelfTest) {
+    const testLog = errorLog;
+    if (!testLog)
+        throw new Error('testLog == null');
+    void (async () => {
+        const c = new PromiseSource<Cancelled>();
+        const p = waitAsync(delayAsync(1000), c);
+        c.resolve(cancelled);
+        try {
+            await p;
+            throw 'Failed!';
+        }
+        catch (e) {
+            if (!(e instanceof OperationCancelledError))
+                throw e;
+            testLog.log('Success!');
+        }
+    })();
+}

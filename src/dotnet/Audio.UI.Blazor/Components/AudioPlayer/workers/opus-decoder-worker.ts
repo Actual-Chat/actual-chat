@@ -29,92 +29,78 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 let codecModule: Codec | null = null;
 
 const worker = self as unknown as Worker;
-const decoders = new Map<number, OpusDecoder>();
-
-let state: 'inactive' | 'created' = 'inactive';
+const decoders = new Map<string, OpusDecoder>();
 
 const serverImpl: OpusDecoderWorker = {
-    create: async (artifactVersions: Map<string, string>): Promise<void> => {
-        debugLog?.log(`-> create`);
+    init: async (artifactVersions: Map<string, string>): Promise<void> => {
+        debugLog?.log(`-> init`);
         Versioning.init(artifactVersions);
 
-        // Loading codec
+        // Load & warm-up codec
         codecModule = await retryAsync(3, () => codec(getEmscriptenLoaderOptions()));
-
-        // Warming up codec
         const decoder = new codecModule.Decoder();
         decoder.delete();
 
-        debugLog?.log(`<- create`);
-        state = 'created';
+        debugLog?.log(`<- init`);
     },
 
-    start: async (controllerId: number, workletMessagePort: MessagePort): Promise<void> => {
-        if (state !== 'created')
-            throw new Error('Decoder worker has not been created.');
-
-        debugLog?.log(`-> start(#${controllerId})`);
-        const existingDecoder = decoders.get(controllerId);
-        if (existingDecoder !== undefined) {
-            // close existing decoder as AudioContext has been recreated
-            existingDecoder.end();
-            decoders.delete(controllerId);
+    create: async (streamId: string, workletMessagePort: MessagePort): Promise<void> => {
+        debugLog?.log(`-> #${streamId}.create`);
+        let decoder = decoders.get(streamId);
+        if (decoder !== undefined) {
+            // Recurring 'create' means AudioContext has been replaced, so we should recreate the decoder
+            await serverImpl.close(streamId);
         }
 
-        const decoder = new codecModule.Decoder();
-        const opusDecoder = await OpusDecoder.create(decoder, workletMessagePort);
-        decoders.set(controllerId, opusDecoder);
-        debugLog?.log(`<- start(#${controllerId})`);
+        const codecDecoder = new codecModule.Decoder();
+        decoder = await OpusDecoder.create(streamId, codecDecoder, workletMessagePort);
+        decoders.set(streamId, decoder);
+        debugLog?.log(`<- #${streamId}.create`);
     },
 
-    stop: async (controllerId: number): Promise<void> => {
-        if (state !== 'created')
-            throw new Error('Decoder worker has not been created.');
+    close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
+        debugLog?.log(`#${streamId}.dispose`);
+        const decoder = getDecoder(streamId, false);
+        if (decoder == null)
+            return;
 
-        debugLog?.log(`-> stop(#${controllerId})`);
-        const decoder = getDecoder(controllerId);
-        decoder.stop();
-        debugLog?.log(`<- stop(#${controllerId})`);
+        void decoder.disposeAsync(); // No need to wait here
+        decoders.delete(streamId);
     },
 
-    end: async (controllerId: number): Promise<void> => {
-        if (state !== 'created')
-            throw new Error('Decoder worker has not been created.');
-
-        const decoder = getDecoder(controllerId);
-        decoder.end();
-
-        debugLog?.log(`end(#${controllerId})`);
+    stop: async (streamId: string): Promise<void> => {
+        debugLog?.log(`#${streamId}.stop`);
+        getDecoder(streamId).stop();
     },
 
-    disposeDecoder: async (controllerId: number): Promise<void> => {
-        if (state !== 'created')
-            throw new Error('Decoder worker has not been created.');
-
-        const decoder = getDecoder(controllerId);
-        decoder.dispose();
-        decoders.delete(controllerId);
-
-        debugLog?.log(`end(#${controllerId})`);
+    end: async (streamId: string): Promise<void> => {
+        debugLog?.log(`#${streamId}.end`);
+        await getDecoder(streamId).end();
     },
 
-    onEncodedChunk: async (
-        controllerId: number,
+    onFrame: async (
+        streamId: string,
         buffer: ArrayBuffer,
         offset: number,
         length: number,
-        _noWait?: RpcNoWait): Promise<void> => {
-        if (state !== 'created')
-            throw new Error('Decoder worker has not been created.');
-
-        const decoder = getDecoder(controllerId);
-        decoder.decode(buffer, offset, length);
+        _noWait?: RpcNoWait,
+    ): Promise<void> => {
+        // debugLog?.log(`#${streamId}.onFrame`);
+        getDecoder(streamId).decode(buffer, offset, length);
     }
 };
 
 const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
 
 // Helpers
+
+function getDecoder(streamId: string, failIfNone = true): OpusDecoder {
+    const decoder = decoders.get(streamId);
+    if (!decoder && failIfNone)
+        throw new Error(`getDecoder: no decoder #${streamId}, did you forget to call 'create'?`);
+
+    return decoder;
+}
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
@@ -136,10 +122,3 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 
-function getDecoder(controllerId: number): OpusDecoder {
-    const decoder = decoders.get(controllerId);
-    if (decoder === undefined)
-        throw new Error(`Can't find decoder object for controller #${controllerId}`);
-
-    return decoder;
-}

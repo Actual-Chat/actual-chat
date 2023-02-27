@@ -75,7 +75,7 @@ const serverImpl: AudioVadWorker = {
         voiceDetector.reset();
     },
 
-    onSample: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
+    onFrame: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
         if (!isActive)
             return;
 
@@ -101,7 +101,7 @@ async function processQueue(): Promise<void> {
             const buffer = queue.shift();
             const dataToResample = new Uint8Array(buffer);
             const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
-            void vadWorklet.onSample(buffer, rpcNoWait);
+            void vadWorklet.onFrame(buffer, rpcNoWait);
 
             const monoPcm = new Float32Array(resampled, 0, 512);
             const vadEvent = await voiceDetector.appendChunk(monoPcm);

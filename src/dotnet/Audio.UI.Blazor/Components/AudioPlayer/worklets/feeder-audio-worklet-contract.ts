@@ -7,12 +7,12 @@ export interface FeederAudioWorklet {
     pause(): Promise<void>;
     resume(): Promise<void>;
 
-    onSamples(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;
+    onFrame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;
     onEnd(noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface FeederAudioNode {
-    onStateUpdated(state: ProcessorState, noWait?: RpcNoWait): Promise<void>;
+    onStateChanged(state: ProcessorState, noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface PlaybackState {
@@ -22,4 +22,11 @@ export interface PlaybackState {
     playbackTime: number,
 }
 
-export type ProcessorState = 'playing' | 'playingWithLowBuffer' | 'playingWithTooMuchBuffer' | 'starving' | 'paused' | 'resumed' | 'stopped' | 'ended';
+export type ProcessorState = 'playing'
+    | 'playingWithLowBuffer'
+    | 'playingWithTooMuchBuffer'
+    | 'starving'
+    | 'paused'
+    | 'resumed'
+    | 'stopped'
+    | 'ended';

@@ -5,5 +5,5 @@ export interface AudioVadWorker {
     init(workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void>;
     reset(): Promise<void>;
 
-    onSample(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
+    onFrame(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }

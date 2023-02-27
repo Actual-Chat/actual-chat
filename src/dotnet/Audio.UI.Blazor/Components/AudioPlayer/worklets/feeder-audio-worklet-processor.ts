@@ -5,6 +5,7 @@ import { FeederAudioNode, FeederAudioWorklet, PlaybackState } from './feeder-aud
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { OpusDecoderWorker } from '../workers/opus-decoder-worker-contract';
 import { Disposable } from 'disposable';
+import { ResolvedPromise } from 'promises';
 
 const LogScope: LogScope = 'FeederProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -70,17 +71,15 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     public stop(): Promise<void> {
-
         const { isPlaying: wasPlaying } = this;
         this.reset();
 
         if (wasPlaying) {
             debugLog?.log(`stop`);
-            void this.workletNode.onStateUpdated('stopped', rpcNoWait);
+            void this.workletNode.onStateChanged('stopped', rpcNoWait);
         }
-        void this.workletNode.onStateUpdated('ended', rpcNoWait);
-
-        return Promise.resolve(undefined);
+        void this.workletNode.onStateChanged('ended', rpcNoWait);
+        return ResolvedPromise.Void;
     }
 
     public pause(): Promise<void> {
@@ -89,9 +88,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             return;
         }
         this.isPaused = true;
-        void this.workletNode.onStateUpdated('paused', rpcNoWait);
-
-        return Promise.resolve(undefined);
+        void this.workletNode.onStateChanged('paused', rpcNoWait);
+        return ResolvedPromise.Void;
     }
 
     public resume(): Promise<void> {
@@ -100,9 +98,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             return;
         }
         this.isPaused = false;
-        void this.workletNode.onStateUpdated('resumed', rpcNoWait);
-
-        return Promise.resolve(undefined);
+        void this.workletNode.onStateChanged('resumed', rpcNoWait);
+        return ResolvedPromise.Void;
     }
 
     public onEnd(noWait?: RpcNoWait): Promise<void> {
@@ -111,18 +108,16 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         // for example if play threshold > number of frames before the end
         if (!this.isPlaying) {
             this.reset();
-            void this.workletNode.onStateUpdated('ended', rpcNoWait);
+            void this.workletNode.onStateChanged('ended', rpcNoWait);
         }
-
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     /** Decoded samples from the decoder worker */
-    public onSamples(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
+    public onFrame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
         this.chunks.push(new Float32Array(buffer, offset, length));
         this.startPlaybackIfEnoughBuffered();
-
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     public process(
@@ -153,7 +148,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             if (chunk !== undefined) {
                 if (chunk === 'end') {
                     channel.fill(0, offset);
-                    debugLog?.log(`process: reached end of stream`);
+                    debugLog?.log(`process: got 'end'`);
                     void this.stop();
                     break;
                 }
@@ -184,7 +179,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 channel.fill(0, offset);
                 if (!this.isStarving) {
                     this.isStarving = true;
-                    void this.workletNode.onStateUpdated('starving', rpcNoWait);
+                    void this.workletNode.onStateChanged('starving', rpcNoWait);
                 }
 
                 break;
@@ -195,17 +190,17 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         const bufferedDuration = sampleCount / SAMPLE_RATE;
         if (this.isPlaying && !this.isStarving) {
             if (sampleCount <= samplesLowThreshold) {
-                void this.workletNode.onStateUpdated('playingWithLowBuffer', rpcNoWait);
+                void this.workletNode.onStateChanged('playingWithLowBuffer', rpcNoWait);
             }
             if (bufferedDuration > tooMuchBuffered) {
-                void this.workletNode.onStateUpdated('playingWithTooMuchBuffer', rpcNoWait);
+                void this.workletNode.onStateChanged('playingWithTooMuchBuffer', rpcNoWait);
             }
         } else if (this.isStarving) {
             if (sampleCount > samplesLowThreshold) {
                 this.isStarving = false;
 
                 if (this.isPlaying) {
-                    void this.workletNode.onStateUpdated('playing', rpcNoWait);
+                    void this.workletNode.onStateChanged('playing', rpcNoWait);
                 }
             }
         }
@@ -228,7 +223,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             if (bufferedDuration >= this.enoughToStartPlaying) {
                 this.isPlaying = true;
                 this.playbackTime = 0;
-                void this.workletNode.onStateUpdated('playing', rpcNoWait);
+                void this.workletNode.onStateChanged('playing', rpcNoWait);
             }
         }
     }

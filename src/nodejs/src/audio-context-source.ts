@@ -57,14 +57,17 @@ export class AudioContextSource {
     }
 
     public getRef(
-        onReady?: (context: AudioContext) => Promise<void> | void,
-        onNotReady?: (context: AudioContext) => Promise<void> | void,
+        operationName: string,
+        attach?: (context: AudioContext) => Promise<void> | void,
+        detach?: (context: AudioContext) => Promise<void> | void,
+        ready?: (context: AudioContext) => Promise<void> | void,
+        unready?: (context: AudioContext) => Promise<void> | void,
     ) {
         this._refCount++;
         if (this._refCount > 100)
             warnLog?.log(`getRef: high refCount:`, this._refCount);
         debugLog?.log(`+ AudioContextRef, refCount:`, this._refCount);
-        const result = new AudioContextRef(this, onReady, onNotReady);
+        const result = new AudioContextRef(this, operationName, attach, detach, ready, unready);
         void result.whenDisposed().then(() => {
             this._refCount--;
             if (this._refCount < 0) {

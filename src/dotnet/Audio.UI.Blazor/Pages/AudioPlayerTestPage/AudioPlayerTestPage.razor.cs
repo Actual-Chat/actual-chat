@@ -35,9 +35,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public void OnStartPlaying(AudioPlayerTestPageStats statistics)
+    public void OnStartedPlaying(AudioPlayerTestPageStats statistics)
     {
-        Log.LogInformation("OnStartPlaying called");
+        Log.LogInformation("OnStartedPlaying called");
         StartPlayingDelay = statistics.PlayingStartTime - statistics.ConstructorStartTime;
         ObjectCreationDelay = statistics.ConstructorEndTime - statistics.ConstructorStartTime;
         StateHasChanged();
@@ -97,7 +97,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = _jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data);
+                _ = _jsRef.InvokeVoidAsync("frame", _cts.Token, frame.Data);
             }
             if (!_cts.Token.IsCancellationRequested)
                 await _jsRef.InvokeVoidAsync("end", _cts.Token);

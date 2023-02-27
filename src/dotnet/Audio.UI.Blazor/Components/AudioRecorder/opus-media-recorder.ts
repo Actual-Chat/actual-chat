@@ -46,6 +46,7 @@ class ChatRecording {
     constructor(
         public readonly sessionId: string,
         public readonly chatId: string,
+        public readonly contextRef: AudioContextRef
     ) { }
 }
 
@@ -62,7 +63,6 @@ export class OpusMediaRecorder {
     private encoderWorklet: OpusEncoderWorklet & Disposable = null;
     private vadWorkletInstance: AudioWorkletNode = null;
     private vadWorklet: AudioVadWorklet & Disposable = null;
-    private contextRef: AudioContextRef = null;
 
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
@@ -97,18 +97,14 @@ export class OpusMediaRecorder {
     }
 
     public async start(sessionId: string, chatId: string): Promise<void> {
+        debugLog?.log("0");
         if (!sessionId || !chatId)
             throw new Error('start: sessionId or chatId is unspecified.');
 
         await this.whenInitialized;
-        await this.stop(false);
-        this.state = new ChatRecording(sessionId, chatId);
+        await this.stop();
 
-        const onReady = async (context: AudioContext) => {
-            const initializedKey = 'OpusMediaRecorder.initialized'
-            if (context[initializedKey])
-                return;
-
+        const attach = async (context: AudioContext) => {
             const encoderWorkerToWorkletChannel = new MessageChannel();
             const encoderWorkerToVadWorkerChannel = new MessageChannel();
             const t1 = this.encoderWorker.init(encoderWorkerToWorkletChannel.port1, encoderWorkerToVadWorkerChannel.port1);
@@ -147,21 +143,40 @@ export class OpusMediaRecorder {
             void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
 
             await Promise.all([t1, t2]);
-            context[initializedKey] = true;
-        }
-        const onNotReady = async (context: AudioContext) => {
-            if (this.state)
-                await this.stop();
         }
 
-        if (this.contextRef == null)
-            this.contextRef = await audioContextSource.getRef(onReady, onNotReady);
-        await this.contextRef.whenReady();
+        const detach = async () => {
+            if (this.state == null)
+                return;
 
-        if (this.source)
-            this.source.disconnect();
+            await this.encoderWorker?.stop();
+            this.source?.disconnect();
+            this.source = null;
+
+            this.encoderWorkletInstance?.disconnect();
+            this.encoderWorkletInstance = null;
+            this.encoderWorklet?.dispose();
+            this.encoderWorklet = null;
+
+            this.vadWorkletInstance?.disconnect();
+            this.vadWorkletInstance = null;
+            this.vadWorklet?.dispose();
+            this.vadWorklet = null;
+
+            if (this.stream) {
+                this.stream.getAudioTracks().forEach(t => t.stop());
+                this.stream.getVideoTracks().forEach(t => t.stop());
+            }
+            this.stream = null;
+            this.state = null;
+        }
+
+        const contextRef = await audioContextSource.getRef('recording', attach, detach, null, () => void this.stop());
+        await contextRef.whenFirstTimeReady();
+
         this.stream = await OpusMediaRecorder.getMicrophoneStream();
-        this.source = this.contextRef.context.createMediaStreamSource(this.stream);
+        this.source = contextRef.context.createMediaStreamSource(this.stream);
+        this.state = new ChatRecording(sessionId, chatId, contextRef);
 
         await Promise.all([
             this.encoderWorker.start(sessionId, chatId),
@@ -171,35 +186,12 @@ export class OpusMediaRecorder {
         this.source.connect(this.encoderWorkletInstance);
     }
 
-    public async stop(keepContextRef = false): Promise<void> {
+    public async stop(): Promise<void> {
         await this.whenInitialized;
         if (!this.state)
             return;
 
-        this.state = null;
-
-        // Stop the stream first
-        if (this.source)
-            this.source.disconnect();
-        if (this.encoderWorkletInstance)
-            this.encoderWorkletInstance.disconnect();
-        if (this.vadWorkletInstance)
-            this.vadWorkletInstance.disconnect();
-
-        if (this.stream) {
-            this.stream.getAudioTracks().forEach(t => t.stop());
-            this.stream.getVideoTracks().forEach(t => t.stop());
-        }
-        this.stream = null;
-        this.source = null;
-
-        await this.encoderWorker.stop();
-
-        const contextRef = this.contextRef;
-        if (!keepContextRef && contextRef) {
-            this.contextRef = null;
-            await contextRef.disposeAsync();
-        }
+        await this.state.contextRef.disposeAsync();
     }
 
     // Private methods

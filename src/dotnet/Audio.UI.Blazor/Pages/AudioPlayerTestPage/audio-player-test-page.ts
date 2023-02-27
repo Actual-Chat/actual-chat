@@ -29,10 +29,10 @@ export class AudioPlayerTestPage {
     constructor(blazorRef: DotNet.DotNetObject, player: AudioPlayer) {
         this.stats.constructorStartTime = new Date().getTime();
         this.player = player;
-        this.player.onStartPlaying = () => {
+        this.player.onStartedPlaying = () => {
             this.stats.playingStartTime = new Date().getTime();
-            console.warn('onStartPlaying, stats:', this.stats);
-            void blazorRef.invokeMethodAsync('OnStartPlaying', this.getStats());
+            console.warn('onStartedPlaying, stats:', this.stats);
+            void blazorRef.invokeMethodAsync('OnStartedPlaying', this.getStats());
         };
         this.stats.constructorEndTime = new Date().getTime();
         this.stats.playingStartTime = 0;
@@ -42,19 +42,22 @@ export class AudioPlayerTestPage {
         return this.stats;
     }
 
-    public data(byteArray: Uint8Array): Promise<void> {
-        return this.player.data(byteArray);
+    public frame(byteArray: Uint8Array): Promise<void> {
+        return this.player.frame(byteArray);
     }
 
     public end(): Promise<void> {
         return this.player.end();
     }
+
     public stop(): Promise<void> {
         return this.player.stop();
     }
+
     public pause(): Promise<void> {
         return this.player.pause();
     }
+
     public resume(): Promise<void> {
         return this.player.resume();
     }

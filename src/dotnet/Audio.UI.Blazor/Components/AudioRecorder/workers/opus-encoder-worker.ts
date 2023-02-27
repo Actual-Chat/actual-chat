@@ -239,7 +239,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             }
 
             const result = encoder.encode(buffer);
-            void encoderWorklet.onSample(buffer, rpcNoWait);
+            void encoderWorklet.onFrame(buffer, rpcNoWait);
             recordingSubject.next(result);
             chunkTimeOffset += 20;
         }

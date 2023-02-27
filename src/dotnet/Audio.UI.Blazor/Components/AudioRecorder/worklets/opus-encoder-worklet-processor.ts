@@ -50,7 +50,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
     }
 
-    public async onSample(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
+    public async onFrame(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
         this.bufferDeque.push(buffer);
     }
 

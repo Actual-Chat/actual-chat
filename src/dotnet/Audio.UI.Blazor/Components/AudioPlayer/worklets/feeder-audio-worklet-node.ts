@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { Log, LogLevel, LogScope } from 'logging';
-import { FeederAudioNode, FeederAudioWorklet, PlaybackState, ProcessorState } from './feeder-audio-worklet-contract';
-import { rpcClientServer, RpcNoWait } from 'rpc';
 import { Disposable } from 'disposable';
+import { FeederAudioNode, FeederAudioWorklet, PlaybackState, ProcessorState } from './feeder-audio-worklet-contract';
+import { ResolvedPromise } from 'promises';
+import { rpcClientServer, RpcNoWait } from 'rpc';
 
+import { Log, LogLevel, LogScope } from 'logging';
 const LogScope: LogScope = 'FeederNode';
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAudioNode {
-
     private readonly feederWorklet: FeederAudioWorklet & Disposable = null;
 
     public onStartPlaying?: () => void = null;
@@ -24,7 +24,11 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
     /** Called at the end of the queue, even if the playing wasn't started */
     public onEnded?: () => void = null;
 
-    private constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
+    private constructor(
+        context: BaseAudioContext,
+        name: string,
+        options?: AudioWorkletNodeOptions
+    ) {
         super(context, name, options);
         this.onprocessorerror = this.onProcessorError;
         this.feederWorklet = rpcClientServer<FeederAudioWorklet>(`${LogScope}.feederWorklet`, this.port, this);
@@ -36,13 +40,12 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
         name: string,
         options?: AudioWorkletNodeOptions
     ): Promise<FeederAudioWorkletNode> {
-
         const node = new FeederAudioWorkletNode(context, name, options);
         await node.feederWorklet.init(decoderWorkerPort);
         return node;
     }
 
-    public onStateUpdated(state: ProcessorState, noWait?: RpcNoWait): Promise<void> {
+    public onStateChanged(state: ProcessorState, noWait?: RpcNoWait): Promise<void> {
         switch (state) {
             case 'playing':
                 this.onStartPlaying?.();
@@ -69,7 +72,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
                 this.onEnded?.();
                 break;
         }
-        return Promise.resolve(undefined);
+        return ResolvedPromise.Void;
     }
 
     public stop(): Promise<void> {

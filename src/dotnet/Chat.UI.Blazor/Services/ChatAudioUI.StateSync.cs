@@ -234,8 +234,8 @@ public partial class ChatAudioUI
                 var mustShowError = recorderError != null;
                 if (mustShowError)
                     recordingChatId = ChatId.None;
-                var mustStop = ((recorderChatId != recordingChatId || language != prev.Language)
-                    && !prev.RecorderChatId.IsNone)
+                var mustStop =
+                    ((recorderChatId != recordingChatId || language != prev.Language) && !prev.RecorderChatId.IsNone)
                     || mustShowError;
                 var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
                 if (mustShowError)

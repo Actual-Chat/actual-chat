@@ -21,37 +21,40 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 let nextId = 1;
 
 export class AudioContextRef implements AsyncDisposable {
-    private readonly _whenDisposed = new PromiseSource<Cancelled>;
-    private readonly _whenRunning: Promise<void>;
-    private _context: AudioContext;
-    private _whenReady = new PromiseSource<AudioContext>;
     private readonly name: string;
+    private readonly _whenFirstTimeReady = new PromiseSource<AudioContext>;
+    private readonly _whenRunning: Promise<void>;
+    private readonly _whenDisposeRequested = new PromiseSource<Cancelled>;
+    private _context: AudioContext;
 
     public get context() { return this._context }
 
     constructor(
         public readonly source: AudioContextSource,
-        public readonly onReady?: (context: AudioContext) => Promise<void> | void,
-        public readonly onNotReady?: (context: AudioContext) => Promise<void> | void,
+        public readonly operationName: string,
+        private readonly attach?: (context: AudioContext) => Promise<void> | void,
+        private readonly detach?: (context: AudioContext) => Promise<void> | void,
+        private readonly ready?: (context: AudioContext) => Promise<void> | void,
+        private readonly unready?: (context: AudioContext) => Promise<void> | void,
     ) {
-        this.name = `AudioContextRef[${nextId++}]`
+        this.name = `#${nextId++}-${operationName}`
         this._whenRunning = this.run();
     }
 
-    disposeAsync() : Promise<void> {
-        if (!this._whenDisposed.isCompleted()) {
-            debugLog?.log(`${this.name}.disposeAsync`)
-            this._whenDisposed.resolve(cancelled)
-        }
-        return this._whenRunning;
+    async disposeAsync() : Promise<void> {
+        debugLog?.log(`${this.name}.disposeAsync`);
+        if (!this._whenDisposeRequested.isCompleted())
+            this._whenDisposeRequested.resolve(cancelled)
+
+        await this._whenRunning;
     }
 
-    public whenReady() {
-        return waitAsync(this._whenReady, this._whenDisposed);
+    public whenFirstTimeReady() {
+        return waitAsync(this._whenFirstTimeReady, this._whenDisposeRequested);
     }
 
-    public whenDisposed() {
-        return this._whenDisposed;
+    public async whenDisposed() {
+        await this._whenRunning;
     }
 
     private async run(): Promise<void> {
@@ -59,37 +62,54 @@ export class AudioContextRef implements AsyncDisposable {
 
         // We want to run the rest after completion of post-AudioContextSource.getRef logic
         await nextTickAsync();
+        let lastContext: AudioContext = null;
 
         // noinspection InfiniteLoopJS
-        while (!this._whenDisposed.isCompleted()) {
+        while (!this._whenDisposeRequested.isCompleted()) {
             try {
-                this._context = await this.source.whenReady(this._whenDisposed);
-                this._whenReady.resolve(this._context);
-                debugLog?.log(`${this.name}: ready, context:`, this._context);
-                await this.retry(this._context, this.onReady);
+                debugLog?.log(`${this.name}: awaiting whenReady`);
+                this._context = await this.source.whenReady(this._whenDisposeRequested);
+                if (lastContext === this.context) {
+                    debugLog?.log(`${this.name}: ready, context:`, this._context);
+                    await this.retry(this._context, this.ready);
+                }
+                else {
+                    if (lastContext) {
+                        debugLog?.log(`${this.name}: detach, context:`, lastContext);
+                        await this.retry(lastContext, this.detach);
+                        lastContext = null;
+                    }
+                    debugLog?.log(`${this.name}: attach, context:`, this._context);
+                    await this.retry(this.context, this.attach);
+                    lastContext = this._context;
+                    this._whenFirstTimeReady.resolve(this._context);
+                }
 
-                await this.source.whenNotReady(this._context, this._whenDisposed);
-                this._whenReady = new PromiseSource<AudioContext>();
-                debugLog?.log(`${this.name}: not ready, context:`, this._context);
-                await this.retry(this._context, this.onNotReady);
+                debugLog?.log(`${this.name}: awaiting whenNotReady`);
+                await this.source.whenNotReady(this._context, this._whenDisposeRequested);
+                debugLog?.log(`${this.name}: unready, context:`, this._context);
+                await this.retry(this._context, this.unready);
             }
             catch (e) {
-                if (!(e instanceof OperationCancelledError))
-                    errorLog?.log(`${this.name}.run: error:`, e);
+                if (e instanceof OperationCancelledError)
+                    break;
+                errorLog?.log(`${this.name}.run: error:`, e);
             }
         }
 
         // Here we know that disposeAsync was called, so shutting down
         try {
-            if (this._whenReady.isCompleted()) {
-                this._whenReady = new PromiseSource<AudioContext>();
-                await this.retry(this._context, this.onNotReady);
+            if (lastContext) {
+                debugLog?.log(`${this.name}: detach, context:`, lastContext);
+                await this.retry(this._context, this.detach);
+                lastContext = null;
             }
         }
         catch (e) {
             if (!(e instanceof OperationCancelledError))
                 errorLog?.log(`${this.name}.run: error:`, e);
         }
+        debugLog?.log(`${this.name}: disposed`);
     }
 
     private async retry<T>(arg: T, fn?: (arg: T) => Promise<void> | void): Promise<void> {

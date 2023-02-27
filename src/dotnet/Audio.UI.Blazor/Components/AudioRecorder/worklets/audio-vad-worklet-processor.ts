@@ -36,7 +36,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
     }
 
-    public async onSample(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
+    public async onFrame(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
         this.bufferDeque.push(buffer);
     }
 
@@ -71,7 +71,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.worker)
-                    void this.worker.onSample(vadArrayBuffer, rpcNoWait);
+                    void this.worker.onFrame(vadArrayBuffer, rpcNoWait);
                 else
                     warnLog?.log('process: worklet port is still undefined!');
             } else {

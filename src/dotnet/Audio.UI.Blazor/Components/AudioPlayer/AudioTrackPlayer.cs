@@ -134,7 +134,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
                 var chunk = frame.Data;
-                _ = _jsRef.InvokeVoidAsync("data", cancellationToken, chunk);
+                _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk);
                 try {
                     await _whenBufferReady.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }

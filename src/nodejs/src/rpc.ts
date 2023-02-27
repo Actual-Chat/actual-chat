@@ -244,7 +244,7 @@ export function rpcClient<TService extends object>(
 
         const result = event.data;
         if (result['method']) {
-            errorLog.log(`${name}: got an RpcCall message:`, result);
+            errorLog?.log(`${name}: got an RpcCall message:`, result);
             throw new Error(`${name}: got an RpcCall message.`);
         }
         if (result.id)
