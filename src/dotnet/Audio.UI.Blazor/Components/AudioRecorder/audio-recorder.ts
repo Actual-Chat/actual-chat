@@ -35,6 +35,7 @@ export class AudioRecorder {
         await opusMediaRecorder.stop();
     }
 
+    /** Called by Blazor  */
     public async canRecord(): Promise<boolean> {
         await this.whenInitialized;
 
@@ -62,6 +63,7 @@ export class AudioRecorder {
         return hasMicrophone;
     }
 
+    /** Called by Blazor  */
     public async startRecording(chatId: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         await this.whenInitialized;

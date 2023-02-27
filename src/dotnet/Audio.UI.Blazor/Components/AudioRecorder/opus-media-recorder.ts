@@ -143,6 +143,11 @@ export class OpusMediaRecorder {
             void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
 
             await Promise.all([t1, t2]);
+
+            this.stream = await OpusMediaRecorder.getMicrophoneStream();
+            this.source = context.createMediaStreamSource(this.stream);
+            this.source.connect(this.vadWorkletInstance);
+            this.source.connect(this.encoderWorkletInstance);
         }
 
         const detach = async () => {
@@ -171,19 +176,14 @@ export class OpusMediaRecorder {
             this.state = null;
         }
 
-        const contextRef = await audioContextSource.getRef('recording', attach, detach, null, () => void this.stop());
+        const contextRef = await audioContextSource.getRef('recording', attach, detach);
         await contextRef.whenFirstTimeReady();
-
-        this.stream = await OpusMediaRecorder.getMicrophoneStream();
-        this.source = contextRef.context.createMediaStreamSource(this.stream);
         this.state = new ChatRecording(sessionId, chatId, contextRef);
 
         await Promise.all([
             this.encoderWorker.start(sessionId, chatId),
             await this.vadWorker.reset(),
         ]);
-        this.source.connect(this.vadWorkletInstance);
-        this.source.connect(this.encoderWorkletInstance);
     }
 
     public async stop(): Promise<void> {

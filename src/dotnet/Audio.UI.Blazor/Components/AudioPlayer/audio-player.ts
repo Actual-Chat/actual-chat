@@ -25,9 +25,9 @@ export class AudioPlayer {
     /** How often send offset update event to the blazor, in milliseconds */
     private readonly playingAtUpdatePeriodMs = 200;
     private readonly blazorRef: DotNet.DotNetObject;
-    private readonly contextRef: AudioContextRef = null;
     private readonly whenReady: Promise<void>;
 
+    private contextRef: AudioContextRef | null = null;
     private playbackState: PlaybackState = 'paused';
     private bufferState: BufferState = 'enough';
     private decoderToFeederNodeChannel: MessageChannel = null;
@@ -42,7 +42,7 @@ export class AudioPlayer {
 
         const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
         decoderWorkerInstance = new Worker(decoderWorkerPath);
-        decoderWorker = rpcClient<OpusDecoderWorker>(`${LogScope}.vadWorker`, decoderWorkerInstance);
+        decoderWorker = rpcClient<OpusDecoderWorker>(`${LogScope}.decoderWorker`, decoderWorkerInstance);
         await decoderWorker.init(Versioning.artifactVersions);
         this.whenInitialized.resolve(undefined);
     }
@@ -130,6 +130,7 @@ export class AudioPlayer {
             void this.onFeederStateChanged('playing', 'starving');
     }
 
+    /** Called by Blazor */
     public async end(mustAbort: boolean): Promise<void> {
         await this.whenReady;
         if (this.playbackState === 'ended')
@@ -139,6 +140,7 @@ export class AudioPlayer {
         return decoderWorker.end(this.id, mustAbort);
     }
 
+    /** Called by Blazor */
     public async pause(): Promise<void> {
         await this.whenReady;
         if (this.playbackState === 'ended')
@@ -148,6 +150,7 @@ export class AudioPlayer {
         await this.feederNode.pause();
     }
 
+    /** Called by Blazor */
     public async resume(): Promise<void> {
         await this.whenReady;
         if (this.playbackState === 'ended')
@@ -173,8 +176,11 @@ export class AudioPlayer {
                 this.reportPlayedToHandle = self.setInterval(this.reportPlayingAt, this.playingAtUpdatePeriodMs);
             else {
                 self.clearInterval(this.reportPlayedToHandle);
-                if (playbackState === 'ended')
+                if (playbackState === 'ended') {
+                    await this.contextRef.disposeAsync();
+                    this.contextRef = null;
                     await this.reportOnEnded();
+                }
                 else
                     await this.reportPausedAt();
             }
@@ -231,6 +237,7 @@ export class AudioPlayer {
 
     private reportOnEnded = async (message: string | null = null) => {
         try {
+            debugLog?.log(`#${this.id}.reportOnEnded:`, message);
             await this.blazorRef.invokeMethodAsync('OnEnded', message);
         }
         catch (e) {
