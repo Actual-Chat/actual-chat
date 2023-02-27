@@ -35,9 +35,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public void OnStartedPlaying(AudioPlayerTestPageStats statistics)
+    public void OnPlaying(AudioPlayerTestPageStats statistics)
     {
-        Log.LogInformation("OnStartedPlaying called");
+        Log.LogInformation("OnPlaying called");
         StartPlayingDelay = statistics.PlayingStartTime - statistics.ConstructorStartTime;
         ObjectCreationDelay = statistics.ConstructorEndTime - statistics.ConstructorStartTime;
         StateHasChanged();
@@ -123,10 +123,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnChangeReadiness(bool isBufferReady) => Task.CompletedTask;
+    public Task OnBufferStateChange(bool isBufferLow) => Task.CompletedTask;
 
     [JSInvokable]
-    public async Task OnPlayEnded(string? errorMessage)
+    public async Task OnEnded(string? errorMessage)
     {
         Log.LogInformation("OnPlayEnded(msg:{ErrorMessage})", errorMessage);
         // might run stop()  after end(), we shouldn't do this, fix it later
@@ -137,7 +137,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnPlayTimeChanged(double offset)
+    public Task OnPlayingAt(double offset)
     {
         if (true) {
             Log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);

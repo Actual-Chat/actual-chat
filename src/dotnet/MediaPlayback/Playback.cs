@@ -69,8 +69,8 @@ public sealed class Playback : ProcessorBase
     public IMessageProcess<ResumeCommand> Resume(CancellationToken cancellationToken)
         => _messageProcessor.Enqueue(ResumeCommand.Instance, cancellationToken);
 
-    public IMessageProcess<StopCommand> Stop(CancellationToken cancellationToken)
-        => _messageProcessor.Enqueue(StopCommand.Instance, cancellationToken);
+    public IMessageProcess<AbortCommand> Stop(CancellationToken cancellationToken)
+        => _messageProcessor.Enqueue(AbortCommand.Instance, cancellationToken);
 
     private Task<object?> ProcessCommand(IPlaybackCommand command, CancellationToken cancellationToken)
     {
@@ -78,7 +78,7 @@ public sealed class Playback : ProcessorBase
             PlayTrackCommand playTrackCommand => OnPlayTrackCommand(playTrackCommand),
             PauseCommand => OnPauseCommand(),
             ResumeCommand => OnResumeCommand(),
-            StopCommand => OnStopCommand(),
+            AbortCommand => OnAbortCommand(),
             _ => throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.")
         };
 
@@ -130,7 +130,7 @@ public sealed class Playback : ProcessorBase
             return null;
         }
 
-        async Task<object?> OnStopCommand()
+        async Task<object?> OnAbortCommand()
         {
             var stopTasks = _trackPlayers.Values.Select(x => x.Player.Stop());
             await Task.WhenAll(stopTasks).ConfigureAwait(false);
@@ -153,7 +153,7 @@ public sealed class Playback : ProcessorBase
                 IsPlaying.Value = true;
             }
         }
-        else if (state.IsCompleted && !prev.IsCompleted) {
+        else if (state.IsEnded && !prev.IsEnded) {
             lock (_stateUpdateLock) {
                 PlayingTracks.Value = PlayingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
                 if (PlayingTracks.Value.Count == 0) {

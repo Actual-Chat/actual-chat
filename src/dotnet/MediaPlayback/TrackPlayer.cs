@@ -146,11 +146,11 @@ public abstract class TrackPlayer : ProcessorBase
                         await playTask.AsTask()
                             .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                             .ConfigureAwait(false);
-                    var stopResult = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
+                    var abortResult = await ProcessCommand(AbortCommand.Instance, CancellationToken.None).AsTask()
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
-                    if (stopResult.HasError)
-                        OnStopped(stopResult.Error);
+                    if (abortResult.HasError)
+                        OnEnded(abortResult.Error);
                     await WhenCompleted
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
@@ -177,7 +177,7 @@ public abstract class TrackPlayer : ProcessorBase
         PlayerState state;
         lock (_stateUpdateLock) {
             var lastState = _state;
-            if (lastState.IsCompleted)
+            if (lastState.IsEnded)
                 return; // No need to update it further
             state = updater.Invoke(arg, lastState);
             if (lastState == state)
@@ -189,12 +189,12 @@ public abstract class TrackPlayer : ProcessorBase
             catch (Exception ex) {
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
-            if (state.IsCompleted)
+            if (state.IsEnded)
                 _whenCompletedSource.TrySetResult(default);
         }
     }
 
-    protected virtual void OnPlayedTo(TimeSpan offset) => UpdateState(static (arg, state) => {
+    protected virtual void OnPlayingAt(TimeSpan offset) => UpdateState(static (arg, state) => {
         var (offset1, self) = arg;
         return state with {
             IsStarted = true,
@@ -211,6 +211,6 @@ public abstract class TrackPlayer : ProcessorBase
         };
     }, (offset, this));
 
-    protected virtual void OnStopped(Exception? exception = null)
-        => UpdateState(static (exception, state) => state with { IsCompleted = true, Error = exception }, exception);
+    protected virtual void OnEnded(Exception? exception = null)
+        => UpdateState(static (exception, state) => state with { IsEnded = true, Error = exception }, exception);
 }

@@ -149,7 +149,7 @@
             return Model.None;
 
         var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken);
-        if (playbackState == null || playbackState.IsCompleted)
+        if (playbackState == null || playbackState.IsEnded)
             return Model.None;
 
         var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)

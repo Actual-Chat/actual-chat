@@ -7,12 +7,14 @@ import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';
-import { PromiseSource } from '../../../../nodejs/src/promises';
+import { delayAsync, PromiseSource } from '../../../../nodejs/src/promises';
+import { BufferState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 
 const LogScope: LogScope = 'AudioPlayer';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
+const enableFrequentDebugLog = false;
 
 const isAecWorkaroundUsed = isAecWorkaroundNeeded();
 let decoderWorkerInstance: Worker = null;
@@ -23,19 +25,19 @@ export class AudioPlayer {
 
     private readonly id: string;
     /** How often send offset update event to the blazor, in milliseconds */
-    private readonly updateOffsetMs = 200;
+    private readonly playingAtUpdatePeriodMs = 200;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly contextRef: AudioContextRef = null;
     private readonly whenReady: Promise<void>;
 
-    private state: 'uninitialized' | 'initialized' | 'playing' | 'paused' | 'stopped' | 'ended' = 'uninitialized';
-    private isBufferTooMuch = false;
-    private updateOffsetTickIntervalId: number = null;
+    private playbackState: PlaybackState = 'paused';
+    private bufferState: BufferState = 'enough';
     private decoderToFeederNodeChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
     private destinationNode?: MediaStreamAudioDestinationNode = null;
+    private reportPlayedToHandle: number = null;
 
-    public onStartedPlaying?: () => void;
+    public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
     public static async init(): Promise<void> {
         if (this.whenInitialized.isCompleted())
@@ -61,6 +63,8 @@ export class AudioPlayer {
             debugLog?.log(`#${this.id}.contextRef.attach: context:`, context, ', isAecWorkaroundUsed: ', isAecWorkaroundUsed);
 
             await AudioPlayer.whenInitialized;
+            this.playbackState = 'paused';
+            this.bufferState = 'enough';
 
             // Create whatever isn't created
             this.decoderToFeederNodeChannel = new MessageChannel();
@@ -72,22 +76,16 @@ export class AudioPlayer {
                 outputChannelCount: [1],
             };
             let feederNode = this.feederNode = await FeederAudioWorkletNode.create(
+                this.id,
                 this.decoderToFeederNodeChannel.port2,
                 context,
                 'feederWorklet',
                 feederNodeOptions,
             );
-            // Initialize worker
-            await decoderWorker.create(this.id, this.decoderToFeederNodeChannel.port1);
+            feederNode.onStateChanged = this.onFeederStateChanged;
 
-            feederNode.onBufferLow = this.onBufferLow;
-            feederNode.onStartPlaying = this.onStartPlaying;
-            feederNode.onBufferTooMuch = this.onBufferTooMuch;
-            feederNode.onStarving = this.onStarving;
-            feederNode.onPaused = this.onPaused;
-            feederNode.onResumed = this.onResumed;
-            feederNode.onStopped = this.onStopped;
-            feederNode.onEnded = this.onEnded;
+            // Create decoder worker
+            await decoderWorker.create(this.id, this.decoderToFeederNodeChannel.port1);
 
             if (isAecWorkaroundUsed) {
                 this.destinationNode = context.createMediaStreamDestination();
@@ -107,16 +105,8 @@ export class AudioPlayer {
 
             this.feederNode = null;
             await decoderWorker.close(this.id);
-            await feederNode.stop();
             feederNode.disconnect();
-            feederNode.onBufferLow = null;
-            feederNode.onStartPlaying = null;
-            feederNode.onBufferTooMuch = null;
-            feederNode.onStarving = null;
-            feederNode.onPaused = null;
-            feederNode.onResumed = null;
-            feederNode.onStopped = null;
-            feederNode.onEnded = null;
+            feederNode.onStateChanged = null;
 
             this.decoderToFeederNodeChannel?.port1.close();
             this.decoderToFeederNodeChannel?.port2.close();
@@ -138,180 +128,133 @@ export class AudioPlayer {
             this.contextRef = audioContextSource.getRef('playback', attach, detach);
         this.whenReady = this.contextRef.whenFirstTimeReady().then(() => {
             debugLog?.log(`#${this.id}.ready`);
-            this.state = 'initialized';
         });
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async frame(bytes: Uint8Array): Promise<void> {
         await this.whenReady;
+        if (this.playbackState === 'ended')
+            return;
+
         // debugLog?.log(`#${this.id}.frame, ${bytes.length} byte(s)`);
-        void decoderWorker.onFrame(
+        void decoderWorker.frame(
             this.id,
             bytes.buffer,
             bytes.byteOffset,
             bytes.length,
             rpcNoWait);
+
+        // Report that we started playback as soon as we can
+        if (this.playbackState === 'paused')
+            void this.onFeederStateChanged('playing', 'starving');
     }
 
-    public async end(): Promise<void> {
+    public async end(mustAbort: boolean): Promise<void> {
         await this.whenReady;
-        debugLog?.log(`#${this.id}.end`);
-        return decoderWorker.end(this.id);
-    }
+        if (this.playbackState === 'ended')
+            return;
 
-    public async stop(): Promise<void> {
-        await this.whenReady;
-        debugLog?.log(`#${this.id}.stop`);
-        await decoderWorker.stop(this.id);
-        await this.feederNode.stop();
+        debugLog?.log(`#${this.id}.end, mustAbort:`, mustAbort);
+        return decoderWorker.end(this.id, mustAbort);
     }
 
     public async pause(): Promise<void> {
         await this.whenReady;
+        if (this.playbackState === 'ended')
+            return;
+
         debugLog?.log(`#${this.id}.pause`);
         await this.feederNode.pause();
-        await this.onUpdatePause();
     }
 
     public async resume(): Promise<void> {
         await this.whenReady;
+        if (this.playbackState === 'ended')
+            return;
+
         debugLog?.log(`#${this.id}.resume`);
         await this.feederNode.resume();
     }
 
     // Event handlers
 
-    private onBufferLow = async () => {
-        if (!this.isBufferTooMuch)
+    private onFeederStateChanged = async (playbackState: PlaybackState, bufferState: BufferState) => {
+        if (this.playbackState === 'ended')
             return;
 
-        this.isBufferTooMuch = false;
-        debugLog?.log(`#${this.id}.onBufferLow`);
-        await this.invokeOnChangeReadiness(true);
-    }
-
-    private onBufferTooMuch = async () => {
-        if (this.isBufferTooMuch)
-            return;
-
-        this.isBufferTooMuch = true;
-        debugLog?.log(`#${this.id}.onBufferTooMuch`);
-        await this.invokeOnChangeReadiness(false);
-    }
-
-    private onStartPlaying = () => {
-        debugLog?.log(`#${this.id}.onStartPlaying`);
-        if (this.state === 'playing') {
-            warnLog?.log(`#${this.id}.onStartPlaying: already in playing state`);
-            return;
+        debugLog?.log(`#${this.id}.onFeederStateChanged: ${playbackState}, ${bufferState}`);
+        const oldPlaybackState = this.playbackState;
+        const oldBufferState = this.bufferState;
+        this.playbackState = playbackState;
+        this.bufferState = bufferState;
+        if (playbackState !== oldPlaybackState) {
+            if (playbackState === 'playing')
+                this.reportPlayedToHandle = self.setInterval(this.reportPlayingAt, this.playingAtUpdatePeriodMs);
+            else {
+                self.clearInterval(this.reportPlayedToHandle);
+                if (playbackState === 'ended')
+                    await this.reportOnEnded();
+                else
+                    await this.reportPausedAt();
+            }
+            this.onPlaybackStateChanged?.(playbackState);
         }
-
-        this.state = 'playing';
-        this?.onStartedPlaying();
-        this.updateOffsetTickIntervalId = self.setInterval(this.onUpdateOffsetTick, this.updateOffsetMs);
-    }
-
-    private onPaused = async () => {
-        debugLog?.log(`#${this.id}.onPaused`);
-        if (this.state !== 'playing') {
-            warnLog?.log(`#${this.id}.onPaused: already in non-playing state: ${this.state}`);
-            return;
+        if (playbackState === 'playing') {
+            if (bufferState !== oldBufferState)
+                await this.reportBufferStateChange();
         }
-
-        this.state = 'paused';
-        // self.clearInterval(this.updateOffsetTickIntervalId);
     }
 
-    private onResumed = async () => {
-        debugLog?.log(`#${this.id}.onResumed`);
-        if (this.state !== 'paused') {
-            warnLog?.log(`#${this.id}.onResumed: already in non-paused state: ${this.state}`);
-            return;
-        }
+    // Backend invocation methods
 
-        this.state = 'playing';
-        // this.updateOffsetTickIntervalId = self.setInterval(this.onUpdateOffsetTick, this.updateOffsetMs);
-    }
-
-    private onStopped = async () => {
-        debugLog?.log(`#${this.id}.onStopped`);
-        if (this.state === 'stopped')
-            warnLog?.log(`#${this.id}.onStopped: already in stopped state`);
-
-        this.state = 'stopped';
-        await this.onUpdateOffsetTick();
-        if (this.updateOffsetTickIntervalId)
-            self.clearInterval(this.updateOffsetTickIntervalId);
-    }
-
-    private onStarving = async () => {
-        debugLog?.log(`#${this.id}.onStarving`);
-        if (!this.isBufferTooMuch)
-            return;
-
-        this.isBufferTooMuch = false;
-        warnLog?.log(`#${this.id}.onStarving: starving!`);
-        await this.invokeOnChangeReadiness(true);
-    }
-
-    private onEnded = async () => {
-        debugLog?.log(`#${this.id}.onEnded`);
-        if (this.updateOffsetTickIntervalId)
-            self.clearInterval(this.updateOffsetTickIntervalId);
-
-        this.state = 'ended';
-        await Promise.all([decoderWorker.close(this.id), this.invokeOnPlayEnded()])
-    }
-
-    private onUpdateOffsetTick = async () => {
+    private reportBufferStateChange = async () => {
         try {
-            if (this.state === 'playing') {
-                const state = await this.feederNode.getState();
-                debugLog?.log(
-                    `#${this.id}.onUpdateOffsetTick:`,
-                        `playbackTime:`, state.playbackTime,
-                        `bufferedTime:`, state.bufferedTime);
-                if (this.state !== 'playing')
-                    return;
+            debugLog?.log(`#${this.id}.reportBufferStateChange:`, this.bufferState);
+            await this.blazorRef.invokeMethodAsync('OnBufferStateChange', this.bufferState !== 'enough');
+        }
+        catch (e) {
+            errorLog?.log(`#${this.id}.reportBufferStateChange: unhandled error:`, e);
+        }
+    }
 
-                await this.invokeOnPlayTimeChanged(state.playbackTime);
+    private reportPlayingAt = async () => {
+        try {
+            if (this.playbackState === 'playing') {
+                const state = await this.feederNode.getState();
+                if (enableFrequentDebugLog)
+                    debugLog?.log(
+                        `#${this.id}.reportPlayingAt:`,
+                        `playbackTime:`, state.playingAt,
+                        `bufferedTime:`, state.bufferedDuration);
+                await this.blazorRef.invokeMethodAsync('OnPlayingAt', state.playingAt);
             }
         }
-        catch (error) {
-            errorLog?.log(`#${this.id}.onUpdateOffsetTick: unhandled error:`, error);
+        catch (e) {
+            errorLog?.log(`#${this.id}.reportPlayingAt: unhandled error:`, e);
         }
     };
 
-    private onUpdatePause = async () => {
+    private reportPausedAt = async () => {
         try {
             const state = await this.feederNode.getState();
             debugLog?.log(
-                `#${this.id}.onUpdatePause:`,
-                `playbackTime:`, state.playbackTime,
-                `bufferedTime:`, state.bufferedTime);
-            await this.invokeOnPausedAt(state.playbackTime);
+                `#${this.id}.reportPausedAt:`,
+                `playbackTime:`, state.playingAt,
+                `bufferedTime:`, state.bufferedDuration);
+            await this.blazorRef.invokeMethodAsync('OnPausedAt', state.playingAt);
         }
-        catch (error) {
-            errorLog?.log(`#${this.id}.onUpdatePause: unhandled error:`, error);
+        catch (e) {
+            errorLog?.log(`#${this.id}.reportPausedAt: unhandled error:`, e);
         }
     }
 
-    // Backend methods
-
-    private invokeOnPlayTimeChanged(time: number): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnPlayTimeChanged', time);
-    }
-
-    private invokeOnPausedAt(time: number): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnPausedAt', time);
-    }
-
-    private invokeOnPlayEnded(message: string | null = null): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnPlayEnded', message);
-    }
-
-    private invokeOnChangeReadiness(isBufferReady: boolean): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnChangeReadiness', isBufferReady);
+    private reportOnEnded = async (message: string | null = null) => {
+        try {
+            await this.blazorRef.invokeMethodAsync('OnEnded', message);
+        }
+        catch (e) {
+            errorLog?.log(`#${this.id}.reportOnEnded: unhandled error:`, e);
+        }
     }
 }

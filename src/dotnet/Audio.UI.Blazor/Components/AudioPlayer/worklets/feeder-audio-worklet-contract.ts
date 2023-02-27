@@ -1,32 +1,27 @@
 import { RpcNoWait } from 'rpc';
 
 export interface FeederAudioWorklet {
-    init(workerPort: MessagePort): Promise<void>;
-    getState(): Promise<PlaybackState>;
-    stop(): Promise<void>;
+    init(id: string, workerPort: MessagePort): Promise<void>;
+    getState(): Promise<FeederState>;
+
+    // Commands
+    frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;
     pause(): Promise<void>;
     resume(): Promise<void>;
-
-    onFrame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;
-    onEnd(noWait?: RpcNoWait): Promise<void>;
+    end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void>;
 }
 
 export interface FeederAudioNode {
-    onStateChanged(state: ProcessorState, noWait?: RpcNoWait): Promise<void>;
+    stateChanged(state: PlaybackState, bufferState: BufferState, noWait?: RpcNoWait): Promise<void>;
 }
 
-export interface PlaybackState {
-    /** Buffered samples duration in seconds  */
-    bufferedTime: number,
-    /** In seconds from the start of playing, excluding starving time and processing time */
-    playbackTime: number,
+export interface FeederState {
+    /** Buffered duration in seconds  */
+    bufferedDuration: number,
+    playingAt: number,
+    playbackState: PlaybackState,
+    bufferState: BufferState,
 }
 
-export type ProcessorState = 'playing'
-    | 'playingWithLowBuffer'
-    | 'playingWithTooMuchBuffer'
-    | 'starving'
-    | 'paused'
-    | 'resumed'
-    | 'stopped'
-    | 'ended';
+export type BufferState = 'enough' | 'starving' | 'low';
+export type PlaybackState = 'playing' | 'paused' | 'ended';

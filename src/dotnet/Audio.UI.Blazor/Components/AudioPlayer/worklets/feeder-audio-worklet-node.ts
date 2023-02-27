@@ -1,30 +1,29 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 import { Disposable } from 'disposable';
-import { FeederAudioNode, FeederAudioWorklet, PlaybackState, ProcessorState } from './feeder-audio-worklet-contract';
+import {
+    BufferState,
+    FeederAudioNode,
+    FeederAudioWorklet,
+    FeederState,
+    PlaybackState,
+} from './feeder-audio-worklet-contract';
 import { ResolvedPromise } from 'promises';
 import { rpcClientServer, RpcNoWait } from 'rpc';
 
 import { Log, LogLevel, LogScope } from 'logging';
 const LogScope: LogScope = 'FeederNode';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAudioNode {
     private readonly feederWorklet: FeederAudioWorklet & Disposable = null;
 
-    public onStartPlaying?: () => void = null;
-    public onBufferLow?: () => void = null;
-    public onBufferTooMuch?: () => void = null;
-    public onStarving?: () => void = null;
-    public onPaused?: () => void = null;
-    public onResumed?: () => void = null;
-    /** If playing was started and now it's stopped */
-    public onStopped?: () => void = null;
-    /** Called at the end of the queue, even if the playing wasn't started */
-    public onEnded?: () => void = null;
+    public onStateChanged?: (playbackState: PlaybackState, bufferState: BufferState) => void = null;
 
     private constructor(
+        public readonly id: string,
         context: BaseAudioContext,
         name: string,
         options?: AudioWorkletNodeOptions
@@ -35,48 +34,28 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
     }
 
     public static async create(
+        id: string,
         decoderWorkerPort: MessagePort,
         context: BaseAudioContext,
         name: string,
         options?: AudioWorkletNodeOptions
     ): Promise<FeederAudioWorkletNode> {
-        const node = new FeederAudioWorkletNode(context, name, options);
-        await node.feederWorklet.init(decoderWorkerPort);
+        const node = new FeederAudioWorkletNode(id, context, name, options);
+        await node.feederWorklet.init(id, decoderWorkerPort);
         return node;
     }
 
-    public onStateChanged(state: ProcessorState, noWait?: RpcNoWait): Promise<void> {
-        switch (state) {
-            case 'playing':
-                this.onStartPlaying?.();
-                break;
-            case 'playingWithLowBuffer':
-                this.onBufferLow?.();
-                break;
-            case 'playingWithTooMuchBuffer':
-                this.onBufferTooMuch?.();
-                break;
-            case 'starving':
-                this.onStarving?.();
-                break;
-            case 'paused':
-                this.onPaused?.();
-                break;
-            case 'resumed':
-                this.onResumed?.();
-                break;
-            case 'stopped':
-                this.onStopped?.();
-                break;
-            case 'ended':
-                this.onEnded?.();
-                break;
-        }
+    public getState(): Promise<FeederState> {
+        return this.feederWorklet.getState();
+    }
+
+    public stateChanged(playbackState: PlaybackState, bufferState: BufferState, noWait?: RpcNoWait): Promise<void> {
+        this.onStateChanged?.(playbackState, bufferState)
         return ResolvedPromise.Void;
     }
 
-    public stop(): Promise<void> {
-        return this.feederWorklet.stop();
+    public abort(): Promise<void> {
+        return this.feederWorklet.abort();
     }
 
     public pause(): Promise<void> {
@@ -87,11 +66,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
         return this.feederWorklet.resume();
     }
 
-    public getState(): Promise<PlaybackState> {
-        return this.feederWorklet.getState();
-    }
-
     private onProcessorError = (ev: Event) => {
-        errorLog?.log(`onProcessorError: unhandled error:`, ev);
+        errorLog?.log(`#${this.id}.onProcessorError: unhandled error:`, ev);
     };
 }

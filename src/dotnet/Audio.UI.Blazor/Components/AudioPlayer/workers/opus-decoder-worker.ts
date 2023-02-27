@@ -18,7 +18,7 @@ import 'logging-init';
 import { Versioning } from 'versioning';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer } from 'rpc';
-import { retryAsync } from 'promises';
+import { ResolvedPromise, retryAsync } from 'promises';
 
 const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -64,21 +64,17 @@ const serverImpl: OpusDecoderWorker = {
         if (decoder == null)
             return;
 
-        void decoder.disposeAsync(); // No need to wait here
+        await decoder.disposeAsync();
         decoders.delete(streamId);
     },
 
-    stop: async (streamId: string): Promise<void> => {
-        debugLog?.log(`#${streamId}.stop`);
-        getDecoder(streamId).stop();
+    end: (streamId: string, mustAbort: boolean): Promise<void> => {
+        debugLog?.log(`#${streamId}.end, mustAbort:`, mustAbort);
+        getDecoder(streamId).end(mustAbort);
+        return ResolvedPromise.Void;
     },
 
-    end: async (streamId: string): Promise<void> => {
-        debugLog?.log(`#${streamId}.end`);
-        await getDecoder(streamId).end();
-    },
-
-    onFrame: async (
+    frame: async (
         streamId: string,
         buffer: ArrayBuffer,
         offset: number,

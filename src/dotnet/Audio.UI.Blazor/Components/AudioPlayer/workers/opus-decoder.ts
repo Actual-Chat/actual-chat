@@ -14,6 +14,7 @@ const LogScope: LogScope = 'OpusDecoder';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
+const enableFrequentDebugLog = false;
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -24,6 +25,8 @@ export class OpusDecoder implements AsyncDisposable {
     private readonly processor: AsyncProcessor<ArrayBufferView | 'end'>;
     private readonly feederWorklet: FeederAudioWorklet & Disposable;
     private decoder: Decoder;
+    private mustAbort: boolean;
+    private isEnded: boolean;
 
     public static async create(streamId: string, decoder: Decoder, workletPort: MessagePort): Promise<OpusDecoder> {
         return new OpusDecoder(streamId, decoder, workletPort);
@@ -41,11 +44,10 @@ export class OpusDecoder implements AsyncDisposable {
         if (!this.decoder)
             return;
 
+        this.end(true);
+        await this.processor.whenRunning;
         this.decoder?.delete();
         this.decoder = null;
-        this.processor.clearQueue();
-        this.end(false);
-        await this.processor.whenRunning;
     }
 
     public decode(buffer: ArrayBuffer, offset: number, length: number,): void {
@@ -54,28 +56,23 @@ export class OpusDecoder implements AsyncDisposable {
         this.processor.enqueue(bufferView);
     }
 
-    public stop(): void {
-        this.processor.clearQueue();
-    }
-
-    public end(mustFailIfAlreadyStopped = true): void {
-        this.processor.enqueue('end', mustFailIfAlreadyStopped);
+    public end(mustAbort: boolean): void {
+        this.mustAbort ||= mustAbort;
+        if (this.mustAbort)
+            this.processor.clearQueue();
+        this.processor.enqueue('end');
     }
 
     private async process(item: ArrayBufferView | 'end'): Promise<void> {
         try {
-            if (this.decoder == null) {
-                debugLog?.log(`#${this.streamId}.process: decoder is disposed -> will shut down`);
-                void this.processor.stop();
-            }
-
             if (item === 'end') {
+                this.isEnded = true;
                 debugLog?.log(`#${this.streamId}.process: got 'end'`);
-                await this.feederWorklet.onEnd();
+                await this.feederWorklet.end(this.mustAbort);
                 return;
             }
 
-            if (!this.decoder)
+            if (this.isEnded)
                 return;
 
             const samples = this.decoder.decode(item);
@@ -84,10 +81,11 @@ export class OpusDecoder implements AsyncDisposable {
                 return;
             }
 
-            debugLog?.log(
-                `#${this.streamId}.process: decoded ${item.byteLength} byte(s) into ` +
-                `${samples.byteLength} byte(s) / ${samples.length} samples`);
-            void this.feederWorklet.onFrame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
+            if (enableFrequentDebugLog)
+                debugLog?.log(
+                    `#${this.streamId}.process: decoded ${item.byteLength} byte(s) into ` +
+                    `${samples.byteLength} byte(s) / ${samples.length} samples`);
+            void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
         }
         catch (e) {
             errorLog?.log(`#${this.streamId}.process: error:`, e);
