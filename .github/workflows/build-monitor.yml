@@ -64,7 +64,7 @@ jobs:
 
   deploy:
     name: Push image to GAR
-    if: ${{ inputs.deployToDev == 'true' || inputs.deployToProd == 'true' }}
+    if: ${{ inputs.deployToDev || inputs.deployToProd }}
     runs-on: ubuntu-latest
     needs:
       - build
@@ -85,8 +85,7 @@ jobs:
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/${{ env.TARGET_IMAGE_NAME }}:${{ env.MONITOR_TAG }}
 
       - name: Deploy prod
-        if: |
-          ${{ inputs.deployToProd }} == 'true'
+        if: ${{ inputs.deployToProd }}
         uses: akhilerm/tag-push-action@v2.0.0
         with:
           src: ghcr.io/actual-chat/${{ env.TARGET_IMAGE_NAME }}:${{ env.MONITOR_TAG }}
