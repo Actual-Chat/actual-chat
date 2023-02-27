@@ -48,8 +48,9 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`-> #${streamId}.create`);
         let decoder = decoders.get(streamId);
         if (decoder !== undefined) {
-            // Recurring 'create' means AudioContext has been replaced, so we should recreate the decoder
-            await serverImpl.close(streamId);
+            debugLog?.log(`#${streamId}.create: closing old decoder`);
+            void decoder.disposeAsync();
+            decoders.delete(streamId);
         }
 
         const codecDecoder = new codecModule.Decoder();
