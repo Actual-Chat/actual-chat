@@ -155,8 +155,12 @@ function getTransferables(args: unknown[]): Transferable[] | undefined {
     let result: Transferable[] | undefined = undefined;
     for (let i = args.length - 1; i >= 0; i--) {
         const value = args[i];
-        if (!isTransferable(value))
-            break;
+        if (!isTransferable(value)) {
+            if (result !== undefined)
+                // transferable parameters should be placed one after another
+                break;
+            continue;
+        }
 
         if (!result)
             result = new Array<Transferable>(value);
@@ -277,7 +281,7 @@ export function rpcClient<TService extends object>(
                 messagePort.postMessage(rpcCall, transferables);
                 return rpcPromise;
             }
-            proxyMethodCache[method] = result;
+            proxyMethodCache.set(method, result);
         }
 
         return result;
