@@ -101,9 +101,15 @@ public partial class ChatAudioUI
 
         async Task MonitorIdleRecording(ChatId chatId, CancellationToken cancellationToken1)
         {
-            await foreach (var willStopAt in MonitorIdleAudio(chatId, options, cancellationToken1).ConfigureAwait(false))
-                _stopRecordingAt.Value = willStopAt;
-            await SetRecordingChatId(default).ConfigureAwait(false);
+            try {
+                await foreach (var willStopAt in MonitorIdleAudio(chatId, options, cancellationToken1)
+                                   .ConfigureAwait(false))
+                    _stopRecordingAt.Value = willStopAt;
+                await SetRecordingChatId(default).ConfigureAwait(false);
+            }
+            finally {
+                _stopRecordingAt.Value = null;
+            }
         }
     }
 
