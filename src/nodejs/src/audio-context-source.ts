@@ -96,7 +96,7 @@ export class AudioContextSource {
             return; // Already ready
 
         this._context = context;
-        debugLog?.log(`markReady: AudioContext:`, context);
+        debugLog?.log(`markReady: AudioContext:`, Log.ref(context));
 
         // _whenNotReady must be replaced first
         if (this._whenNotReady.isCompleted())
@@ -232,7 +232,7 @@ export class AudioContextSource {
     }
 
     protected async warmup(context: AudioContext): Promise<void> {
-        debugLog?.log(`warmup, AudioContext:`, context);
+        debugLog?.log(`warmup, AudioContext:`, Log.ref(context));
 
         const warmUpWorkletPath = Versioning.mapPath('/dist/warmUpWorklet.js');
         await context.audioWorklet.addModule(warmUpWorkletPath);
@@ -292,7 +292,7 @@ export class AudioContextSource {
     }
 
     protected async fix(context: AudioContext): Promise<void> {
-        debugLog?.log(`fix:`, context);
+        debugLog?.log(`fix:`, Log.ref(context));
 
         try {
             if (!await this.trySuspend(context)) {
@@ -310,7 +310,7 @@ export class AudioContextSource {
     }
 
     protected async interactiveResume(context: AudioContext): Promise<void> {
-        debugLog?.log(`interactiveResume:`, context);
+        debugLog?.log(`interactiveResume:`, Log.ref(context));
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
             return;
@@ -358,14 +358,14 @@ export class AudioContextSource {
     }
 
     private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
-        debugLog?.log(`resume:`, context);
+        debugLog?.log(`resume:`, Log.ref(context));
 
         this._resumeCount++;
         if (isInteractive)
             this._interactiveResumeCount++;
 
         if (this.isRunning(context)) {
-            debugLog?.log(`resume: already resumed, AudioContext:`, context);
+            debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
             return;
         }
 
@@ -376,12 +376,12 @@ export class AudioContextSource {
         if (!this.isRunning(context))
             throw new Error(`${LogScope}.resume: completed resume, but AudioContext.state != 'running'.`);
 
-        debugLog?.log(`resume: resumed, AudioContext:`, context);
+        debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
     }
 
     protected async trySuspend(context: AudioContext): Promise<boolean> {
         if (context.state === 'suspended') {
-            debugLog?.log(`trySuspend: already suspended, AudioContext:`, context);
+            debugLog?.log(`trySuspend: already suspended, AudioContext:`, Log.ref(context));
             return true;
         }
         if (context.state === 'closed') {
@@ -389,7 +389,7 @@ export class AudioContextSource {
             return false;
         }
 
-        debugLog?.log(`trySuspend:`, context);
+        debugLog?.log(`trySuspend:`, Log.ref(context));
         const suspendTask = context.suspend().then(() => true);
         const timerTask = delayAsync(MaxSuspendTimeMs).then(() => false);
         if (await Promise.race([suspendTask, timerTask])) {
@@ -430,12 +430,12 @@ export class AudioContextSource {
         // Schedule to stop silence playback in the future
         source.stop(context.currentTime + SilencePlaybackDuration);
         // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
-        console.log(`AudioContext is:`, context, `, its currentTime:`, context.currentTime);
+        console.log(`AudioContext is:`, Log.ref(context), `, its currentTime:`, context.currentTime);
         return context.state === 'running';
     }
 
     protected async closeSilently(context?: AudioContext): Promise<void> {
-        debugLog?.log(`close:`, context);
+        debugLog?.log(`close:`, Log.ref(context));
         if (!context)
             return;
         if (context.state === 'closed')
