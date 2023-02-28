@@ -90,21 +90,19 @@ export class AudioPlayer {
         const detach = async () => {
             debugLog?.log(`#${this.id}.contextRef.detach`);
 
-            await decoderWorker.close(this.id);
+            const decoderToFeederNodeChannel = this.decoderToFeederNodeChannel;
+            if (decoderToFeederNodeChannel) {
+                void decoderWorker.close(this.id, rpcNoWait);
+                this.decoderToFeederNodeChannel = null;
+                decoderToFeederNodeChannel?.port1.close();
+                decoderToFeederNodeChannel?.port2.close();
+            }
 
             const feederNode = this.feederNode;
             if (feederNode) {
                 this.feederNode = null;
-                await decoderWorker.close(this.id);
                 feederNode.disconnect();
                 feederNode.onStateChanged = null;
-            }
-
-            const decoderToFeederNodeChannel = this.decoderToFeederNodeChannel;
-            if (decoderToFeederNodeChannel) {
-                this.decoderToFeederNodeChannel = null;
-                decoderToFeederNodeChannel?.port1.close();
-                decoderToFeederNodeChannel?.port2.close();
             }
         }
 
