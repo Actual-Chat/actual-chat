@@ -65,18 +65,29 @@ export type LogScope =
 
 const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';
+const DateStorageKey = `${StorageKey}.date`;
+const MaxStorageAge = 86_400_000 * 3; // 3 days
+
+const app = globalThis?.['App'] as unknown;
+const isWorkerOrWorklet = !app;
 
 export function initLogging(Log: unknown): void {
     Log['defaultMinLevel'] = LogLevel.Info;
     const minLevels = Log['minLevels'] as Map<LogScope, LogLevel>;
 
     let wasRestored = false;
-    if (globalThis) {
+    if (globalThis && !isWorkerOrWorklet) {
         globalThis[GlobalThisKey] = new LogLevelController(minLevels);
         wasRestored = restore(minLevels);
     }
-    if (!wasRestored)
+    if (wasRestored) {
+        console.log(`Logging: logLevels are restored`);
+    }
+    else {
+        if (!isWorkerOrWorklet)
+            console.log(`Logging: logLevels are reset`);
         reset(minLevels);
+    }
 }
 
 class LogLevelController {
@@ -88,8 +99,8 @@ class LogLevelController {
         persist(this.minLevels);
     }
 
-    public reset() {
-        reset(this.minLevels);
+    public reset(isProduction?: boolean) {
+        reset(this.minLevels, isProduction);
         persist(this.minLevels);
     }
 
@@ -104,6 +115,12 @@ class LogLevelController {
 function restore(minLevels: Map<string, LogLevel>): boolean {
     const storage = globalThis?.sessionStorage;
     if (!storage)
+        return false;
+
+    const dateJson = storage.getItem(DateStorageKey);
+    if (!dateJson)
+        return false;
+    if (Date.now() - JSON.parse(dateJson) > MaxStorageAge)
         return false;
 
     const readJson = storage.getItem(StorageKey);
@@ -124,17 +141,21 @@ function persist(minLevels: Map<string, LogLevel>): boolean {
     if (!storage)
         return false;
 
+    storage.setItem(DateStorageKey, JSON.stringify(Date.now()));
     storage.setItem(StorageKey, JSON.stringify(Array.from(minLevels.entries())));
     return true;
 }
 
-function reset(minLevels: Map<LogScope, LogLevel>): void {
+function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void {
     minLevels.clear();
+    isProduction ??= app?.['environment'] == 'Production';
+    if (isProduction)
+        return;
 
     // Bumping down levels of in-dev scopes
     // minLevels.set('Gestures', LogLevel.Debug);
     // minLevels.set('event-handling', LogLevel.Debug);
-    minLevels.set('Versioning', LogLevel.Debug);
+    // minLevels.set('Versioning', LogLevel.Debug);
     // minLevels.set('Rpc', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
@@ -142,7 +163,6 @@ function reset(minLevels: Map<LogScope, LogLevel>): void {
     minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioPlayer', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
-    minLevels.set('AudioPlayer', LogLevel.Debug);
     // minLevels.set('OpusDecoder', LogLevel.Debug);
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
