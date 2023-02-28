@@ -8,7 +8,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #endif
 import Denque from 'denque';
 import { Disposable } from 'disposable';
-import { retryAsync } from 'promises';
+import { retry } from 'promises';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
@@ -43,7 +43,7 @@ const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
 
 let hubConnection: signalR.HubConnection;
-let recordingSubject = new signalR.Subject<Uint8Array>();
+let recordingSubject: signalR.Subject<Uint8Array> = null;
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'voice';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
@@ -88,11 +88,11 @@ const serverImpl: OpusEncoderWorker = {
 
         // Get fade-in window
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
-        pinkNoiseChunk = initPinkNoiseBuffer(1.0);
+        pinkNoiseChunk = getPinkNoiseBuffer(1.0);
         silenceChunk = new Float32Array(CHUNK_SIZE);
 
         // Loading codec
-        codecModule = await retryAsync(3, () => codec(getEmscriptenLoaderOptions()));
+        codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
 
         // Warming up codec
         encoder = new codecModule.Encoder();
@@ -124,7 +124,8 @@ const serverImpl: OpusEncoderWorker = {
     stop: async (): Promise<void> => {
         state = 'ended';
         processQueue('out');
-        recordingSubject.complete();
+        recordingSubject?.complete();
+        recordingSubject = null;
         encoder?.delete();
         encoder = null;
     },
@@ -155,7 +156,8 @@ const serverImpl: OpusEncoderWorker = {
             // set state, then complete the stream
             vadState = newVadState;
             processQueue('out');
-            recordingSubject.complete();
+            recordingSubject?.complete();
+            recordingSubject = null;
             encoder?.delete();
             encoder = null;
             chunkTimeOffset = 0;
@@ -166,6 +168,7 @@ const serverImpl: OpusEncoderWorker = {
 
             // start new stream and then set state
             const { sessionId, chatId } = lastInitArguments;
+            recordingSubject?.complete(); // Just in case
             recordingSubject = new signalR.Subject<Uint8Array>();
             if (!encoder)
                 encoder = new codecModule.Encoder();
@@ -256,7 +259,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     }
 }
 
-function initPinkNoiseBuffer(gain: number = 1): Float32Array {
+function getPinkNoiseBuffer(gain: number = 1): Float32Array {
     const buffer = new Float32Array(CHUNK_SIZE);
     let b0, b1, b2, b3, b4, b5, b6;
     b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;

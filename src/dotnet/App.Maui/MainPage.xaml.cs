@@ -9,16 +9,17 @@ public partial class MainPage : ContentPage
     private ClientAppSettings AppSettings { get; }
     private NavigationInterceptor NavInterceptor { get; }
     private ILogger Log { get; }
+    private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
 
     public BlazorWebView BlazorWebView
-        => this._blazorWebView;
+        => _blazorWebView;
 
     public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor, ILogger<MainPage> log)
     {
-        TraceSession.Default.Track("MainPage.Constructor");
+        Log = log;
+        Tracer.Point(".ctor");
         AppSettings = appSettings;
         NavInterceptor = navInterceptor;
-        Log = log;
 
         InitializeComponent();
         _blazorWebView.BlazorWebViewInitializing += OnBlazorWebViewInitializing;
@@ -41,7 +42,7 @@ public partial class MainPage : ContentPage
     private void OnUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
         var uri = eventArgs.Url;
-        TraceSession.Default.Track($"MainPage.OnUrlLoading. Url: '{uri}'");
+        Tracer.Point($"OnUrlLoading: Url: '{uri}'");
         if (NavInterceptor.TryIntercept(uri))
             // Load cancellation seems not working On Windows platform,
             // even though the issues were closed a while ago, and  Uri gets opened in WebView.

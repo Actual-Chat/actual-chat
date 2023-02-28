@@ -26,11 +26,7 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddScoped<CircuitTraceAccessor>();
-        services.AddTraceSession(c => {
-            var scopedAccessor = c.GetService<CircuitTraceAccessor>();
-            return scopedAccessor ?? (ITraceAccessor)RootTraceAccessor.Instance;
-        });
+        services.AddScoped<TracerProvider>(_ => new CircuitTracerProvider());
 
         // Logging
         services.AddLogging(logging => {

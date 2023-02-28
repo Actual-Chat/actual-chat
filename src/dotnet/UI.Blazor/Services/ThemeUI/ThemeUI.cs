@@ -11,7 +11,7 @@ public class ThemeUI : WorkerBase
     private ILogger Log { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
-    private ITraceSession Trace { get; }
+    private Tracer Tracer { get; }
 
     public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
@@ -23,9 +23,9 @@ public class ThemeUI : WorkerBase
     public ThemeUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Tracer = services.Tracer(GetType());
         Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
-        Trace = services.GetRequiredService<ITraceSession>();
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.AccountSettings().WithPrefix(nameof(ThemeUI));
@@ -40,18 +40,18 @@ public class ThemeUI : WorkerBase
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        Trace.Track($"ThemeUI.RunInternal");
+        Tracer.Point("RunInternal");
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        Trace.Track("ThemeUI.WhenFirstTimeRead");
+        Tracer.Point("WhenFirstTimeRead");
         await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
             await ApplyTheme(cTheme.Value.Theme);
     }
 
     private Task ApplyTheme(Theme theme)
     {
-        Trace.Track($"ThemeUI.ApplyTheme. Theme: '{theme}'");
+        Tracer.Point("ApplyTheme");
         return Dispatcher.InvokeAsync(async () => {
-            Trace.Track($"ThemeUI.ApplyTheme.InvokeAsync Theme: '{theme}'");
+            Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");
             if (!WhenReady.IsCompleted)
                 TaskSource.For((Task<Unit>)WhenReady).TrySetResult(default);
             if (_appliedTheme == theme)
@@ -59,9 +59,8 @@ public class ThemeUI : WorkerBase
 
             _appliedTheme = theme;
             try {
-                var step = Trace.TrackStep($"ThemeUI.ApplyTheme in JS'");
+                using var _ = Tracer.Region("ThemeUI.ApplyTheme - JS call");
                 await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
-                step.Complete();
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Failed to apply the new theme");

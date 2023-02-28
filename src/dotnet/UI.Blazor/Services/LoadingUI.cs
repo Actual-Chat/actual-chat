@@ -1,3 +1,5 @@
+using Trace = Sentry.Protocol.Trace;
+
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
@@ -7,8 +9,8 @@ public sealed class LoadingUI
 {
     private readonly TaskSource<Unit> _whenLoadedSource;
 
-    private ILogger<LoadingUI> Log { get; }
-    private ITraceSession Trace { get; }
+    private ILogger Log { get; }
+    private Tracer Tracer { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
 
@@ -17,10 +19,10 @@ public sealed class LoadingUI
     public TimeSpan AppInitTime { get; private set; } = TimeSpan.Zero;
     public TimeSpan AppAboutRenderContentTime { get; private set; } = TimeSpan.Zero;
 
-    public LoadingUI(ILogger<LoadingUI> log, ITraceSession trace)
+    public LoadingUI(IServiceProvider services)
     {
-        Log = log;
-        Trace = trace;
+        Log = services.LogFor(GetType());
+        Tracer = services.Tracer(GetType());
         _whenLoadedSource = TaskSource.New<Unit>(true);
     }
 
@@ -35,14 +37,14 @@ public sealed class LoadingUI
     {
         if (AppInitTime > TimeSpan.Zero)
             return;
-        AppInitTime = Trace.Elapsed;
+        AppInitTime = Tracer.Elapsed;
     }
 
     public void ReportAppAboutRenderContent()
     {
         if (AppAboutRenderContentTime > TimeSpan.Zero)
             return;
-        AppAboutRenderContentTime = Trace.Elapsed;
+        AppAboutRenderContentTime = Tracer.Elapsed;
     }
 
     public void MarkLoaded()
@@ -50,7 +52,7 @@ public sealed class LoadingUI
         if (!_whenLoadedSource.TrySetResult(default)) return;
 
         Log.LogDebug("MarkLoaded");
-        Trace.Track("MarkLoaded");
-        LoadingTime = Trace.Elapsed;
+        Tracer.Point("MarkLoaded");
+        LoadingTime = Tracer.Elapsed;
     }
 }

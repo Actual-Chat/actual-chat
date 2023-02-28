@@ -1,13 +1,13 @@
 import { audioContextSource } from 'audio-context-source';
-import { AudioContextRef } from 'audio-context-ref';
+import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
+import { BufferState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
+import { PromiseSource, retry } from '../../../../nodejs/src/promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';
-import { delayAsync, PromiseSource } from '../../../../nodejs/src/promises';
-import { BufferState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 
 const LogScope: LogScope = 'AudioPlayer';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -90,22 +90,32 @@ export class AudioPlayer {
         const detach = async () => {
             debugLog?.log(`#${this.id}.contextRef.detach`);
 
-            const feederNode = this.feederNode;
-            if (!feederNode)
-                return;
-
-            this.feederNode = null;
             await decoderWorker.close(this.id);
-            feederNode.disconnect();
-            feederNode.onStateChanged = null;
 
-            this.decoderToFeederNodeChannel?.port1.close();
-            this.decoderToFeederNodeChannel?.port2.close();
-            this.decoderToFeederNodeChannel = null;
+            const feederNode = this.feederNode;
+            if (feederNode) {
+                this.feederNode = null;
+                await decoderWorker.close(this.id);
+                feederNode.disconnect();
+                feederNode.onStateChanged = null;
+            }
+
+            const decoderToFeederNodeChannel = this.decoderToFeederNodeChannel;
+            if (decoderToFeederNodeChannel) {
+                this.decoderToFeederNodeChannel = null;
+                decoderToFeederNodeChannel?.port1.close();
+                decoderToFeederNodeChannel?.port2.close();
+            }
         }
 
-        if (this.contextRef == null)
-            this.contextRef = audioContextSource.getRef('playback', attach, detach);
+        if (this.contextRef == null) {
+            const options: AudioContextRefOptions = {
+                attach: context => retry(3, () => attach(context)),
+                detach: detach,
+                dispose: () => this.end(true),
+            }
+            this.contextRef = audioContextSource.getRef('playback', options);
+        }
         this.whenReady = this.contextRef.whenFirstTimeReady().then(() => {
             debugLog?.log(`#${this.id}.ready`);
         });

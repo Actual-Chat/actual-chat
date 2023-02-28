@@ -13,7 +13,7 @@ public partial class AccountUI
 
     private async Task SyncOwnAccount(CancellationToken cancellationToken)
     {
-        TraceSession.Track("[AccountUI] Start SyncOwnAccount");
+        Tracer.Point("SyncOwnAccount");
         var cOwnAccount0 = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
@@ -31,7 +31,7 @@ public partial class AccountUI
             _ownAccount.Value = ownAccount;
             _whenLoadedSource.TrySetResult(default);
             if (hasLoaded)
-                TraceSession.Track("[AccountUI] OwnAccount has loaded");
+                Tracer.Point("SyncOwnAccount: OwnAccount is loaded");
         }
     }
 }

@@ -85,10 +85,10 @@ namespace ActualChat.UI.Blazor.App
             };
             pluginTypes.AddRange(platformPluginTypes);
             pluginHostBuilder.UsePlugins(pluginTypes);
-            var trace = TraceSession.Default;
-            var step = trace.TrackStep("Building PluginHost");
+            var trace = Tracer.Default;
+            var step = trace.Region("Building PluginHost");
             var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
-            step.Complete();
+            step.Close();
             services.AddSingleton(plugins);
 
             // Fusion services
@@ -132,9 +132,9 @@ namespace ActualChat.UI.Blazor.App
             });
 
             // Injecting plugin services
-            step = trace.TrackStep("Injecting plugin services");
+            step = trace.Region("Injecting plugin services");
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
-            step.Complete();
+            step.Close();
         }
 
         private static string GenerateSessionAffinityKey()

@@ -18,7 +18,7 @@ import 'logging-init';
 import { Versioning } from 'versioning';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer } from 'rpc';
-import { ResolvedPromise, retryAsync } from 'promises';
+import { ResolvedPromise, retry } from 'promises';
 
 const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -37,7 +37,7 @@ const serverImpl: OpusDecoderWorker = {
         Versioning.init(artifactVersions);
 
         // Load & warm-up codec
-        codecModule = await retryAsync(3, () => codec(getEmscriptenLoaderOptions()));
+        codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
         const decoder = new codecModule.Decoder();
         decoder.delete();
 
@@ -46,27 +46,26 @@ const serverImpl: OpusDecoderWorker = {
 
     create: async (streamId: string, workletMessagePort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
-        let decoder = decoders.get(streamId);
-        if (decoder !== undefined) {
-            debugLog?.log(`#${streamId}.create: closing old decoder`);
-            void decoder.disposeAsync();
-            decoders.delete(streamId);
-        }
-
+        await serverImpl.close(streamId);
         const codecDecoder = new codecModule.Decoder();
-        decoder = await OpusDecoder.create(streamId, codecDecoder, workletMessagePort);
+        const decoder = await OpusDecoder.create(streamId, codecDecoder, workletMessagePort);
         decoders.set(streamId, decoder);
         debugLog?.log(`<- #${streamId}.create`);
     },
 
     close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
-        debugLog?.log(`#${streamId}.dispose`);
+        debugLog?.log(`#${streamId}.close`);
         const decoder = getDecoder(streamId, false);
-        if (decoder == null)
+        if (!decoder)
             return;
 
-        await decoder.disposeAsync();
         decoders.delete(streamId);
+        try {
+            await decoder.disposeAsync();
+        }
+        catch (e) {
+            errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
+        }
     },
 
     end: (streamId: string, mustAbort: boolean): Promise<void> => {

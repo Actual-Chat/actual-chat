@@ -23,7 +23,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static ITraceSession _trace = null!;
+    private static Tracer _tracer = null!;
 
     public static MauiApp CreateMauiApp()
     {
@@ -32,12 +32,11 @@ public static partial class MauiProgram
 #endif
 
         Log.Logger = CreateLoggerConfiguration().CreateLogger();
-
-        _trace = ConfigureTraceSession();
-        _trace.Track("MauiProgram. Trace and Logger are ready");
+        Tracer.Default = _tracer = CreateTracer();
+        _tracer.Point("Tracer and Logger are ready");
 
 #if WINDOWS
-        if (_trace.IsEnabled()) {
+        if (_tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
             EnableDependencyInjectionEventListener();
         }
@@ -46,10 +45,10 @@ public static partial class MauiProgram
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
 
         try {
-            var step = _trace.TrackStep("Building actual.chat maui app");
+            using var step = _tracer.Region("Building MAUI app");
             var app = CreateMauiAppInternal();
-            step.Complete();
-            LoadingUI.ReportMauiAppBuildTime(_trace.Elapsed);
+            step.Close();
+            LoadingUI.ReportMauiAppBuildTime(_tracer.Elapsed);
             return app;
         }
         catch (Exception ex) {
@@ -83,12 +82,15 @@ public static partial class MauiProgram
         return loggerConfiguration;
     }
 
-    private static ITraceSession ConfigureTraceSession()
+    private static Tracer CreateTracer()
     {
-        var traceLogger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "*Trace*");
-        return TraceSession.Default = TraceSession.IsTracingEnabled
-            ? TraceSession.New("main").ConfigureOutput(m => traceLogger.Information(m)).Start()
-            : TraceSession.Null;
+#if DEBUG || DEBUG_MAUI
+        var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        return new Tracer("MauiApp", x => logger.Information(x.Format()));
+#else
+        return Tracer.None;
+#endif
     }
 
     private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -118,10 +120,11 @@ public static partial class MauiProgram
         services.AddLogging(logging => ConfigureLogging(logging, true));
 
         services.TryAddSingleton(builder.Configuration);
-        services.AddTraceSession(_trace);
-        if (_trace.IsEnabled()) {
+
+        services.AddSingleton(new TracerProvider(_tracer));
+        if (_tracer.IsEnabled) {
             // Use AddDispatcherProxy only to research purpose
-            //AddDispatcherProxy(services, false);
+            // AddDispatcherProxy(services, false);
         }
 
         var settings = new ClientAppSettings();
@@ -153,13 +156,13 @@ public static partial class MauiProgram
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 #endif
-        var step = _trace.TrackStep("ConfigureServices");
+        var step = _tracer.Region("ConfigureServices");
         ConfigureServices(services);
-        step.Complete();
+        step.Close();
 
-        step = _trace.TrackStep("Building maui app");
+        step = _tracer.Region("Building maui app");
         var mauiApp = builder.Build();
-        step.Complete();
+        step.Close();
 
         AppServices = mauiApp.Services;
 
@@ -173,9 +176,9 @@ public static partial class MauiProgram
 
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
-        step = _trace.TrackStep("Starting host services");
+        step = _tracer.Region("Starting host services");
         StartHostedServices(mauiApp);
-        step.Complete();
+        step.Close();
 
         return mauiApp;
     }
@@ -193,7 +196,7 @@ public static partial class MauiProgram
 
     private static Task InitSessionInfo(ClientAppSettings appSettings, BaseUrlProvider baseUrlProvider)
         => BackgroundTask.Run(async () => {
-            var step = _trace.TrackStep("Init session info");
+            var step = _tracer.Region("Init session info");
             var services = new ServiceCollection()
                 .AddLogging(logging => ConfigureLogging(logging, false))
                 .BuildServiceProvider();
@@ -223,7 +226,7 @@ public static partial class MauiProgram
             finally {
                 await services.DisposeAsync().ConfigureAwait(false);
             }
-            step.Complete();
+            step.Close();
         });
 
     private static void StartHostedServices(MauiApp mauiApp)
@@ -344,7 +347,7 @@ public static partial class MauiProgram
 
     private static Task<Symbol> GetSessionId()
         => BackgroundTask.Run(async () => {
-            var step = _trace.TrackStep("Getting session id");
+            var step = _tracer.Region("Getting session id");
             Symbol sessionId = Symbol.Empty;
             const string sessionIdStorageKey = "Fusion.SessionId";
             Log.Information("About to read stored Session ID");
@@ -395,7 +398,7 @@ public static partial class MauiProgram
                     }
                 }
             }
-            step.Complete();
+            step.Close();
             return sessionId;
         });
 }

@@ -13,7 +13,7 @@ public partial class AccountUI : WorkerBase
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private ILogger Log { get; }
-    private ITraceSession TraceSession { get; }
+    private Tracer Tracer { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
@@ -22,7 +22,7 @@ public partial class AccountUI : WorkerBase
     {
         Services = services;
         Log = services.LogFor(GetType());
-        TraceSession = services.GetRequiredService<ITraceSession>();
+        Tracer = services.Tracer(GetType());
 
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
@@ -34,11 +34,11 @@ public partial class AccountUI : WorkerBase
         AccountFull ownAccount;
         if (ownAccountTask.IsCompletedSuccessfully) {
             ownAccount = ownAccountTask.Result;
-            TraceSession.Track("[AccountUI] OwnAccount has already loaded");
+            Tracer.Point(".ctor: OwnAccount is already loaded");
         }
         else {
             ownAccount = AccountFull.Loading;
-            TraceSession.Track("[AccountUI] OwnAccount is not loaded yet");
+            Tracer.Point(".ctor: OwnAccount is not loaded yet");
         }
  #pragma warning restore VSTHRD002
         _ownAccount = StateFactory.NewMutable<AccountFull>(new () {

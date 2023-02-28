@@ -7,7 +7,7 @@
     // We can't render anything till the moment a few key components completed the initialization
     if (!_whenReadyToRender.IsCompletedSuccessfully)
         return;
-    _trace.Track("App.Rendered");
+    _tracer.Point("Rendered");
     LoadingUI.ReportAppAboutRenderContent();
 }
 
@@ -39,7 +39,7 @@
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private Task _whenReadyToRender = null!;
-    private ITraceSession _trace = null!;
+    private Tracer _tracer = null!;
 
     [Inject] private IPluginHost Plugins { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
@@ -63,16 +63,14 @@
 
     protected override void OnInitialized() {
         LoadingUI.ReportAppInitialized();
-        var circuitTraceAccessor = Services.GetService<CircuitTraceAccessor>();
-        circuitTraceAccessor?.Initialize();
-        _trace = Services.GetRequiredService<ITraceSession>();
-        _trace.Track("App.OnInitialized");
+        _tracer = Services.Tracer(GetType());
+        _tracer.Point("OnInitialized");
         UIAssembly ??= typeof(App).Assembly;
         UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
             .ToArray();
-        _trace.Track("App.UIModuleAssemblies evaluated");
+        _tracer.Point("UIModuleAssemblies evaluated");
 
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
@@ -88,17 +86,17 @@
         CircuitContext.RootComponent = this;
         _whenReadyToRender = PrepareForTheFirstRender();
         _whenReadyToRender.ContinueWith(_ => InvokeAsync(() => {
-            _trace.Track("App.ReadyToRender");
+            _tracer.Point("ReadyToRender");
             StateHasChanged();
             UILifetimeEvents.RaiseOnAppInitialized(Services);
         }), TaskScheduler.Current);
 
         // Starting less important UI services
-        var step = _trace.TrackStep("AppPresenceReporter.Start");
+        var startRegion = _tracer.Region("AppPresenceReporter.Start");
         Services.GetRequiredService<AppPresenceReporter>().Start();
         // Prefetch OwnAccount
         _ = Services.GetRequiredService<AccountUI>();
-        step.Complete();
+        startRegion.Close();
 
         _ = Loaded();
     }
@@ -115,27 +113,27 @@
         var cancellationToken = _disposeToken;
 
         // Starting BrowserInfo
-        var step = _trace.TrackStep("BrowserInfo.Init");
+        var initRegion = _tracer.Region("BrowserInfo.Init");
         _ = BrowserInfo.Initialize();
 
         // Starting Audio pipeline, load Workers and connect to Audio channel
         _ = AudioInfo.Initialize();
 
         // Starting ThemeUI
-        _trace.Track("Resolving ThemeUI");
+        _tracer.Point("Resolving ThemeUI");
         var themeUI = Services.GetRequiredService<ThemeUI>();
-        var step2 = _trace.TrackStep("ThemeUI.Start");
+        var themeUIStartRegion = _tracer.Region("ThemeUI.Start");
         themeUI.Start();
 
         await BrowserInfo.WhenReady.WaitAsync(cancellationToken);
-        step.Complete();
+        initRegion.Close();
 
         if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
 
         // Finishing w/ theme
         await themeUI.WhenReady.WaitAsync(cancellationToken);
-        step2.Complete();
+        themeUIStartRegion.Close();
 
         // Initialize History
         await History.Initialize();
@@ -143,9 +141,9 @@
 
     private async Task Loaded()
     {
-        _trace.Track("App.Loaded");
+        _tracer.Point("Loaded");
         await _whenReadyToRender;
-        _trace.Track("App.Loaded._whenReadyToRender");
+        _tracer.Point("Loaded._whenReadyToRender");
 
         var hostInfo = Services.GetRequiredService<HostInfo>();
         if (hostInfo.AppKind.IsMauiApp()) {
@@ -162,7 +160,7 @@
                 var cts = new CancellationTokenSource();
                 try {
                     var delayTask = Task.Delay(TimeSpan.FromSeconds(10), cts.Token);
-                    _trace.Track("App.loadingUI.WhenLoaded");
+                    _tracer.Point("Waiting for LoadingUI.WhenLoaded");
                     await Task.WhenAny(delayTask, LoadingUI.WhenLoaded);
                 }
                 finally {

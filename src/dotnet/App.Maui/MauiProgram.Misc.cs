@@ -13,7 +13,7 @@ partial class MauiProgram
 {
     private static Task WarmupFusionServices(IServiceProvider services)
         => Task.Run(() => {
-            var step = _trace.TrackStep("WarmupFusionServices");
+            var step = _tracer.Region("WarmupFusionServices");
             try {
                 var warmer = new Services.StartupTracing.FusionServicesWarmer(services);
                 warmer.ReplicaService<IServerKvas>();
@@ -53,10 +53,10 @@ partial class MauiProgram
                 warmer.ReplicaService<IRoles>();
             }
             catch (Exception e) {
-                _trace.Track("WarmupFusionServices failed. Error: " + e);
+                _tracer.Point("WarmupFusionServices failed, error: " + e);
             }
             finally {
-                step.Complete();
+                step.Close();
             }
         });
 

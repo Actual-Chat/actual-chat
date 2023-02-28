@@ -10,15 +10,12 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
-        RootTraceAccessor.Instance.Trace = TraceSession.Default = TraceSession.IsTracingEnabled
-            ? TraceSession.New("webserver").ConfigureOutput(TraceOutput).Start()
-            : TraceSession.Null;
-        CircuitTraceAccessor.Factory = () => {
-            if (!TraceSession.IsTracingEnabled)
-                return TraceSession.Null;
-            var traceId = string.Concat("circuit_", Guid.NewGuid().ToString().AsSpan(0, 8));
-            return TraceSession.New(traceId).ConfigureOutput(TraceOutput).Start();
-        };
+        Tracer.Default =
+#if DEBUG || DEBUG_MAUI
+            new Tracer("Server", x => Console.WriteLine("@ " + x.Format()));
+#else
+            Tracer.None;
+#endif
 
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
@@ -81,8 +78,5 @@ internal static class Program
             // true is dangerous: if user block in async code, this can easily lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
         }
-
-        static void TraceOutput(string m)
-            => Console.WriteLine(m);
     }
 }

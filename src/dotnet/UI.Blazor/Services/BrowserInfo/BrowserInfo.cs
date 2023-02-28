@@ -67,7 +67,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     public void OnInitialized(IBrowserInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
-        var step = Services.GetRequiredService<ITraceSession>().TrackStep("BrowserInfo.OnInitialized");
+        using var _ = Services.Tracer().Region("BrowserInfo.OnInitialized");
         SetScreenSize(initResult.ScreenSizeText, initResult.IsHoverable);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
@@ -77,7 +77,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
         _whenReadySource.SetResult(default);
-        step.Complete();
     }
 
     [JSInvokable]

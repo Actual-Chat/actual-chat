@@ -50,10 +50,10 @@ internal class LongDispatcherOperationsLogger : IDispatcherOperationsLogger
     private Stopwatch _sw = new ();
     private long _shortWorkItemNumber;
     private TimeSpan _showWorkItemTotalDuration;
-    private readonly ITraceSession _trace;
+    private readonly Tracer _tracer;
 
     public LongDispatcherOperationsLogger()
-        => _trace = TraceSession.Default;
+        => _tracer = Tracer.Default["Dispatcher"];
 
     public void OnBeforeOperation()
         => _sw = Stopwatch.StartNew();
@@ -68,15 +68,15 @@ internal class LongDispatcherOperationsLogger : IDispatcherOperationsLogger
             _showWorkItemTotalDuration += elapsed;
         }
         if (_shortWorkItemNumber >= ShortTasksBatchSize || isLongWorkItem) {
-            _trace.Track(
-                $"Dispatcher : Short tasks total duration is {_showWorkItemTotalDuration.TotalMilliseconds:N1}ms ({_shortWorkItemNumber} tasks)");
+            _tracer.Point(
+                $"Short tasks duration: {TracePoint.FormatDuration(_showWorkItemTotalDuration)} ({_shortWorkItemNumber} tasks)");
             _shortWorkItemNumber = 0;
             _showWorkItemTotalDuration = TimeSpan.Zero;
         }
         if (isLongWorkItem) {
             var startTime = DateTime.Now - elapsed;
-            _trace.Track(
-                $"Dispatcher : Long task duration is {elapsed.TotalMilliseconds:N1}ms. Estimated start time is '{startTime:HH:mm:ss.fff}'");
+            _tracer.Point(
+                $"Long task duration: {TracePoint.FormatDuration(elapsed)}, estimated start time: '{startTime:HH:mm:ss.fff}'");
         }
     }
 }
@@ -85,15 +85,15 @@ internal class AllDispatcherOperationsLogger : IDispatcherOperationsLogger
 {
     private static readonly TimeSpan _longWorkItemThreshold = TimeSpan.FromMilliseconds(10);
     private Stopwatch _sw = new ();
-    private readonly ITraceSession _trace;
+    private readonly Tracer _tracer;
 
     public AllDispatcherOperationsLogger()
-        => _trace = TraceSession.Default;
+        => _tracer = Tracer.Default["Dispatcher"];
 
     public void OnBeforeOperation()
     {
         _sw = Stopwatch.StartNew();
-        _trace.Track($"Dispatcher : operation is about to start");
+        _tracer.Point("Operation is about to start");
     }
 
     public void OnAfterOperation()
@@ -103,11 +103,10 @@ internal class AllDispatcherOperationsLogger : IDispatcherOperationsLogger
         var isLongWorkItem = elapsed >= _longWorkItemThreshold;
         if (isLongWorkItem) {
             var startTime = DateTime.Now - elapsed;
-            _trace.Track(
-                $"Dispatcher : Long task duration is {elapsed.TotalMilliseconds:N1}ms. Estimated start time is '{startTime:HH:mm:ss.fff}'");
+            _tracer.Point(
+                $"Long task duration: {TracePoint.FormatDuration(elapsed)}, estimated start time: '{startTime:HH:mm:ss.fff}'");
         }
-        else {
-            _trace.Track($"Dispatcher : Short task duration is {elapsed.TotalMilliseconds:N1}ms");
-        }
+        else
+            _tracer.Point($"Short task duration: {TracePoint.FormatDuration(elapsed)}");
     }
 }

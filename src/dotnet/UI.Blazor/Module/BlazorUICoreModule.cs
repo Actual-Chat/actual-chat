@@ -83,9 +83,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             c.GetRequiredService<IStateFactory>()));
 
         // UI events
-        services.AddScoped<LoadingUI>(c => new LoadingUI(
-            c.GetRequiredService<ILogger<LoadingUI>>(),
-            c.GetRequiredService<ITraceSession>()));
+        services.AddScoped<LoadingUI>(c => new LoadingUI(c));
         services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
             c.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
         services.AddScoped<UIEventHub>(c => new UIEventHub(c));

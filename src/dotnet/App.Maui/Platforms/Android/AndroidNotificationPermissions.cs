@@ -24,7 +24,7 @@ public class AndroidNotificationPermissions : INotificationPermissions
     public async Task RequestNotificationPermissions(CancellationToken cancellationToken)
     {
         var activity = Platform.CurrentActivity!;
-        var state = await GetNotificationPermissionState(cancellationToken);
+        var state = await GetNotificationPermissionState(cancellationToken).ConfigureAwait(true);
 
         if (state == PermissionState.Granted)
             return;

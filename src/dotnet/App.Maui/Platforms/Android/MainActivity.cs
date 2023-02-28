@@ -41,7 +41,7 @@ public class MainActivity : MauiAppCompatActivity
 
     internal static readonly int NotificationID = 101;
     internal static readonly int NotificationPermissionID = 832;
-    private readonly ITraceSession _trace = TraceSession.Default;
+    private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
 
     private GoogleSignInClient _googleSignInClient = null!;
     private ActivityResultLauncher _requestPermissionLauncher = null!;
@@ -66,13 +66,13 @@ public class MainActivity : MauiAppCompatActivity
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log = AppServices.LogFor<MainActivity>();
-        Log.LogDebug("MainActivity.OnCreate, is loaded: {IsLoaded}", isLoaded);
-        var step = _trace.TrackStep($"MainActivity.OnCreate");
+        Log = AppServices.LogFor(GetType());
+        Log.LogDebug("OnCreate, is loaded: {IsLoaded}", isLoaded);
+        using var _ = _tracer.Region("OnCreate");
 
         base.OnCreate(savedInstanceState);
 
-        Log.LogDebug("MainActivity.base.OnCreate completed");
+        Log.LogDebug("base.OnCreate completed");
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
@@ -110,38 +110,39 @@ public class MainActivity : MauiAppCompatActivity
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var content = FindViewById(Android.Resource.Id.Content);
         content!.ViewTreeObserver!.AddOnPreDrawListener(new PreDrawListener());
-
-        step.Complete();
     }
 
     protected override void OnStart()
     {
-        Log.LogDebug("MainActivity.OnStart");
-        _trace.Track("MainActivity.OnStart");
+        _tracer.Point("OnStart");
+        Log.LogDebug("OnStart");
         base.OnStart();
     }
 
     protected override void OnResume()
     {
-        _trace.Track("MainActivity.OnResume");
+        _tracer.Point("OnResume");
+        Log.LogDebug("OnResume");
         base.OnResume();
     }
 
     protected override void OnStop()
     {
-        Log.LogDebug("MainActivity.OnStop");
+        _tracer.Point("OnStop");
+        Log.LogDebug("OnStop");
         base.OnStop();
     }
 
     protected override void OnDestroy()
     {
-        Log.LogDebug("MainActivity.OnDestroy");
+        _tracer.Point("OnDestroy");
+        Log.LogDebug("OnDestroy");
         base.OnDestroy();
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
-        Log.LogDebug("MainActivity.OnNewIntent");
+        Log.LogDebug("OnNewIntent");
         base.OnNewIntent(intent);
 
         TryProcessNotificationTap(intent);
@@ -156,7 +157,7 @@ public class MainActivity : MauiAppCompatActivity
         if (requestCode == NotificationPermissionID) {
             var (_, notificationGrant) = permissions
                 .Zip(grantResults)
-                .FirstOrDefault(tuple => tuple.First == Manifest.Permission.PostNotifications);
+                .FirstOrDefault(tuple => OrdinalEquals(tuple.First, Manifest.Permission.PostNotifications));
             var notificationState = notificationGrant switch {
                 Permission.Denied => PermissionState.Denied,
                 Permission.Granted => PermissionState.Granted,
@@ -239,7 +240,7 @@ public class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
-        Log.LogDebug($"MainActivity.NotificationTap");
+        Log.LogDebug("NotificationTap");
 
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -264,7 +265,7 @@ public class MainActivity : MauiAppCompatActivity
             var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
             var handler = serviceProvider.GetRequiredService<NotificationUI>();
-            Log.LogDebug("MainActivity.NotificationTap navigates to '{Url}'", url);
+            Log.LogDebug("NotificationTap navigates to '{Url}'", url);
             _ = handler.HandleNotificationNavigation(url);
         }
         _ = Handle();

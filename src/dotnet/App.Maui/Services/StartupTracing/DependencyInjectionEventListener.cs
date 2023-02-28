@@ -1,4 +1,5 @@
 using System.Diagnostics.Tracing;
+using Cysharp.Text;
 using Serilog;
 
 namespace ActualChat.App.Maui.Services.StartupTracing;
@@ -25,7 +26,10 @@ internal class DependencyInjectionEventListener : EventListener
     {
         if (eventData.EventId != 1)
             return;
-        var message = eventData.EventName + " " + eventData.PayloadNames.Zip(eventData.Payload, (s, o) => $"{s}: '${o}'").ToCommaPhrase();
+        var message = ZString.Concat(
+            eventData.EventName, " ",
+            eventData.PayloadNames!.Zip(eventData.Payload!, (s, o) => $"{s}: '${o}'").ToCommaPhrase());
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         _log.Information(message);
     }
 }

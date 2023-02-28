@@ -7,8 +7,8 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
-        _trace.Track("MauiBlazorWebViewHandler.ConnectHandler");
-        Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
+        _trace.Point("ConnectHandler");
+        Log.LogDebug("ConnectHandler");
 
         base.ConnectHandler(platformView);
         var baseUri = UrlMapper.BaseUri;
@@ -63,7 +63,9 @@ public partial class MauiBlazorWebViewHandler
             base.DoUpdateVisitedHistory(view, url, isReload);
             var canGoBack = view!.CanGoBack();
             // It seems at this point we can not trust CanGoBack value, when it's navigated to a new address.
-            Log.LogDebug("WebViewClientOverride.DoUpdateVisitedHistory. Url: '{Url}'. IsReload: '{IsReload}'. CanGoBack: '{CanGoBack}'", url, isReload, canGoBack);
+            Log.LogDebug(
+                "DoUpdateVisitedHistory: Url: '{Url}', IsReload: '{IsReload}', CanGoBack: '{CanGoBack}'",
+                url, isReload, canGoBack);
         }
 
         protected override void Dispose(bool disposing)

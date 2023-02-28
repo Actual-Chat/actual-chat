@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { AudioContextRef } from 'audio-context-ref';
+import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
 import { audioContextSource } from 'audio-context-source';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
-import { PromiseSource } from 'promises';
+import { PromiseSource, retry } from 'promises';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { Versioning } from 'versioning';
@@ -176,7 +176,11 @@ export class OpusMediaRecorder {
             this.state = null;
         }
 
-        const contextRef = await audioContextSource.getRef('recording', attach, detach);
+        const options: AudioContextRefOptions = {
+            attach: attach,
+            detach: _ => retry(3, () => detach()),
+        }
+        const contextRef = await audioContextSource.getRef('recording', options);
         await contextRef.whenFirstTimeReady();
         this.state = new ChatRecording(sessionId, chatId, contextRef);
 

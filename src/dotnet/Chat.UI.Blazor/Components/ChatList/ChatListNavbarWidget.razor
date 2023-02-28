@@ -64,7 +64,7 @@
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private ITraceSession Trace { get; init; } = null!;
+    [Inject] private Tracer Tracer { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -74,20 +74,24 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var trace = State.Value == Model.Loading ? Trace : TraceSession.Null;
-        var step = trace.TrackStep("[ChatListNavbarWidget] Getting ChatUI.List");
+        var tracer = ReferenceEquals(State.Value, Model.Loading)
+            ? Tracer[$"{nameof(ChatListNavbarWidget)}.{nameof(ComputeState)}"]
+            : Tracer.None;
+
+        var region = tracer.Region("Call ChatUI.List");
         var chats = await ChatUI.List(cancellationToken);
-        step.Complete();
-        step = trace.TrackStep("[ChatListNavbarWidget] Getting ChatUI.GetUnreadCount");
+        region.Close();
+
+        region = tracer.Region("Call ChatUI.GetUnreadCount");
         var unreadCounts = await ChatListFilter.All
             .Select(async x => new {
                 FilterId = x.Id,
                 UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken),
             })
             .Collect();
-        step.Complete();
-        step = trace.TrackStep("[ChatListNavbarWidget] Chore list");
+        region.Close();
 
+        region = tracer.Region("Chore chat list");
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
         if (!searchPhrase.IsEmpty) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
@@ -107,7 +111,7 @@
         var unpinnedChats = chats
             .Skip(pinnedChats.Count)
             .ToList();
-        step.Complete();
+        region.Close();
 
         return new Model {
             PinnedChats = pinnedChats,

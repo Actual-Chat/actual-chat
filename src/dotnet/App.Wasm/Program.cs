@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
-using ActualChat.Performance;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -21,30 +20,34 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<,>))]
     public static async Task Main(string[] args)
     {
-        var trace = TraceSession.Default = TraceSession.IsTracingEnabled
-            ? TraceSession.New("main").ConfigureOutput(m => Console.Out.WriteLine(m)).Start()
-            : TraceSession.Null;
-        trace.Track("Wasm.Program.Main");
+        var tracer = Tracer.Default =
+#if DEBUG || DEBUG_MAUI
+            new Tracer("WasmApp", x => Console.WriteLine("@ " + x.Format()));
+#else
+            Tracer.None;
+#endif
+
+        tracer.Point("Wasm.Program.Main");
         // Capture blazor bootstrapping errors
         using var sdk = SentrySdk.Init(options => options.ConfigureForApp());
         try {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             var baseUrl = builder.HostEnvironment.BaseAddress;
-            builder.Services.AddTraceSession(trace);
-            var step = trace.TrackStep("ConfigureServices");
+            builder.Services.AddSingleton(tracer);
+            var step = tracer.Region("ConfigureServices");
             await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
-            step.Complete();
+            step.Close();
 
-            step = trace.TrackStep("Building wasm host");
+            step = tracer.Region("Building wasm host");
             var host = builder.Build();
-            step.Complete();
+            step.Close();
             Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
-            step = trace.TrackStep("Starting host services");
+            step = tracer.Region("Starting host services");
             await host.Services.HostedServices().Start().ConfigureAwait(false);
-            step.Complete();
+            step.Close();
             await host.RunAsync().ConfigureAwait(false);
         }
         catch (Exception exc) {

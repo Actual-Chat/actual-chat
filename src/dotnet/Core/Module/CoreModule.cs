@@ -34,11 +34,11 @@ public class CoreModule : HostModule<CoreSettings>
             .ToList();
 
         // Common services
+        services.AddTracer();
         services.AddSingleton<StaticImportsInitializer>();
         services.AddHostedService<StaticImportsInitializer>();
         services.AddSingleton<UrlMapper>(c => new UrlMapper(
             c.GetRequiredService<HostInfo>()));
-        services.TryAddSingleton<ITraceSession>(TraceSession.Null);
 
         // Matching type finder
         services.AddSingleton(new MatchingTypeFinder.Options {

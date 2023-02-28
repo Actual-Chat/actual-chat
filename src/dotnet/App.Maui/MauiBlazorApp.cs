@@ -23,5 +23,5 @@ public class MauiBlazorApp : UI.Blazor.App.App
     }
 
     public MauiBlazorApp()
-        => TraceSession.Default.Track("MauiBlazorApp.Constructor");
+        => Tracer.Default.Point("MauiBlazorApp.ctor");
 }
