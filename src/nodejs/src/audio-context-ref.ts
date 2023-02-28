@@ -117,7 +117,7 @@ export class AudioContextRef implements AsyncDisposable {
         }
 
         try {
-            await this.options?.dispose();
+            await this.options.dispose?.();
         }
         catch (e) {
             errorLog?.log(`${this.name}.maintain: dispose handler failed:`, e);
