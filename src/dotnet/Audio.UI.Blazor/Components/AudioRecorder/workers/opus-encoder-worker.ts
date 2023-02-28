@@ -214,7 +214,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         let fadeWindowIndex: number | null = null;
         if (fade === 'in') {
             const result = encoder.encode(silenceChunk.buffer);
-            recordingSubject.next(result);
+            recordingSubject?.next(result);
             chunkTimeOffset = 20;
         }
         else if (fade === 'out') {
@@ -240,13 +240,13 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
 
             const result = encoder.encode(buffer);
             void encoderWorklet.onFrame(buffer, rpcNoWait);
-            recordingSubject.next(result);
+            recordingSubject?.next(result);
             chunkTimeOffset += 20;
         }
         if (fade === 'out') {
             while (chunkTimeOffset < 2200) {
                 const result = encoder.encode(silenceChunk.buffer);
-                recordingSubject.next(result);
+                recordingSubject?.next(result);
                 chunkTimeOffset += 20;
             }
         }
