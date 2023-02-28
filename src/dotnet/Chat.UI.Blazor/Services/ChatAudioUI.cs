@@ -14,6 +14,7 @@ public partial class ChatAudioUI : WorkerBase
     private AudioRecorder AudioRecorder { get; }
     private ChatPlayers ChatPlayers { get; }
     private IChats Chats { get; }
+    private Func<ChatUI> ChatUIAccessor { get; }
     private ActiveChatsUI ActiveChatsUI { get; }
     private TuneUI TuneUI { get; }
     private LanguageUI LanguageUI { get; }
@@ -35,6 +36,7 @@ public partial class ChatAudioUI : WorkerBase
         ChatPlayers = services.GetRequiredService<ChatPlayers>();
         Clocks = services.Clocks();
         Chats = services.GetRequiredService<IChats>();
+        ChatUIAccessor = services.GetRequiredService<ChatUI>;
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
         TuneUI = services.GetRequiredService<TuneUI>();

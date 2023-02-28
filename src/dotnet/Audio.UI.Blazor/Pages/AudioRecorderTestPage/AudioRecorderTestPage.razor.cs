@@ -54,7 +54,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                     StateHasChanged();
                 }
             });
-            await _jsRef.InvokeVoidAsync("startRecording", ChatId);
+            await _jsRef.InvokeVoidAsync("startRecording", ChatId, ChatEntryId.None);
             IsRecording = true;
         }
         else {

@@ -51,14 +51,20 @@ public class AudioHub : Hub
             yield return chunk;
     }
 
-    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, int preSkipFrames, IAsyncEnumerable<byte[]> audioStream)
+    public async Task ProcessAudio(
+        string sessionId,
+        string chatId,
+        string repliedChatEntryId,
+        double clientStartOffset,
+        int preSkipFrames,
+        IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
         var session = SessionMiddleware.GetSession(httpContext).Require();
 
-        var audioRecord = new AudioRecord(new Session(session.Id), new ChatId(chatId), clientStartOffset);
+        var audioRecord = new AudioRecord(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,

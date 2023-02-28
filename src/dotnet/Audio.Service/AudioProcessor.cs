@@ -179,6 +179,7 @@ public sealed class AudioProcessor : IAudioProcessor
         var textEntryTask = CreateAndFinalizeTextEntry(
             audioEntryTask,
             transcriptStreamId,
+            audioSegment.AudioRecord.RepliedChatEntryId,
             transcripts.Replay(cancellationToken));
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
@@ -228,6 +229,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private async Task CreateAndFinalizeTextEntry(
         Task<ChatEntry> audioEntryTask,
         string transcriptStreamId,
+        ChatEntryId repliedChatEntryId,
         IAsyncEnumerable<Transcript> transcripts)
     {
         Transcript? lastTranscript = null;
@@ -251,6 +253,9 @@ public sealed class AudioProcessor : IAudioProcessor
                     Content = "",
                     StreamId = transcriptStreamId,
                     BeginsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
+                    RepliedEntryLocalId = repliedChatEntryId is { IsNone: false, LocalId: var localId }
+                        ? localId
+                        : null,
                 };
                 command = new IChatsBackend.UpsertEntryCommand(textEntry);
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
