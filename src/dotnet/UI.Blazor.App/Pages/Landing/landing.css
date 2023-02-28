@@ -396,7 +396,7 @@ body.narrow .landing .landing-menu {
     @apply text-title-1 text-01;
 }
 .landing-links {
-    @apply flex-x items-center justify-evenly gap-y-2 md:gap-x-4;
+    @apply flex-x items-center justify-evenly gap-4;
     @apply p-4;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }
