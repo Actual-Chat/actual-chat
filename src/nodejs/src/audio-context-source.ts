@@ -11,7 +11,7 @@ import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { Log, LogLevel, LogScope } from 'logging';
 import { Versioning } from 'versioning';
-import { AudioContextRef } from 'audio-context-ref';
+import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
 
 const LogScope: LogScope = 'AudioContextSource';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -56,18 +56,12 @@ export class AudioContextSource {
         void this.maintain();
     }
 
-    public getRef(
-        operationName: string,
-        attach?: (context: AudioContext) => Promise<void> | void,
-        detach?: (context: AudioContext) => Promise<void> | void,
-        ready?: (context: AudioContext) => Promise<void> | void,
-        unready?: (context: AudioContext) => Promise<void> | void,
-    ) {
+    public getRef(operationName: string, options: AudioContextRefOptions) {
         this._refCount++;
         if (this._refCount > 100)
             warnLog?.log(`getRef: high refCount:`, this._refCount);
         debugLog?.log(`+ AudioContextRef, refCount:`, this._refCount);
-        const result = new AudioContextRef(this, operationName, attach, detach, ready, unready);
+        const result = new AudioContextRef(this, operationName, options);
         void result.whenDisposed().then(() => {
             this._refCount--;
             if (this._refCount < 0) {

@@ -356,8 +356,10 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     return result;
 }
 
-export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>, TResult>(
-    func: (...args: Parameters<T>) => PromiseLike<TResult>,
+// Serialize
+
+export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult> | TResult, TResult>(
+    func: (...args: Parameters<T>) => PromiseLike<TResult> | TResult,
     limit: number | null = null
 ): (...sArgs: Parameters<T>) => Promise<TResult> {
     let lastCall: Promise<TResult> = Promise.resolve(null as TResult);
@@ -381,14 +383,35 @@ export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>
     }
 }
 
-type RetryDelaySeq = (tryIndex: number) => number;
-const defaultRetryDelays: RetryDelaySeq = () => 300;
+// Retry & catchErrors
 
-export async function retryAsync<T>(
-    tryCount,
-    fn: () => PromiseLike<T> | T,
+type RetryDelaySeq = (tryIndex: number) => number;
+const defaultRetryDelays: RetryDelaySeq = () => 50;
+
+export async function retryForever<TResult>(
+    fn: (tryIndex: number, lastError: unknown) => PromiseLike<TResult> | TResult,
     retryDelays?: RetryDelaySeq,
-) : Promise<T> {
+) : Promise<TResult> {
+    retryDelays ??= defaultRetryDelays;
+    let lastError: unknown = undefined;
+    for (let tryIndex = 0;;) {
+        try {
+            return await fn(tryIndex, lastError);
+        }
+        catch (e) {
+            lastError = e;
+        }
+        ++tryIndex;
+        warnLog?.log(`retry(${tryIndex}): error:`, lastError);
+        await delayAsync(retryDelays(tryIndex));
+    }
+}
+
+export async function retry<TResult>(
+    tryCount: number,
+    fn: (tryIndex: number, lastError: unknown) => PromiseLike<TResult> | TResult,
+    retryDelays?: RetryDelaySeq,
+) : Promise<TResult> {
     retryDelays ??= defaultRetryDelays;
     let lastError: unknown = undefined;
     for (let tryIndex = 0;;) {
@@ -396,12 +419,26 @@ export async function retryAsync<T>(
             throw lastError;
 
         try {
-            return await fn();
+            return await fn(tryIndex, lastError);
         }
         catch (e) {
             lastError = e;
         }
-        await delayAsync(retryDelays(tryIndex++));
+        ++tryIndex;
+        warnLog?.log(`retry(${tryIndex}/${tryCount}): error:`, lastError);
+        await delayAsync(retryDelays(tryIndex));
+    }
+}
+
+export async function catchErrors<TResult>(
+    fn: () => PromiseLike<TResult> | TResult,
+    onError?: (e: unknown) => TResult,
+) : Promise<TResult> {
+    try {
+        return await fn();
+    }
+    catch (e) {
+        return onError ? onError(e) : undefined;
     }
 }
 

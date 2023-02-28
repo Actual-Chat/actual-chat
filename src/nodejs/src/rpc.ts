@@ -389,7 +389,7 @@ if (mustRunSelfTest) {
         testLog.assert(rpcPromise.isCompleted());
         try {
             await rpcPromise;
-            testLog.log('rpcPromise.Error is undefined.');
+            testLog?.log('rpcPromise.Error is undefined.');
         }
         catch (error) {
             testLog.assert(error == 'Error', 'error != "Error"');
