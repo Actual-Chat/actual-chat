@@ -1,4 +1,4 @@
-import { initLogging, LogLevel, LogScope } from 'logging-init';
+import { initLogging, LogScope, LogLevel } from 'logging-init';
 import 'logging-init';
 
 export { LogLevel } from './logging-init';
@@ -55,7 +55,7 @@ export class Log {
     public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
     public static defaultMinLevel = LogLevel.Info;
     private static isInitialized = false;
-    private static logRefs : LogRefQueue = new LogRefQueue(5);
+    private static logRefs : LogRefQueue = new LogRefQueue(20);
     public log: (...data: unknown[]) => void;
 
     constructor(

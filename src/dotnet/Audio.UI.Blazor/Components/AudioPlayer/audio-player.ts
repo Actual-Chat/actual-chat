@@ -58,7 +58,7 @@ export class AudioPlayer {
         debugLog?.log(`#${this.id}.constructor`);
 
         const attach = async (context: AudioContext) => {
-            debugLog?.log(`#${this.id}.contextRef.attach: context:`,Log.ref(context));
+            debugLog?.log(`#${this.id}.contextRef.attach: context:`, Log.ref(context));
 
             await AudioPlayer.whenInitialized;
             this.playbackState = 'paused';
