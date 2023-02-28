@@ -11,7 +11,6 @@ import { Disposable } from 'disposable';
 import { retryAsync } from 'promises';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import * as signalR from '@microsoft/signalr';
-import { HttpTransportType } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Versioning } from 'versioning';
 
@@ -54,7 +53,6 @@ let lastInitArguments: { sessionId: string, chatId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
-let lowNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
@@ -91,7 +89,6 @@ const serverImpl: OpusEncoderWorker = {
         // Get fade-in window
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
         pinkNoiseChunk = initPinkNoiseBuffer(1.0);
-        lowNoiseChunk = initPinkNoiseBuffer(0.005);
         silenceChunk = new Float32Array(CHUNK_SIZE);
 
         // Loading codec
@@ -245,7 +242,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         }
         if (fade === 'out') {
             while (chunkTimeOffset < 2200) {
-                const result = encoder.encode(lowNoiseChunk.buffer);
+                const result = encoder.encode(silenceChunk.buffer);
                 recordingSubject.next(result);
                 chunkTimeOffset += 20;
             }
