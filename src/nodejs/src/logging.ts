@@ -25,7 +25,7 @@ class LogRefSet {
         this.items = [];
     }
 
-    public ref(data: unknown) : LogRef {
+    public ref(data: object) : LogRef {
         const itemIndex = this.items.findIndex(el => el.ref.target === data);
         if (itemIndex >= 0) {
             const existentItem = this.items[itemIndex];
@@ -37,26 +37,29 @@ class LogRefSet {
             const id = data['__logRefId'] as number ?? this.idSeed++;
             const newRef = { target: data, id: id };
             data['__logRefId'] = id;
-            if (this.items.length >= this.capacity) {
-                let indexToEliminate = 0;
-                let itemToEliminate = this.items[0];
-                for (let i = 1; i < this.items.length; i++) {
-                    const item = this.items[i];
-                    if (item.touchedAt < itemToEliminate.touchedAt) {
-                        itemToEliminate = item;
-                        indexToEliminate = i;
-                    }
-                }
-                this.items.splice(indexToEliminate, 1);
-                // clear log ref target to prevent memory leaks
-                // and keep string representation of the target for tracing
-                const ref = itemToEliminate.ref;
-                ref.target = ref.target.toString();
-            }
+            if (this.items.length >= this.capacity)
+                this.removeOldest();
             const newItem = { ref : newRef, touchedAt : Date.now() };
             this.items.push(newItem);
             return newRef;
         }
+    }
+
+    private removeOldest() {
+        let indexToEliminate = 0;
+        let itemToEliminate = this.items[0];
+        for (let i = 1; i < this.items.length; i++) {
+            const item = this.items[i];
+            if (item.touchedAt < itemToEliminate.touchedAt) {
+                itemToEliminate = item;
+                indexToEliminate = i;
+            }
+        }
+        this.items.splice(indexToEliminate, 1);
+        // clear log ref target to prevent memory leaks
+        // and keep string representation of the target for tracing
+        const ref = itemToEliminate.ref;
+        ref.target = ref.target.toString();
     }
 }
 
@@ -105,7 +108,7 @@ export class Log {
         return level >= minLevel ? this.loggerFactory(scope, level) : null;
     }
 
-    public static ref(data: unknown) : unknown {
+    public static ref(data: object) : object {
         if (!data)
             return data;
         return this.logRefs.ref(data);
