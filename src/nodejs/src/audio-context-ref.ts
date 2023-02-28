@@ -73,16 +73,16 @@ export class AudioContextRef implements AsyncDisposable {
                 debugLog?.log(`${this.name}: awaiting whenReady`);
                 this._context = await this.source.whenReady(this._whenDisposeRequested);
                 if (lastContext === this.context) {
-                    debugLog?.log(`${this.name}: ready, context:`, this._context);
+                    debugLog?.log(`${this.name}: ready, context:`, Log.ref(this._context));
                     await this.options.ready?.(this._context);
                 }
                 else {
                     if (lastContext) {
-                        debugLog?.log(`${this.name}: detach, context:`, lastContext);
+                        debugLog?.log(`${this.name}: detach, context:`, Log.ref(lastContext));
                         await this.options.detach?.(lastContext);
                         lastContext = null;
                     }
-                    debugLog?.log(`${this.name}: attach, context:`, this._context);
+                    debugLog?.log(`${this.name}: attach, context:`, Log.ref(this._context));
                     await this.options.attach?.(this._context);
                     lastContext = this._context;
                     this._whenFirstTimeReady.resolve(this._context);
@@ -90,7 +90,7 @@ export class AudioContextRef implements AsyncDisposable {
 
                 debugLog?.log(`${this.name}: awaiting whenNotReady`);
                 await this.source.whenNotReady(this._context, this._whenDisposeRequested);
-                debugLog?.log(`${this.name}: unready, context:`, this._context);
+                debugLog?.log(`${this.name}: unready, context:`, Log.ref(this._context));
                 await this.options.unready?.(this._context);
             }
         }
@@ -106,7 +106,7 @@ export class AudioContextRef implements AsyncDisposable {
 
         try {
             if (lastContext) {
-                debugLog?.log(`${this.name}: final detach, context:`, lastContext);
+                debugLog?.log(`${this.name}: final detach, context:`, Log.ref(lastContext));
                 await this.options.detach?.(lastContext);
                 lastContext = null;
             }
