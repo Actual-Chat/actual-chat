@@ -85,7 +85,7 @@ jobs:
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Deploy dev
-        if: ${{ inputs.deployToDev == 'true' }}
+        if: ${{ inputs.deployToDev }}
         uses: akhilerm/tag-push-action@v2.0.0
         with:
           src: ghcr.io/actual-chat/${{ env.TARGET_IMAGE_NAME }}:${{ env.MONITOR_TAG }}
