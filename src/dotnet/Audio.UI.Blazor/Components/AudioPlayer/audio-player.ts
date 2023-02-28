@@ -208,7 +208,7 @@ export class AudioPlayer {
             await this.blazorRef.invokeMethodAsync('OnBufferStateChange', this.bufferState !== 'enough');
         }
         catch (e) {
-            errorLog?.log(`#${this.id}.reportBufferStateChange: unhandled error:`, e);
+            warnLog?.log(`#${this.id}.reportBufferStateChange: unhandled error:`, e);
         }
     }
 
@@ -225,7 +225,7 @@ export class AudioPlayer {
             }
         }
         catch (e) {
-            errorLog?.log(`#${this.id}.reportPlayingAt: unhandled error:`, e);
+            warnLog?.log(`#${this.id}.reportPlayingAt: unhandled error:`, e);
         }
     };
 
@@ -239,7 +239,7 @@ export class AudioPlayer {
             await this.blazorRef.invokeMethodAsync('OnPausedAt', state.playingAt);
         }
         catch (e) {
-            errorLog?.log(`#${this.id}.reportPausedAt: unhandled error:`, e);
+            warnLog?.log(`#${this.id}.reportPausedAt: unhandled error:`, e);
         }
     }
 
@@ -249,7 +249,7 @@ export class AudioPlayer {
             await this.blazorRef.invokeMethodAsync('OnEnded', message);
         }
         catch (e) {
-            errorLog?.log(`#${this.id}.reportOnEnded: unhandled error:`, e);
+            warnLog?.log(`#${this.id}.reportOnEnded: unhandled error:`, e);
         }
     }
 }

@@ -149,7 +149,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         }
                     }
                     catch (Exception ex) {
-                        Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
+                        Log.LogWarning(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
                     }
                 }
             ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);

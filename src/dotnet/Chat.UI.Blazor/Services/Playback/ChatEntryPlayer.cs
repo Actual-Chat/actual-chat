@@ -15,8 +15,6 @@ public sealed class ChatEntryPlayer : ProcessorBase
     private IAudioStreamer AudioStreamer { get; }
 
     private HashSet<Task> EntryPlaybackTasks { get; } = new();
-    private CancellationTokenSource AbortTokenSource { get; }
-    private CancellationToken AbortToken { get; }
 
     public Session Session { get; }
     public ChatId ChatId { get; }
@@ -28,6 +26,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Playback playback,
         IServiceProvider services,
         CancellationToken cancellationToken)
+        : base(cancellationToken.CreateLinkedTokenSource())
     {
         Session = session;
         ChatId = chatId;
@@ -39,9 +38,6 @@ public sealed class ChatEntryPlayer : ProcessorBase
         UrlMapper = services.GetRequiredService<UrlMapper>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
         AudioStreamer = services.GetRequiredService<IAudioStreamer>();
-
-        AbortTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        AbortToken = AbortTokenSource.Token;
     }
 
     protected override async Task DisposeAsyncCore()
@@ -73,14 +69,14 @@ public sealed class ChatEntryPlayer : ProcessorBase
     {
         var resultSource = TaskSource.New<Unit>(true);
         lock (Lock) {
-            if (StopToken.IsCancellationRequested || AbortToken.IsCancellationRequested)
+            if (StopToken.IsCancellationRequested)
                 return; // This entry starting after Dispose or Abort
             EntryPlaybackTasks.Add(resultSource.Task);
         }
 
         BackgroundTask.Run(async () => {
             try {
-                var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, AbortToken).ConfigureAwait(false);
+                var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, StopToken).ConfigureAwait(false);
                 await playProcess.WhenCompleted.ConfigureAwait(false);
             }
             catch (Exception e) {
@@ -96,7 +92,15 @@ public sealed class ChatEntryPlayer : ProcessorBase
     }
 
     public void Abort()
-        => AbortTokenSource.CancelAndDisposeSilently();
+    {
+        try {
+            if (!StopTokenSource.IsCancellationRequested)
+                StopTokenSource.Cancel();
+        }
+        catch {
+            // Intended
+        }
+    }
 
     // Private methods
 

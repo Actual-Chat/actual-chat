@@ -88,7 +88,16 @@ public sealed class Playback : ProcessorBase
                 throw StandardError.StateTransition(GetType(),
                     $"The same {nameof(PlayTrackCommand)} is enqueued twice!");
 
-            var trackPlayer = _trackPlayerFactory.Create(cmd.Source);
+            TrackPlayer trackPlayer;
+            try {
+                trackPlayer = _trackPlayerFactory.Create(cmd.Source);
+            }
+            catch (ObjectDisposedException) {
+                // This error happens when circuit or container is being disposed,
+                // but playback is still ongoing
+                return Task.FromResult<object?>(null);
+            }
+
             // ReSharper disable once ConvertToLocalFunction
             var playerStateChanged = (PlayerStateChangedEventArgs args) => TrackPlayerStateChanged(cmd.TrackInfo, args);
             trackPlayer.StateChanged += playerStateChanged;
