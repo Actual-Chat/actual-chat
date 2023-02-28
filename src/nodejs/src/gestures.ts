@@ -140,7 +140,10 @@ class DataHrefGesture extends Gesture {
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
         FocusUI.blur();
-        void History.navigateTo(href);
+        if (href.startsWith('http://') || href.startsWith('https://'))
+            location.href = href; // External URL
+        else
+            void History.navigateTo(href); // Internal URL
     }
 }
 
