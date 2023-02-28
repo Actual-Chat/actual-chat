@@ -49,7 +49,7 @@ export class Versioning {
             return result;
         }
         else {
-            debugLog?.log(`mapPath: '${path}' - no version found`);
+            warnLog?.log(`mapPath: '${path}' - no version found`);
             return path;
         }
     }
