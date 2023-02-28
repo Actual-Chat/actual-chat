@@ -71,6 +71,18 @@ public class MarkupParserTest : TestBase
     }
 
     [Fact]
+    public void UrlWithQuoteInQuery()
+    {
+        var url = "https://actual.chat?k='v'";
+        var m = Parse<MarkupSeq>($"{url} x", out _);
+        m.Items.Length.Should().Be(2);
+        var urlMarkup = (UrlMarkup)m.Items[0];
+        urlMarkup.Url.Should().Be("https://actual.chat?k='v'");
+        var text = (PlainTextMarkup)m.Items[1];
+        text.Text.Should().Be(" x");
+    }
+
+    [Fact]
     public void MentionTest()
     {
         var m = Parse<MentionMarkup>("@alex", out var text);
