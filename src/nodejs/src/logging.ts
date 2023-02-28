@@ -9,15 +9,13 @@ export interface LogRef {
     id : number;
 }
 
-interface QueueItem
-{
+interface SetItem {
     ref : LogRef;
     touchedAt : number;
 }
 
-class LogRefQueue
-{
-    items : QueueItem[];
+class LogRefSet {
+    items : SetItem[];
     capacity : number;
     idSeed : number;
 
@@ -63,10 +61,10 @@ class LogRefQueue
 }
 
 export class Log {
+    private static isInitialized = false;
+    private static logRefs : LogRefSet = new LogRefSet(10);
     public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
     public static defaultMinLevel = LogLevel.Info;
-    private static isInitialized = false;
-    private static logRefs : LogRefQueue = new LogRefQueue(10);
     public log: (...data: unknown[]) => void;
 
     constructor(
@@ -107,11 +105,9 @@ export class Log {
         return level >= minLevel ? this.loggerFactory(scope, level) : null;
     }
 
-    public static ref(data: unknown) : LogRef | null | undefined {
-        if (data === null)
-            return null;
-        if (typeof data === 'undefined')
-            return undefined;
+    public static ref(data: unknown) : unknown {
+        if (!data)
+            return data;
         return this.logRefs.ref(data);
     }
 
