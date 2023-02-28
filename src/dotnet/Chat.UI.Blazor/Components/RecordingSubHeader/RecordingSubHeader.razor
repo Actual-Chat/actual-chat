@@ -6,14 +6,15 @@
     var m = State.Value;
     if (ReferenceEquals(m, Model.NotRecording))
         return;
+    var recordingElsewhereCls = m.RecordingChat != null ? "recording-elsewhere" : "";
 }
 
-<div class="recording-sub-header">
+<div class="recording-sub-header @recordingElsewhereCls">
     <div class="c-content">
+        <div class="flex justify-center w-10 px-1">
+            <div class="w-4 h-4 rounded-full bg-error animate-pulse"></div>
+        </div>
         @if (m.RecordingChat != null) {
-            <div class="flex justify-center w-10 px-1">
-                <div class="w-4 h-4 rounded-full bg-error animate-pulse"></div>
-            </div>
             <div class="c-text shrink-0">
                 Recording in
             </div>
