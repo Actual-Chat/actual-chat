@@ -28,6 +28,7 @@ export class AudioPlayer {
     private readonly whenReady: Promise<void>;
 
     private contextRef: AudioContextRef | null = null;
+    private isAttached: boolean;
     private playbackState: PlaybackState = 'paused';
     private bufferState: BufferState = 'enough';
     private decoderToFeederNodeChannel: MessageChannel = null;
@@ -85,10 +86,19 @@ export class AudioPlayer {
             await decoderWorker.create(this.id, this.decoderToFeederNodeChannel.port1);
 
             feederNode.connect(context.destination);
+
+            this.isAttached = true;
+            const feederState = await feederNode.getState();
+            void this.onFeederStateChanged(feederState.playbackState, feederState.bufferState);
         };
 
         const detach = async () => {
             debugLog?.log(`#${this.id}.contextRef.detach`);
+
+            if (this.isAttached) {
+                void this.onFeederStateChanged('paused', 'enough');
+                this.isAttached = false;
+            }
 
             const decoderToFeederNodeChannel = this.decoderToFeederNodeChannel;
             if (decoderToFeederNodeChannel) {
@@ -168,10 +178,27 @@ export class AudioPlayer {
         await this.feederNode.resume();
     }
 
+    // Helpers
+
+    private startReportingPlayingTo() {
+        if (this.reportPlayedToHandle)
+            return;
+
+        this.reportPlayedToHandle = self.setInterval(this.reportPlayingAt, this.playingAtUpdatePeriodMs);
+    }
+
+    private stopReportingPlayingTo() {
+        if (!this.reportPlayedToHandle)
+            return;
+
+        clearInterval(this.reportPlayedToHandle);
+        this.reportPlayedToHandle = null;
+    }
+
     // Event handlers
 
     private onFeederStateChanged = async (playbackState: PlaybackState, bufferState: BufferState) => {
-        if (this.playbackState === 'ended')
+        if (this.playbackState === 'ended' || !this.isAttached)
             return;
 
         debugLog?.log(`#${this.id}.onFeederStateChanged: ${playbackState}, ${bufferState}`);
@@ -181,9 +208,9 @@ export class AudioPlayer {
         this.bufferState = bufferState;
         if (playbackState !== oldPlaybackState) {
             if (playbackState === 'playing')
-                this.reportPlayedToHandle = self.setInterval(this.reportPlayingAt, this.playingAtUpdatePeriodMs);
+                this.startReportingPlayingTo();
             else {
-                self.clearInterval(this.reportPlayedToHandle);
+                this.stopReportingPlayingTo();
                 if (playbackState === 'ended') {
                     await this.contextRef.disposeAsync();
                     this.contextRef = null;
