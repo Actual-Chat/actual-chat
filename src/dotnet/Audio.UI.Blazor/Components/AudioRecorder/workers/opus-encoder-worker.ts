@@ -46,7 +46,7 @@ let vadState: 'voice' | 'silence' = 'voice';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
-let lastInitArguments: { sessionId: string, chatId: string } | null = null;
+let lastInitArguments: { sessionId: string, chatId: string, repliedChatEntryId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
@@ -108,8 +108,8 @@ const serverImpl: OpusEncoderWorker = {
         state = 'ended';
     },
 
-    start: async (sessionId: string, chatId: string): Promise<void> => {
-        lastInitArguments = { sessionId, chatId };
+    start: async (sessionId: string, chatId: string, repliedChatEntryId: string): Promise<void> => {
+        lastInitArguments = { sessionId, chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
         // Ensure audio transport is up and running
@@ -167,13 +167,14 @@ const serverImpl: OpusEncoderWorker = {
                 throw new Error('Unable to resume streaming lastNewStreamMessage is null');
 
             // start new stream and then set state
-            const { sessionId, chatId } = lastInitArguments;
+            const { sessionId, chatId, repliedChatEntryId } = lastInitArguments;
+            lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
             recordingSubject?.complete(); // Just in case
             recordingSubject = new signalR.Subject<Uint8Array>();
             if (!encoder)
                 encoder = new codecModule.Encoder();
             const preSkip = encoder.preSkip;
-            await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, preSkip, recordingSubject);
+            await hubConnection.send('ProcessAudio', sessionId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
             vadState = newVadState;
             processQueue('in');
         }

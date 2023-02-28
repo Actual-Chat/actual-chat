@@ -91,7 +91,7 @@ export class OpusMediaRecorder {
         this.whenInitialized.resolve(undefined);
     }
 
-    public async start(sessionId: string, chatId: string): Promise<void> {
+    public async start(sessionId: string, chatId: string, repliedChatEntryId: string): Promise<void> {
         debugLog?.log('start: #', chatId, 'sessionId=', sessionId);
         if (!sessionId || !chatId)
             throw new Error('start: sessionId or chatId is unspecified.');
@@ -204,7 +204,7 @@ export class OpusMediaRecorder {
             this.state = new ChatRecording(sessionId, chatId);
 
             await Promise.all([
-                this.encoderWorker.start(sessionId, chatId),
+                this.encoderWorker.start(sessionId, chatId, repliedChatEntryId),
                 await this.vadWorker.reset(),
             ]);
         }

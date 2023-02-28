@@ -57,7 +57,7 @@ export class AudioRecorder {
     }
 
     /** Called by Blazor  */
-    public async startRecording(chatId: string): Promise<boolean> {
+    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         await this.whenInitialized;
 
@@ -100,7 +100,7 @@ export class AudioRecorder {
                 }
             }
 
-            await opusMediaRecorder.start(this.sessionId, chatId);
+            await opusMediaRecorder.start(this.sessionId, chatId, repliedChatEntryId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')

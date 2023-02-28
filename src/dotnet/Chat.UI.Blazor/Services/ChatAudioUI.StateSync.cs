@@ -117,7 +117,14 @@ public partial class ChatAudioUI
         Task? whenIdle = null;
         var cts = cancellationToken.CreateLinkedTokenSource();
         try {
-            await AudioRecorder.StartRecording(chatId, cancellationToken).ConfigureAwait(false);
+            var chatUI = ChatUIAccessor();
+            var relatedChatEntry = await chatUI.RelatedChatEntry.Use(cancellationToken);
+            var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
+                ? relatedChatEntry.Value.Id
+                : ChatEntryId.None;
+            chatUI.HideRelatedEntry();
+
+            await AudioRecorder.StartRecording(chatId, repliedChatEntryId, cancellationToken).ConfigureAwait(false);
 
             var whenChanged = ForegroundTask.Run(async () => {
                 return await cRecordingState

@@ -52,7 +52,10 @@ public class AudioRecorder : IAsyncDisposable
         _jsRef = null!;
     }
 
-    public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken = default)
+    public async Task StartRecording(
+        ChatId chatId,
+        ChatEntryId repliedChatEntryId,
+        CancellationToken cancellationToken = default)
     {
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
@@ -72,7 +75,7 @@ public class AudioRecorder : IAsyncDisposable
         cts.CancelAfter(StartRecordingTimeout);
         try {
             var isStarted = await _jsRef
-                .InvokeAsync<bool>("startRecording", cts.Token, chatId)
+                .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId)
                 .ConfigureAwait(false);
             if (!isStarted) {
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);

@@ -32,7 +32,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var audioRecord = new AudioRecord(
             session, Constants.Chat.DefaultChatId,
-            CpuClock.Now.EpochOffset.TotalSeconds);
+            CpuClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         await audioProcessor.ProcessAudio(audioRecord, 333, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
@@ -73,7 +73,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
             () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
@@ -121,7 +121,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -187,7 +187,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -250,7 +250,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         using var cts = new CancellationTokenSource();
 
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readSizeTask = BackgroundTask.Run(
             () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
@@ -290,7 +290,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         using var cts = new CancellationTokenSource();
 
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readSizeTask = BackgroundTask.Run(
             () => ReadAudio(audioRecord.Id, audioStreamer, TimeSpan.FromSeconds(1), ctsToken),

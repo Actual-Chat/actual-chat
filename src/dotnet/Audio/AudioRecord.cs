@@ -5,13 +5,14 @@ public sealed record AudioRecord(
     [property: DataMember] Symbol Id, // Ignored on upload
     [property: DataMember] Session Session,
     [property: DataMember] ChatId ChatId,
-    [property: DataMember] double ClientStartOffset
+    [property: DataMember] double ClientStartOffset,
+    [property: DataMember] ChatEntryId RepliedChatEntryId
     ) : IHasId<Symbol>
 {
     private static Symbol NewId() => Ulid.NewUlid().ToString();
 
-    public AudioRecord(Session session, ChatId chatId,  double clientStartOffset)
-        : this(NewId(), session, chatId,  clientStartOffset) { }
+    public AudioRecord(Session session, ChatId chatId,  double clientStartOffset, ChatEntryId repliedChatEntryId)
+        : this(NewId(), session, chatId,  clientStartOffset, repliedChatEntryId) { }
 
     // This record relies on referential equality
     public bool Equals(AudioRecord? other) => ReferenceEquals(this, other);
