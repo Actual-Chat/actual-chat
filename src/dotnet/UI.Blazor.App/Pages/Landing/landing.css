@@ -209,14 +209,13 @@ body.narrow .landing-header .header-text {
 .landing .page p, .landing .page .p{
     @apply pt-2 md:pt-4;
 }
-.landing .page.height-screen {
-    height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
+.landing .page.full-screen-page {
+    height: calc(var(--vh, 100vh));
 }
-body.narrow .landing .page.height-screen.no-auto-scroll {
+.landing .page.full-screen-page.no-auto-scroll {
     @apply h-full;
 }
-.landing.no-scroll .page.height-screen {
+.landing.no-full-screen-pages .page.full-screen-page {
     @apply h-full;
 }
 

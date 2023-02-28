@@ -26,7 +26,7 @@ export class ScreenSize {
     public static isHoverable: boolean;
     public static change$ = new Subject<Size>();
     public static size$: Observable<Size>;
-    public static event$: Observable<Event>;
+    public static event$ = new Subject<Event>();
 
     public static init() {
         this.hoverMeasureDiv = document.createElement("div");
@@ -47,12 +47,13 @@ export class ScreenSize {
         document.body.appendChild(this.screenSizeMeasureDiv);
         this.measureAndUpdate();
 
-        this.event$ = fromEvent(window.visualViewport, 'resize');
-        this.event$.pipe(debounceTime(50)).subscribe(() => this.measureAndUpdate());
-        this.size$ = concat(
-            of(this.size),
-            this.change$
-        );
+        this.size$ = concat(of(this.size), this.change$);
+        fromEvent(window.visualViewport, 'resize')
+            .pipe(debounceTime(50))
+            .subscribe((event: Event) => {
+                this.measureAndUpdate()
+                this.event$.next(event);
+            });
     }
 
     public static isNarrow(size?: Size): boolean {

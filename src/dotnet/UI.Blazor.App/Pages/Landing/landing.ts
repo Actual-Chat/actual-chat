@@ -40,23 +40,10 @@ export class Landing {
 
         this.scrollContainer = getScrollContainer(this.pages[0]);
 
-        if (ScreenSize.isNarrow()) {
-            this.getNarrowScreenSize();
-
-            fromEvent(window.screen.orientation, 'change')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.getNarrowScreenSize());
-
-            fromEvent(window, 'resize')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.getNarrowScreenSize());
-        } else {
-            this.getWideScreenSize();
-
-            fromEvent(window, 'resize')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.getWideScreenSize());
-        }
+        this.onScreenSizeChange();
+        ScreenSize.event$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.onScreenSizeChange());
 
         fromEvent(document, 'keydown')
             .pipe(takeUntil(this.disposed$))
@@ -80,39 +67,6 @@ export class Landing {
 
         this.disposed$.next();
         this.disposed$.complete();
-    }
-
-    public getNarrowScreenSize() {
-        let h = window.innerHeight;
-        let w = window.innerWidth;
-        if (h / w > 2.25 || h / w < 1.85) {
-            this.removeScrollClass();
-        } else {
-            let vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', `${vh}px`);
-            this.addScrollClass();
-        }
-    }
-
-    public getWideScreenSize() {
-        let h = window.innerHeight;
-        if (h < 700) {
-            this.removeScrollClass();
-        } else {
-            let vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', `${vh}px`);
-            this.addScrollClass();
-        }
-    }
-
-    public removeScrollClass() {
-        if (!this.landing.classList.contains('no-scroll')) {
-            this.landing.classList.add('no-scroll');
-        }
-    }
-
-    public addScrollClass() {
-        this.landing.classList.remove('no-scroll');
     }
 
     private updateHeader(): void {
@@ -139,7 +93,6 @@ export class Landing {
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
-
         if (DeviceInfo.isIos)
             return; // The auto-scroll doesn't work on iOS devices (yet)
 
@@ -190,6 +143,18 @@ export class Landing {
     }
 
     // Event handlers
+
+    private onScreenSizeChange() {
+        const h = window.innerHeight;
+        const w = window.innerWidth;
+        const hvRatio = h / w;
+        document.documentElement.style.setProperty('--vh', `${h}px`);
+        let useFullScreenPages = ScreenSize.isNarrow() ? (hvRatio >= 1.85 && hvRatio <= 2.25) : (h >= 700);
+        if (useFullScreenPages)
+            this.landing.classList.remove('no-full-screen-pages');
+        else
+            this.landing.classList.add('no-full-screen-pages');
+    }
 
     private onKeyDown(event: KeyboardEvent): void {
         if (hasModifierKey(event))
