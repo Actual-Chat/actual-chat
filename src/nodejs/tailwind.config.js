@@ -192,6 +192,7 @@ module.exports = {
         'banner-error': 'var(--background-banner-error)',
         'banner-info': 'var(--background-banner-info)',
         'banner-success': 'var(--background-banner-success)',
+        'recording-countdown': 'var(--background-recording-countdown)',
       },
     },
     screens: {
