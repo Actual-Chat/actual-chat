@@ -107,8 +107,13 @@
             }
         }
 
-        [Required] public string? Code { get; set; } = PhoneCodes.Default.Code;
-        [Required] public string? Number { get; set; }
+        [Required]
+        public string? Code { get; set; } = PhoneCodes.Default.Code;
+
+        [Required]
+        [Phone]
+        public string? Number { get; set; }
+
         public string? Email { get; set; }
     }
 }
