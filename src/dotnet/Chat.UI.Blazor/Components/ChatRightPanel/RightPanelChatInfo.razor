@@ -81,23 +81,26 @@
         </div>
     </div>
 
-    <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-         @onclick="@OnInviteClick"
-         @onclick:preventDefault="true">
-        <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-            <i class="icon-person-add text-2xl text-primary"></i>
-        </div>
-        <div class="flex-y min-w-0 self-center grow">
-            <div class="text-primary text-headline-1 truncate">
-                Add members
+    @if (m.Rules.CanInvite()) {
+        <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
+             @onclick="@OnInviteClick"
+             @onclick:preventDefault="true">
+            <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
+                <i class="icon-person-add text-2xl text-primary"></i>
+            </div>
+            <div class="flex-y min-w-0 self-center grow">
+                <div class="text-primary text-headline-1 truncate">
+                    Add members
+                </div>
             </div>
         </div>
-    </div>
+    }
 </div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IRoles Roles { get; init; } = null!;
@@ -141,6 +144,7 @@
                 .ToList();
         }
 
+        var rules = await Chats.GetRules(Session, Chat.Id, default);
         var link = await GetLink(cancellationToken);
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return new() {
@@ -148,6 +152,7 @@
             Link = link?.ToDisplayUrl(UrlMapper),
             Owners = owners,
             NotificationMode = userChatSettings.NotificationMode,
+            Rules = rules,
         };
     }
 
@@ -183,6 +188,7 @@
         public DisplayUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public List<OwnerModel>? Owners { get; init; }
+        public AuthorRules Rules { get; init; }
     }
 
     public sealed record OwnerModel {
