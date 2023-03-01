@@ -3,8 +3,9 @@ import { Decoder } from '@actual-chat/codec/codec.debug';
 /// #else
 /// #code import { Decoder } from '@actual-chat/codec';
 /// #endif
+import Denque from 'denque';
 import 'logging-init';
-import { rpcClient, rpcNoWait } from 'rpc';
+import { rpcClient, RpcNoWait, rpcNoWait } from 'rpc';
 import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { AsyncDisposable, Disposable } from 'disposable';
 import { AsyncProcessor } from 'async-processor';
@@ -20,13 +21,19 @@ const enableFrequentDebugLog = false;
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
 /// #endif
 
+// Raw audio chunk consists of SAMPLES_PER_WINDOW floats
+// 20ms * 48000Khz
+const SAMPLES_PER_WINDOW = 960;
+
 export class OpusDecoder implements AsyncDisposable {
     private readonly streamId: string;
     private readonly processor: AsyncProcessor<ArrayBufferView | 'end'>;
     private readonly feederWorklet: FeederAudioWorklet & Disposable;
-    private decoder: Decoder;
+    private readonly bufferDeque: Denque<ArrayBuffer>;
     private mustAbort: boolean;
     private isEnded: boolean;
+
+    public readonly decoder: Decoder;
 
     public static async create(streamId: string, decoder: Decoder, workletPort: MessagePort): Promise<OpusDecoder> {
         return new OpusDecoder(streamId, decoder, workletPort);
@@ -35,19 +42,19 @@ export class OpusDecoder implements AsyncDisposable {
     /** accepts fully initialized decoder only, use the factory method `create` to construct an object */
     private constructor(streamId: string, decoder: Decoder, workletPort: MessagePort) {
         this.streamId = streamId;
-        this.processor = new AsyncProcessor<ArrayBufferView | 'end'>('OpusDecoder', item => this.process(item));
+        this.processor = new AsyncProcessor<Uint8Array | 'end'>('OpusDecoder', item => this.process(item));
         this.feederWorklet = rpcClient<FeederAudioWorklet>(`${LogScope}.feederWorklet`, workletPort);
         this.decoder = decoder;
+        this.bufferDeque = new Denque<ArrayBuffer>();
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
     }
 
     public async disposeAsync(): Promise<void> {
-        if (!this.decoder)
-            return;
-
         this.end(true);
         await this.processor.whenRunning;
-        this.decoder?.delete();
-        this.decoder = null;
     }
 
     public decode(buffer: ArrayBuffer, offset: number, length: number,): void {
@@ -63,7 +70,11 @@ export class OpusDecoder implements AsyncDisposable {
         this.processor.enqueue('end');
     }
 
-    private async process(item: ArrayBufferView | 'end'): Promise<void> {
+    public releaseBuffer(buffer: ArrayBuffer): void {
+        this.bufferDeque.push(buffer);
+    }
+
+    private async process(item: Uint8Array | 'end'): Promise<void> {
         try {
             if (item === 'end') {
                 this.isEnded = true;
@@ -75,11 +86,16 @@ export class OpusDecoder implements AsyncDisposable {
             if (this.isEnded)
                 return;
 
-            const samples = this.decoder.decode(item);
-            if (samples == null || samples.length === 0) {
+            // samples is the typed_memory_view to Decoder internal buffer - so you have to copy data
+            const typedViewSamples = this.decoder.decode(item);
+            if (typedViewSamples == null || typedViewSamples.length === 0) {
                 warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);
                 return;
             }
+
+            const samplesBuffer = this.bufferDeque.shift() ?? new ArrayBuffer(SAMPLES_PER_WINDOW * 4);
+            const samples = new Float32Array(samplesBuffer, 0, typedViewSamples.length);
+            samples.set(typedViewSamples);
 
             if (enableFrequentDebugLog)
                 debugLog?.log(

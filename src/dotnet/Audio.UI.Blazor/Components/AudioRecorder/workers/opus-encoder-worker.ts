@@ -98,8 +98,7 @@ const serverImpl: OpusEncoderWorker = {
         encoder = new codecModule.Encoder();
         for (let i=0; i < 2; i++)
             encoder.encode(pinkNoiseChunk.buffer);
-        encoder.delete();
-        encoder = null;
+        encoder.reset();
 
         debugLog?.log(`<- create`);
         state = 'created';
@@ -115,7 +114,6 @@ const serverImpl: OpusEncoderWorker = {
     start: async (sessionId: string, chatId: string): Promise<void> => {
         lastInitArguments = { sessionId, chatId };
         debugLog?.log(`start`);
-        encoder = new codecModule.Encoder();
 
         state = 'encoding';
         vadState = 'silence';
@@ -126,8 +124,7 @@ const serverImpl: OpusEncoderWorker = {
         processQueue('out');
         recordingSubject?.complete();
         recordingSubject = null;
-        encoder?.delete();
-        encoder = null;
+        encoder.reset();
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
@@ -239,7 +236,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             }
 
             const result = encoder.encode(buffer);
-            void encoderWorklet.onFrame(buffer, rpcNoWait);
+            void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
             recordingSubject?.next(result);
             chunkTimeOffset += 20;
         }

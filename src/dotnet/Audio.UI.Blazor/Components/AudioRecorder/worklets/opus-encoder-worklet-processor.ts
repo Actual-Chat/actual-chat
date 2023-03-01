@@ -50,7 +50,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
     }
 
-    public async onFrame(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
+    public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
         this.bufferDeque.push(buffer);
     }
 
@@ -75,10 +75,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             this.buffer.push(input);
             if (this.buffer.framesAvailable >= this.samplesPerWindow) {
                 const audioBuffer = new Array<Float32Array>();
-                let audioArrayBuffer = this.bufferDeque.shift();
-                if (audioArrayBuffer === undefined) {
-                    audioArrayBuffer = new ArrayBuffer(this.samplesPerWindow * 4);
-                }
+                const audioArrayBuffer = this.bufferDeque.shift() ?? new ArrayBuffer(this.samplesPerWindow * 4);
 
                 audioBuffer.push(new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow));
 

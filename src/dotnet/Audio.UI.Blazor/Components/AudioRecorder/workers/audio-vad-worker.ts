@@ -100,10 +100,10 @@ async function processQueue(): Promise<void> {
 
             const buffer = queue.shift();
             const dataToResample = new Uint8Array(buffer);
-            const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
-            void vadWorklet.onFrame(buffer, rpcNoWait);
+            const resampled = resampler.processChunk(dataToResample, resampleBuffer);
+            void vadWorklet.releaseBuffer(buffer, rpcNoWait);
 
-            const monoPcm = new Float32Array(resampled, 0, 512);
+            const monoPcm = new Float32Array(resampled.buffer, 0, 512);
             const vadEvent = await voiceDetector.appendChunk(monoPcm);
             if (vadEvent) {
                 const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);

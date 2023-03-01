@@ -36,7 +36,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
     }
 
-    public async onFrame(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
+    public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
         this.bufferDeque.push(buffer);
     }
 
@@ -62,10 +62,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         this.buffer.push(input);
         if (this.buffer.framesAvailable >= SAMPLES_PER_WINDOW) {
             const vadBuffer = new Array<Float32Array>();
-            let vadArrayBuffer = this.bufferDeque.shift();
-            if (vadArrayBuffer === undefined) {
-                vadArrayBuffer = new ArrayBuffer(SAMPLES_PER_WINDOW * 4);
-            }
+            const vadArrayBuffer = this.bufferDeque.shift() ?? new ArrayBuffer(SAMPLES_PER_WINDOW * 4);
 
             vadBuffer.push(new Float32Array(vadArrayBuffer, 0, SAMPLES_PER_WINDOW));
 

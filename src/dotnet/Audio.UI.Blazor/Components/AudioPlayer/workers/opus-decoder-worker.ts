@@ -19,6 +19,7 @@ import { Versioning } from 'versioning';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer } from 'rpc';
 import { ResolvedPromise, retry } from 'promises';
+import { ObjectPool } from 'object-pool';
 
 const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -30,6 +31,7 @@ let codecModule: Codec | null = null;
 
 const worker = self as unknown as Worker;
 const decoders = new Map<string, OpusDecoder>();
+const decoderPool = new ObjectPool<Decoder>(() => new codecModule.Decoder());
 
 const serverImpl: OpusDecoderWorker = {
     init: async (artifactVersions: Map<string, string>): Promise<void> => {
@@ -38,8 +40,8 @@ const serverImpl: OpusDecoderWorker = {
 
         // Load & warm-up codec
         codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-        const decoder = new codecModule.Decoder();
-        decoder.delete();
+        const decoder = await decoderPool.get();
+        await decoderPool.release(decoder);
 
         debugLog?.log(`<- init`);
     },
@@ -47,24 +49,28 @@ const serverImpl: OpusDecoderWorker = {
     create: async (streamId: string, workletMessagePort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
         await serverImpl.close(streamId);
-        const codecDecoder = new codecModule.Decoder();
-        const decoder = await OpusDecoder.create(streamId, codecDecoder, workletMessagePort);
-        decoders.set(streamId, decoder);
+        const decoder = await decoderPool.get();
+        const opusDecoder = await OpusDecoder.create(streamId, decoder, workletMessagePort);
+        decoders.set(streamId, opusDecoder);
         debugLog?.log(`<- #${streamId}.create`);
     },
 
     close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
         debugLog?.log(`#${streamId}.close`);
-        const decoder = getDecoder(streamId, false);
-        if (!decoder)
+        const opusDecoder = getDecoder(streamId, false);
+        if (!opusDecoder)
             return;
 
         decoders.delete(streamId);
+        const decoder = opusDecoder.decoder;
         try {
-            await decoder.disposeAsync();
+            await opusDecoder.disposeAsync();
         }
         catch (e) {
             errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
+        }
+        finally {
+            await decoderPool.release(decoder);
         }
     },
 
@@ -83,6 +89,10 @@ const serverImpl: OpusDecoderWorker = {
     ): Promise<void> => {
         // debugLog?.log(`#${streamId}.onFrame`);
         getDecoder(streamId).decode(buffer, offset, length);
+    },
+
+    releaseBuffer: async(streamId: string, buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void>  => {
+        getDecoder(streamId).releaseBuffer(buffer);
     }
 };
 

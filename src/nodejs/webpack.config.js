@@ -59,7 +59,7 @@ module.exports = (env, args) => {
     /** Use this options to control /// #ifdef preprocessor */
     const ifdef = {
         DEBUG: isDevelopment,
-        MEM_LEAK_DETECTION: isDevelopment && false,
+        MEM_LEAK_DETECTION: false,
         // TODO: define client js app version with NBGV (?)
         version: 1.0,
         'ifdef-verbose': false,
