@@ -188,7 +188,7 @@
         public DisplayUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public List<OwnerModel>? Owners { get; init; }
-        public AuthorRules Rules { get; init; }
+        public AuthorRules Rules { get; init; } = null!;
     }
 
     public sealed record OwnerModel {

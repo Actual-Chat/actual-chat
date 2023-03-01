@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Module;
 
@@ -9,6 +10,7 @@ public class ThemeUI : WorkerBase
     private Theme _appliedTheme = Theme.Light;
 
     private ILogger Log { get; }
+    private HostInfo HostInfo { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
     private Tracer Tracer { get; }
@@ -24,6 +26,7 @@ public class ThemeUI : WorkerBase
     {
         Log = services.LogFor(GetType());
         Tracer = services.Tracer(GetType());
+        HostInfo = services.GetRequiredService<HostInfo>();
         Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
 
@@ -49,6 +52,9 @@ public class ThemeUI : WorkerBase
 
     private Task ApplyTheme(Theme theme)
     {
+        if (!HostInfo.IsDevelopmentInstance)
+            return Task.CompletedTask; // Themes work only on dev instances
+
         Tracer.Point("ApplyTheme");
         return Dispatcher.InvokeAsync(async () => {
             Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");

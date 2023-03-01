@@ -18,13 +18,15 @@
         Actual Chat can notify you about new messages
     </Body>
     <Buttons>
-        <Button @ref="_configureButton" Class="btn-transparent on" Click="@OnConfigureClick" >Configure</Button>
+        <Button
+            Class="btn-transparent on"
+            Click="@OnConfigureClick"
+            Rendered="@OnConfigureRendered">Configure</Button>
     </Buttons>
 </Banner>
 
 @code {
-    private Button? _configureButton = null!;
-    private bool _hasHandlerRegistered;
+    private bool _isHandlerRegistered;
     private IStoredState<Moment> _dismissedAt = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -41,18 +43,6 @@
     protected override void OnInitialized() {
         _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
         base.OnInitialized();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_hasHandlerRegistered)
-            return;
-
-        // it can be null if state is not Prompt
-        if (_configureButton == null)
-            return;
-
-        await NotificationUI.RegisterRequestNotificationHandler(_configureButton.ButtonRef);
-        _hasHandlerRegistered = true;
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -80,8 +70,15 @@
     private Task OnConfigureClick(MouseEventArgs arg)
         => NotificationPermissions.RequestNotificationPermissions(CancellationToken.None);
 
-    // Nested types
+    private async Task OnConfigureRendered(ElementReference buttonRef) {
+        if (_isHandlerRegistered)
+            return;
 
+        await NotificationUI.RegisterRequestNotificationHandler(buttonRef);
+        _isHandlerRegistered = true;
+    }
+
+    // Nested types
 
     public sealed record Model(
         PermissionState State,
@@ -89,5 +86,4 @@
     ) {
         public static readonly Model Loading = new(PermissionState.Denied, true);
     }
-
 }

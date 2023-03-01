@@ -243,7 +243,7 @@ public partial class ChatAudioUI
                     || ((recorderChatId != recordingChatId || language != prev.Language) && !prev.RecorderChatId.IsNone);
                 var mustSync = mustStop || recordingChatId != prev.RecordingChatId;
                 if (isRecordingFailed)
-                    ShowRecorderError(recorderError.Value);
+                    ShowRecorderError(recorderError!.Value);
                 if (mustSync) {
                     Log.LogDebug("Needs sync recorder state: prev={Prev}, current={Current}", prev, current);
                     if (isRecordingFailed)

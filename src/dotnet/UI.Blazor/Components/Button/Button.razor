@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button
-    @ref="ButtonRef"
+    @ref="_buttonRef"
     class="@Class btn"
     type="@GetButtonType()"
     @attributes="@GetAttributes()"
@@ -13,7 +13,7 @@
 </button>
 
 @code {
-    public ElementReference ButtonRef { get; set; }
+    private ElementReference _buttonRef;
 
     [Parameter] public string Class { get; set; } = "btn-primary";
     [Parameter] public string ContentClass { get; set; } = "";
@@ -26,9 +26,16 @@
     [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && Rendered.HasDelegate)
+            return Rendered.InvokeAsync(_buttonRef);
+        return Task.CompletedTask;
+    }
 
     private string GetButtonType()
         => Type.ToString().ToLower();
