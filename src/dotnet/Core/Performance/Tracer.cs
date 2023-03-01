@@ -4,7 +4,7 @@ namespace ActualChat.Performance;
 
 public sealed class Tracer
 {
-    public static Tracer None { get; } = new("None", null);
+    public static Tracer None { get; } = new("None", null, /* None Tracer timer should not count */ new Stopwatch());
     public static Tracer Default { get; set; } =
 #if DEBUG || DEBUG_MAUI
         new("Default", static x => Console.WriteLine("@ " + x.Format()));
