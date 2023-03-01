@@ -6,7 +6,7 @@ import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
-import { PromiseSource, retry } from 'promises';
+import { catchErrors, PromiseSource, retry } from 'promises';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { Versioning } from 'versioning';
@@ -154,40 +154,68 @@ export class OpusMediaRecorder {
             if (this.state == null)
                 return;
 
-            await this.encoderWorker?.stop();
-            this.source?.disconnect();
-            this.source = null;
-
-            this.encoderWorkletInstance?.disconnect();
+            await catchErrors(
+                () => this.encoderWorkletInstance?.disconnect(),
+                e => warnLog.log('start.detach error:', e));
             this.encoderWorkletInstance = null;
-            this.encoderWorklet?.dispose();
+            await catchErrors(
+                () => this.encoderWorklet?.dispose(),
+                e => warnLog.log('start.detach error:', e));
             this.encoderWorklet = null;
 
-            this.vadWorkletInstance?.disconnect();
+            await catchErrors(
+                () => this.vadWorkletInstance?.disconnect(),
+                e => warnLog.log('start.detach error:', e));
             this.vadWorkletInstance = null;
-            this.vadWorklet?.dispose();
+            await catchErrors(
+                () => this.vadWorklet?.dispose(),
+                e => warnLog.log('start.detach error:', e));
             this.vadWorklet = null;
 
             if (this.stream) {
-                this.stream.getAudioTracks().forEach(t => t.stop());
-                this.stream.getVideoTracks().forEach(t => t.stop());
+                const tracks = new Array<MediaStreamTrack>()
+                tracks.push(...this.stream.getAudioTracks());
+                tracks.push(...this.stream.getVideoTracks());
+                for (let track of tracks) {
+                    await catchErrors(
+                        () => track.stop(),
+                        e => warnLog.log('start.detach error:', e));
+                    await catchErrors(
+                        () => this.stream.removeTrack(track),
+                        e => warnLog.log('start.detach error:', e));
+                }
             }
             this.stream = null;
+
+            await catchErrors(
+                () => this.encoderWorker?.stop(),
+                e => warnLog.log('start.detach error:', e));
+            await catchErrors(
+                () => this.source?.disconnect(),
+                e => warnLog.log('start.detach error:', e));
+            this.source = null;
+
             this.state = null;
         }
 
         const options: AudioContextRefOptions = {
             attach: attach,
-            detach: _ => retry(3, () => detach()),
+            detach: _ => retry(2, () => detach()),
         }
         const contextRef = await audioContextSource.getRef('recording', options);
-        await contextRef.whenFirstTimeReady();
-        this.state = new ChatRecording(sessionId, chatId, contextRef);
+        try {
+            await contextRef.whenFirstTimeReady();
+            this.state = new ChatRecording(sessionId, chatId, contextRef);
 
-        await Promise.all([
-            this.encoderWorker.start(sessionId, chatId),
-            await this.vadWorker.reset(),
-        ]);
+            await Promise.all([
+                this.encoderWorker.start(sessionId, chatId),
+                await this.vadWorker.reset(),
+            ]);
+        }
+        catch (e) {
+            void contextRef.disposeAsync();
+            throw e;
+        }
     }
 
     public async stop(): Promise<void> {
