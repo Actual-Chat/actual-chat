@@ -31,22 +31,15 @@
             Click="@(() => Reply(entry))">
         </MenuEntry>
     }
-    @*
-    <MenuEntry
-        Icon="icon-hash-fill"
-        Text="Create thread"
-        Click="@(() => _ = FeedbackUI.AskFeatureRequestFeedback("message-threads", "Message Threads"))">
-    </MenuEntry>
-    *@
     @if (!ClickedLinkUrl.IsNullOrEmpty()) {
-        <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl">
+        <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-copy"
                 Text="Copy link">
             </MenuEntry>
         </CopyTrigger>
     }
-    <CopyTrigger Tooltip="" CopyText="@messageLink">
+    <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
         <MenuEntry
             Icon="icon-link-2"
             Text="Copy message link">
