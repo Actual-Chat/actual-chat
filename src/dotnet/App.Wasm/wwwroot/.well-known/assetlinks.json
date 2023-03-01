@@ -10,5 +10,17 @@
         "7F:34:78:A4:EA:25:B1:F9:81:4B:F6:A8:7D:3E:CF:72:C5:CC:01:CF:C8:8A:19:1D:EB:E3:BA:B5:66:C3:7D:0B"
       ]
     }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "chat.actual.app",
+      "sha256_cert_fingerprints": [
+        "A1:45:D6:FC:25:B8:3B:A0:58:0D:7B:7D:9E:AF:42:1E:A4:D3:A4:D9:3F:AC:B6:0F:5E:30:E2:C8:89:00:5E:77"
+      ]
+    }
   }
 ]
