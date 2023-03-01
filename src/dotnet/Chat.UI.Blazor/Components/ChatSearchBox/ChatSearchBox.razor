@@ -3,7 +3,7 @@
 @if (_isCollapsed == true) {
     <ButtonRound
         Click="OnExpandClick"
-        Class="transparent"
+        Class="btn-md transparent"
         Tooltip="@Placeholder"
         TooltipPosition="FloatingPosition.Bottom">
         <i class="icon-search text-2xl"></i>
@@ -12,7 +12,7 @@
     <div class="@Class chat-search-box">
         <label>
             <ButtonRound
-                Class="search-button"
+                Class="btn-md search-button"
                 Click="OnSearchButtonClick"
                 IsDisabled="!CanBeTriggered"
                 Tooltip="@Placeholder"

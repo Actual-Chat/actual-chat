@@ -12,7 +12,7 @@
         <div class="flex flex-1 md:flex-none text-02 text-title-1 self-center">Chat Settings</div>
         @if (m.CanEditProperties()) {
             <ButtonRound
-                Class="transparent"
+                Class="transparent btn-md"
                 Click="@OnEditChatSettingsClick"
                 Tooltip="Edit"
                 TooltipPosition="FloatingPosition.Bottom">
@@ -20,7 +20,7 @@
             </ButtonRound>
         }
     </div>
-    <ButtonRound Click="OnHideRightPanelClick" Class="!hidden md:!flex !mx-1 transparent">
+    <ButtonRound Click="OnHideRightPanelClick" Class="btn-md !hidden md:!flex transparent">
         <i class="icon-layout text-2xl"></i>
     </ButtonRound>
 </div>

@@ -48,7 +48,7 @@ body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
 .ac-menu-list {
 }
 .ac-menu-item {
-    @apply flex-x;
+    @apply flex-1 flex-x;
     @apply min-w-[120px] h-12 md:h-10 p-[6px];
     @apply rounded-lg hover:bg-round-hover;
     @apply text-02 whitespace-nowrap;
