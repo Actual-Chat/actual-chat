@@ -4,7 +4,7 @@ import { BufferState, PlaybackState } from './worklets/feeder-audio-worklet-cont
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
-import { PromiseSource, retry } from '../../../../nodejs/src/promises';
+import { PromiseSource, retry } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';

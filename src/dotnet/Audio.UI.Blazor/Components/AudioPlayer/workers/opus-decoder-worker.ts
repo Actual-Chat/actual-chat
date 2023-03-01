@@ -13,13 +13,13 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #endif
 
 import { OpusDecoder } from './opus-decoder';
-import { Log, LogLevel, LogScope } from 'logging';
-import 'logging-init';
-import { Versioning } from 'versioning';
+import { ObjectPool } from 'object-pool';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer } from 'rpc';
 import { ResolvedPromise, retry } from 'promises';
-import { ObjectPool } from 'object-pool';
+import { Versioning } from 'versioning';
+import { Log, LogLevel, LogScope } from 'logging';
+import 'logging-init';
 
 const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -40,8 +40,7 @@ const serverImpl: OpusDecoderWorker = {
 
         // Load & warm-up codec
         codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-        const decoder = await decoderPool.get();
-        await decoderPool.release(decoder);
+        decoderPool.expandTo(1);
 
         debugLog?.log(`<- init`);
     },
@@ -49,7 +48,7 @@ const serverImpl: OpusDecoderWorker = {
     create: async (streamId: string, workletMessagePort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
         await serverImpl.close(streamId);
-        const decoder = await decoderPool.get();
+        const decoder = decoderPool.get();
         const opusDecoder = await OpusDecoder.create(streamId, decoder, workletMessagePort);
         decoders.set(streamId, opusDecoder);
         debugLog?.log(`<- #${streamId}.create`);
@@ -70,7 +69,7 @@ const serverImpl: OpusDecoderWorker = {
             errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
         }
         finally {
-            await decoderPool.release(decoder);
+            decoderPool.release(decoder);
         }
     },
 

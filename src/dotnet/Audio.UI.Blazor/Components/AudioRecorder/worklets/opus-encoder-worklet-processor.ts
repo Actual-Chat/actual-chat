@@ -1,11 +1,11 @@
-import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { Disposable } from 'disposable';
-import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
+import { ObjectPool } from 'object-pool';
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
-import { Log, LogLevel, LogScope } from 'logging';
+import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'OpusEncoderWorkletProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -22,7 +22,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private static allowedTimeSlice = [20, 40, 60, 80];
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
-    private readonly bufferDeque: Denque<ArrayBuffer>;
+    private readonly bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: OpusEncoderWorker & Disposable;
 
@@ -38,11 +38,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferDeque = new Denque<ArrayBuffer>();
-        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
+        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.server = rpcServer(`${LogScope}.server`, this.port, this);
     }
 
@@ -51,7 +47,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
-        this.bufferDeque.push(buffer);
+        this.bufferPool.release(buffer);
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
@@ -75,7 +71,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
             this.buffer.push(input);
             if (this.buffer.framesAvailable >= this.samplesPerWindow) {
                 const audioBuffer = new Array<Float32Array>();
-                const audioArrayBuffer = this.bufferDeque.shift() ?? new ArrayBuffer(this.samplesPerWindow * 4);
+                const audioArrayBuffer = this.bufferPool.get();
 
                 audioBuffer.push(new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow));
 
@@ -85,7 +81,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
                     else
                         warnLog?.log('process: worklet port is still undefined!');
                 } else {
-                    this.bufferDeque.unshift(audioArrayBuffer);
+                    this.bufferPool.release(audioArrayBuffer);
                 }
             }
         }

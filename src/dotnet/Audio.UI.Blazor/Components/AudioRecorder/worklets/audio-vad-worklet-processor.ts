@@ -4,8 +4,9 @@ import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
-import { Log, LogLevel, LogScope } from 'logging';
 import { timerQueue } from 'timerQueue';
+import { ObjectPool } from 'object-pool';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'VadAudioWorkletProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -16,7 +17,7 @@ const SAMPLES_PER_WINDOW = 768;
 
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
     private buffer: AudioRingBuffer;
-    private bufferDeque: Denque<ArrayBuffer>;
+    private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
 
@@ -29,15 +30,11 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<AudioVadWorker>(`${LogScope}.worker`, workerPort, this);
         this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferDeque = new Denque<ArrayBuffer>();
-        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
-        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
-        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
-        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
-        this.bufferDeque.push(buffer);
+        this.bufferPool.release(buffer);
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
@@ -62,7 +59,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         this.buffer.push(input);
         if (this.buffer.framesAvailable >= SAMPLES_PER_WINDOW) {
             const vadBuffer = new Array<Float32Array>();
-            const vadArrayBuffer = this.bufferDeque.shift() ?? new ArrayBuffer(SAMPLES_PER_WINDOW * 4);
+            const vadArrayBuffer = this.bufferPool.get();
 
             vadBuffer.push(new Float32Array(vadArrayBuffer, 0, SAMPLES_PER_WINDOW));
 
@@ -72,7 +69,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
                 else
                     warnLog?.log('process: worklet port is still undefined!');
             } else {
-                this.bufferDeque.unshift(vadArrayBuffer);
+                this.bufferPool.release(vadArrayBuffer);
             }
         }
 
