@@ -29,6 +29,12 @@ namespace ActualChat.App.Maui;
         ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
         ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density
     )]
+[IntentFilter(
+    new [] { Intent.ActionView },
+    DataSchemes = new [] { "http", "https" },
+    DataHost = MauiConstants.Host,
+    AutoVerify = true,
+    Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public class MainActivity : MauiAppCompatActivity
 {
     private const int RC_SIGN_IN_GOOGLE = 800;

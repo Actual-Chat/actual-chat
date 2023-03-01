@@ -107,7 +107,8 @@ public static partial class MauiProgram
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
-            .ConfigureLifecycleEvents(ConfigureLifecycleEvents);
+            .ConfigureLifecycleEvents(ConfigureLifecycleEvents)
+            .UseAppLinks();
 
         var services = builder.Services;
         services.AddMauiBlazorWebView();
@@ -138,7 +139,7 @@ public static partial class MauiProgram
         var environment = Environments.Development;
 #endif
 
-        var baseUrl = GetBaseUrl();
+        const string baseUrl = "https://" + MauiConstants.Host + "/";
         var initSessionInfoTask = InitSessionInfo(settings, new BaseUrlProvider(baseUrl));
         services.AddSingleton(c => new HostInfo {
             AppKind = AppKind.MauiApp,
@@ -240,15 +241,6 @@ public static partial class MauiProgram
     private static void AwaitHostedServicesStart(Task start)
         => start
             .GetAwaiter().GetResult();
-
-    private static string GetBaseUrl()
-    {
-#if ISDEVMAUI
-        return "https://dev.actual.chat/";
-#else
-        return "https://actual.chat/";
-#endif
-    }
 
     private static void ConfigureLifecycleEvents(ILifecycleBuilder events)
     {
