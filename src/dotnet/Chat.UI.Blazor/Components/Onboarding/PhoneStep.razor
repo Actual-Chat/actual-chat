@@ -47,7 +47,12 @@
                 Class="grow"
                 IsLabelInsideInput="true"
                 IsRequired="true">
-                <InputText id="phoneNumber" @bind-Value="_stepModel.Number" autocomplete="tel-national"/>
+                <InputText
+                    id="phoneNumber"
+                    @bind-Value="_stepModel.Number"
+                    autocomplete="tel-national"
+                    type="number"
+                    pattern="\d*"/>
             </FormSection>
         </div>
         <FormSection
