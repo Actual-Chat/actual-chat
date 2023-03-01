@@ -9,7 +9,7 @@
 case MarkupUrlKind.Chat:
     <a class="@cls"
        href="@(_chatUrl!.Value)"
-       @onclick="@OnClick"
+       @onclick="@OnAppUrlClick"
        @onclick:preventDefault="true"
        data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
         @Markup.Url
@@ -19,7 +19,7 @@ case MarkupUrlKind.Image:
     <a class="@cls"
        href="@Markup.Url"
        role="button"
-       @onclick="OnClick"
+       @onclick="OnAppUrlClick"
        @onclick:preventDefault="true">
         <img src="@Markup.Url" alt="@Markup.Url"/>
     </a>
@@ -61,11 +61,16 @@ default:
         return false;
     }
 
-    private async Task OnClick() {
-        if (_kind == MarkupUrlKind.Image)
-            await ImageViewerUI.Show(Markup.Url);
-        else
-            History.NavigateTo(Markup.Url);
+    private async Task OnAppUrlClick() {
+        switch (_kind)
+        {
+            case MarkupUrlKind.Image:
+                await ImageViewerUI.Show(Markup.Url);
+                break;
+            case MarkupUrlKind.Chat:
+                History.NavigateTo(_chatUrl);
+                break;
+        }
     }
 
     private enum MarkupUrlKind {
