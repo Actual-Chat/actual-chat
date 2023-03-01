@@ -123,6 +123,8 @@
     --logo-02: #2970FF;
     --logo-03: #5645D4;
     --badge: #007AFF;
+    --gradient-stop-01: #FFFFFF;
+    --gradient-stop-02: #EEEEEE;
 
     --error-toast-header: #fd5757;
     --error-toast-body: #FFBFBF;

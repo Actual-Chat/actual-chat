@@ -151,6 +151,8 @@ module.exports = {
         'logo-02': 'var(--logo-02)',
         'logo-03': 'var(--logo-03)',
         'badge': 'var(--badge)',
+        'gradient-stop-01': 'var(--gradient-stop-01)',
+        'gradient-stop-02': 'var(--gradient-stop-02)',
       },
       textColor: {
         '01': 'var(--text-01)',
