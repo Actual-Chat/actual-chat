@@ -158,7 +158,7 @@ public partial class ChatAudioUI
     {
         await Task.Yield();
         var clock = Clocks.SystemClock;
-        var monitoringStartedAt = clock.Now;
+        var lastEntryAt = clock.Now; // recording just started
         yield return null;
         // no need to check last entry since monitoring has just started
         await Task.Delay(options.IdleTimeoutBeforeCountdown, cancellationToken)
@@ -168,13 +168,12 @@ public partial class ChatAudioUI
         while (!cancellationToken.IsCancellationRequested) {
             var lastEntry = await GetLastTranscribedEntry(chatId,
                     prevLastEntry?.LocalId,
-                    monitoringStartedAt,
+                    lastEntryAt,
                     cancellationToken)
                 .ConfigureAwait(false);
-            var lastEntryAt = lastEntry != null
-                ? GetEndsAt(lastEntry)
-                : monitoringStartedAt;
-            lastEntryAt = Moment.Max(lastEntryAt, monitoringStartedAt);
+            if (lastEntry != null)
+                // when entry is finalized and EndsAt is lower than we expect we keep previous lastEntryAt
+                lastEntryAt = Moment.Max(lastEntryAt, GetEndsAt(lastEntry));
             var willBeIdleAt = lastEntryAt + options.IdleTimeout;
             var timeBeforeStop = (willBeIdleAt - clock.Now).Positive();
             var timeBeforeCountdown =
