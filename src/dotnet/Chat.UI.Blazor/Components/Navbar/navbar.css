@@ -84,6 +84,7 @@
 
 body.hoverable .navbar-item:hover {
     @apply bg-round-hover;
+    @apply cursor-pointer;
 }
 .navbar-item:active {
     @apply bg-transparent border-x border-transparent;
