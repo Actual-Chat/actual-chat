@@ -52,14 +52,14 @@ public class ThemeUI : WorkerBase
 
     private Task ApplyTheme(Theme theme)
     {
-        if (!HostInfo.IsDevelopmentInstance)
-            return Task.CompletedTask; // Themes work only on dev instances
-
         Tracer.Point("ApplyTheme");
         return Dispatcher.InvokeAsync(async () => {
             Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");
             if (!WhenReady.IsCompleted)
                 TaskSource.For((Task<Unit>)WhenReady).TrySetResult(default);
+
+            if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
+                return;
             if (_appliedTheme == theme)
                 return;
 
