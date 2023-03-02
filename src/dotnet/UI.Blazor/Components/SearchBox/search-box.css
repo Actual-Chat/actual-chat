@@ -1,5 +1,6 @@
 .search-box {
     @apply flex-1;
+    @apply max-h-10;
 }
 .search-box label {
     @apply relative flex-x;
