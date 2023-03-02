@@ -183,8 +183,12 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var cIsPaused = Playback.IsPaused.Computed;
         while (true) {
             cIsPaused = await cIsPaused.When(x => !x, cancellationToken);
-            if (delay <= TimeSpan.Zero)
+            if (delay <= TimeSpan.FromMilliseconds(50)) {
+                // Extremely short delays increase the CPU load,
+                // but don't add much of extra value here, coz all we want
+                // is to avoid scheduling of too many playbacks in advance.
                 return;
+            }
 
             var sw = Stopwatch.StartNew();
             var cts = cancellationToken.CreateLinkedTokenSource();
@@ -192,6 +196,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 var delayTask = cpuClock.Delay(delay, cts.Token);
                 var isPausedInvalidatedTask = cIsPaused.WhenInvalidated(cts.Token);
                 await Task.WhenAny(delayTask, isPausedInvalidatedTask).ConfigureAwait(false);
+                cts.Token.ThrowIfCancellationRequested();
             }
             finally {
                 cts.CancelAndDisposeSilently();
