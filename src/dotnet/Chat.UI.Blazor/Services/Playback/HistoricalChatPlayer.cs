@@ -54,16 +54,16 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             var playAt = entryBeginsAt + playbackOffset + overallPauseDelay;
             playbackBlockEnd = Moment.Max(playbackBlockEnd, entryEndsAt + playbackOffset);
 
-            var enqueueDelay = playAt - now - EnqueueAheadDuration;
-            Log.LogInformation($"Entry {entry.AudioEntryId}, Delay: {enqueueDelay}");
+            var enqueueDelay = (playAt - now - EnqueueAheadDuration).Positive();
+            Log.LogInformation("+ ChatEntry #{EntryId}, Delay: {EnqueueDelay}", entry.Id.Value, enqueueDelay);
             var sw = Stopwatch.StartNew();
             await EnqueueDelay(enqueueDelay, cpuClock, cancellationToken);
             sw.Stop();
-            var actualDelay = sw.Elapsed;
+            var pauseDelay = sw.Elapsed - enqueueDelay;
             if (enqueueDelay > TimeSpan.Zero)
-                actualDelay -= enqueueDelay;
-            if (actualDelay > TimeSpan.Zero)
-                overallPauseDelay += actualDelay;
+                pauseDelay -= enqueueDelay;
+            if (pauseDelay > TimeSpan.Zero)
+                overallPauseDelay += pauseDelay;
             entryPlayer.EnqueueEntry(entry, skipTo, playAt);
         }
     }
@@ -176,30 +176,29 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         return lastShiftPosition; // return min position that we reached
     }
 
-    private async Task EnqueueDelay(TimeSpan enqueueDelay, IMomentClock cpuClock,
-        CancellationToken cancellationToken)
+    private async Task EnqueueDelay(TimeSpan delay, IMomentClock cpuClock, CancellationToken cancellationToken)
     {
         // Waits for enqueue delay.
         // If pause is activated during enqueue delay, enqueue delay is extended by the duration of the pause.
+        var cIsPaused = Playback.IsPaused.Computed;
         while (true) {
-            var isPausedChangedTask = Playback.IsPaused.Computed.WhenInvalidated(cancellationToken);
-            var isPaused = await Playback.IsPaused.Use(cancellationToken);
-            if (isPaused)
-                await isPausedChangedTask.ConfigureAwait(false); // wait for pause completion
-            else {
-                if (enqueueDelay > TimeSpan.Zero) {
-                    var sw = Stopwatch.StartNew();
-                    var delayTask = cpuClock.Delay(enqueueDelay, cancellationToken);
-                    var completedTask = await Task.WhenAny(delayTask, isPausedChangedTask).ConfigureAwait(false);
-                    await completedTask.ConfigureAwait(false);
-                    sw.Stop();
-                    var elapsed = sw.Elapsed;
-                    enqueueDelay -= elapsed;
-                }
-                else {
-                    return;
-                }
+            cIsPaused = await cIsPaused.When(x => !x, cancellationToken);
+            if (delay <= TimeSpan.Zero)
+                return;
+
+            var sw = Stopwatch.StartNew();
+            var cts = cancellationToken.CreateLinkedTokenSource();
+            try {
+                var delayTask = cpuClock.Delay(delay, cts.Token);
+                var isPausedInvalidatedTask = cIsPaused.WhenInvalidated(cts.Token);
+                await Task.WhenAny(delayTask, isPausedInvalidatedTask).ConfigureAwait(false);
             }
+            finally {
+                cts.CancelAndDisposeSilently();
+            }
+            sw.Stop();
+            var elapsed = sw.Elapsed;
+            delay -= elapsed;
         }
     }
 }

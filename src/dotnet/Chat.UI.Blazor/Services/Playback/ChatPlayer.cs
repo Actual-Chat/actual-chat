@@ -79,6 +79,7 @@ public abstract class ChatPlayer : ProcessorBase
             var chatEntryPlayer = new ChatEntryPlayer(Session, ChatId, Playback, Services, playToken);
             try {
                 await Play(chatEntryPlayer, startAt, playToken).ConfigureAwait(false);
+                await chatEntryPlayer.WhenDonePlaying().WaitAsync(playToken);
             }
             catch (Exception e) {
                 if (e is not OperationCanceledException)

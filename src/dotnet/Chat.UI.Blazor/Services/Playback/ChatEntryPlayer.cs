@@ -65,6 +65,19 @@ public sealed class ChatEntryPlayer : ProcessorBase
         }
     }
 
+    public async Task WhenDonePlaying()
+    {
+        while (true) {
+            List<Task> entryPlaybackTasks;
+            lock (Lock) {
+                if (EntryPlaybackTasks.Count == 0)
+                    return;
+                entryPlaybackTasks = EntryPlaybackTasks.ToList();
+            }
+            await Task.WhenAll(entryPlaybackTasks);
+        }
+    }
+
     public void EnqueueEntry(ChatEntry entry, TimeSpan skipTo, Moment? playAt = null)
     {
         var resultSource = TaskSource.New<Unit>(true);
