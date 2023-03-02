@@ -1,4 +1,5 @@
 @using ActualChat.Chat.UI.Blazor.Components.NewChat
+@using ActualChat.UI.Blazor.Events
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <div class="left-panel-buttons">
@@ -26,10 +27,11 @@
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     private Task OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model());
 
     private void OnLogoClick()
-        => History.NavigateTo(Links.Home);
+        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 }
