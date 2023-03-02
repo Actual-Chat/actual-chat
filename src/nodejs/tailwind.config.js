@@ -69,7 +69,6 @@ module.exports = {
         'icons-02': 'var(--icons-02)',
         'icons-03': 'var(--icons-03)',
         'icons-04': 'var(--icons-04)',
-        'error-toast-header': 'var(--error-toast-header)',
         'error-toast-body': 'var(--error-toast-body)',
         'error-toast-text': 'var(--error-toast-text)',
         'audio-message': 'var(--audio-message)',

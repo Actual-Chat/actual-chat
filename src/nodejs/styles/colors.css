@@ -23,7 +23,7 @@
     --icons-04: #FF3880;
 
     --counter: #D0D0D0;
-    --counter-navgroup: #FF7070;
+    --counter-navgroup: #FF3880;
 
     /* Buttons */
     --disabled: #E7E7E7;
@@ -126,7 +126,6 @@
     --gradient-stop-01: #FFFFFF;
     --gradient-stop-02: #EEEEEE;
 
-    --error-toast-header: #fd5757;
     --error-toast-body: #FFBFBF;
     --error-toast-text: #fafafa;
 
@@ -205,7 +204,6 @@
     --skeleton: #292B2F;
     --skeleton-border: #2F3136;
 
-    --error-toast-header: #fc3030;
     --error-toast-body: #fd5757;
     --error-toast-text: #fafafa;
 
