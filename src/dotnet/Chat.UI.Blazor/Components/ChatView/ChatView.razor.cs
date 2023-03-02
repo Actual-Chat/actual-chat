@@ -16,6 +16,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private long? _lastNavigateToEntryId;
     private long? _initialReadEntryLid;
+    private bool _itemVisibilityUpdateHasReceived;
+    private bool _doNotShowNewMessagesSeparator;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -211,8 +213,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
-        // do not render -new- section if we see the end anchor to avoid rerender
-        var unreadEntryLidStarts = ItemVisibility.Value.IsEndAnchorVisible
+        // Do not show '-new-' separator after view is scrolled to the end anchor.
+        if (!_doNotShowNewMessagesSeparator) {
+            if (_itemVisibilityUpdateHasReceived) {
+                var itemVisibility = ItemVisibility.Value;
+                if (itemVisibility.IsEndAnchorVisible) {
+                    var newMessagesSeparatorIsVisible = _initialReadEntryLid.HasValue
+                        && itemVisibility.VisibleEntryLids.Contains(_initialReadEntryLid.Value);
+                    // If user still sees '-new-' separator while they has reached the end anchor, keep separator displayed.
+                    if (!newMessagesSeparatorIsVisible)
+                        _doNotShowNewMessagesSeparator = true;
+                }
+            }
+        }
+        var unreadEntryLidStarts = _doNotShowNewMessagesSeparator
             ? int.MaxValue
             : _initialReadEntryLid;
 
@@ -280,6 +294,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
+        _itemVisibilityUpdateHasReceived = true;
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
         if (itemVisibility.ContentEquals(lastItemVisibility))
