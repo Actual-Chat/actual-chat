@@ -31,27 +31,6 @@
             </div>
         </Button>
 
-        <FileUpload
-            @key="@ModalModel.AvatarId"
-            id="fileUpload"
-            UploadUrl="@($"/api/user-avatars/{ModalModel.AvatarId}/upload-picture")"
-            Uploaded="OnImagePicked"
-            MaxSize="Constants.Chat.PictureFileSizeLimit"
-            accept="image/*"
-            hidden>
-        </FileUpload>
-
-        <Button Class="transparent border-none self-center">
-            <label for="fileUpload" class="flex-x">
-                <div class="flex min-w-10 items-center justify-center">
-                    <i class="icon-image text-xl text-primary"></i>
-                </div>
-                <div class="flex items-center text-headline-1 text-primary">
-                    Upload your photo
-                </div>
-            </label>
-        </Button>
-
         <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
         </FormSection>

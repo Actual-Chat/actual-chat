@@ -4,6 +4,9 @@
 body.hoverable .pic-upload:hover .pic-upload-picker {
     @apply visible;
 }
+body:not(.hoverable) .pic-upload .pic-upload-picker {
+    @apply visible;
+}
 
 .pic-upload-picker {
     @apply invisible absolute top-0 left-0 rounded-full;
