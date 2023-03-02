@@ -22,7 +22,7 @@ public partial class ChatAudioUI
             from chain in baseChains
             select chain
                 .RetryForever(retryDelays, Log)
-            // .LogBoundary(LogLevel.Debug, Log)
+                .LogBoundary(LogLevel.Debug, Log)
             ).RunIsolated(cancellationToken);
     }
 
@@ -106,10 +106,14 @@ public partial class ChatAudioUI
                 await foreach (var willStopAt in MonitorIdleAudio(chatId, options, cancellationToken1)
                                    .ConfigureAwait(false))
                     _stopRecordingAt.Value = willStopAt;
-                await SetRecordingChatId(default).ConfigureAwait(false);
+            }
+            catch (Exception exc) when (!cancellationToken1.IsCancellationRequested) {
+                Log.LogError(exc, "Idle recording monitoring failed");
+                throw;
             }
             finally {
                 _stopRecordingAt.Value = null;
+                await SetRecordingChatId(default).ConfigureAwait(false);
             }
         }
     }
@@ -145,9 +149,16 @@ public partial class ChatAudioUI
 
         async Task MonitorIdleListening(ChatId chatId, CancellationToken cancellationToken1)
         {
-            await foreach (var _ in MonitorIdleAudio(chatId, options, cancellationToken1).ConfigureAwait(false))
-            { }
-            await SetListeningState(chatId, false).ConfigureAwait(false);
+            try {
+                await foreach (var _ in MonitorIdleAudio(chatId, options, cancellationToken1).ConfigureAwait(false)) { }
+            }
+            catch (Exception exc) when (!cancellationToken1.IsCancellationRequested) {
+                Log.LogError(exc, "Idle listening monitoring failed");
+                throw;
+            }
+            finally {
+                await SetListeningState(chatId, false).ConfigureAwait(false);
+            }
         }
     }
 
@@ -288,6 +299,10 @@ public partial class ChatAudioUI
         return new(recordingChatId, recorderChatId, recorderError, language);
     }
 
+    /// <remarks>
+    /// Should be called only from SyncRecordingState !!!
+    /// From other places call <see cref="SetListeningState"/> and <see cref="SetRecordingChatId"/>
+    /// </remarks>
     private Task UpdateRecorderState(
         bool mustStop,
         ChatId recordingChatId,
