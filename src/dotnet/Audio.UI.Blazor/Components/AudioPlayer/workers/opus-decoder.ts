@@ -49,8 +49,8 @@ export class OpusDecoder implements AsyncDisposable {
     }
 
     public async disposeAsync(): Promise<void> {
-        this.end(true);
-        await this.processor.whenRunning;
+        this.mustAbort = true;
+        await this.processor.stop();
         this.decoder = null;
     }
 
@@ -71,23 +71,27 @@ export class OpusDecoder implements AsyncDisposable {
         this.bufferPool.release(buffer);
     }
 
-    private async process(item: Uint8Array | 'end'): Promise<void> {
+    private async process(item: Uint8Array | 'end'): Promise<boolean> {
         try {
             if (item === 'end') {
                 this.isEnded = true;
                 debugLog?.log(`#${this.streamId}.process: got 'end'`);
                 await this.feederWorklet.end(this.mustAbort);
-                return;
+
+                // do not await
+                void this.processor.stop();
+                return false;
             }
 
             if (this.isEnded)
-                return;
+                return false;
 
             // samples is the typed_memory_view to Decoder internal buffer - so you have to copy data
+            // const data = item.buffer.slice(item.byteOffset, item.byteOffset + item.byteLength);
             const typedViewSamples = this.decoder.decode(item);
             if (typedViewSamples == null || typedViewSamples.length === 0) {
                 warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);
-                return;
+                return true;
             }
 
             const samplesBuffer = this.bufferPool.get();
@@ -103,5 +107,6 @@ export class OpusDecoder implements AsyncDisposable {
         catch (e) {
             errorLog?.log(`#${this.streamId}.process: error:`, e);
         }
+        return true;
     }
 }

@@ -212,6 +212,7 @@ export class AudioPlayer {
             else {
                 this.stopReportingPlayingTo();
                 if (playbackState === 'ended') {
+                    await decoderWorker.close(this.id, rpcNoWait);
                     await this.contextRef.disposeAsync();
                     this.contextRef = null;
                     await this.reportOnEnded();

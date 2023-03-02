@@ -11,7 +11,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 {
     private bool _isPlaying;
     private bool _isPaused;
-    private IJSObjectReference _jsRef = null!;
+    private IJSObjectReference? _jsRef;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private double _offset;
@@ -108,8 +108,21 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (!_isPlaying)
             return;
-        await _jsRef.InvokeVoidAsync(_isPaused ? "resume" : "pause");
+        await _jsRef!.InvokeVoidAsync(_isPaused ? "resume" : "pause");
         _isPaused = !_isPaused;
+    }
+
+    private async Task OnDecoderLeakTestClick()
+    {
+        if (_jsRef == null) {
+            _cts = new CancellationTokenSource();
+            var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
+                _cts.Token,
+                blazorRef);
+        }
+        await _jsRef.InvokeVoidAsync("testDecoder");
     }
 
     private async Task<AudioSource> CreateAudioSource(string audioBlobUrl, CancellationToken cancellationToken)

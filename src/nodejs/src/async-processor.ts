@@ -18,7 +18,7 @@ export class AsyncProcessor<T> {
 
     constructor(
         private readonly name: string,
-        private readonly process: (item: T) => Promise<void>,
+        private readonly process: (item: T) => Promise<boolean>,
     ) {
         this.whenRunning = this.run();
     }
@@ -53,7 +53,11 @@ export class AsyncProcessor<T> {
                     if (this.mustStop)
                         return;
                     const item = this.queue.pop();
-                    await this.process(item);
+                    const shouldContinue = await this.process(item);
+                    if (!shouldContinue) {
+                        this.mustStop = true;
+                        return;
+                    }
                 }
                 await this.whenReadyToResume;
                 this.whenReadyToResume = new PromiseSource<void>();
