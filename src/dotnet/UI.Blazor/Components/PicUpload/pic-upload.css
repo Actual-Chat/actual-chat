@@ -7,7 +7,7 @@ body.hoverable .pic-upload:hover .pic-upload-picker {
 
 .pic-upload-picker {
     @apply invisible absolute top-0 left-0 rounded-full;
-    @apply rounded-full bg-gradient-to-t from-logo-01 via-logo-03 to-logo-02;
+    @apply rounded-full;
 }
 .pic-upload-picker,
 .pic-upload-picker * {
@@ -19,7 +19,6 @@ body.hoverable .pic-upload:hover .pic-upload-picker {
 }
 
 .pic-upload-drop-zone {
-    border: 2px dashed;
     @apply border-primary;
     @apply rounded-full;
 }

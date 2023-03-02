@@ -1,5 +1,6 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Chat
+@using ActualChat.UI.Blazor.Components.FileUpload
 @using Stl.CommandR.Internal
 @using Stl.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
@@ -28,6 +29,27 @@
             <div class="flex items-center text-headline-1 text-primary">
                 Generate random avatar
             </div>
+        </Button>
+
+        <FileUpload
+            @key="@ModalModel.AvatarId"
+            id="fileUpload"
+            UploadUrl="@($"/api/user-avatars/{ModalModel.AvatarId}/upload-picture")"
+            Uploaded="OnImagePicked"
+            MaxSize="Constants.Chat.PictureFileSizeLimit"
+            accept="image/*"
+            hidden>
+        </FileUpload>
+
+        <Button Class="transparent border-none self-center">
+            <label for="fileUpload" class="flex-x">
+                <div class="flex min-w-10 items-center justify-center">
+                    <i class="icon-image text-xl text-primary"></i>
+                </div>
+                <div class="flex items-center text-headline-1 text-primary">
+                    Upload your photo
+                </div>
+            </label>
         </Button>
 
         <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
