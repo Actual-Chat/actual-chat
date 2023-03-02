@@ -20,9 +20,6 @@ public static class Links
     public static LocalUrl User(UserId userId)
         => $"/u/{userId.Value.UrlEncode()}";
 
-    public static LocalUrl Settings()
-        => "/settings";
-
     public static LocalUrl Invite(string format, string inviteId)
         => string.Format(CultureInfo.InvariantCulture, format, inviteId.UrlEncode());
 
