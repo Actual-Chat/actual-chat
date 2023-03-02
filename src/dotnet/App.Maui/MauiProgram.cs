@@ -319,7 +319,9 @@ public static partial class MauiProgram
 
 #if ANDROID
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
-        services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
+        // Temporarily disabled switch between loud speaker and earpiece
+        // to have single audio channel controlled with volume buttons
+        //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
 #elif IOS
         services.AddTransient<IDeviceTokenRetriever, IosDeviceTokenRetriever>(_ => new IosDeviceTokenRetriever());
