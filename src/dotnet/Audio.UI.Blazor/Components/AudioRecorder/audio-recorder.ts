@@ -11,22 +11,17 @@ const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class AudioRecorder {
-    private readonly blazorRef: DotNet.DotNetObject;
     private readonly sessionId: string;
 
     private whenInitialized: Promise<void>;
-    private state: 'starting' | 'recording' | 'stopped' = 'stopped';
+    private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
 
-    public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
-        return new AudioRecorder(blazorRef, sessionId);
+    public static create(sessionId: string) {
+        return new AudioRecorder(sessionId);
     }
 
-    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string) {
-        this.blazorRef = blazorRef;
+    public constructor(sessionId: string) {
         this.sessionId = sessionId;
-
-        errorLog?.assert(blazorRef != null, `blazorRef == null`);
-
         this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
 
     }
@@ -69,8 +64,10 @@ export class AudioRecorder {
         await this.whenInitialized;
 
         try {
-            if (this.state === 'recording' || this.state === 'starting')
+            if (this.state === 'recording' || this.state === 'starting') {
+                warnLog?.log('startRecording: seems like server and client state are not consistent');
                 return true;
+            }
 
             this.state = 'starting';
             const isMaui = BrowserInfo.appKind == 'MauiApp';
@@ -105,17 +102,15 @@ export class AudioRecorder {
                 }
             }
 
-            const { blazorRef, sessionId } = this;
-            await opusMediaRecorder.start(sessionId, chatId);
+            await opusMediaRecorder.start(this.sessionId, chatId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')
             this.state = 'recording';
-            await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
         catch (error) {
             errorLog?.log(`startRecording: unhandled error:`, error);
-            await this.stopRecording();
+            this.state = 'failed';
             throw error;
         }
         finally {
@@ -125,16 +120,16 @@ export class AudioRecorder {
         return true;
     }
 
+    /** Called by Blazor  */
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
-
             await opusMediaRecorder.stop();
-
-            await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
         }
         catch (error) {
             errorLog?.log(`stopRecording: unhandled error:`, error);
+            this.state = 'failed';
+            throw error;
         }
         finally {
             this.state = 'stopped';
