@@ -86,8 +86,7 @@ export class OpusDecoder implements AsyncDisposable {
             if (this.isEnded)
                 return false;
 
-            // samples is the typed_memory_view to Decoder internal buffer - so you have to copy data
-            // const data = item.buffer.slice(item.byteOffset, item.byteOffset + item.byteLength);
+            // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
             const typedViewSamples = this.decoder.decode(item);
             if (typedViewSamples == null || typedViewSamples.length === 0) {
                 warnLog?.log(`#${this.streamId}.process: decoder returned empty result`);

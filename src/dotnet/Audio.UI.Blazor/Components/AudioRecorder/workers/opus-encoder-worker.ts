@@ -235,9 +235,12 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     fadeWindowIndex = null;
             }
 
-            const result = encoder.encode(buffer);
+            // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
+            const typedViewEncodedChunk = encoder.encode(buffer);
             void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
-            recordingSubject?.next(result);
+            const encodedChunk = new Uint8Array(typedViewEncodedChunk.length);
+            encodedChunk.set(typedViewEncodedChunk);
+            recordingSubject?.next(encodedChunk);
             chunkTimeOffset += 20;
         }
         if (fade === 'out') {
