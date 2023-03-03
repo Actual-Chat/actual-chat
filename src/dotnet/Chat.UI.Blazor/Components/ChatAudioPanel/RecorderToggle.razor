@@ -82,7 +82,7 @@
         }
         else {
             if (_canRecord == null) {
-                _canRecord = await AudioRecorder.CanRecord();
+                _canRecord = await AudioRecorder.RequestPermission();
                 StateHasChanged();
             }
             if (!CanRecord)
@@ -97,7 +97,7 @@
             return;
 
         if (_canRecord == null) {
-            _canRecord = await AudioRecorder.CanRecord();
+            _canRecord = await AudioRecorder.RequestPermission();
             StateHasChanged();
         }
         if (!CanRecord || IsLoading)

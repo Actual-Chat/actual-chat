@@ -31,7 +31,7 @@ export class AudioRecorder {
     }
 
     /** Called by Blazor  */
-    public async canRecord(): Promise<boolean> {
+    public async requestPermission(): Promise<boolean> {
         await this.whenInitialized;
 
         const hasMicrophone = DetectRTC.isAudioContextSupported
@@ -48,7 +48,7 @@ export class AudioRecorder {
                 this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
             }
             catch (error) {
-                errorLog?.log(`canRecord: failed to request microphone permissions`, error);
+                errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
                 return false;
             }
 
