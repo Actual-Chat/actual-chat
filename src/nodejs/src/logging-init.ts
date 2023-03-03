@@ -1,5 +1,5 @@
 // Should be the same as logging.LogLevel, but local to this module
-enum LogLevel {
+export enum LogLevel {
     Debug = 1,
     Info,
     Warn,
@@ -7,40 +7,109 @@ enum LogLevel {
     None = 1000,
 }
 
-const LogMinLevelsKey = 'logMinLevels';
+export type LogScope =
+    'default'
+    // Library
+    | 'Versioning'
+    | 'TimerQueue'
+    | 'BrowserInfo'
+    | 'Clipboard'
+    | 'Gestures'
+    | 'event-handling'
+    | 'History'
+    | 'Interactive'
+    | 'LocalSettings'
+    | 'MenuHost'
+    | 'ModalHost'
+    | 'OnDeviceAwake'
+    | 'OnDeviceAwakeWorker'
+    | 'promises'
+    | 'Rpc'
+    | 'AsyncProcessor'
+    | 'UndoStack'
+    | 'VirtualList'
+    // XxxUI
+    | 'DebugUI'
+    | 'FocusUI'
+    | 'InteractiveUI'
+    | 'KeepAwakeUI'
+    | 'NotificationUI'
+    | 'TuneUI'
+    | 'UserActivityUI'
+    | 'VibrationUI'
+    // Audio
+    | 'AudioContextRef'
+    | 'AudioContextSource'
+    | 'ChromiumEchoCancellation'
+    | 'WarmUpAudioWorkletProcessor'
+    | 'FeederProcessor'
+    | 'FeederNode'
+    | 'OpusEncoderWorker'
+    | 'OpusEncoderWorkletProcessor'
+    | 'OpusDecoder'
+    | 'OpusDecoderWorker'
+    | 'AudioPlayer'
+    | 'AudioVad'
+    | 'AudioVadWorker'
+    | 'AudioVadWorkletProcessor'
+    | 'AudioRecorder'
+    // Isolated components
+    | 'ChatMessageEditor'
+    | 'CopyTrigger'
+    | 'ImageViewer'
+    | 'Landing'
+    | 'LandingLeftMenu'
+    | 'MarkupEditor'
+    | 'PicUpload'
+    | 'SideNav'
+    | string;
+
+const GlobalThisKey = 'logLevels';
+const StorageKey = 'logLevels';
+const DateStorageKey = `${StorageKey}.date`;
+const MaxStorageAge = 86_400_000 * 3; // 3 days
+
+const app = globalThis?.['App'] as unknown;
+const isWorkerOrWorklet = !app;
 
 export function initLogging(Log: unknown): void {
-    Log['defaultMinLevel'] = LogLevel.Debug;
-    const minLevels = Log['minLevels'] as Map<string, LogLevel>;
+    Log['defaultMinLevel'] = LogLevel.Info;
+    const minLevels = Log['minLevels'] as Map<LogScope, LogLevel>;
 
     let wasRestored = false;
-    if (globalThis) {
-        globalThis[LogMinLevelsKey] = new LogMinLevels(minLevels);
+    if (globalThis && !isWorkerOrWorklet) {
+        globalThis[GlobalThisKey] = new LogLevelController(minLevels);
         wasRestored = restore(minLevels);
     }
-    if (!wasRestored)
+    if (wasRestored) {
+        console.log(`Logging: logLevels are restored`);
+    }
+    else {
+        if (!isWorkerOrWorklet)
+            console.log(`Logging: logLevels are reset`);
         reset(minLevels);
+    }
 }
 
-export class LogMinLevels {
-    constructor (private minLevels: Map<string, LogLevel>)
+class LogLevelController {
+    constructor (private minLevels: Map<LogScope, LogLevel>)
     { }
 
-    public override(scope: string, newLevel: LogLevel): void {
+    public override(scope: LogScope, newLevel: LogLevel): void {
         this.minLevels.set(scope, newLevel);
         persist(this.minLevels);
     }
 
-    public reset() {
-        reset(this.minLevels);
-        persist(this.minLevels)
+    public reset(isProduction?: boolean) {
+        reset(this.minLevels, isProduction);
+        persist(this.minLevels);
     }
 
     public clear(defaultLevel?: LogLevel) {
         this.minLevels.clear();
         if (defaultLevel !== undefined)
             this.minLevels['default'] = defaultLevel;
-        persist(this.minLevels)
+        persist(this.minLevels);
     }
 }
 
@@ -49,7 +118,13 @@ function restore(minLevels: Map<string, LogLevel>): boolean {
     if (!storage)
         return false;
 
-    const readJson = storage.getItem(LogMinLevelsKey);
+    const dateJson = storage.getItem(DateStorageKey);
+    if (!dateJson)
+        return false;
+    if (Date.now() - JSON.parse(dateJson) > MaxStorageAge)
+        return false;
+
+    const readJson = storage.getItem(StorageKey);
     if (!readJson)
         return false;
 
@@ -67,45 +142,50 @@ function persist(minLevels: Map<string, LogLevel>): boolean {
     if (!storage)
         return false;
 
-    storage.setItem(LogMinLevelsKey, JSON.stringify(Array.from(minLevels.entries())));
+    storage.setItem(DateStorageKey, JSON.stringify(Date.now()));
+    storage.setItem(StorageKey, JSON.stringify(Array.from(minLevels.entries())));
     return true;
 }
 
-function reset(minLevels: Map<string, LogLevel>): void {
-    // Bumping up levels of noisy scopes
-    minLevels.set('LongPress', LogLevel.Info);
-    minLevels.set('ScreenSize', LogLevel.Info);
-    minLevels.set('NextInteraction', LogLevel.Info);
-    minLevels.set('HistoryUI', LogLevel.Info);
-    minLevels.set('InteractiveUI', LogLevel.Info);
-    minLevels.set('TuneUI', LogLevel.Info);
-    minLevels.set('VibrationUI', LogLevel.Info);
-    minLevels.set('on-device-awake', LogLevel.Info);
-    minLevels.set('Rpc', LogLevel.Info);
-    minLevels.set('BrowserInfo', LogLevel.Info);
-    minLevels.set('LocalSettings', LogLevel.Info);
-    minLevels.set('UndoStack', LogLevel.Info);
-    minLevels.set('MarkupEditor', LogLevel.Info);
-    minLevels.set('ChatMessageEditor', LogLevel.Info);
-    minLevels.set('WarmUpAudioWorkletProcessor', LogLevel.Info);
-    minLevels.set('FeederProcessor', LogLevel.Info);
-    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Info);
-    minLevels.set('OpusDecoder', LogLevel.Info);
-    minLevels.set('OpusDecoderWorker', LogLevel.Info);
-    minLevels.set('AudioPlayerController', LogLevel.Info);
-    minLevels.set('AudioPlayer', LogLevel.Info);
-    minLevels.set('UserActivityUI', LogLevel.Info);
-    minLevels.set('VirtualList', LogLevel.Info);
-    minLevels.set('MenuHost', LogLevel.Info);
+function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void {
+    minLevels.clear();
+    isProduction ??= app?.['environment'] == 'Production';
+    if (isProduction)
+        return;
 
     // Bumping down levels of in-dev scopes
-    minLevels.set('AudioContextLazy', LogLevel.Debug);
+    // minLevels.set('Versioning', LogLevel.Debug);
+    // minLevels.set('Gestures', LogLevel.Debug);
+    // minLevels.set('event-handling', LogLevel.Debug);
+    // minLevels.set('Rpc', LogLevel.Debug);
+    // minLevels.set('AsyncProcessor', LogLevel.Debug);
+    minLevels.set('Interactive', LogLevel.Debug);
+    minLevels.set('OnDeviceAwake', LogLevel.Debug);
+    minLevels.set('AudioContextRef', LogLevel.Debug);
+    minLevels.set('AudioContextSource', LogLevel.Debug);
+    minLevels.set('AudioPlayer', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
-    minLevels.set('Landing', LogLevel.Debug);
-    // minLevels.set('TuneUI', LogLevel.Debug);
+    // minLevels.set('OpusDecoder', LogLevel.Debug);
+    // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
+    // minLevels.set('FeederProcessor', LogLevel.Debug);
+    // minLevels.set('OpusMediaRecorder', LogLevel.Debug);
+    // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
+    // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('AudioVad', LogLevel.Debug);
+    // minLevels.set('AudioVadWorker', LogLevel.Debug);
+    // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('History', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);
-    // minLevels.set('HistoryUI', LogLevel.Debug);
+    // minLevels.set('MarkupEditor', LogLevel.Debug);
+    // minLevels.set('ChatMessageEditor', LogLevel.Debug);
+    minLevels.set('Landing', LogLevel.Debug);
+    minLevels.set('LandingLeftMenu', LogLevel.Debug);
+
+    // XxxUI
+    // minLevels.set('FocusUI', LogLevel.Debug);
+    // minLevels.set('KeepAwakeUI', LogLevel.Debug);
+    minLevels.set('NotificationUI', LogLevel.Debug);
+    // minLevels.set('TuneUI', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);

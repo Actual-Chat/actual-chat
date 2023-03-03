@@ -2,8 +2,6 @@ namespace ActualChat.Audio.UI.Blazor.Components;
 
 public interface IAudioPlayerBackend
 {
-    Task OnChangeReadiness(bool isBufferReady);
-    Task OnPlayEnded(string? errorMessage);
-    Task OnPlayTimeChanged(double offset);
-    Task OnPausedAt(double offset);
+    Task OnPlaying(double offset, bool isPaused, bool isBufferLow);
+    Task OnEnded(string? errorMessage);
 }

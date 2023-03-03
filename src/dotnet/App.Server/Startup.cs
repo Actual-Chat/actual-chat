@@ -1,5 +1,6 @@
 using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -25,10 +26,29 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddScoped<TracerProvider>(_ => new CircuitTracerProvider());
+
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.AddConsole();
+            var devLogPath = Environment.GetEnvironmentVariable("DevLog");
+            if (!devLogPath.IsNullOrEmpty())
+                logging.AddFile(
+                    devLogPath,
+                    LogLevel.Debug,
+                    new Dictionary<string, LogLevel>(StringComparer.Ordinal) {
+                        { "ActualChat", LogLevel.Debug },
+                        { "Microsoft", LogLevel.Warning },
+                        // { "Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Debug },
+                        // { "Microsoft.AspNetCore.Components", LogLevel.Debug },
+                        { "Stl", LogLevel.Warning },
+                        { "Stl.Fusion", LogLevel.Information },
+                    },
+                    retainedFileCountLimit: 1,
+                    outputTemplate: "{Timestamp:mm:ss.fff} {Level:u3}-{SourceContext} {Message}{NewLine}{Exception}"
+                    );
+
 #pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
 #pragma warning restore IL2026

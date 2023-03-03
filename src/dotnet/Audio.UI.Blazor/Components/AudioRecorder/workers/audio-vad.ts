@@ -1,29 +1,13 @@
 import * as ort from 'onnxruntime-web';
 import { ExponentialMovingAverage } from './streamed-moving-average';
-import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
-import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
-import wasmSimdPath from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
-import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
+import wasm from 'onnxruntime-web/dist/ort-wasm.wasm';
+import wasmThreaded from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
+import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
+import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
+import { Versioning } from 'versioning';
 
-const LogScope = 'AudioVad';
-
-export type VoiceActivityKind = 'start' | 'end';
-
-export interface VoiceActivityChanged {
-    kind: VoiceActivityKind;
-    offset: number;
-    duration?: number;
-    speechProb: number;
-}
-
-export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate = SAMPLE_RATE): VoiceActivityChanged {
-    return {
-        kind: event.kind,
-        offset: event.offset / sampleRate,
-        speechProb: event.speechProb,
-        duration: event.duration === null ? null : event.duration / sampleRate
-    };
-}
+import { LogScope } from 'logging';
+const LogScope: LogScope = 'AudioVad';
 
 const SAMPLE_RATE = 16000;
 const MIN_SILENCE_SAMPLES = 8000; // 500ms
@@ -31,6 +15,24 @@ const MIN_SPEECH_SAMPLES = 8000; // 500ms
 const MAX_SPEECH_SAMPLES = 16000 * 60 * 2; // 2m
 const PAD_SAMPLES = 512;
 const SAMPLES_PER_WINDOW = 512; // 32ms
+
+export type VoiceActivityKind = 'start' | 'end';
+
+export interface VoiceActivityChange {
+    kind: VoiceActivityKind;
+    offset: number;
+    duration?: number;
+    speechProb: number;
+}
+
+export function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate = SAMPLE_RATE): VoiceActivityChange {
+    return {
+        kind: event.kind,
+        offset: event.offset / sampleRate,
+        speechProb: event.speechProb,
+        duration: event.duration === null ? null : event.duration / sampleRate
+    };
+}
 
 export class VoiceActivityDetector {
     private readonly modelUri: URL;
@@ -40,7 +42,7 @@ export class VoiceActivityDetector {
 
     private session: ort.InferenceSession = null;
     private sampleCount = 0;
-    private lastActivityEvent: VoiceActivityChanged;
+    private lastActivityEvent: VoiceActivityChange;
     private endOffset?: number = null;
     private speechSteps = 0;
     private speechProbabilities: StreamedMedian | null = null;
@@ -48,7 +50,6 @@ export class VoiceActivityDetector {
     private endResetCounter: number = 0;
     private h0: ort.Tensor;
     private c0: ort.Tensor;
-
 
     constructor(modelUri: URL) {
         this.modelUri = modelUri;
@@ -62,17 +63,22 @@ export class VoiceActivityDetector {
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
         this.c0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
 
+        const wasmPath = Versioning.mapPath(wasm);
+        const wasmThreadedPath = Versioning.mapPath(wasmThreaded);
+        const wasmSimdPath = Versioning.mapPath(wasmSimd);
+        const wasmSimdThreadedPath = Versioning.mapPath(wasmSimdThreaded);
+
         ort.env.wasm.numThreads = 4;
         ort.env.wasm.simd = true;
         ort.env.wasm.wasmPaths = {
-            'ort-wasm.wasm': wasmPath as string,
-            'ort-wasm-threaded.wasm': wasmThreadedPath as string,
-            'ort-wasm-simd.wasm': wasmSimdPath as string,
-            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath as string,
+            'ort-wasm.wasm': wasmPath,
+            'ort-wasm-threaded.wasm': wasmThreadedPath,
+            'ort-wasm-simd.wasm': wasmSimdPath,
+            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
         };
     }
 
-    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged | null> {
+    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | null> {
         const { movingAverages, speechBoundaries, h0, c0 } = this;
         if (this.session == null) {
             // skip processing until initialized
@@ -84,13 +90,15 @@ export class VoiceActivityDetector {
         }
 
         const tensor = new ort.Tensor(monoPcm, [1, SAMPLES_PER_WINDOW]);
-        const feeds = { input: tensor, h0: h0, c0: c0 };
+        const srArray = new BigInt64Array(1).fill(BigInt(16000));
+        const sr = new ort.Tensor(srArray);
+        const feeds = { input: tensor, h: h0, c: c0, sr: sr };
         const result = await this.session.run(feeds);
         const { output, hn, cn } = result;
         this.h0 = hn;
         this.c0 = cn;
 
-        const prob: number = output.data[1] as number;
+        const prob: number = output.data[0] as number;
         const avgProb = movingAverages.append(prob);
         const longAvgProb = this.longMovingAverages.append(prob);
         let currentEvent = this.lastActivityEvent;

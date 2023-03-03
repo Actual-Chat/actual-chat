@@ -14,14 +14,29 @@
     }
     <ChatMenuPin/>
     <ChatMenuListen/>
+    @if (_listKind == ChatListKind.Active && !m.IsSelected) {
+        <ChatMenuRemoveFromActiveChats/>
+    }
     @if (rules.CanLeave()) {
         <ChatMenuLeave/>
     }
 </CascadingValue>
 
 @code{
+    private ChatId _chatId;
+    private ChatListKind _listKind;
+
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sChatId, var sListKind ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = new ChatId(sChatId);
+        _listKind = Enum.Parse<ChatListKind>(sListKind);
+        await base.OnParametersSetAsync();
+    }
+
     protected override Task<ChatState?> ComputeState(CancellationToken cancellationToken)
-        => ChatUI.GetState(new ChatId(Arguments[0]), false, cancellationToken);
+        => ChatUI.GetState(_chatId, false, cancellationToken);
 }

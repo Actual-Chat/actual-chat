@@ -16,21 +16,20 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
-        var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
-        if (!isServerSideBlazor) {
-            services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
-            services.ConfigureUILifetimeEvents(events => {
-                events.OnAppInitialized += c => {
-                    var signOutReloader = c.GetRequiredService<SignOutReloader>();
-                    signOutReloader.Start();
-                };
-            });
-        }
+
+        services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
+        services.ConfigureUILifetimeEvents(events => {
+            events.OnAppInitialized += c => {
+                var signOutReloader = c.GetRequiredService<SignOutReloader>();
+                signOutReloader.Start();
+            };
+        });
 
         var fusion = services.AddFusion();
-        fusion.AddComputeService<AppPresenceReporter>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<AppPresenceReporter.Worker>(ServiceLifetime.Transient);
+        services.AddScoped<AppPresenceReporter>();
         services.AddSingleton(_ => new AppPresenceReporter.Options {
             AwayTimeout = Constants.Presence.AwayTimeout,
         });

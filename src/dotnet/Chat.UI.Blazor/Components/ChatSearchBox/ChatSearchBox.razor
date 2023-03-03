@@ -3,20 +3,20 @@
 @if (_isCollapsed == true) {
     <ButtonRound
         Click="OnExpandClick"
-        Class="transparent"
+        Class="btn-md transparent"
         Tooltip="@Placeholder"
-        FloatingPosition="FloatingPosition.Bottom">
+        TooltipPosition="FloatingPosition.Bottom">
         <i class="icon-search text-2xl"></i>
     </ButtonRound>
 } else {
     <div class="@Class chat-search-box">
         <label>
             <ButtonRound
-                Class="search-button"
+                Class="btn-md search-button"
                 Click="OnSearchButtonClick"
                 IsDisabled="!CanBeTriggered"
                 Tooltip="@Placeholder"
-                FloatingPosition="FloatingPosition.Bottom">
+                TooltipPosition="FloatingPosition.Bottom">
                 <i class="icon-search text-2xl font-medium"></i>
             </ButtonRound>
             <TextInput
@@ -38,7 +38,7 @@
                         Class="cancel-button"
                         Click="@Cancel"
                         Tooltip="Close"
-                        FloatingPosition="FloatingPosition.Bottom">
+                        TooltipPosition="FloatingPosition.Bottom">
                         <i class="icon-close text-2xl"></i>
                     </ButtonRound>
                 }
@@ -55,16 +55,16 @@
     private bool _isBusy;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public EventCallback<string> TextChanged { get; set; }
-    [Parameter] public EventCallback<string> Triggered { get; set; }
-    [Parameter] public EventCallback Cancelled { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public bool IsCollapsed { get; set; }
     [Parameter] public bool ShowSpinner { get; set; }
     [Parameter] public bool ShowClose{ get; set; }
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
     [Parameter] public string TabIndex { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<string> Triggered { get; set; }
+    [Parameter] public EventCallback Cancelled { get; set; }
 
     private bool CanBeTriggered => !_isBusy && !_text.IsNullOrEmpty();
 

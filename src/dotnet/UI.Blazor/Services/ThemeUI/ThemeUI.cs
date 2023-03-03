@@ -1,59 +1,76 @@
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Module;
-using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public enum Theme { Light, Dark }
-
 public class ThemeUI : WorkerBase
 {
-    private Theme _lastTheme = default;
-    private AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
+    private readonly ISyncedState<ThemeSettings> _settings;
+    private Theme _appliedTheme = Theme.Light;
 
     private ILogger Log { get; }
+    private HostInfo HostInfo { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
+    private Tracer Tracer { get; }
 
-    public ISyncedState<Theme> Theme { get; }
+    public IState<ThemeSettings> Settings => _settings;
+    public Theme Theme {
+        get => _settings.Value.Theme;
+        set => _settings.Value = new ThemeSettings(value);
+    }
+    public Task WhenReady { get; }
 
     public ThemeUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Tracer = services.Tracer(GetType());
+        HostInfo = services.GetRequiredService<HostInfo>();
         Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.AccountSettings().WithPrefix(nameof(ThemeUI));
-        Theme = stateFactory.NewKvasSynced<Theme>(
-            new(accountSettings, nameof(Theme)) {
-                InitialValue = default,
-                Corrector = FixTheme,
+        _settings = stateFactory.NewKvasSynced<ThemeSettings>(
+            new(accountSettings, nameof(ThemeSettings)) {
+                InitialValue = new ThemeSettings(Theme.Light),
+                UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
+        WhenReady = TaskSource.New<Unit>(true).Task;
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        await foreach (var cTheme in Theme.Changes(FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false))
-            await ApplyTheme(cTheme.Value);
+        Tracer.Point("RunInternal");
+        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+        Tracer.Point("WhenFirstTimeRead");
+        await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
+            await ApplyTheme(cTheme.Value.Theme);
     }
 
-    public async ValueTask ApplyTheme(Theme theme)
+    private Task ApplyTheme(Theme theme)
     {
-        using var _ = await _asyncLock.Lock().ConfigureAwait(false);
-        if (_lastTheme == theme)
-            return;
-        try {
-            await Dispatcher.InvokeAsync(
-                () => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString()).AsTask()
-                ).ConfigureAwait(false);
-            _lastTheme = theme;
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Failed to apply the new theme");
-        }
-    }
+        Tracer.Point("ApplyTheme");
+        return Dispatcher.InvokeAsync(async () => {
+            Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");
+            if (!WhenReady.IsCompleted)
+                TaskSource.For((Task<Unit>)WhenReady).TrySetResult(default);
 
-    private ValueTask<Theme> FixTheme(Theme theme, CancellationToken cancellationToken)
-        => ValueTask.FromResult(Enum.IsDefined(theme) ? theme : default);
+            if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
+                return;
+            if (_appliedTheme == theme)
+                return;
+
+            _appliedTheme = theme;
+            try {
+                using var _ = Tracer.Region("ThemeUI.ApplyTheme - JS call");
+                await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "Failed to apply the new theme");
+            }
+        });
+    }
 }

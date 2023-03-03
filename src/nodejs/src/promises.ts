@@ -1,36 +1,19 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
+import { Disposable } from 'disposable';
+import { Resettable } from 'resettable';
 
-const LogScope = 'promises';
+const LogScope: LogScope = 'promises';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
+const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
+
+export class TimedOut {
+    public static readonly instance: TimedOut = new TimedOut();
+}
 
 export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj['then'] === 'function';
-}
-
-export class AsyncLock {
-    private _promise: Promise<Unit>;
-
-    constructor () {
-        this._promise = Promise.resolve(Unit.Instance);
-    }
-
-    public async lock<T>(job: () => Promise<T>): Promise<T> {
-        await this._promise;
-        const task = new PromiseSource<Unit>();
-        this._promise = task;
-        try {
-            return await job();
-        }
-        finally {
-            task.resolve(Unit.Instance);
-        }
-    }
-}
-
-class Unit {
-    static readonly Instance = new Unit();
 }
 
 export class PromiseSource<T> implements Promise<T> {
@@ -38,75 +21,34 @@ export class PromiseSource<T> implements Promise<T> {
     public reject: (any) => void;
 
     private readonly _promise: Promise<T>;
-    private _timeout: Timeout = null;
     private _isCompleted = false;
 
-    constructor() {
+    constructor(resolve?: ((value: T) => void), reject?: ((reason?: unknown) => void)) {
         this._promise = new Promise<T>((resolve1, reject1) => {
             this.resolve = (value: T) => {
                 if (this._isCompleted)
                     return;
+
                 this._isCompleted = true;
-                this.clearTimeout();
                 resolve1(value);
+                if (resolve)
+                    resolve(value);
             };
             this.reject = (reason: unknown) => {
                 if (this._isCompleted)
                     return;
+
                 this._isCompleted = true;
-                this.clearTimeout();
                 reject1(reason);
+                if (reject)
+                    reject(reason);
             };
         })
         this[Symbol.toStringTag] = this._promise[Symbol.toStringTag];
     }
 
-    public isResolved(): boolean {
-        return this._isCompleted;
-    }
-
     public isCompleted(): boolean {
         return this._isCompleted;
-    }
-
-    public setTimeout(timeoutMs: number | null, callback?: () => unknown): void {
-        this.clearTimeout();
-        if (timeoutMs == null)
-            return;
-
-        this._timeout = new Timeout(timeoutMs, () => {
-            this._timeout = null;
-            if (callback != null)
-                callback();
-            else {
-                const error = new Error('The promise has timed out.');
-                this.reject(error);
-            }
-        })
-    }
-
-    public setPreciseTimeout(timeoutMs: number | null, callback?: () => unknown): void {
-        this.clearTimeout();
-        if (timeoutMs == null)
-            return;
-
-        this._timeout = new PreciseTimeout(timeoutMs, () => {
-            this._timeout = null;
-            if (callback != null)
-                callback();
-            else {
-                const error = new Error('The promise has timed out.');
-                this.reject(error);
-            }
-        })
-    }
-
-    public clearTimeout(): void {
-        if (this._timeout == null)
-            return;
-
-        this._timeout.clear();
-        this._timeout = null;
     }
 
     // PromiseLike<T> implementation
@@ -131,25 +73,109 @@ export class PromiseSource<T> implements Promise<T> {
     }
 }
 
-// Precise timeout (~ 8-16ms or so?) based on requestAnimationFrame
+export class PromiseSourceWithTimeout<T> extends PromiseSource<T> {
+    private _timeout: Timeout = null;
+
+    constructor(resolve?: ((value: T) => void), reject?: ((reason?: unknown) => void)) {
+        super((value: T) => {
+            this.clearTimeout();
+            if (resolve)
+                resolve(value);
+        }, (reason: unknown) => {
+            this.clearTimeout();
+            if (reject)
+                reject(reason);
+        });
+    }
+
+    public hasTimeout(): boolean {
+        return this._timeout != null;
+    }
+
+    public setTimeout(timeoutMs: number | null, callback?: () => unknown): void {
+        if (this._timeout) {
+            this._timeout.clear();
+            this._timeout = null;
+        }
+        if (timeoutMs == null || this.isCompleted())
+            return;
+
+        this._timeout = new Timeout(timeoutMs, () => {
+            this._timeout = null;
+            if (callback != null)
+                callback();
+            else {
+                const error = new Error('The promise has timed out.');
+                this.reject(error);
+            }
+        })
+    }
+
+    public setPreciseTimeout(timeoutMs: number | null, callback?: () => unknown): void {
+        if (this._timeout) {
+            this._timeout.clear();
+            this._timeout = null;
+        }
+        if (timeoutMs == null || this.isCompleted())
+            return;
+
+        this._timeout = new PreciseTimeout(timeoutMs, () => {
+            this._timeout = null;
+            if (callback != null)
+                callback();
+            else {
+                const error = new Error('The promise has timed out.');
+                this.reject(error);
+            }
+        })
+    }
+
+    public clearTimeout(): void {
+        if (this._timeout == null)
+            return;
+
+        this._timeout.clear();
+        this._timeout = null;
+    }
+}
+
+// Cancellation
+
+export type Cancelled = symbol;
+export const cancelled : Cancelled = Symbol('Cancelled');
+export class OperationCancelledError extends Error {
+    constructor(message?: string) {
+        super(message ?? 'The operation is cancelled.');
+    }
+}
+
+export async function waitAsync<T>(promise: PromiseLike<T>, cancel?: Promise<Cancelled>): Promise<T> {
+    if (cancel === undefined)
+        return await promise;
+
+    const result = await Promise.race([promise, cancel]);
+    if (result === cancelled)
+        throw new OperationCancelledError();
+    return await promise;
+}
 
 // Async versions of setTimeout
 
-export function delayAsync(delayMs: number): PromiseSource<void> {
-    const promise = new PromiseSource<void>();
+export function delayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
+    const promise = new PromiseSourceWithTimeout<void>();
     promise.setTimeout(delayMs, () => promise.resolve(undefined))
     return promise;
 }
 
-export function preciseDelayAsync(delayMs: number): PromiseSource<void> {
-    const promise = new PromiseSource<void>();
+export function preciseDelayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
+    const promise = new PromiseSourceWithTimeout<void>();
     promise.setPreciseTimeout(delayMs, () => promise.resolve(undefined))
     return promise;
 }
 
-export function flexibleDelayAsync(getNextTimeout: () => number): PromiseSource<void> {
+export function flexibleDelayAsync(getNextTimeout: () => number): PromiseSourceWithTimeout<void> {
     // eslint-disable-next-line no-constant-condition
-    const promise = new PromiseSource<void>();
+    const promise = new PromiseSourceWithTimeout<void>();
     const timeoutHandler = () => {
         const timeout = getNextTimeout();
         if (timeout <= 0)
@@ -179,7 +205,7 @@ class Call<T extends (...args: unknown[]) => unknown> {
         return this.func.apply(this.self, this.parameters);
     }
 
-    public invokeSafely(): unknown {
+    public invokeSilently(): unknown {
         try {
             return this.invoke();
         }
@@ -193,96 +219,147 @@ export type ThrottleMode = 'default' | 'skip' | 'delayHead';
 
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
-    interval: number,
-    mode: ThrottleMode = 'default'
+    intervalMs: number,
+    mode: ThrottleMode = 'default',
+    name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
-    let lastFireTime = 0;
+    let nextFireTime = 0;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
-    const reset = (mustClearTimeout: boolean, newLastFireTime: number) => {
-        if (mustClearTimeout && timeoutHandle !== null)
+    const reset = () => {
+        if (timeoutHandle !== null)
             clearTimeout(timeoutHandle);
         timeoutHandle = lastCall = null;
-        lastFireTime = newLastFireTime;
+        nextFireTime = 0;
     }
 
-    const getFireDelay = () => Math.max(0, lastFireTime + interval - Date.now());
-
     const fire = () => {
-        const call = lastCall;
-        reset(false, Date.now());
-        call?.invoke(); // We need to do this at the very end
+        if (timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+        nextFireTime = 0;
+        if (lastCall !== null) {
+            if (name)
+                debugLog?.log(`throttle '${name}': fire`);
+            const call = lastCall;
+            lastCall = null;
+            call?.invokeSilently(); // This must be done at last
+        }
+        else {
+            if (name)
+                debugLog?.log(`throttle '${name}': delay ended`);
+        }
     };
 
     const result: ResettableFunc<T> = function(...callArgs: Parameters<T>): void {
-        lastCall = new Call<T>(func, this, callArgs);
-        if (timeoutHandle !== null)
-            return;
-
-        if (mode === 'delayHead') {
-            lastFireTime = Date.now();
-            timeoutHandle = setTimeout(fire, getFireDelay());
-            return;
+        const call = new Call<T>(func, this, callArgs);
+        const fireDelay = nextFireTime - Date.now();
+        if (timeoutHandle !== null && fireDelay <= 0) {
+            // Our delayed "fire" is ready to fire but not fired yet,
+            // so we "flush" it here.
+            fire();
         }
 
-        const fireDelay = getFireDelay();
-        if (fireDelay > 0) {
-            if (mode !== 'skip')
-                timeoutHandle = setTimeout(fire, fireDelay);
-            return;
+        if (timeoutHandle === null) {
+            // lastCall is null here
+            if (mode === 'delayHead') {
+                if (name)
+                    debugLog?.log(`throttle '${name}': delaying head call`);
+                lastCall = call;
+            } else {
+                if (name)
+                    debugLog?.log(`throttle '${name}': fire (head call)`);
+                call?.invokeSilently();
+            }
+            nextFireTime = Date.now() + intervalMs;
+            timeoutHandle = setTimeout(fire, intervalMs);
+        } else {
+            // timeoutHandle !== null, so all we need to do here is to update lastCall
+            if (name)
+                debugLog?.log(`throttle '${name}': throttling, remaining delay = ${fireDelay}ms`);
+            if (mode !== 'skip') // i.e. default or delayHead
+                lastCall = call;
         }
-
-        fire(); // We need to do this at the very end
     }
-    result.reset = () => reset(true, 0);
+    result.reset = reset;
     return result;
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
-    interval: number,
+    intervalMs: number,
     debounceHead = false,
+    name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
-    let lastCallTime = 0;
-    let timeoutPromise: PromiseSource<void> | null = null;
+    let nextFireTime = 0;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
-    const reset = (newLastCallTime: number) => {
-        timeoutPromise?.clearTimeout();
-        timeoutPromise = lastCall = null;
-        lastCallTime = newLastCallTime;
+    const reset = () => {
+        if (timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        timeoutHandle = lastCall = null;
+        nextFireTime = 0;
     }
 
-    const getFireDelay = () => Math.max(0, lastCallTime + interval - Date.now());
-
     const fire = () => {
-        const call = lastCall;
-        reset(lastCallTime);
-        call?.invoke(); // We need to do this at the very end
+        if (timeoutHandle !== null)
+            clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+        nextFireTime = 0;
+        if (lastCall !== null) {
+            if (name)
+                debugLog?.log(`debounce '${name}': fire`);
+            const call = lastCall;
+            lastCall = null;
+            call?.invokeSilently(); // This must be done at last
+        }
+        else {
+            if (name)
+                debugLog?.log(`debounce '${name}': delay ended`);
+        }
     };
 
     const result: ResettableFunc<T> = function(...callArgs: Parameters<T>): void {
-        const isHead = getFireDelay() == 0;
-        lastCall = new Call<T>(func, this, callArgs);
-        lastCallTime = Date.now();
-        if (timeoutPromise !== null)
-            return;
-
-        if (debounceHead || !isHead) {
-            timeoutPromise = flexibleDelayAsync(getFireDelay);
-            void timeoutPromise.then(fire);
-            return;
+        const call = new Call<T>(func, this, callArgs);
+        const fireDelay = nextFireTime - Date.now();
+        if (timeoutHandle !== null && fireDelay <= 0) {
+            // Our delayed "fire" is ready to fire but not fired yet,
+            // so we "flush" it here.
+            fire();
         }
 
-        fire(); // We need to do this at the very end
+        if (timeoutHandle === null) {
+            // lastCall is null here
+            if (debounceHead) {
+                if (name)
+                    debugLog?.log(`debounce '${name}': debouncing head call`);
+                lastCall = call;
+            } else {
+                if (name)
+                    debugLog?.log(`debounce '${name}': fire (head call)`);
+                call?.invokeSilently();
+            }
+            nextFireTime = Date.now() + intervalMs;
+            timeoutHandle = setTimeout(fire, intervalMs);
+        } else {
+            // timeoutHandle !== null, so all we need to do here is to update lastCall
+            if (name)
+                debugLog?.log(`debounce '${name}': debouncing`);
+            lastCall = call;
+            clearTimeout(timeoutHandle);
+            timeoutHandle = setTimeout(fire, intervalMs);
+        }
     };
-    result.reset = () => reset(0);
+    result.reset = reset;
     return result;
 }
 
-export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>, TResult>(
-    func: (...args: Parameters<T>) => PromiseLike<TResult>,
+// Serialize
+
+export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult> | TResult, TResult>(
+    func: (...args: Parameters<T>) => PromiseLike<TResult> | TResult,
     limit: number | null = null
 ): (...sArgs: Parameters<T>) => Promise<TResult> {
     let lastCall: Promise<TResult> = Promise.resolve(null as TResult);
@@ -291,6 +368,7 @@ export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>
     return function(...callArgs: Parameters<T>): Promise<TResult> {
         if (limit != null && queueSize >= limit)
             return lastCall;
+
         queueSize++;
         const prevCall = lastCall;
         return lastCall = (async () => {
@@ -303,4 +381,130 @@ export function serialize<T extends (...args: unknown[]) => PromiseLike<TResult>
             }
         })();
     }
+}
+
+// Retry & catchErrors
+
+type RetryDelaySeq = (tryIndex: number) => number;
+const defaultRetryDelays: RetryDelaySeq = () => 50;
+
+export async function retryForever<TResult>(
+    fn: (tryIndex: number, lastError: unknown) => PromiseLike<TResult> | TResult,
+    retryDelays?: RetryDelaySeq,
+) : Promise<TResult> {
+    retryDelays ??= defaultRetryDelays;
+    let lastError: unknown = undefined;
+    for (let tryIndex = 0;;) {
+        try {
+            return await fn(tryIndex, lastError);
+        }
+        catch (e) {
+            lastError = e;
+        }
+        ++tryIndex;
+        warnLog?.log(`retry(${tryIndex}): error:`, lastError);
+        await delayAsync(retryDelays(tryIndex));
+    }
+}
+
+export async function retry<TResult>(
+    tryCount: number,
+    fn: (tryIndex: number, lastError: unknown) => PromiseLike<TResult> | TResult,
+    retryDelays?: RetryDelaySeq,
+) : Promise<TResult> {
+    retryDelays ??= defaultRetryDelays;
+    let lastError: unknown = undefined;
+    for (let tryIndex = 0;;) {
+        if (tryIndex >= tryCount)
+            throw lastError;
+
+        try {
+            return await fn(tryIndex, lastError);
+        }
+        catch (e) {
+            lastError = e;
+        }
+        ++tryIndex;
+        warnLog?.log(`retry(${tryIndex}/${tryCount}): error:`, lastError);
+        await delayAsync(retryDelays(tryIndex));
+    }
+}
+
+export async function catchErrors<TResult>(
+    fn: () => PromiseLike<TResult> | TResult,
+    onError?: (e: unknown) => TResult,
+) : Promise<TResult> {
+    try {
+        return await fn();
+    }
+    catch (e) {
+        return onError ? onError(e) : undefined;
+    }
+}
+
+export class AsyncLockReleaser implements Disposable {
+    private readonly _whenReleased: PromiseSource<void>;
+    constructor(public readonly asyncLock: AsyncLock) {
+        if (asyncLock.releaser != null)
+            throw new Error(`${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`);
+
+        asyncLock.releaser = this;
+        this._whenReleased = new PromiseSource<void>(
+            () => {
+                if (asyncLock.releaser != this)
+                    throw new Error(`${LogScope}.AsyncLockReleaser is associated with another releaser.`);
+
+                asyncLock.releaser = null;
+                return;
+            },
+            () => `${LogScope}.AsyncLockReleaser.released cannot be rejected.`);
+    }
+
+    public whenReleased(): Promise<void> {
+        return this._whenReleased;
+    }
+
+    dispose(): void {
+        this._whenReleased.resolve(undefined);
+    }
+}
+
+export class AsyncLock {
+    public releaser: AsyncLockReleaser = null;
+
+    public async lock(): Promise<AsyncLockReleaser> {
+        if (this.releaser != null)
+            await this.releaser.whenReleased();
+        return new AsyncLockReleaser(this);
+    }
+}
+
+export class ResolvedPromise {
+    public static readonly Void = new PromiseSource<void>();
+    public static readonly True = new PromiseSource<boolean>();
+    public static readonly False = new PromiseSource<boolean>();
+}
+ResolvedPromise.Void.resolve(undefined);
+ResolvedPromise.True.resolve(true);
+ResolvedPromise.False.resolve(false);
+
+// Self-test - we don't want to run it in workers & worklets
+const mustRunSelfTest = debugLog != null && globalThis['focus'];
+if (mustRunSelfTest) {
+    const testLog = errorLog;
+    if (!testLog)
+        throw new Error('testLog == null');
+    void (async () => {
+        const c = new PromiseSource<Cancelled>();
+        const p = waitAsync(delayAsync(1000), c);
+        c.resolve(cancelled);
+        try {
+            await p;
+            throw new Error('Failed!');
+        }
+        catch (e) {
+            if (!(e instanceof OperationCancelledError))
+                throw e;
+        }
+    })();
 }

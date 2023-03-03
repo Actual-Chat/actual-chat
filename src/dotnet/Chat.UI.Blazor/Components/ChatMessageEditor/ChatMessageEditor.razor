@@ -31,10 +31,12 @@
             RemoveClick="@(a => RemoveAttachment(a))"
             ClearClick="@(_ => ClearAttachments())"
             PostClick="@(_ => Post())"/>
-        <RelatedChatEntryPanel />
-        <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:px-3 md:py-2 gap-x-2.5">
+        @if (ScreenSize.IsWide()) {
+            <RelatedChatEntryPanel/>
+        }
+        <div class="flex-none flex-x justify-items-stretch items-stretch p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="post-panel-wrapper">
-                <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
+                <div class="flex-x py-1 md:py-0 bg-07 md:bg-01">
                     <div class="post-panel flex-auto">
                         <div class="flex-x attach-dropdown">
                             <ButtonRound Class="attach-btn">
@@ -61,11 +63,14 @@
                                 @onmousedown:preventDefault="true">
                             <i class="icon-paper-plane text-2xl"></i>
                         </button>
-                        <NotifyCallPanel @ref="NotifyCallPanelRef" Class="flex-1"/>
+                        <NotifyCallPanel @ref="NotifyCallPanelRef" />
                     </div>
                 </div>
                 @if (ScreenSize.IsNarrow()) {
-                    <ChatAudioPanel/>
+                    <RelatedChatEntryPanel/>
+                    <div class="audio-panel-wrapper">
+                        <ChatAudioPanel/>
+                    </div>
                 }
             </div>
             @if (ScreenSize.IsWide()) {
@@ -88,7 +93,7 @@
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
-    private SyncedStateLease<long?>? ReadState { get; set; } = null!;
+    private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -96,6 +101,7 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -111,8 +117,8 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-        ReadState?.DisposeSilently();
-        ReadState = null!;
+        ReadPositionState?.DisposeSilently();
+        ReadPositionState = null!;
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -122,9 +128,9 @@
             return;
 
         ChatMarkupHub = ChatMarkupHubFactory[chatId];
-        ReadState.DisposeSilently();
-        ReadState = null;
-        ReadState = await ChatUI.LeaseReadState(chatId, default);
+        ReadPositionState.DisposeSilently();
+        ReadPositionState = null;
+        ReadPositionState = await ChatUI.LeaseReadPositionState(chatId, default);
 
         if (JSRef != null!) {
             // Only when rendered
@@ -173,31 +179,31 @@
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
             ChatUI.HideRelatedEntry(updateUI: false);
 
-            long readEntryId;
+            long readEntryLid;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
                 if (relatedChatEntryId.IsNone)
                     throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
                 await UICommander.Run(new IChats.UpsertTextEntryCommand(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text));
-                readEntryId = relatedChatEntryId.LocalId;
+                readEntryLid = relatedChatEntryId.LocalId;
 
             } else {
-                var repliedEntryId = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
-                if (HostInfo is { AppKind: AppKind.Maui, Platform: Platform.iOS }) {
+                var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
+                if (HostInfo is { AppKind: AppKind.MauiApp, Platform: Platform.iOS }) {
                     // iOS doesn't allow to post from JS, so we have to use workaround here
                     // TODO: add support for attachments on iOS
                     var command = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {
-                        RepliedChatEntryId = repliedEntryId,
+                        RepliedChatEntryId = repliedEntryLid,
                     };
                     var chatEntry = await UICommander.Run(command, CancellationToken.None);
-                    readEntryId = chatEntry.Value.LocalId;
+                    readEntryLid = chatEntry.Value.LocalId;
                 } else {
-                    readEntryId = await JSRef.InvokeAsync<long>("post", Chat.Id, text, repliedEntryId);
+                    readEntryLid = await JSRef.InvokeAsync<long>("post", Chat.Id, text, repliedEntryLid);
                 }
             }
 
-            if (ReadState != null && ReadState.Value < readEntryId)
-                ReadState.Value = readEntryId;
-            _ = ChatUI.AddActiveChat(Chat.Id);
+            if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
+                ReadPositionState.Value = new ChatPosition(readEntryLid);
+            _ = ActiveChatsUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
         }
         catch (Exception e) {

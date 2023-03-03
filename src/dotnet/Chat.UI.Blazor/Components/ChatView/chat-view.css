@@ -1,24 +1,45 @@
 .message-wrapper {
-    @apply flex-x relative w-full select-none md:select-auto;
+    @apply relative flex-y;
     @apply border-l-2 border-bg-01;
+    @apply md:select-text;
     transform: translateZ(0);
 }
-.message-wrapper:hover {
+body.hoverable .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
 }
-.message-wrapper:hover .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
 }
 
 .chat-message {
-    @apply flex-x items-start;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply relative;
+    @apply flex-1 flex-x items-stretch gap-x-1 overflow-hidden;
+    @apply px-1 py-1;
     @apply text-current break-words;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+}
+
+.chat-message > .c-author-badge {
+    @apply flex-none;
+    @apply overflow-hidden;
+}
+
+.chat-message > .c-content {
+    @apply flex-1 flex-y;
+    @apply mr-4 md:mr-8;
+    @apply overflow-hidden;
+}
+
+.chat-message > .c-content > .c-author-header {
+    @apply flex-none flex-x items-baseline gap-x-2;
+    @apply min-w-0;
 }
 
 .chat-message-author-name {
-    @apply font-bold text-03 cursor-pointer hover:opacity-80;
-    @apply overflow-y-hidden truncate max-h-6;
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-bold text-03;
+    @apply hover:opacity-80;
+    @apply cursor-pointer;
 }
 .message-wrapper.own-message .author-name {
     @apply text-06;
@@ -28,7 +49,7 @@
     @apply animate-highlight;
 }
 
-.message-wrapper:hover .avatar-badge {
+body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-inherit;
 }
 
@@ -36,8 +57,8 @@
 .message-wrapper.mention.replied-message {
     @apply bg-replied-message border-l-2 border-replied-message-border;
 }
-.message-wrapper.replied-message:hover,
-.message-wrapper.mention.replied-message:hover {
+body.hoverable .message-wrapper.replied-message:hover,
+body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply bg-replied-message-hover border-l-2 border-replied-message-border;
 }
 
@@ -48,10 +69,10 @@
     @apply invisible;
     @apply text-03 text-xs;
 }
-.chat-message:hover .chat-message-timestamp-on-hover {
+body.hoverable .chat-message:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }
-.chat-message.mention:hover .chat-message-timestamp-on-hover {
+body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }
 
@@ -68,7 +89,7 @@ body.narrow .message-menu .reaction-select {
 body.narrow .message-menu .reaction-select-reaction-emoji {
     @apply w-6 h-6;
 }
-.chat-message:hover .message-reactions-add {
+body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
 }
 .chat-message-transcript {
@@ -82,35 +103,19 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
     @apply underline;
 }
 
-.chat-header-title:hover {
+body.hoverable .chat-header-title:hover {
     @apply text-02;
 }
 
 .new-separator {
     @apply bg-04;
 }
-
 .new-separator-title {
     @apply bg-04 text-02 rounded-md;
 }
 
-.message-hover-menu-placement {
-    @apply absolute z-20 right-2 -mt-6;
-    @apply w-px h-px; /* we need to have non-zero size, otherwise hit test will indicate that element is not visible */
-}
-
-.message-hover-menu {
-    @apply rounded-full bg-01 border border-bg-03;
-}
-
-.message-hover-menu .btn.btn-round .btn-content {
-    @apply min-h-8 min-w-8 max-h-8 min-h-8 bg-01;
-}
-.message-hover-menu .btn.btn-round:hover .btn-content {
-    @apply bg-round-hover;
-}
-
 .message-content {
+    @apply flex-1 overflow-hidden;
     @apply rounded-sm;
 }
 
@@ -124,11 +129,23 @@ body.narrow .message-menu .reaction-select-reaction-emoji {
 }
 
 .chat-message-quote {
-    @apply px-1.5 w-full h-12;
-    @apply flex-x items-center;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply flex-x gap-x-2;
     @apply text-03 cursor-pointer;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
-.chat-message-quote-removed {
-    @apply italic h-6 cursor-default;
+.chat-message-quote.removed {
+    @apply italic cursor-default;
+}
+.chat-message-quote > .c-content {
+    @apply flex-1 flex-y;
+    @apply overflow-hidden;
+}
+.chat-message-quote > .c-content > .c-author {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply opacity-90;
+}
+.chat-message-quote > .c-content > .c-text {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-medium text-base text-03;
+    @apply pointer-events-none;
 }

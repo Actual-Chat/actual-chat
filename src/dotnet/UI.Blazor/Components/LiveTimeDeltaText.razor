@@ -1,7 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<string>
 @{
-    var m = State.ValueOrDefault;
+    var m = State.Value;
     var tooltip = "";
     if (Moment.HasValue) {
         var localTime = TimeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
@@ -21,7 +21,10 @@
 
     protected override ComputedState<string>.Options GetStateOptions() {
         var initialValue = Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value) : NullText;
-        return new () { InitialValue = initialValue };
+        return new () {
+            InitialValue = initialValue,
+            Category = GetStateCategory(),
+        };
     }
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)

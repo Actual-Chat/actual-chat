@@ -85,6 +85,32 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         return -1;
     }
 
+    public PeerChatId FixOwnerId(UserId ownerId)
+    {
+        if (ownerId.IsGuestOrNone)
+            return this;
+        if (!HasSingleNonGuestUserId(out var userId))
+            return this;
+        if (userId == ownerId)
+            return None;
+        return new PeerChatId(ownerId, userId, ActualChat.ParseOrNone.Option);
+    }
+
+    public bool HasSingleNonGuestUserId(out UserId userId)
+    {
+        userId = default;
+        var guestUserId = UserId1.IsGuest
+            ? UserId1
+            : UserId2.IsGuest
+                ? UserId2
+                : default;
+        if (!guestUserId.IsGuest)
+            return false;
+
+        userId = UserIds.OtherThanOrDefault(guestUserId);
+        return !userId.IsGuestOrNone;
+    }
+
     // Conversion
 
     public override string ToString() => Value;
@@ -124,12 +150,14 @@ public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
         if (userId1Length < 0)
             return false;
 
-        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1) || userId1.IsGuestId)
+        if (!UserId.TryParse(tail[..userId1Length].ToString(), out var userId1))
             return false;
-        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2) || userId2.IsGuestId)
+        if (!UserId.TryParse(tail[(userId1Length + 1)..].ToString(), out var userId2))
             return false;
+        if (userId1.IsNone || userId2.IsNone)
+            return false; // Both UserIds must be there
         if (string.CompareOrdinal(userId1.Value, userId2.Value) >= 0)
-            return false; // Wrong sort order
+            return false; // Wrong sort order or they are the same
 
         result = new PeerChatId((Symbol)s, userId1, userId2, AssumeValid.Option);
         return true;

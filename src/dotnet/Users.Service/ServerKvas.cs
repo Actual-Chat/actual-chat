@@ -7,9 +7,13 @@ public class ServerKvas : IServerKvas
     private IAuth Auth { get; }
     private IServerKvasBackend Backend { get; }
     private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
+    private ILogger Log { get; }
 
     public ServerKvas(IServiceProvider services)
     {
+        Log = services.LogFor(GetType());
+        Clocks = services.Clocks();
         Auth = services.GetRequiredService<IAuth>();
         Backend = services.GetRequiredService<IServerKvasBackend>();
         Commander = services.Commander();
@@ -107,15 +111,32 @@ public class ServerKvas : IServerKvas
             return; // It just spawns other commands, so nothing to do here
 
         var session = command.Session;
-        var userPrefix = await GetUserPrefix(session, cancellationToken).ConfigureAwait(false);
-        if (userPrefix.IsNullOrEmpty())
+
+        // This piece is tricky: since this command is started while auth info isn't committed yet,
+        // it's not guaranteed that GetUserPrefix will complete w/ a non-empty one here.
+        // But it should complete with a non-empty one eventually, so...
+        try {
+            await Computed
+                .Capture(() => Auth.GetUser(session, cancellationToken))
+                .When(u => u?.IsGuest() == false, Clocks.Timeout(3), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("MigrateGuestKeys: GetUserPrefix couldn't complete in 3 seconds");
             return;
+        }
+
+        var userPrefix = await GetUserPrefix(session, cancellationToken).ConfigureAwait(false);
+        if (userPrefix == null) {
+            Log.LogWarning("MigrateGuestKeys: GetUserPrefix(...) == null");
+            return;
+        }
 
         var guestPrefix = await GetGuestPrefix(session, cancellationToken).ConfigureAwait(false);
         if (guestPrefix.IsNullOrEmpty())
             return;
 
-        await TryMigrateKeys(guestPrefix, userPrefix, cancellationToken).ConfigureAwait(false);
+        await TryMigrateKeys(guestPrefix, userPrefix!, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -144,16 +165,26 @@ public class ServerKvas : IServerKvas
         CancellationToken cancellationToken)
     {
         var keys = await Backend.List(fromPrefix, cancellationToken).ConfigureAwait(false);
-        if (keys.Count == 0)
+        if (keys.Count == 0) {
+            Log.LogInformation("TryMigrateKeys: nothing to migrate");
             return null;
+        }
 
         using var _ = Computed.SuspendDependencyCapture();
         var movedKeys = new Dictionary<string, string>(StringComparer.Ordinal);
+        var skippedKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (key, value) in keys) {
             var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
             if (userValue == null)
                 movedKeys[key] = value;
+            else
+                skippedKeys.Add(key);
         }
+
+        Log.LogInformation("TryMigrateKeys: {FromPrefix} -> {ToPrefix}, move {MoveKeys}, skip {SkipKeys}",
+            fromPrefix, toPrefix,
+            movedKeys.Keys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString(),
+            skippedKeys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString());
 
         // Create missing keys in userPrefix
         await Commander.Call(

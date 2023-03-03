@@ -8,7 +8,7 @@ public class StaticImportsInitializer : IHostedService
     public StaticImportsInitializer(IServiceProvider services)
     {
         var hostInfo = services.GetRequiredService<HostInfo>();
-        if (hostInfo.RequiredServiceScopes.Contains(ServiceScope.Test))
+        if (hostInfo.AppKind.IsTestServer())
             return; // Don't set DefaultLog for tests
 
         if (DefaultLog == NullLogger.Instance)

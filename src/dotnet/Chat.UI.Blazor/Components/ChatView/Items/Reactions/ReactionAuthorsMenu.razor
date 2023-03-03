@@ -5,7 +5,7 @@
     @foreach (var authorId in _firstAuthorIds) {
         <li class="reaction-authors-menu-item">
             <AuthorBadge AuthorSid="@authorId" Size="SquareSize.Size5"/>
-            <EmojiIcon Id="@_emoji" class="reaction-authors-menu-item-emoji"/>
+            <EmojiIcon Id="@_emoji" Class="reaction-authors-menu-item-emoji"/>
         </li>
     }
 </ul>
@@ -23,7 +23,7 @@
 
         var entryId = new TextEntryId(sEntryId);
         var summaries = await Reactions.ListSummaries(Session, entryId, CancellationToken.None).ConfigureAwait(false);
-        var summary = summaries.FirstOrDefault(x => x.EmojiId == _emoji);
+        var summary = summaries.FirstOrDefault(x => x.EmojiId == emoji);
 
         _emoji = emoji;
         _firstAuthorIds = summary?.FirstAuthorIds ?? ImmutableList<AuthorId>.Empty;

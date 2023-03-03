@@ -18,3 +18,16 @@
 .screen-size-measure *:nth-child(5) {
     @apply hidden sm:block;
 }
+
+.hover-measure {
+    @apply w-full h-0 max-h-0;
+    @apply overflow-hidden;
+}
+.hover-measure div {
+    @apply hidden;
+}
+@media (hover: hover) and (pointer:fine) {
+    .hover-measure div {
+        @apply block;
+    }
+}

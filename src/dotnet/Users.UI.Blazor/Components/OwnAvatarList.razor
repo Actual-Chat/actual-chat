@@ -8,7 +8,7 @@
 <div class="flex-y gap-y-2">
     @foreach (var avatar in avatars) {
         <Tile>
-            <TileItem Unselected="true">
+            <TileItem IsHoverable="false">
                 <Icon>
                     <AvatarCard Avatar="@avatar"/>
                 </Icon>
@@ -51,7 +51,10 @@
     [Parameter] public Chat Chat { get; set; } = Chat.None;
 
     protected override ComputedState<ImmutableArray<AvatarFull>>.Options GetStateOptions()
-        => new () { InitialValue = ImmutableArray<AvatarFull>.Empty };
+        => new () {
+            InitialValue = ImmutableArray<AvatarFull>.Empty,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ImmutableArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
@@ -74,12 +77,11 @@
         if (error != null)
             return;
 
-        EditAvatar(avatar, "Add avatar");
+        await EditAvatar(avatar, "Add avatar");
     }
 
-    private void EditAvatar(AvatarFull avatar, string title) {
-        ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
-    }
+    private Task EditAvatar(AvatarFull avatar, string title)
+        => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
 
     private async Task SetDefaultAvatar(AvatarFull avatar) {
         var command = new IAvatars.SetDefaultCommand(Session, avatar.Id);

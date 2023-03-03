@@ -3,107 +3,127 @@
 // export type { };
 // declare const self: WorkerGlobalScope;
 
-import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
-import { OpusDecoder } from './opus-decoder';
-import { Log, LogLevel } from 'logging';
-import 'logging-init';
+/// #if MEM_LEAK_DETECTION
+import codec, { Codec, Decoder } from '@actual-chat/codec/codec.debug';
+import codecWasm from '@actual-chat/codec/codec.debug.wasm';
+import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
+/// #else
+/// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
+/// #code import codecWasm from '@actual-chat/codec/codec.wasm';
+/// #endif
 
-const LogScope = 'OpusDecoderWorker'
+import { OpusDecoder } from './opus-decoder';
+import { ObjectPool } from 'object-pool';
+import { OpusDecoderWorker } from './opus-decoder-worker-contract';
+import { RpcNoWait, rpcServer } from 'rpc';
+import { ResolvedPromise, retry } from 'promises';
+import { Versioning } from 'versioning';
+import { Log, LogLevel, LogScope } from 'logging';
+import 'logging-init';
+import { OnDeviceAwake } from 'on-device-awake';
+
+const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
-const debug = debugLog != null;
-const debugOnData: boolean = debug && false;
+
+// TODO: create wrapper around module for all workers
+
+let codecModule: Codec | null = null;
 
 const worker = self as unknown as Worker;
-const decoders = new Map<number, OpusDecoder>();
+const decoders = new Map<string, OpusDecoder>();
+const decoderPool = new ObjectPool<Decoder>(() => new codecModule.Decoder());
 
-worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
-    try {
-        const msg = ev.data;
-        switch (msg.type) {
-        case 'create':
-            await onCreate(msg as CreateDecoderMessage);
-            break;
-        case 'init':
-            onInit(msg as InitDecoderMessage);
-            break;
-        case 'data':
-            onData(msg as DataDecoderMessage);
-            break;
-        case 'end':
-            onEnd(msg as EndDecoderMessage);
-            break;
-        case 'stop':
-            onStop(msg as StopDecoderMessage);
-            break;
-        default:
-            throw new Error(`Unsupported message type: ${msg.type}`);
+const serverImpl: OpusDecoderWorker = {
+    init: async (artifactVersions: Map<string, string>): Promise<void> => {
+        debugLog?.log(`-> init`);
+        Versioning.init(artifactVersions);
+
+        // Load & warm-up codec
+        codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
+        decoderPool.expandTo(1);
+
+        debugLog?.log(`<- init`);
+    },
+
+    create: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
+        debugLog?.log(`-> #${streamId}.create`);
+        await serverImpl.close(streamId);
+        const decoder = decoderPool.get();
+        const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
+        decoders.set(streamId, opusDecoder);
+        debugLog?.log(`<- #${streamId}.create`);
+    },
+
+    close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
+        debugLog?.log(`#${streamId}.close`);
+        const opusDecoder = getDecoder(streamId, false);
+        if (!opusDecoder)
+            return;
+
+        decoders.delete(streamId);
+        const decoder = opusDecoder.decoder;
+        try {
+            await opusDecoder.disposeAsync();
         }
-    }
-    catch (error) {
-        errorLog?.log(`worker.onmessage: unhandled error:`, error);
+        catch (e) {
+            errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
+        }
+        finally {
+            decoderPool.release(decoder);
+        }
+    },
+
+    end: async (streamId: string, mustAbort: boolean): Promise<void> => {
+        debugLog?.log(`#${streamId}.end, mustAbort:`, mustAbort);
+        await getDecoder(streamId).end(mustAbort);
+    },
+
+    frame: async (
+        streamId: string,
+        buffer: ArrayBuffer,
+        offset: number,
+        length: number,
+        _noWait?: RpcNoWait,
+    ): Promise<void> => {
+        // debugLog?.log(`#${streamId}.onFrame`);
+        getDecoder(streamId).decode(buffer, offset, length);
+    },
+
+    releaseBuffer: async(streamId: string, buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void>  => {
+        getDecoder(streamId).releaseBuffer(buffer);
     }
 };
 
-function getDecoder(controllerId: number): OpusDecoder {
-    const decoder = decoders.get(controllerId);
-    if (decoder === undefined) {
-        throw new Error(`Can't find decoder object for controller #${controllerId}`);
-    }
+const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
+
+// Helpers
+
+function getDecoder(streamId: string, failIfNone = true): OpusDecoder {
+    const decoder = decoders.get(streamId);
+    if (!decoder && failIfNone)
+        throw new Error(`getDecoder: no decoder #${streamId}, did you forget to call 'create'?`);
+
     return decoder;
 }
 
-async function onCreate(message: CreateDecoderMessage) {
-    const { callbackId, workletPort, controllerId } = message;
-    // decoders are pooled with the parent object, so we don't need an object pool here
-    debugLog?.log(`-> onCreate(#${controllerId})`);
-    const decoder = await OpusDecoder.create(workletPort);
-    decoders.set(controllerId, decoder);
-    const msg: OperationCompletedDecoderWorkerMessage = {
-        type: 'operationCompleted',
-        callbackId: callbackId,
+function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+    return {
+        locateFile: (filename: string) => {
+            const codecWasmPath = Versioning.mapPath(codecWasm);
+            if (filename.slice(-4) === 'wasm')
+                return codecWasmPath;
+            /// #if MEM_LEAK_DETECTION
+            else if (filename.slice(-3) === 'map')
+                return codecWasmMap;
+                /// #endif
+                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            // emscripten 1.37.25 loads memory initializers as data: URI
+            else if (filename.slice(0, 5) === 'data:')
+                return filename;
+            else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
+        },
     };
-    worker.postMessage(msg);
-    debugLog?.log(`<- onCreate(#${controllerId})`);
 }
 
-function onInit(message: InitDecoderMessage): void {
-    const { callbackId, controllerId } = message;
-    const decoder = getDecoder(controllerId);
-    debugLog?.log(`-> onInit(#${controllerId})`);
-    decoder.init();
 
-    const msg: OperationCompletedDecoderWorkerMessage = {
-        type: 'operationCompleted',
-        callbackId: callbackId,
-    };
-    worker.postMessage(msg);
-    debugLog?.log(`<- onInit(#${controllerId})`);
-}
-
-function onData(message: DataDecoderMessage): void {
-    const { controllerId, buffer, offset, length } = message;
-    const decoder = getDecoder(controllerId);
-    const data = buffer.slice(offset, offset + length);
-    if (debugOnData)
-        debugLog?.log(`onData(#${controllerId}): pushing ${data.byteLength} byte(s)`);
-    decoder.pushData(data);
-}
-
-function onEnd(message: EndDecoderMessage): void {
-    const { controllerId } = message;
-    const decoder = getDecoder(controllerId);
-    debugLog?.log(`onEnd(#${controllerId})`);
-    decoder.pushEnd();
-}
-
-function onStop(message: StopDecoderMessage): void {
-    const { controllerId } = message;
-    const decoder = getDecoder(controllerId);
-    debugLog?.log(`-> onStop(#${controllerId})`);
-    decoder.stop();
-    debugLog?.log(`<- onStop(#${controllerId})`);
-}
-/// #if DEBUG
-self['getDecoder'] = getDecoder;
-/// #endif

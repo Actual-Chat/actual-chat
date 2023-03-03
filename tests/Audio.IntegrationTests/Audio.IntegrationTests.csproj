@@ -9,6 +9,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="data\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\**" CopyToOutputDirectory="Always" />
   </ItemGroup>
 </Project>

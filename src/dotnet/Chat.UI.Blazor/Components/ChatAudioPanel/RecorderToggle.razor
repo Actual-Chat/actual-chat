@@ -2,35 +2,26 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
-    var rendered = _rendered;
-    var m = _rendered = State.Value;
-    if (rendered.Chat.Id != m.Chat.Id)
-        rendered = m; // Disables the animation on chat switching
-
-    var wrapperCls = (rendered.IsRecording, m.IsRecording) switch {
-        (false, true) => "record-off-to-on",
-        (true, false) => "record-on-to-off",
-        (_, true) => "record-on",
-        (_, false) => "record-off",
-    };
+    var m = State.Value;
+    _animator.State = m.IsRecording;
+    var wrapperCls = "record-" + _animator.Class;
 }
 
 @if (CanRecord) {
     <div class="@wrapperCls recorder-wrapper">
         <ButtonRound Class="record-off-btn"
                      Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
+                     @onpointerup="OnPointerUp"
+                     @oncontextmenu="OnContextMenu"
+                     data-context-menu-delay="200"
+                     MustKeepAwake="true">
                 <img src="/dist/images/logo-white.svg" alt="logo" class="recorder-icon">
         </ButtonRound>
         <ButtonRound Class="record-on-btn"
                      Click="OnClick"
-                     @ontouchend="OnLongPressStop"
-                     @onmouseup="OnLongPressStop"
-                     @onlongpress="OnLongPressStart"
-                     data-long-press-delay="200">
+                     @onpointerup="OnPointerUp"
+                     @oncontextmenu="OnContextMenu"
+                     data-context-menu-delay="200">
             <i class="icon-Stop-fill text-2xl"></i>
         </ButtonRound>
     </div>
@@ -47,28 +38,39 @@
 }
 
 @code {
-    private Model _rendered = Model.None;
     private bool? _canRecord = null;
+    private OnOffAnimator _animator = null!;
 
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     private bool CanRecord => _canRecord ?? true;
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsRecording => !IsLoading && State.Value.IsRecording;
-    private bool IsLongPressOn { get; set; } = false;
+    private bool IsForcePush { get; set; } = false;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+
+    protected override void OnInitialized() {
+        _animator = new OnOffAnimator(this, TimeSpan.FromMilliseconds(300));
+        base.OnInitialized();
+    }
+
+    public override ValueTask DisposeAsync() {
+        _animator.Dispose();
+        return base.DisposeAsync();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var mediaState = await ChatUI.GetMediaState(Chat.Id);
-        return new Model(Chat, mediaState.IsRecording);
+        var audioState = await ChatAudioUI.GetState(Chat.Id);
+        return new Model(Chat, audioState.IsRecording);
     }
 
     private async Task OnClick() {
@@ -76,7 +78,7 @@
             return; // Loading
 
         if (IsRecording) {
-            _ = ChatUI.SetRecordingChatId(default);
+            _ = ChatAudioUI.SetRecordingChatId(default);
         }
         else {
             if (_canRecord == null) {
@@ -86,12 +88,12 @@
             if (!CanRecord)
                 return;
 
-            _ = ChatUI.SetRecordingChatId(Chat.Id);
+            _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
         }
     }
 
-    private async Task OnLongPressStart() {
-        if (IsLongPressOn)
+    private async Task OnContextMenu() {
+        if (IsForcePush)
             return;
 
         if (_canRecord == null) {
@@ -101,16 +103,16 @@
         if (!CanRecord || IsLoading)
             return;
 
-        IsLongPressOn = true;
-        _ = ChatUI.SetRecordingChatId(Chat.Id);
+        IsForcePush = true;
+        _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
     }
 
-    private void OnLongPressStop() {
-        if (!IsLongPressOn)
+    private void OnPointerUp() {
+        if (!IsForcePush)
             return;
 
-        IsLongPressOn = false;
-        _ = ChatUI.SetRecordingChatId(default);
+        IsForcePush = false;
+        _ = ChatAudioUI.SetRecordingChatId(default);
     }
 
     public sealed record Model(

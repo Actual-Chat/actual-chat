@@ -1,6 +1,7 @@
-import { Log, LogLevel } from 'logging';
+import { DeviceInfo } from 'device-info';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'ChromiumEchoCancellation';
+const LogScope: LogScope = 'ChromiumEchoCancellation';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -154,31 +155,17 @@ function delayedReconnect(cleanup: () => void, stream: MediaStream): void {
     }, 10000);
 }
 
-let isAecWorkaroundNeededCached: boolean | null = null;
-
 /** Chromium browsers don't apply echoCancellation to a Web Audio pipeline */
 export function isAecWorkaroundNeeded(): boolean {
     const force = self['forceEchoCancellation'] as boolean;
     if (force !== null && force !== undefined)
         return force;
-    if (isAecWorkaroundNeededCached !== null)
-        return isAecWorkaroundNeededCached;
-    const navigatorUAData: { mobile: boolean; } = self.navigator['userAgentData'] as { mobile: boolean; };
-    // mobile phones have a good echoCancellation by default, we don't need anything to do
-    if (navigatorUAData != null && navigatorUAData.mobile != null && navigatorUAData.mobile === true) {
-        isAecWorkaroundNeededCached = false;
-        return isAecWorkaroundNeededCached;
-    }
-    const isChromium = window.navigator.userAgent.indexOf('Chrome') !== -1;
-    if (!isChromium) {
-        isAecWorkaroundNeededCached = false;
-        return isAecWorkaroundNeededCached;
-    }
-    // additional checks for mobile phones + chrome, that don't support userAgentData yet
-    if (/Android|Mobile|Phone|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
-        isAecWorkaroundNeededCached = false;
-        return isAecWorkaroundNeededCached;
-    }
-    isAecWorkaroundNeededCached = true;
-    return isAecWorkaroundNeededCached;
+
+    // See https://bugs.chromium.org/p/chromium/issues/detail?id=687574#c134 -
+    // it's fixed on Chrome now.
+    return false;
+
+    // Mobile phones have a good echoCancellation by default, we don't need anything to do
+    const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChrome;
+    return !hasBuiltInAec;
 }

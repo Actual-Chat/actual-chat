@@ -73,6 +73,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
                     Id = DbMention.ComposeId(entry.Id, mentionId),
                     MentionId = mentionId,
                     EntryId = entry.LocalId,
+                    ChatId = entry.ChatId,
                 }).ToList();
             dbContext.Mentions.AddRange(toAdd);
 

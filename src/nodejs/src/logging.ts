@@ -1,22 +1,77 @@
-import { initLogging } from 'logging-init';
+import { initLogging, LogScope, LogLevel } from 'logging-init';
 import 'logging-init';
 
-export enum LogLevel {
-    Debug = 1,
-    Info,
-    Warn,
-    Error,
-    None = 1000,
+export { LogLevel } from './logging-init';
+export type { LogScope } from './logging-init';
+
+export interface LogRef {
+    target : unknown;
+    id : number;
+}
+
+interface SetItem {
+    ref : LogRef;
+    touchedAt : number;
+}
+
+class LogRefSet {
+    items : SetItem[];
+    capacity : number;
+    idSeed : number;
+
+    constructor(capacity : number) {
+        this.idSeed = 0;
+        this.capacity = capacity;
+        this.items = [];
+    }
+
+    public ref(data: object) : LogRef {
+        const itemIndex = this.items.findIndex(el => el.ref.target === data);
+        if (itemIndex >= 0) {
+            const existentItem = this.items[itemIndex];
+            existentItem.touchedAt = Date.now();
+            return existentItem.ref;
+        }
+        else {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const id = data['__logRefId'] as number ?? this.idSeed++;
+            const newRef = { target: data, id: id };
+            data['__logRefId'] = id;
+            if (this.items.length >= this.capacity)
+                this.removeOldest();
+            const newItem = { ref : newRef, touchedAt : Date.now() };
+            this.items.push(newItem);
+            return newRef;
+        }
+    }
+
+    private removeOldest() {
+        let indexToEliminate = 0;
+        let itemToEliminate = this.items[0];
+        for (let i = 1; i < this.items.length; i++) {
+            const item = this.items[i];
+            if (item.touchedAt < itemToEliminate.touchedAt) {
+                itemToEliminate = item;
+                indexToEliminate = i;
+            }
+        }
+        this.items.splice(indexToEliminate, 1);
+        // clear log ref target to prevent memory leaks
+        // and keep string representation of the target for tracing
+        const ref = itemToEliminate.ref;
+        ref.target = ref.target.toString();
+    }
 }
 
 export class Log {
-    public static readonly minLevels: Map<string, LogLevel> = new Map<string, LogLevel>();
-    public static defaultMinLevel = LogLevel.Error;
     private static isInitialized = false;
+    private static logRefs : LogRefSet = new LogRefSet(10);
+    public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
+    public static defaultMinLevel = LogLevel.Info;
     public log: (...data: unknown[]) => void;
 
     constructor(
-        public readonly scope: string,
+        public readonly scope: LogScope,
         public readonly level: LogLevel,
     ) {
         const prefix = `[${scope}]`;
@@ -38,9 +93,9 @@ export class Log {
         }
     }
 
-    public static loggerFactory = (scope: string, level: LogLevel) => new Log(scope, level);
+    public static loggerFactory = (scope: LogScope, level: LogLevel) => new Log(scope, level);
 
-    public static get(scope: string, level = LogLevel.Info): Log | null {
+    public static get(scope: LogScope, level = LogLevel.Info): Log | null {
         if (!this.isInitialized) {
             this.isInitialized = true;
             initLogging(this);
@@ -51,6 +106,12 @@ export class Log {
             ?? minLevels.get('default')
             ?? this.defaultMinLevel;
         return level >= minLevel ? this.loggerFactory(scope, level) : null;
+    }
+
+    public static ref(data: object) : object {
+        if (!data)
+            return data;
+        return this.logRefs.ref(data);
     }
 
     public assert(predicate?: boolean, ...data: unknown[]): void {

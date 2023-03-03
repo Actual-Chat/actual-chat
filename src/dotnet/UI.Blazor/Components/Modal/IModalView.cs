@@ -8,3 +8,8 @@ public interface IModalView<TModel> : IModalView
 {
     TModel ModalModel { get; set; }
 }
+
+public interface IOptionallyClosable
+{
+    bool CanBeClosed { get; }
+}

@@ -5,11 +5,11 @@
     var m = _rendered = State.Value;
     if (rendered.Chat.Id != m.Chat.Id)
         rendered = m;
-    var mediaState = m.MediaState;
+    var audioState = m.AudioState;
 
-    var playingHistoricalClass = mediaState.IsPlayingHistorical ? "opacity-60" : "";
-    var cls = $"{(mediaState.IsListening ? "on" : "off")} {playingHistoricalClass}";
-    var wrapperCls = (rendered.MediaState.IsListening, mediaState.IsListening) switch {
+    var playingHistoricalClass = audioState.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"{(audioState.IsListening ? "on" : "off")} {playingHistoricalClass}";
+    var wrapperCls = (rendered.AudioState.IsListening, audioState.IsListening) switch {
         (false, true) => "listen-off-to-on",
         (true, false) => "listen-on-to-off",
         (_, true) => "listen-on",
@@ -20,23 +20,25 @@
 }
 
 <div class="@wrapperCls playback-wrapper">
-    <ButtonRound Click="@OnListenClick" Class="@cls">
+    <ButtonRound Click="@OnListenClick" Class="@cls" MustKeepAwake="@(!audioState.IsListening)">
         <i class="icon-listen text-2xl"></i>
     </ButtonRound>
-    <ButtonRound Click="@OnToggleAudioOutputClick" Class="@loudBtnCls">
-        <i class="icon-volume-up text-2xl"></i>
-    </ButtonRound>
+    @* Temporarily disabled switch between loud speaker and earpiece *@
+    @* to have single audio channel controlled with volume buttons  *@
+    @* <ButtonRound Click="@OnToggleAudioOutputClick" Class="@loudBtnCls"> *@
+    @*     <i class="icon-volume-up text-2xl"></i> *@
+    @* </ButtonRound> *@
 </div>
 
 @code {
     private Model _rendered = Model.Loading;
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsListening => !IsLoading && State.Value.MediaState.IsListening;
+    private bool IsListening => !IsLoading && State.Value.AudioState.IsListening;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
@@ -44,19 +46,20 @@
         => new() {
             InitialValue = Model.Loading,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var mediaState = await ChatUI.GetMediaState(Chat.Id);
+        var audioState = await ChatAudioUI.GetState(Chat.Id);
         var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
-        return new Model(Chat, mediaState, isSpeakerphoneOn);
+        return new Model(Chat, audioState, isSpeakerphoneOn);
     }
 
     private void OnListenClick() {
         if (IsLoading)
             return;
 
-        _ = ChatUI.SetListeningState(Chat.Id, !IsListening);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);
     }
 
     private void OnToggleAudioOutputClick()
@@ -65,10 +68,10 @@
 
     public sealed record Model(
         Chat Chat,
-        ChatMediaState MediaState,
+        ChatAudioState AudioState,
         bool IsSpeakerphoneOn = false
     ) {
-        public static Model Loading { get; } = new(Chat.Loading, ChatMediaState.None);
-        public static Model None { get; } = new(Chat.None, ChatMediaState.None);
+        public static Model Loading { get; } = new(Chat.Loading, ChatAudioState.None);
+        public static Model None { get; } = new(Chat.None, ChatAudioState.None);
     }
 }

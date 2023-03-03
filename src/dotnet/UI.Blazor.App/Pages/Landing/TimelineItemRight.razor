@@ -1,5 +1,3 @@
-@namespace ActualChat.UI.Blazor.App
-
 <div class="part-right flex-x w-1/2 border-l">
     @if (!IsLeft) {
         <div class="flex-y min-w-4">
@@ -25,9 +23,9 @@
 
 @code {
     [Parameter] public bool IsLeft { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool IsNarrow { get; set; }
     [Parameter] public string TextTop { get; set; } = "";
     [Parameter] public string TextBottom { get; set; } = "";
     [Parameter] public string IconClass { get; set; } = "";
-    [Parameter] public bool IsMobile { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 }

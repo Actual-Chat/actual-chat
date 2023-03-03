@@ -15,6 +15,6 @@ public static class SessionInfoExt
             // Intended: GuestId type was changed, so it might throw an error
         }
         var guestId = guestIdOption?.GuestId ?? default;
-        return guestId.IsGuestId ? guestId : default;
+        return guestId.IsGuest ? guestId : default;
     }
 }

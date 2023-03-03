@@ -15,4 +15,17 @@ public static class TrimmedExt
         }
         return sum;
     }
+
+    public static string FormatK(this Trimmed<int> trimmed)
+    {
+        if (!trimmed.IsTrimmed)
+            return trimmed.Format();
+
+        var (alias, denominator) = trimmed.Value switch {
+            >= 1_000 => ("K", 1_000),
+            _ => ("", 1),
+        };
+        var limit = (int)Math.Floor((double)trimmed.Value / denominator);
+        return new Trimmed<int>(trimmed.Value, limit).Format($"{alias}+");
+    }
 }

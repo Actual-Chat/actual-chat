@@ -1,0 +1,56 @@
+@using ActualChat.Chat.UI.Blazor.Services
+@{
+    var links = Array.Empty<(string, string)>();
+    var pageUrl = "";
+    var isNarrow = ScreenSize.IsNarrow();
+
+    var cookiesLinks = new[] {
+        ("Introduction", "introduction"),
+        ("Whats in a cookie?", "whats-in"),
+        ("What to do if you do not want cookies to be set", "how-to-set"),
+        ("How can I control cookies?", "control"),
+        ("How Actual.Chat uses cookies", "how-we-use"),
+        ("Blocking and Deleting", "blocking"),
+    };
+    var termsLinks = new[] {
+        ("Interpretation and Definitions", "definitions"),
+        ("Acknowledgment", "acknowledgment"),
+        ("User Accounts", "user-accounts"),
+        ("Content", "content"),
+        ("Copyright Policy", "copyright-policy"),
+        ("Feedback and Limitation of Liability", "feedback"),
+        ("Governing Law", "governing-law"),
+    };
+    var privacyLinks = new[] {
+        ("Introduction", "introduction"),
+        ("Interpretation and Definitions", "definitions"),
+        ("Personal Data", "personal-data"),
+        ("GDPR Privacy", "gdpr"),
+        ("CCPA Privacy", "ccpa"),
+        ("CalOPPA", "caloppa"),
+    };
+
+    if (Page == DocsPage.Cookies) {
+        links = cookiesLinks;
+        pageUrl = "cookies";
+    } else if (Page == DocsPage.Terms) {
+        links = termsLinks;
+        pageUrl = "terms";
+    } else if (Page == DocsPage.Privacy) {
+        links = privacyLinks;
+        pageUrl = "privacy";
+    }
+}
+
+<div class="docs-subheader">
+    <div class="mb-2 text-sm font-medium">On this page</div>
+    <DocsLinks Links="@links" PageUrl="@pageUrl"/>
+</div>
+
+@code {
+    [Inject] private Features Features { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public DocsPage Page { get; set; }
+}

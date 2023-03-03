@@ -4,11 +4,13 @@ internal sealed class WebClientAuth : IClientAuth
 {
     private ClientAuthHelper ClientAuthHelper { get; }
 
-    public WebClientAuth(ClientAuthHelper clientAuthHelper)
-        => ClientAuthHelper = clientAuthHelper;
+    public WebClientAuth(IServiceProvider services)
+    {
+        ClientAuthHelper = services.GetRequiredService<ClientAuthHelper>();
+    }
 
-    public ValueTask SignIn(string scheme)
-        => ClientAuthHelper.SignIn(scheme);
+    public async ValueTask SignIn(string scheme)
+        => await ClientAuthHelper.SignIn(scheme);
 
     public ValueTask SignOut()
         => ClientAuthHelper.SignOut();

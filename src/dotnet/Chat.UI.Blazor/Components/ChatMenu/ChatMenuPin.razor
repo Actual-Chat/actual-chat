@@ -4,7 +4,7 @@
 <MenuEntry
     Icon="icon-pin"
     Text="@(ChatState.Contact.IsPinned ? "Unpin" : "Pin")"
-    Click="@Toggle">
+    Click="@OnClick">
 </MenuEntry>
 
 @code {
@@ -12,6 +12,6 @@
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
-    private void Toggle()
+    private void OnClick()
         => _ = ChatUI.SetPinState(ChatState.Id, !ChatState.Contact.IsPinned);
 }

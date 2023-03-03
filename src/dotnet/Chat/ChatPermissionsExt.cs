@@ -7,9 +7,16 @@ public static class ChatPermissionsExt
     public static ChatPermissions AddImplied(this ChatPermissions permissions)
     {
         if (permissions.Has(ChatPermissions.Owner))
-            permissions |= ChatPermissions.EditRoles | ChatPermissions.EditProperties | ChatPermissions.Invite | ChatPermissions.Write;
+            permissions |=
+                ChatPermissions.EditRoles
+                | ChatPermissions.EditProperties
+                | ChatPermissions.SeeMembers
+                | ChatPermissions.Invite
+                | ChatPermissions.Write;
         if (permissions.Has(ChatPermissions.Invite))
-            permissions |= ChatPermissions.Join;
+            permissions |=
+                ChatPermissions.Join
+                | ChatPermissions.SeeMembers;
         if (permissions.Has(ChatPermissions.Join) || permissions.Has(ChatPermissions.Write))
             permissions |= ChatPermissions.Read;
         return permissions;

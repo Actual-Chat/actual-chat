@@ -10,10 +10,10 @@ namespace ActualChat.Notification.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(@"
-update notifications
-set id = concat(user_id, ':', id);
-");
+            migrationBuilder.Sql("""
+                update notifications
+                set id = concat(user_id, ':', id);
+                """);
         }
 
         /// <inheritdoc />

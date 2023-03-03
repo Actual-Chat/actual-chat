@@ -1,0 +1,29 @@
+@inherits ComputedStateComponent<bool>
+@{
+    var isVisible = !State.Value;
+}
+
+@if (isVisible) {
+    <ButtonRound
+        Click="OnClick"
+        Class="transparent btn-md"
+        Tooltip="Chat properties"
+        TooltipPosition="FloatingPosition.Bottom">
+        <i class="icon-layout text-2xl"></i>
+    </ButtonRound>
+}
+
+@code {
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await RightPanelUI.IsVisible.Use(cancellationToken);
+}

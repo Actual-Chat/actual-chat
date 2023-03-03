@@ -30,9 +30,16 @@ public sealed class Playback : ProcessorBase
         _messageProcessor = new MessageProcessor<IPlaybackCommand>(ProcessCommand) {
             QueueFullMode = BoundedChannelFullMode.DropOldest,
         };
-        PlayingTracks = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
-        IsPlaying = stateFactory.NewMutable(false);
-        IsPaused = stateFactory.NewMutable(false);
+        var type = GetType();
+        PlayingTracks = stateFactory.NewMutable(
+            ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty,
+            StateCategories.Get(type, nameof(PlayingTracks)));
+        IsPlaying = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsPlaying)));
+        IsPaused = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsPaused)));
     }
 
     protected override async Task DisposeAsyncCore()
@@ -62,8 +69,8 @@ public sealed class Playback : ProcessorBase
     public IMessageProcess<ResumeCommand> Resume(CancellationToken cancellationToken)
         => _messageProcessor.Enqueue(ResumeCommand.Instance, cancellationToken);
 
-    public IMessageProcess<StopCommand> Stop(CancellationToken cancellationToken)
-        => _messageProcessor.Enqueue(StopCommand.Instance, cancellationToken);
+    public IMessageProcess<AbortCommand> Stop(CancellationToken cancellationToken)
+        => _messageProcessor.Enqueue(AbortCommand.Instance, cancellationToken);
 
     private Task<object?> ProcessCommand(IPlaybackCommand command, CancellationToken cancellationToken)
     {
@@ -71,7 +78,7 @@ public sealed class Playback : ProcessorBase
             PlayTrackCommand playTrackCommand => OnPlayTrackCommand(playTrackCommand),
             PauseCommand => OnPauseCommand(),
             ResumeCommand => OnResumeCommand(),
-            StopCommand => OnStopCommand(),
+            AbortCommand => OnAbortCommand(),
             _ => throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.")
         };
 
@@ -81,7 +88,16 @@ public sealed class Playback : ProcessorBase
                 throw StandardError.StateTransition(GetType(),
                     $"The same {nameof(PlayTrackCommand)} is enqueued twice!");
 
-            var trackPlayer = _trackPlayerFactory.Create(cmd.Source);
+            TrackPlayer trackPlayer;
+            try {
+                trackPlayer = _trackPlayerFactory.Create(cmd.Source);
+            }
+            catch (ObjectDisposedException) {
+                // This error happens when circuit or container is being disposed,
+                // but playback is still ongoing
+                return Task.FromResult<object?>(null);
+            }
+
             // ReSharper disable once ConvertToLocalFunction
             var playerStateChanged = (PlayerStateChangedEventArgs args) => TrackPlayerStateChanged(cmd.TrackInfo, args);
             trackPlayer.StateChanged += playerStateChanged;
@@ -123,7 +139,7 @@ public sealed class Playback : ProcessorBase
             return null;
         }
 
-        async Task<object?> OnStopCommand()
+        async Task<object?> OnAbortCommand()
         {
             var stopTasks = _trackPlayers.Values.Select(x => x.Player.Stop());
             await Task.WhenAll(stopTasks).ConfigureAwait(false);
@@ -146,7 +162,7 @@ public sealed class Playback : ProcessorBase
                 IsPlaying.Value = true;
             }
         }
-        else if (state.IsCompleted && !prev.IsCompleted) {
+        else if (state.IsEnded && !prev.IsEnded) {
             lock (_stateUpdateLock) {
                 PlayingTracks.Value = PlayingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
                 if (PlayingTracks.Value.Count == 0) {

@@ -2,6 +2,7 @@
 @inherits FusionComponentBase
 @{
     var canInvite = Chat.Rules.CanInvite();
+    var isUnavailable = ReferenceEquals(Chat, Chat.None);
 }
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
     <div>
@@ -9,7 +10,7 @@
             <i class="icon-arrow-left text-2xl"></i>
         </ButtonRound>
     </div>
-    <div class="flex-auto flex-x justify-between items-center w-full gap-x-2 py-0.5 md:pl-2 overflow-hidden">
+    <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 md:pl-2 overflow-hidden">
         <ChatIcon Chat="Chat"/>
         <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
             <div class="flex-y self-center truncate">
@@ -22,27 +23,14 @@
             </div>
         </div>
     </div>
-    <div class="chat-header-control-panel mx-2">
-        <div class="flex-x gap-x-1">
-            <ChatSearch/>
-            @if(canInvite) {
-                <ButtonRound
-                    Click="OnInviteClick"
-                    Class="transparent"
-                    Tooltip="Add participants..."
-                    FloatingPosition="FloatingPosition.Bottom">
-                    <i class="icon-person-add text-2xl ml-1"></i>
-                </ButtonRound>
-            }
+    @if (!isUnavailable) {
+        <div class="chat-header-control-panel ml-2">
+            <div class="flex-x gap-x-1">
+                <ChatSearch/>
+            </div>
+            <ChatHeaderRightPanelToggle OnClick="OnSwitchRightPanelClick"/>
         </div>
-        <ButtonRound
-            Click="OnSwitchRightPanelClick"
-            Class="transparent"
-            Tooltip="Chat properties"
-            FloatingPosition="FloatingPosition.Bottom">
-            <i class="icon-layout text-2xl"></i>
-        </ButtonRound>
-    </div>
+    }
 </div>
 
 @code {
@@ -55,12 +43,9 @@
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private void OnInviteClick()
-        => ModalUI.Show(new InviteAuthor.Model(Chat));
-
     private void OnSwitchRightPanelClick()
-        => RightPanelUI.Switch();
+        => RightPanelUI.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => NavbarUI.ChangeVisibility(true);
+        => NavbarUI.SetIsVisible(true);
 }

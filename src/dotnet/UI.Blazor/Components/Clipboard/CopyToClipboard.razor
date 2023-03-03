@@ -1,50 +1,34 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Services
 
-<div class="@Class copy-to-clipboard">
-    <input
-        @ref="InputRef"
-        class="@InputClass"
-        type="text"
-        value="@Text"
-        @onclick="@OnClick"/>
-    <ButtonRound
-        Click="OnClick"
-        ContentClass="flex-x gap-x-1"
-        Class="@ButtonClass"
-        Tooltip="Copy"
-        FloatingPosition="FloatingPosition.Top">
-        @if (OrdinalEquals(_lastCopiedText, GetCopyText()) && !HideCopiedTag) {
-            <div class="c-copied">
-                copied!
-            </div>
-        } else {
-            <i class="icon-copy text-xl" aria-hidden="true"></i>
-        }
-    </ButtonRound>
+<div class="copy-to-clipboard">
+    @if (ShowInput) {
+        <input
+            @ref="_inputRef"
+            readonly="readonly"
+            class="@InputClass flex-1"
+            type="text"
+            value="@(Caption.NullIfEmpty() ?? Text)"/>
+    }
+
+    <CopyTrigger Tooltip="@Tooltip" CopyText="@Text">
+        <ButtonRound
+            ContentClass="flex-x gap-x-1"
+            Class="@ButtonClass">
+            <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+            <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
+        </ButtonRound>
+    </CopyTrigger>
 </div>
 
 @code {
-    private string? _lastCopiedText = null;
-
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-
-    private ElementReference InputRef { get; set; }
+    private ElementReference _inputRef;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string InputClass { get; set; } = "";
-    [Parameter] public string Text { get; set; } = "";
-    [Parameter] public string? CopyText { get; set; }
-    [Parameter] public bool HideCopiedTag { get; set; }
-
-    private async Task OnClick() {
-        var copyText = GetCopyText();
-        await ClipboardUI.CopyTextFrom(InputRef, copyText);
-        _lastCopiedText = copyText;
-    }
-
-    private string GetCopyText()
-        => CopyText ?? Text;
+    [Parameter] public string Tooltip { get; set; } = "Copy";
+    [Parameter] public bool ShowInput { get; set; }
+    [Parameter] public string Caption { get; set; } = "";
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
 }
 

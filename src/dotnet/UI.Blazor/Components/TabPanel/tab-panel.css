@@ -1,0 +1,85 @@
+.tab-panel {
+    @apply flex-1 flex-y;
+}
+.tab-panel.hide-header .tab-panel-tabs {
+    @apply hidden;
+}
+.tab-panel-tabs {
+    @apply flex-none flex-x;
+    @apply mb-2.5 pb-1.5 items-center;
+    @apply overflow-hidden;
+}
+.tab-panel-tabs .btn-group {
+    @apply w-full justify-evenly;
+}
+.tab-panel-tabs .btn-group-container {
+    @apply flex-y mr-2;
+}
+
+/* Buttons */
+.tab-panel-tabs .btn.tab-btn {
+    @apply min-w-2 border-0 rounded-none;
+    @apply text-02 text-caption-1 tracking-wider;
+}
+.tab-panel-tabs .btn.tab-btn.bottom-border-btn {
+    @apply border-transparent border-b-2;
+}
+.tab-panel-tabs .btn.tab-btn.bottom-border-btn.on {
+    @apply border-primary;
+}
+.tab-panel-tabs .btn.tab-btn.on .btn-content {
+    @apply text-02 text-primary;
+}
+.tab-panel-tabs .btn.tab-btn.on + .tab-panel-bottom-hill {
+    @apply bg-primary;
+}
+
+/* Bottom hill */
+.tab-panel-tabs .tab-panel-bottom-hill {
+    @apply h-1 rounded-t self-center;
+    width: calc(100% - 0.7rem);
+}
+
+/* Tab */
+.tab-panel .tab {
+    @apply grow;
+    @apply max-w-full;
+}
+
+/* SideNav tabs */
+.side-nav .tab-panel-tabs {
+    @apply max-h-14 p-0 m-0;
+    @apply border-b border-bg-04;
+}
+.side-nav .tab-panel-tabs .chats-tab {
+    @apply flex-y h-full overflow-y-visible md:overflow-y-auto custom-scrollbar;
+}
+.side-nav .tab-panel-tabs .btn-group {
+    @apply min-h-14 justify-start px-4 gap-x-0;
+}
+.side-nav .tab-panel-tabs .btn-group .btn-group-container {
+    @apply min-h-14 self-center;
+}
+.side-nav .tab-panel-tabs .btn {
+    @apply min-w-0 min-h-0 p-0 rounded-lg;
+}
+.side-nav .tab-panel-tabs .btn.tab-btn.on .btn-content {
+    @apply text-02;
+}
+body.hoverable .side-nav .tab-panel-tabs .tab-btn:hover .btn-content {
+    @apply bg-round-hover text-primary;
+}
+body.hoverable .side-nav .tab-panel-tabs .tab-btn.on:hover .btn-content {
+    @apply bg-transparent cursor-default;
+}
+.side-nav .tab-panel-tabs .tab-btn .btn-content {
+    @apply py-1.5 px-2 rounded-xl;
+}
+.side-nav .tab-panel-tabs .tab-btn .btn-content .message-counter-badge {
+    @apply ml-1;
+}
+
+.side-nav.side-nav-right .tab-panel-tabs .btn-group {
+    @apply min-h-14 justify-between px-4 overflow-x-hidden;
+}
+

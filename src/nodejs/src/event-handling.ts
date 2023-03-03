@@ -1,7 +1,11 @@
+import { fromEvent, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
+import { Timeout } from 'timeout';
+import { PromiseSource, TimedOut } from 'promises';
 
-const LogScope = 'event-handling';
+const LogScope: LogScope = 'event-handling';
+const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class EventHandler<T> implements Disposable {
@@ -15,9 +19,9 @@ export class EventHandler<T> implements Disposable {
         this.event.remove(this);
     }
 
-    public trigger(argument: T): unknown {
+    public trigger(argument: T): void {
         try {
-            return this.handler(argument);
+            this.handler(argument);
         }
         finally {
             if (this.justOnce)
@@ -25,9 +29,9 @@ export class EventHandler<T> implements Disposable {
         }
     }
 
-    public triggerSilently(argument: T): unknown {
+    public triggerSilently(argument: T): void {
         try {
-            return this.handler(argument);
+            this.handler(argument);
         }
         catch (error) {
             errorLog?.log(`triggerSilently: event handler failed with an error:`, error);
@@ -41,45 +45,143 @@ export class EventHandler<T> implements Disposable {
 }
 
 export class EventHandlerSet<T> {
-    private handlers?: Set<EventHandler<T>>;
+    private readonly handlers = new Set<EventHandler<T>>();
 
-    public add(handler: (T) => unknown, justOnce = false): EventHandler<T> {
-        const eventHandler = new EventHandler<T>(this, handler, justOnce);
-        this.handlers ??= new Set<EventHandler<T>>();
+    constructor(private readonly handlersChanged?: ((handlers: Set<EventHandler<T>>) => void)) {
+    }
+
+    public get count() {
+        return this.handlers.size;
+    }
+
+    public add(handler: (value: T) => unknown): EventHandler<T> {
+        const eventHandler = new EventHandler<T>(this, handler, false);
         this.handlers.add(eventHandler);
+        if (this.handlersChanged)
+            this.handlersChanged(this.handlers);
+        return eventHandler;
+    }
+
+    public addJustOnce(handler: (value: T) => unknown): EventHandler<T> {
+        const eventHandler = new EventHandler<T>(this, handler, true);
+        this.handlers.add(eventHandler);
+        if (this.handlersChanged)
+            this.handlersChanged(this.handlers);
         return eventHandler;
     }
 
     public remove(handler: EventHandler<T>): boolean {
-        return this.handlers?.delete(handler) ?? false;
+        if (!this.handlers.delete(handler))
+            return false;
+
+        if (this.handlersChanged)
+            this.handlersChanged(this.handlers);
+        return true;
     }
 
-    public trigger(argument: T): unknown[] | null {
-        if (!this.handlers)
-            return null;
-        const results = new Array<unknown>();
-        for (const handler of this.handlers)
-            results.push(handler.trigger(argument));
-        return results;
+    public whenNext(): Promise<T> {
+        return new Promise<T>(resolve => this.addJustOnce(value => resolve(value)))
     }
 
-    public triggerSilently(argument: T): unknown[] | null {
-        if (!this.handlers)
-            return null;
-        const results = new Array<unknown>();
+    public whenNextVoid(): Promise<void> {
+        return new Promise<void>(resolve => this.addJustOnce(() => resolve(undefined)))
+    }
+
+    public whenNextWithTimeout(timeoutMs: number): Promise<T | TimedOut> {
+        const result = new PromiseSource<T | TimedOut>();
+        let timeout: Timeout = null;
+        const handler = this.addJustOnce(value => {
+            timeout.clear();
+            result.resolve(value)
+        });
+        timeout = new Timeout(timeoutMs, () => {
+            handler.dispose()
+            result.resolve(TimedOut.instance);
+        });
+        return result;
+    }
+
+    public trigger(argument: T): void {
         for (const handler of this.handlers)
-            results.push(handler.triggerSilently(argument));
-        return results;
+            handler.trigger(argument);
+    }
+
+    public triggerSilently(argument: T): void {
+        for (const handler of this.handlers)
+            handler.triggerSilently(argument);
+    }
+
+    public clear(): void {
+        this.handlers.clear();
     }
 }
 
-export function endEvent(event?: Event, stopImmediatePropagation = true, preventDefault = true) : void {
+// Handy helpers
+
+class DocumentEventSet {
+    public readonly click$: Observable<MouseEvent>;
+    public readonly contextmenu$: Observable<MouseEvent>;
+    public readonly wheel$: Observable<WheelEvent>;
+    public readonly scroll$: Observable<Event>;
+
+    public readonly pointerOver$: Observable<PointerEvent>;
+    public readonly pointerDown$: Observable<PointerEvent>;
+    public readonly pointerMove$: Observable<PointerEvent>;
+    public readonly pointerUp$: Observable<PointerEvent>;
+    public readonly pointerCancel$: Observable<PointerEvent>;
+
+    public readonly keyDown$: Observable<KeyboardEvent>;
+    public readonly keyUp$: Observable<KeyboardEvent>;
+
+    constructor(
+        private readonly isCapture: boolean,
+        private readonly isActive: boolean,
+    ) {
+        const document = globalThis.document;
+        if (!document)
+            return;
+
+        const options = { capture: isCapture, passive: !isActive };
+
+        this.click$ = fromEvent(document, 'click', options) as Observable<MouseEvent>;
+        this.contextmenu$ = fromEvent(document, 'contextmenu', options) as Observable<MouseEvent>;
+        this.wheel$ = fromEvent(document, 'wheel', options) as Observable<WheelEvent>;
+        this.scroll$ = isActive ? null : fromEvent(document.defaultView, 'scroll', options);
+
+        this.pointerOver$ = fromEvent(document, 'pointerover', options) as Observable<PointerEvent>;
+        this.pointerDown$ = fromEvent(document, 'pointerdown', options) as Observable<PointerEvent>;
+        this.pointerMove$ = fromEvent(document, 'pointermove', options) as Observable<PointerEvent>;
+        this.pointerUp$ = fromEvent(document, 'pointerup', options) as Observable<PointerEvent>;
+        this.pointerCancel$ = fromEvent(document, 'pointercancel', options) as Observable<PointerEvent>;
+
+        this.keyDown$ = fromEvent(document, 'keydown', options) as Observable<KeyboardEvent>;
+        this.keyUp$ = fromEvent(document, 'keyup', options) as Observable<KeyboardEvent>;
+    }
+}
+
+export const DocumentEvents = {
+    active: new DocumentEventSet(false, true),
+    passive: new DocumentEventSet(false, false),
+    capturedActive: new DocumentEventSet(true, true),
+    capturedPassive: new DocumentEventSet(true, false),
+}
+
+export function stopEvent(event?: Event, stopImmediatePropagation = true, preventDefault = true) : void {
     if (!event)
         return;
 
+    debugLog?.log(`stopEvent: event:`, event, ', stopImmediatePropagation:', stopImmediatePropagation, ', preventDefault:', preventDefault);
     event.stopPropagation();
     if (stopImmediatePropagation)
         event.stopImmediatePropagation();
     if (preventDefault)
         event.preventDefault();
+}
+
+export function preventDefaultForEvent(event?: Event) : void {
+    if (!event)
+        return;
+
+    debugLog?.log(`preventDefaultForEvent: event:`, event);
+    event.preventDefault();
 }

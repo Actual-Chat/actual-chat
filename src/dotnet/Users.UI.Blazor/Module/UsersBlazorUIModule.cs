@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using ActualChat.Users.UI.Blazor.Services;
 using Stl.Plugins;
 
 namespace ActualChat.Users.UI.Blazor.Module;
@@ -16,12 +15,11 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();
 
-        // Account UI
-        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
+
     }
 }

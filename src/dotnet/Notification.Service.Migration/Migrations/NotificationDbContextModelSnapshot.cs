@@ -17,7 +17,7 @@ namespace ActualChat.Notification.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.0")
+                .HasAnnotation("ProductVersion", "7.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -95,6 +95,15 @@ namespace ActualChat.Notification.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("kind");
 
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("SimilarityKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("similarity_key");
+
                     b.Property<long?>("TextEntryLocalId")
                         .HasColumnType("bigint")
                         .HasColumnName("text_entry_local_id");
@@ -119,6 +128,12 @@ namespace ActualChat.Notification.Migrations
 
                     b.HasIndex("UserId", "Id")
                         .HasDatabaseName("ix_notifications_user_id_id");
+
+                    b.HasIndex("UserId", "Version")
+                        .HasDatabaseName("ix_notifications_user_id_version");
+
+                    b.HasIndex("UserId", "Kind", "SimilarityKey")
+                        .HasDatabaseName("ix_notifications_user_id_kind_similarity_key");
 
                     b.ToTable("notifications");
                 });

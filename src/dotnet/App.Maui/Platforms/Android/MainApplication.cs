@@ -10,7 +10,7 @@ public class MainApplication : MauiApplication
         : base(handle, ownership)
     {
         Android.Util.Log.Debug(AndroidConstants.LogTag, "****************************");
-        Android.Util.Log.Debug(AndroidConstants.LogTag, "MainApplication. Constructor.");
+        Android.Util.Log.Debug(AndroidConstants.LogTag, "MainApplication.Constructor");
     }
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();

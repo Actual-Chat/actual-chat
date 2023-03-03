@@ -3,31 +3,40 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
+    var link = Links.User(AccountUI.OwnAccount.Value.Id);
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
         var isActive = tab == ActiveTab;
         var tabCls = tab.ButtonClass;
         if (!tab.IsToggle) {
-            return @<Button Class="@tabCls" Click="@(_ => OnTabTitleClick(tab))" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                       @RenderTabTitle(tab)
-                   </Button>;
+            return
+                @<Button Class="@tabCls" Click="@(_ => OnTabTitleClick(tab))" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
+                    @RenderTabTitle(tab)
+                </Button>;
         }
-        return @<Button Class="@tabCls" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
-                   @RenderTabTitle(tab)
-               </Button>;
+        return
+            @<Button Class="@tabCls" data-tab-id="@tab.Id" role="tab" aria-selected="@isActive">
+                @RenderTabTitle(tab)
+            </Button>;
     }
 
-    RenderFragment RenderSignOutBtn(SettingsTab tab) {
-        return @<Button Class="" Click="@OnSignOutClick" data-tab-id="@tab.Id" role="tab">
-                   @RenderTabTitle(tab)
-               </Button>;
-    }
+    RenderFragment RenderSignOutBtn(SettingsTab tab)
+        => @<Button Class="" Click="@OnSignOutClick" data-tab-id="@tab.Id" role="tab">
+               @RenderTabTitle(tab)
+           </Button>;
 
     RenderFragment RenderTabTitle(SettingsTab tab) =>
         @<div class="flex-x gap-x-4 items-center justify-between w-full">
             <div class="settings-tab-title">
                 <i class="icon-@tab.IconTitle text-2xl icon-title"></i>
-                <span>@tab.Title</span>
+                @if (tab.TitleComment.IsNullOrEmpty()) {
+                    <span>@tab.Title</span>
+                } else {
+                    <div class="flex-y items-start">
+                        <span>@tab.Title</span>
+                        <span class="text-xxs text-primary">@tab.TitleComment</span>
+                    </div>
+                }
             </div>
             <div class="flex-x">
                 @tab.TitleContent
@@ -37,35 +46,41 @@
 
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class settings-panel @cls">
-        <div class="@TabsClass settings-panel-tabs" role="tablist">
-            <div class="settings-panel-header">
+        <div class="c-tabs" role="tablist">
+            <div class="c-header">
                 <SettingsHeader Title="@Title" OnArrowClick="OnCloseModalClick"/>
             </div>
-            <div class="relative btn-group">
+            <div class="c-tab-items">
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
                     var activeCls = $"{(isActive ? "on" : "")}";
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
-                    <div class="flex-y btn-group-container @containerCls @activeCls">
+                    <div class="c-tab-item @containerCls @activeCls">
                         @switch (tab.Id) {
                             case "logOut":
-                                @RenderSignOutBtn(tab);
+                                @RenderSignOutBtn(tab)
                                 break;
                             default:
                                 @RenderCommonButton(tab)
                                 break;
                         }
                     </div>
-                    @if (!tab.Separator) {
+                    @if (!tab.HasSeparator) {
                         continue;
                     }
                     <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                 }
             </div>
-            <div class="flex-y w-full bg-03 border-t border-bg-04">
-                <div class="flex-x items-center justify-between px-4 gap-x-2 text-xxs">
-                    <div class="flex-initial text-03 font-medium truncate">@Version</div>
-                    @if (HostInfo.AppKind != AppKind.Maui) {
+            <div class="px-3">
+                <LinkTileItem Link="@link" Caption="Link to your account" IsHoverable="false"/>
+            </div>
+            <div class="c-footer">
+                <div class="flex-none flex-x items-center justify-between px-4 gap-x-2 text-xxs">
+                    <div class="flex-1 text-03 font-medium truncate">@Version</div>
+                    <div class="flex-none">
+                        <LoadingTime/>
+                    </div>
+                    @if (HostInfo.AppKind != AppKind.MauiApp) {
                         <div class="flex-none">
                             <BlazorModeToggle/>
                         </div>
@@ -84,14 +99,14 @@
     private readonly List<SettingsTab> _tabs = new();
     private SettingsTab? _activeTab;
 
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<SettingsTab?> ActiveTabChanged { get; set; }
@@ -164,9 +179,6 @@
         StateHasChanged();
     }
 
-    private async Task OnSignOutClick() {
-        await ModalInstance.CloseAsync().ConfigureAwait(false);
-        await ClientAuth.SignOut();
-        Nav.NavigateTo("/");
-    }
+    private Task OnSignOutClick()
+        => AccountUI.SignOut();
 }

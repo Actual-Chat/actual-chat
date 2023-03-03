@@ -6,12 +6,13 @@
     @foreach (var invite in Invites) {
         var link = GetLink(invite);
 
-        <div class="flex-y w-full p-2 pt-1 pr-1 rounded hover:bg-02">
+        <div class="flex-x items-center p-2 pt-1 pr-1 rounded hover:bg-02">
+
             <CopyToClipboard
                 Class="flex-auto"
-                Text="@invite.Id"
-                CopyText="@link.AbsoluteUrl"/>
-            <div class="flex-auto text-xxs">
+                Caption="@invite.Id"
+                Text="@link.AbsoluteUrl"/>
+            <div class="flex-auto text-xxs ml-2">
                 @if (invite.Remaining > 1) {
                     <span><b>@(invite.Remaining)</b> activations remaining, </span>
                 }

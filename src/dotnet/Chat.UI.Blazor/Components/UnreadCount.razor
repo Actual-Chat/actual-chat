@@ -7,13 +7,13 @@
     if (Value == 0 && !HasMentions)
         return;
 
-    var text = HasMentions ? "@" : Value == 0 ? "" : Value.Format();
+    var text = HasMentions ? "@" : Value == 0 ? "" : Value.FormatK();
     var isMuted = NotificationMode switch {
         ChatNotificationMode.ImportantOnly => !HasMentions,
         ChatNotificationMode.Muted => true
         ,_ => false,
         };
-    var bgColor = isMuted ? "bg-counter" : "bg-primary";
+    var bgColor = isMuted ? "bg-counter" : "bg-badge";
     var cursorClass = Click.HasDelegate ? "cursor-pointer" : "";
     var cssClass = $"message-counter-badge {cursorClass}";
 }
@@ -21,9 +21,8 @@
 <Badge Class="@cssClass" Color="@bgColor" Click="@Click">@text</Badge>
 
 @code {
-    private CancellationTokenSource _disposeCts;
-    private CancellationToken _disposeToken;
     private Moment _lastRenderTime;
+    private CancellationTokenSource? _cancelRenderDelayCts;
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
@@ -35,23 +34,26 @@
 
     private IMomentClock Clock => Clocks.CoarseCpuClock;
 
-    public UnreadCount() {
-        _disposeCts = new();
-        _disposeToken = _disposeCts.Token;
+    public void Dispose() {
+        _cancelRenderDelayCts.CancelAndDisposeSilently();
+        _cancelRenderDelayCts = null;
     }
 
-    public void Dispose()
-        => _disposeCts.CancelAndDisposeSilently();
-
     protected override bool ShouldRender() {
+        _cancelRenderDelayCts.CancelAndDisposeSilently();
+        _cancelRenderDelayCts = null;
+
         var now = Clock.Now;
         var delay = _lastRenderTime + UpdateDelay - now;
-        if (delay <= TimeSpan.Zero)
+        if (delay <= FixedDelayer.Defaults.MinDelay)
             return true;
 
-        Clock.Delay(delay, _disposeToken).ContinueWith(_ => {
-            if (_disposeToken.IsCancellationRequested)
+        _cancelRenderDelayCts = new CancellationTokenSource();
+        var cancelDelayToken = _cancelRenderDelayCts.Token;
+        Clock.Delay(delay, cancelDelayToken).ContinueWith(_ => {
+            if (cancelDelayToken.IsCancellationRequested)
                 return;
+
             this.StateHasChangedAsync();
         }, TaskScheduler.Current);
         return false;

@@ -23,7 +23,7 @@ public class InviteServiceModule : HostModule<InviteSettings>
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis

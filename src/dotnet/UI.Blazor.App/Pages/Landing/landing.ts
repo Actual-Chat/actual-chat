@@ -1,12 +1,13 @@
-import { debounceTime, filter, fromEvent, map, merge, Subject, takeUntil } from 'rxjs';
 import { clamp } from 'math';
+import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
+import { DeviceInfo } from 'device-info';
 import { hasModifierKey } from 'keyboard';
-import { endEvent } from 'event-handling';
+import { stopEvent } from 'event-handling';
 import { Timeout } from 'timeout';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
-import { Log, LogLevel } from 'logging';
-const LogScope = 'Landing';
+import { Log, LogLevel, LogScope } from 'logging';
+const LogScope: LogScope = 'Landing';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -18,7 +19,6 @@ enum ScrollBlock {
 
 export class Landing {
     private readonly disposed$ = new Subject<void>();
-    private readonly menu: HTMLElement;
     private readonly header: HTMLElement;
     private readonly scrollContainer: HTMLElement;
     private readonly links = new Array<HTMLElement>();
@@ -27,23 +27,23 @@ export class Landing {
     private isAutoScrolling = false;
     private finalScrollCheckTimeout?: Timeout;
 
-    static create(landing: HTMLElement, blazorRef: DotNet.DotNetObject): Landing {
-        return new Landing(landing, blazorRef);
+    static create(landing: HTMLElement): Landing {
+        return new Landing(landing);
     }
 
     constructor(
         private readonly landing: HTMLElement,
-        private readonly blazorRef: DotNet.DotNetObject,
     ) {
         this.header = landing.querySelector('.landing-header');
-        this.menu = landing.querySelector('.landing-menu');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
         landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
+
         this.scrollContainer = getScrollContainer(this.pages[0]);
 
-        fromEvent(document, 'click')
+        this.onScreenSizeChange();
+        ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
-            .subscribe(() => this.onClick())
+            .subscribe(() => this.onScreenSizeChange());
 
         fromEvent(document, 'keydown')
             .pipe(takeUntil(this.disposed$))
@@ -93,6 +93,9 @@ export class Landing {
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
+        if (DeviceInfo.isIos)
+            return; // The auto-scroll doesn't work on iOS devices (yet)
+
         const page = this.getCurrentPage();
         if (page == null)
             return;
@@ -108,10 +111,15 @@ export class Landing {
         if (nextPage == null)
             return;
 
+        let pageHeight = Math.round(page.getBoundingClientRect().height);
+        let nextPageHeight = Math.round(nextPage.getBoundingClientRect().height);
+        if (pageHeight != window.innerHeight || nextPageHeight != window.innerHeight)
+            return;
+
         debugLog?.log(`autoScroll: starting`);
-        endEvent(event);
+        stopEvent(event);
         this.isAutoScrolling = true;
-        scrollWithOffset(nextPage, this.scrollContainer, this.header.getBoundingClientRect().height);
+        scrollWithOffset(nextPage, this.scrollContainer, 0);
     }
 
     private getCurrentPage(): HTMLElement | null {
@@ -127,9 +135,6 @@ export class Landing {
     }
 
     private getNextPage(page: HTMLElement, isScrollDown: boolean, isScrolling = false): HTMLElement | null {
-        if (page.classList.contains('no-auto-scroll'))
-            return null;
-
         const pageIndex = this.pages.indexOf(page);
         const nextPageOffset = isScrollDown ? 1 : isScrolling ? 0 : -1;
         const nextPageIndex = clamp(pageIndex + nextPageOffset, 0, this.pages.length - 1);
@@ -138,6 +143,18 @@ export class Landing {
     }
 
     // Event handlers
+
+    private onScreenSizeChange() {
+        const h = window.innerHeight;
+        const w = window.innerWidth;
+        const hvRatio = h / w;
+        document.documentElement.style.setProperty('--vh', `${h}px`);
+        let useFullScreenPages = ScreenSize.isNarrow() ? (hvRatio >= 1.85 && hvRatio <= 2.25) : (h >= 700);
+        if (useFullScreenPages)
+            this.landing.classList.remove('no-full-screen-pages');
+        else
+            this.landing.classList.add('no-full-screen-pages');
+    }
 
     private onKeyDown(event: KeyboardEvent): void {
         if (hasModifierKey(event))
@@ -174,7 +191,7 @@ export class Landing {
 
         if (Math.abs(dPage0Top) < 0.1) {
             // The scroll is stopped
-            debugLog?.log(`onScroll: scroll stopped`)
+            debugLog?.log(`onScroll: scroll stopped`);
             this.isAutoScrolling = false;
             this.finalScrollCheckTimeout?.clear();
             this.finalScrollCheckTimeout = null;
@@ -183,7 +200,7 @@ export class Landing {
         if (this.isAutoScrolling) {
             if (!isFinalCheck) {
                 // The very last scroll event may still report some dScrollTop, so...
-                debugLog?.log(`onScroll: scheduling final check`)
+                debugLog?.log(`onScroll: scheduling final check`);
                 this.finalScrollCheckTimeout = new Timeout(100, () => this.onScroll(true));
             }
             // Still auto-scrolling
@@ -192,18 +209,6 @@ export class Landing {
 
         this.autoScroll(dPage0Top < 0, null, true);
     }
-
-    private onClick() {
-        if (!this.menu.classList.contains('open'))
-            return;
-
-        const withinMenu = event.composedPath().includes(this.menu);
-        if (!withinMenu)
-            return;
-
-        this.blazorRef.invokeMethodAsync('CloseMenu');
-        endEvent(event);
-    };
 }
 
 // Helpers

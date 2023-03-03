@@ -38,7 +38,7 @@ public static class TestAuthExt
         var cAccount = await Computed.Capture(() => accounts.GetOwn(session, cancellationToken)).ConfigureAwait(false);
         cAccount = await cAccount
             .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .FirstAsync(c => !(c.ValueOrDefault?.IsGuest ?? true), cancellationToken).AsTask()
+            .FirstAsync(c => !(c.ValueOrDefault?.IsGuestOrNone ?? true), cancellationToken).AsTask()
             .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
         var account = cAccount.Value;

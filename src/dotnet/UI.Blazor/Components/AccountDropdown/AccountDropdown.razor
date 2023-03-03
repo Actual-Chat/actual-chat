@@ -1,13 +1,14 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Events
+@using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    if (!account.IsGuest) {
+    if (!account.IsGuestOrNone) {
         <button class="account-btn btn-square" @onclick="@OnSettingsClick">
             <AccountView/>
         </button>
@@ -17,15 +18,17 @@
 }
 
 @code {
-    [Inject] Session Session { get; init; } = null!;
-    [Inject] IAccounts Accounts { get; init; } = null!;
+    [Inject] AccountUI AccountUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() { InitialValue = AccountFull.Loading };
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = GetStateCategory(),
+        };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => Accounts.GetOwn(Session, cancellationToken);
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken);
 
     private void OnSettingsClick()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());

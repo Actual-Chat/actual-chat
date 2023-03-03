@@ -7,14 +7,14 @@
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
 
-    if (account.IsGuest) {
+    if (account.IsGuestOrNone) {
         <SignInBlock/>
         return;
     }
 }
 
 <SignInLayout>
-    <h1 class="text-02">Welcome to Actual Chat, @(account.User.Name)!</h1>
+    <h1 class="text-02">Welcome to Actual Chat, @(account.FullName)!</h1>
     <p class="text-02 my-5">
         @ChildContent
     </p>
@@ -25,13 +25,16 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
-        => new() { InitialValue = AccountFull.Loading };
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = GetStateCategory(),
+        };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => Accounts.GetOwn(Session, cancellationToken);
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken);
 }

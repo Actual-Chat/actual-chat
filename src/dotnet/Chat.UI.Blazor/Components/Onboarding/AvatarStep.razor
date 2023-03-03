@@ -9,18 +9,13 @@
     return;
 }
 
-@if (CurrentStep.IsCompleted) {
-    <CompletedStep/>
-    return;
-}
-
 <div>
-    <p class="text-title-1 text-center mb-8">Set up your avatar and name</p>
+    <p class="text-title-1 text-center">Your user name and avatar</p>
     <Form
         @ref="_formRef"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
-        <div class="flex-x mb-8">
+        <div class="flex-none flex-x my-8">
             <Pic
                 Title="@_stepModel.Name"
                 ContentId="@_stepModel.AvatarPicture"
@@ -39,7 +34,7 @@
                     </div>
                 </Button>
                 <FileUpload
-                    @key="@_stepModel.AvatarId"
+                    @key="@_stepModel.AvatarId.Value"
                     id="fileUpload"
                     UploadUrl="@($"/api/user-avatars/{_stepModel.AvatarId}/upload-picture")"
                     Uploaded="OnImagePicked"
@@ -62,7 +57,7 @@
         <FormSection
             For="() => _stepModel.Name"
             InputId="name"
-            Label="Name"
+            Label="First name"
             IsLabelInsideInput="true"
             IsRequired="true">
             <InputText id="name" @bind-Value="_stepModel.Name"/>
@@ -73,14 +68,6 @@
             Label="Last name (optional)"
             IsLabelInsideInput="true">
             <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
-        </FormSection>
-        <FormSection
-            For="() => _stepModel.Username"
-            InputId="userName"
-            Label="@("@username")"
-            IsLabelInsideInput="true"
-            IsRequired="true">
-            <InputText id="userName" @bind-Value="_stepModel.Username"/>
         </FormSection>
     </Form>
 </div>
@@ -94,14 +81,24 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsAvatarStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsAvatarStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        _stepModel.Name = account.Name;
+        _stepModel.LastName = account.LastName;
+
         if (!account.Avatar.Id.IsEmpty) {
             _stepModel.AvatarPicture = account.Avatar.Picture;
             _stepModel.AvatarId = account.Avatar.Id;
             return;
         }
+
         var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull {
                 UserId = account.Id,
@@ -129,7 +126,6 @@
             account with {
                 Name = _stepModel.Name,
                 LastName = _stepModel.LastName,
-                Username = _stepModel.Username,
             },
             account.Version);
         await UICommander.Run(updateAccountCommand);
@@ -141,7 +137,7 @@
             avatar.Version,
             new Change<AvatarFull> {
                 Update = avatar with {
-                    Name = _stepModel.Name,
+                    Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
                     Picture = _stepModel.AvatarPicture,
                 },
             });
@@ -153,15 +149,12 @@
     }
 
     private void OnGenerateAvatarClick() {
-        _stepModel.AvatarPicture = DefaultUserPicture.GetAvataaar(IdGenerator.Next());
+        _stepModel.AvatarPicture = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
     }
 
     public class AvatarStepModel {
-        [Required]
-        public string Name { get; set; } = "";
+        [Required] public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
-        [Required]
-        public string Username { get; set; } = "";
         public string AvatarPicture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
     }

@@ -1,22 +1,26 @@
-import { Log, LogLevel } from 'logging';
+import { Observable } from 'rxjs';
+import { EventHandler, EventHandlerSet } from 'event-handling';
+import { Log, LogLevel, LogScope } from 'logging';
+import { Versioning } from 'versioning';
 
-const LogScope = 'on-device-awake';
+const LogScope: LogScope = 'OnDeviceAwake';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-let _worker: Worker = null;
-const _handlers = new Array<() => void>();
+export class OnDeviceAwake {
+    public static readonly events = new EventHandlerSet<void>(handlers => ensureWorker(handlers));
+    public static readonly event$ = new Observable<void>(subject => {
+        const handler = this.events.add(() => subject.next());
+        return () => handler.dispose();
+    })
+}
 
-const onWorkerMessage = () => {
-    debugLog?.log(`onWorkerMessage`);
-    _handlers.forEach(handler => {
-        try {
-            handler();
-        } catch (error) {
-            errorLog?.log(`onWorkerMessage: unhandled error in onDeviceAwake event handler:`, error)
-        }
-    });
+let worker: Worker = null;
+
+const onWakeUp = () => {
+    debugLog?.log(`onWakeUp`);
+    OnDeviceAwake.events.triggerSilently();
 };
 
 const onWorkerError = (error: ErrorEvent) => {
@@ -24,36 +28,25 @@ const onWorkerError = (error: ErrorEvent) => {
 };
 
 const createWorker = () => {
-    const worker = new Worker('/dist/onDeviceAwakeWorker.js');
-    worker.onmessage = onWorkerMessage;
+    const workerPath = Versioning.mapPath('/dist/onDeviceAwakeWorker.js');
+    const worker = new Worker(workerPath);
+    worker.onmessage = onWakeUp;
     worker.onerror = onWorkerError;
-
     return worker;
 }
 
-const ensureWorker = () => {
-    if (_handlers.length > 0 && _worker === null) {
-        debugLog?.log(`ensureWorker: creating worker`)
-        _worker = createWorker();
-    }
-    if (_handlers.length === 0 && _worker !== null) {
-        debugLog?.log(`ensureWorker: terminating worker`)
-        _worker.terminate();
-        _worker = null;
+const ensureWorker = (handlers: Set<EventHandler<void>>) => {
+    const requiresWorker = handlers.size != 0;
+    const hasWorker = worker != null;
+    if (requiresWorker == hasWorker)
+        return;
+
+    if (requiresWorker) {
+        debugLog?.log(`ensureWorker: creating worker`);
+        worker = createWorker();
+    } else {
+        debugLog?.log(`ensureWorker: terminating worker`);
+        worker.terminate();
+        worker = null;
     }
 };
-
-const onDeviceAwake = (handler: () => void): () => void => {
-    debugLog?.log(`onDeviceAwake: adding handler:`, handler)
-    _handlers.push(handler);
-    ensureWorker();
-    return () => {
-        const index = _handlers.indexOf(handler);
-        if (index >= 0) {
-            _handlers.splice(index, 1);
-            ensureWorker();
-        }
-    }
-}
-
-export {onDeviceAwake};

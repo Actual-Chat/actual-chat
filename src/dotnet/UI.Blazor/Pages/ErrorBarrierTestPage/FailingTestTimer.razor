@@ -1,0 +1,25 @@
+@{
+    var now = (long) Clocks.SystemClock.Now.EpochOffset.TotalMilliseconds;
+    if (now % Modulo <= Boundary)
+        Fail();
+}
+
+<UITimer Period="@TimeSpan.FromSeconds(0.1)" Tick="@OnTick"></UITimer>
+<div @onclick="@Fail">
+    @now.ToString("F")
+</div>
+
+@code {
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter] public long Modulo { get; init; } = 60_000;
+    [Parameter] public long Boundary { get; init; } = 10_000;
+
+    private void OnTick() {
+        // Do nothing, just re-render
+    }
+
+    private static void Fail()
+        => throw StandardError.Internal("Fail!");
+
+}

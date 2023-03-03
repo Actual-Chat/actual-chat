@@ -59,7 +59,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         PrincipalId principalId,
         CancellationToken cancellationToken)
     {
-        if (chatId.IsPeerChatId(out var peerChatId)) // We don't use actual roles to determine rules in this case
+        if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
         // Group chat
@@ -91,7 +91,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var roles = ImmutableArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
         if (isJoined) {
-            var isGuest = account.IsGuest;
+            var isGuest = account.IsGuestOrNone;
             var isAnonymous = author is { IsAnonymous: true };
             roles = await RolesBackend
                 .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
@@ -99,11 +99,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         var permissions = roles.ToPermissions();
         if (chat.IsPublic) {
-            permissions |= ChatPermissions.Join;
+            if (chatId != Constants.Chat.AnnouncementsChatId)
+                permissions |= ChatPermissions.Join;
             if (!isJoined) {
                 var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
-                if (anyoneSystemRole != null && anyoneSystemRole.Permissions.Has(ChatPermissions.SeeMembers))
-                    permissions |= ChatPermissions.SeeMembers;
+                if (anyoneSystemRole != null) {
+                    // Full permissions of Anyone role are granted after you join,
+                    // but until you joined, we grant only a subset of these permissions.
+                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.Read | ChatPermissions.SeeMembers | ChatPermissions.Join);
+                }
             }
         }
         permissions = permissions.AddImplied();
@@ -285,7 +289,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-            if (chatId.IsPeerChatId(out var peerChatId)) {
+            if (chatId.IsPeerChat(out var peerChatId)) {
                 // Peer chat
                 ownerId.RequireNone();
 
@@ -293,7 +297,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 await peerChatId.UserIds
                     .ToArray()
                     .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
-                    .Collect(0)
+                    .Collect()
                     .ConfigureAwait(false);
             }
             else if (chatId.Kind == ChatKind.Group) {
@@ -345,7 +349,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Raise events
         new ChatChangedEvent(chat, oldChat)
-            .EnqueueOnCompletion(UserId.None, chat.Id);
+            .EnqueueOnCompletion();
         return chat;
 
         Chat ApplyDiff(Chat originalChat, ChatDiff? diff)
@@ -407,7 +411,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (HostInfo.IsDevelopmentInstance && entry.Kind == ChatEntryKind.Text && OrdinalEquals(entry.Content, "<error>"))
             throw StandardError.Internal("Just a test error.");
 
-        if (chatId.IsPeerChatId(out var peerChatId))
+        if (chatId.IsPeerChat(out var peerChatId))
             _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
         // Injecting mention names into the markup
@@ -433,7 +437,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Raise events
         new TextEntryChangedEvent(entry, author, changeKind)
-            .EnqueueOnCompletion(userId, chatId);
+            .EnqueueOnCompletion();
         return entry;
     }
 
@@ -491,7 +495,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return; // It just spawns other commands, so nothing to do here
 
         var (author, oldAuthor) = eventCommand;
-        if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.IsPeerChatId(out _))
+        if (author.ChatId == Constants.Chat.AnnouncementsChatId || author.ChatId.IsPeerChat(out _))
             return;
 
         var oldHasLeft = oldAuthor?.HasLeft ?? true;
@@ -693,10 +697,19 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return AuthorRules.None(chatId);
 
         var otherUserId = chatId.UserIds.OtherThanOrDefault(account.Id);
-        if (otherUserId.IsNone)
+        if (otherUserId.IsGuestOrNone)
             return AuthorRules.None(chatId);
 
-        return new(chatId, author, account, ChatPermissions.Write.AddImplied() | ChatPermissions.Join);
+        if (account.IsGuestOrNone) {
+            // We grant guest a permission to "read" the chat (which is going to be empty anyway)
+            // solely to make sure ChatPage can display it like it already exists.
+            // The footer there should contain "Sign in to chat" button in this case.
+            // Once this guest signs in, he'll be redirected to actual peer with otherUserId.
+            return new(chatId, author, account, (ChatPermissions.SeeMembers | ChatPermissions.Join).AddImplied());
+        }
+
+        var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join).AddImplied();
+        return new(chatId, author, account, permissions);
     }
 
     private async Task<Chat> EnsureExists(PeerChatId peerChatId, CancellationToken cancellationToken)

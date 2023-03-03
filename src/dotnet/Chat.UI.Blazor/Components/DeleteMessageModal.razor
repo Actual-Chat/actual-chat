@@ -7,22 +7,22 @@
 
 <DialogFrame Title="Delete message" Class="delete-message-modal">
     <Body>
-        <div class="mb-4">
+        <div class="c-question">
             Are you sure you want to delete this message?
         </div>
-        <div class="py-1 rounded-lg bg-01 border border-bg-04">
+        <div class="c-message">
             <div class="chat-message group px-1">
                 <div class="flex-1 flex-y gap-y-2 p-2 pb-1">
-                    <div class="flex-none flex-x">
+                    <div class="flex-none flex-x gap-x-2">
                         <div class="flex-none">
                             <ChatMessageAuthorCircle AuthorSid="@m.Entry.AuthorId"/>
                         </div>
-                        <div class="flex-1 flex-y float-left px-2">
+                        <div class="flex-1 flex-y overflow-hidden">
                             <AuthorName AuthorSid="@m.Entry.AuthorId" Class="font-bold text-03"/>
                             <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
                         </div>
                     </div>
-                    <div class="flex-1 message-content custom-scrollbar">
+                    <div class="message-content">
                         @if (FirstAttachment != null) {
                             var isImage = FirstAttachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
                             @if (isImage) {
@@ -41,7 +41,7 @@
     </Body>
     <Buttons>
         <div class="btn-group">
-            <Button Class="btn-outline" Click="OnCancel" IsAutofocused="true">Cancel</Button>
+            <Button Class="btn-cancel" Click="OnCancel" IsAutofocused="true">Cancel</Button>
             <Button Class="btn-error" Click="OnDelete">Delete</Button>
         </div>
     </Buttons>
@@ -57,7 +57,7 @@
     private Markup Markup { get; set; } = Markup.Empty;
     private ChatEntry Entry => ModalModel.MessageModel.Entry; // Shortcut
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
@@ -70,10 +70,10 @@
     }
 
     private void OnCancel()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     private async Task OnDelete() {
-        await ModalInstance.CloseAsync();
+        Modal.Close();
         var command = new IChats.RemoveTextEntryCommand(Session, Entry.ChatId, ModalModel.MessageModel.Entry.LocalId);
         await UICommander.Run(command);
     }

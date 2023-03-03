@@ -1,31 +1,31 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class form-toggle form-input">
-    <label class="checkbox">
-        <input type="checkbox" id="@Id" checked="@CurrentValue" @onchange="OnChange" disabled="@IsDisabled">
-        <span class="checkbox-switch"></span>
-    </label>
-    @if (!Label.IsNullOrEmpty()) {
-        <label class="@LabelClass checkbox-label" for="@(Id.NullIfEmpty() ?? "-")">@Label</label>
+<label class="@Class toggle">
+    <input type="checkbox" id="@Id" checked="@CurrentValue" @onchange="OnChange" disabled="@IsDisabled">
+    <span class="dash"><span class="o">&nbsp;</span></span>
+    @if (LabelContent != null) {
+        <div class="c-label">@LabelContent</div>
+    } else if (!Label.IsNullOrEmpty()) {
+        <div class="c-label"><span class="c-text">@Label</span></div>
     }
-</div>
+</label>
 
 @code {
-    [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string LabelClass { get; set; } = "";
     [Parameter] public string Id { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Label { get; set; } = "";
+    [Parameter] public RenderFragment? LabelContent { get; set; }
     [Parameter] public bool IsDisabled { get; set; }
-    [Parameter] public bool Value { get; set; }
-    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public bool IsChecked { get; set; }
+    [Parameter] public EventCallback<bool> IsCheckedChanged { get; set; }
 
     public bool CurrentValue { get; set; }
 
     protected override void OnParametersSet()
-        => CurrentValue = Value;
+        => CurrentValue = IsChecked;
 
     private void OnChange(ChangeEventArgs eventArgs) {
         CurrentValue = eventArgs.Value is true;
-        ValueChanged.InvokeAsync(CurrentValue);
+        IsCheckedChanged.InvokeAsync(CurrentValue);
     }
 }

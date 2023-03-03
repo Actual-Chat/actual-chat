@@ -8,8 +8,8 @@
 <Toggle
     Id="@(_id ??= ComponentIdGenerator.Next("chat-mute"))"
     Label="@Label"
-    Value="@(m == ChatNotificationMode.Muted)"
-    ValueChanged="OnValueChanged"/>
+    IsChecked="@(m == ChatNotificationMode.Muted)"
+    IsCheckedChanged="OnValueChanged"/>
 
 @code {
     private string? _id;
@@ -25,7 +25,10 @@
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
     protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()
-        => new() { InitialValue = ChatNotificationMode.Default };
+        => new() {
+            InitialValue = ChatNotificationMode.Default,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ChatNotificationMode> ComputeState(CancellationToken cancellationToken) {
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);

@@ -1,0 +1,82 @@
+@inherits ComputedStateComponent<RecordingSubHeader.Model>
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.NotRecording))
+        return;
+    var recordingElsewhereCls = m.RecordingChat != null ? "recording-elsewhere" : "";
+}
+
+<div class="recording-sub-header @recordingElsewhereCls">
+    <div class="c-content">
+        <div class="flex justify-center w-10 px-1">
+            <div class="w-4 h-4 rounded-full bg-error animate-pulse"></div>
+        </div>
+        @if (m.RecordingChat != null) {
+            <div class="c-text shrink-0">
+                Recording in
+            </div>
+            <a class="inline-block c-text truncate" href="@m.RecordingChatUrl">@(m.RecordingChat.Title)</a>
+            <div class="c-text">chat!</div>
+        }
+
+        @if (m.StopRecordingAt != null) {
+            <div class="c-text">Recording is stopping in </div>
+            <Countdown StopAt="@m.StopRecordingAt.Value" Class="c-text"/>
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.NotRecording,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var recordingChat = await GetRecordingElsewhereChat(cancellationToken);
+        var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken);
+        if (recordingChat == null && stopRecordingAt == null)
+            return Model.NotRecording;
+
+        return new Model {
+            RecordingChat = recordingChat,
+            RecordingChatUrl = recordingChat != null ? Links.Chat(recordingChat.Id) : "",
+            StopRecordingAt = stopRecordingAt,
+        };
+    }
+
+    private async Task<Chat?> GetRecordingElsewhereChat(CancellationToken cancellationToken)
+    {
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId();
+        if (recordingChatId.IsNone)
+            return null;
+
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        if (selectedChatId == recordingChatId)
+            return null;
+
+        return await Chats.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void OnStop()
+        => _ = ChatAudioUI.SetRecordingChatId(default);
+
+    public sealed record Model {
+        public static Model NotRecording { get; } = new();
+
+        public Chat? RecordingChat { get; init; }
+        public string? RecordingChatUrl { get; init; }
+        public Moment? StopRecordingAt { get; init; }
+    }
+}

@@ -61,4 +61,9 @@ public static partial class Constants
         public static TimeSpan AwayTimeout { get; } = TimeSpan.FromSeconds(60);
         public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);
     }
+
+    public static class Contacts
+    {
+        public static TimeSpan MinTouchInterval { get; } =  TimeSpan.FromSeconds(10);
+    }
 }

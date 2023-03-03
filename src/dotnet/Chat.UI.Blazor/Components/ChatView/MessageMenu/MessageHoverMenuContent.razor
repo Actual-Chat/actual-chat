@@ -8,13 +8,13 @@
 }
 <div class="flex-x gap-x-1">
     <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
-        <EmojiIcon Id="@Emoji.ThumbsUp.Id" class="w-5 h-5"/>
+        <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
     </ButtonRound>
     @if (m.CanReply) {
         <ButtonRound
             Click="@(() => Reply(Message.Entry))"
             Tooltip="Reply"
-            FloatingPosition="FloatingPosition.Top">
+            TooltipPosition="FloatingPosition.Top">
             <i class="icon-reply text-xl text-icon-01"></i>
         </ButtonRound>
     }
@@ -23,7 +23,7 @@
     }
     <ButtonRound
         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
-        data-menu-trigger="@(MenuTriggers.Primary.Format())"
+        data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">
         <i class="icon-more-vertical text-xl text-icon-01"></i>
     </ButtonRound>
@@ -39,7 +39,10 @@
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new () { InitialValue = Model.None };
+        => new () {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var entry = Message.Entry;

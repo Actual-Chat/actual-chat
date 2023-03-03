@@ -1,10 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
@@ -21,7 +23,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();
@@ -38,6 +40,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Chat UI
         fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>(_ => new PlayableTextPaletteProvider());
@@ -47,10 +51,12 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings
+        services.TryAddSingleton<AudioSettings>(c => new AudioSettings());
         services.AddScoped<LanguageUI>(c => new LanguageUI(c));
-        services.AddScoped<OnboardingUI>();
+        services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
 
-        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
+        services.ConfigureUILifetimeEvents(events
+            => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
     }
 
     private void RegisterShowSettingsHandler(IServiceProvider services)

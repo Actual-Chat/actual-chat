@@ -1,17 +1,10 @@
 ﻿@using ActualChat.Chat
-@{
-    var avatar = Avatar;
-}
 
-<div class="own-avatar-card relative @Class">
-    <div class="own-avatar-card-content">
-        <Pic ContentId="@avatar.Picture" Title="@avatar.Name" Size="@Size">
-            <NoPicture>
-                <AnonymousIcon/>
-            </NoPicture>
-        </Pic>
-    </div>
-</div>
+<Pic Class="@Class" ContentId="@Avatar.Picture" Title="@Avatar.Name" Size="@Size">
+    <NoPicture>
+        <AnonymousIcon/>
+    </NoPicture>
+</Pic>
 
 @code {
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = AvatarFull.None;

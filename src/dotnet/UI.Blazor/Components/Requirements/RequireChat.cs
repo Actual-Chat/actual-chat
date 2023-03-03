@@ -11,6 +11,9 @@ public class RequireChat : RequirementComponent
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
 
+    public override string ToString()
+        => $"{GetType().GetName()}(ChatSid = {ChatSid})";
+
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
         if (!ChatId.TryParse(ChatSid, out var chatId)) {

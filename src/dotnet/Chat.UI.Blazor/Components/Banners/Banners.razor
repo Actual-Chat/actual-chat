@@ -3,25 +3,30 @@
 @{
     var m = State.Value;
 }
-@foreach (var banner in m.BannerInstances.Take(MaxCount)) {
+
+@foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
 <AddToContactsBanner/>
+<GrantNotificationPermissionBanner/>
 
 @code {
     private const int MaxCount = 2;
     [Inject] private BannerUI BannerUI { get; init; } = null!;
 
-    protected override ComputedState<ComputedModel>.Options GetStateOptions() {
-        return new() { InitialValue = ComputedModel.None };
-    }
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var bannerInstances = await BannerUI.BannerInstances.Use(cancellationToken);
-        return new(bannerInstances);
+        var bannerRefs = await BannerUI.Banners.Use(cancellationToken);
+        return new(bannerRefs);
     }
 
-    public sealed record ComputedModel(ImmutableList<BannerInstance> BannerInstances) {
-        public static readonly ComputedModel None = new(ImmutableList<BannerInstance>.Empty);
+    public sealed record ComputedModel(ImmutableList<BannerDef> Banners) {
+        public static readonly ComputedModel None = new(ImmutableList<BannerDef>.Empty);
     }
 }

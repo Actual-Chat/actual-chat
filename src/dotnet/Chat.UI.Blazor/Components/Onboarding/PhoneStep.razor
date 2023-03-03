@@ -6,16 +6,15 @@
     return;
 }
 
-@if (CurrentStep.IsCompleted) {
-    <CompletedStep/>
-    return;
-}
-
 <div>
-    <p class="text-title-1 text-center">Your phone number and email</p>
-    <p class="text-headline-1 mb-8">Please confirm your country code and enter your phone number</p>
+    <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    <p class="text-headline-1 mt-6">
+        Please confirm your country code and enter your phone number.
+        We collect this information to help you find your friends here.
+    </p>
     <Form
         @ref="_formRef"
+        Class="mt-6"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
         <FormSection
@@ -39,7 +38,7 @@
                 Class="w-20"
                 IsLabelInsideInput="true"
                 IsRequired="true">
-                <InputText id="phoneCode" @bind-Value="_stepModel.Code"/>
+                <InputText id="phoneCode" @bind-Value="_stepModel.Code" autocomplete="tel-country-code"/>
             </FormSection>
             <FormSection
                 For="() => _stepModel.Number"
@@ -48,22 +47,21 @@
                 Class="grow"
                 IsLabelInsideInput="true"
                 IsRequired="true">
-                <InputText id="phoneNumber" @bind-Value="_stepModel.Number"/>
+                <InputText
+                    id="phoneNumber"
+                    @bind-Value="_stepModel.Number"
+                    autocomplete="tel-national"
+                    type="number"
+                    pattern="[0-9]*"
+                    inputmode="numeric"/>
             </FormSection>
         </div>
-        <FormSection For="() => _stepModel.SyncContacts">
-            <Checkbox
-                Id="syncContacts"
-                Checked="@_stepModel.SyncContacts"
-                Change="OnSyncContactsChange"
-                Name="Sync Contacts"/>
-        </FormSection>
         <FormSection
             For="() => _stepModel.Email"
             InputId="email"
-            Label="Email (optional)"
+            Label="Email"
             IsLabelInsideInput="true">
-            <InputText id="email" @bind-Value="_stepModel.Email"/>
+            <InputText id="email" @bind-Value="_stepModel.Email" disabled/>
         </FormSection>
     </Form>
 </div>
@@ -75,6 +73,17 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true });
+
+    protected override async Task OnInitializedAsync() {
+        var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        _stepModel.Email = account.Email;
+    }
 
     protected override Task<bool> Validate() {
         var isValid = _formRef?.EditContext?.Validate() ?? false;
@@ -87,15 +96,9 @@
             Session,
             account with {
                 Phone = $"{_stepModel.Code} {_stepModel.Number}",
-                SyncContacts = _stepModel.SyncContacts,
-                Email = _stepModel.Email ?? "",
             },
             account.Version);
         await UICommander.Run(command);
-    }
-
-    private void OnSyncContactsChange(ChangeEventArgs args) {
-        _stepModel.SyncContacts = args.Value is true;
     }
 
     public class PhoneStepModel {
@@ -114,9 +117,9 @@
         public string? Code { get; set; } = PhoneCodes.Default.Code;
 
         [Required]
+        [Phone]
         public string? Number { get; set; }
 
-        public bool SyncContacts { get; set; }
         public string? Email { get; set; }
     }
 }

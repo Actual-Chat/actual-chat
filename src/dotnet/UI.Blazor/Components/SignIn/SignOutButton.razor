@@ -3,8 +3,13 @@
 
 <Button
     Class="btn-outline"
-    Click="@(_ => ClientAuth.SignOut())">Sign out</Button>
+    Click="@OnSignOutClick">Sign out</Button>
 
 @code {
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    private Task OnSignOutClick()
+        => AccountUI.SignOut();
 }

@@ -59,7 +59,7 @@ module.exports = (env, args) => {
     /** Use this options to control /// #ifdef preprocessor */
     const ifdef = {
         DEBUG: isDevelopment,
-        MEM_LEAK_DETECTION: isDevelopment && false,
+        MEM_LEAK_DETECTION: false,
         // TODO: define client js app version with NBGV (?)
         version: 1.0,
         'ifdef-verbose': false,
@@ -133,11 +133,23 @@ module.exports = (env, args) => {
             // @ts-ignore
             new FileManagerPlugin({
                 events: {
-                    onEnd: {
-                        copy: [
-                            { source: outputPath, destination: mauiOutputPath },
-                        ],
-                    },
+                    onEnd: [
+						{
+							delete: [
+								{
+									source: mauiOutputPath,
+									options: {
+										force: true,
+									},
+								}
+							],
+						},
+						{
+							copy: [
+								{ source: outputPath, destination: mauiOutputPath },
+							],
+						},
+					]
                 },
             }),
             // @ts-ignore
@@ -243,6 +255,55 @@ module.exports = (env, args) => {
             ],
         },
         entry: {
+            // Bundle
+            bundle: {
+                import: './index.ts',
+                library: {
+                    type: 'this',
+                },
+            },
+            // Workers
+            sw: {
+                import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',
+                chunkLoading: 'import',
+                asyncChunks: false,
+                library: {
+                    type: 'module',
+                },
+            },
+            opusDecoderWorker: {
+                import: './../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts',
+                chunkLoading: 'import',
+                asyncChunks: true,
+                library: {
+                    type: 'module',
+                },
+            },
+            opusEncoderWorker: {
+                import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts',
+                chunkLoading: 'import',
+                asyncChunks: true,
+                library: {
+                    type: 'module',
+                },
+            },
+            vadWorker: {
+                import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts',
+                chunkLoading: 'import',
+                asyncChunks: true,
+                library: {
+                    type: 'module',
+                },
+            },
+            onDeviceAwakeWorker: {
+                import: './src/on-device-awake-worker.ts',
+                chunkLoading: 'import',
+                asyncChunks: true,
+                library: {
+                    type: 'module',
+                },
+            },
+            // Worklets
             warmUpWorklet: {
                 import: './src/worklets/warm-up-worklet-processor.ts',
                 chunkLoading: false,
@@ -261,10 +322,11 @@ module.exports = (env, args) => {
                     type: 'module',
                 },
             },
-            opusDecoderWorker: {
-                import: './../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts',
-                chunkLoading: 'import',
-                asyncChunks: true,
+            opusEncoderWorklet: {
+                import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts',
+                chunkLoading: false,
+                asyncChunks: false,
+                runtime: false,
                 library: {
                     type: 'module',
                 },
@@ -276,56 +338,6 @@ module.exports = (env, args) => {
                 runtime: false,
                 library: {
                     type: 'module',
-                },
-            },
-            vadWorker: {
-                import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts',
-                chunkLoading: 'import',
-                asyncChunks: true,
-                library: {
-                    type: 'module',
-                },
-            },
-            opusEncoderWorklet: {
-                import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts',
-                chunkLoading: false,
-                asyncChunks: false,
-                runtime: false,
-                library: {
-                    type: 'module',
-                },
-            },
-            opusEncoderWorker: {
-                import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts',
-                chunkLoading: false,
-                asyncChunks: false,
-                runtime: false,
-                library: {
-                    type: 'module',
-                },
-            },
-            sw: {
-                import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',
-                chunkLoading: 'import',
-                asyncChunks: false,
-                runtime: false,
-                library: {
-                    type: 'module',
-                },
-            },
-            onDeviceAwakeWorker: {
-                import: './src/on-device-awake-worker.ts',
-                chunkLoading: false,
-                asyncChunks: false,
-                runtime: false,
-                library: {
-                    type: 'module',
-                },
-            },
-            bundle: {
-                import: './index.ts',
-                library: {
-                    type: 'this',
                 },
             },
         },

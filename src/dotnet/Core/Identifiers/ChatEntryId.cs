@@ -69,7 +69,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     public static implicit operator Symbol(ChatEntryId source) => source.Id;
     public static implicit operator string(ChatEntryId source) => source.Id.Value;
 
-    public bool IsTextEntryId(out TextEntryId textEntryId)
+    public bool IsTextEntry(out TextEntryId textEntryId)
     {
         if (Kind != ChatEntryKind.Text) {
             textEntryId = default;
@@ -80,10 +80,10 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
     }
 
     public TextEntryId ToTextEntryId()
-        => IsTextEntryId(out var textEntryId) ? textEntryId : throw StandardError.Format<TextEntryId>(Value);
+        => IsTextEntry(out var textEntryId) ? textEntryId : throw StandardError.Format<TextEntryId>(Value);
 
     public TextEntryId AsTextEntryId()
-        => IsTextEntryId(out var textEntryId) ? textEntryId : default;
+        => IsTextEntry(out var textEntryId) ? textEntryId : default;
 
     // Equality
 
@@ -132,7 +132,7 @@ public readonly struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
         if (localId < 0)
             return false;
 
-        result = new ChatEntryId(s, chatId, (ChatEntryKind) kind, localId, AssumeValid.Option);
+        result = new ChatEntryId(s, chatId, (ChatEntryKind)kind, localId, AssumeValid.Option);
         return true;
     }
 }

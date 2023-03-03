@@ -1,13 +1,15 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<ImmutableList<RenderIntoStack>>
 @{
-    var items = State.ValueOrDefault;
-    if (items == null || items.Count == 0)
+    var items = State.Value;
+    if (items.Count == 0)
         return;
+
     var orderedItems = items.OrderBy(x => x.Order).ThenBy(x => x.Key) as IEnumerable<RenderIntoStack>;
     if (IsReversed)
         orderedItems = orderedItems.Reverse();
 }
+
 @foreach (var item in orderedItems) {
     if (!item.Key.IsNullOrEmpty()) {
         <NoComponent @key="item.Key">
@@ -28,7 +30,11 @@
     [Parameter] public RenderFragment<RenderFragment?>? Item { get; set; }
 
     protected override ComputedState<ImmutableList<RenderIntoStack>>.Options GetStateOptions()
-        => new () { UpdateDelayer = FixedDelayer.Instant };
+        => new () {
+            InitialValue = ImmutableList<RenderIntoStack>.Empty,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<ImmutableList<RenderIntoStack>> ComputeState(CancellationToken cancellationToken)
         => await RenderVars.RenderStack(Name).Use(cancellationToken);

@@ -115,7 +115,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             if (activationKeyOpt.IsSome(out var activationKey)) {
                 var isValid = await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
                 if (isValid)
-                    rules = rules with { Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied() };
+                    rules = rules with {
+                        Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied(),
+                    };
             }
         }
         return rules;
@@ -141,11 +143,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var authors = await authorIds
             .Select(id => Authors.Get(session, chatId, id, cancellationToken))
-            .Collect()
+            .Collect() // Add concurrency
             .ConfigureAwait(false);
         return authors
             .SkipNullItems()
-            .OrderBy(a => a.Avatar.Name)
+            .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
             .ToImmutableArray();
     }
 

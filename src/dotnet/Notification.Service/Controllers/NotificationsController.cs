@@ -17,12 +17,13 @@ public class NotificationsController : ControllerBase, INotifications
     }
 
     [HttpGet, Publish]
-    public Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken)
+    public Task<Notification?> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken)
         => Service.Get(session, notificationId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken)
-        => Service.ListRecentNotificationIds(session, cancellationToken);
+    public Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
+        Session session, Moment minSentAt, CancellationToken cancellationToken)
+        => Service.ListRecentNotificationIds(session, minSentAt, cancellationToken);
 
     [HttpPost]
     public Task RegisterDevice([FromBody] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)

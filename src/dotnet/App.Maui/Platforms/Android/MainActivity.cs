@@ -8,8 +8,11 @@ using Android.Content;
 using Result = Android.App.Result;
 using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
+using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
+using AndroidX.Activity.Result;
+using AndroidX.Activity.Result.Contract;
 
 namespace ActualChat.App.Maui;
 
@@ -26,6 +29,12 @@ namespace ActualChat.App.Maui;
         ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
         ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density
     )]
+[IntentFilter(
+    new [] { Intent.ActionView },
+    DataSchemes = new [] { "http", "https" },
+    DataHost = MauiConstants.Host,
+    AutoVerify = true,
+    Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public class MainActivity : MauiAppCompatActivity
 {
     private const int RC_SIGN_IN_GOOGLE = 800;
@@ -37,14 +46,20 @@ public class MainActivity : MauiAppCompatActivity
 #endif
 
     internal static readonly int NotificationID = 101;
+    internal static readonly int NotificationPermissionID = 832;
+    private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
 
-    private GoogleSignInClient mGoogleSignInClient = null!;
+    private GoogleSignInClient _googleSignInClient = null!;
+    private ActivityResultLauncher _requestPermissionLauncher = null!;
 
     private ILogger Log { get; set; } = NullLogger.Instance;
+
+    public static MainActivity? CurrentActivity { get; private set; }
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         var isLoaded = false;
+        CurrentActivity = this;
         if (ScopedServicesAccessor.IsInitialized) {
             var loadingUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>();
             isLoaded = loadingUI.WhenLoaded.IsCompleted;
@@ -57,27 +72,19 @@ public class MainActivity : MauiAppCompatActivity
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log = AppServices.LogFor<MainActivity>();
-        Log.LogDebug("MainActivity.OnCreate, is loaded: {IsLoaded}", isLoaded);
+        Log = AppServices.LogFor(GetType());
+        Log.LogDebug("OnCreate, is loaded: {IsLoaded}", isLoaded);
+        using var _ = _tracer.Region("OnCreate");
 
         base.OnCreate(savedInstanceState);
 
-        Log.LogDebug("MainActivity.base.OnCreate completed");
+        Log.LogDebug("base.OnCreate completed");
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
         // seems it does not help
         var componentName = new ComponentName(this, Java.Lang.Class.FromType(typeof(FirebaseMessagingService)));
         PackageManager?.SetComponentEnabledSetting(componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
-
-        // TODO: move permissions request to where it's really needed
-        // https://github.com/dotnet/maui/issues/3694#issuecomment-1014880727
-        // https://stackoverflow.com/questions/70229906/blazor-maui-camera-and-microphone-android-permissions
-        ActivityCompat.RequestPermissions(this, new[] {
-            Manifest.Permission.Camera,
-            Manifest.Permission.RecordAudio,
-            Manifest.Permission.ModifyAudioSettings
-        }, 0);
 
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
@@ -88,10 +95,19 @@ public class MainActivity : MauiAppCompatActivity
             .Build();
 
         // Build a GoogleSignInClient with the options specified by gso.
-        mGoogleSignInClient = GoogleSignIn.GetClient(this, gso);
+        _googleSignInClient = GoogleSignIn.GetClient(this, gso);
 
-        _ = AutoSignInOnStart();
-
+        // Create launcher to request permissions
+        _requestPermissionLauncher = RegisterForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            new ActivityResultCallback(result => {
+                var isGranted = (bool)result!;
+                var notificationState = isGranted
+                    ? PermissionState.Granted
+                    : PermissionState.Denied;
+                var notificationUI = AppServices.GetRequiredService<NotificationUI>();
+                notificationUI.UpdateNotificationStatus(notificationState);
+            }));
         CreateNotificationChannel();
 
         TryProcessNotificationTap(Intent);
@@ -104,33 +120,63 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnStart()
     {
-        Log.LogDebug("MainActivity.OnStart");
+        _tracer.Point("OnStart");
+        Log.LogDebug("OnStart");
         base.OnStart();
+    }
+
+    protected override void OnResume()
+    {
+        _tracer.Point("OnResume");
+        Log.LogDebug("OnResume");
+        base.OnResume();
     }
 
     protected override void OnStop()
     {
-        Log.LogDebug("MainActivity.OnStop");
+        _tracer.Point("OnStop");
+        Log.LogDebug("OnStop");
         base.OnStop();
     }
 
     protected override void OnDestroy()
     {
-        Log.LogDebug("MainActivity.OnDestroy");
+        _tracer.Point("OnDestroy");
+        Log.LogDebug("OnDestroy");
         base.OnDestroy();
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
-        Log.LogDebug("MainActivity.OnNewIntent");
+        Log.LogDebug("OnNewIntent");
         base.OnNewIntent(intent);
 
         TryProcessNotificationTap(intent);
     }
 
+    public void RequestPermissions(string permission)
+        => _requestPermissionLauncher.Launch(permission);
+
+    public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+    {
+        base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NotificationPermissionID) {
+            var (_, notificationGrant) = permissions
+                .Zip(grantResults)
+                .FirstOrDefault(tuple => OrdinalEquals(tuple.First, Manifest.Permission.PostNotifications));
+            var notificationState = notificationGrant switch {
+                Permission.Denied => PermissionState.Denied,
+                Permission.Granted => PermissionState.Granted,
+                _ => throw new ArgumentOutOfRangeException(),
+            };
+            var notificationUI = AppServices.GetRequiredService<NotificationUI>();
+            notificationUI.UpdateNotificationStatus(notificationState);
+        }
+    }
+
     public Task SignInWithGoogle()
     {
-        StartActivityForResult(mGoogleSignInClient.SignInIntent, RC_SIGN_IN_GOOGLE);
+        StartActivityForResult(_googleSignInClient.SignInIntent, RC_SIGN_IN_GOOGLE);
         return Task.CompletedTask;
     }
 
@@ -142,12 +188,8 @@ public class MainActivity : MauiAppCompatActivity
         return account != null;
     }
 
-    public async Task SignOutWithGoogle()
-    {
-        await mGoogleSignInClient.SignOutAsync().ConfigureAwait(true);
-        var mobileAuthClient = AppServices.GetRequiredService<MobileAuthClient>();
-        await mobileAuthClient.SignOut().ConfigureAwait(true);
-    }
+    public Task SignOutWithGoogle()
+        => _googleSignInClient.SignOutAsync();
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
@@ -167,13 +209,8 @@ public class MainActivity : MauiAppCompatActivity
             }
             if (resultCode == Result.Ok)
                 _ = CheckResult(data!);
-            else {
+            else
                 Log.LogDebug("Google SignIn. SignInIntent result is NOK. Actual result: {ResultCode}", resultCode);
-                new AlertDialog.Builder(this)
-                    .SetTitle("Google SignIn")!
-                    .SetMessage($"SignInIntent result is NOK. Actual result: {resultCode}.")!
-                    .Show();
-            }
         }
     }
 
@@ -184,13 +221,6 @@ public class MainActivity : MauiAppCompatActivity
             return;
         var mobileAuthClient = AppServices.GetRequiredService<MobileAuthClient>();
         await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
-    }
-
-    private async Task AutoSignInOnStart()
-    {
-        // Check for existing Google Sign In account, if it exists then request authentication code and authenticate session.
-        if (IsSignedInWithGoogle())
-            await SignInWithGoogle().ConfigureAwait(true);
     }
 
     private void CreateNotificationChannel()
@@ -216,7 +246,7 @@ public class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
-        Log.LogDebug($"MainActivity.NotificationTap");
+        Log.LogDebug("NotificationTap");
 
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -240,17 +270,35 @@ public class MainActivity : MauiAppCompatActivity
             var serviceProvider = ScopedServicesAccessor.ScopedServices;
             var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
-            var handler = serviceProvider.GetRequiredService<NotificationNavigationHandler>();
-            Log.LogDebug("MainActivity.NotificationTap navigates to '{Url}'", url);
-            _ = handler.Handle(url);
+            var handler = serviceProvider.GetRequiredService<NotificationUI>();
+            Log.LogDebug("NotificationTap navigates to '{Url}'", url);
+            _ = handler.HandleNotificationNavigation(url);
         }
         _ = Handle();
     }
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
+        private readonly object _syncObject = new ();
+        private IServiceProvider? _serviceProvider;
+        private LoadingUI? _loadingUI;
+
         public bool OnPreDraw()
-            => ScopedServicesAccessor.IsInitialized
-                && ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>().WhenLoaded.IsCompleted;
+        {
+            lock (_syncObject) {
+                if (!ScopedServicesAccessor.IsInitialized)
+                    return false;
+
+                var svpHasChanged = false;
+                var svp = ScopedServicesAccessor.ScopedServices;
+                if (_serviceProvider == null || !ReferenceEquals(svp, _serviceProvider)) {
+                    svpHasChanged = true;
+                    _serviceProvider = svp;
+                }
+                if (_loadingUI == null || svpHasChanged)
+                    _loadingUI = _serviceProvider.GetRequiredService<LoadingUI>();
+                return _loadingUI.WhenLoaded.IsCompleted;
+            }
+        }
     }
 }

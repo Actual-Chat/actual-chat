@@ -1,18 +1,18 @@
 @using Stl.Extensibility
+@using System.Diagnostics.CodeAnalysis
 @inherits MarkupViewBase<UrlMarkup>
 @attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
 @{
-    var cls = "url-markup url-markup-" + _kind.ToString().ToLower();
+    var cls = "url-markup url-markup-" + _urlKind.ToString().ToLower();
 }
 
-@switch (_kind) {
-case MarkupUrlKind.Chat:
+@switch (_urlKind) {
+case MarkupUrlKind.Local:
     <a class="@cls"
-       href="@(_chatUrl!.Value)"
-       @onclick="@OnClick"
+       href="@(_localUrl!.Value)"
+       @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Local, _localUrl.Value))"
        @onclick:preventDefault="true"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))"
-       data-menu-trigger="@MenuTriggers.Secondary.Format()">
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
         @Markup.Url
     </a>
     break;
@@ -20,60 +20,66 @@ case MarkupUrlKind.Image:
     <a class="@cls"
        href="@Markup.Url"
        role="button"
-       @onclick="OnClick"
+       @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Image, Markup.Url))"
        @onclick:preventDefault="true">
         <img src="@Markup.Url" alt="@Markup.Url"/>
     </a>
     break;
 default:
     <a class="@cls" href="@Markup.Url" target="_blank"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))"
-       data-menu-trigger="@MenuTriggers.Secondary.Format()">
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
         @Markup.Url
     </a>
     break;
 }
 
 @code {
-    private MarkupUrlKind _kind;
+    private MarkupUrlKind _urlKind;
+    private LocalUrl? _localUrl;
     private ChatMessageModel _message = null!;
-    private LocalUrl? _chatUrl;
 
     [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     protected override void OnParametersSet() {
         _message = new ChatMessageModel(Entry);
-        _kind = Markup.IsImage
+        _urlKind = Markup.IsImage
             ? MarkupUrlKind.Image
-            : IsLocalUrl(Markup.Url, out _chatUrl) ? MarkupUrlKind.Chat : MarkupUrlKind.Other;
+            : IsLocalUrl(Markup.Url, out _localUrl)
+                ? MarkupUrlKind.Local
+                : MarkupUrlKind.Other;
     }
 
-    private bool IsLocalUrl(string url, out LocalUrl? localUrl)
+    private bool IsLocalUrl(string url, [NotNullWhen(true)] out LocalUrl? localUrl)
     {
-        if (Markup.Url.StartsWith(Nav.BaseUri)) {
-            localUrl = new LocalUrl(Nav.ToBaseRelativePath(url));
+        if (Markup.Url.StartsWith(History.Nav.BaseUri)) {
+            localUrl = new LocalUrl(History.Nav.ToBaseRelativePath(url));
             return true;
         }
-        if (Markup.Url.StartsWith(UrlMapper.BaseUrl)) {
-            localUrl = new LocalUrl(UrlMapper.ToBaseRelativePath(url));
+        if (Markup.Url.StartsWith(History.UrlMapper.BaseUrl)) {
+            localUrl = new LocalUrl(History.UrlMapper.ToBaseRelativePath(url));
             return true;
         }
         localUrl = null;
         return false;
     }
 
-    private async Task OnClick() {
-        if (_kind == MarkupUrlKind.Image)
-            await ImageViewerUI.Show(Markup.Url);
-        else
-            Nav.NavigateTo(Markup.Url);
+    private async Task OnSpecialUrlClick(MarkupUrlKind urlKind, string url) {
+        switch (urlKind) {
+        case MarkupUrlKind.Image:
+            await ImageViewerUI.Show(url);
+            break;
+        case MarkupUrlKind.Local:
+            History.NavigateTo(url);
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(urlKind));
+        }
     }
 
     private enum MarkupUrlKind {
         Other,
-        Chat,
+        Local,
         Image,
     }
 }

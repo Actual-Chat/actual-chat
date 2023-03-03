@@ -1,0 +1,28 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
+@{
+    var m = AudioState;
+    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
+    var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass} {Class}";
+}
+
+<ButtonRound
+    Class="@cls"
+    ContentClass="!bg-transparent"
+    Click="@OnListenClick"
+    Tooltip="@(m.IsListening ? "Stop listening" : "Listen")"
+    TooltipPosition="FloatingPosition.Top"
+    MustKeepAwake="@(!m.IsListening)">
+    <i class="icon-listen text-2xl"></i>
+</ButtonRound>
+
+@code {
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatAudioState AudioState { get; set; } = ChatAudioState.None;
+    [Parameter] public string Class { get; set; } = "";
+
+    private void OnListenClick()
+        => _ = ChatAudioUI.SetListeningState(AudioState.ChatId, !AudioState.IsListening);
+
+}

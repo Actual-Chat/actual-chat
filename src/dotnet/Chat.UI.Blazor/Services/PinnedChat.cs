@@ -1,9 +1,10 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 [StructLayout(LayoutKind.Auto)]
+[DataContract]
 public readonly record struct PinnedChat(
-    ChatId ChatId,
-    Moment Recency = default)
+    [property: DataMember] ChatId ChatId,
+    [property: DataMember] Moment Recency = default)
 {
     public static implicit operator PinnedChat(ChatId chatId) => new(chatId);
 

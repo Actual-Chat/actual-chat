@@ -8,16 +8,21 @@
     <ButtonRound Click="OnHideRightPanelClick" Class="md:!hidden transparent">
         <i class="icon-arrow-left text-2xl"></i>
     </ButtonRound>
-    <div class="flex grow text-02 text-title-1 self-center">Chat Settings</div>
-    @if (m.CanEditProperties()) {
-        <ButtonRound
-            Class="transparent"
-            Click="@OnEditChatSettingsClick"
-            Tooltip="Edit"
-            FloatingPosition="FloatingPosition.Bottom">
-            <i class="icon-edit text-2xl"></i>
-        </ButtonRound>
-    }
+    <div class="flex gap-x-2 grow">
+        <div class="flex flex-1 md:flex-none text-02 text-title-1 self-center">Chat Settings</div>
+        @if (m.CanEditProperties()) {
+            <ButtonRound
+                Class="transparent btn-md"
+                Click="@OnEditChatSettingsClick"
+                Tooltip="Edit"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-edit text-2xl"></i>
+            </ButtonRound>
+        }
+    </div>
+    <ButtonRound Click="OnHideRightPanelClick" Class="btn-md !hidden md:!flex transparent">
+        <i class="icon-layout text-2xl"></i>
+    </ButtonRound>
 </div>
 
 @code {
@@ -33,14 +38,15 @@
         => new() {
             InitialValue = AuthorRules.None(Chat.Id),
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override Task<AuthorRules> ComputeState(CancellationToken cancellationToken)
         => Chats.GetRules(Session, Chat.Id, default);
 
     private void OnHideRightPanelClick()
-        => RightPanelUI.ChangeVisibility(false);
+        => RightPanelUI.SetIsVisible(false);
 
-    private void OnEditChatSettingsClick()
+    private Task OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.Model(Chat));
 }

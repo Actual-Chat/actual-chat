@@ -1,3 +1,5 @@
+using Trace = Sentry.Protocol.Trace;
+
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
@@ -7,19 +9,50 @@ public sealed class LoadingUI
 {
     private readonly TaskSource<Unit> _whenLoadedSource;
 
-    private ILogger<LoadingUI> Log { get; }
+    private ILogger Log { get; }
+    private Tracer Tracer { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
 
-    public LoadingUI(ILogger<LoadingUI> log)
+    public TimeSpan LoadingTime { get; private set; } = TimeSpan.Zero;
+    public static TimeSpan MauiAppBuildTime { get; private set; } = TimeSpan.Zero;
+    public TimeSpan AppInitTime { get; private set; } = TimeSpan.Zero;
+    public TimeSpan AppAboutRenderContentTime { get; private set; } = TimeSpan.Zero;
+
+    public LoadingUI(IServiceProvider services)
     {
-        Log = log;
+        Log = services.LogFor(GetType());
+        Tracer = services.Tracer(GetType());
         _whenLoadedSource = TaskSource.New<Unit>(true);
+    }
+
+    public static void ReportMauiAppBuildTime(TimeSpan mauiAppBuildTime)
+    {
+        if (MauiAppBuildTime > TimeSpan.Zero)
+            return;
+        MauiAppBuildTime = mauiAppBuildTime;
+    }
+
+    public void ReportAppInitialized()
+    {
+        if (AppInitTime > TimeSpan.Zero)
+            return;
+        AppInitTime = Tracer.Elapsed;
+    }
+
+    public void ReportAppAboutRenderContent()
+    {
+        if (AppAboutRenderContentTime > TimeSpan.Zero)
+            return;
+        AppAboutRenderContentTime = Tracer.Elapsed;
     }
 
     public void MarkLoaded()
     {
-        if (_whenLoadedSource.TrySetResult(default))
-            Log.LogDebug("MarkLoaded");
+        if (!_whenLoadedSource.TrySetResult(default)) return;
+
+        Log.LogDebug("MarkLoaded");
+        Tracer.Point("MarkLoaded");
+        LoadingTime = Tracer.Elapsed;
     }
 }

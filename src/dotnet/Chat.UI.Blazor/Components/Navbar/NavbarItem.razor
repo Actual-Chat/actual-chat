@@ -4,15 +4,16 @@
     var activeClass = IsSelected ? "active" : "inactive";
 }
 
-<div class="@Class @activeClass navbar-item group"
-     @attributes="InputAttributes">
-    <div class="navbar-item-content">
-        @if (Url.IsNullOrEmpty()) {
+<div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
+    @if (Url.IsNullOrEmpty()) {
+        <div class="navbar-item-content">
             @ChildContent
-        } else {
-            <a class="unfocusable cursor-pointer" data-href="@Url">@ChildContent</a>
-        }
-    </div>
+        </div>
+    } else {
+        <div class="navbar-item-content" data-href="@Url">
+            @ChildContent
+        </div>
+    }
     <div class="navbar-item-ending">
         @Ending
     </div>
@@ -24,5 +25,6 @@
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object> InputAttributes { get; set; } = new();
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> Attributes { get; set; } = new();
 }

@@ -33,6 +33,9 @@ public class ChatActivity
 
     private Task<ChatRecordingActivity> NewChatRecordingActivity(ChatId chatId, CancellationToken cancellationToken)
     {
+        if (chatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(chatId));
+
         var chatRecordingActivity = Services.GetRequiredService<ChatRecordingActivity>();
         chatRecordingActivity.ChatId = chatId;
         _ = chatRecordingActivity.Run();

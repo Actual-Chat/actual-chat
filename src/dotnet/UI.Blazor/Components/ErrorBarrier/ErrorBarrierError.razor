@@ -1,0 +1,72 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<UITimer Period="@_uiTimerPeriod" Tick="@OnTick"/>
+@{
+    if (_isSilentReloadModeOn)
+        return;
+
+    var text = Kind == ErrorBarrierKind.Full
+        ? "Something went wrong while displaying this area."
+        : "Something went wrong...";
+    var buttonText = "Reload";
+    if (MustAutoReload) {
+        var remaining = (long) (_reloadAt - Now).TotalSeconds;
+        buttonText += $" in {remaining}s";
+    }
+    var cls = Kind == ErrorBarrierKind.Full ? "full" : "compact";
+}
+
+<div class="error-barrier @cls">
+    @if (Kind == ErrorBarrierKind.Full) {
+        <div class="c-image"></div>
+    }
+    <div class="c-text">
+        <p class="c-header">Aw, Snap!</p>
+        <p>@text</p>
+    </div>
+    <Button Class="btn-secondary" Click="OnReloadClicked">@buttonText</Button>
+</div>
+
+@code {
+    private static readonly RetryDelaySeq AutoReloadDelays = new(5, 60);
+    private static readonly TimeSpan SilentReloadPeriod = TimeSpan.FromSeconds(0.2);
+    private static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
+    private const int SilentReloadCount = 5;
+
+    private Moment _startedAt;
+    private Moment _reloadAt;
+    private bool _isSilentReloadModeOn;
+    private TimeSpan _uiTimerPeriod;
+
+    private Moment Now => Clocks.CpuClock.Now;
+
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ErrorBarrier Barrier { get; set; } = null!;
+    [Parameter, EditorRequired] public ErrorBarrierKind Kind { get; set; }
+    [Parameter, EditorRequired] public int ErrorCount { get; set; }
+    [Parameter, EditorRequired] public bool MustAutoReload { get; set; }
+
+    protected override void OnInitialized() {
+        _startedAt = Now;
+        var retryIndex = ErrorCount - SilentReloadCount;
+        _isSilentReloadModeOn = retryIndex <= 0;
+        if (_isSilentReloadModeOn)
+            _uiTimerPeriod = SilentReloadPeriod;
+        else if (MustAutoReload) {
+            _uiTimerPeriod = UpdatePeriod;
+            _reloadAt = Now + AutoReloadDelays[retryIndex];
+        }
+        else {
+            _uiTimerPeriod = TimeSpan.Zero; // Won't tick
+        }
+    }
+
+    private void OnTick() {
+        if (_isSilentReloadModeOn || MustAutoReload && Now >= _reloadAt)
+            Barrier.Reload();
+    }
+
+    private void OnReloadClicked()
+        => Barrier.Reload();
+}

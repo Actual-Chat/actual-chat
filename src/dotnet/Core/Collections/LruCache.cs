@@ -2,20 +2,20 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.Collections;
 
-public interface ILruCache<in TKey, TValue>
+public interface ILruCache<TKey, TValue>
     where TKey : notnull
 {
     int Capacity { get; }
     int Count { get; }
-
     TValue this[TKey key] { get; set; }
 
-    bool TryGetValue(TKey key, out TValue value);
-    TValue GetValueOrDefault(TKey key);
+    bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value);
+    TValue? GetValueOrDefault(TKey key);
     bool TryAdd(TKey key, TValue value);
     void Add(TKey key, TValue value);
     bool Remove(TKey key);
     void Clear();
+    IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false);
 }
 
 public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
@@ -56,20 +56,20 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
         _list = new LinkedList<KeyValuePair<TKey, TValue>>();
     }
 
-    public bool TryGetValue(TKey key, out TValue value)
+    public bool TryGetValue(TKey key, [NotNullWhen(true)] out TValue? value)
     {
         if (!_dictionary.TryGetValue(key, out var node)) {
             value = default!;
             return false;
         }
 
-        value = node.Value.Value;
+        value = node.Value.Value!;
         PopUp(node);
         return true;
     }
 
-    public TValue GetValueOrDefault(TKey key)
-        => TryGetValue(key, out var value) ? value : default!;
+    public TValue? GetValueOrDefault(TKey key)
+        => TryGetValue(key, out var value) ? value : default;
 
     public bool TryAdd(TKey key, TValue value)
     {
@@ -104,6 +104,24 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     {
         _dictionary.Clear();
         _list.Clear();
+    }
+
+
+    public IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false)
+    {
+        if (recentFirst) {
+            var item = _list.First;
+            while (item != null) {
+                yield return item.Value;
+                item = item.Next;
+            }
+        } else {
+            var item = _list.Last;
+            while (item != null) {
+                yield return item.Value;
+                item = item.Previous;
+            }
+        }
     }
 
     // Private methods

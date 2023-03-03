@@ -1,10 +1,27 @@
+
 /* DeleteMessageModal */
 
-.delete-message-modal .message-content {
-    @apply max-h-48;
-    @apply overflow-y-auto break-words;
+.delete-message-modal .c-question {
+    @apply flex-none;
+    @apply mb-4;
+    @apply overflow-hidden;
 }
-.delete-message-modal .message-content > * {
+.delete-message-modal .c-message {
+    @apply flex-initial flex-y;
+    @apply overflow-hidden;
+    @apply rounded-lg;
+    @apply border border-bg-04;
+    @apply bg-01;
+}
+.delete-message-modal .chat-message {
+    @apply md:max-h-48;
+    @apply overflow-auto custom-scrollbar; /* This is what we scroll */
+}
+.delete-message-modal .message-content {
+    @apply min-h-fit;
+    overflow: visible; /* This cancels overflow-hidden @ .chat-message */
+}
+.delete-message-modal .message-content * {
     @apply pointer-events-none;
 }
 
@@ -14,10 +31,11 @@
     @apply relative flex-x py-1 px-2;
     @apply bg-01 shadow-lg text-02;
     @apply border-b border-bg-04;
-    @apply animate-display-from-top-slow;
+    @apply animate-display-from-top;
 }
 .historical-playback-sub-header-content {
-    @apply flex-x w-full items-center;
+    @apply flex-x items-center;
+    @apply w-full;
 }
 .historical-playback-sub-header-content .c-chat-title {
     @apply font-semibold;
@@ -32,29 +50,6 @@
     @apply bg-transparent;
 }
 
-.unread-messages-sub-header {
-    @apply relative mx-4 px-2 pb-0.5;
-    @apply bg-unread rounded-b-lg shadow;
-    @apply text-04 font-semibold;
-    @apply animate-display-from-top-slow hover:cursor-pointer;
-}
-
-.recording-elsewhere-sub-header {
-    @apply relative p-0.25 md:mx-4 rounded-t-lg;
-    @apply flex-x items-center justify-center;
-    @apply bg-error text-04 shadow-lg opacity-75;
-    @apply animate-display-from-bottom-slow;
-}
-.recording-elsewhere-sub-header-content {
-    @apply flex-1 flex-x items-center justify-center gap-x-2 px-4 w-full;
-}
-.recording-elsewhere-sub-header-content .c-text {
-    @apply font-light;
-}
-.recording-elsewhere-sub-header-content a {
-    @apply font-semibold underline;
-}
-
 .btn-round.attach-btn {
     @apply self-start;
 }
@@ -67,39 +62,53 @@
     @apply gap-x-12;
 }
 .people-group .btn-square {
-    @apply min-w-12 bg-transparent rounded-none border-b-2 border-transparent;
+    @apply min-w-12;
+    @apply bg-transparent;
+    @apply border-b-2 border-transparent;
+    @apply rounded-none;
 }
 .people-group .btn-square .btn-content {
-    @apply justify-center bg-transparent;
+    @apply justify-center;
+    @apply bg-transparent;
 }
-.people-group .btn-square:hover {
-    @apply text-02 border-primary;
+body.hoverable .people-group .btn-square:hover {
+    @apply text-02;
+    @apply border-primary;
 }
-.people-group .btn-square:hover .btn-content {
+body.hoverable .people-group .btn-square:hover .btn-content {
     @apply bg-transparent;
 }
 
 .btn-square.add-user-btn {
-    @apply flex-1 left-0 min-w-8 bg-transparent rounded-none border-b-2 border-transparent;
+    @apply flex-1 left-0;
+    @apply min-w-8;
+    @apply rounded-none;
+    @apply bg-transparent;
+    @apply border-b-2 border-transparent;
 }
 .btn-square.add-user-btn .btn-content {
-    @apply justify-center bg-transparent;
+    @apply justify-center;
+    @apply bg-transparent;
 }
-.btn-square.add-user-btn:hover {
-    @apply text-02 border-primary;
+body.hoverable .btn-square.add-user-btn:hover {
+    @apply text-02;
+    @apply border-primary;
 }
-.btn-square.add-user-btn:hover .btn-content {
+body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply bg-transparent;
 }
 .btn-square.add-user-btn:focus .btn-content {
-    @apply bg-transparent text-02;
+    @apply bg-transparent;
+    @apply text-02;
 }
 
 .author-settings-modal {
     @apply min-w-full md:min-w-modal max-w-full;
 }
 .author-settings-modal .user-avatar-editor {
-    @apply max-h-96 gap-x-2 overflow-y-auto;
+    @apply gap-x-2;
+    @apply max-h-96;
+    @apply overflow-y-auto;
 }
 .author-settings-modal .dialog-body {
     @apply m-4;
@@ -109,125 +118,53 @@
 }
 
 .people-tab .avatar-badge {
-    @apply p-0.5 mr-1 rounded-xl cursor-pointer;
+    @apply p-0.5 mr-1;
+    @apply rounded-xl;
+    @apply cursor-pointer;
 }
 .people-tab .avatar-badge .author-avatar-badge {
     @apply m-0.5;
 }
-.people-tab .avatar-badge:hover {
+body.hoverable .people-tab .avatar-badge:hover {
     @apply bg-round-hover;
 }
 
-.left-panel-tabs {
-    @apply p-0 m-0;
-    @apply border-b border-bg-04;
+.navbar-pages {
+    @apply gap-y-1;
+    @apply p-1;
 }
-.left-panel-tabs .btn-group {
-    @apply min-h-14 justify-start px-4;
+.navbar-pages .navbar-item {
+    @apply p-2;
+    @apply cursor-pointer;
 }
-.left-panel-tabs .btn-group .btn-group-container {
-    @apply min-h-14 self-center;
-}
-.left-panel-tabs .btn {
-    @apply min-w-0 min-h-0 p-0 rounded-lg;
-}
-.left-panel-tabs .btn.tab-btn.on .btn-content {
-    @apply text-02;
-}
-.left-panel-tabs .tab-btn:hover .btn-content {
-    @apply bg-round-hover text-primary;
-}
-.left-panel-tabs .tab-btn.on:hover .btn-content {
-    @apply bg-transparent cursor-default;
-}
-.left-panel-tabs .tab-btn .btn-content {
-    @apply p-1.5 rounded-xl;
-}
-
-.wide-left-panel-tabs .btn-group {
-    @apply min-h-14 justify-between px-4 overflow-x-hidden;
-}
-
-.navbar-chats,
-.navbar-contacts {
-    @apply h-full overflow-hidden;
-}
-.tab-panel .chats-tab.tab .navbar-item,
-.tab-panel .contacts-tab.tab .navbar-item {
-    @apply relative;
-}
-.chats-tab .navbar-item-content,
-.contacts-tab .navbar-item-content,
-.active-chats .navbar-item-content {
-    @apply w-full;
-}
-.chats-tab .btn-round,
-.contacts-tab .btn-round,
-.active-chats .btn-round {
-    @apply w-6 h-6;
-}
-.recording-in-chat.btn.btn-round {
-    @apply hidden;
-}
-.active-chats .recording-in-chat.btn.btn-round.on {
-    @apply flex visible;
-}
-.chats-tab .btn.btn-round .btn-content,
-.contacts-tab .btn.btn-round .btn-content,
-.active-chats .btn.btn-round .btn-content {
-    @apply bg-transparent;
-}
-.chats-tab .btn.btn-round.pin-toggle.btn-content,
-.contacts-tab .btn.btn-round.pin-toggle.btn-content {
-    @apply bg-transparent;
-}
-.chats-tab .btn.btn-round.pin-toggle.play-pinned.on,
-.contacts-tab .btn.btn-round.pin-toggle.play-pinned.on {
-    @apply text-primary;
-}
-.pinned-chats,
-.pinned-contacts {
-    @apply flex-y pb-2 px-2 gap-y-0.5;
-}
-
-.unpinned-chats,
-.unpinned-contacts {
-    @apply flex-y h-full px-2 gap-y-0.5;
-}
-
-.active-chats {
-    @apply relative flex-y bottom-0 p-2;
-}
-.active-chats .navbar-item.active {
-    @apply bg-selected;
-}
-.active-chats .navbar-item.active .navbar-item-content {
-    @apply font-normal;
-}
-.all-chats .navbar-item.active {
-    @apply bg-transparent;
-}
-.all-chats .navbar-item:hover,
-.all-chats .navbar-item.active:hover {
-    @apply bg-round-hover;
+.navbar-pages .navbar-item .navbar-item-content {
+    @apply mx-2;
+    @apply font-medium;
 }
 
 .writable-chat-footer {
-    @apply relative bg-transparent md:bg-transparent;
+    @apply relative;
+    @apply bg-transparent md:bg-transparent;
 }
 .writable-chat-footer.narrow {
     background: transparent;
 }
 
 .chat-footer {
-    @apply flex justify-center items-center w-full h-full bg-01;
+    @apply flex justify-center items-center;
+    @apply w-full h-full;
     @apply py-0 md:py-1.5 px-2;
+    @apply bg-01;
 }
 .signin-footer {
-    @apply flex w-full md:w-auto py-1 justify-center min-h-footer items-center;
+    @apply flex justify-center items-center;
+    @apply w-full md:w-auto min-h-footer;
+    @apply py-1;
 }
 .signin-footer .btn {
-    @apply h-10 min-h-10 min-w-0 px-4 rounded-full md:rounded-md;
+    @apply h-10 min-h-10 min-w-0;
+    @apply px-4;
+    @apply rounded-full md:rounded-md;
 }
 .signin-footer .btn .btn-content {
     @apply text-lg;
@@ -236,16 +173,20 @@
 .chat-header-control-panel {
     @apply flex-x gap-x-1;
 }
-.chat-header-control-panel .btn.btn-round .btn-content {
-    @apply min-h-10 min-w-10;
-}
 
 .language-settings {
-    @apply flex-y mb-2;
+    @apply flex-y;
+    @apply mb-2;
 }
 .language-settings legend {
     @apply text-xl;
 }
 .language-settings-item {
-    @apply flex-x items-center my-1;
+    @apply flex-x items-center;
+    @apply my-1;
+}
+
+.message-counter-with-time {
+    @apply flex-y items-end gap-y-0.5;
+    @apply group-hover:hidden;
 }

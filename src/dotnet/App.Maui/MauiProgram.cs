@@ -1,3 +1,5 @@
+using System.Net;
+using System.Security.Authentication;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
@@ -7,38 +9,46 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
-using Microsoft.Maui.LifecycleEvents;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using Microsoft.Maui.LifecycleEvents;
+using ActualChat.UI.Blazor;
 using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.App.Maui;
 
  #pragma warning disable VSTHRD002
 
-public static class MauiProgram
+public static partial class MauiProgram
 {
+    private static Tracer _tracer = null!;
+
     public static MauiApp CreateMauiApp()
     {
-        var loggerConfiguration = new LoggerConfiguration().MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("System", LogEventLevel.Warning)
-            .Enrich.FromLogContext();
 #if ANDROID
-        loggerConfiguration = loggerConfiguration.WriteTo.AndroidLog()
-            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, AndroidConstants.LogTag);
-#elif IOS
-        loggerConfiguration = loggerConfiguration.WriteTo.NSLog();
+        Android.Util.Log.Debug(AndroidConstants.LogTag, "MauiProgram.CreateMauiApp");
 #endif
-        Log.Logger = loggerConfiguration.CreateLogger();
+
+        Log.Logger = CreateLoggerConfiguration().CreateLogger();
+        Tracer.Default = _tracer = CreateTracer();
+        _tracer.Point("Tracer and Logger are ready");
+
+#if WINDOWS
+        if (_tracer.IsEnabled) {
+            // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
+            EnableDependencyInjectionEventListener();
+        }
+#endif
+
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
 
         try {
-            Log.Information("Starting to build actual.chat maui app");
+            using var step = _tracer.Region("Building MAUI app");
             var app = CreateMauiAppInternal();
-            Log.Information("Successfully built actual.chat maui app");
+            step.Close();
+            LoadingUI.ReportMauiAppBuildTime(_tracer.Elapsed);
             return app;
         }
         catch (Exception ex) {
@@ -47,54 +57,95 @@ public static class MauiProgram
         }
     }
 
-    private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    private static LoggerConfiguration CreateLoggerConfiguration()
     {
-        Log.Information("Unhandled exception, isTerminating={IsTerminating}. \n{Exception}",
+        var loggerConfiguration = new LoggerConfiguration()
+            .MinimumLevel.Is(LogEventLevel.Information)
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("System", LogEventLevel.Warning)
+            .WriteTo.Sentry(options => options.ConfigureForApp())
+            .Enrich.With(new ThreadIdEnricher())
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
+#if WINDOWS
+        loggerConfiguration = loggerConfiguration
+            .WriteTo.Debug(
+                outputTemplate:"[{Timestamp:HH:mm:ss.fff} {Level:u3} ({ThreadID})] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
+#elif ANDROID
+        loggerConfiguration = loggerConfiguration
+            .WriteTo.AndroidTaggedLog(
+                AndroidConstants.LogTag,
+                outputTemplate: "({ThreadID}) [{SourceContext}] {Message:l{NewLine:l}{Exception:l}");
+#elif IOS
+        loggerConfiguration = loggerConfiguration.WriteTo.NSLog();
+#endif
+        return loggerConfiguration;
+    }
+
+    private static Tracer CreateTracer()
+    {
+#if DEBUG || DEBUG_MAUI
+        var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        return new Tracer("MauiApp", x => logger.Information(x.Format()));
+#else
+        return Tracer.None;
+#endif
+    }
+
+    private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        => Log.Information("Unhandled exception, isTerminating={IsTerminating}. \n{Exception}",
             e.IsTerminating,
             e.ExceptionObject);
-    }
 
     private static MauiApp CreateMauiAppInternal()
     {
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
+            .UseSentry(options => options.ConfigureForApp())
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
             .ConfigureLifecycleEvents(ConfigureLifecycleEvents)
-            .Logging.AddDebug();
+            .UseAppLinks();
 
         var services = builder.Services;
         services.AddMauiBlazorWebView();
 
-#if DEBUG || DEBUG_MAUI
+// Temporarily allow developer tools for all configurations
+// #if DEBUG || DEBUG_MAUI
         builder.Services.AddBlazorWebViewDeveloperTools();
-#endif
+// #endif
 
-        services.AddLogging(logging => logging
-            .AddDebug()
-            .AddSerilog(Log.Logger, dispose: true)
-            .SetMinimumLevel(LogLevel.Information)
-        );
+        services.AddLogging(logging => ConfigureLogging(logging, true));
 
         services.TryAddSingleton(builder.Configuration);
 
-        var sessionId = GetSessionId();
-        var settings = new ClientAppSettings { SessionId = sessionId };
+        services.AddSingleton(new TracerProvider(_tracer));
+        if (_tracer.IsEnabled) {
+            // Use AddDispatcherProxy only to research purpose
+            // AddDispatcherProxy(services, false);
+        }
+
+        var settings = new ClientAppSettings();
+        _ = GetSessionId()
+            .ContinueWith(t => settings.SetSessionId(t.Result), TaskScheduler.Default);
         services.TryAddSingleton(settings);
 
-#if IS_FIXED_ENVIRONMENT_PPRODUCTION
+#if IS_FIXED_ENVIRONMENT_PRODUCTION || !(DEBUG || DEBUG_MAUI)
         var environment = Environments.Production;
 #else
         var environment = Environments.Development;
 #endif
 
+        const string baseUrl = "https://" + MauiConstants.Host + "/";
+        var initSessionInfoTask = InitSessionInfo(settings, new BaseUrlProvider(baseUrl));
         services.AddSingleton(c => new HostInfo {
-            AppKind = AppKind.Maui,
+            AppKind = AppKind.MauiApp,
             Environment = environment,
             Configuration = c.GetRequiredService<IConfiguration>(),
-            BaseUrl = GetBaseUrl(),
+            BaseUrl = baseUrl,
             Platform = PlatformInfoProvider.GetPlatform(),
         });
 
@@ -106,53 +157,90 @@ public static class MauiProgram
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 #endif
+        var step = _tracer.Region("ConfigureServices");
         ConfigureServices(services);
+        step.Close();
 
+        step = _tracer.Region("Building maui app");
         var mauiApp = builder.Build();
+        step.Close();
 
         AppServices = mauiApp.Services;
+
+        _ = WarmupFusionServices(AppServices);
 
         Constants.HostInfo = AppServices.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = AppServices.LogFor(typeof(WebMReader));
 
-        EnsureSessionInfoCreated(mauiApp.Services);
+        AwaitInitSessionInfoTask(initSessionInfoTask);
 
         // MAUI does not start HostedServices, so we do this manually.
         // https://github.com/dotnet/maui/issues/2244
+        step = _tracer.Region("Starting host services");
         StartHostedServices(mauiApp);
+        step.Close();
 
         return mauiApp;
     }
 
-    private static void EnsureSessionInfoCreated(IServiceProvider services)
-        => Task.Run(async () => {
+    private static void AwaitInitSessionInfoTask(Task initSessionInfoTask)
+        => initSessionInfoTask.GetAwaiter().GetResult();
+
+    private static ILoggingBuilder ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
+    {
+        var minLevel = Log.Logger.IsEnabled(LogEventLevel.Debug) ? LogLevel.Debug : LogLevel.Information;
+        return logging
+            .AddSerilog(Log.Logger, dispose: disposeSerilog)
+            .SetMinimumLevel(minLevel);
+    }
+
+    private static Task InitSessionInfo(ClientAppSettings appSettings, BaseUrlProvider baseUrlProvider)
+        => BackgroundTask.Run(async () => {
+            var step = _tracer.Region("Init session info");
+            var services = new ServiceCollection()
+                .AddLogging(logging => ConfigureLogging(logging, false))
+                .BuildServiceProvider();
             var log = services.GetRequiredService<ILogger<MauiApp>>();
             try {
-                var mobileAuthClient = services.GetRequiredService<MobileAuthClient>();
+                // Manually configure http client as we don't have it configured globally at DI level
+                using var httpClient = new HttpClient(new HttpClientHandler {
+                    SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                    UseCookies = false,
+                }, true) {
+                    DefaultRequestVersion = HttpVersion.Version30,
+                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+                };
+                httpClient.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{AppStartup.SessionAffinityKey}\"");
+
+                var log2 = services.GetRequiredService<ILogger<MobileAuthClient>>();
+                var mobileAuthClient = new MobileAuthClient(appSettings, baseUrlProvider, httpClient, log2);
                 log.LogInformation("Creating session...");
                 if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
                     throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
+
                 log.LogInformation("Creating session... Completed");
             }
             catch (Exception e) {
                 log.LogError(e, "Failed to create session");
             }
-
-        }).Wait();
+            finally {
+                await services.DisposeAsync().ConfigureAwait(false);
+            }
+            step.Close();
+        });
 
     private static void StartHostedServices(MauiApp mauiApp)
-        => mauiApp.Services.HostedServices().Start()
-            .Wait(); // wait on purpose, CreateMauiApp is synchronous.
-
-    private static string GetBaseUrl()
     {
-#if ISDEVMAUI
-        return "https://dev.actual.chat/";
-#else
-        return "https://actual.chat/";
-#endif
+        var start = mauiApp.Services.HostedServices()
+            .Start();
+        AwaitHostedServicesStart(start);
+        // wait on purpose, CreateMauiApp is synchronous.
     }
+
+    private static void AwaitHostedServicesStart(Task start)
+        => start
+            .GetAwaiter().GetResult();
 
     private static void ConfigureLifecycleEvents(ILifecycleBuilder events)
     {
@@ -213,27 +301,37 @@ public static class MauiProgram
         services.TryAddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
         services.TryAddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
-        AppStartup.ConfigureServices(services, typeof(Module.BlazorUIClientAppModule)).Wait();
+        AppStartup.ConfigureServices(services, AppKind.MauiApp, typeof(Module.BlazorUIClientAppModule)).Wait();
 
         // Auth
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
-        services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(c));
+        services.AddSingleton<BaseUrlProvider>(c => new BaseUrlProvider(
+            c.GetRequiredService<UrlMapper>().BaseUrl));
+        services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(
+            c.GetRequiredService<ClientAppSettings>(),
+            c.GetRequiredService<BaseUrlProvider>(),
+            c.GetRequiredService<HttpClient>(),
+            c.GetRequiredService<ILogger<MobileAuthClient>>()));
 
         // UI
         services.AddSingleton<NavigationInterceptor>(c => new NavigationInterceptor(c));
         services.AddTransient<MainPage>();
 
 #if ANDROID
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
-        services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
-        services.AddScoped<ClipboardUI>(c => new AndroidClipboardUI(
-            c.GetRequiredService<IJSRuntime>()));
+        services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
+        // Temporarily disabled switch between loud speaker and earpiece
+        // to have single audio channel controlled with volume buttons
+        //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
+        services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
 #elif IOS
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, IOSDeviceTokenRetriever>(_ => new IOSDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever, IosDeviceTokenRetriever>(_ => new IosDeviceTokenRetriever());
+        services.AddScoped<INotificationPermissions>(c => new IosNotificationPermissions());
 #elif MACCATALYST
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
+                services.AddScoped<INotificationPermissions>(c => new MacNotificationPermissions());
 #elif WINDOWS
-        services.AddTransient<Notification.UI.Blazor.IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
+        services.AddScoped<INotificationPermissions>(c => new WindowsNotificationPermissions());
 #endif
 
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
@@ -241,18 +339,60 @@ public static class MauiProgram
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
     }
 
-    private static Symbol GetSessionId()
+    private static Task<Symbol> GetSessionId()
         => BackgroundTask.Run(async () => {
+            var step = _tracer.Region("Getting session id");
             Symbol sessionId = Symbol.Empty;
             const string sessionIdStorageKey = "Fusion.SessionId";
+            Log.Information("About to read stored Session ID");
             var storage = SecureStorage.Default;
-            var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(storedSessionId))
-                sessionId = storedSessionId;
+            try {
+                var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(storedSessionId)) {
+                    sessionId = storedSessionId;
+                    Log.Information("Successfully read stored Session ID");
+                }
+                else
+                    Log.Information("No stored Session ID");
+            }
+            catch (Exception e) {
+                Log.Warning(e, "Failed to read stored Session ID");
+                // ignored
+                // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                // TODO: configure selective backup, to prevent app crashes after re-installing
+                // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
+            }
             if (sessionId.IsEmpty) {
                 sessionId = new SessionFactory().CreateSession().Id;
-                await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                bool saved = false;
+                try {
+                    if (storage.Remove(sessionIdStorageKey))
+                        Log.Information("Removed stored Session ID");
+                    else
+                        Log.Information("Did not Remove stored Session ID");
+                    await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                    saved = true;
+                }
+                catch (Exception e) {
+                    saved = false;
+                    Log.Warning(e, "Failed to store Session ID");
+                    // ignored
+                    // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                }
+                if (!saved) {
+                    Log.Information("Second attempt to store Session ID");
+                    try {
+                        storage.RemoveAll();
+                        await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        Log.Warning(e, "Failed to store Session ID second time");
+                        // ignored
+                        // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                    }
+                }
             }
+            step.Close();
             return sessionId;
-        }).Result;
+        });
 }

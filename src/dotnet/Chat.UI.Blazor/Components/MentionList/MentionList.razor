@@ -12,12 +12,12 @@
 <div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
         var title = mention.Text;
-        var searchMatch = mention.SearchMatch;
         var cls = mention == selection ? "selected" : "";
         var picture = string.IsNullOrWhiteSpace(mention.Picture)
             ? $"https://avatars.dicebear.com/api/avataaars/{title}.svg"
             : UrlMapper.ContentUrl(mention.Picture);
         <div class="@cls mention-list-item"
+             data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"
              @onclick="@(_ => Manager.SelectMention(mention))">
             <div class="flex-x gap-x-2 px-4 items-center h-6 md:h-8">
@@ -57,7 +57,9 @@
 
     protected override void OnInitialized() {
         base.OnInitialized();
-        Filter = StateFactory.NewMutable<string?>();
+        Filter = StateFactory.NewMutable(
+            (string?)null,
+            StateCategories.Get(GetType(), nameof(Filter)));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -75,6 +77,7 @@
         => new() {
             InitialValue = Array.Empty<MentionSearchResult>(),
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<MentionSearchResult[]> ComputeState(CancellationToken cancellationToken) {

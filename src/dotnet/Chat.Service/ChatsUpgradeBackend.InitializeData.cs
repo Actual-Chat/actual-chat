@@ -5,7 +5,6 @@ using ActualChat.Hosting;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.Authentication.Commands;
 using Stl.IO;
 
 namespace ActualChat.Chat;
@@ -83,7 +82,7 @@ public partial class ChatsUpgradeBackend
             null,
             new () {
                 Update = new RoleDiff() {
-                    Permissions = ChatPermissions.Invite,
+                    Permissions = ChatPermissions.Read,
                 },
             });
         await Commander.Call(changeAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);

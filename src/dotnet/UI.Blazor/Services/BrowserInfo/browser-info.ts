@@ -1,67 +1,61 @@
+import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
-import { Log, LogLevel } from 'logging';
-import { audioContextLazy } from 'audio-context-lazy';
+import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
+import { Timeout } from 'timeout';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'BrowserInfo';
+const LogScope: LogScope = 'BrowserInfo';
 const log = Log.get(LogScope, LogLevel.Info);
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-export type AppKind = 'Unknown' | 'WebServer' | 'Wasm' | 'Maui';
+export type AppKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 
 export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
 
     public static appKind: AppKind;
     public static utcOffset: number;
-    public static isMobile: boolean;
-    public static isTouchCapable: boolean;
     public static windowId: string = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public static init(backendRef1: DotNet.DotNetObject, appKind: AppKind): void {
+        log?.log(`initializing`);
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
-        // @ts-ignore
-        this.windowId = window.App.windowId;
-
-        const userAgentData: { mobile?: boolean; } = self.navigator['userAgentData'] as { mobile?: boolean; };
-        this.isMobile = userAgentData?.mobile
-            // Additional check for browsers which don't support userAgentData
-            ?? /Android|Mobile|Phone|webOS|iPhone|iPad|iPod|BlackBerry/i.test(self.navigator.userAgent);
-        this.isTouchCapable =
-            ( 'ontouchstart' in window )
-            || ( navigator.maxTouchPoints > 0 )
-            // @ts-ignore
-            || ( navigator.msMaxTouchPoints > 0 );
+        this.windowId = (globalThis['App'] as { windowId: string }).windowId;
+        if (this.appKind == 'MauiApp')
+            Interactive.isAlwaysInteractive = true;
         this.initBodyClasses();
 
         // Call OnInitialized
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
+            isHoverable: ScreenSize.isHoverable,
             utcOffset: this.utcOffset,
-            isMobile: this.isMobile,
-            isTouchCapable: this.isTouchCapable,
+            isMobile: DeviceInfo.isMobile,
+            isAndroid: DeviceInfo.isAndroid,
+            isIos: DeviceInfo.isIos,
+            isChrome: DeviceInfo.isChrome,
+            isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
-        log?.log(`init:`, initResult);
+        log?.log(`init:`, JSON.stringify(initResult));
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
-        ScreenSize.change$.subscribe(x => this.onScreenSizeChanged(x))
-        if (this.appKind == 'Maui') {
-            audioContextLazy.skipWaitForNextInteraction();
-        }
+        ScreenSize.change$.subscribe(_ => this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable))
+        globalThis["browserInfo"] = this;
     }
 
     // Backend methods
 
-    private static onScreenSizeChanged(screenSize: string): void {
+    private static onScreenSizeChanged(screenSize: string, isHoverable: boolean): void {
         log?.log(`onScreenSizeChanged, screenSize:`, screenSize);
-        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize)
+        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable)
     };
 
     private static initBodyClasses() {
@@ -70,10 +64,10 @@ export class BrowserInfo {
         case 'WebServer':
             classList.add('app-web', 'app-server');
             break;
-        case 'Wasm':
+        case 'WasmApp':
             classList.add('app-web', 'app-wasm');
             break;
-        case 'Maui':
+        case 'MauiApp':
             classList.add('app-mobile', 'app-maui');
             break;
         default:
@@ -81,20 +75,34 @@ export class BrowserInfo {
             break;
         }
 
-        if (this.isMobile)
+
+        if (DeviceInfo.isMobile)
             classList.add('device-mobile');
         else
             classList.add('device-desktop');
 
-        if (this.isTouchCapable)
-            classList.add('device-touch-capable');
+        if (DeviceInfo.isAndroid)
+            classList.add('device-android');
+        if (DeviceInfo.isIos)
+            classList.add('device-ios');
+        if (DeviceInfo.isChrome)
+            classList.add('device-chrome');
+
+        if (DeviceInfo.isTouchCapable)
+            classList.add('touch-capable');
+        else
+            classList.add('touch-incapable');
     }
 }
 
 export interface InitResult {
     screenSizeText: string;
+    isHoverable: boolean,
     utcOffset: number;
     isMobile: boolean;
+    isAndroid: boolean;
+    isIos: boolean;
+    isChrome: boolean;
     isTouchCapable: boolean;
     windowId: string;
 }

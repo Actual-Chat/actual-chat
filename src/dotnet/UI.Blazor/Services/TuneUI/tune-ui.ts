@@ -1,8 +1,8 @@
+import { delayAsync } from 'promises';
 import { VibrationUI } from '../VibrationUI/vibration-ui';
-import { Log, LogLevel } from 'logging';
-import { delayAsync } from '../../../../nodejs/src/promises';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'TuneUI';
+const LogScope: LogScope = 'TuneUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -41,7 +41,7 @@ export class TuneUI {
         if (this.vibrationTunes[tuneName])
             return this.playVibration(tuneName);
 
-        throw `${LogScope}.playAndWait: not supported yet.`;
+        throw new Error(`${LogScope}.playAndWait: not supported yet.`);
     }
 
     // Private methods

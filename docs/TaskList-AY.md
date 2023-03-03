@@ -1,9 +1,16 @@
 Fix:
-- Clicking on your own author produces an error in AuthorModal.razor:line 65
+- Unify TriggerEditor / focusAndOpenKeyboard
+- throttle - check its code for possible bugs / see how it is used in VirtualList
+- serialize - remove limit
+- updateVisibleKeysThrottled, updateViewportThrottled - remove limit, add timeout
+- no context menu in editor
+- investigate ChatList rendering / hanging
+- CreationPanel
 
-Add helper calling UICommander.RunNothing + get rid of UpdateDelayer.Instant:
-- RelatedChatEntry.Value + RelatedChatEntryPanel
-- RightPanelUI.IsVisible.Value + ChatRightPanel
+Chat list:
+- Remove tabs, leave "All" tab
+- Add "Personal" tab
+- Fix sorting menu - should sort order be per-tab?
 
 Implement common variants of ErrorBoundary (timeout + reload, just show an error, etc.) + add it for:
 - Pages
@@ -12,7 +19,7 @@ Implement common variants of ErrorBoundary (timeout + reload, just show an error
 - Modals
 - Menus
 
-Remove UpdateDelayer.Instant:
+Remove FixedDelayer.Instant:
 - ChatSettingsModal
 
 Misc:

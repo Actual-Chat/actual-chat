@@ -1,0 +1,15 @@
+.line-progress {
+    @apply flex-x gap-x-3;
+}
+.line-progress-item {
+    @apply w-3 h-3 rounded-full;
+}
+.line-progress-item-current {
+    @apply w-12 h-3 rounded-full;
+}
+.line-progress-item.blue {
+    @apply bg-primary;
+}
+.line-progress-item.white {
+    @apply text-white;
+}

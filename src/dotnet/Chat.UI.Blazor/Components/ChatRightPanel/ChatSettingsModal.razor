@@ -10,9 +10,9 @@
 }
 
 <Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal">
+    <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal" HasCloseButton="true">
         <Body>
-        <div class="flex-y text-03 p-3">
+        <div class="flex-y text-03 p-3 overflow-y-auto custom-scrollbar">
             @if (m.Rules != null) {
                 @if (m.Rules.CanEditProperties()) {
                     <DataAnnotationsValidator/>
@@ -42,7 +42,7 @@
                 @if (_form.IsPublic) {
                     @if (m.Link is { } publicUrl) {
                         <h4 class="section">Public join link</h4>
-                        <CopyToClipboard Text="@publicUrl.ShortLocalUrl" CopyText="@publicUrl.AbsoluteUrl"/>
+                        <CopyToClipboard Caption="@publicUrl.ShortLocalUrl" Text="@publicUrl.AbsoluteUrl" ShowInput="true"/>
                     }
                 } else {
                     @if (m.Rules.CanInvite()) {
@@ -51,7 +51,7 @@
                             <InviteList Invites="m.Invites" LinkFormat="join/{0}"/>
                         }
                         <div class="@(new FlexMode(FlexAlignment.End)) mt-2">
-                            <Button Click="OnNewInviteClick" Class="btn-primary">New private invite link</Button>
+                            <Button Click="OnNewInviteClick" Class="btn-primary">New private join link</Button>
                         </div>
                     }
                 }
@@ -63,7 +63,7 @@
                 @{
                     var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-secondary" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </div>
         </Buttons>
@@ -84,13 +84,14 @@
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
             InitialValue = ComputedModel.None,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task OnParametersSetAsync() {
@@ -119,7 +120,7 @@
     }
 
     private void OnCancel()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     private async Task OnSave() {
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
@@ -132,7 +133,7 @@
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
         await UICommander.Run(command);
-        await ModalInstance.CloseAsync();
+        Modal.Close();
     }
 
     private void OnImagePicked(string contentId) {

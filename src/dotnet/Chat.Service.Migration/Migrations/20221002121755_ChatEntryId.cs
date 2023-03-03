@@ -14,15 +14,16 @@ namespace ActualChat.Chat.Migrations
                 type: "text",
                 nullable: false,
                 defaultValue: "");
-            migrationBuilder.Sql(@"
-update text_entry_attachments
-set chat_entry_id =
-        (select chat_entries.composite_id
-         from chat_entries
-         where chat_entries.chat_id = text_entry_attachments.chat_id
-           and chat_entries.id = text_entry_attachments.entry_id
-         limit 1)
-");
+
+            migrationBuilder.Sql("""
+                update text_entry_attachments
+                set chat_entry_id =
+                    (select chat_entries.composite_id
+                     from chat_entries
+                     where chat_entries.chat_id = text_entry_attachments.chat_id
+                       and chat_entries.id = text_entry_attachments.entry_id
+                     limit 1)
+                """);
             migrationBuilder.DropColumn(
                 name: "entry_id",
                 table: "text_entry_attachments");
@@ -46,19 +47,19 @@ set chat_entry_id =
                 nullable: false,
                 defaultValue: "");
 
-            migrationBuilder.Sql(@"
-update text_entry_attachments
-set chat_id =
-        (select chat_entries.chat_id
-        from chat_entries
-        where chat_entries.composite_id = text_entry_attachments.chat_entry_id
-        limit 1),
-    entry_id =
-        (select chat_entries.id
-        from chat_entries
-        where chat_entries.composite_id = text_entry_attachments.chat_entry_id
-        limit 1)
-");
+            migrationBuilder.Sql("""
+                update text_entry_attachments
+                set chat_id =
+                        (select chat_entries.chat_id
+                        from chat_entries
+                        where chat_entries.composite_id = text_entry_attachments.chat_entry_id
+                        limit 1),
+                    entry_id =
+                        (select chat_entries.id
+                        from chat_entries
+                        where chat_entries.composite_id = text_entry_attachments.chat_entry_id
+                        limit 1)
+                """);
 
             migrationBuilder.DropColumn(
                 name: "chat_entry_id",

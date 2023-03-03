@@ -6,6 +6,7 @@ using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
@@ -91,7 +92,9 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
+        app.UseDistFiles();
         app.UseStaticFiles();
+
         /*
         app.UseSwagger();
         app.UseSwaggerUI(c => {
@@ -122,7 +125,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Host options
@@ -137,9 +140,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Queues
         services.AddLocalCommandQueues();
-        services.AddCommandQueueScheduler(Queues.Default.Name);
-        services.AddCommandQueueScheduler(Queues.Users.Name);
-        services.AddCommandQueueScheduler(Queues.Chats.Name);
+        services.AddCommandQueueScheduler();
 
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
@@ -290,7 +291,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             );
         }
         otelBuilder.ConfigureResource(builder => builder
-                .AddService("App", "actualchat", AppVersion))
-            .StartWithHost();
+            .AddService("App", "actualchat", AppVersion));
     }
 }

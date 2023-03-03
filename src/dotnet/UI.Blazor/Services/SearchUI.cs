@@ -14,5 +14,5 @@ public class SearchUI
     }
 
     public SearchUI(IStateFactory stateFactory)
-        => Text = stateFactory.NewMutable<string>();
+        => Text = stateFactory.NewMutable("", StateCategories.Get(GetType(), nameof(Text)));
 }

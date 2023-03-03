@@ -12,19 +12,18 @@
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
         <li class="message-reactions-reaction @ownReactionClass"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, reaction.Emoji))"
-            data-menu-trigger="@MenuTriggers.Secondary.Format()"
             data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@(_ => ToggleReaction(reaction.Emoji))">
-            <EmojiIcon Id="@reaction.Emoji.Id" class="message-reactions-reaction-emoji"/>
+            <EmojiIcon Id="@reaction.Emoji.Id" Class="message-reactions-reaction-emoji"/>
             <span class="message-reactions-reaction-count">@reaction.Count</span>
         </li>
     }
 
     <li class="message-reactions-add"
         data-menu="@(MenuRef.New<ReactionSelectMenu>(Entry.Id))"
-        data-menu-trigger="@MenuTriggers.Primary.Format()"
+        data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.Right.ToPositionString())">
-        <AddReactionIcon class="message-reactions-add-icon"/>
+        <AddReactionIcon Class="message-reactions-add-icon"/>
     </li>
 </ul>
 
@@ -41,10 +40,11 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = new Model(Entry.HasReactions, ImmutableArray<ReactionSummary>.Empty),
+            Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (!Entry.Id.IsTextEntryId(out var textEntryId))
+        if (!Entry.Id.IsTextEntry(out var textEntryId))
             return Model.None;
 
         var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken);

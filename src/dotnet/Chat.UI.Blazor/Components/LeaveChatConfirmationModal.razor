@@ -8,7 +8,7 @@
     </Body>
     <Buttons>
         <div class="btn-group">
-            <Button Class="btn-outline" Click="OnCancel">Cancel</Button>
+            <Button Class="btn-cancel" Click="OnCancel">Cancel</Button>
             <Button Class="btn-error" Click="OnLeave">Leave</Button>
         </div>
     </Buttons>
@@ -18,22 +18,22 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
-    [CascadingParameter] public BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnCancel()
-        => _ = ModalInstance.CloseAsync();
+        => Modal.Close();
 
     private async Task OnLeave(MouseEventArgs arg) {
         var isSelectedChat = ModalModel.Chat.Id.Equals(ChatUI.SelectedChatId.Value);
         var command = new IAuthors.LeaveCommand(Session, ModalModel.Chat.Id);
         var result = await UICommander.Run(command);
         if (!result.HasError) {
-            await ModalInstance.CloseAsync();
-            if (isSelectedChat)
-                Nav.NavigateTo(Links.Chat(Constants.Chat.AnnouncementsChatId));
+            Modal.Close();
+            if (isSelectedChat && !ModalModel.Chat.IsPublic)
+                History.NavigateTo(Links.Chats);
         }
     }
 

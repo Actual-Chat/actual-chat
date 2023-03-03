@@ -34,6 +34,7 @@ public class CoreModule : HostModule<CoreSettings>
             .ToList();
 
         // Common services
+        services.AddTracer();
         services.AddSingleton<StaticImportsInitializer>();
         services.AddHostedService<StaticImportsInitializer>();
         services.AddSingleton<UrlMapper>(c => new UrlMapper(
@@ -66,9 +67,9 @@ public class CoreModule : HostModule<CoreSettings>
         services.AddScoped<Features>(c => new Features(c));
         fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
-        if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+        if (HostInfo.AppKind.IsServer())
             InjectServerServices(services);
-        if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
+        if (HostInfo.AppKind.IsClient())
             InjectClientServices(services);
     }
 

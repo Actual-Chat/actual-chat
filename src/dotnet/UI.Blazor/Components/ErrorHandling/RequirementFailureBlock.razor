@@ -1,10 +1,15 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
 @using Stl.Reflection
 @inherits FusionComponentBase
 @{
-    var showTrySignInBlock = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
+    var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
+    if (needsSignIn) {
+        History.NavigateTo(Links.Home);
+        return;
+    }
 }
 
 <LayoutView Layout="@typeof(DefaultLayout)">
@@ -17,21 +22,13 @@
                Title="@title"
                Dismissed="@(_ => RequirementChecker.Remove(requirement))">@error.Message</Error>
     }
-    @if (showTrySignInBlock) {
-        <div>
-            @if (Account.IsGuest) {
-                <span>You can try to <SignInDropdown/> to resolve it.</span>
-            } else {
-                <span>You can try to <SignOutButton/> and sign in with another account to resolve it.</span>
-            }
-        </div>
-    }
 </LayoutView>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [CascadingParameter] public RequirementChecker RequirementChecker { get; set; } = null!;
     [Parameter, EditorRequired] public FailedRequirementSet Failures { get; set; } = FailedRequirementSet.Empty;

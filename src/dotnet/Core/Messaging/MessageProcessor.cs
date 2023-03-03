@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Messaging;
+﻿using TimeoutException = System.TimeoutException;
+
+namespace ActualChat.Messaging;
 
 public interface IMessageProcessor<TMessage> : IAsyncDisposable
     where TMessage : class
@@ -17,8 +19,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
     public int QueueSize { get; init; } = Constants.Queues.MessageProcessorQueueDefaultSize;
+    public int MaxProcessCallDurationMs { get; init; } = Constants.Queues.MessageProcessorMaxProcessCallDurationMs;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
-    public bool UseMessageProcessingWrapper { get; init; } = false;
 
     protected MessageProcessorBase(CancellationTokenSource? stopTokenSource = null)
         : base(stopTokenSource) { }
@@ -39,14 +41,21 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
             throw new ArgumentNullException(nameof(message));
         Start();
         var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
-        _ = BackgroundTask.Run(async () => {
-            try {
-                await Queue!.Writer.WriteAsync(process, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) {
-                process.MarkFailed(e);
-            }
-        }, CancellationToken.None);
+        try {
+            var queueTask = Queue!.Writer.WriteAsync(process, cancellationToken);
+            if (!queueTask.IsCompletedSuccessfully)
+                queueTask.AsTask().ContinueWith(async queueTask1 => {
+                    try {
+                        await queueTask1.ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        process.MarkFailed(e);
+                    }
+                }, TaskScheduler.Default);
+        }
+        catch (Exception e) {
+            process.MarkFailed(e);
+        }
         return process;
     }
 
@@ -77,13 +86,16 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     {
         var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
+            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(RunInternal) + " cycle");
             var message = process.Message;
             process.MarkStarted();
+            Task<object?>? processTask = null;
             try {
                 process.CancellationToken.ThrowIfCancellationRequested();
-                var result = UseMessageProcessingWrapper
-                    ? MessageProcessingWrapper.Process(message, Process, process.CancellationToken)
-                    : await Process(message, process.CancellationToken).ConfigureAwait(false);
+                processTask = Process(message, process.CancellationToken);
+                var result = await processTask
+                    .WaitAsync(TimeSpan.FromMilliseconds(MaxProcessCallDurationMs), process.CancellationToken)
+                    .ConfigureAwait(false);
                 if (result is Task<object?> resultTask) {
                     // Special case: Process may return Task<Task<object?>>,
                     // in this case we assume the rest of the processing will
@@ -102,6 +114,13 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
                         break;
                 }
             }
+            catch (TimeoutException) {
+                if (processTask != null)
+                    process.MarkCompletedAfter(processTask); // Notice we don't await here!
+
+                if (IsTerminator(message))
+                    break;
+            }
             catch (Exception e) {
                 process.MarkFailed(e);
                 if (IsTerminator(message))
@@ -113,10 +132,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         {
             if (message is not (ITerminatorMessage or IMaybeTerminatorMessage { IsTerminator: true }))
                 return false;
-            _ = BackgroundTask.Run(() => {
-                Queue.Writer.TryComplete();
-                return Task.CompletedTask;
-            }, CancellationToken.None);
+
+            Queue.Writer.TryComplete();
             return true;
         }
     }

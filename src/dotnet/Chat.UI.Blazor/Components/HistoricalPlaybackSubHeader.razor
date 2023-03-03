@@ -5,8 +5,8 @@
 @using Timer = System.Timers.Timer;
 @using System.Timers
 @{
-    var m = State.ValueOrDefault ?? Model.NotPlaying;
-    if (m == Model.NotPlaying)
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.NotPlaying))
         return;
 }
 
@@ -19,7 +19,7 @@
                 </ButtonRound>
             }
             @if (m.IsPaused) {
-                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon">
+                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon" MustKeepAwake="true">
                     <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
             } else {
@@ -91,13 +91,12 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            UpdateDelayer = FixedDelayer.Instant,
             InitialValue = Model.NotPlaying,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var lastModel = State.ValueOrDefault;
-
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken);
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId } || chatId.IsNone)
@@ -108,10 +107,11 @@
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
+        var lastValue = State.Value;
         if (playback == null) {
-            // This may happen when player is being disposed, which means this method
+            // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
-            return lastModel ?? Model.NotPlaying;
+            return lastValue; // Keep the last state to avoid blinking
         }
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
@@ -141,11 +141,11 @@
                 AuthorSids = authorSids,
             };
 
-        var canUseLastModel = lastModel != null
-            && lastModel.ChatId == chatId
-            && lastModel.ChatPlayer == historicalChatPlayer
-            && lastModel.IsPaused == isPaused;
-        return canUseLastModel ? lastModel! : Model.NotPlaying;
+        var canUseLastModel = !ReferenceEquals(lastValue, Model.NotPlaying)
+            && lastValue.ChatId == chatId
+            && lastValue.ChatPlayer == historicalChatPlayer
+            && lastValue.IsPaused == isPaused;
+        return canUseLastModel ? lastValue! : Model.NotPlaying;
     }
 
     private void OnStop()

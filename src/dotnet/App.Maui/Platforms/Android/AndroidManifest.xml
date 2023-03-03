@@ -1,7 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <application
       android:allowBackup="true"
+      android:fullBackupContent="@xml/full_backup_content"
+      android:dataExtractionRules="@xml/data_extraction_rules"
       android:icon="@mipmap/appicon"
       android:roundIcon="@mipmap/appicon_round"
       android:supportsRtl="true"
@@ -17,5 +19,7 @@
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-	<uses-sdk android:minSdkVersion="29" android:targetSdkVersion="33" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+	<uses-sdk android:minSdkVersion="28" android:targetSdkVersion="33" />
 </manifest>

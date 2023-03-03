@@ -1,5 +1,6 @@
 import { Disposable } from 'disposable';
-import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, empty } from 'rxjs';
+import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, EMPTY } from 'rxjs';
+import { getOrInheritData } from 'dom-helpers';
 import {
     Placement,
     computePosition,
@@ -8,9 +9,9 @@ import {
     offset,
     arrow,
 } from '@floating-ui/dom';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'TooltipHost';
+const LogScope: LogScope = 'TooltipHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -49,39 +50,40 @@ export class TooltipHost implements Disposable {
     }
 
     private listenForMouseOverEvent(): void {
-        let currentElement: HTMLElement | undefined = undefined;
+        let activeTooltip: { element: HTMLElement | SVGElement, text: string } | null;
         fromEvent(document, 'mouseover')
             .pipe(
                 takeUntil(this.disposed$),
                 map((event: Event) => {
-                    if (!(event.target instanceof HTMLElement))
-                        return undefined;
-                    const closestElement = event.target.closest('[data-tooltip]');
-                    if (closestElement == currentElement)
-                        return undefined;
-                    if (!closestElement && currentElement) {
-                        currentElement = undefined;
+                    const [element, text] = getOrInheritData(event.target, 'tooltip');
+                    if (element === activeTooltip?.element && text === activeTooltip?.text)
+                        return null;
+
+                    if (!element && activeTooltip) {
+                        activeTooltip = null;
                         this.hideTooltip();
-                        return undefined;
+                        return null;
                     }
-                    if (!(closestElement instanceof HTMLElement))
-                        return undefined;
-                    return closestElement;
+                    if (element == null)
+                        return null;
+
+                    return { element, text };
                 }),
-                switchMap((htmlElement: HTMLElement | undefined) => {
-                    return htmlElement ? of(htmlElement).pipe(delay(300)) : empty();
+                switchMap(tooltip => {
+                    return tooltip ? of(tooltip).pipe(delay(300)) : EMPTY;
                 }),
             )
-            .subscribe((closestElement: HTMLElement) => {
-                currentElement = closestElement;
-                this.showTooltip(currentElement);
+            .subscribe(tooltip => {
+                activeTooltip = tooltip;
+                this.showTooltip(activeTooltip.element);
             });
     }
 
-    private showTooltip(triggerRef: HTMLElement) {
+    private showTooltip(triggerRef: HTMLElement | SVGElement) {
         const tooltipText = triggerRef.dataset['tooltip'];
         if (!tooltipText)
             return;
+
         this.tooltipTextRef.textContent = tooltipText;
         this.tooltipRef.style.display = 'block';
         this.updatePosition(triggerRef);
@@ -91,14 +93,12 @@ export class TooltipHost implements Disposable {
         this.tooltipRef.style.display = '';
     }
 
-    private getPlacement(triggerRef: HTMLElement): Placement {
+    private getPlacement(triggerRef: HTMLElement | SVGElement): Placement {
         const placement = triggerRef.dataset['tooltipPosition'];
-        if (placement)
-            return placement as Placement;
-        return 'top';
+        return placement ? placement as Placement : 'top';
     }
 
-    private updatePosition(triggerRef: HTMLElement): void {
+    private updatePosition(triggerRef: HTMLElement | SVGElement): void {
         const placement = this.getPlacement(triggerRef);
         computePosition(triggerRef, this.tooltipRef, {
             placement: placement,

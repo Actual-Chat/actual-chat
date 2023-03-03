@@ -1,101 +1,32 @@
 @page "/u/{UserSid}"
-@inherits ComputedStateComponent<UserPage.Model>
-@{
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.Loading))
-        return;
-
-    var account = m.Account;
-    if (!Account.MustExist.IsSatisfied(account)) {
-        <RequireOtherAccount UserSid="@UserSid" />
-        return;
-    }
-}
-
-<RequireAccount/>
-<MainHeader>
-    <span>User:&nbsp;</span>
-    <span class="text-01">@account.Avatar.Name</span>
-    @if (m.IsOwn) {
-        <span> &ndash; it's you</span>
-    }
-</MainHeader>
-
-<div class="user-page">
-    <div class="c-badge">
-        <AccountCircle UserSid="@account.Id" Size="SquareSize.Size12" ShowPresence="true" />
-        <AccountName UserSid="@account.Id" Class="text-02 font-semibold text-lg"/>
-        @* TODO(AY): Show something similar to what we show in peer chats! *@
-    </div>
-
-    <div class="c-notes">
-        @if (m.Account.IsGuest) {
-            <p>
-                It's a guest (anonymous) user. Sorry, but you can't chat with them.
-            </p>
-        } else if (m.OwnAccount.IsGuest) {
-            <p>
-                You must <SignInDropdown/> to start chatting with
-                <AccountName UserSid="@account.Id" />.
-            </p>
-        } else if (!m.PeerChatId.IsNone) {
-            <DelayedRedirect To="@Links.Chat(m.PeerChatId)"/>
-        } else if (m.IsOwn) {
-            <p>
-                It's your own user page.
-                You can share it with other people to let them chat with you.
-            </p>
-            <p>
-                Link to share: <UserPageLink/>
-            </p>
-        } else {
-            throw StandardError.Internal("Invalid UserPage.Model.");
-        }
-    </div>
-</div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
-    [Parameter] public string UserSid { get; set; } = "";
+    [Parameter] public string? UserSid { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            UpdateDelayer = FixedDelayer.Instant,
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task OnParametersSetAsync() {
         var userId = new UserId(UserSid, ParseOrNone.Option);
-        if (userId.IsNone)
-            return Model.None;
+        if (userId.IsGuestOrNone) {
+            History.NavigateTo(Links.NotFound);
+            return;
+        }
 
-        var account = await Accounts.Get(Session, userId, cancellationToken);
-        if (account == null)
-            return Model.None;
+        var ownAccount = await Accounts.GetOwn(Session, default);
+        var account = await Accounts.Get(Session, userId, default);
+        if (account == null || account.IsGuestOrNone) {
+            History.NavigateTo(Links.NotFound);
+            return;
+        }
 
-        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
-        var isOwn = ownAccount.Id == account.Id;
-        var canChat = !ownAccount.IsGuest && !account.IsGuest && !isOwn;
-        var peerChatId = canChat ? new PeerChatId(ownAccount.Id, account.Id) : default;
-        return new Model {
-            OwnAccount = ownAccount,
-            Account = account,
-            PeerChatId = peerChatId,
-            IsOwn = isOwn,
-        };
-    }
+        if (ownAccount.Id == account.Id) { // Own account
+            History.NavigateTo(Links.Chats);
+            return;
+        }
 
-    // Nested types
-
-    public sealed record Model {
-        public static Model None { get; } = new();
-        public static Model Loading { get; } = new() { Account = Account.Loading }; // Should differ by ref. from None
-
-        public AccountFull OwnAccount { get; init; } = AccountFull.None;
-        public Account Account { get; init; } = Account.None;
-        public PeerChatId PeerChatId { get; init; }
-        public bool IsOwn { get; init; }
+        var chatId = new PeerChatId(ownAccount.Id, account.Id);
+        History.NavigateTo(Links.Chat(chatId));
     }
 }

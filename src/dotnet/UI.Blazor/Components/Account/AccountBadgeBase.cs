@@ -17,7 +17,10 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         => UserId = new UserId(UserSid);
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.Loading };
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (UserId.IsNone)

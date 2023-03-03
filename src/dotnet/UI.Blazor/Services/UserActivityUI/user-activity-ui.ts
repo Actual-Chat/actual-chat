@@ -1,8 +1,8 @@
-import { NextInteraction } from 'next-interaction';
 import { EventHandler } from 'event-handling';
-import { Log, LogLevel } from 'logging';
+import { Interactive } from 'interactive';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'UserActivityUI';
+const LogScope: LogScope = 'UserActivityUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 
 export class UserActivityUI {
@@ -10,20 +10,21 @@ export class UserActivityUI {
     private readonly _handler: EventHandler<Event>;
     private _lastActiveAt: Date = new Date();
     private _shouldNotify: boolean;
+
     public static create(blazorRef: DotNet.DotNetObject) {
         return new UserActivityUI(blazorRef);
     }
 
     constructor(blazorRef: DotNet.DotNetObject) {
         this._blazorRef = blazorRef;
-        this._handler = NextInteraction.addHandler(() => this.onInteracted(), false)
+        this._handler = Interactive.interactionEvents.add(() => this.onInteracted())
     }
 
     public dispose() {
         this._handler.dispose();
     }
 
-    public getLastActiveAt() {
+    public getLastActiveAt() : Date {
         return this._lastActiveAt;
     }
 
@@ -34,10 +35,11 @@ export class UserActivityUI {
     private async onInteracted() {
         debugLog?.log(`onInteracted: user interaction happened`);
         this._lastActiveAt = new Date();
-        if (this._shouldNotify) {
-            debugLog?.log(`onInteracted: notifying server about user activity`);
-            await this._blazorRef.invokeMethodAsync('OnInteracted');
-            this._shouldNotify = false;
-        }
+        if (!this._shouldNotify)
+            return;
+
+        this._shouldNotify = false;
+        debugLog?.log(`onInteracted: notifying server about user activity`);
+        await this._blazorRef.invokeMethodAsync('OnInteracted');
     }
 }

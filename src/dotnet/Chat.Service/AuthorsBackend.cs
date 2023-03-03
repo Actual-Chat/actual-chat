@@ -43,7 +43,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         AuthorFull? author;
         if (dbAuthor == null) {
-            if (!chatId.IsPeerChatId(out var peerChatId))
+            if (!chatId.IsPeerChat(out var peerChatId))
                 return null;
 
             author = GetDefaultPeerChatAuthor(peerChatId, authorId);
@@ -80,7 +80,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             author = dbAuthor?.ToModel();
         }
         if (author == null) {
-            if (!chatId.IsPeerChatId(out var peerChatId))
+            if (!chatId.IsPeerChat(out var peerChatId))
                 return null;
 
             author = GetDefaultPeerChatAuthor(peerChatId, userId);
@@ -98,7 +98,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (chatId.IsNone)
             return ImmutableArray<AuthorId>.Empty;
 
-        if (chatId.IsPeerChatId(out var peerChatId))
+        if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToImmutableArray();
 
         var dbContext = CreateDbContext();
@@ -118,7 +118,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (chatId.IsNone)
             return ImmutableArray<UserId>.Empty;
 
-        if (chatId.IsPeerChatId(out var peerChatId))
+        if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToImmutableArray();
 
         var dbContext = CreateDbContext();
@@ -158,7 +158,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return default!;
         }
 
-        var defaultAuthor = chatId.IsPeerChatId(out var peerChatId)
+        var defaultAuthor = chatId.IsPeerChat(out var peerChatId)
             ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).Require()
             : null;
 
@@ -186,7 +186,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 if (!existingAuthor.IsAnonymous)
                     throw StandardError.Constraint("IsAnonymous can be changed only to false.");
             }
-            else if (account.IsGuest)
+            else if (account.IsGuestOrNone)
                 throw StandardError.Constraint("Unauthenticated authors must be anonymous.");
             if (author.HasLeft && !peerChatId.IsNone)
                 throw StandardError.Constraint("Peer chat authors can't leave.");
@@ -211,7 +211,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var id = new AuthorId(chatId, localId, AssumeValid.Option);
             var author = new AuthorFull(id, VersionGenerator.NextVersion()) {
                 UserId = userId,
-                IsAnonymous = account.IsGuest,
+                IsAnonymous = account.IsGuestOrNone,
             };
             author = DiffEngine.Patch(author, diff);
 
@@ -233,7 +233,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     author = author with { AvatarId = avatar.Id };
                 }
             }
-            else if (account.IsGuest)
+            else if (account.IsGuestOrNone)
                 throw StandardError.Constraint("Unauthenticated authors must be anonymous.");
 
             dbAuthor = new DbAuthor(author);
@@ -251,13 +251,14 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 var chatTextIdRange = await ChatsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
                     .ConfigureAwait(false);
-                new IReadPositionsBackend.SetCommand(author.UserId, command.ChatId, chatTextIdRange.End - 1)
-                    .EnqueueOnCompletion(author.UserId);
+                var readPosition = new ChatPosition(chatTextIdRange.End - 1);
+                new IChatPositionsBackend.SetCommand(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
+                    .EnqueueOnCompletion();
             }
 
             // Raise events
             new AuthorChangedEvent(author, existingAuthor)
-                .EnqueueOnCompletion(author.UserId, chatId);
+                .EnqueueOnCompletion();
             return author;
         }
     }
@@ -317,7 +318,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     private AvatarFull GetDefaultAvatar(AuthorFull author)
         => new() {
             Name = RandomNameGenerator.Default.Generate(author.Id),
-            Picture = DefaultUserPicture.GetAvataaar(author.Id),
+            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
             Bio = "",
         };
 

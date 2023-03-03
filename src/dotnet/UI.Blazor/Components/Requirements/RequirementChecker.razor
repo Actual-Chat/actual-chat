@@ -10,6 +10,7 @@
     private MutableDictionary<RequirementComponent, Unit> _requirements = new();
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ILogger<RequirementChecker> Log { get; init; } = null!;
 
     [Parameter, EditorRequired] public RenderFragment Success { get; set; } = null!;
     [Parameter, EditorRequired] public RenderFragment<FailedRequirementSet> Failure { get; set; } = null!;
@@ -30,6 +31,7 @@
     public virtual void Add(RequirementComponent requirement) {
         if (_requirements.ContainsKey(requirement)) return;
 
+        Log.LogWarning("+ Requirement: {Requirement}", requirement.ToString());
         _requirements.Add(requirement, default);
         State.Invalidate();
     }
@@ -37,6 +39,7 @@
     public virtual void Remove(RequirementComponent requirement) {
         if (!_requirements.ContainsKey(requirement)) return;
 
+        Log.LogWarning("- Requirement: {Requirement}", requirement.ToString());
         _requirements.Remove(requirement);
         State.Invalidate();
     }
@@ -50,6 +53,7 @@
         => new() {
             InitialValue = FailedRequirementSet.Empty,
             UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
         };
 
     protected override async Task<FailedRequirementSet> ComputeState(CancellationToken cancellationToken) {
@@ -70,8 +74,10 @@
         return failures.Any() ? new FailedRequirementSet(failures) : FailedRequirementSet.Empty;
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => Reset();
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        Log.LogDebug("Reset on location change");
+        Reset();
+    }
 }
 
 

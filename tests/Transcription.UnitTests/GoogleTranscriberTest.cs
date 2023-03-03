@@ -19,7 +19,7 @@ public class GoogleTranscriberTest : TestBase
 
         var transcripts = await process.GetTranscripts().ToListAsync();
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
-        transcripts.Max(t => t.TimeRange.End).Should().Be(3.47f);
+        transcripts.Max(t => t.TimeRange.End).Should().Be(3.82f);
         var transcript = transcripts.ApplyDiffs().Last();
 
         transcript.Text.Should().Be("проверка связи");
@@ -41,7 +41,7 @@ public class GoogleTranscriberTest : TestBase
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверь" } } },
                             Stability = 0.01f,
-                            ResultEndOffset = new Duration { Seconds = 1, Nanos = 100_000_000 },
+                            ResultEndOffset = new Duration { Seconds = 3, Nanos = 100_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -54,7 +54,7 @@ public class GoogleTranscriberTest : TestBase
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверка" } } },
                             Stability = 0.01f,
-                            ResultEndOffset = new Duration { Seconds = 1, Nanos = 220_000_000 },
+                            ResultEndOffset = new Duration { Seconds = 3, Nanos = 220_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -67,7 +67,7 @@ public class GoogleTranscriberTest : TestBase
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверка" } } },
                             Stability = 0.09f,
-                            ResultEndOffset = new Duration { Seconds = 1, Nanos = 820_000_000 },
+                            ResultEndOffset = new Duration { Seconds = 3, Nanos = 820_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -112,12 +112,12 @@ public class GoogleTranscriberTest : TestBase
                                         Words = {
                                             new[] {
                                                 new WordInfo {
-                                                    StartOffset = new Duration { Seconds = 0, Nanos = 200_000_000 },
-                                                    EndOffset = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartOffset = new Duration { Seconds = 2, Nanos = 200_000_000 },
+                                                    EndOffset = new Duration { Seconds = 3, Nanos = 300_000_000 },
                                                     Word = "проверка", SpeakerLabel = "1",
                                                 },
                                                 new WordInfo {
-                                                    StartOffset = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartOffset = new Duration { Seconds = 3, Nanos = 300_000_000 },
                                                     EndOffset = new Duration { Seconds = 2, Nanos = 900_000_000 },
                                                     Word = "связи", SpeakerLabel = "1",
                                                 },
@@ -145,23 +145,23 @@ public class GoogleTranscriberTest : TestBase
                                         Words = {
                                             new[] {
                                                 new WordInfo {
-                                                    StartOffset = new Duration { Seconds = 0, Nanos = 200_000_000 },
-                                                    EndOffset = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartOffset = new Duration { Seconds = 2, Nanos = 200_000_000 },
+                                                    EndOffset = new Duration { Seconds = 3, Nanos = 300_000_000 },
                                                     Word = "проверка", SpeakerLabel = "1",
                                                 },
                                                 new WordInfo {
-                                                    StartOffset = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartOffset = new Duration { Seconds = 3, Nanos = 300_000_000 },
                                                     EndOffset = new Duration { Seconds = 2, Nanos = 900_000_000 },
                                                     Word = "связи", SpeakerLabel = "1",
                                                 },
                                                 new WordInfo {
-                                                    StartOffset = new Duration { Seconds = 0, Nanos = 200_000_000 },
-                                                    EndOffset = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartOffset = new Duration { Seconds = 2, Nanos = 200_000_000 },
+                                                    EndOffset = new Duration { Seconds = 3, Nanos = 300_000_000 },
                                                     Word = "проверка", SpeakerLabel = "1",
                                                 },
                                                 new WordInfo {
-                                                    StartOffset = new Duration { Seconds = 1, Nanos = 300_000_000 },
-                                                    EndOffset = new Duration { Seconds = 2, Nanos = 900_000_000 },
+                                                    StartOffset = new Duration { Seconds = 3, Nanos = 300_000_000 },
+                                                    EndOffset = new Duration { Seconds = 4, Nanos = 900_000_000 },
                                                     Word = "связи", SpeakerLabel = "1",
                                                 },
                                             },
@@ -169,7 +169,7 @@ public class GoogleTranscriberTest : TestBase
                                     },
                                 },
                             },
-                            ResultEndOffset = new Duration { Seconds = 3, Nanos = 470_000_000 },
+                            ResultEndOffset = new Duration { Seconds = 5, Nanos = 470_000_000 },
                             LanguageCode = "ru-ru",
                             IsFinal = true,
                         },
@@ -183,11 +183,35 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();
         var transcript = transcripts.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
+    }
+
+    [Fact]
+    public async Task LongTranscriptProducesCorrectDiff()
+    {
+        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"), CancellationToken.None);
+
+        var transcripts = process.GetTranscripts();
+        var memoizedTranscripts = transcripts.Memoize();
+        var diffs = memoizedTranscripts.Replay().GetDiffs(CancellationToken.None);
+        var memoizedDiffs = diffs.Memoize();
+        await foreach (var diff in memoizedDiffs.Replay())
+            Out.WriteLine(diff.ToString());
+
+        var transcript = await memoizedTranscripts.Replay()
+            .LastAsync();
+        var restoredTranscript = await memoizedDiffs.Replay()
+            .ApplyDiffs(CancellationToken.None)
+            .LastAsync();
+
+        transcript.Text.Should().Be(restoredTranscript.Text);
+        transcript.TextToTimeMap.Data.Should().BeSubsetOf(restoredTranscript.TextToTimeMap.Data);
+        restoredTranscript.TextToTimeMap.Data.Should().BeSubsetOf(transcript.TextToTimeMap.Data);
     }
 }

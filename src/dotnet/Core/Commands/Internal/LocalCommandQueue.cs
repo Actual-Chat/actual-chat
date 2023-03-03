@@ -7,7 +7,7 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
     private volatile int _failureCount;
     private volatile int _retryCount;
 
-    public Symbol Name { get; }
+    public QueueId QueueId { get; }
     ICommandQueues ICommandQueue.Queues => Queues;
     public LocalCommandQueues Queues { get; }
     public int SuccessCount => _successCount;
@@ -16,9 +16,9 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
 
     private IMomentClock Clock { get; }
 
-    public LocalCommandQueue(Symbol name, LocalCommandQueues queues)
+    public LocalCommandQueue(QueueId queueId, LocalCommandQueues queues)
     {
-        Name = name;
+        QueueId = queueId;
         Queues = queues;
         Clock = queues.Clock;
         _queue = Channel.CreateBounded<QueuedCommand>(
@@ -47,17 +47,14 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
         }
 
         Interlocked.Increment(ref _retryCount);
+        var id = command.Id.Value;
+        if (id.OrdinalIndexOf(" @retry-") is var retrySuffixStart and >= 0)
+            id = id[..retrySuffixStart];
         var newTryIndex = command.TryIndex + 1;
-        var newId = $"{command.Id.Value}-retry-{newTryIndex.ToString(CultureInfo.InvariantCulture)}";
         var newCommand = command with {
-            Id = newId,
+            Id = $"{id} @retry-{newTryIndex.Format()}",
             TryIndex = newTryIndex,
         };
         return _queue.Writer.WriteAsync(newCommand, cancellationToken);
     }
-
-    // Private methods
-
-    private static string NewId()
-        => Ulid.NewUlid().ToString();
 }

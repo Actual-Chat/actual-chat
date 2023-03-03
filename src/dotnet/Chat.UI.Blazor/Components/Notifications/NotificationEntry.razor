@@ -47,9 +47,11 @@
     [Parameter] public TimeSpan? AutoCloseDelay { get; set; }
     [Parameter] public TimeSpan? AnimationTime { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions() => new () {
-        InitialValue = Model.None,
-    };
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new () {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override void OnParametersSet() {
         if (_closingTimer != null) {
@@ -80,7 +82,7 @@
             Title = notification.Title,
             Content = notification.Content,
             NavigateToUrl = chatId.IsNone ? null
-                : Links.Chat(chatId, entryId.IsNone ? null : entryId.LocalId).ToAbsolute(UrlMapper),
+                : Links.Chat(chatId, entryId.LocalId).ToAbsolute(UrlMapper),
             AuthorId = authorId,
         });
     }

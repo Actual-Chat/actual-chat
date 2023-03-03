@@ -80,6 +80,7 @@ public static class TestHostFactory
             // logging.AddFilter(DbLoggerCategory.Database.Transaction.Name, LogLevel.Debug);
             logging.AddFilter("Stl.CommandR", LogLevel.Information);
             logging.AddFilter("Stl.Fusion", LogLevel.Information);
+            logging.AddFilter("Stl.Fusion.Diagnostics", LogLevel.Information);
             logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
             // logging.AddFilter("Stl.Fusion.EntityFramework", LogLevel.Debug);
             // logging.AddFilter("Stl.Fusion.EntityFramework.Operations", LogLevel.Debug);

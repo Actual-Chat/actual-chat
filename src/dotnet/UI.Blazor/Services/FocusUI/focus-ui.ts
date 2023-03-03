@@ -1,9 +1,7 @@
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'FocusUI';
+const LogScope: LogScope = 'FocusUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class FocusUI {
     public static focus(targetRef: HTMLElement): void {
@@ -12,7 +10,7 @@ export class FocusUI {
     }
 
     public static blur(): void {
-        debugLog?.log(`blur()`)
+        debugLog?.log(`blur()`);
         const activeElement = document.activeElement as HTMLElement;
         if (activeElement != null && activeElement.blur != null)
             activeElement.blur();

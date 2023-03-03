@@ -1,6 +1,5 @@
-import { onDeviceAwake } from 'on-device-awake';
+import { OnDeviceAwake } from 'on-device-awake';
 
-const reloadOnDeviceAwake = () => {
-    onDeviceAwake(() => location.reload());
-};
-export {reloadOnDeviceAwake};
+export function reloadOnDeviceAwake(): void {
+    OnDeviceAwake.events.add(() => location.reload());
+}

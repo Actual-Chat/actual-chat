@@ -1,0 +1,29 @@
+﻿@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits OwnAccountComponentBase
+@{
+    var m = State.Value;
+}
+
+<ChatsNavbarButton/>
+
+@if (m.IsAdmin) {
+    <NavbarButton
+        Title="Administration"
+        Id="@NavbarGroupIds.Administration"
+        Tooltip="Administration"
+        TooltipPosition="FloatingPosition.Right">
+        <i class="icon-adminx-1 text-2xl font-medium"></i>
+    </NavbarButton>
+}
+@if (HostInfo.IsDevelopmentInstance) {
+    <NavbarButton
+        Title="Test Pages"
+        Id="@NavbarGroupIds.TestPages"
+        Tooltip="Test Pages"
+        TooltipPosition="FloatingPosition.Right">
+        <i class="icon-alert-triangle text-2xl font-medium"></i>
+    </NavbarButton>
+}

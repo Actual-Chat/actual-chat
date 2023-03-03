@@ -166,11 +166,11 @@ internal class PermissionManagingBlazorWebChromeClient : WebChromeClient, IActiv
         _requestPermissionLauncher.Launch(permission);
     }
 
-    void IActivityResultCallback.OnActivityResult(Java.Lang.Object isGranted)
+    void IActivityResultCallback.OnActivityResult(Java.Lang.Object? isGranted)
     {
         var callback = _pendingPermissionRequestCallback;
         _pendingPermissionRequestCallback = null;
-        callback?.Invoke((bool)isGranted);
+        callback?.Invoke(isGranted != null && (bool)isGranted);
     }
 
     #region Unremarkable overrides

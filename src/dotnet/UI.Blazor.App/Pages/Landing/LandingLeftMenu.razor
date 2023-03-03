@@ -1,53 +1,63 @@
-@namespace ActualChat.UI.Blazor.App
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Hosting
+@implements IAsyncDisposable
 @{
-    var cls = IsOpen ? "open" : "closed";
+    var cls = _isMenuOpen ? "open" : "closed";
 }
 
-<div class="landing-menu @cls">
-    <div class="left-line">
-        <div class="flex-x w-full min-h-14 justify-center items-center">
-            <div class="min-w-8 max-w-8 min-h-8 max-h-8">
-                <img src="/landing/ac-icon-dark.svg" alt="icon">
-            </div>
-            <div class="px-2 self-center max-w-40">
-                <img src="/landing/ac-title-dark.svg" alt="brand">
-            </div>
-        </div>
-        <div class="menu-content">
-            <button onclick="@Signin">
-                Sign in
-            </button>
-            <button>
-                For Business
-            </button>
-            <button>
-                API
-            </button>
-            <button>
-                Apps
-            </button>
-            <button>
-                FAQ
-            </button>
-        </div>
-        <div class="menu-footer">
-            <ButtonRound>
-                <img src="/landing/facebook-gray.svg" alt="facebook">
-            </ButtonRound>
-            <ButtonRound>
-                <img src="/landing/telegram-gray.svg" alt="telegram">
-            </ButtonRound>
-            <ButtonRound>
-                <img src="/landing/github-gray.svg" alt="github">
-            </ButtonRound>
-            <ButtonRound>
-                <img src="/landing/medium-gray.svg" alt="medium">
-            </ButtonRound>
-        </div>
+<div @ref="Ref" class="landing-menu @cls">
+    <div class="c-container">
+        <LandingLeftMenuContent Owner="@this" ShowHome="@ShowHome"/>
     </div>
 </div>
 
 @code {
-    [Parameter] public bool IsOpen { get; set; }
-    [Parameter] public EventCallback Signin { get; set; }
+    private bool _isMenuOpen;
+
+    private ElementReference Ref { get; set; }
+    private DotNetObjectReference<LandingLeftMenu> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    [Parameter] public bool ShowHome { get; set; }
+
+    public async Task Open() {
+        // Component root div class list is updated with 'open' class
+        // and on-click handler in js that is executed synchronously will see it immediately.
+        // Handler will consider that menu is already opened (while it's not true)
+        // and will close menu because click happened outside of the menu (menu is not visible yet).
+        // To prevent this make small delay in wasm.
+        if (HostInfo.AppKind == AppKind.WasmApp)
+            await Task.Delay(1);
+        Toggle(true);
+    }
+
+    [JSInvokable]
+    public void Close()
+        => Toggle(false);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.LandingLeftMenu.create",
+                Ref, BlazorRef
+                );
+        }
+    }
+
+    private void Toggle(bool isOpen) {
+        _isMenuOpen = isOpen;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
 }

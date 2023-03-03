@@ -1,0 +1,39 @@
+@implements IDisposable
+
+@code {
+    private TimeSpan _period = TimeSpan.MinValue;
+    private CancellationTokenSource? _periodChangedTokenSource;
+    private bool _isDisposed;
+
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public TimeSpan Period { get; set; }
+    [Parameter] public EventCallback Tick { get; set; }
+
+    protected override void OnParametersSet() {
+        if (_isDisposed || _period == Period)
+            return;
+
+        _period = Period;
+        _periodChangedTokenSource.CancelAndDisposeSilently();
+        if (_period <= TimeSpan.Zero) {
+            _periodChangedTokenSource = null;
+            return;
+        }
+
+        _periodChangedTokenSource = new();
+        var cancellationToken = _periodChangedTokenSource.Token;
+        ForegroundTask.Run(async () => {
+            while (!cancellationToken.IsCancellationRequested) {
+                await Clocks.CpuClock.Delay(Period, cancellationToken);
+                await Tick.InvokeAsync();
+            }
+        }, cancellationToken);
+    }
+
+    public void Dispose() {
+        _isDisposed = true;
+        _periodChangedTokenSource.CancelAndDisposeSilently();
+        _periodChangedTokenSource = null!;
+    }
+}

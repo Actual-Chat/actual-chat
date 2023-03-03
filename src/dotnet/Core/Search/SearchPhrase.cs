@@ -69,7 +69,7 @@ public sealed class SearchPhrase
     public SearchMatch GetMatch(string text)
     {
         if (Terms.Length == 0 || text.IsNullOrEmpty())
-            return text;
+            return new SearchMatch(text);
 
         var matches = TermRegex.Matches(text);
         var parts = new SearchMatchPart[matches.Count];

@@ -11,7 +11,8 @@ public static class AuthorsBackendExt
         CancellationToken cancellationToken)
     {
         var author = await authorsBackend.GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
-        if (author is { HasLeft: false })
+        // Return found author if exists in the db and hasn't left
+        if (author is { HasLeft: false } and not { Version: 0 } )
             return author;
 
         var command = new IAuthorsBackend.UpsertCommand(chatId, default, userId, null, new AuthorDiff());

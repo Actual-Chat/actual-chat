@@ -1,7 +1,5 @@
-import './long-press.ts'
-import SwiftClick from 'swiftclick';
-import { NextInteraction } from 'next-interaction';
+import { Interactive } from 'interactive';
+import { Gestures } from 'gestures';
 
-const swiftClick = SwiftClick.attach(document.body);
-swiftClick.useCssParser(true); // Enables swiftclick-ignore class support
-NextInteraction.start();
+Interactive.init();
+Gestures.init();

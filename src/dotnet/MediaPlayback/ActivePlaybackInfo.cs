@@ -17,7 +17,7 @@ public class ActivePlaybackInfo : IActivePlaybackInfo
     {
         var trackId = trackInfo.TrackId;
 
-        if (state.IsCompleted) {
+        if (state.IsEnded) {
             _trackPlaybackStates.TryRemove(trackId, out _);
             _trackInfos.TryRemove(trackId, out _);
         }

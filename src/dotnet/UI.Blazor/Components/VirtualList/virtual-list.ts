@@ -1,4 +1,4 @@
-import { debounce, PromiseSource, serialize, throttle } from 'promises';
+import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
 import { clamp } from 'math';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -9,9 +9,9 @@ import { VirtualListItem } from './ts/virtual-list-item';
 import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { Pivot } from './ts/pivot';
 
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'VirtualList';
+const LogScope: LogScope = 'VirtualList';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -93,7 +93,7 @@ export class VirtualList {
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
-            window['virtualList'] = this;
+            globalThis['virtualList'] = this;
         }
 
         this._ref = ref;
@@ -480,7 +480,7 @@ export class VirtualList {
                 // Server-side scroll request
                 if (!this.isItemFullyVisible(scrollToItemRef)) {
                     if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                        this.scrollTo(scrollToItemRef, false, 'end');
+                        this.scrollToEnd(false);
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     } else {
                         this.scrollTo(scrollToItemRef, false, 'center');
@@ -515,7 +515,7 @@ export class VirtualList {
                         continue;
 
                     new Promise<void>(resolve => {
-                        requestAnimationFrame(_time => {
+                        requestAnimationFrame(() => {
                             const pivotOffset = pivot.offset;
                             const itemRect = pivotRef.getBoundingClientRect();
                             const currentPivotOffset = itemRect.top;
@@ -546,8 +546,8 @@ export class VirtualList {
         }
     }
 
-    private updateViewportThrottled = throttle(() => this.updateViewport(), UpdateViewportInterval, 'delayHead');
-    private updateViewport = serialize(async () => {
+    private readonly updateViewportThrottled = throttle(() => this.updateViewport(), UpdateViewportInterval, 'delayHead');
+    private readonly updateViewport = serialize(async () => {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
             return;
@@ -557,7 +557,7 @@ export class VirtualList {
             return;
 
         const viewport = await new Promise<NumberRange | null>(resolve => {
-            requestAnimationFrame(time => {
+            requestAnimationFrame(() => {
                 const viewportHeight = this._ref.clientHeight;
                 const scrollHeight = this._ref.scrollHeight;
                 const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
@@ -592,12 +592,13 @@ export class VirtualList {
             this.updateViewportThrottled();
     }, 2);
 
-    private updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead');
-    private updateVisibleKeys = serialize(async () => {
+    private readonly updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead', 'updateVisibleKeys');
+    private readonly updateVisibleKeys = serialize(async () => {
         if (this._isDisposed)
             return;
 
         const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
+        debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, this._isEndAnchorVisible);
         await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', visibleItems, this._isEndAnchorVisible);
     }, 2);
 
@@ -623,7 +624,7 @@ export class VirtualList {
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
         const countAs = getItemCountAs(itemRef);
-        const newItem = new VirtualListItem(itemKey, countAs ?? 1);
+        const newItem = new VirtualListItem(itemKey, countAs);
         this._unmeasuredItems.add(itemKey);
         this._sizeObserver.observe(itemRef, { box: 'border-box' });
         this._visibilityObserver.observe(itemRef);
@@ -819,6 +820,13 @@ export class VirtualList {
         });
     }
 
+    private scrollToEnd(
+        useSmoothScroll: boolean = false) {
+        debugLog?.log('scrollTo end');
+        const endAnchor = document.getElementsByClassName('end-anchor')[0] as HTMLElement;
+        this.scrollTo(endAnchor, useSmoothScroll, 'end');
+    }
+
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
         const old = this._stickyEdge;
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
@@ -891,7 +899,7 @@ export class VirtualList {
         if (whenUpdateCompleted && !whenUpdateCompleted.isCompleted())
             return;
 
-        const newWhenUpdateCompleted = new PromiseSource<void>();
+        const newWhenUpdateCompleted = new PromiseSourceWithTimeout<void>();
         newWhenUpdateCompleted.setTimeout(UpdateTimeout, () => {
             newWhenUpdateCompleted.resolve(undefined);
             // to request data again after timeout
@@ -1019,13 +1027,10 @@ function getItemKey(itemRef?: HTMLElement): string | null {
     return itemRef?.id;
 }
 
-function getItemCountAs(itemRef?: HTMLElement): number | null {
+function getItemCountAs(itemRef?: HTMLElement): number {
     if (itemRef == null)
         return null;
 
-    const countString = itemRef.dataset['countAs'];
-    if (countString == null)
-        return null;``;
-
-    return parseInt(countString);
+    const sCountAs = itemRef.dataset['countAs'];
+    return sCountAs == null ? 1 : parseInt(sCountAs);
 }

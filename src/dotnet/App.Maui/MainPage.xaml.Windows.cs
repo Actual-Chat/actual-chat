@@ -7,9 +7,12 @@ public partial class MainPage
 {
     public WebView2Control? PlatformWebView { get; private set; }
 
-    private partial void BlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
+    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     { }
 
-    private partial void BlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
+    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
         => PlatformWebView = e.WebView;
+
+    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
+    { }
 }

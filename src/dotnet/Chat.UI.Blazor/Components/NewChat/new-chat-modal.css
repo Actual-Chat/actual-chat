@@ -1,0 +1,55 @@
+.new-chat-modal.modal-frame {
+    @apply md:min-w-96 md:max-w-96 md:h-160 md:max-h-160;
+}
+.new-chat-modal .dialog-body {
+    @apply flex-y;
+    @apply gap-y-2;
+}
+.new-chat-modal-form-section {
+    @apply flex-x items-center;
+    @apply gap-x-2;
+}
+.new-chat-modal-selected-contacts {
+    @apply flex-x flex-wrap;
+    @apply gap-x-2;
+}
+.new-chat-modal-contact-list {
+    @apply flex-y grow;
+    @apply gap-y-1;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.new-chat-modal-contact-list-item {
+    @apply flex-x items-center;
+    @apply gap-x-2 py-1 px-2;
+    @apply rounded-md;
+    @apply hover:bg-secondary;
+}
+.new-chat-modal-contact-list-item,
+.new-chat-modal-contact-list-item * {
+    @apply cursor-pointer;
+}
+
+.new-chat-modal-selected-contact {
+    @apply flex-none flex-x items-center;
+    @apply my-0.5 bg-03;
+    @apply rounded-full;
+}
+.new-chat-modal-selected-contact,
+.new-chat-modal-selected-contact * {
+    @apply cursor-pointer;
+}
+.new-chat-modal-remove-contact-icon {
+    @apply hidden items-center;
+    @apply rounded-full;
+    @apply w-6 h-6;
+    @apply bg-transparent;
+}
+body.hoverable .new-chat-modal-selected-contact:hover {
+    @apply bg-error text-04;
+}
+body.hoverable .new-chat-modal-selected-contact:hover .new-chat-modal-remove-contact-icon {
+    @apply flex;
+}
+body.hoverable .new-chat-modal-selected-contact:hover .author-avatar-badge {
+    @apply hidden;
+}

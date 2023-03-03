@@ -9,24 +9,28 @@ public class ChatPlayers : WorkerBase
     private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
+    private readonly IMutableState<PlaybackState?> _playbackState;
+    private ChatAudioUI? _audioUI;
+
     private IServiceProvider Services { get; }
     private IAudioOutputController AudioOutputController { get;}
-    private MomentClockSet Clocks { get; }
-    private ChatUI ChatUI { get; }
+    private ChatAudioUI ChatAudioUI => _audioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private TuneUI TuneUI { get; }
+    private MomentClockSet Clocks { get; }
 
-    public IMutableState<PlaybackState?> PlaybackState { get; }
+    public IState<PlaybackState?> PlaybackState => _playbackState;
 
     public ChatPlayers(IServiceProvider services)
     {
         Services = services;
         AudioOutputController = services.GetRequiredService<IAudioOutputController>();
         Clocks = services.Clocks();
-        ChatUI = services.GetRequiredService<ChatUI>();
         TuneUI = services.GetRequiredService<TuneUI>();
 
         var stateFactory = services.StateFactory();
-        PlaybackState = stateFactory.NewMutable<PlaybackState?>();
+        _playbackState = stateFactory.NewMutable(
+            (PlaybackState?)null,
+            StateCategories.Get(GetType(), nameof(PlaybackState)));
         Start();
     }
 
@@ -43,20 +47,14 @@ public class ChatPlayers : WorkerBase
         lock (Lock) return Task.FromResult(_players.GetValueOrDefault((chatId, playerKind)));
     }
 
-    public void ResumeRealtimePlayback()
-        => BackgroundTask.Run(async () => {
-            var playbackState = await ChatUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
-            StartPlayback(playbackState);
-        }, CancellationToken.None);
-
     public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
         => StartPlayback(new HistoricalPlaybackState(chatId, startAt));
 
-    public void StartPlayback(PlaybackState? playbackState)
-        => PlaybackState.Value = playbackState;
+    public void StartRealtimePlayback(RealtimePlaybackState playbackState)
+        => StartPlayback(playbackState);
 
     public void StopPlayback()
-        => PlaybackState.Value = null;
+        => _playbackState.Value = null;
 
     // Protected methods
 
@@ -64,10 +62,8 @@ public class ChatPlayers : WorkerBase
     {
         // TODO(AY): Implement _players cleanup here
         var lastPlaybackState = (PlaybackState?)null;
-        var cPlaybackState = PlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
-            if (!cPlaybackState.IsConsistent())
-                cPlaybackState = await cPlaybackState.Update(cancellationToken).ConfigureAwait(false);
+            var cPlaybackState = PlaybackState.Computed;
             var newPlaybackState = cPlaybackState.Value;
             if (newPlaybackState != lastPlaybackState) {
                 try {
@@ -78,7 +74,7 @@ public class ChatPlayers : WorkerBase
                     // Let's stop everything in this case
                     await Stop(cancellationToken).SuppressExceptions().ConfigureAwait(false);
                     newPlaybackState = null;
-                    PlaybackState.Value = null;
+                    StopPlayback();
                 }
             }
             lastPlaybackState = newPlaybackState;
@@ -87,6 +83,18 @@ public class ChatPlayers : WorkerBase
     }
 
     // Private methods
+
+    private void StartPlayback(PlaybackState playbackState)
+        => _playbackState.Value = playbackState;
+
+    private void ResumeRealtimePlayback()
+        => BackgroundTask.Run(async () => {
+            var playbackState = await ChatAudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
+            if (playbackState == null)
+                StopPlayback();
+            else
+                StartRealtimePlayback(playbackState);
+        }, CancellationToken.None);
 
     private async Task ProcessPlaybackStateChange(
         PlaybackState? lastPlaybackState,
@@ -208,7 +216,7 @@ public class ChatPlayers : WorkerBase
     {
         var resultPlayingTasks = await chatIds
             .Select(chatId => ResumeRealtimePlayback(chatId, cancellationToken))
-            .Collect(0)
+            .Collect()
             .ConfigureAwait(false);
         return Task.WhenAll(resultPlayingTasks);
     }
@@ -231,11 +239,11 @@ public class ChatPlayers : WorkerBase
     private Task Stop(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
         => chatIds
             .Select(chatId => Stop(chatId, playerKind, cancellationToken))
-            .Collect(0);
+            .Collect();
 
     private Task Stop(CancellationToken cancellationToken)
         // ReSharper disable once InconsistentlySynchronizedField
         => _players
             .Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken))
-            .Collect(0);
+            .Collect();
 }

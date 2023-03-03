@@ -10,6 +10,9 @@ public class RequireOtherAccount : RequirementComponent
     [Parameter, EditorRequired] public string UserSid { get; set; } = "";
     [Parameter] public bool MustNotBeGuest { get; set; }
 
+    public override string ToString()
+        => $"{GetType().GetName()}(UserSid = {UserSid})";
+
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
         var userId = new UserId(UserSid);

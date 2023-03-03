@@ -14,7 +14,7 @@ public class PlaybackModule : HostModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
         services.TryAddScoped<IPlaybackFactory>(sp=> new PlaybackFactory(sp));

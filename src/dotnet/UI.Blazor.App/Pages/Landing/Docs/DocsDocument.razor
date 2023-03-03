@@ -1,0 +1,20 @@
+<AutoNavigateToChatsOnSignIn />
+
+<RenderIntoSlot Name="DocsLeftDrawer">
+    <CascadingValue Value="@Page">
+        <DocsLeftPanel/>
+    </CascadingValue>
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainRightDrawer">
+    <DocsRightPanel Page="@Page"/>
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainHeader">
+    <DocsHeader Page="@Page"/>
+</RenderIntoSlot>
+
+@code {
+    [Parameter] public DocsPage Page { get; set; } = DocsPage.Privacy;
+
+}

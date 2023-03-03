@@ -1,0 +1,25 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<ScreenSize>
+@{
+    var m = State.Value;
+}
+
+<CascadingValue Value="@m">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Inject] BrowserInfo BrowserInfo { get; set; } = null!;
+
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+
+    protected override ComputedState<ScreenSize>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override Task<ScreenSize> ComputeState(CancellationToken cancellationToken)
+        => BrowserInfo.ScreenSize.Use(cancellationToken).AsTask();
+}

@@ -87,12 +87,16 @@ public sealed class ChatEntryReader
         return null;
     }
 
-    public async ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+    public ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
+        => GetLastWhile(idRange, filter, x => x.SkippedCount < filterLimit, cancellationToken);
+
+    public async ValueTask<ChatEntry?> GetLastWhile(Range<long> idRange, Func<ChatEntry, bool> filter, Predicate<(ChatEntry ChatEntry, int SkippedCount)> @while, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
             var tile = await Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken).ConfigureAwait(false);
+            var skippedCount = 0;
             for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
@@ -100,7 +104,8 @@ public sealed class ChatEntryReader
                 if (entry.LocalId < maxIdExclusive) {
                     if (filter(entry))
                         return entry;
-                    if (--filterLimit < 0)
+
+                    if (!@while((entry, ++skippedCount)))
                         break;
                 }
             }
@@ -121,7 +126,6 @@ public sealed class ChatEntryReader
 
         cTile = await cTile.When(
                 t => predicate(t.Entries.FirstOrDefault(e => e.LocalId == id)),
-                FixedDelayer.ZeroUnsafe,
                 cancellationToken
             ).ConfigureAwait(false);
         return cTile.Value.Entries.FirstOrDefault(e => e.LocalId == id);
@@ -223,7 +227,9 @@ public sealed class ChatEntryReader
 
         while (true) {
             if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
-                (cTile, cIdRange) = await ComputedExt.Update(cTile, cIdRange, cancellationToken).ConfigureAwait(false);
+                (cTile, cIdRange) = await Stl.Fusion.ComputedExt
+                    .Update(cTile, cIdRange, cancellationToken)
+                    .ConfigureAwait(false);
 
             var tile = cTile.Value;
             foreach (var e in tile.Entries) // In fact, .Any, just w/ less allocations

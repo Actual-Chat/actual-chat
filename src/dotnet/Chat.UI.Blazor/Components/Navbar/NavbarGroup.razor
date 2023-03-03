@@ -2,13 +2,12 @@
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
 @{
-    var isVisible = NavbarUI.ActiveGroupId == Id;
+    var isVisible = NavbarUI.SelectedGroupId == Id;
+    if (!isVisible)
+        return;
 }
 
-@if (!isVisible) {
-    return;
-}
-<div class="@Class flex-y navbar-group flex space-y-1">
+<div class="@Class navbar-group">
     @ChildContent
 </div>
 
@@ -16,22 +15,18 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     private EventHandler? _onActiveGroupChanged;
 
-    [Parameter] public string? Class { get; set; } = "";
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? Icons { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter, EditorRequired] public string Id { get; set; } = "";
-    [Parameter] public Action? AddClick { get; set; }
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
-        if (AddClick != null)
-            NavbarUI.AddButtonAction.Add(Id, AddClick);
-        NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
+        NavbarUI.SelectedGroupChanged += _onActiveGroupChanged;
     }
 
     public void Dispose() {
-        NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
-        NavbarUI.AddButtonAction.Remove(Id);
+        NavbarUI.SelectedGroupChanged -= _onActiveGroupChanged;
     }
 }

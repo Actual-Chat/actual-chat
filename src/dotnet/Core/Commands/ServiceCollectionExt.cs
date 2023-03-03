@@ -23,12 +23,6 @@ public static class ServiceCollectionExt
 
     public static IServiceCollection AddCommandQueueScheduler(
         this IServiceCollection services,
-        Symbol queueName,
-        Symbol shardKey = default)
-        => services.AddCommandQueueScheduler(o => o.AddQueue(queueName, shardKey));
-
-    public static IServiceCollection AddCommandQueueScheduler(
-        this IServiceCollection services,
         Action<CommandQueueScheduler.Options>? optionsBuilder = null)
     {
         var options = services.GetSingletonInstance<CommandQueueScheduler.Options>();

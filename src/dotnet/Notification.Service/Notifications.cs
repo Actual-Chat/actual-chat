@@ -1,5 +1,4 @@
-﻿using ActualChat.Commands;
-using ActualChat.Notification.Backend;
+﻿using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -20,15 +19,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(
-        Session session, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.ListRecentNotificationIds(account.Id, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Notification> Get(
+    public virtual async Task<Notification?> Get(
         Session session, NotificationId notificationId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -36,6 +27,14 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             throw Unauthorized();
 
         return await Backend.Get(notificationId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
+        Session session, Moment minSentAt, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListRecentNotificationIds(account.Id, minSentAt, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -46,7 +45,7 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
             return; // It just spawns other commands, so nothing to do here
 
         var (session, notificationId) = command;
-        var notification = await Get(session, notificationId, cancellationToken).ConfigureAwait(false);
+        var notification = await Get(session, notificationId, cancellationToken).Require().ConfigureAwait(false);
         if (notification.HandledAt.HasValue)
             return;
 

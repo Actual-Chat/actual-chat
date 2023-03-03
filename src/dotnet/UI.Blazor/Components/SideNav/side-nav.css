@@ -1,48 +1,61 @@
 .side-nav {
     @apply fixed md:static;
+    @apply z-60 left-0;
     @apply h-full w-full;
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
+    @apply transition-transform duration-200 ease-out;
+    transform: none;
+    touch-action: pan-y;
 }
 
-.side-nav-right {
-    @apply translate-x-full;
-    @apply z-60 left-0;
-    @apply md:w-80;
+.side-nav.side-nav-dragging {
+    @apply transition-none;
 }
 
-.side-nav-left {
-    @apply -translate-x-full;
-    @apply z-60 left-0;
+/* Left SideNav */
+.side-nav.side-nav-left {
     @apply md:w-110;
 }
+body.wide .side-nav.side-nav-left.closed {
+    @apply hidden;
+}
+body.narrow .side-nav.side-nav-left.closed {
+    transform: translate3d(-100%, 0, 0);
+}
 
-.side-nav-drawer {
+/* Right SideNav */
+.side-nav.side-nav-right {
+    @apply md:w-80;
+}
+body.wide .side-nav.side-nav-right.closed {
+    @apply hidden;
+}
+body.narrow .side-nav.side-nav-right.closed {
+    transform: translate3d(100%, 0, 0);
+}
+
+/* If one SideNav is open, the other one should be hidden to prevent its pull */
+body.narrow:has(.side-nav.side-nav-left.open) .side-nav.side-nav-right {
+    @apply hidden;
+}
+body.narrow:has(.side-nav.side-nav-right.open) .side-nav.side-nav-left {
+    @apply hidden;
+}
+/* This rule prioritizes left SideNav over the right one when both are open */
+body.narrow:has(.side-nav.side-nav-right.open) .side-nav.side-nav-left.open {
+    @apply hidden;
+}
+
+/* Drawer */
+.side-nav .side-nav-drawer {
     @apply fixed;
     @apply top-14 bottom-14 w-[15px];
     @apply bg-transparent;
 }
-
-.side-nav-right .side-nav-drawer {
-    @apply -left-[15px]
-}
-
-.side-nav-left .side-nav-drawer {
+.side-nav.side-nav-left .side-nav-drawer {
     @apply -right-[15px];
 }
-
-.side-nav-right.side-nav-closed {
-    @apply md:hidden;
-}
-
-.side-nav-left.side-nav-closed {
-    @apply md:translate-x-0;
-}
-
-.side-nav-open {
-    @apply translate-x-0;
-}
-
-.side-nav-animate {
-    @apply transition-transform duration-300 ease-in-out;
+.side-nav.side-nav-right .side-nav-drawer {
+    @apply -left-[15px]
 }

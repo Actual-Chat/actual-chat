@@ -13,18 +13,18 @@ public abstract class TrackPlayer : ProcessorBase
     private readonly object _stateUpdateLock = new();
     private readonly Channel<IPlayerCommand> _commandsQueue;
 
-    protected TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(3);
-    protected ILogger<TrackPlayer> Log { get; }
     protected IMediaSource Source { get; }
     protected CancellationTokenSource? PlayTokenSource;
     protected CancellationToken PlayToken;
+    protected TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(3);
+    protected ILogger Log { get; }
 
     public PlayerState State => _state;
     public Task? WhenPlaying => _whenPlaying;
     public Task WhenCompleted => _whenCompletedSource.Task;
     public event Action<PlayerStateChangedEventArgs>? StateChanged;
 
-    protected TrackPlayer(IMediaSource source, ILogger<TrackPlayer> log)
+    protected TrackPlayer(IMediaSource source, ILogger log)
     {
         Log = log;
         Source = source;
@@ -146,11 +146,11 @@ public abstract class TrackPlayer : ProcessorBase
                         await playTask.AsTask()
                             .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                             .ConfigureAwait(false);
-                    var stopResult = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
+                    var abortResult = await ProcessCommand(AbortCommand.Instance, CancellationToken.None).AsTask()
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
-                    if (stopResult.HasError)
-                        OnStopped(stopResult.Error);
+                    if (abortResult.HasError)
+                        SetEndState(abortResult.Error);
                     await WhenCompleted
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
@@ -177,7 +177,7 @@ public abstract class TrackPlayer : ProcessorBase
         PlayerState state;
         lock (_stateUpdateLock) {
             var lastState = _state;
-            if (lastState.IsCompleted)
+            if (lastState.IsEnded)
                 return; // No need to update it further
             state = updater.Invoke(arg, lastState);
             if (lastState == state)
@@ -189,28 +189,20 @@ public abstract class TrackPlayer : ProcessorBase
             catch (Exception ex) {
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
-            if (state.IsCompleted)
+            if (state.IsEnded)
                 _whenCompletedSource.TrySetResult(default);
         }
     }
 
-    protected virtual void OnPlayedTo(TimeSpan offset) => UpdateState(static (arg, state) => {
-        var (offset1, self) = arg;
+    protected void SetPlaybackState(TimeSpan offset, bool isPaused) => UpdateState(static (arg, state) => {
+        var (offset1, isPaused1) = arg;
         return state with {
             IsStarted = true,
-            IsPaused = false,
+            IsPaused = isPaused1,
             PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
         };
-    }, (offset, this));
+    }, (offset, isPaused));
 
-    protected virtual void OnPausedAt(TimeSpan offset) => UpdateState(static (arg, state) => {
-        var (offset1, self) = arg;
-        return state with {
-            IsPaused = true,
-            PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
-        };
-    }, (offset, this));
-
-    protected virtual void OnStopped(Exception? exception = null)
-        => UpdateState(static (exception, state) => state with { IsCompleted = true, Error = exception }, exception);
+    protected void SetEndState(Exception? exception = null)
+        => UpdateState(static (exception, state) => state with { IsEnded = true, Error = exception }, exception);
 }

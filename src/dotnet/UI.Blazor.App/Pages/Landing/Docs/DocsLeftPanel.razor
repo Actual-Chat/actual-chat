@@ -1,0 +1,51 @@
+@using ActualChat.UI.Blazor.Components.SideNav
+@using ActualChat.Chat.UI.Blazor.Services
+@implements IDisposable
+@{
+    var isNarrow = ScreenSize.IsNarrow();
+}
+
+<SideNav
+    Side="SideNavSide.Left"
+    IsOpen="@NavbarUI.IsVisible.Value"
+    VisibilityChanged="@(isOpen => NavbarUI.SetIsVisible(isOpen))">
+    <div class="docs-left-panel">
+        <div class="c-header">
+            <div class="max-w-fit">
+                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+            </div>
+            <div class="flex-x">
+                <div class="px-2 self-center -mt-1.5 @(!isNarrow ? "min-w-fit" : "max-w-40")">
+                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-2 -ml-1">
+                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
+            </div>
+        </div>
+        <div class="h-full py-2">
+            <div class="navbar-item h-9" @onclick="@(_ => History.NavigateTo(Links.Home))">
+                <i class="icon-arrow-left mx-2 text-xl"></i>
+                <div class="mx-2 text-headline-1">Home</div>
+            </div>
+            <DocsLeftPanelContent/>
+        </div>
+    </div>
+</SideNav>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public DocsPage ActivePage { get; set; }
+
+    protected override void OnInitialized()
+        => NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;
+
+    public void Dispose()
+        => NavbarUI.VisibilityChanged -= OnNavbarVisibilityChanged;
+
+    private void OnNavbarVisibilityChanged(object? sender, EventArgs e)
+        => StateHasChanged();
+}

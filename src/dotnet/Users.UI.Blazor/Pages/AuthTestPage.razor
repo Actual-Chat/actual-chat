@@ -50,7 +50,7 @@
         <span>Status:</span>
         <Button
             data-menu="@(MenuRef.New<AccountStatusMenu>().ToString())"
-            data-menu-trigger="@(MenuTriggers.Primary.Format())"
+            data-menu-trigger="@MenuTrigger.Primary"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="px-2 inline-flex">
                 <span class="float-left text-secondary font-semibold chat-header-title">
@@ -104,7 +104,7 @@
 @if (m.User.IsAuthenticated()) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
-        <Button Click="@(_ => ClientAuth.SignOut())">Sign out</Button>
+        <Button Click="@(_ => AccountUI.SignOut())">Sign out</Button>
         <Button Click="@(_ => AuthHelper.SignOutEverywhere())">Sign out everywhere</Button>
         @if (unusedAuthSchemas.Length != 0) {
             <span> or add account: </span>
@@ -123,8 +123,10 @@
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
-    [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ILiveTime LiveTime { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -137,7 +139,10 @@
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.Loading };
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken);

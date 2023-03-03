@@ -1,56 +1,57 @@
 import Denque from 'denque';
+import { timerQueue } from 'timerQueue';
 import {
-    GetStateNodeMessage,
-    InitNodeMessage,
-    NodeMessage,
-    OperationCompletedProcessorMessage,
-    ProcessorState,
-    StateChangedProcessorMessage,
-    StateProcessorMessage,
-} from './feeder-audio-worklet-message';
-import {
-    DecoderWorkerMessage,
-    EndDecoderWorkerMessage,
-    SamplesDecoderWorkerMessage,
-} from '../workers/opus-decoder-worker-message';
-import { Log, LogLevel } from 'logging';
+    BufferState,
+    FeederAudioWorkletEventHandler,
+    FeederAudioWorklet,
+    FeederState,
+    PlaybackState,
+} from './feeder-audio-worklet-contract';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
+import { Disposable } from 'disposable';
+import { PromiseSource, ResolvedPromise } from 'promises';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'FeederProcessor';
+const LogScope: LogScope = 'FeederProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
-const SAMPLE_RATE = 48000;
+
+const SampleFrequency = 48000;
+const SampleDuration = 1.0 / SampleFrequency;
+const PlayableBufferSize = 0.05; // In seconds
+const OkBufferSize = 10.0; // In seconds
+const StateUpdatePeriod = 0.2;
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
-class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
+class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {
     private readonly chunks = new Denque<Float32Array | 'end'>();
     /**
      * 128 samples at 48 kHz ~= 2.67 ms
      * 240_000 samples at 48 kHz ~= 5_000 ms
      * 480_000 samples at 48 kHz ~= 10_000 ms
      */
-    private readonly samplesLowThreshold: number = 480_000;
-    /**
-     * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
-     * should be in sync with audio-feeder bufferSize
-     */
-    private readonly enoughToStartPlaying: number = 0.1;
-    /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-    private readonly tooMuchBuffered: number = 15.0;
-    private workerPort: MessagePort;
+    private id: string;
+    private node: FeederAudioWorkletEventHandler & Disposable;
+    private worker: Disposable;
     private chunkOffset = 0;
     /** In seconds from the start of playing, excluding starving time and processing time */
-    private playbackTime = 0;
-    private isPlaying = false;
-    private isPaused = false;
-    private isStarving = false;
+    private playingAt = 0;
+    private playbackState: PlaybackState = 'paused';
+    private bufferState: BufferState = 'ok';
+    private lastReportedState: FeederState = null;
+    private isEnding = false;
+    private whenEnded = new PromiseSource<void>();
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        this.port.onmessage = this.onNodeMessage;
+        this.node = rpcClientServer<FeederAudioWorkletEventHandler>(`${LogScope}.server`, this.port, this);
     }
 
-    /** Count how many samples are queued up */
+    private get bufferedDuration(): number {
+        return this.bufferedSampleCount * SampleDuration;
+    }
+
     private get bufferedSampleCount(): number {
         const { chunks, chunkOffset } = this;
         let result = -chunkOffset;
@@ -62,232 +63,153 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         return result;
     }
 
+    public async init(id: string, workerPort: MessagePort): Promise<void> {
+        this.id = id;
+        this.worker = rpcServer(`${LogScope}.worker`, workerPort, this);
+        debugLog?.log(`#${this.id}.init`);
+    }
+
+    public frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
+        if (this.playbackState === 'ended' || this.isEnding)
+            return;
+
+        this.chunks.push(new Float32Array(buffer, offset, length));
+        this.tryBeginPlaying();
+        return ResolvedPromise.Void;
+    }
+
+    public pause(_noWait?: RpcNoWait): Promise<void> {
+        if (this.playbackState !== 'playing')
+            return;
+
+        debugLog?.log(`#${this.id}.pause`);
+        this.playbackState = 'paused';
+        this.stateHasChanged();
+        return ResolvedPromise.Void;
+    }
+
+    public resume(_noWait?: RpcNoWait): Promise<void> {
+        if (this.playbackState !== 'paused')
+            return;
+
+        debugLog?.log(`#${this.id}.resume`);
+        this.playbackState = 'playing';
+        this.stateHasChanged();
+        return ResolvedPromise.Void;
+    }
+
+    public async end(mustAbort: boolean, _noWait?: RpcNoWait): Promise<void> {
+        if (this.playbackState === 'ended') {
+            warnLog?.log(`#${this.id}.end, but playback is already ended`);
+            return;
+        }
+
+        debugLog?.log(`#${this.id}.end, mustAbort:`, mustAbort);
+
+        this.isEnding = true;
+        this.playbackState = 'playing';
+        if (mustAbort) {
+            this.chunks.clear();
+            this.chunkOffset = 0;
+        }
+        this.chunks.push('end');
+    }
+
     public process(
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
-        const { chunks, isPlaying, isPaused, samplesLowThreshold, tooMuchBuffered } = this;
-        let { chunkOffset } = this;
-        if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
+        timerQueue?.triggerExpired();
+        if (outputs == null || outputs.length === 0 || outputs[0].length === 0)
             return true;
-        }
 
         const output = outputs[0];
-        // we only support mono output at the moment
+        // We only support mono output at the moment
         const channel = output[0];
-        warnLog?.assert(channel.length === 128, `process: WebAudio's render quantum size must be 128`);
+        warnLog?.assert(channel.length === 128, `#${this.id}.process: WebAudio's render quantum size must be 128`);
 
-        if (!isPlaying || isPaused) {
-            // write silence, because we don't playing
+        if (this.playbackState !== 'playing') {
+            // Write silence, because we aren't playing
             channel.fill(0);
-            return true;
+            return this.playbackState !== 'ended';
         }
 
-        for (let offset = 0; offset < channel.length;) {
-            const chunk = chunks.peekFront();
-            if (chunk !== undefined) {
-                if (chunk === 'end') {
-                    channel.fill(0, offset);
-                    debugLog?.log(`process: reached end of stream`);
-                    this.onStopMessage();
-                    break;
-                }
-                else {
-                    const chunkAvailable = chunk.length - chunkOffset;
-                    const remaining = channel.length - offset;
+        // We're in 'playing' state anywhere below this point
 
-                    if (chunkAvailable >= remaining) {
-                        const remainingSamples = chunk.subarray(chunkOffset, chunkOffset + remaining);
-                        channel.set(remainingSamples, offset);
-                        chunkOffset += remaining;
-                        offset += remaining;
-                        this.playbackTime += remaining / SAMPLE_RATE;
-                    }
-                    else {
-                        const remainingSamples = chunk.subarray(chunkOffset);
-                        channel.set(remainingSamples, offset);
-                        offset += remainingSamples.length;
-                        this.playbackTime += remainingSamples.length / SAMPLE_RATE;
-
-                        chunkOffset = 0;
-                        chunks.shift();
-                    }
-                }
-            }
-            // we don't have enough data to continue playing => starving
-            else {
-                channel.fill(0, offset);
-                if (!this.isStarving) {
-                    this.isStarving = true;
-                    this.postStateChangedMessage('starving');
-                }
-
+        for (let channelOffset = 0; channelOffset < channel.length;) {
+            const chunk = this.chunks.peekFront();
+            if (chunk === undefined) {
+                // Not enough data to continue playing => starving
+                channel.fill(0, channelOffset);
                 break;
             }
-        }
-        this.chunkOffset = chunkOffset;
-        const sampleCount = this.bufferedSampleCount;
-        const bufferedDuration = sampleCount / SAMPLE_RATE;
-        if (this.isPlaying && !this.isStarving) {
-            if (sampleCount <= samplesLowThreshold) {
-                this.postStateChangedMessage('playingWithLowBuffer');
-            }
-            if (bufferedDuration > tooMuchBuffered) {
-                this.postStateChangedMessage('playingWithTooMuchBuffer');
-            }
-        } else if (this.isStarving) {
-            if (sampleCount > samplesLowThreshold) {
-                this.isStarving = false;
 
-                if (this.isPlaying) {
-                    this.postStateChangedMessage('playing');
-                }
+            if (chunk === 'end') {
+                channel.fill(0, channelOffset);
+                debugLog?.log(`#${this.id}.process: got 'end'`);
+                this.playbackState = 'ended';
+                this.whenEnded.resolve(undefined);
+                this.stateHasChanged();
+                return false;
+            }
+
+            const available = chunk.length - this.chunkOffset;
+            const remaining = channel.length - channelOffset;
+            const length = Math.min(available, remaining);
+
+            const samples = chunk.subarray(this.chunkOffset, this.chunkOffset + length);
+            channel.set(samples, channelOffset);
+            this.chunkOffset += length;
+            channelOffset += length;
+            this.playingAt += length * SampleDuration;
+            if (available < remaining) {
+                this.chunkOffset = 0;
+                this.chunks.shift();
             }
         }
+
+        this.stateHasChanged();
         return true;
     }
 
-    private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
-        const msg = ev.data;
-        switch (msg.type) {
-        case 'init':
-            this.onInitMessage(msg as InitNodeMessage);
-            break;
-        case 'stop':
-            this.onStopMessage();
-            break;
-        case 'pause':
-            this.onPauseMessage(true);
-            break;
-        case 'resume':
-            this.onPauseMessage(false);
-            break;
-        case 'getState':
-            this.onGetState(msg as GetStateNodeMessage);
-            break;
-
-        default:
-            throw new Error(`Unsupported message type: ${msg.type}`);
-        }
-    };
-
-    private onInitMessage(message: InitNodeMessage) {
-        this.workerPort = message.decoderWorkerPort;
-        this.workerPort.onmessage = this.onWorkerMessage;
-        const msg: OperationCompletedProcessorMessage = {
-            type: 'operationCompleted',
-            callbackId: message.callbackId,
-        };
-        this.port.postMessage(msg);
-    }
-
-    private reset(): void {
-        debugLog?.log(`reset`);
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.isStarving = false;
-        this.chunks.clear();
-        this.chunkOffset = 0;
-        // we don't set playbackTime = 0, because we want to see it in getState() after a stop.
-    }
-
-    private onGetState(message: GetStateNodeMessage) {
-        const msg: StateProcessorMessage = {
-            type: 'state',
-            callbackId: message.callbackId,
-            bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
-            playbackTime: this.playbackTime,
-        };
-        debugLog?.log(`onGetState, message:`, msg);
-        this.port.postMessage(msg);
-    }
-
-    private onStopMessage() {
-        const { isPlaying: wasPlaying } = this;
-        this.reset();
-
-        if (wasPlaying) {
-            debugLog?.log(`onStopMessage`);
-            this.postStateChangedMessage('stopped');
-        }
-        this.postStateChangedMessage('ended');
-    }
-
-    private onPauseMessage(isPause: boolean) {
-        if (this.isPaused === isPause) {
-            debugLog?.log(`onPauseMessage: already in pause state:`, this.isPaused);
-            return;
-        }
-        this.isPaused = isPause;
-        if (isPause) {
-            this.postStateChangedMessage('paused');
-        }
+    private stateHasChanged() {
+        const bufferedDuration = this.bufferedDuration;
+        if (this.isEnding)
+            this.bufferState = 'ok';
         else {
-            this.postStateChangedMessage('resumed');
+            this.bufferState = bufferedDuration < OkBufferSize ? 'low' : 'ok';
         }
+
+        const state: FeederState = {
+            playbackState: this.playbackState,
+            bufferState: this.bufferState,
+            playingAt: this.playingAt,
+            bufferedDuration: bufferedDuration,
+        }
+        const mustSkip =
+            this.lastReportedState
+            && state.playbackState === this.lastReportedState.playbackState
+            && state.bufferState === this.lastReportedState.bufferState
+            && Math.abs(state.playingAt - this.lastReportedState.playingAt) < StateUpdatePeriod;
+        if (mustSkip)
+            return;
+
+        this.lastReportedState = state;
+        void this.node.onStateChanged(state, rpcNoWait);
     }
 
-    private startPlaybackIfEnoughBuffered(): void {
-        if (!this.isPlaying) {
-            const bufferedDuration = this.bufferedSampleCount / SAMPLE_RATE;
-            if (bufferedDuration >= this.enoughToStartPlaying) {
-                this.isPlaying = true;
-                this.playbackTime = 0;
-                const message: StateChangedProcessorMessage = {
-                    type: 'stateChanged',
-                    state: 'playing',
-                };
-                this.port.postMessage(message);
-            }
-        }
-    }
+    private tryBeginPlaying(): void {
+        if (this.playbackState === 'playing' || this.bufferedDuration < PlayableBufferSize)
+            return;
 
-    private onWorkerMessage = (ev: MessageEvent<DecoderWorkerMessage>): void => {
-        const msg = ev.data;
-        try {
-            switch (msg.type) {
-            case 'samples':
-                this.onSamplesDecoderWorkerMessage(msg as SamplesDecoderWorkerMessage);
-                break;
-            case 'end':
-                this.onEndDecoderWorkerMessage(msg as EndDecoderWorkerMessage);
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
-            }
-        }
-        catch (error) {
-            errorLog?.log(`onWorkerMessage: unhandled error:`, error);
-        }
-    };
-
-    private onEndDecoderWorkerMessage(message: EndDecoderWorkerMessage) {
-        this.chunks.push('end');
-        // if we don't start to play and the 'end' is already here
-        // for example if play threshold > number of frames before the end
-        if (!this.isPlaying) {
-            this.reset();
-            this.postStateChangedMessage('ended');
-        }
-    }
-
-    private onSamplesDecoderWorkerMessage(message: SamplesDecoderWorkerMessage) {
-        const { buffer, length, offset } = message;
-        this.chunks.push(new Float32Array(buffer.slice(offset, offset + length)));
-        this.startPlaybackIfEnoughBuffered();
-    }
-
-    private postStateChangedMessage(state: ProcessorState)
-    {
-        const message: StateChangedProcessorMessage = {
-            type: 'stateChanged',
-            state: state,
-        };
-        this.port.postMessage(message);
+        debugLog?.log(`#${this.id}.tryBeginPlaying: starting playback`);
+        this.playbackState = 'playing';
+        this.playingAt = 0;
+        this.stateHasChanged();
     }
 }
 
-// @ts-expect-error - register  is defined
+// @ts-expect-error - registerProcessor exists
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('feederWorklet', FeederAudioWorkletProcessor);

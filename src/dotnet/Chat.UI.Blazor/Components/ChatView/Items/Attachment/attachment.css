@@ -1,4 +1,5 @@
 .image-attachment, .file-attachment {
+    @apply flex;
     @apply mt-1;
 }
 .file-attachment-name {

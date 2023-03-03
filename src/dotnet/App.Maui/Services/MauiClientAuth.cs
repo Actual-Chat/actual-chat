@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -7,25 +8,33 @@ internal sealed class MauiClientAuth : IClientAuth
     private ClientAppSettings AppSettings { get; }
     private UrlMapper UrlMapper { get; }
     private ILogger<MauiClientAuth> Log { get; }
+    private MobileAuthClient MobileAuthClient { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
         AppSettings = services.GetRequiredService<ClientAppSettings>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         Log = services.GetRequiredService<ILogger<MauiClientAuth>>();
+        MobileAuthClient = services.GetRequiredService<MobileAuthClient>();
     }
 
     public async ValueTask SignIn(string scheme)
     {
+        if (scheme.IsNullOrEmpty()) throw new ArgumentException(nameof(scheme));
+
         if (OrdinalEquals(IClientAuth.GoogleSchemeName, scheme)) {
 #if ANDROID
-            var activity = (MainActivity)Platform.CurrentActivity!;
-            await activity.SignInWithGoogle().ConfigureAwait(false);
+            // Sometimes Platform.CurrentActivity is not MainActivity but GoogleSignIn activity
+            var mainActivity = Platform.CurrentActivity as MainActivity ?? MainActivity.CurrentActivity;
+            if (mainActivity != null)
+                await mainActivity.SignInWithGoogle().ConfigureAwait(false);
+
             return;
 #endif
         }
 
-        var uri = $"{UrlMapper.BaseUrl}mobileauth/signin/{AppSettings.SessionId}/{scheme}";
+        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+        var uri = $"{UrlMapper.BaseUrl}mobileauth/signin/{sessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
     }
 
@@ -35,12 +44,9 @@ internal sealed class MauiClientAuth : IClientAuth
         var activity = (MainActivity)Platform.CurrentActivity!;
         if (activity.IsSignedInWithGoogle()) {
             await activity.SignOutWithGoogle().ConfigureAwait(true);
-            return;
         }
 #endif
-
-        var uri = $"{UrlMapper.BaseUrl}mobileauth/signout/{AppSettings.SessionId}";
-        await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
+        await MobileAuthClient.SignOut().ConfigureAwait(true);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()

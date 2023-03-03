@@ -1,9 +1,9 @@
 @page "/test/features"
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
-@inherits ComputedStateComponent<FeaturesTestPage.Model?>
+@inherits ComputedStateComponent<FeaturesTestPage.Model>
 @{
-    var m = State.ValueOrDefault ?? new();
+    var m = State.Value;
 }
 
 <MainHeader>Features Test Page</MainHeader>
@@ -17,7 +17,14 @@
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
+
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
         => new() {
             ClientUser = await Features.Get<TestFeatures.ClientUser, User?>(cancellationToken),
             ServerTime = await Features.Get<TestFeatures.ServerTime, Moment>(cancellationToken),
@@ -27,8 +34,10 @@
 
     // Nested types
 
-    public record Model
+    public sealed record Model
     {
+        public static Model None { get; } = new();
+
         public User? ClientUser { get; init; }
         public Moment ServerTime { get; init; }
         public bool EnableIncompleteUI { get; init; }

@@ -7,13 +7,14 @@
 @import './Components/Checkbox/checkbox.css';
 @import './Components/Clipboard/clipboard.css';
 @import './Components/Dropdown/dropdown.css';
+@import './Components/ErrorBarrier/error-barrier.css';
 @import './Components/Feedback/feedback.css';
 @import './Components/Form/form.css';
 @import './Components/Form/toggle.css';
 @import './Components/ImageViewerModal/image-viewer-modal.css';
+@import './Components/Lines/lines.css';
 @import './Components/Menu/menu.css';
-@import './Components/Modal/BlazoredModal/BlazoredModalInstance.razor.css';
-@import './Components/Modal/modal.css'; /* based on BlazoredModal */
+@import './Components/Modal/modal.css';
 @import './Components/Pic/pic.css';
 @import './Components/PicUpload/pic-upload.css';
 @import './Components/Radio/radio.css';
@@ -22,7 +23,7 @@
 @import './Components/SignIn/sign-in.css';
 @import './Components/SideNav/side-nav.css';
 @import './Components/Stepper/stepper.css';
-@import './Components/TabPanel/tab.css';
+@import './Components/TabPanel/tab-panel.css';
 @import './Components/Tooltip/tooltip.css';
 @import './Components/VirtualList/virtual-list.css';
 

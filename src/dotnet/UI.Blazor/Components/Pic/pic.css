@@ -3,7 +3,9 @@
 }
 
 .pic-generated {
-    @apply flex items-center justify-center rounded-full cursor-default pointer-events-none select-none;
+    @apply flex-x items-center justify-center;
+    @apply rounded-full;
+    @apply cursor-default pointer-events-none select-none;
 }
 
 .pic-image {

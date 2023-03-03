@@ -1,4 +1,5 @@
 using ActualChat.IO;
+using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
 
@@ -38,10 +39,14 @@ public class BatchingKvas : IKvas, IAsyncDisposable
         };
         Writer = new LazyWriter<(string Key, string? Value)>() {
             FlushDelay = options.FlushDelay,
-            FlushLimit = options.FlushMaxItemCount,
+            FlushMaxItemCount = options.FlushMaxItemCount,
             FlushRetryDelays = options.FlushRetryDelays,
             DisposeTimeout = options.DisposeTimeout,
             Implementation = BatchWrite,
+            FlushErrorSeverityProvider = e =>
+                e is JSDisconnectedException or ObjectDisposedException or OperationCanceledException
+                    ? LogLevel.None
+                    : LogLevel.Warning,
             Log = Log,
         };
     }
@@ -52,7 +57,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
     public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
     {
         if (ReadCache.TryGetValue(key, out var value))
-            return ValueTask.FromResult(value);
+            return ValueTask.FromResult(value)!;
         return Reader.Process(key, cancellationToken).ToValueTask();
     }
 

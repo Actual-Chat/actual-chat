@@ -11,7 +11,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
 {
     private bool _isPlaying;
     private bool _isPaused;
-    private IJSObjectReference _jsRef = null!;
+    private IJSObjectReference? _jsRef;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private double _offset;
@@ -35,9 +35,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public void OnStartPlaying(AudioPlayerTestPageStats statistics)
+    public void OnPlaying(AudioPlayerTestPageStats statistics)
     {
-        Log.LogInformation("OnStartPlaying called");
+        Log.LogInformation("OnPlaying called");
         StartPlayingDelay = statistics.PlayingStartTime - statistics.ConstructorStartTime;
         ObjectCreationDelay = statistics.ConstructorEndTime - statistics.ConstructorStartTime;
         StateHasChanged();
@@ -97,7 +97,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = _jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data);
+                _ = _jsRef.InvokeVoidAsync("frame", _cts.Token, frame.Data);
             }
             if (!_cts.Token.IsCancellationRequested)
                 await _jsRef.InvokeVoidAsync("end", _cts.Token);
@@ -108,8 +108,21 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (!_isPlaying)
             return;
-        await _jsRef.InvokeVoidAsync(_isPaused ? "resume" : "pause");
+        await _jsRef!.InvokeVoidAsync(_isPaused ? "resume" : "pause");
         _isPaused = !_isPaused;
+    }
+
+    private async Task OnDecoderLeakTestClick()
+    {
+        if (_jsRef == null) {
+            _cts = new CancellationTokenSource();
+            var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
+                _cts.Token,
+                blazorRef);
+        }
+        await _jsRef.InvokeVoidAsync("testDecoder");
     }
 
     private async Task<AudioSource> CreateAudioSource(string audioBlobUrl, CancellationToken cancellationToken)
@@ -123,37 +136,25 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnChangeReadiness(bool isBufferReady) => Task.CompletedTask;
+    public Task OnPlaying(double offset, bool isPaused, bool isBufferLow)
+    {
+        var playing = isPaused ? "paused" : "playing";
+        var buffer = isBufferLow ? "low" : "ok";
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        Log.LogInformation($"OnPlaying: {playing} @ {{Offset}}, buffer: {buffer}", offset);
+
+        _offset = offset;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
     [JSInvokable]
-    public async Task OnPlayEnded(string? errorMessage)
+    public async Task OnEnded(string? errorMessage)
     {
-        Log.LogInformation("OnPlayEnded(msg:{ErrorMessage})", errorMessage);
-        // might run stop()  after end(), we shouldn't do this, fix it later
+        Log.LogInformation("OnEnded: {ErrorMessage}", errorMessage);
         _cts?.CancelAndDisposeSilently();
-        if (_registration != default) {
+        if (_registration != default)
             await _registration.DisposeAsync();
-        }
-    }
-
-    [JSInvokable]
-    public Task OnPlayTimeChanged(double offset)
-    {
-        if (true) {
-            Log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);
-        }
-        _offset = offset;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    [JSInvokable]
-    public Task OnPausedAt(double offset)
-    {
-        Log.LogInformation("OnPausedAt(offset={Offset}s)", offset);
-        _offset = offset;
-        StateHasChanged();
-        return Task.CompletedTask;
     }
 
     public void Dispose()

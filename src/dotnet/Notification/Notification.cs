@@ -10,13 +10,20 @@ public record Notification(
     [property: DataMember] long Version = 0
     ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>
 {
-    [DataMember] public UserId UserId { get; init; }
-    [DataMember] public NotificationKind Kind { get; init; }
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public string Content { get; init; } = "";
     [DataMember] public string IconUrl { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
+    [DataMember] public Moment SentAt { get; init; }
     [DataMember] public Moment? HandledAt { get; init; }
+
+    // Computed
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public UserId UserId => Id.UserId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public NotificationKind Kind => Id.Kind;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Symbol SimilarityKey => Id.SimilarityKey;
 
     // Union options
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -44,6 +51,18 @@ public record Notification(
     public AuthorId AuthorId => ChatEntryNotification?.AuthorId ?? default;
 
     public Notification() : this(NotificationId.None) { }
+
+    public Notification WithSimilar(Notification similar)
+    {
+        if (Id != similar.Id)
+            throw new ArgumentOutOfRangeException(nameof(similar));
+
+        return this with {
+            Version = similar.Version,
+            CreatedAt = similar.CreatedAt,
+            HandledAt = null,
+        };
+    }
 }
 
 public abstract record NotificationOption : IRequirementTarget;

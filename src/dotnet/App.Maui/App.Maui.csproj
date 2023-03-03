@@ -28,7 +28,7 @@
 
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">31.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">33.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     <Configurations>Debug;Release;Debug-maui</Configurations>
@@ -40,7 +40,7 @@
 
   <!-- Here we can alter either app is build to connect to dev or prod environment -->
   <!-- Comment property group below to build an app connecting to prod -->
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(IsDevMaui)' == ''">
     <IsDevMaui>true</IsDevMaui>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
@@ -59,7 +59,7 @@
     <AnalysisLevel>preview</AnalysisLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
-    <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PPRODUCTION</DefineConstants>
+    <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
@@ -97,7 +97,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android'">
@@ -164,8 +163,11 @@
 
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
+    <PackageReference Include="Sentry.Serilog" />
+    <PackageReference Include="Sentry.Maui" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
     <!--
       MAUI msbuild tasks doesn't work with

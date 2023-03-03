@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IDisposable
 @{
-    var groupTitleSlotName = "NavbarGroupTitle-" + NavbarUI.ActiveGroupId;
+    var groupTitleSlotName = "NavbarGroupTitle-" + NavbarUI.SelectedGroupId;
 }
 
 <div class="flex-initial flex-x justify-end gap-x-1">
@@ -14,9 +14,9 @@
 
     protected override void OnInitialized() {
         _onActiveGroupChanged = (s, e) => StateHasChanged();
-        NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
+        NavbarUI.SelectedGroupChanged += _onActiveGroupChanged;
     }
 
     public void Dispose()
-        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+        => NavbarUI.SelectedGroupChanged -= _onActiveGroupChanged;
 }

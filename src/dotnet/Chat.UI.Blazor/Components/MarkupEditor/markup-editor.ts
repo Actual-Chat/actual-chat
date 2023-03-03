@@ -1,8 +1,12 @@
+import { DeviceInfo } from 'device-info';
+import { getOrInheritData } from 'dom-helpers';
+import { Timeout } from 'timeout';
 import { throttle } from 'promises';
+import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
-import { Log, LogLevel } from 'logging';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'MarkupEditor';
+const LogScope: LogScope = 'MarkupEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -26,13 +30,15 @@ export class MarkupEditor {
     public readonly contentDiv: HTMLDivElement;
     public changed: (html: string, text: string) => void = () => { };
 
-    private readonly listHandlers: Array<ListHandler>;
-    private listHandler?: ListHandler = null;
-    private listFilter: string = "";
+    private isContentDivInitialized = false;
     private lastSelectedRange?: Range = null;
     private undoStack: UndoStack<string>;
     private currentTransaction: () => void | null;
     private lastHtml: string = null;
+
+    private readonly listHandlers: Array<ListHandler>;
+    private listHandler?: ListHandler = null;
+    private listFilter: string = "";
 
     constructor(
         public readonly editorDiv: HTMLDivElement,
@@ -60,7 +66,7 @@ export class MarkupEditor {
         // Attach listeners & observers
         this.contentDiv.addEventListener("focus", this.onFocus)
         this.contentDiv.addEventListener("blur", this.onBlur)
-        this.contentDiv.addEventListener("mousedown", this.onMouseDown)
+        this.contentDiv.addEventListener("pointerdown", this.onPointerDown)
         this.contentDiv.addEventListener("keydown", this.onKeyDown);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
         this.contentDiv.addEventListener("paste", this.onPaste);
@@ -76,7 +82,7 @@ export class MarkupEditor {
     public dispose() {
         this.contentDiv.removeEventListener("focus", this.onFocus)
         this.contentDiv.removeEventListener("blur", this.onBlur)
-        this.contentDiv.removeEventListener("mousedown", this.onMouseDown)
+        this.contentDiv.removeEventListener("pointerdown", this.onPointerDown)
         this.contentDiv.removeEventListener("keydown", this.onKeyDown);
         this.contentDiv.removeEventListener("keypress", this.onKeyPress);
         this.contentDiv.removeEventListener("paste", this.onPaste);
@@ -87,6 +93,7 @@ export class MarkupEditor {
     }
 
     public transaction(action: () => void): void {
+        debugLog?.log("transaction");
         const oldTransaction = this.currentTransaction;
         this.currentTransaction = action;
         try {
@@ -105,14 +112,53 @@ export class MarkupEditor {
     }
 
     public focus() {
-        this.contentDiv.focus();
-        this.fixVirtualKeyboard();
+        let isFocused = document.activeElement === this.contentDiv;
+        if (!isFocused) {
+            const parents = listParents(document.activeElement, this.contentDiv);
+            for (const p of parents)
+                if (document.activeElement === p)
+                    isFocused = true;
+        }
+        if (isFocused)
+            return;
+
+        // This workaround is needed only for iOS
+        if (!DeviceInfo.isIos) {
+            debugLog?.log("focus");
+            this.contentDiv.focus();
+            this.fixVirtualKeyboard();
+        }
+        else {
+            // This makes sure mobile keyboard is shown on iOS,
+            // and this works only after the first interaction.
+            debugLog?.log("focus: using iOS workaround");
+            const target = this.contentDiv;
+            const tempElement = document.createElement('input');
+            tempElement.style.position = 'absolute';
+            tempElement.style.top = (target.offsetTop + 7) + 'px';
+            tempElement.style.left = target.offsetLeft + 'px';
+            tempElement.style.height = '0';
+            tempElement.style.opacity = '0';
+            document.body.appendChild(tempElement);
+            tempElement.focus();
+            Timeout.startRegular(100, () => {
+                target.focus();
+                target.click();
+                document.body.removeChild(tempElement);
+                this.fixVirtualKeyboard();
+            });
+        }
     }
 
-    public isEditable(isEditable: boolean = null): boolean {
-        if (isEditable !== null)
-            this.contentDiv.setAttribute('contenteditable', isEditable ? 'true' : 'false');
-        return this.contentDiv.isContentEditable;
+    public isEditable(mustBeEditable: boolean = null): boolean {
+        if (mustBeEditable !== null) {
+            if (this.contentDiv.isContentEditable == mustBeEditable)
+                return;
+            this.contentDiv.setAttribute('contenteditable', mustBeEditable ? 'true' : 'false');
+        }
+        const isEditable = this.contentDiv.isContentEditable;
+        debugLog?.log(`isEditable(${mustBeEditable}) -> ${isEditable}`);
+        return isEditable;
     }
 
     public getText() {
@@ -157,6 +203,7 @@ export class MarkupEditor {
             this.fixEverything();
         });
         this.closeListUI();
+        this.moveCursorToTheEnd();
     }
 
     public moveCursorToTheEnd() {
@@ -190,23 +237,33 @@ export class MarkupEditor {
     // Event handlers
 
     private onFocus = () => {
-        this.transaction(() => {
-            document.execCommand("insertBrOnReturn", false, "true");
-            document.execCommand("styleWithCSS", false, "false");
-        });
+        debugLog?.log("onFocus");
+        if (!this.isContentDivInitialized) {
+            this.isContentDivInitialized = true;
+            this.transaction(() => {
+                document.execCommand("insertBrOnReturn", false, "true");
+                document.execCommand("styleWithCSS", false, "false");
+            });
+            if (DeviceInfo.isIos)
+                this.focus();
+        }
         this.fixVirtualKeyboard();
     }
 
-    private onBlur = () => this.fixVirtualKeyboard()
+    private onBlur = () => {
+        debugLog?.log("onBlur");
+        this.fixVirtualKeyboard();
+    }
 
-    private onMouseDown = () => {
+    private onPointerDown = (e: PointerEvent) => {
+        debugLog?.log("onPointerDown, event:", e);
         this.focus();
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
-        // debugLog?.log(`onKeyDown: code = "${e.code}"`)
+        debugLog?.log(`onKeyDown, code = "${e.code}", event:`, e)
 
-        const ok = () => e.preventDefault();
+        const ok = () => preventDefaultForEvent(e);
 
         // When list handler is active...
         const listHandler = this.listHandler;
@@ -220,12 +277,12 @@ export class MarkupEditor {
                 return ok();
             }
             if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-                e.preventDefault();
+                preventDefaultForEvent(e);
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem));
                 return ok();
             }
             if (e.code === 'Escape') {
-                e.preventDefault();
+                preventDefaultForEvent(e);
                 if (!this.expandSelection(listHandler))
                     return ok();
                 this.closeListUI();
@@ -247,9 +304,9 @@ export class MarkupEditor {
     }
 
     private onKeyPress = (e: KeyboardEvent) => {
-        // debugLog?.log(`onKeyPress: code = "${e.code}"`)
+        debugLog?.log(`onKeyPress, code = "${e.code}", event:`, e)
 
-        const ok = () => e.preventDefault();
+        const ok = () => preventDefaultForEvent(e);
 
         // Suppress bold, italic, and underline shortcuts
         if ((e.ctrlKey || e.metaKey)) {
@@ -282,7 +339,8 @@ export class MarkupEditor {
     }
 
     private onPaste = (e: ClipboardEvent) => {
-        const ok = () => e.preventDefault();
+        debugLog?.log(`onPaste, event:`, e)
+        const ok = () => preventDefaultForEvent(e);
 
         const data = e.clipboardData;
         const text = cleanPastedText(data.getData('text'));
@@ -294,24 +352,26 @@ export class MarkupEditor {
         return ok();
     }
 
-    private onSelectionChange = () => {
+    private onSelectionChange = (e: Event) => {
+        debugLog?.log(`onSelectionChange, event:`, e)
         this.fixSelection();
         this.updateListUIThrottled();
     };
 
-    private onDocumentClick = (event: Event): void => {
-        if (!(event.target instanceof Element))
+    private onDocumentClick = (e: Event): void => {
+        if (!(e.target instanceof Element))
             return;
-        const closestElement = event.target.closest('[data-editor-trigger]');
-        if (!(closestElement instanceof HTMLElement))
+
+        const [_, editorFocus] = getOrInheritData(e.target, 'editorFocus');
+        if (editorFocus?.toLowerCase() !== 'true')
             return;
-        const trigger = closestElement.dataset['editorTrigger'];
-        if (trigger !== 'True')
-            return;
-        focusAndOpenKeyboard(this.editorDiv, 300);
+
+        debugLog?.log(`onDocumentClick: found data-editor-focus == 'true'`)
+        this.focus();
     };
 
     private onBeforeInput = (e: InputEvent) => {
+        debugLog?.log(`onBeforeInput, event:`, e)
         const ok = () => e.preventDefault();
 
         switch (e.inputType) {
@@ -328,6 +388,7 @@ export class MarkupEditor {
     }
 
     private onInput = (e: InputEvent) => {
+        debugLog?.log(`onInput, event:`, e)
         this.fixContent();
         this.undoStack.pushThrottled();
         this.updateListUIThrottled();
@@ -337,7 +398,7 @@ export class MarkupEditor {
 
     private updateListUIThrottled = throttle(() => this.updateListUI(), 250);
     private updateListUI() {
-        // debugLog?.log(`updateListUI`)
+        debugLog?.log(`updateListUI`);
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
             void this.closeListUI();
@@ -353,6 +414,7 @@ export class MarkupEditor {
     }
 
     private closeListUI() {
+        debugLog?.log(`closeListUI`);
         const listHandler = this.listHandler;
         if (!listHandler)
             return;
@@ -400,6 +462,7 @@ export class MarkupEditor {
     }
 
     private restoreSelection() {
+        debugLog?.log(`restoreSelection`);
         if (!this.lastSelectedRange)
             return;
 
@@ -414,6 +477,7 @@ export class MarkupEditor {
     }
 
     private expandSelection(listHandler: ListHandler): boolean {
+        debugLog?.log(`expandSelection`);
         const cursorRange = this.getCursorRange();
         if (!cursorRange)
             return false;
@@ -431,12 +495,14 @@ export class MarkupEditor {
     // State fixers
 
     private fixEverything() {
+        debugLog?.log(`fixEverything`);
         this.fixContent();
         this.fixSelection();
         this.fixVirtualKeyboard();
     }
 
     private fixSelection() {
+        debugLog?.log(`fixSelection`);
         const selection = document.getSelection();
         if (!selection.rangeCount)
             return;
@@ -454,28 +520,25 @@ export class MarkupEditor {
         if (!cursorRange.collapsed)
             return;
 
-        const listParents = (node: Node) => {
-            const parents = new Array<HTMLElement>();
-            let parent = node;
-            while (parent !== this.contentDiv) {
-                const eParent = asHTMLElement(parent);
-                if (eParent)
-                    parents.push(eParent)
-                parent = parent.parentElement;
-            }
-            parents.reverse();
-            return parents;
+        const parents = listParents(node, this.contentDiv);
+        let wasFocused = document.activeElement === this.contentDiv;
+        if (!wasFocused) {
+            for (const p of parents)
+                if (document.activeElement === p)
+                    wasFocused = true;
         }
 
-        const parents = listParents(node);
         for (let parent of parents) {
             const elementContentEditable = parent as unknown as ElementContentEditable;
             if (elementContentEditable.contentEditable && !elementContentEditable.isContentEditable) {
+                debugLog?.log(`fixSelection: fixing it for:`, parent);
                 const newRange = document.createRange();
                 newRange.setStartAfter(parent);
                 newRange.collapse(false);
                 selection.removeAllRanges();
                 selection.addRange(newRange);
+                if (wasFocused && DeviceInfo.isIos)
+                    this.focus();
                 this.lastSelectedRange = newRange;
                 return;
             }
@@ -484,6 +547,8 @@ export class MarkupEditor {
     }
 
     private fixContent() {
+        debugLog?.log(`fixContent`);
+
         // We remove all elements with contentEditable == "false", which
         // aren't followed by "\u8203" character to workaround an issue with
         // typing & deletion of such elements in Chrome Android:
@@ -542,6 +607,8 @@ export class MarkupEditor {
 
         if (!('virtualKeyboard' in navigator))
             return;
+
+        debugLog?.log(`fixVirtualKeyboard`);
         let mustShow = document.activeElement == this.contentDiv;
         // @ts-ignore
         let virtualKeyboard = navigator.virtualKeyboard as { show(), hide() };
@@ -667,18 +734,18 @@ function normalize(text: string): string {
     return text.normalize().replace(CrlfRe, "\n");
 }
 
-function focusAndOpenKeyboard(el: HTMLDivElement, timeout: number) {
-    const tempElement = document.createElement('input');
-    tempElement.style.position = 'absolute';
-    tempElement.style.top = (el.offsetTop + 7) + 'px';
-    tempElement.style.left = el.offsetLeft + 'px';
-    tempElement.style.height = '0';
-    tempElement.style.opacity = '0';
-    document.body.appendChild(tempElement);
-    tempElement.focus();
-    setTimeout(function() {
-        el.focus();
-        el.click();
-        document.body.removeChild(tempElement);
-    }, timeout);
+const listParents = (node: Node, upToNode: Node): Array<HTMLElement> => {
+    const parents = new Array<HTMLElement>();
+    let parent = node;
+    while (parent && parent !== upToNode) {
+        const eParent = asHTMLElement(parent);
+        if (eParent)
+            parents.push(eParent)
+        parent = parent.parentElement;
+    }
+    if (!parent)
+        parents.length = 0;
+    else
+        parents.reverse();
+    return parents;
 }

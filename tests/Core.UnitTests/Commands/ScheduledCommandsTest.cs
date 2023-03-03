@@ -16,14 +16,14 @@ public class ScheduledCommandsTest: TestBase
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddLocalCommandQueues()
-            .AddCommandQueueScheduler(Queues.Default.Name)
+            .AddCommandQueueScheduler()
             .AddFusion()
             .AddComputeService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[Queues.Default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
@@ -42,7 +42,7 @@ public class ScheduledCommandsTest: TestBase
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddLocalCommandQueues()
-            .AddCommandQueueScheduler(Queues.Default.Name)
+            .AddCommandQueueScheduler()
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
@@ -52,7 +52,7 @@ public class ScheduledCommandsTest: TestBase
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[Queues.Default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
@@ -73,7 +73,7 @@ public class ScheduledCommandsTest: TestBase
         await using var services = new ServiceCollection()
             .AddLogging()
             .AddLocalCommandQueues()
-            .AddCommandQueueScheduler(Queues.Default.Name)
+            .AddCommandQueueScheduler()
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
@@ -83,7 +83,7 @@ public class ScheduledCommandsTest: TestBase
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[Queues.Default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 

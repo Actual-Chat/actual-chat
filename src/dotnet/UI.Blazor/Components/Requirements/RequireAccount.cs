@@ -11,6 +11,9 @@ public class RequireAccount : RequirementComponent
     [Parameter] public bool MustBeActive { get; set; } = true;
     [Parameter] public bool MustBeAdmin { get; set; }
 
+    public override string ToString()
+        => $"{GetType().GetName()}(MustBeActive = {MustBeActive}, MustBeAdmin = {MustBeAdmin})";
+
     public override async Task<Unit> Require(CancellationToken cancellationToken)
     {
         // Caching all used properties to use ConfigureAwait(false) here

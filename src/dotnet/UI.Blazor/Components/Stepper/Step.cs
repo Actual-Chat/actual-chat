@@ -2,22 +2,24 @@ namespace ActualChat.UI.Blazor.Components;
 
 public abstract class Step : ComponentBase
 {
-    public bool IsCompleted { get; private set; }
+    public abstract bool IsCompleted { get; }
     public Step? CurrentStep => Stepper.CurrentStep;
 
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;
 
     protected override void OnInitialized()
-        => Stepper.AddStep(this);
+    {
+        if (IsCompleted)
+            return;
+
+        Stepper.AddStep(this);
+    }
 
     protected abstract Task<bool> Validate();
-
     protected abstract Task Save();
+    protected abstract void MarkCompleted();
 
-    public void Refresh()
-        => StateHasChanged();
-
-    public async Task<bool> Complete()
+    public async ValueTask<bool> TryComplete()
     {
         if (IsCompleted)
             return true;
@@ -27,7 +29,7 @@ public abstract class Step : ComponentBase
             return false;
 
         await Save();
-        IsCompleted = true;
+        MarkCompleted();
         return true;
     }
 }

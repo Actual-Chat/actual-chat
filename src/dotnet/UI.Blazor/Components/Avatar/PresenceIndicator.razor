@@ -3,23 +3,21 @@
 @inherits FusionComponentBase
 
 @{
-    RenderFragment RenderCircle(string color, int cy = 8, int r = 7)
-        => @<div class="right-0 bottom-0 w-4 h-4 rounded-full absolute bg-01">
-               <svg class="@color w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 32 32">
-                   <circle cx="8" cy="@cy" r="@r"/>
-               </svg>
+    RenderFragment RenderCircle(string color)
+        => @<div class="absolute flex items-center justify-center right-0 bottom-0 w-2.5 h-2.5 rounded-full bg-01">
+               <div class="@color rounded-full w-1.75 h-1.75"></div>
            </div>;
 }
 
 @switch (Presence) {
     case Presence.Online:
-        @RenderCircle("text-online");
+        @RenderCircle("bg-online");
         break;
     case Presence.Away:
-        @RenderCircle("text-away");
+        @RenderCircle("bg-away");
         break;
     case Presence.Recording:
-        @RenderCircle("text-code", 9, 6);
+        @RenderCircle("bg-icons-04 animate-pulse");
         break;
 }
 

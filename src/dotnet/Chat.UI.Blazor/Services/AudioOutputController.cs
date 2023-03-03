@@ -13,15 +13,20 @@ public sealed class AudioOutputController : IAudioOutputController
     private readonly IMutableState<bool> _isAudioOn;
     private readonly IMutableState<bool> _isSpeakerphoneOn;
 
+    public IState<bool> IsAudioOn => _isAudioOn;
+    public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
+
     public AudioOutputController(IServiceProvider services)
     {
         var stateFactory = services.GetRequiredService<IStateFactory>();
-        _isAudioOn = stateFactory.NewMutable<bool>();
-        _isSpeakerphoneOn = stateFactory.NewMutable<bool>();
+        var type = GetType();
+        _isAudioOn = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsAudioOn)));
+        _isSpeakerphoneOn = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsSpeakerphoneOn)));
     }
-
-    public IState<bool> IsAudioOn => _isAudioOn;
-    public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
 
     public ValueTask<bool> ToggleAudio(bool mustEnable)
         => ValueTaskExt.FromResult(_isAudioOn.Value = mustEnable);

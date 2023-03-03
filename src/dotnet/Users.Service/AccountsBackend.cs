@@ -114,7 +114,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
 
     private static AccountFull? GetGuestAccount(UserId userId)
     {
-        if (userId.IsNone || !userId.IsGuestId)
+        if (!userId.IsGuest)
             return null;
 
         var name = RandomNameGenerator.Default.Generate(userId);
@@ -126,8 +126,8 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     private static AvatarFull GetDefaultAvatar(AccountFull account)
         => new() {
             UserId = account.Id,
-            Name = account.User.Name,
-            Picture = DefaultUserPicture.Get(account.User),
+            Name = account.FullName,
+            Picture = DefaultUserPicture.Get(account.FullName),
             Bio = "",
         };
 }

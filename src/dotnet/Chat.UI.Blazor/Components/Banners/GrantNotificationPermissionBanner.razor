@@ -1,0 +1,89 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification.UI.Blazor
+@using ActualChat.Notification.UI.Blazor.Module
+@using ActualChat.Hosting
+@using ActualChat.Kvas
+@using ActualChat.Notification
+@inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
+}
+
+<Banner IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnDismiss">
+    <Body>
+        Actual Chat can notify you about new messages
+    </Body>
+    <Buttons>
+        <Button
+            Class="btn-transparent on"
+            Click="@OnConfigureClick"
+            Rendered="@OnConfigureRendered">Configure</Button>
+    </Buttons>
+</Banner>
+
+@code {
+    private bool _isHandlerRegistered;
+    private IStoredState<Moment> _dismissedAt = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
+    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
+        base.OnInitialized();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var permissionState = await NotificationUI.State.Use(cancellationToken);
+        // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
+        var dismissedAt = await _dismissedAt.Use(cancellationToken);
+        var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
+        var isDismissed = dismissPeriod < NotificationConstants.UI.PermissionRequestDismissPeriod;
+        return new(permissionState, isDismissed);
+    }
+
+    // Event handlers
+
+    private void OnDismiss()
+        => _dismissedAt.Value = Clocks.SystemClock.Now;
+
+
+    private Task OnConfigureClick(MouseEventArgs arg)
+        => NotificationPermissions.RequestNotificationPermissions(CancellationToken.None);
+
+    private async Task OnConfigureRendered(ElementReference buttonRef) {
+        if (_isHandlerRegistered)
+            return;
+
+        await NotificationUI.RegisterRequestNotificationHandler(buttonRef);
+        _isHandlerRegistered = true;
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        PermissionState State,
+        bool IsDismissed
+    ) {
+        public static readonly Model Loading = new(PermissionState.Denied, true);
+    }
+}

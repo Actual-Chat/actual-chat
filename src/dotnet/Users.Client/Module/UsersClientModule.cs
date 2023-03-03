@@ -16,7 +16,7 @@ public class UsersClientModule : HostModule
 
     public override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
+        if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
         var fusion = services.AddFusion();
@@ -33,6 +33,6 @@ public class UsersClientModule : HostModule
         fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
         fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
         fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IReadPositions, IReadPositionsClientDef>();
+        fusionClient.AddReplicaService<IChatPositions, IChatPositionsClientDef>();
     }
 }

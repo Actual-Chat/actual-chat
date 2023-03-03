@@ -1,5 +1,4 @@
 import {
-    fromEvent,
     merge,
     Subject,
     takeUntil,
@@ -15,27 +14,25 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { endEvent } from 'event-handling';
-import { Vector2D } from 'math';
+import { DocumentEvents, stopEvent } from 'event-handling';
+import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'promises';
 import { nextTick } from 'timeout';
-import { Log, LogLevel } from 'logging';
-
+import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
-import { HistoryUI } from '../../Services/HistoryUI/history-ui';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'MenuHost';
+const LogScope: LogScope = 'MenuHost';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
-enum MenuTriggers {
+enum MenuTrigger {
     None = 0,
-    LeftClick = 1,
-    RightClick = 2,
-    LongClick = 4,
+    Primary = 1,
+    Secondary = 2,
 }
 
 interface Menu {
@@ -50,35 +47,32 @@ interface Menu {
 }
 
 export class MenuHost implements Disposable {
-    private readonly skipClickEventPeriodMs = 350;
     private readonly hoverMenuDelayMs = 50;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
-    private isHistoryEnabled: boolean = true;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
     }
 
     constructor(private readonly blazorRef: DotNet.DotNetObject) {
-        debugLog?.log('constructor')
+        debugLog?.log('constructor');
         merge(
-            fromEvent(document, 'click'),
-            fromEvent(document, 'long-press'),
-            fromEvent(document, 'contextmenu')
+            DocumentEvents.active.click$,
+            DocumentEvents.active.contextmenu$,
             )
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event) => this.onClick(event));
+            .subscribe((event: MouseEvent) => this.onClick(event));
 
-        fromEvent(document, 'mouseover')
+        DocumentEvents.passive.pointerOver$
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event) => this.onMouseOver(event));
+            .subscribe((event: PointerEvent) => this.onPointerOver(event));
 
         Escapist.event$
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: KeyboardEvent) => {
                 if (this.menu != null) {
-                    endEvent(event);
+                    stopEvent(event);
                     this.hide();
                 }
             });
@@ -107,13 +101,13 @@ export class MenuHost implements Disposable {
         if (this.isShown(menu))
             void this.position(this.menu, menu);
         else
-            this.render(menu);
+            this.show(menu);
     }
 
     public hideById(id: string): void {
         const menu = this.menu;
         if (!menu || menu.id !== id) {
-            warnLog?.log('hideById: no menu with id:', id)
+            debugLog?.log('hideById: no menu with id:', id)
             return;
         }
 
@@ -123,7 +117,7 @@ export class MenuHost implements Disposable {
     public async positionById(id: string): Promise<void> {
         const menu = this.menu;
         if (!menu || menu.id !== id) {
-            warnLog?.log('position: no menu with id:', id)
+            debugLog?.log('positionById: no menu with id:', id)
             return;
         }
 
@@ -141,7 +135,7 @@ export class MenuHost implements Disposable {
     private create(
         menuRef: string,
         isHoverMenu: boolean,
-        triggerElement: HTMLElement | string,
+        triggerElement: HTMLElement | SVGElement | string,
         placement: Placement | null,
         position: Vector2D | null,
     ): Menu {
@@ -170,24 +164,13 @@ export class MenuHost implements Disposable {
             && m.isHoverMenu === menu.isHoverMenu;
     }
 
-    private render(menu: Menu): void {
-        debugLog?.log('render:', menu)
+    private show(menu: Menu): void {
+        debugLog?.log('show:', menu)
         if (!menu)
-            throw `${LogScope}.render: menu == null.`;
+            throw new Error(`${LogScope}.show: menu == null.`);
 
-        let oldMenu = this.menu;
         this.menu = menu;
-
-        // Maybe add history step
-        if (this.isHistoryEnabled && !menu.historyStepId && !menu.isHoverMenu) {
-            if (oldMenu?.historyStepId)
-                menu.historyStepId = oldMenu.historyStepId;
-            else
-                menu.historyStepId = HistoryUI.pushBackStep(true, () => this.hide());
-            debugLog?.log('render: added history step', history.state);
-        }
-
-        this.blazorRef.invokeMethodAsync('OnRenderRequest', menu.id, menu.menuRef, menu.isHoverMenu);
+        this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
         if (ScreenSize.isNarrow())
             VibrationUI.vibrate();
     }
@@ -200,6 +183,7 @@ export class MenuHost implements Disposable {
         const menu = this.menu;
         if (!menu)
             return;
+
         if (options) {
             if (options.id !== undefined && menu.id !== options.id)
                 return;
@@ -208,26 +192,13 @@ export class MenuHost implements Disposable {
         }
 
         this.menu = null;
-
-        // Remove history step
-        if (this.isHistoryEnabled && menu?.historyStepId) {
-            const historyStepId = menu.historyStepId;
-            menu.historyStepId = null;
-            if (HistoryUI.isCurrentStep(historyStepId)) {
-                history.back();
-                debugLog?.log('hide: removed history step');
-            } else {
-                debugLog?.log('hide: history step has already been replaced');
-            }
-        }
-
         // Hide (un-render) it
         this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
     }
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {
         if (!menu)
-            throw `${LogScope}.position: menu == null.`;
+            throw new Error(`${LogScope}.position: menu == null.`);
 
         if (updatedMenu) {
             menu.menuElement = updatedMenu.menuElement ?? menu.menuElement;
@@ -292,37 +263,29 @@ export class MenuHost implements Disposable {
     // Event handlers
 
     private onClick(event: Event): void {
-        let trigger = MenuTriggers.None
+        let trigger = MenuTrigger.None
         if (event.type == 'click')
-            trigger = MenuTriggers.LeftClick;
-        if (event.type == 'long-press')
-            trigger = MenuTriggers.LongClick;
+            trigger = MenuTrigger.Primary;
         if (event.type == 'contextmenu')
-            trigger = MenuTriggers.RightClick;
+            trigger = MenuTrigger.Secondary;
         debugLog?.log('onClick, event:', event, ', trigger:', trigger);
 
         let isDesktopMode = this.isDesktopMode;
 
         // Ignore clicks which definitely aren't "ours"
-        if (trigger == MenuTriggers.None)
+        if (trigger == MenuTrigger.None)
             return;
         if (!(event.target instanceof Element))
             return;
 
-        // Ignore long clicks on desktop: they don't provide pointer position -> menu can't be properly positioned
-        if (trigger == MenuTriggers.LongClick && isDesktopMode)
-            return;
-
-        // Suppress browser context menu anywhere but on images
-        if (trigger == MenuTriggers.RightClick && event.target.nodeName !== 'IMG')
-            event.preventDefault();
-
-        let triggerElement = event.target.closest('[data-menu]') as HTMLElement;
-        let menuRef = null;
-        if ((triggerElement instanceof HTMLElement)) {
-            const menuTrigger = triggerElement.dataset['menuTrigger'];
-            if (menuTrigger && hasTrigger(menuTrigger, trigger))
-                menuRef = triggerElement.dataset['menu'];
+        let [triggerElement, menuRef] = getOrInheritData(event.target, 'menu');
+        if (triggerElement && menuRef) {
+            const menuTrigger = MenuTrigger[triggerElement.dataset['menuTrigger'] ?? 'Secondary'];
+            if (trigger !== menuTrigger) {
+                const altMenuTrigger = menuTrigger == MenuTrigger.Primary ? MenuTrigger.Secondary : MenuTrigger.None;
+                if (!isDesktopMode || trigger != altMenuTrigger)
+                    menuRef = null;
+            }
         }
 
         if (!menuRef) {
@@ -336,11 +299,11 @@ export class MenuHost implements Disposable {
 
             // It's a click outside of any menu which doesn't trigger another menu
             if (!this.menu || this.menu.isHoverMenu)
-                return; // There are no visible menu (unless it's a hover menu)
+                return; // There is no visible menu or visible menu is a hover menu
 
             // Non-hover menu is visible, so we need to hide it on this click
             this.hide();
-            return endEvent(event);
+            return stopEvent(event);
         }
 
         const position = isDesktopMode && event instanceof PointerEvent
@@ -355,12 +318,12 @@ export class MenuHost implements Disposable {
                 void this.position(this.menu, menu)
         }
         else
-            this.render(menu);
+            this.show(menu);
 
-        endEvent(event);
+        stopEvent(event);
     }
 
-    private async onMouseOver(event: Event): Promise<void> {
+    private async onPointerOver(event: Event): Promise<void> {
         // Hover menus work only in desktop mode
         if (!this.isDesktopMode)
             return;
@@ -375,20 +338,19 @@ export class MenuHost implements Disposable {
             return;
         }
 
-        const triggerElement = event.target.closest('[data-hover-menu]') as HTMLElement;
-        if (!(triggerElement instanceof HTMLElement)) {
+        const [triggerElement, menuRef] = getOrInheritData(event.target, 'hoverMenu');
+        if (!menuRef) {
             const isInsideHoverMenu = event.target.closest('.ac-menu-hover') != null;
             if (!isInsideHoverMenu)
                 this.hide({ isHoverMenu: true });
             return;
         }
 
-        const menuRef = triggerElement.dataset['hoverMenu'];
         const menu = this.create(menuRef, true, triggerElement, "top-end", null);
         if (this.isShown(menu))
             return;
 
-        this.render(menu);
+        this.show(menu);
     }
 }
 
@@ -397,10 +359,6 @@ export class MenuHost implements Disposable {
 let _nextId = 1;
 // Menu Ids are used as HTML element Ids, so they need to have unique prefix
 let nextId = () => 'menu:' + (_nextId++).toString();
-
-function hasTrigger(trigger: string, triggers: MenuTriggers): boolean {
-    return (Number(trigger) & triggers) === triggers;
-}
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset['menuPlacement'];

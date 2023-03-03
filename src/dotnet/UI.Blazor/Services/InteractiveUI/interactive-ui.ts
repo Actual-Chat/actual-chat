@@ -1,70 +1,45 @@
-import { audioContextLazy } from 'audio-context-lazy';
 import { delayAsync } from 'promises';
-import { EventHandler, EventHandlerSet } from 'event-handling';
-import { NextInteraction } from 'next-interaction';
-import { Log, LogLevel } from 'logging';
+import { Interactive } from 'interactive';
+import { Log, LogLevel, LogScope } from 'logging';
 
-const LogScope = 'InteractiveUI';
+const LogScope: LogScope = 'InteractiveUI';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 export class InteractiveUI {
     private static backendRef: DotNet.DotNetObject = null;
-    private static backendIsInteractive = false;
-    private static isSyncing = false;
-    private static onAudioContextChanged: EventHandler<AudioContext | null> = null;
-
-    public static isInteractive = false;
-    public static isInteractiveChanged: EventHandlerSet<boolean> = new EventHandlerSet<boolean>();
+    private static _backendIsInteractive = false;
 
     public static init(backendRef: DotNet.DotNetObject) {
         debugLog?.log(`init`);
         this.backendRef = backendRef;
-        this.onAudioContextChanged = audioContextLazy.audioContextChanged.add(() => this.trySync());
-        NextInteraction.start();
-        this.trySync();
+        Interactive.isInteractiveChanged.add(() => this.sync());
     }
 
-    public static trySync(): void {
-        const audioContext = audioContextLazy.audioContext;
-        const isInteractive = audioContext !== null && audioContext.state === 'running';
-        if (this.isInteractive === isInteractive)
-            return;
+    // Private methods
 
-        debugLog?.log(`isInteractive:`, isInteractive);
-        this.isInteractive = isInteractive;
-        this.isInteractiveChanged.triggerSilently(isInteractive);
-        if (this.isSyncing)
-            return;
-
-        if (isInteractive != this.backendIsInteractive)
-            void this.sync();
-    }
-
+    private static _isSyncing: boolean;
     private static async sync(): Promise<void> {
-        if (this.isSyncing)
-            return; // Sync is already in progress, it will do the job anyway
+        if (this._isSyncing)
+            return; // Running sync will do the job anyway - it loops while there is any diff
 
-        this.isSyncing = true;
-        try {
-            while (true) {
-                const isInteractive = this.isInteractive; // We need a stable copy here
-                if (isInteractive === this.backendIsInteractive)
-                    break;
-                try {
-                    debugLog?.log(`sync: calling IsInteractiveChanged(${isInteractive}) on backend`);
-                    await this.backendRef.invokeMethodAsync("IsInteractiveChanged", isInteractive);
-                    this.backendIsInteractive = isInteractive;
-                }
-                catch (error) {
-                    errorLog?.log(`sync: failed to reach the backend, error:`, error);
-                    await delayAsync(1000);
-                }
+        this._isSyncing = true;
+        for (;;) {
+            const isInteractive = Interactive.isInteractive;
+            if (isInteractive == this._backendIsInteractive)
+                break;
+
+            try {
+                debugLog?.log(`sync: calling IsInteractiveChanged(${isInteractive}) on backend`);
+                await this.backendRef.invokeMethodAsync("IsInteractiveChanged", isInteractive);
+                this._backendIsInteractive = isInteractive;
+            }
+            catch (error) {
+                errorLog?.log(`sync: failed to reach the backend, error:`, error);
+                await delayAsync(1000);
             }
         }
-        finally {
-            this.isSyncing = false;
-        }
+        this._isSyncing = false;
     }
 }

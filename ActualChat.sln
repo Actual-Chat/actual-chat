@@ -95,6 +95,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run.cmd = run.cmd
 		version.json = version.json
 		icons-to-font.cmd = icons-to-font.cmd
+		monitor.Dockerfile = monitor.Dockerfile
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -179,23 +180,29 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Users", "Users", "{9EF8D096
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E726-4D5A-90A1-BDD668CFD906}"
 	ProjectSection(SolutionItems) = preProject
-		src\nodejs\src\audio-context-lazy.ts = src\nodejs\src\audio-context-lazy.ts
 		src\nodejs\src\disposable.ts = src\nodejs\src\disposable.ts
 		src\nodejs\src\event-handling.ts = src\nodejs\src\event-handling.ts
 		src\nodejs\src\init.ts = src\nodejs\src\init.ts
 		src\nodejs\src\logging-init.ts = src\nodejs\src\logging-init.ts
 		src\nodejs\src\logging.ts = src\nodejs\src\logging.ts
-		src\nodejs\src\next-interaction.ts = src\nodejs\src\next-interaction.ts
 		src\nodejs\src\object-pool.ts = src\nodejs\src\object-pool.ts
 		src\nodejs\src\on-device-awake-worker.ts = src\nodejs\src\on-device-awake-worker.ts
 		src\nodejs\src\on-device-awake.ts = src\nodejs\src\on-device-awake.ts
 		src\nodejs\src\promises.ts = src\nodejs\src\promises.ts
 		src\nodejs\src\rpc.ts = src\nodejs\src\rpc.ts
-		src\nodejs\src\long-press-event.js = src\nodejs\src\long-press-event.js
-		src\nodejs\src\long-press.ts = src\nodejs\src\long-press.ts
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\math.ts = src\nodejs\src\math.ts
 		src\nodejs\src\keyboard.ts = src\nodejs\src\keyboard.ts
+		src\nodejs\src\audio-context-source.ts = src\nodejs\src\audio-context-source.ts
+		src\nodejs\src\interactive.ts = src\nodejs\src\interactive.ts
+		src\nodejs\src\gestures.ts = src\nodejs\src\gestures.ts
+		src\nodejs\src\device-info.ts = src\nodejs\src\device-info.ts
+		src\nodejs\src\dom-helpers.ts = src\nodejs\src\dom-helpers.ts
+		src\nodejs\src\resettable.ts = src\nodejs\src\resettable.ts
+		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
+		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
+		src\nodejs\src\audio-context-ref.ts = src\nodejs\src\audio-context-ref.ts
+		src\nodejs\src\async-processor.ts = src\nodejs\src\async-processor.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"

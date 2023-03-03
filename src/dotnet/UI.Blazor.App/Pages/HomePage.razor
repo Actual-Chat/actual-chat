@@ -1,69 +1,28 @@
 @page "/"
-@using ActualChat.Chat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Services
-@using ActualChat.Users
-@inherits ComputedStateComponent<HomePage.Model>
+@using ActualChat.UI.Blazor.App.Pages.Landing
 @layout NoLayout
-@{
-    var m = State.Value;
-    var account = m.Account;
-    if (ReferenceEquals(account, AccountFull.Loading)) // Not yet loaded
-        return;
-    if (account.IsGuest) { // Loaded, but user doesn't have an account
-        <Landing/>
-        return;
-    }
 
-    // Logged in
-    if (!m.Link.IsNullOrEmpty() && !_navigated) {
-        _navigated = true; // prevents multiple calls
-        // Do automatic redirect on first load.
-        Nav.NavigateTo(m.Link, false, true);
-    }
-}
+<AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true">
+     @{ _isContentRendered = true; }
+    <AfterRenderEventDecorator AfterRenderCallback="OnLandingRendered">
+        <Landing/>
+    </AfterRenderEventDecorator>
+</AutoNavigateToChatsOnSignIn>
 
 @code {
-    private bool _navigated;
-    private bool _enableIncompleteUI;
+    private bool _isContentRendered;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    protected override Task OnInitializedAsync()
-        => ChatUI.WhenLoaded;
+    protected override void OnAfterRender(bool firstRender)
+        => MarkLoaded();
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() { InitialValue = Model.Loading };
-    }
+    private void OnLandingRendered(bool isFirstRender)
+        => MarkLoaded();
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
-        var account = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
-        var link = "";
-        if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            link = Links.Chat(default);
-        else {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            var selectedChat = await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
-            link = Links.Chat(selectedChat != null ? selectedChatId : Constants.Chat.AnnouncementsChatId);
-        }
-        return new(account, link);
-    }
-
-    protected override void OnAfterRender(bool firstRender) {
-        var m = State.Value;
-        var account = m.Account;
-        if (!ReferenceEquals(account, AccountFull.Loading))
+    private void MarkLoaded()
+    {
+        if (_isContentRendered)
             LoadingUI.MarkLoaded();
-    }
-
-    public record Model(AccountFull Account, string Link) {
-        public static Model Loading { get; } = new(AccountFull.Loading, ""); // Should differ by ref. from None
     }
 }

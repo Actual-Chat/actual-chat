@@ -50,7 +50,7 @@
 
 .form-buttons {
     @apply mt-2;
-    @apply flex flex-row w-full items-center gap-x-1;
+    @apply flex-x w-full items-center gap-x-1;
 }
 
 .form-section-validation {

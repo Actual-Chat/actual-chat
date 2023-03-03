@@ -1,6 +1,6 @@
 @inherits ComputedStateComponent<Language>
 @{
-    var m = State.ValueOrDefault.Or(Languages.Main);
+    var m = State.Value.Or(Languages.Main);
 }
 
 <ButtonRound
@@ -19,7 +19,10 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Language>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
         => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);

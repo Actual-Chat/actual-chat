@@ -10,8 +10,8 @@ public class ShowHideAnimator : ComponentAnimator
     public string Class { get; private set; }
     public bool MustHideComponent => OrdinalEquals(Class, "hidden");
 
-    public ShowHideAnimator(ComponentBase component, TimeSpan duration, IMomentClock clock, bool state = false)
-        : base(component, duration, clock)
+    public ShowHideAnimator(ComponentBase component, TimeSpan duration, bool state = false)
+        : base(component, duration)
     {
         _state = state;
         Class = state ? "" : "hidden";
@@ -26,7 +26,7 @@ public class ShowHideAnimator : ComponentAnimator
             ? Class switch {
                 "hidden" => ("off", MinDuration),
                 "off" => ("off-to-on", Duration),
-                "off-to-on" => (isAnimating ? Class : "", skipAnimation),
+                "off-to-on" => (isAnimating ? Class : "", remainingDuration),
                 "" => (Class, skipAnimation),
                 "on-to-off" => ("off-to-on", Duration),
                 _ => throw StandardError.Internal($"Invalid Class: '{Class}'."),
@@ -36,13 +36,13 @@ public class ShowHideAnimator : ComponentAnimator
                 "off" => ("hidden", skipAnimation),
                 "off-to-on" => ("on-to-off", Duration),
                 "" => ("on-to-off", Duration),
-                "on-to-off" => (isAnimating ? Class : "hidden", skipAnimation),
+                "on-to-off" => (isAnimating ? Class : "hidden", remainingDuration),
                 _ => throw StandardError.Internal($"Invalid Class: '{Class}'."),
             };
 
         _state = newState;
         Class = newClass;
-        if (duration != skipAnimation)
+        if (duration != skipAnimation && (!isAnimating || duration != remainingDuration))
             BeginAnimation(duration);
     }
 }

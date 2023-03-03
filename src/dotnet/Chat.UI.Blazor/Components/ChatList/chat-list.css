@@ -1,0 +1,110 @@
+/*
+    Simplified nesting structure:
+
+    navbar-chats navbar-group
+        active-chats
+            chat-list-active chat-list
+        chats-tab
+            chat-list-[pinned|unpinned] chat-list
+                navbar-item group
+                    navbar-item-content
+                    navbar-item-ending
+                        [on-hover] - optionally
+                            btn - listening, recording
+                            menu
+                                btn - [...] hover menu
+*/
+
+/* Top-level container - active-chats, pinned-chats, etc. */
+.active-chats {
+    @apply relative flex-y bottom-0 p-2;
+}
+.active-chats .navbar-item.active {
+    @apply bg-selected;
+}
+.active-chats .navbar-item.active .navbar-item-content {
+    @apply font-normal;
+}
+
+/* Sort button */
+.navbar-chats .chat-list-sort-btn .btn-content {
+    @apply -mb-1;
+}
+.navbar-chats .chat-list-sort-btn.btn {
+    @apply min-w-fit max-w-fit min-h-fit rounded-full;
+}
+body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
+    @apply text-primary;
+}
+
+/* Chat list */
+.chat-list {
+    @apply flex-y gap-y-0.5;
+}
+.chat-list.chat-list-active {
+    @apply flex-1;
+}
+.chat-list.chat-list-pinned {
+    @apply flex-none pb-2 px-2;
+}
+.chat-list.chat-list-unpinned {
+    @apply flex-1 px-2;
+}
+
+/* Buttons - listening, recording, etc. */
+.chat-list .navbar-item-content {
+    @apply flex-1;
+}
+.chat-list .navbar-item .btn {
+    /* @apply w-8 h-12; */
+    @apply w-6 h-6;
+    @apply bg-transparent;
+}
+body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {
+    @apply text-primary;
+}
+.chat-list .navbar-item .recording-in-chat.on .btn-content,
+body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on .btn-content {
+    @apply text-recorder-on;
+}
+
+/* Menu */
+.chat-list .navbar-item .menu {
+    @apply flex-none flex-x;
+}
+
+/* Badges */
+.active-chats .message-counter-badge {
+    @apply hidden;
+}
+.active-chats .message-counter-with-time {
+    @apply hidden;
+}
+.navbar-item .message-counter-badge {
+    @apply self-end;
+}
+body.hoverable .navbar-item:hover .message-counter-badge {
+    @apply hidden;
+}
+
+/* Hoverable slot */
+.chat-list .navbar-item .navbar-item-ending .slot.hoverable {
+    @apply hidden /* flex */;
+}
+body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable {
+    @apply flex;
+}
+
+/* Tabs */
+.navbar-chats .tab-panel .tab-panel-tabs,
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group,
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container,
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .btn.tab-btn {
+    @apply min-h-10 max-h-10;
+}
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .tab-panel-bottom-hill {
+    @apply min-h-1 -mt-1;
+}
+.navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
+    @apply h-4 min-w-6;
+}

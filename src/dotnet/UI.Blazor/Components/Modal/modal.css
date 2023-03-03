@@ -1,23 +1,36 @@
-.blazored-modal-focus-trap {
+/* Inherited from Blazored Modal */
+
+.modal-overlay {
+    @apply z-modal-overlay fixed;
+    @apply flex-1 flex-y justify-center;
+    @apply top-0 left-0 h-full w-full;
+    @apply overflow-x-hidden overflow-y-hidden;
+    @apply outline-0;
+    background-color: rgba(0,0,0,0.8);
+}
+
+.modal-focus-trap {
     @apply h-full w-full md:h-auto md:w-auto;
-}
-
-.position-fullscreen {
-    @apply h-full w-full;
-}
-
-.position-fullscreen .blazored-modal-focus-trap {
-    @apply h-full w-full;
 }
 
 .modal {
+    @apply flex-y;
     @apply h-full w-full md:h-auto md:w-auto;
     @apply border-0 rounded-none;
     @apply p-0 m-0 bg-transparent;
+    /* @apply bg-white; */
     box-shadow: none;
 }
 
-.modal .bm-content {
+.modal .modal-content {
+    /* h-[90vh] adds top+bottom gap between the modal frame & screen edge on smaller screens */
+    /* Note that modal-overlay-fullscreen selector below cancels it */
+    @apply h-full md:h-[90vh] w-full;
+}
+
+/* Full-screen mode overrides */
+.modal-overlay-fullscreen .modal-focus-trap,
+.modal-overlay-fullscreen .modal .modal-content {
     @apply h-full w-full;
 }
 
@@ -37,13 +50,18 @@
     @apply z-10;
 }
 .modal-frame {
-    @apply flex-y gap-y-4 p-0 md:p-4 pb-4;
+    @apply flex-y items-stretch gap-y-4 overflow-hidden;
+    @apply p-0 md:p-4 pb-4;
     @apply h-full w-full md:h-auto md:w-modal;
-    @apply md:rounded-2xl rounded-none font-medium;
+    @apply md:rounded-2xl rounded-none;
+    @apply font-medium;
 }
 .modal-frame .dialog-body,
 .modal-frame .dialog-buttons {
     @apply px-4 md:px-1 overflow-hidden;
+}
+.modal-frame .dialog-buttons {
+    @apply flex-none;
 }
 .dialog-body .validation-errors {
     @apply rounded-md mb-2;
@@ -65,13 +83,26 @@
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
-.btn.btn-square.modal-close:hover > .btn-content {
+body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply bg-transparent opacity-90;
 }
+
 .modal-header {
     @apply flex-none flex-x justify-between items-center gap-x-2;
-    @apply max-h-10;
+    @apply min-h-10 max-h-10;
+    @apply overflow-visible;
 }
+.modal-header .modal-title {
+    @apply flex-1;
+    @apply text-xl md:text-lg font-semibold md:font-medium truncate;
+}
+.modal-header .modal-close {
+    @apply flex-none;
+    @apply -mr-0.5;
+    @apply overflow-visible;
+    @apply invisible md:visible;
+}
+
 .modal-mobile-header {
     @apply flex-x justify-start items-center gap-x-2;
     @apply min-h-14 px-2;
@@ -84,9 +115,8 @@
 }
 
 .dialog-body {
-    @apply flex-y grow;
-    @apply overflow-y-auto;
-    @apply custom-scrollbar;
+    @apply flex-1 flex-y items-stretch overflow-hidden;
+    /*@apply overflow-y-auto custom-scrollbar;*/
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply border rounded-md outline-none p-1 px-2;
@@ -103,7 +133,8 @@
 }
 
 .dialog-buttons {
-    @apply flex flex-row justify-end;
+    @apply flex-x justify-end;
+    @apply overflow-hidden;
 }
 .dialog-buttons .btn,
 .dialog-buttons .btn * {
@@ -113,38 +144,39 @@
     @apply min-w-full;
 }
 .dialog-buttons.full-width .form-buttons {
-    @apply gap-x-4 justify-center my-1;
+    @apply gap-x-4 justify-center;
 }
 .dialog-buttons.full-width .btn {
     @apply max-w-full grow;
 }
 
-div.bm-content > form {
+div.modal-content > form {
     @apply h-full;
 }
 
 /* Fullscreen Modal */
-.position-fullscreen .modal {
+.modal-overlay-fullscreen .modal {
     @apply md:w-full md:h-full;
 }
-.position-fullscreen .modal-frame.modal-chrome {
+.modal-overlay-fullscreen .modal-frame.modal-chrome {
     @apply w-full h-full p-0 gap-y-0 rounded-none;
 }
-.position-fullscreen .dialog-body {
+.modal-overlay-fullscreen .dialog-body {
     @apply p-0;
 }
-.position-fullscreen .modal-close-btn {
-    @apply hidden md:flex absolute right-4 top-4;
+.modal-overlay-fullscreen .btn-x {
+    @apply absolute right-4 top-4;
+    @apply hidden md:flex-x;
 }
-.position-fullscreen .modal-header {
+.modal-overlay-fullscreen .modal-header {
     @apply hidden;
 }
-.position-fullscreen input {
+.modal-overlay-fullscreen input {
     @apply cursor-text;
 }
-.position-fullscreen .user-avatar-editor-item,
-.position-fullscreen .user-avatar-editor-item *,
-.position-fullscreen button,
-.position-fullscreen button * {
+.modal-overlay-fullscreen .user-avatar-editor-item,
+.modal-overlay-fullscreen .user-avatar-editor-item *,
+.modal-overlay-fullscreen button,
+.modal-overlay-fullscreen button * {
     @apply cursor-pointer;
 }

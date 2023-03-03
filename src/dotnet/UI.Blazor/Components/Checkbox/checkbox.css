@@ -1,30 +1,43 @@
-.custom-checkbox {
-    @apply absolute z-minus opacity-0;
+.checkbox {
+    @apply flex-1 flex-x items-center gap-x-2 overflow-hidden;
 }
-.custom-checkbox+label {
-    @apply inline-flex items-center select-none;
+.checkbox input {
+    /* The actual input is hidden */
+    @apply absolute z-minus;
+    @apply flex-none w-0 h-0 overflow-hidden invisible;
 }
-.custom-checkbox+label::before {
-    @apply inline-block w-5 h-5 shrink-0 grow-0 border-2 border-disabled rounded mr-2 bg-no-repeat bg-center;
-    content: '';
+.checkbox > .c-label {
+    @apply flex-1 flex-x items-center overflow-hidden;
+}
+.checkbox > .c-label > .c-text {
+    @apply flex-1 overflow-hidden truncate;
+}
+
+/* "X" styling */
+.checkbox > .x {
+    @apply flex-none;
+    @apply w-5 h-5 overflow-hidden;
+    @apply border-2 border-disabled;
+    @apply rounded bg-no-repeat bg-center;
     background-size: 50% 50%;
 }
-.custom-checkbox:checked+label::before {
+.checkbox:has(input:checked) > .x {
     @apply border-primary bg-primary;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
 }
-.custom-checkbox:not(:disabled):not(:checked)+label:hover::before {
+.checkbox:has(input:not(:disabled):not(:checked)) > .x {
     @apply border-primary;
 }
-.custom-checkbox:not(:disabled):active+label::before {
+.checkbox:has(input:not(:disabled):active) >.x {
     @apply bg-primary border-primary;
 }
-.custom-checkbox:focus+label::before {
+.checkbox:has(input:focus) > .x {
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
-.custom-checkbox:focus:not(:checked)+label::before {
+.checkbox:has(input:focus:not(:checked)) > .x {
     @apply border-primary-hover;
 }
-.custom-checkbox:disabled+label::before {
-    @apply bg-primary border-primary;
+.checkbox:has(input:disabled) > .x {
+    @apply bg-outline border-disabled;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23B9B9B9' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
 }

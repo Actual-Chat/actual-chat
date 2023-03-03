@@ -30,9 +30,9 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             ?? new Contact(contactId); // A fake contact
 
         var chatId = contact.ChatId;
-        if (chatId.IsPeerChatId(out var peerChatId)) {
+        if (chatId.IsPeerChat(out var peerChatId)) {
             var userId = peerChatId.UserIds.OtherThanOrDefault(ownerId);
-            if (userId.IsNone)
+            if (userId.IsGuestOrNone)
                 throw new ArgumentOutOfRangeException(nameof(contactId));
 
             var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
@@ -54,15 +54,19 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var idPrefix = ownerId.Value + ' ';
         var contactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .OrderBy(a => a.Id)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
+        if (!contactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
+            contactIds.Add(announcementChatContactId);
 
         // That's just a bit more efficient conversion than .Select().ToImmutableArray()
         var result = new ContactId[contactIds.Count];
         for (var i = 0; i < contactIds.Count; i++)
             result[i] = new ContactId(contactIds[i]);
+
         return ImmutableArray.Create(result);
     }
 
@@ -73,18 +77,20 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     {
         var (id, expectedVersion, change) = command;
         var context = CommandContext.GetCurrent();
+        var ownerId = id.OwnerId;
 
         if (Computed.IsInvalidating()) {
             var invIsChanged = context.Operation().Items.GetOrDefault(false);
             if (invIsChanged) {
-                _ = Get(id.OwnerId, id, default);
+                _ = Get(ownerId, id, default);
                 if (!change.Update.HasValue) // Create or Delete
-                    _ = ListIds(id.OwnerId, default);
+                    _ = ListIds(ownerId, default);
             }
             return default!;
         }
 
         id.Require();
+        ownerId.Require();
         change.RequireValid();
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -99,9 +105,16 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
                 return dbContact.ToModel(); // Already exist, so we don't recreate one
 
             // Original UserId is ignored here - it's set based on Id
-            var userId = id.ChatId.IsPeerChatId(out var peerChatId)
-                ? peerChatId.UserIds.OtherThan(id.OwnerId)
+            var userId = id.ChatId.IsPeerChat(out var peerChatId)
+                ? peerChatId.UserIds.OtherThan(ownerId)
                 : UserId.None;
+
+            // Checks
+            if (ownerId.IsGuest && !userId.IsNone)
+                throw StandardError.Constraint("You must sign-in to chat with another user.");
+            if (userId.IsGuest)
+                throw StandardError.Constraint("You can't chat with unauthenticated user.");
+
             contact = contact with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
@@ -172,14 +185,14 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var (author, oldAuthor) = eventCommand;
         var oldHasLeft = oldAuthor?.HasLeft ?? true;
-        if (oldHasLeft == author.HasLeft)
+        if (oldHasLeft == author.HasLeft && (oldAuthor?.Version ?? 0) != 0)
             return;
 
         var chatId = author.ChatId;
         var userId = author.UserId;
         if (chatId.IsNone || userId.IsNone) // Weird case
             return;
-        if (chatId.Kind == ChatKind.Peer) // Users can't leave peer chats
+        if (chatId.Kind == ChatKind.Peer && author.HasLeft) // Users can't leave peer chats
             return;
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
@@ -188,8 +201,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return; // No need to make any changes
 
         var change = author.HasLeft
-            ? new Change<Contact>() { Remove = true }
-            : new Change<Contact>() { Create = new Contact(contactId) };
+            ? new Change<Contact> { Remove = true }
+            : new Change<Contact> { Create = new Contact(contactId) };
         var command = new IContactsBackend.ChangeCommand(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
@@ -214,6 +227,10 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return;
 
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
+        var now = Clocks.SystemClock.Now;
+        if (now - contact.TouchedAt < Constants.Contacts.MinTouchInterval)
+            return;
+
         var command = new IContactsBackend.TouchCommand(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

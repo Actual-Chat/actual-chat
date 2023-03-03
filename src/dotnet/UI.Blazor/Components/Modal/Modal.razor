@@ -1,0 +1,22 @@
+﻿@using ActualChat.UI.Blazor.Components.Internal
+@namespace ActualChat.UI.Blazor.Components
+@inherits FusionComponentBase
+
+<div
+    id="@Ref.Id.Value"
+    class="@Ref.Options.OverlayClass"
+    @onclick="OnBackgroundClick">
+
+    <FocusTrap @ref="@_focusTrap" IsActive="@(Ref.Options.UseFocusTrap ?? false)">
+        <div class="@Ref.Options.Class" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <ErrorBarrier>
+                    <CascadingValue Value="this">
+                        @Content
+                    </CascadingValue>
+                </ErrorBarrier>
+            </div>
+        </div>
+    </FocusTrap>
+
+</div>

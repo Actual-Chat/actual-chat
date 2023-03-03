@@ -26,12 +26,16 @@
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = await ChatActivity.GetRecordingActivity(Chat.Id, CancellationToken.None);
+        ChatRecordingActivity = Chat.Id.IsNone ? null
+            : await ChatActivity.GetRecordingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (ChatRecordingActivity == null)

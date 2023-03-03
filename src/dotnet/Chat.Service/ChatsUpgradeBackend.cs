@@ -66,12 +66,12 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             chatId, dbChat.Title, dbChat.Kind);
 
         var chat = dbChat.ToModel();
-        if (chat.Id.IsPeerChatId(out var peerChatId)) {
+        if (chat.Id.IsPeerChat(out var peerChatId)) {
             // Peer chat
             await peerChatId.UserIds
                 .ToArray()
                 .Select(userId => AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken))
-                .Collect(0)
+                .Collect()
                 .ConfigureAwait(false);
         }
         else {
@@ -125,31 +125,34 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var readPositionsBackend = Services.GetRequiredService<IReadPositionsBackend>();
+        var chatPositionsBackend = Services.GetRequiredService<IChatPositionsBackend>();
         var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
 
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
             var chatIds = await AuthorsUpgradeBackend.ListChatIds(userId, cancellationToken).ConfigureAwait(false);
             foreach (var chatId in chatIds) {
-                var lastReadEntryId = await readPositionsBackend.Get(userId, chatId, cancellationToken).ConfigureAwait(false);
-                if (lastReadEntryId.GetValueOrDefault() == 0)
+                var position = await chatPositionsBackend
+                    .Get(userId, chatId, ChatPositionKind.Read, cancellationToken)
+                    .ConfigureAwait(false);
+                if (position.EntryLid <= 0)
                     continue;
 
                 var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
-                var lastEntryId = idRange.End - 1;
-                if (lastEntryId >= lastReadEntryId)
+                var lastEntryLid = idRange.End - 1;
+                if (lastEntryLid >= position.EntryLid)
                     continue;
 
                 // since it was corrupted for some time and user might not know that there are some new message
                 // let's show at least 1 unread message, so user could pay attention to this chat
+                var fixedPosition = new ChatPosition(lastEntryLid - 1);
                 Log.LogInformation(
-                    "Fixing corrupted last read position for user #{UserId} at chat #{ChatId}: {CurrentLastReadEntryId} -> {FixedLastReadEntryId}",
+                    "Fixing corrupted last read position for user #{UserId} at chat #{ChatId}: {CurrentPosition} -> {FixedPosition}",
                     userId,
                     chatId,
-                    lastReadEntryId,
-                    lastEntryId - 1);
-                var setCmd = new IReadPositionsBackend.SetCommand(userId, chatId,  lastEntryId - 1, true);
+                    position,
+                    fixedPosition);
+                var setCmd = new IChatPositionsBackend.SetCommand(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
                 await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
             }
         }

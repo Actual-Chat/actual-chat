@@ -80,7 +80,7 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
     // Parsing
 
     private static string Format(UserId ownerId, ChatId chatId)
-        => ownerId.IsNone ? "" : $"{ownerId} {chatId}";
+        => ownerId.IsNone || chatId.IsNone ? "" : $"{ownerId} {chatId}";
 
     public static ContactId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<ContactId>(s);
@@ -101,7 +101,7 @@ public readonly struct ContactId : ISymbolIdentifier<ContactId>
             return false;
         if (!ChatId.TryParse(s[(userIdLength + 1)..], out var chatId))
             return false;
-        if (chatId.IsPeerChatId(out var peerChatId) && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
+        if (chatId.IsPeerChat(out var peerChatId) && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
             return false;
 
         result = new ContactId(s, ownerId, chatId, AssumeValid.Option);

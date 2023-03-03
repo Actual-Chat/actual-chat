@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
@@ -14,7 +15,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
 
     private long? _lastNavigateToEntryId;
-    private long? _initialLastReadEntryId;
+    private long? _initialReadEntryLid;
+    private bool _itemVisibilityUpdateHasReceived;
+    private bool _doNotShowNewMessagesSeparator;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -23,16 +26,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IReadPositions ReadPositions { get; init; } = null!;
+    [Inject] private IChatPositions ChatPositions { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    private Task WhenInitialized => _whenInitializedSource.Task;
-    private IMutableState<long?> NavigateToEntryId { get; set; } = null!;
+    internal IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
+    internal Task WhenInitialized => _whenInitializedSource.Task;
+    private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
-    private SyncedStateLease<long?>? LastReadEntryState { get; set; } = null!;
+    private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -41,10 +46,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryId = StateFactory.NewMutable<long?>();
-            ItemVisibility = StateFactory.NewMutable(ChatViewItemVisibility.Empty);
-            LastReadEntryState = await ChatUI.LeaseReadState(Chat.Id, _disposeToken.Token);
-            _initialLastReadEntryId = LastReadEntryState.Value;
+            NavigateToEntryLid = StateFactory.NewMutable(
+                (long?)null,
+                StateCategories.Get(GetType(), nameof(NavigateToEntryLid)));
+            ItemVisibility = StateFactory.NewMutable(
+                ChatViewItemVisibility.Empty,
+                StateCategories.Get(GetType(), nameof(ItemVisibility)));
+            ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
+            IsViewportAboveUnreadEntry = StateFactory.NewComputed(
+                new ComputedState<bool>.Options {
+                    UpdateDelayer = FixedDelayer.Instant,
+                    InitialValue = false,
+                    Category = StateCategories.Get(GetType(), nameof(IsViewportAboveUnreadEntry)),
+                },
+                ComputeIsViewportAboveUnreadEntry);
+            _initialReadEntryLid = ReadPositionState.Value.EntryLid;
         }
         finally {
             _whenInitializedSource.SetResult(Unit.Default);
@@ -55,8 +71,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         Nav.LocationChanged -= OnLocationChanged;
         _disposeToken.Cancel();
-        LastReadEntryState?.Dispose();
-        LastReadEntryState = null;
+        ReadPositionState?.Dispose();
+        ReadPositionState = null;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -67,29 +83,28 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     public async Task NavigateToUnreadEntry()
     {
-        long navigateToEntryId;
-        var lastReadEntryId = LastReadEntryState?.Value;
-        if (lastReadEntryId is { } entryId)
-            navigateToEntryId = entryId;
+        long navigateToEntryLid;
+        var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
+        if (readEntryLid > 0) {
+            navigateToEntryLid = readEntryLid;
+        }
         else {
             var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, _disposeToken.Token);
-            navigateToEntryId = chatIdRange.ToInclusive().End;
+            navigateToEntryLid = chatIdRange.ToInclusive().End;
         }
 
         // Reset to ensure the navigation will happen
-        _initialLastReadEntryId = navigateToEntryId;
-        NavigateToEntry(navigateToEntryId);
+        _initialReadEntryLid = navigateToEntryLid;
+        NavigateToEntry(navigateToEntryLid);
     }
 
-    public void NavigateToEntry(long localId)
+    public void NavigateToEntry(long entryLid)
     {
         // reset to ensure navigation will happen
         _lastNavigateToEntryId = null;
-        NavigateToEntryId.Value = null;
-        NavigateToEntryId.Value = localId;
+        NavigateToEntryLid.Value = null;
+        NavigateToEntryLid.Value = entryLid;
     }
-
-
 
     public void TryNavigateToEntry()
     {
@@ -97,12 +112,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeToken.IsCancellationRequested)
             return;
 
-        var entryIdString = Nav.Uri.ToUri().Fragment.TrimStart('#');
-        if (long.TryParse(entryIdString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
-            var uriWithoutEntryId = new UriBuilder(Nav.Uri) {Fragment = ""}.ToString();
-            Nav.ExecuteOnSameLocationWithDelay(TimeSpan.FromSeconds(3),
-                () => Nav.NavigateTo(uriWithoutEntryId, false, true)
-            );
+        var uri = History.Uri;
+        var fragment = new LocalUrl(uri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
+        if (long.TryParse(fragment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
+            var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
+            var cts = History.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, uri));
+            var cancellationToken = cts.Token;
+            _ = ForegroundTask.Run(async () => {
+                try {
+                    await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                    History.NavigateTo(uriWithoutFragment);
+                }
+                finally {
+                    cts.CancelAndDisposeSilently();
+                }
+            });
             NavigateToEntry(entryId);
         }
     }
@@ -121,13 +145,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var author = await Authors.GetOwn(Session, chatId, cancellationToken);
         var authorId = author?.Id ?? Symbol.Empty;
         var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
-        var lastReadEntryLid = LastReadEntryState?.Value ?? 0;
-        if (LastReadEntryState != null && lastReadEntryLid >= chatIdRange.End) {
+        var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
+
+        // NOTE(AY): Commented this out:
+        // - It triggers backward updates due to latency / eventual consistency
+        // - Even though such updates to state are possible, they are ignored
+        //   in ChatPositionBackend, but generate many extra commands.
+        /*
+        if (ReadPositionState != null && readEntryLid > 0 && readEntryLid >= chatIdRange.End) {
             // Looks like an error, let's reset last read position to the last entry Id
-            lastReadEntryLid = chatIdRange.End - 1;
-            LastReadEntryState.Value = lastReadEntryLid;
+            readEntryLid = Math.Max(0, chatIdRange.End - 1);
+            ReadPositionState.Value = new ChatPosition(readEntryLid);
         }
-        var entryLid = lastReadEntryLid;
+        */
+
+        var entryLid = readEntryLid;
         var mustScrollToEntry = query.IsNone && entryLid != 0;
 
         // Get the last tile to check whether the Author has submitted a new entry
@@ -138,7 +170,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             lastIdTile.Range,
             cancellationToken);
         foreach (var entry in lastTile.Entries) {
-            if (entry.AuthorId != authorId || entry.LocalId <= _initialLastReadEntryId)
+            if (entry.AuthorId != authorId || entry.LocalId <= _initialReadEntryLid)
                 continue;
 
             // Scroll only on text entries
@@ -146,66 +178,32 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 continue;
 
             // Scroll to the latest Author entry - e.g.m when author submits the new one
-            _initialLastReadEntryId = entry.LocalId;
+            _initialReadEntryLid = entry.LocalId;
             entryLid = entry.LocalId;
             mustScrollToEntry = true;
         }
 
         var isHighlighted = false;
         // Handle NavigateToEntry
-        var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken);
-        if (!mustScrollToEntry)
-            if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
-                isHighlighted = true;
-                _lastNavigateToEntryId = navigateToEntryId;
-                entryLid = navigateToEntryId.Value;
-                if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
-                    mustScrollToEntry = true;
-            }
+        var navigateToEntryId = await NavigateToEntryLid.Use(cancellationToken);
+        if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
+            isHighlighted = true;
+            _lastNavigateToEntryId = navigateToEntryId;
+            entryLid = navigateToEntryId.Value;
+            if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
+                mustScrollToEntry = true;
+        }
         var scrollToKey = mustScrollToEntry
             ? entryLid.Format()
             : null;
 
         // If we are scrolling somewhere - let's load the date near the entryId
-        var queryRange = mustScrollToEntry
-            ? new Range<long>(
-                entryLid - PageSize,
-                entryLid + PageSize)
-            : query.IsNone
-                ? new Range<long>(
-                    chatIdRange.End - (2*PageSize),
-                    chatIdRange.End)
-                : query.KeyRange
-                    .AsLongRange()
-                    .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
+        var idRangeToLoad = GetIdRangeToLoad(query, mustScrollToEntry ? entryLid : 0, chatIdRange);
 
-        var adjustedRange = queryRange.Clamp(chatIdRange);
-        // Extend requested range if it's close to chat Id range
-        var closeToTheEnd = adjustedRange.End >= chatIdRange.End - (PageSize / 2);
-        var closeToTheStart = adjustedRange.Start <= chatIdRange.Start + (PageSize / 2);
-        var extendedRange = (closeToTheStart, closeToTheEnd) switch {
-            (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
-            (_, true) => new Range<long>(adjustedRange.Start, chatIdRange.End).Expand(1),
-            (true, _) => new Range<long>(chatIdRange.Start, adjustedRange.End).Expand(1),
-            _ => adjustedRange,
-        };
+        var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
+        var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
 
-        var hasVeryFirstItem = extendedRange.Start <= chatIdRange.Start;
-        var hasVeryLastItem = extendedRange.End + 1 >= chatIdRange.End;
-        // var oldRange =  oldData.Query.IsNone
-        //     ? new Range<long>(0,0)
-        //     : oldData.Query.KeyRange
-        //         .AsLongRange()
-        //         .Expand(new Range<long>((long)oldData.Query.ExpandStartBy, (long)oldData.Query.ExpandEndBy));
-
-        // if (oldRange.Contains(extendedRange)
-        //     && oldRange.Size() - extendedRange.Size() < PageSize / 2
-        //     && (scrollToKey == null || scrollToKey == oldData.ScrollToKey)
-        //     && hasVeryFirstItem == oldData.HasVeryFirstItem
-        //     && hasVeryLastItem == oldData.HasVeryLastItem)
-        //     return oldData;
-
-        var idTiles = IdTileStack.GetOptimalCoveringTiles(extendedRange);
+        var idTiles = IdTileStack.GetOptimalCoveringTiles(idRangeToLoad);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
@@ -215,16 +213,33 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
+        // Do not show '-new-' separator after view is scrolled to the end anchor.
+        if (!_doNotShowNewMessagesSeparator) {
+            if (_itemVisibilityUpdateHasReceived) {
+                var itemVisibility = ItemVisibility.Value;
+                if (itemVisibility.IsEndAnchorVisible) {
+                    var newMessagesSeparatorIsVisible = _initialReadEntryLid.HasValue
+                        && itemVisibility.VisibleEntryLids.Contains(_initialReadEntryLid.Value);
+                    // If user still sees '-new-' separator while they has reached the end anchor, keep separator displayed.
+                    if (!newMessagesSeparatorIsVisible)
+                        _doNotShowNewMessagesSeparator = true;
+                }
+            }
+        }
+        var unreadEntryLidStarts = _doNotShowNewMessagesSeparator
+            ? int.MaxValue
+            : _initialReadEntryLid;
+
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
-            _initialLastReadEntryId,
+            unreadEntryLidStarts,
             hasVeryFirstItem,
             hasVeryLastItem,
             TimeZoneConverter);
 
         var result = VirtualListData.New(
-            new VirtualListDataQuery(extendedRange.AsStringRange()),
+            new VirtualListDataQuery(idRangeToLoad.AsStringRange()),
             chatMessages,
             hasVeryFirstItem,
             hasVeryLastItem,
@@ -239,10 +254,47 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return result;
     }
 
+    private Range<long> GetIdRangeToLoad(VirtualListDataQuery query, long scrollToEntryLid, Range<long> chatIdRange)
+    {
+        var queryRange = query.IsNone
+            ? new Range<long>(
+                chatIdRange.End - (2 * PageSize),
+                chatIdRange.End)
+            : query.KeyRange
+                .AsLongRange()
+                .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
+        var scrollToEntryRange = scrollToEntryLid > 0
+            ? new Range<long>(
+                scrollToEntryLid - PageSize,
+                scrollToEntryLid + PageSize)
+            : queryRange;
+
+        // Union (queryRange, scrollToEntryRange) if they overlap, otherwise pick scrollToEntryRange
+        queryRange = scrollToEntryRange.Overlaps(queryRange)
+            ? queryRange.MinMaxWith(scrollToEntryRange)
+            : scrollToEntryRange;
+
+        // Clamp queryRange by chatIdRange
+        queryRange = queryRange.Clamp(chatIdRange);
+
+        // Extend requested range if it's close to chat Id range
+        var isCloseToTheEnd = queryRange.End >= chatIdRange.End - (PageSize / 2);
+        var isCloseToTheStart = queryRange.Start <= chatIdRange.Start + (PageSize / 2);
+        var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch
+        {
+            (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
+            (_, true) => new Range<long>(queryRange.Start, chatIdRange.End).Expand(1),
+            (true, _) => new Range<long>(chatIdRange.Start, queryRange.End).Expand(1),
+            _ => queryRange,
+        };
+        return extendedRange;
+    }
+
     // Event handlers
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
+        _itemVisibilityUpdateHasReceived = true;
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
         if (itemVisibility.ContentEquals(lastItemVisibility))
@@ -252,12 +304,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (lastItemVisibility.IsEndAnchorVisible != itemVisibility.IsEndAnchorVisible)
             StateHasChanged(); // To re-render NavigateToEnd
 
-        var lastReadEntryState = LastReadEntryState;
-        if (itemVisibility.IsEmpty || lastReadEntryState == null)
+        var readPositionState = ReadPositionState;
+        if (itemVisibility.IsEmpty || readPositionState == null)
             return;
 
-        if (lastReadEntryState.Value is not { } readEntryId || readEntryId < itemVisibility.MaxEntryLid)
-            lastReadEntryState.Value = itemVisibility.MaxEntryLid;
+        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
+            readPositionState.Value = new ChatPosition(itemVisibility.MaxEntryLid);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -268,5 +320,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (@event.ChatEntryId.ChatId == Chat.Id)
             NavigateToEntry(@event.ChatEntryId.LocalId);
         return Task.CompletedTask;
+    }
+
+    private async Task<bool> ComputeIsViewportAboveUnreadEntry(IComputedState<bool> state, CancellationToken cancellationToken)
+    {
+        var readPositionState = ReadPositionState;
+        var chatPosition = readPositionState != null ? await readPositionState.Use(cancellationToken) : null;
+        var readEntryLid = chatPosition?.EntryLid ?? 0;
+        var visibility = await ItemVisibility.Use(cancellationToken);
+        return readEntryLid > 0 && visibility.MaxEntryLid > 0 && visibility.MaxEntryLid < readEntryLid;
     }
 }

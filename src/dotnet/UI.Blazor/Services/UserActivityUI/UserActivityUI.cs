@@ -18,7 +18,12 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
         var stateFactory = services.GetRequiredService<IStateFactory>();
         _whenInitialized = Initialize();
         _lastActiveAt = stateFactory.NewComputed<Moment>(
-            new () { ComputedOptions = new () { AutoInvalidationDelay = Constants.Presence.UpdatePeriod } },
+            new () {
+                ComputedOptions = new () {
+                    AutoInvalidationDelay = Constants.Presence.UpdatePeriod,
+                },
+                Category = StateCategories.Get(GetType(), nameof(LastActiveAt)),
+            },
             (_, token) => GetLastActiveAt(token));
     }
 
@@ -35,7 +40,15 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     private async Task Initialize()
     {
         _blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.UserActivityUI.create", _blazorRef);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            $"{BlazorUICoreModule.ImportName}.UserActivityUI.create",
+            _blazorRef);
+    }
+
+    public void Dispose()
+    {
+        _lastActiveAt.Dispose();
+        _blazorRef.Dispose();
     }
 
     private async Task<Moment> GetLastActiveAt(CancellationToken cancellationToken)
@@ -43,12 +56,6 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
         if (!_whenInitialized.IsCompletedSuccessfully)
             await _whenInitialized.ConfigureAwait(false);
         return await _jsRef.InvokeAsync<Moment>("getLastActiveAt", cancellationToken);
-    }
-
-    public void Dispose()
-    {
-        _lastActiveAt.Dispose();
-        _blazorRef.Dispose();
     }
 }
 

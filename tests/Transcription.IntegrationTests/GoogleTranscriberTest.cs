@@ -62,7 +62,7 @@ public class GoogleTranscriberTest : TestBase
         Out.WriteLine(transcript.ToString());
     }
 
-    [Fact(Skip = "Manual")]
+    [Fact]
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";
@@ -78,6 +78,7 @@ public class GoogleTranscriberTest : TestBase
             Out.WriteLine(diff.ToString());
         var transcript = diffs.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
+        transcript.TimeRange.Start.Should().Be(0);
     }
 
     private async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)
@@ -113,6 +114,7 @@ public class GoogleTranscriberTest : TestBase
     private IServiceProvider CreateServices()
         => new ServiceCollection()
             .AddSingleton(CoreSettings)
+            .AddSingleton(MomentClockSet.Default)
             .AddLogging(logging => {
                 logging.ClearProviders();
                 logging.SetMinimumLevel(LogLevel.Debug);

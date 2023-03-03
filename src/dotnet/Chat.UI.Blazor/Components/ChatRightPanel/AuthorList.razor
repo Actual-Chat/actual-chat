@@ -6,7 +6,7 @@
     var m = State.Value;
 }
 
-<div class="flex flex-col w-full h-full px-5 py-3 people-tab">
+<div class="flex flex-col h-full px-5 py-3 people-tab">
     <div class="flex-auto flex-y gap-y-1">
         <div class="text-caption-1 text-02">Active — @m.OnlineAuthorIds.Length</div>
         @foreach (var authorId in m.OnlineAuthorIds) {
@@ -14,13 +14,13 @@
                 <AuthorBadge
                     AuthorSid="@authorId"
                     ShowPresence="true"
-                    NameClass="font-medium text-02 select-none"
+                    NameClass="font-medium text-02"
                     Click="OnSelfClick"/>
             } else {
                 <AuthorBadge
                     AuthorSid="@authorId"
                     ShowPresence="true"
-                    NameClass="font-medium text-02 select-none"
+                    NameClass="font-medium text-02"
                     Click="@(_ => AuthorUI.Show(authorId))"/>
             }
         }
@@ -29,7 +29,7 @@
             <AuthorBadge
                 AuthorSid="@authorId"
                 ShowPresence="true"
-                NameClass="font-medium text-02 select-none"
+                NameClass="font-medium text-02"
                 Click="@(_ => AuthorUI.Show(authorId))"/>
         }
     </div>
@@ -46,7 +46,10 @@
     private AuthorFull? _ownAuthor;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
@@ -58,7 +61,7 @@
                 var presence = await Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
                 return (authorId, presence);
             })
-            .Collect();
+            .Collect(); // Add concurrency
         foreach (var (authorId, presence) in presences) {
             if (presence is Presence.Online or Presence.Recording) {
                 onlineAuthorIds.Add(authorId);

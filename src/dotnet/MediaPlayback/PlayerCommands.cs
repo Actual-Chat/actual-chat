@@ -20,10 +20,10 @@ public sealed class ResumeCommand : IPlayerCommand, IPlaybackCommand
     private ResumeCommand() { }
 }
 
-public sealed class StopCommand : IPlayerCommand, IPlaybackCommand
+public sealed class AbortCommand : IPlayerCommand, IPlaybackCommand
 {
-    public static StopCommand Instance { get; } = new();
-    private StopCommand() { }
+    public static AbortCommand Instance { get; } = new();
+    private AbortCommand() { }
 }
 
 public sealed class EndCommand : IPlayerCommand

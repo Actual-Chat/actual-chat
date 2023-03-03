@@ -41,7 +41,10 @@
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+        => new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var model = await InnerComputeState(cancellationToken);
@@ -146,7 +149,7 @@
             return Model.None;
 
         var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken);
-        if (playbackState == null || playbackState.IsCompleted)
+        if (playbackState == null || playbackState.IsEnded)
             return Model.None;
 
         var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)

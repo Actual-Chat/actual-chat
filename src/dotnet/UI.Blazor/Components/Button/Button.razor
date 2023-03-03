@@ -1,30 +1,41 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="@Class btn"
-        type="@GetButtonType()"
-        @attributes="@GetAttributes()"
-        @onclick="@Click">
+<button
+    @ref="_buttonRef"
+    class="@Class btn"
+    type="@GetButtonType()"
+    @attributes="@GetAttributes()"
+    @onclick="@Click">
     <div class="@ContentClass btn-content" tabindex="-1">
         @ChildContent
     </div>
 </button>
 
 @code {
+    private ElementReference _buttonRef;
+
     [Parameter] public string Class { get; set; } = "btn-primary";
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
-    [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public string FormId { get; set; } = "";
-    [Parameter] public FloatingPosition FloatingPosition { get; set; }
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool IsAutofocused { get; set; }
-    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public FloatingPosition TooltipPosition { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && Rendered.HasDelegate)
+            return Rendered.InvokeAsync(_buttonRef);
+        return Task.CompletedTask;
+    }
 
     private string GetButtonType()
         => Type.ToString().ToLower();
@@ -45,11 +56,9 @@
         if (IsDisabled) {
             attributes.Add("disabled", IsDisabled);
         }
-        if (!Tooltip.IsNullOrEmpty()) {
+        if (!Tooltip.IsNullOrEmpty() && TooltipPosition != FloatingPosition.None) {
             attributes.Add("data-tooltip", Tooltip);
-        }
-        if (FloatingPosition != FloatingPosition.None) {
-            attributes.Add("data-tooltip-position", FloatingPosition.ToPositionString());
+            attributes.Add("data-tooltip-position", TooltipPosition.ToPositionString());
         }
         return attributes;
     }

@@ -26,9 +26,9 @@
     @apply bg-round subpixel-antialiased rounded-none;
 }
 .blazor-mode-toggle .btn.btn-square:disabled .btn-content,
-.blazor-mode-toggle .btn.btn-square:disabled:hover .btn-content {
+body.hoverable .blazor-mode-toggle .btn.btn-square:disabled:hover .btn-content {
     @apply bg-round opacity-80;
 }
-.blazor-mode-toggle .btn.btn-square:hover:not(:disabled) .btn-content {
+body.hoverable .blazor-mode-toggle .btn.btn-square:hover:not(:disabled) .btn-content {
     @apply bg-round-hover underline;
 }

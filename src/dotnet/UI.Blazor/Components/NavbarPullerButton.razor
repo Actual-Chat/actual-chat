@@ -2,14 +2,14 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="flex md:hidden items-center cursor-pointer min-h-14">
-    <ButtonRound Click="OnBackClick" Class="md:!hidden transparent">
+    <ButtonRound Click="OnClick" Class="md:!hidden transparent">
         <i class="icon-arrow-left text-2xl"></i>
     </ButtonRound>
 </div>
 
 @code {
-    [Inject] private HistoryUI HistoryUI { get; init; } = null!;
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
-    private void OnBackClick()
-        => HistoryUI.GoBack();
+    private void OnClick()
+        => NavbarUI.SetIsVisible(true);
 }

@@ -3,9 +3,12 @@
 }
 
 .mention-markup {
-    @apply inline-block align-middle my-[1px] px-1.5 pb-0.5 rounded-full select-none cursor-pointer;
-    @apply bg-mention-other text-mention-other-text font-medium;
+    @apply inline-block align-middle;
+    @apply my-[1px] px-1.5 pb-0.5;
     max-width: 12rem;
+    @apply rounded-full bg-mention-other;
+    @apply text-mention-other-text font-medium;
+    @apply select-none cursor-pointer;
 }
 .mention-markup.mention-markup-invalid {
     @apply bg-mention-invalid text-mention-invalid-text;
@@ -35,7 +38,7 @@
 .playable-text-markup > span {
     @apply inline-block;
 }
-.playable-text-markup > span:hover {
+body.hoverable .playable-text-markup > span:hover {
 }
 
 .playable-text-markup .playing-start {
@@ -86,12 +89,15 @@
 }
 
 .code-block-markup {
-    @apply my-1 max-w-[95%];
+    @apply flex-y items-stretch overflow-hidden;
+    @apply mr-2;
 }
 .code-block-markup code {
-    @apply block border-0 border-l-4 rounded-l bg-02;
+    @apply block;
     @apply p-1 px-1.5;
-    @apply whitespace-pre-wrap;
+    @apply rounded-l border-0 border-l-4 bg-02;
+    @apply overflow-y-hidden overflow-x-auto custom-scrollbar-x
+    /*@apply whitespace-pre-wrap;*/
 }
 
 .unknown-markup {

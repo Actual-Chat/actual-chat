@@ -1,0 +1,61 @@
+@namespace ActualChat.UI.Blazor.Components.Internal
+
+<div class="modal-focus-trap" @ref="_container" @onkeydown="OnKeyDownUp" @onkeyup="OnKeyDownUp">
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startSecond" @onfocus="OnFocusEnd"></div>
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_startFirst" @onfocus="OnFocusEnd"></div>
+    @ChildContent
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endFirst" @onfocus="OnFocusStart"></div>
+    <div tabindex="@(IsActive ? 0 : -1)" @ref="_endSecond" @onfocus="OnFocusStart"></div>
+</div>
+
+@code {
+    private ElementReference _container;
+    private ElementReference _startFirst;
+    private ElementReference _startSecond;
+    private ElementReference _endFirst;
+    private ElementReference _endSecond;
+    private bool _shiftPressed;
+    private bool _skipRender;
+
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await _startFirst.FocusAsync();
+    }
+
+    protected override bool ShouldRender() {
+        if (_skipRender) {
+            _skipRender = false;
+            return false;
+        }
+        return base.ShouldRender();
+    }
+
+    public async Task Focus()
+        => await _startFirst.FocusAsync();
+
+    // Event handlers
+
+    private async Task OnFocusStart(FocusEventArgs args) {
+        _skipRender = true;
+        if (!_shiftPressed)
+            await _startFirst.FocusAsync();
+    }
+
+    private async Task OnFocusEnd(FocusEventArgs args)
+    {
+        _skipRender = true;
+        if (_shiftPressed)
+            await _endFirst.FocusAsync();
+    }
+
+    private void OnKeyDownUp(KeyboardEventArgs args)
+    {
+        _skipRender = true;
+        if (args.Key == "Tab")
+            _shiftPressed = args.ShiftKey;
+    }
+}

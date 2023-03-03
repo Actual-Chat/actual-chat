@@ -11,7 +11,7 @@
     <ButtonRound
         Class="btn-sm transparent"
         Tooltip="Set default"
-        FloatingPosition="FloatingPosition.Top"
+        TooltipPosition="FloatingPosition.Top"
         Click="@OnSetDefaultClick">
         <i class="icon-star text-xl @cls"></i>
     </ButtonRound>
@@ -19,7 +19,7 @@
 <ButtonRound
     Class="btn-sm transparent tile-btn"
     Tooltip="Edit"
-    FloatingPosition="FloatingPosition.Top"
+    TooltipPosition="FloatingPosition.Top"
     Click="OnEditClick">
     <i class="icon-edit text-xl"></i>
 </ButtonRound>
@@ -35,7 +35,10 @@
     [Parameter] public EventCallback OnSetDefaultClick { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = FixedDelayer.Instant };
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken);

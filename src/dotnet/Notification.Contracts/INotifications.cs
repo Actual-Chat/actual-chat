@@ -3,9 +3,10 @@
 public interface INotifications : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<ImmutableArray<NotificationId>> ListRecentNotificationIds(Session session, CancellationToken cancellationToken);
+    Task<Notification?> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<Notification> Get(Session session, NotificationId notificationId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<NotificationId>> ListRecentNotificationIds(
+        Session session, Moment minSentAt, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task Handle(HandleCommand command, CancellationToken cancellationToken);

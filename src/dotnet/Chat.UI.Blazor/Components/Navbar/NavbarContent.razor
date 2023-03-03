@@ -2,15 +2,16 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits NavbarContentBase
+@inherits OwnAccountComponentBase
 @{
     var m = State.Value;
 }
 
-@if (NavbarUI.ActiveGroupId == NavbarGroupIds.Chats) {
+<div class="navbar-content">
+
+@if (NavbarUI.SelectedGroupId == NavbarGroupIds.Chats) {
     <ChatListNavbarWidget />
 }
-
 @if (m.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
         <NavbarItem Url="/admin/user-invites">Invite Users</NavbarItem>
@@ -22,33 +23,37 @@
         <NavbarItem Url="/test/audio-player">Audio Player</NavbarItem>
         <NavbarItem Url="/test/audio-recorder">Audio Recorder</NavbarItem>
         <NavbarItem Url="/test/render-slot">Render Slot</NavbarItem>
+        <NavbarItem Url="/test/error-barrier">Error Barrier</NavbarItem>
+        <NavbarItem Url="/test/error-toast">Error Toast</NavbarItem>
         <NavbarItem Url="/test/requirements">Requirements</NavbarItem>
         <NavbarItem Url="/test/features">Features</NavbarItem>
         <NavbarItem Url="/test/markup-editor">Markup Editor</NavbarItem>
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
         <NavbarItem Url="/test/blazor">Blazor</NavbarItem>
         <NavbarItem Url="/test/js">JavaScript</NavbarItem>
-        @if (HostInfo.AppKind == AppKind.Maui) {
+        @if (HostInfo.AppKind == AppKind.MauiApp) {
             <NavbarItem Url="/test/maui">Maui</NavbarItem>
         }
         <NavbarItem Url="/test/system">System</NavbarItem>
     </NavbarGroup>
 }
 
+</div>
+
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
     protected override void OnInitialized() {
-        NavbarUI.ActiveGroupChanged += NavbarUIOnActiveGroupChanged;
+        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
         base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
-        NavbarUI.ActiveGroupChanged -= NavbarUIOnActiveGroupChanged;
+        NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
         return base.DisposeAsync();
     }
 
-    private void NavbarUIOnActiveGroupChanged(object? sender, EventArgs e) {
+    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e) {
         StateHasChanged();
     }
 }

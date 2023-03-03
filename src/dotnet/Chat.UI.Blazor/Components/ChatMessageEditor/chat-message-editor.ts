@@ -2,14 +2,14 @@ import {
     Subject,
     takeUntil,
 } from 'rxjs';
-import { endEvent } from 'event-handling';
+import { preventDefaultForEvent, stopEvent } from 'event-handling';
 import { throttle } from 'promises';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 
-import { Log, LogLevel } from 'logging';
-const LogScope = 'MessageEditor';
+import { Log, LogLevel, LogScope } from 'logging';
+const LogScope: LogScope = 'MessageEditor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
@@ -57,7 +57,7 @@ export class ChatMessageEditor {
         // Wiring up event listeners
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
-            .subscribe(() => throttle(this.updateLayout, 250, 'delayHead'));
+            .subscribe(this.updateLayoutThrottled);
         this.input.addEventListener('paste', this.onInputPaste);
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
@@ -97,12 +97,16 @@ export class ChatMessageEditor {
         mutationsList.forEach(m => {
             m.addedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
+                    if (!this.editorDiv.classList.contains('attachment-mode')) {
+                        this.editorDiv.classList.add('attachment-mode');
+                    }
                     this.attachmentList = this.editorDiv.querySelector('.attachment-list')
                     this.attachmentList.addEventListener('wheel', this.onHorizontalScroll);
                 }
             });
             m.removedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
+                    this.editorDiv.classList.remove('attachment-mode');
                     if (this.attachmentList != null) {
                         this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
                     }
@@ -112,7 +116,7 @@ export class ChatMessageEditor {
     };
 
     private onHorizontalScroll = ((event: WheelEvent & { target: Element; }) => {
-        event.preventDefault();
+        preventDefaultForEvent(event);
         this.attachmentList.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
     });
 
@@ -201,6 +205,7 @@ export class ChatMessageEditor {
 
     private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
         if (this.panelModel == 'Narrow') {
+            debugLog?.log("onReturnFocusOnInput");
             this.markupEditor.focus();
             this.updateHasContent();
         }
@@ -223,7 +228,7 @@ export class ChatMessageEditor {
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
                 if (!isAdding)
-                    event.preventDefault(); // We can do it only in the sync part of async handler
+                    preventDefaultForEvent(event); // We can do it only in the sync part of async handler
                 isAdding = true;
                 const file = item.getAsFile();
                 await this.addAttachment(file);
@@ -242,6 +247,7 @@ export class ChatMessageEditor {
 
     // Private methods
 
+    private updateLayoutThrottled = throttle(() => this.updateLayout(), 250, 'delayHead');
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;
@@ -297,6 +303,7 @@ export class ChatMessageEditor {
         const isTextMode = text != '' || this.attachments.size > 0;
         if (this.hasContent === isTextMode)
             return;
+
         this.hasContent = isTextMode;
         if (isTextMode)
             this.editorDiv.classList.add('text-mode');

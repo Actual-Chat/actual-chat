@@ -3,60 +3,59 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.2</AspNetCoreVersion>
+    <AspNetCoreVersion>7.0.3</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>7.0.2</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>7.0.1</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>7.0.0</MicrosoftExtensionsVersion>
-    <MicrosoftExtensionsLoggingVersion>7.0.0</MicrosoftExtensionsLoggingVersion>
+    <MicrosoftExtensionsVersion>7.0.1</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsBaseVersion>7.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>7.0.1</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
     <RedisVersion>2.6.90</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>4.2.4</StlFusionVersion>
+    <StlFusionVersion>4.3.11</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <OpenTelemetryVersion>1.4.0-rc.2</OpenTelemetryVersion>
-    <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.11</OpenTelemetryAspNetCoreVersion>
+    <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
+    <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
+    <SentryVersion>3.28.1</SentryVersion>
   </PropertyGroup>
-
   <ItemGroup Label="Nupkg Versions">
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="6.0.2" />
-    <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14"/>
-    <PackageVersion Include="Blazored.SessionStorage" Version="2.2.0" />
-    <PackageVersion Include="EFCore.CheckConstraints" Version="7.0.0-rc.2" />
+    <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
+    <PackageVersion Include="Blazored.SessionStorage" Version="2.3.0" />
+    <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="FirebaseAdmin" Version="2.3.0" />
-    <PackageVersion Include="Google.Api.Gax" Version="4.2.0" />
-    <PackageVersion Include="Google.Api.Gax.Rest" Version="4.2.0" />
-    <PackageVersion Include="Google.Api.Gax.Grpc" Version="4.2.0" />
-    <PackageVersion Include="Google.Api.Gax.Grpc.GrpcCore" Version="3.7.0" />
-    <PackageVersion Include="Google.Apis" Version="1.57.0" />
-    <PackageVersion Include="Google.Apis.Auth" Version="1.57.0" />
-    <PackageVersion Include="Google.Cloud.Storage.V1" Version="4.1.0" />
+    <PackageVersion Include="Google.Api.Gax" Version="4.3.1" />
+    <PackageVersion Include="Google.Api.Gax.Rest" Version="4.3.1" />
+    <PackageVersion Include="Google.Api.Gax.Grpc" Version="4.3.1" />
+    <PackageVersion Include="Google.Apis" Version="1.60.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.60.0" />
+    <PackageVersion Include="Google.Cloud.Storage.V1" Version="4.4.0" />
     <!-- We use Grpc.Core from otlp exporter -->
-    <PackageVersion Include="Grpc.Core" Version="2.46.5" />
-    <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0-beta02"/>
+    <PackageVersion Include="Grpc.Core" Version="2.46.6" />
+    <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0-beta03" />
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
-    <PackageVersion Include="MessagePack" Version="2.4.59"/>
-    <PackageVersion Include="MessagePack.Annotations" Version="2.4.59"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Authorization" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebView" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
-    <PackageVersion Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0"/>
+    <PackageVersion Include="MessagePack" Version="2.4.59" />
+    <PackageVersion Include="MessagePack.Annotations" Version="2.4.59" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authorization" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebView" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(BlazorVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
@@ -64,72 +63,75 @@
     I tried to apply DisableImplicitLibraryPacksFolder property but it did not help.
     Solution with excluding some packages by condition solves the issue. Keep it for now.
   -->
-  <ItemGroup Label="Nupkg Versions 2" Condition ="!$(MSBuildProjectName.Contains('.Maui'))">
-    <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsLoggingVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsLoggingVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)"/>
+  <ItemGroup Label="Nupkg Versions 2" Condition="!$(MSBuildProjectName.Contains('.Maui'))">
+    <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsBaseVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)"/>
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)" />
   </ItemGroup>
   <ItemGroup Label="Nupkg Versions 3">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsLoggingVersion)"/>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsLoggingVersion)"/>
-    <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="2.2.1"/>
-    <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2"/>
-    <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)"/>
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)"/>
-    <PackageVersion Include="Newtonsoft.Json" Version="13.0.2"/>
-    <PackageVersion Include="RestEase" Version="1.6.1"/>
-    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.1"/>
-    <PackageVersion Include="Pidgin" Version="3.2.0"/>
-    <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
-    <PackageVersion Include="Polly" Version="7.2.3"/>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
+    <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="2.3.1" />
+    <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
+    <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageVersion Include="RestEase" Version="1.6.1" />
+    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.1" />
+    <PackageVersion Include="Pidgin" Version="3.2.1" />
+    <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.2" />
+    <PackageVersion Include="Polly" Version="7.2.3" />
+    <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
+    <PackageVersion Include="Sentry.Extensions.Logging" Version="$(SentryVersion)" />
+    <PackageVersion Include="Sentry.Maui" Version="$(SentryVersion) " />
+    <PackageVersion Include="Sentry.Serilog" Version="$(SentryVersion) " />
     <PackageVersion Include="Serilog" Version="2.12.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="6.0.1" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="3.1.0" />
     <PackageVersion Include="Serilog.Sinks.Xamarin" Version="1.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Debug" Version="2.0.0" />
     <PackageVersion Include="SixLabors.ImageSharp" Version="2.1.3" />
-    <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)"/>
-    <PackageVersion Include="Stl" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.CommandR" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Plugins" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Redis" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion.Server" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion.Client" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion.Blazor" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Stl.Testing" Version="$(StlFusionVersion)"/>
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
-    <PackageVersion Include="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageVersion Include="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)"/>
-    <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)"/>
-    <PackageVersion Include="Ulid" Version="1.2.6"/>
-    <PackageVersion Include="ZString" Version="2.5.0"/>
-
+    <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)" />
+    <PackageVersion Include="Stl" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.CommandR" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Plugins" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Redis" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion.Server" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion.Client" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion.Blazor" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Testing" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageVersion Include="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
+    <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Ulid" Version="1.2.6" />
+    <PackageVersion Include="ZString" Version="2.5.0" />
     <!-- TODO: Remove or migrate from these -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2"/>
-    <PackageVersion Include="System.Reactive" Version="5.0.0"/>
-
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
+    <PackageVersion Include="System.Reactive" Version="5.0.0" />
     <!-- OpenTelemetry & Metrics-->
     <PackageVersion Include="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />
@@ -140,49 +142,43 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
-
     <!-- For the build project -->
-    <PackageVersion Include="CliWrap" Version="3.5.0"/>
-    <PackageVersion Include="Bullseye" Version="4.1.1"/>
-    <PackageVersion Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1"/>
-    <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3"/>
-    <PackageVersion Include="Crayon" Version="2.0.69"/>
-
+    <PackageVersion Include="CliWrap" Version="3.5.0" />
+    <PackageVersion Include="Bullseye" Version="4.1.1" />
+    <PackageVersion Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1" />
+    <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3" />
+    <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
-    <PackageVersion Include="bunit" Version="1.12.6"/>
-    <PackageVersion Include="FluentAssertions" Version="6.8.0"/>
+    <PackageVersion Include="bunit" Version="1.16.2" />
+    <PackageVersion Include="FluentAssertions" Version="6.10.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.0.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.3.2"/>
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all"/>
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
-    <PackageVersion Include="Microsoft.Playwright" Version="1.27.2"/>
-    <PackageVersion Include="Moq" Version="4.18.2"/>
-    <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.5.119" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="xunit" Version="2.4.2"/>
-    <PackageVersion Include="Xunit.DependencyInjection" Version="8.6.1"/>
-    <PackageVersion Include="Xunit.DependencyInjection.Logging" Version="8.0.1"/>
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.5" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.4.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.30.0" />
+    <PackageVersion Include="Moq" Version="4.18.4" />
+    <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Nerdbank.GitVersioning" Version="3.5.119" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="xunit" Version="2.4.2" />
+    <PackageVersion Include="Xunit.DependencyInjection" Version="8.6.1" />
+    <PackageVersion Include="Xunit.DependencyInjection.Logging" Version="8.0.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.5" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Analyzers -->
-    <PackageVersion Include="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="xunit.analyzers" Version="1.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.4.27" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="Roslynator.Analyzers" Version="4.1.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageVersion Include="Meziantou.Analyzer" Version="1.0.746" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-
+    <PackageVersion Include="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="xunit.analyzers" Version="1.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.5.22" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.2.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.18" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
-    <PackageVersion Include="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageVersion Include="ActualLab.Generators" Version="$(ActualLabGeneratorsVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="ActualLab.Generators.Abstractions" Version="$(ActualLabGeneratorsVersion)" />
-
     <!-- Android -->
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.3.0" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.0.8" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.1.1.1" />
     <PackageVersion Include="Xamarin.Google.Dagger" Version="2.41.0.2" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
   </ItemGroup>
-
 </Project>

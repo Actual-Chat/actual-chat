@@ -29,7 +29,7 @@ default:
     }
 
     private async Task<UserId> GetPeerChatUserId() {
-        if (!Chat.Id.IsPeerChatId(out var peerChatId))
+        if (!Chat.Id.IsPeerChat(out var peerChatId))
             return default;
 
         var account = await Accounts.GetOwn(Session, CancellationToken.None);

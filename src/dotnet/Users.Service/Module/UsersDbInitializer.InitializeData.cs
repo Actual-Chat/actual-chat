@@ -10,7 +10,7 @@ public partial class UsersDbInitializer
     {
         Log.LogInformation("Initializing data...");
         await EnsureAdminExists(cancellationToken).ConfigureAwait(false);
-        if (HostInfo.IsDevelopmentInstance && !HostInfo.RequiredServiceScopes.Contains(ServiceScope.Test))
+        if (HostInfo.IsDevelopmentInstance && !HostInfo.AppKind.IsTestServer())
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
     }
 

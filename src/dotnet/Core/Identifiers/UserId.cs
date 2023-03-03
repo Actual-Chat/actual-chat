@@ -32,7 +32,9 @@ public readonly struct UserId : ISymbolIdentifier<UserId>,
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsGuestId => IsNone || Value[0] == GuestIdPrefixChar;
+    public bool IsGuest => Value is { } v && v.Length != 0 && v[0] == GuestIdPrefixChar;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsGuestOrNone => IsNone || Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
         => new(IdGenerator.Next(), AssumeValid.Option);

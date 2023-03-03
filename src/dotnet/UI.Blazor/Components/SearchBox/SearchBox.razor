@@ -6,7 +6,7 @@
     <label>
         <i class="icon-search text-2xl"></i>
         <TextInput
-            @ref="InputRef"
+            @ref="_inputRef"
             Class="w-full dialog-unstyled"
             Placeholder="@Placeholder"
             MaxLength="@MaxLength"
@@ -16,18 +16,18 @@
 </div>
 
 @code {
-    private TextInput InputRef { get; set; } = null!;
+    private TextInput? _inputRef;
 
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
 
     public ValueTask Focus()
-        => InputRef.Focus();
+        => _inputRef?.Focus() ?? ValueTask.CompletedTask;
 
     public ValueTask Cancel()
-        => InputRef.Clear();
+        => _inputRef?.Clear() ?? ValueTask.CompletedTask;
 
     private Task OnInput(string text)
         => TextChanged.InvokeAsync(text);

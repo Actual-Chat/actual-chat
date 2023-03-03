@@ -18,12 +18,23 @@ using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Client;
+using Stl.Generators;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.App
 {
     public static class AppStartup
     {
+        private static readonly object _lock = new ();
+        private static string? _sessionAffinityKey;
+
+        public static string SessionAffinityKey {
+            get {
+                lock (_lock)
+                    return _sessionAffinityKey ??= GenerateSessionAffinityKey();
+            }
+        }
+
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CoreModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaybackModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUICoreModule))]
@@ -41,7 +52,7 @@ namespace ActualChat.UI.Blazor.App
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationBlazorUIModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUIAppModule))]
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatModule))]
-        public static async Task ConfigureServices(IServiceCollection services, params Type[] platformPluginTypes)
+        public static async Task ConfigureServices(IServiceCollection services, AppKind appKind, params Type[] platformPluginTypes)
         {
             // Commander - it must be added first to make sure its options are set
             var commander = services.AddCommander().Configure(new CommanderOptions() {
@@ -74,22 +85,43 @@ namespace ActualChat.UI.Blazor.App
             };
             pluginTypes.AddRange(platformPluginTypes);
             pluginHostBuilder.UsePlugins(pluginTypes);
+            var trace = Tracer.Default;
+            var step = trace.Region("Building PluginHost");
             var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
+            step.Close();
             services.AddSingleton(plugins);
 
             // Fusion services
             var fusion = services.AddFusion();
             var fusionClient = fusion.AddRestEaseClient();
-            fusionClient.ConfigureHttpClient((c, name, o) => {
-                var urlMapper = c.GetRequiredService<UrlMapper>();
-                var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
-                var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
-                o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUrl.ToUri());
-                o.HttpClientActions.Add(client => {
-                    client.DefaultRequestVersion = HttpVersion.Version30;
-                    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            if (appKind == AppKind.WasmApp)
+                fusionClient.ConfigureHttpClient((c, name, o) => {
+                    var urlMapper = c.GetRequiredService<UrlMapper>();
+                    var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
+                    var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
+                    o.HttpClientActions.Add(client => {
+                        client.BaseAddress = clientBaseUrl.ToUri();
+                        client.DefaultRequestVersion = HttpVersion.Version30;
+                        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                    });
                 });
-            });
+            else
+                fusionClient.ConfigureHttpClient((c, name, o) => {
+                    var urlMapper = c.GetRequiredService<UrlMapper>();
+                    var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
+                    var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
+                    o.HttpClientActions.Add(client => {
+                        client.BaseAddress = clientBaseUrl.ToUri();
+                        client.DefaultRequestVersion = HttpVersion.Version30;
+                        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                        client.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{SessionAffinityKey}\"");
+                    });
+                    o.HttpMessageHandlerBuilderActions.Add(b => {
+                        if (b.PrimaryHandler is HttpClientHandler h)
+                            h.UseCookies = false;
+                    });
+                });
+
             fusionClient.ConfigureWebSocketChannel(c => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
                 return new () {
@@ -100,7 +132,12 @@ namespace ActualChat.UI.Blazor.App
             });
 
             // Injecting plugin services
+            step = trace.Region("Injecting plugin services");
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
+            step.Close();
         }
+
+        private static string GenerateSessionAffinityKey()
+            => RandomStringGenerator.Default.Next(16, RandomStringGenerator.Base16Alphabet);
     }
 }

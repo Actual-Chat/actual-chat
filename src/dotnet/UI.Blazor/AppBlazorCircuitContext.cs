@@ -3,22 +3,25 @@ namespace ActualChat.UI.Blazor;
 public sealed class AppBlazorCircuitContext : BlazorCircuitContext
 {
     private static long _lastId;
-    private ILogger? _log;
 
     private MomentClockSet Clocks { get; }
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger Log { get; }
 
     public long Id { get; }
     public IServiceProvider Services { get; }
+    public string Origin { get; }
 
     public AppBlazorCircuitContext(IServiceProvider services)
     {
-        Id = Interlocked.Increment(ref _lastId);
         Services = services;
+        Log = services.LogFor(GetType());
         Clocks = services.Clocks();
+        Id = Interlocked.Increment(ref _lastId);
+        Origin = Alphabet.AlphaNumeric.Generator8.Next();
 
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
-        services.GetRequiredService<UILifetimeEvents>().RaiseOnCircuitContextCreated(Services);
+        services.GetRequiredService<UILifetimeEvents>()
+            .RaiseOnCircuitContextCreated(Services);
     }
 
     protected override void Dispose(bool disposing)

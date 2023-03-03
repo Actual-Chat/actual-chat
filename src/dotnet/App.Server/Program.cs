@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Services;
 using Grpc.Core;
 
 namespace ActualChat.App.Server;
@@ -9,6 +10,13 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        Tracer.Default =
+#if DEBUG || DEBUG_MAUI
+            new Tracer("Server", x => Console.WriteLine("@ " + x.Format()));
+#else
+            Tracer.None;
+#endif
+
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;

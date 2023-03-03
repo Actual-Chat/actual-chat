@@ -51,7 +51,7 @@ public static class ContactsExt
         var contactIds = await contacts.ListIds(session, cancellationToken).ConfigureAwait(false);
         var candidates = await contactIds
             .Select(cid => contacts.Get(session, cid, default))
-            .Collect()
+            .Collect() // Add concurrency
             .ConfigureAwait(false);
         if (filter == null)
             return candidates.SkipNullItems().ToList();

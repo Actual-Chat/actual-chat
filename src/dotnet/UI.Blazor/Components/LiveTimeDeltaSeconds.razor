@@ -1,7 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<string>
 @{
-    var m = State.ValueOrDefault;
+    var m = State.Value;
 }
 
 <span class="@Class live-time-text">@m</span>
@@ -16,7 +16,10 @@
     [Parameter] public TimeSpan UpdatePeriod { get; set; } = TimeSpan.FromSeconds(1);
 
     protected override ComputedState<string>.Options GetStateOptions() {
-        return new () { InitialValue = GetText(Clocks.SystemClock.Now) };
+        return new () {
+            InitialValue = GetText(Clocks.SystemClock.Now),
+            Category = GetStateCategory(),
+        };
     }
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {

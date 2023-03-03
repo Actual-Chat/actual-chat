@@ -1,0 +1,51 @@
+@using System.Net.Mime
+@{
+    var isNarrow = ScreenSize.IsNarrow();
+    var bodyDesktopCls = ImagePositionDesktop switch {
+        ImagePosition.Right => "flex-row-reverse gap-x-8",
+        ImagePosition.Left => "flex-row gap-x-8",
+        ImagePosition.Bottom => "flex-col",
+        _ => "flex-col-reverse",
+        };
+    var bodyMobileCls = ImagePositionMobile switch {
+        ImagePosition.Right => "flex-row gap-x-8",
+        ImagePosition.Left => "flex-row-reverse gap-x-8",
+        ImagePosition.Bottom => "flex-col-reverse",
+        _ => "flex-col",
+        };
+    var containerCls = HeaderContent == null ? "" : "with-header";
+    if (FooterContent != null)
+        containerCls += " with-footer";
+}
+
+<div class="page full-screen-page @Class">
+    @if (HeaderContent != null) {
+        <div class="c-header @HeaderClass">
+            @HeaderContent
+        </div>
+    }
+
+    <div class="page-container flex-y @containerCls">
+        <div class="c-content flex @(isNarrow ? bodyMobileCls : bodyDesktopCls)">
+            @ChildContent
+        </div>
+    </div>
+    @if (FooterContent != null) {
+        <div class="@FooterClass">
+            @FooterContent
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public ImagePosition ImagePositionMobile { get; set; } = ImagePosition.Bottom;
+    [Parameter] public ImagePosition ImagePositionDesktop { get; set; } = ImagePosition.Left;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string HeaderClass { get; set; } = "";
+    [Parameter] public string FooterClass { get; set; } = "";
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

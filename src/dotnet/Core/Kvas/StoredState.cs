@@ -9,12 +9,9 @@ public interface IStoredState<T> : IMutableState<T>
 
 public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 {
-    private IStateSnapshot<T>? _snapshotOnSync;
-    private ILogger? _log;
-
-    private ILogger Log => _log ??= Services.LogFor(GetType());
     private Options Settings { get; }
     private TaskSource<Unit> WhenReadSource { get; }
+    private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
 
     public Task WhenRead => WhenReadSource.Task;
 
@@ -31,28 +28,35 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 
     protected override StateBoundComputed<T> CreateComputed()
     {
-        var oldSnapshot = Snapshot;
         var computed = base.CreateComputed();
-        if (oldSnapshot == null!) {
+        var snapshot = Snapshot;
+        if (snapshot.UpdateCount == 0) {
             // Initial value
-            var firstSnapshot = Snapshot;
-            BackgroundTask.Run(async () => {
+            var initialSnapshot = snapshot;
+            ForegroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
+                    using var _ = Stl.Fusion.Computed.SuspendDependencyCapture();
                     try {
                         valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);
                     }
                     catch (Exception e) {
-                        Log.LogError(e, "Failed to read the initial value");
+                        Log.LogError(e, "Read failed");
                     }
                     if (valueOpt.IsSome(out var value)) {
+                        bool mustSet;
                         lock (Lock) {
-                            if (Snapshot == firstSnapshot) {
-                                _snapshotOnSync = firstSnapshot;
+                            mustSet = Snapshot == initialSnapshot;
+                            if (mustSet)
                                 Set(value);
-                            }
                         }
+                        if (mustSet)
+                            DebugLog?.LogDebug("{State}: Read = {Result}", this, value);
+                        else
+                            DebugLog?.LogDebug("{State}: Read: skipping (already changed)", this);
                     }
+                    else
+                        DebugLog?.LogDebug("{State}: Read: skipping (no value stored or read error)", this);
                 }
                 finally {
                     WhenReadSource.TrySetResult(default);
@@ -61,14 +65,11 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
         }
         else {
             // Subsequent change
-            lock (Lock) {
-                if (oldSnapshot == _snapshotOnSync) {
-                    _snapshotOnSync = null; // Let's make it available for GC
-                    return computed;
-                }
-            }
-            if (computed.IsValue(out var value))
+            if (computed.IsValue(out var value)) {
+                using var _1 = Stl.Fusion.Computed.SuspendDependencyCapture();
                 _ = Settings.Write(value, CancellationToken.None);
+                DebugLog?.LogDebug("{State}: Write = {Result}", this, value);
+            }
         }
         return computed;
     }

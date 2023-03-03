@@ -10,7 +10,7 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
         CancellationToken cancellationToken)
     {
         var stream = await Read(streamId, cancellationToken).ConfigureAwait(false);
-        return SkipTo(stream, skipTo);
+        return SkipTo(stream, skipTo, cancellationToken);
     }
 
     public new Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
@@ -20,13 +20,18 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
 
     private static IAsyncEnumerable<byte[]> SkipTo(
         IAsyncEnumerable<byte[]> audioStream,
-        TimeSpan skipTo)
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
     {
         // This method assumes there are 20ms packets!
+        // And the first packet is the header
         if (skipTo <= TimeSpan.Zero)
             return audioStream;
 
         var skipToFrameN = (int)skipTo.TotalMilliseconds / 20;
-        return audioStream.SkipWhile((_, i) => i < skipToFrameN);
+        var (headerDataTask, dataStream) = audioStream.SplitHead(cancellationToken);
+        return dataStream
+            .SkipWhile((_, i) => i < skipToFrameN)
+            .Prepend(headerDataTask);
     }
 }

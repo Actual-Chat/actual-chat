@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.0")
+                .HasAnnotation("ProductVersion", "7.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -117,6 +117,31 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("avatars");
                 });
 
+            modelBuilder.Entity("ActualChat.Users.Db.DbChatPosition", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<long>("EntryLid")
+                        .HasColumnType("bigint")
+                        .HasColumnName("entry_lid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("origin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_positions");
+
+                    b.ToTable("chat_positions");
+                });
+
             modelBuilder.Entity("ActualChat.Users.Db.DbKvasEntry", b =>
                 {
                     b.Property<string>("Key")
@@ -137,22 +162,6 @@ namespace ActualChat.Users.Migrations
                         .HasName("pk_kvas_entries");
 
                     b.ToTable("kvas_entries");
-                });
-
-            modelBuilder.Entity("ActualChat.Users.Db.DbReadPosition", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<long>("ReadEntryId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("read_entry_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_read_positions");
-
-                    b.ToTable("read_positions");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>

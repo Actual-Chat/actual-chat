@@ -56,7 +56,6 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var cancellationToken = httpContext.RequestAborted;
         var session = SessionMiddleware.GetSession(httpContext).Require();
 
         var audioRecord = new AudioRecord(new Session(session.Id), new ChatId(chatId), clientStartOffset);
@@ -65,7 +64,8 @@ public class AudioHub : Hub
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        await AudioProcessor.ProcessAudio(audioRecord, preSkipFrames, frameStream, cancellationToken)
+        // No cancellation token here as we want to complete processing regardless of current request context state
+        await AudioProcessor.ProcessAudio(audioRecord, preSkipFrames, frameStream, CancellationToken.None)
             .ConfigureAwait(false);
     }
 

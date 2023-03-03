@@ -1,0 +1,103 @@
+@using ActualChat.Users
+@inherits ComputedStateComponent<LandingLeftMenuContent.Model>
+@{
+    var m = State.Value;
+    var account = m.Account;
+    var isGuest = account is not {IsGuestOrNone: false };
+    const string privacyUrl = "/docs/privacy";
+    const string termsUrl = "/docs/terms";
+    const string cookiesUrl = "/docs/cookies";
+}
+
+<div class="menu-header">
+    <div class="flex">
+        <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+    </div>
+    <div class="px-2 self-center max-w-40">
+        <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+    </div>
+</div>
+<div class="menu-content">
+    @if (isGuest) {
+        <Button Class="btn-transparent" Click="SignIn">
+            <div>
+                <i class="icon-log-in text-2xl text-badge"></i>
+            </div>
+            <div class="flex items-center mx-2 text-badge">
+                Sign in
+            </div>
+        </Button>
+    }
+    @if (ShowHome) {
+        <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Home))">
+            Home
+        </Button>
+    }
+    @if (!isGuest) {
+        <Button Class="btn-transparent" Click="@(() => NavigateTo(Links.Chats))">
+            Go to Chats
+        </Button>
+    }
+    <div class="h-0 w-10/12 my-2 border border-b border-bg-04"></div>
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(privacyUrl))">
+        Privacy
+    </Button>
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(termsUrl))">
+        Terms
+    </Button>
+    <Button Class="btn-transparent" Click="@(() => NavigateTo(cookiesUrl))">
+        Cookie Preferences
+    </Button>
+</div>
+<div class="menu-footer">
+    @if (m.EnableIncompleteUI) {
+        <ButtonRound>
+            <img src="/dist/images/landing/github-gray.svg" alt="github">
+        </ButtonRound>
+        <ButtonRound>
+            <img src="/dist/images/landing/facebook-gray.svg" alt="facebook">
+        </ButtonRound>
+        <ButtonRound>
+            <img src="/dist/images/landing/telegram-gray.svg" alt="telegram">
+        </ButtonRound>
+        <ButtonRound>
+            <img src="/dist/images/landing/medium-gray.svg" alt="medium">
+        </ButtonRound>
+    }
+</div>
+
+@code {
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+
+    [Parameter] public LandingLeftMenu Owner { get; init; } = null!;
+    [Parameter] public bool ShowHome { get; init; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(AccountUI.OwnAccount.Value, false),
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return new Model(
+            await AccountUI.OwnAccount.Use(cancellationToken),
+            await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken));
+    }
+
+    private void NavigateTo(string url) {
+        Owner.Close();
+        History.NavigateTo(url);
+    }
+
+    private void SignIn()
+        => SignIn(IClientAuth.GoogleSchemeName);
+
+    private Task SignIn(string name) =>
+        ClientAuth.SignIn(name).AsTask();
+
+    public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
+}

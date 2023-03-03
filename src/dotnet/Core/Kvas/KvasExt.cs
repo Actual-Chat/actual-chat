@@ -38,8 +38,8 @@ public static class KvasExt
     {
         if (prefix.IsNullOrEmpty())
             return kvas;
-        if (kvas is PrefixedKvasWrapper kvp)
-            return new PrefixedKvasWrapper(kvp.Upstream, $"{prefix}.{kvp.Prefix}");
-        return new PrefixedKvasWrapper(kvas, prefix);
+        if (kvas is PrefixedKvas kvp)
+            return new PrefixedKvas(kvp.Upstream, $"{prefix}.{kvp.Prefix}");
+        return new PrefixedKvas(kvas, prefix);
     }
 }

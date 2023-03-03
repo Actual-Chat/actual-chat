@@ -1,5 +1,4 @@
 using Android.Webkit;
-using Java.Interop;
 using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
@@ -8,7 +7,8 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
-        Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
+        _trace.Point("ConnectHandler");
+        Log.LogDebug("ConnectHandler");
 
         base.ConnectHandler(platformView);
         var baseUri = UrlMapper.BaseUri;
@@ -22,48 +22,10 @@ public partial class MauiBlazorWebViewHandler
         var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
-        var jsInterface = new JavascriptInterface(this, platformView);
+        var jsInterface = new JavascriptToAndroidInterface(this, platformView);
+        // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");
-        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<JavascriptInterface>()));
-    }
-
-    private class JavascriptInterface : Java.Lang.Object
-    {
-        private readonly MauiBlazorWebViewHandler _handler;
-        private readonly Android.Webkit.WebView _webView;
-
-        public event Action<string> MessageReceived = m => { };
-
-        public JavascriptInterface(MauiBlazorWebViewHandler handler, Android.Webkit.WebView webView)
-        {
-            _handler = handler;
-            _webView = webView;
-        }
-
-        [JavascriptInterface]
-        [Export("DOMContentLoaded")]
-        public void OnDOMContentLoaded()
-        {
-            _webView.Post(() => {
-                try {
-                    var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
-                    var script = $"window.App.initPage('{_handler.UrlMapper.BaseUrl}', '{sessionHash}')";
-                    _webView.EvaluateJavascript(script, null);
-                }
-                catch (Exception ex) {
-                    Debug.WriteLine(ex.ToString());
-                }
-            });
-        }
-
-        [JavascriptInterface]
-        [Export("postMessage")]
-        public void OnPostMessage(string data)
-        {
-            _webView.Post(() => {
-                MessageReceived.Invoke(data);
-            });
-        }
+        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
     }
 
     private class WebViewClientOverride : WebViewClient
@@ -99,9 +61,11 @@ public partial class MauiBlazorWebViewHandler
         public override void DoUpdateVisitedHistory(WebView? view, string? url, bool isReload)
         {
             base.DoUpdateVisitedHistory(view, url, isReload);
-            var canGoBack = view.CanGoBack();
+            var canGoBack = view!.CanGoBack();
             // It seems at this point we can not trust CanGoBack value, when it's navigated to a new address.
-            Log.LogDebug("WebViewClientOverride.DoUpdateVisitedHistory. Url: '{Url}'. IsReload: '{IsReload}'. CanGoBack: '{CanGoBack}'", url, isReload, canGoBack);
+            Log.LogDebug(
+                "DoUpdateVisitedHistory: Url: '{Url}', IsReload: '{IsReload}', CanGoBack: '{CanGoBack}'",
+                url, isReload, canGoBack);
         }
 
         protected override void Dispose(bool disposing)

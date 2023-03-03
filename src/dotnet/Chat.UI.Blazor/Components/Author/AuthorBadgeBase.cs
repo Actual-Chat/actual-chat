@@ -42,7 +42,10 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     {
         var model = Model.Loading;
         if (AuthorId.IsNone)
-            return new () { InitialValue = model };
+            return new () {
+                InitialValue = model,
+                Category = GetStateCategory(),
+            };
 
         // Try to provide pre-filled initialValue for the first render when everything is cached
         var authorTask = GetAuthor(AuthorId, default);
@@ -61,7 +64,10 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
                 model = model with { IsOwn = true };
         }
 
-        return new () { InitialValue = model };
+        return new () {
+            InitialValue = model,
+            Category = GetStateCategory(),
+        };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {

@@ -1,11 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
-using Blazored.Modal.Services;
+using ActualChat.UI.Blazor.Services.Internal;
 using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Stl.Fusion.Bridge.Interception;
+using Stl.Fusion.Diagnostics;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
@@ -22,13 +25,12 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
     public override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+        var appKind = HostInfo.AppKind;
+        if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
-        var isServerSideBlazor = HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server);
 
         // Third-party Blazor components
         services.AddBlazoredSessionStorage();
-        services.AddScoped<ModalService>(c => new ModalService(c));
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
         ComputedStateComponent.DefaultOptions =
@@ -53,9 +55,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
 
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
-        services.AddScoped<AppBlazorCircuitContext>(c => new AppBlazorCircuitContext(c));
-        services.AddScoped(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
-        services.AddScoped(c => c.GetRequiredService<BlazorCircuitContext>().Dispatcher);
+        services.AddScoped(c => new AppBlazorCircuitContext(c));
+        services.AddTransient(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
+        services.AddTransient(c => c.GetRequiredService<AppBlazorCircuitContext>().Dispatcher);
 
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
@@ -72,7 +74,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<AccountSettings>(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
             c.GetRequiredService<Session>()));
-        if (isServerSideBlazor)
+        if (appKind.IsServer())
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
         else
             services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
@@ -81,8 +83,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             c.GetRequiredService<IStateFactory>()));
 
         // UI events
-        services.AddScoped<LoadingUI>(c => new LoadingUI(
-            c.GetRequiredService<ILogger<LoadingUI>>()));
+        services.AddScoped<LoadingUI>(c => new LoadingUI(c));
         services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
             c.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
         services.AddScoped<UIEventHub>(c => new UIEventHub(c));
@@ -93,13 +94,14 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<InteractiveUI>(c => new InteractiveUI(c));
         services.AddScoped<ErrorUI>(c => new ErrorUI(
             c.GetRequiredService<UIActionTracker>()));
-        services.AddScoped<HistoryUI>(c => new HistoryUI(c));
+        services.AddScoped<History>(c => new History(c));
+        services.AddScoped<HistoryItemIdFormatter>(_ => new HistoryItemIdFormatter());
+        services.AddScoped<AutoNavigationUI>(c => new AutoNavigationUI(c));
         services.AddScoped<ModalUI>(c => new ModalUI(c));
         services.AddScoped<BannerUI>(c => new BannerUI(c));
         services.AddScoped<FocusUI>(c => new FocusUI(
             c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<KeepAwakeUI>(c => new KeepAwakeUI(
-            c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<KeepAwakeUI>(c => new KeepAwakeUI(c));
         services.AddScoped<UserActivityUI>(c => new UserActivityUI(c));
         services.AddScoped<Escapist>(c => new Escapist(
             c.GetRequiredService<IJSRuntime>()));
@@ -107,23 +109,78 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<VibrationUI>(c => new VibrationUI(c));
         fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
 
-        // Actual.chat-specific UI services
+        // Actual Chat-specific UI services
         services.AddScoped<ThemeUI>(c => new ThemeUI(c));
         services.AddScoped<FeedbackUI>(c => new FeedbackUI(c));
         services.AddScoped<ImageViewerUI>(c => new ImageViewerUI(
             c.GetRequiredService<ModalUI>()));
+        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
-        // Misc. helpers
-        services.AddScoped<NotificationNavigationHandler>(c => new NotificationNavigationHandler(c));
-
         // Host-specific services
-        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(
-            c.GetRequiredService<ClientAuthHelper>()));
+        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
 
-        services.ConfigureUILifetimeEvents(events => events.OnCircuitContextCreated += InitializeHistoryUI);
+        // Initializes History
+        services.ConfigureUILifetimeEvents(
+            events => events.OnCircuitContextCreated += c => c.GetRequiredService<History>());
+
+        InjectDiagnosticsServices(services);
     }
 
-    private void InitializeHistoryUI(IServiceProvider services)
-        => _ = services.GetRequiredService<HistoryUI>();
+    private void InjectDiagnosticsServices(IServiceCollection services)
+    {
+        // Diagnostics
+        var isDev = HostInfo.IsDevelopmentInstance;
+        var appKind = HostInfo.AppKind;
+        var isServer = appKind.IsServer();
+        var isClient = appKind.IsClient();
+        var isWasmApp = appKind.IsWasmApp();
+
+        services.AddScoped(c => new DebugUI(c));
+        services.ConfigureUILifetimeEvents(
+            events => events.OnCircuitContextCreated += c => c.GetRequiredService<DebugUI>());
+
+        if (isClient) {
+            services.AddSingleton(c => new TaskMonitor(c));
+            services.AddSingleton(c => new TaskEventListener(c));
+        }
+        services.AddSingleton(c => {
+            return new FusionMonitor(c) {
+                SleepPeriod = isDev ? TimeSpan.Zero : TimeSpan.FromMinutes(5).ToRandom(0.2),
+                CollectPeriod = TimeSpan.FromSeconds(isDev ? 10 : 60),
+                AccessFilter = isWasmApp
+                    ? static computed => computed.Input.Function is IReplicaMethodFunction
+                    : static _ => true,
+                AccessStatisticsPreprocessor = StatisticsPreprocessor,
+                RegistrationStatisticsPreprocessor = StatisticsPreprocessor,
+            };
+
+            void StatisticsPreprocessor(Dictionary<string, (int, int)> stats)
+            {
+                if (isServer) {
+                    foreach (var key in stats.Keys.ToList()) {
+                        if (key.OrdinalStartsWith("DbAuthService"))
+                            continue;
+                        if (key.OrdinalContains("Backend."))
+                            continue;
+                        stats.Remove(key);
+                    }
+                }
+                else {
+                    foreach (var key in stats.Keys.ToList()) {
+                        if (key.OrdinalContains(".Pseudo"))
+                            stats.Remove(key);
+                        if (key.OrdinalStartsWith("FusionTime."))
+                            stats.Remove(key);
+                        if (key.OrdinalStartsWith("LiveTime."))
+                            stats.Remove(key);
+                        if (key.OrdinalStartsWith("LiveTimeDelta"))
+                            stats.Remove(key);
+                    }
+                }
+            }
+        });
+        if (isServer && (!isDev || Constants.DebugMode.ServerFusionMonitor)) // Auto-start FusionMonitor on server
+            services.AddHostedService(c => c.GetRequiredService<FusionMonitor>());
+    }
 }
