@@ -342,12 +342,11 @@ export class VirtualList {
             if (!key) {
                 if (this._endAnchorRef === itemRef) {
                     if (entry.isIntersecting) {
+                        hasChanged ||= !this._isEndAnchorVisible;
                         this._isEndAnchorVisible = true;
                         if (rs.hasVeryLastItem) {
                             const edgeKey = this.getLastItemKey();
-                            if (this._isEndAnchorVisible) {
-                                this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
-                            }
+                            this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
                         }
                         this.turnOffIsEndAnchorVisibleDebounced.reset();
                     }
