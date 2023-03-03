@@ -57,6 +57,14 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .recorder-wrapper .recorder-icon {
     @apply h-10 w-10;
 }
+.recorder-wrapper .mic-disabled.btn .btn-content,
+body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
+    @apply bg-icons-02;
+}
+.recorder-wrapper:has(.mic-disabled) {
+    @apply border-icons-02;
+}
+
 .narrow-panel.narrow .recorder-wrapper .recorder-icon,
 .wide .recorder-wrapper .recorder-icon {
     @apply h-7 w-7;
@@ -292,4 +300,37 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply scale-100;
     @apply opacity-100;
+}
+
+.modal-frame.service-modal {
+    @apply md:gap-x-0 md:gap-y-0;
+    @apply max-w-72;
+}
+.modal-frame.service-modal .modal-header,
+.modal-frame.service-modal .modal-mobile-header {
+    @apply hidden;
+}
+.modal-frame.service-modal .c-text {
+    @apply flex-y gap-y-2;
+    @apply font-medium text-sm;
+}
+
+.narrow .modal-frame.service-modal .c-text {
+    @apply font-normal text-base;
+}
+.narrow .modal-frame.service-modal {
+    @apply absolute bottom-8;
+    @apply h-auto;
+    @apply py-4;
+    @apply rounded-lg;
+    max-width: calc(100% - 2rem);
+}
+.narrow .modal-frame.service-modal .dialog-body {
+    @apply gap-y-4;
+}
+.narrow .modal-frame.service-modal .header-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    background-image: linear-gradient(to bottom, #2970FF, #C60077)
 }

@@ -1,0 +1,56 @@
+@namespace ActualChat.UI.Blazor.Components
+@using Stl.Extensibility
+@implements IModalView<AudioPermissionModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame Class="service-modal">
+    <Body>
+    @if (ScreenSize.IsWide()) {
+        <div class="c-text">
+            <p>
+                To be able to record messages and use the microphone please give permission
+            </p>
+            <p class="text-primary">
+                Open Browser Settings > Privacy Security > Microphone > Allow
+            </p>
+        </div>
+    } else {
+        <div class="c-header flex-x items-center gap-x-4">
+            <div class="header-icon">
+                <img src="/dist/images/logo-white.svg" alt="logo" class="h-6">
+            </div>
+            <div class="text-title-1">Allow Actual.chat to record audio?</div>
+        </div>
+        <div class="c-text">
+            <p>
+                To use your microphone to record voice messages
+            </p>
+        </div>
+        <div class="flex-x gap-x-4">
+            <Checkbox
+                IsChecked="true"
+                Class="!flex-none"/>
+            <p class="c-text">Don't ask again</p>
+        </div>
+    }
+    </Body>
+    <Buttons>
+        @if (ScreenSize.IsNarrow()) {
+            <Button Class="btn-modal" Click="@OnClick">Deny</Button>
+            <Button Class="btn-modal" Click="@OnClick">Allow</Button>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnClick() {
+
+    }
+
+    public sealed record Model;
+}
