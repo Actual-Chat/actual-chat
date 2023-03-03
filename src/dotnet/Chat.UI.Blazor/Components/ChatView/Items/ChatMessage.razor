@@ -32,19 +32,25 @@
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
 @if (isSystem) {
-    <div class="@cls">
-        <div class="chat-message group @cls">
-            <div class="c-content">
-                <div class="message-content">
-                    <p class="chat-message-markup">
-                        <CascadingValue Value="@entry" IsFixed="true">
-                            <MarkupView Markup="@markup"/>
-                        </CascadingValue>
-                    </p>
-                </div>
+<div class="@cls"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
+     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+    <div class="chat-message group @cls">
+        <div class="c-content">
+            <div class="message-content">
+                <p class="chat-message-markup">
+                    <CascadingValue Value="@entry" IsFixed="true">
+                        <MarkupView Markup="@markup"/>
+                    </CascadingValue>
+                </p>
+                @if (entry.HasReactions) {
+                    <MessageReactions Entry="@entry"/>
+                }
             </div>
         </div>
     </div>
+</div>
     return;
 }
 

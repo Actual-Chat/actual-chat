@@ -120,7 +120,7 @@ body.hoverable .chat-header-title:hover {
 }
 
 .system-entry .message-content {
-    @apply flex-x justify-center items-center;
+    @apply flex-x justify-center items-center gap-x-2;
 }
 .system-entry .message-content .avatar-name {
     @apply font-bold text-03;
