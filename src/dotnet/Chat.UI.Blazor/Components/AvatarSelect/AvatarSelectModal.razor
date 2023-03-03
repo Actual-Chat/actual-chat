@@ -15,7 +15,7 @@
 
     <div class="avatar-select">
         @foreach (var avatar in m.Avatars) {
-            <Tile Click="_ => Join(avatar)" Class="avatar-select-item">
+            <Tile Click="_ => OnAvatarSelected(avatar)" Class="avatar-select-item">
                 <TileItem>
                     <Icon>
                         <AvatarCard Avatar="@avatar"/>
@@ -24,7 +24,7 @@
                         @avatar.Name
                     </Content>
                     <Right>
-                        @if (m.DefaultAvatarId == avatar.Id) {
+                        @if (m.SelectedAvatarId == avatar.Id) {
                             <i class="icon-star text-xl text-primary"></i>
                         }
                     </Right>
@@ -37,9 +37,9 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -51,24 +51,35 @@
         };
 
     protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
-        var account = await Accounts.GetOwn(Session, cancellationToken);
+        var selectedAvatarId = await GetSelectedAvatarId(cancellationToken);
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
         var avatars = await avatarIds
             .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
             .Collect();
         var existingAvatars = avatars.SkipNullItems().ToImmutableArray();
-        return new ViewModel(existingAvatars, account.Avatar.Id);
+        return new ViewModel(existingAvatars, selectedAvatarId);
     }
 
-    private async Task Join(AvatarFull avatar) {
-        var command = new IAuthors.JoinCommand(Session, ModalModel.Chat.Id, avatar.Id);
-        await UICommander.Run(command);
+    private async Task<Symbol> GetSelectedAvatarId(CancellationToken cancellationToken)
+    {
+        if (ModalModel.ChatId.IsNone) {
+            var account = await Accounts.GetOwn(Session, cancellationToken);
+            return account.Avatar.Id;
+        }
+        else {
+            var author = await Authors.GetOwn(Session, ModalModel.ChatId, cancellationToken);
+            return author?.Avatar.Id ?? Symbol.Empty;
+        }
+    }
+
+    private async Task OnAvatarSelected(AvatarFull avatar) {
+        await ModalModel.OnAvatarSelected(avatar);
         Modal.Close();
     }
 
-    public record Model(Chat Chat);
+    public record Model(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected);
 
-    public record ViewModel(ImmutableArray<AvatarFull> Avatars, Symbol DefaultAvatarId) {
+    public record ViewModel(ImmutableArray<AvatarFull> Avatars, Symbol SelectedAvatarId) {
         public static readonly ViewModel None = new(ImmutableArray<AvatarFull>.Empty, Symbol.Empty);
     }
 }
