@@ -51,7 +51,6 @@ public class AudioRecorder : IAsyncDisposable
     {
         await _messageProcessor.Complete().SuppressExceptions().ConfigureAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
-        await StopRecordingInternal(CancellationToken.None).ConfigureAwait(false);
         await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
         _jsRef = null!;
     }
