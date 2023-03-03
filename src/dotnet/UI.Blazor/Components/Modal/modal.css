@@ -70,16 +70,6 @@
      @apply flex justify-center rounded-md p-2 bg-error text-04 font-normal text-base;
  }
 
-.modal-frame * {
-    @apply cursor-default;
-}
-.modal-frame .btn,
-.modal-frame .btn * {
-    @apply cursor-pointer;
-}
-.modal-frame input[type=text] {
-    @apply cursor-text;
-}
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
@@ -109,10 +99,6 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply border-b border-bg-04;
     @apply bg-02;
 }
-.modal-close,
-.modal-close * {
-    @apply cursor-pointer;
-}
 
 .dialog-body {
     @apply flex-1 flex-y items-stretch overflow-hidden;
@@ -135,10 +121,6 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .dialog-buttons {
     @apply flex-x justify-end;
     @apply overflow-hidden;
-}
-.dialog-buttons .btn,
-.dialog-buttons .btn * {
-    @apply cursor-pointer;
 }
 .dialog-buttons.full-width {
     @apply min-w-full;
@@ -170,13 +152,4 @@ div.modal-content > form {
 }
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
-}
-.modal-overlay-fullscreen input {
-    @apply cursor-text;
-}
-.modal-overlay-fullscreen .user-avatar-editor-item,
-.modal-overlay-fullscreen .user-avatar-editor-item *,
-.modal-overlay-fullscreen button,
-.modal-overlay-fullscreen button * {
-    @apply cursor-pointer;
 }

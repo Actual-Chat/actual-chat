@@ -3,14 +3,17 @@
 @{
     var m = State.Value;
     var author = m.Author;
+    var onClick = ShowDetailsOnClick
+        ? EventCallback.Factory.Create<MouseEventArgs>(this, _ => AuthorUI.Show(author.Id))
+        : Click;
 }
 
-@if (ShowDetailsOnClick) {
+@if (onClick.HasDelegate) {
     <AvatarName
         Avatar="@author.Avatar"
         Class="@Class"
         IsAnonymous="@author.IsAnonymous"
-        Click="@(_ => AuthorUI.Show(author.Id))"/>
+        Click="@onClick"/>
 }
 else {
     <AvatarName
@@ -24,4 +27,11 @@ else {
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowDetailsOnClick { get; set; } = true;
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    protected override void OnParametersSet() {
+        if (ShowDetailsOnClick && Click.HasDelegate)
+            throw StandardError.Constraint("Set ShowDetailsOnClick to false when setting Click parameter");
+        base.OnParametersSet();
+    }
 }
