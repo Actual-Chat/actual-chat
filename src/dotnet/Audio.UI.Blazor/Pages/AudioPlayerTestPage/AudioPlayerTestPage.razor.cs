@@ -136,37 +136,25 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnBufferStateChange(bool isBufferLow) => Task.CompletedTask;
+    public Task OnPlaying(double offset, bool isPaused, bool isBufferLow)
+    {
+        var playing = isPaused ? "paused" : "playing";
+        var buffer = isBufferLow ? "low" : "ok";
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        Log.LogInformation($"OnPlaying: {playing} @ {{Offset}}, buffer: {buffer}", offset);
+
+        _offset = offset;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
     [JSInvokable]
     public async Task OnEnded(string? errorMessage)
     {
-        Log.LogInformation("OnPlayEnded(msg:{ErrorMessage})", errorMessage);
-        // might run stop()  after end(), we shouldn't do this, fix it later
+        Log.LogInformation("OnEnded: {ErrorMessage}", errorMessage);
         _cts?.CancelAndDisposeSilently();
-        if (_registration != default) {
+        if (_registration != default)
             await _registration.DisposeAsync();
-        }
-    }
-
-    [JSInvokable]
-    public Task OnPlayingAt(double offset)
-    {
-        if (true) {
-            Log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);
-        }
-        _offset = offset;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    [JSInvokable]
-    public Task OnPausedAt(double offset)
-    {
-        Log.LogInformation("OnPausedAt(offset={Offset}s)", offset);
-        _offset = offset;
-        StateHasChanged();
-        return Task.CompletedTask;
     }
 
     public void Dispose()

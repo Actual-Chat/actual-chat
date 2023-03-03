@@ -32,25 +32,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public Task OnBufferStateChange(bool isBufferLow)
+    public Task OnPlaying(double offset, bool isPaused, bool isBufferLow)
     {
+        DebugLog?.LogDebug(
+            "[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayingAt: {Offset}, {IsPaused}, buffer: {IsBufferLow}",
+            _id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
         UpdateBufferState(isBufferLow);
-        return Task.CompletedTask;
-    }
-
-    [JSInvokable]
-    public Task OnPlayingAt(double offset)
-    {
-        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayingAt: {Offset}", _id, offset);
-        OnPlayingAt(TimeSpan.FromSeconds(offset));
-        return Task.CompletedTask;
-    }
-
-    [JSInvokable]
-    public Task OnPausedAt(double offset)
-    {
-        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPausedAt: {Offset}", _id, offset);
-        OnPausedAt(TimeSpan.FromSeconds(offset));
+        SetPlaybackState(TimeSpan.FromSeconds(offset), isPaused);
         return Task.CompletedTask;
     }
 
@@ -65,7 +53,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", _id);
         }
         DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayEnded: {Message}", _id, errorMessage);
-        OnEnded(error);
+        SetEndState(error);
         return Task.CompletedTask;
     }
 

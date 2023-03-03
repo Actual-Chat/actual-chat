@@ -80,22 +80,6 @@ export class RpcPromise<T> extends PromiseSourceWithTimeout<T> {
 
 RpcPromise.Void.resolve(undefined);
 
-export function rpc<T>(sender: (rpcPromise: RpcPromise<T>) => void | PromiseLike<void>, timeoutMs?: number): RpcPromise<T> {
-    const result = new RpcPromise<T>();
-    if (timeoutMs)
-        result.setTimeout(timeoutMs);
-
-    void (async () => {
-        try {
-            await sender(result);
-        }
-        catch (error) {
-            result.reject(error);
-        }
-    })();
-    return result;
-}
-
 export function completeRpc(result: RpcResult): void {
     const promise = RpcPromise.get<unknown>(result.id);
     if (promise == null) {
@@ -112,28 +96,6 @@ export function completeRpc(result: RpcResult): void {
     catch (error) {
         promise.reject(error);
     }
-}
-
-export async function handleRpc<T>(
-    resultId: number,
-    resultSender: (result: RpcResult) => void | PromiseLike<void>,
-    handler: () => Promise<T>,
-    errorHandler?: (error: unknown) => void
-): Promise<T> {
-    let value: T | undefined = undefined;
-    let error: unknown = undefined;
-    try {
-        value = await handler();
-    }
-    catch (e) {
-        error = e;
-    }
-    const result = new RpcResult(resultId, value, error);
-    debugLog?.log(`handleRpc[#${resultId}] =`, result)
-    await resultSender(result);
-    if (error !== undefined && errorHandler != null)
-        errorHandler(error);
-    return value;
 }
 
 export function isTransferable(x: unknown): x is Transferable {
@@ -236,10 +198,12 @@ export function rpcServer(
     }
 }
 
+const DefaultRpcClientTimeoutMs = 5_000;
+
 export function rpcClient<TService extends object>(
     name: string,
     messagePort: MessagePort | Worker,
-    timeoutMs = 5000,
+    timeoutMs = DefaultRpcClientTimeoutMs,
     onDispose?: () => void,
 ) : TService & Disposable {
     const onMessage = (event: MessageEvent<RpcResult>): void => {
@@ -377,13 +341,13 @@ if (mustRunSelfTest) {
     void (async () => {
         // Basic test
 
-        let rpcPromise = rpc<string>(() => undefined);
+        let rpcPromise = new RpcPromise<string>();
         testLog.assert(!rpcPromise.isCompleted());
         void completeRpc(RpcResult.value(rpcPromise.id, 'x'));
         testLog.assert(rpcPromise.isCompleted());
         testLog.assert('x' == await rpcPromise);
 
-        rpcPromise = rpc<string>(() => undefined);
+        rpcPromise = new RpcPromise<string>();
         testLog.assert(!rpcPromise.isCompleted());
         void completeRpc(RpcResult.error(rpcPromise.id, 'Error'));
         testLog.assert(rpcPromise.isCompleted());

@@ -138,6 +138,9 @@ export class AudioContextSource {
     // Protected methods
 
     protected async maintain(): Promise<void> {
+        // The only case this method starts is application start,
+        // so it makes sense let other tasks to make some progress first.
+        await delayAsync(300);
         // noinspection InfiniteLoopJS
         for (;;) { // Renew loop
             let context: AudioContext = null;

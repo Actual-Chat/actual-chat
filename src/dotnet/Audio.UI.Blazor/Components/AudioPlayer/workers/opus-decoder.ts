@@ -6,7 +6,7 @@ import { Decoder } from '@actual-chat/codec/codec.debug';
 import { AsyncDisposable, Disposable } from 'disposable';
 import { AsyncProcessor } from 'async-processor';
 import { rpcClient, rpcNoWait } from 'rpc';
-import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
+import { FeederAudioWorklet, FeederAudioWorkletEventHandler } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
 import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
@@ -30,41 +30,50 @@ export class OpusDecoder implements AsyncDisposable {
     private readonly processor: AsyncProcessor<ArrayBufferView | 'end'>;
     private readonly feederWorklet: FeederAudioWorklet & Disposable;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
-    private mustAbort: boolean;
-    private isEnded: boolean;
+    private mustAbort = false;
 
     public decoder: Decoder;
 
-    public static async create(streamId: string, decoder: Decoder, workletPort: MessagePort): Promise<OpusDecoder> {
-        return new OpusDecoder(streamId, decoder, workletPort);
+    public static async create(streamId: string, decoder: Decoder, feederNodePort: MessagePort): Promise<OpusDecoder> {
+        return new OpusDecoder(streamId, decoder, feederNodePort);
     }
 
     /** accepts fully initialized decoder only, use the factory method `create` to construct an object */
-    private constructor(streamId: string, decoder: Decoder, workletPort: MessagePort) {
+    private constructor(streamId: string, decoder: Decoder, feederWorkletPort: MessagePort) {
         this.streamId = streamId;
         this.processor = new AsyncProcessor<Uint8Array | 'end'>('OpusDecoder', item => this.process(item));
-        this.feederWorklet = rpcClient<FeederAudioWorklet>(`${LogScope}.feederWorklet`, workletPort);
+        this.feederWorklet = rpcClient<FeederAudioWorklet>(`${LogScope}.feederNode`, feederWorkletPort);
         this.decoder = decoder;
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
     }
 
     public async disposeAsync(): Promise<void> {
-        this.mustAbort = true;
-        await this.processor.stop();
+        if (this.processor.isRunning)
+            await this.end(true);
         this.decoder = null;
     }
 
     public decode(buffer: ArrayBuffer, offset: number, length: number,): void {
         warnLog?.assert(buffer.byteLength > 0, `#${this.streamId}.decode: got zero length buffer!`);
         const bufferView = new Uint8Array(buffer, offset, length);
-        this.processor.enqueue(bufferView);
+        this.processor.enqueue(bufferView, false);
     }
 
-    public end(mustAbort: boolean): void {
+    public async end(mustAbort: boolean): Promise<void> {
+        debugLog?.log(`#${this.streamId}.end: mustAbort:`, mustAbort);
+        if (!this.processor.isRunning) {
+            // Special case: processor is already stopped by prev. 'end' command
+            if (mustAbort && !this.mustAbort) {
+                this.mustAbort = true;
+                void this.feederWorklet.end(mustAbort, rpcNoWait);
+            }
+            return;
+        }
+
         this.mustAbort ||= mustAbort;
         if (this.mustAbort)
             this.processor.clearQueue();
-        this.processor.enqueue('end');
+        this.processor.enqueue('end', false);
     }
 
     public releaseBuffer(buffer: ArrayBuffer): void {
@@ -74,17 +83,10 @@ export class OpusDecoder implements AsyncDisposable {
     private async process(item: Uint8Array | 'end'): Promise<boolean> {
         try {
             if (item === 'end') {
-                this.isEnded = true;
                 debugLog?.log(`#${this.streamId}.process: got 'end'`);
-                await this.feederWorklet.end(this.mustAbort);
-
-                // do not await
-                void this.processor.stop();
+                void this.feederWorklet.end(this.mustAbort, rpcNoWait);
                 return false;
             }
-
-            if (this.isEnded)
-                return false;
 
             // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
             const typedViewSamples = this.decoder.decode(item);
@@ -106,6 +108,6 @@ export class OpusDecoder implements AsyncDisposable {
         catch (e) {
             errorLog?.log(`#${this.streamId}.process: error:`, e);
         }
-        return true;
+        return item !== 'end';
     }
 }

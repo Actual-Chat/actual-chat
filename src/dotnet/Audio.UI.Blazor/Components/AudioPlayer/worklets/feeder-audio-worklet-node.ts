@@ -2,11 +2,9 @@
 
 import { Disposable } from 'disposable';
 import {
-    BufferState,
-    FeederAudioNode,
+    FeederAudioWorkletEventHandler,
     FeederAudioWorklet,
     FeederState,
-    PlaybackState,
 } from './feeder-audio-worklet-contract';
 import { ResolvedPromise } from 'promises';
 import { rpcClientServer, RpcNoWait } from 'rpc';
@@ -17,10 +15,10 @@ const debugLog = Log.get(LogScope, LogLevel.Debug);
 const errorLog = Log.get(LogScope, LogLevel.Error);
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
-export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAudioNode {
-    private readonly feederWorklet: FeederAudioWorklet & Disposable = null;
+export class FeederAudioWorkletNode extends AudioWorkletNode {
+    private readonly worklet: FeederAudioWorklet & Disposable = null;
 
-    public onStateChanged?: (playbackState: PlaybackState, bufferState: BufferState) => void = null;
+    public onStateChanged?: (state: FeederState) => void = null;
 
     private constructor(
         public readonly id: string,
@@ -30,7 +28,13 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
     ) {
         super(context, name, options);
         this.onprocessorerror = this.onProcessorError;
-        this.feederWorklet = rpcClientServer<FeederAudioWorklet>(`${LogScope}.feederWorklet`, this.port, this);
+        const server: FeederAudioWorkletEventHandler = {
+            onStateChanged: async (state: FeederState, _noWait?: RpcNoWait): Promise<void> => {
+                this.onStateChanged?.(state)
+                return ResolvedPromise.Void;
+            }
+        }
+        this.worklet = rpcClientServer<FeederAudioWorklet>(`${LogScope}.feederWorklet`, this.port, server);
     }
 
     public static async create(
@@ -41,29 +45,20 @@ export class FeederAudioWorkletNode extends AudioWorkletNode implements FeederAu
         options?: AudioWorkletNodeOptions
     ): Promise<FeederAudioWorkletNode> {
         const node = new FeederAudioWorkletNode(id, context, name, options);
-        await node.feederWorklet.init(id, decoderWorkerPort);
+        await node.worklet.init(id, decoderWorkerPort);
         return node;
     }
 
-    public getState(): Promise<FeederState> {
-        return this.feederWorklet.getState();
+    public pause(noWait?: RpcNoWait): Promise<void> {
+        return this.worklet.pause(noWait);
     }
 
-    public stateChanged(playbackState: PlaybackState, bufferState: BufferState, noWait?: RpcNoWait): Promise<void> {
-        this.onStateChanged?.(playbackState, bufferState)
-        return ResolvedPromise.Void;
+    public resume(noWait?: RpcNoWait): Promise<void> {
+        return this.worklet.resume(noWait);
     }
 
-    public abort(): Promise<void> {
-        return this.feederWorklet.end(true);
-    }
-
-    public pause(): Promise<void> {
-        return this.feederWorklet.pause();
-    }
-
-    public resume(): Promise<void> {
-        return this.feederWorklet.resume();
+    public end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void> {
+        return this.worklet.end(mustAbort, noWait);
     }
 
     private onProcessorError = (ev: Event) => {

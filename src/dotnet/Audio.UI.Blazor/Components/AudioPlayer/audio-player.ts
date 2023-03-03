@@ -1,10 +1,10 @@
 import { audioContextSource } from 'audio-context-source';
 import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
-import { BufferState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
+import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
-import { PromiseSource, retry } from 'promises';
+import { catchErrors, PromiseSource, retry } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';
@@ -13,7 +13,8 @@ const LogScope: LogScope = 'AudioPlayer';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
 const warnLog = Log.get(LogScope, LogLevel.Warn);
 const errorLog = Log.get(LogScope, LogLevel.Error);
-const enableFrequentDebugLog = false;
+
+const EnableFrequentDebugLog = false;
 
 let decoderWorkerInstance: Worker = null;
 let decoderWorker: OpusDecoderWorker & Disposable = null;
@@ -23,17 +24,15 @@ export class AudioPlayer {
 
     private readonly id: string;
     /** How often send offset update event to the blazor, in milliseconds */
-    private readonly playingAtUpdatePeriodMs = 200;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly whenReady: Promise<void>;
+    private readonly whenEnded = new PromiseSource<void>();
 
     private contextRef: AudioContextRef | null = null;
     private isAttached: boolean;
     private playbackState: PlaybackState = 'paused';
-    private bufferState: BufferState = 'enough';
-    private decoderToFeederNodeChannel: MessageChannel = null;
+    private decoderToFeederWorkletChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
-    private reportPlayedToHandle: number = null;
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
@@ -62,10 +61,9 @@ export class AudioPlayer {
 
             await AudioPlayer.whenInitialized;
             this.playbackState = 'paused';
-            this.bufferState = 'enough';
 
             // Create whatever isn't created
-            this.decoderToFeederNodeChannel = new MessageChannel();
+            this.decoderToFeederWorkletChannel = new MessageChannel();
             const feederNodeOptions: AudioWorkletNodeOptions = {
                 channelCount: 1,
                 channelCountMode: 'explicit',
@@ -75,7 +73,7 @@ export class AudioPlayer {
             };
             let feederNode = this.feederNode = await FeederAudioWorkletNode.create(
                 this.id,
-                this.decoderToFeederNodeChannel.port2,
+                this.decoderToFeederWorkletChannel.port2,
                 context,
                 'feederWorklet',
                 feederNodeOptions,
@@ -83,35 +81,39 @@ export class AudioPlayer {
             feederNode.onStateChanged = this.onFeederStateChanged;
 
             // Create decoder worker
-            await decoderWorker.create(this.id, this.decoderToFeederNodeChannel.port1);
+            await decoderWorker.create(this.id, this.decoderToFeederWorkletChannel.port1);
 
             feederNode.connect(context.destination);
 
             this.isAttached = true;
-            const feederState = await feederNode.getState();
-            void this.onFeederStateChanged(feederState.playbackState, feederState.bufferState);
         };
 
         const detach = async () => {
             debugLog?.log(`#${this.id}.contextRef.detach`);
 
-            if (this.isAttached) {
-                void this.onFeederStateChanged('paused', 'enough');
+            if (this.isAttached)
                 this.isAttached = false;
-            }
 
-            const decoderToFeederNodeChannel = this.decoderToFeederNodeChannel;
-            if (decoderToFeederNodeChannel) {
-                void decoderWorker.close(this.id, rpcNoWait);
-                this.decoderToFeederNodeChannel = null;
-                decoderToFeederNodeChannel?.port1.close();
-                decoderToFeederNodeChannel?.port2.close();
+            const decoderToFeederWorkletChannel = this.decoderToFeederWorkletChannel;
+            if (decoderToFeederWorkletChannel) {
+                await catchErrors(
+                    () => decoderWorker.close(this.id),
+                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                this.decoderToFeederWorkletChannel = null;
+                await catchErrors(
+                    () => decoderToFeederWorkletChannel?.port1.close(),
+                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                await catchErrors(
+                    () => decoderToFeederWorkletChannel?.port2.close(),
+                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
             }
 
             const feederNode = this.feederNode;
             if (feederNode) {
                 this.feederNode = null;
-                feederNode.disconnect();
+                await catchErrors(
+                    () => feederNode.disconnect(),
+                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
                 feederNode.onStateChanged = null;
             }
         }
@@ -142,10 +144,6 @@ export class AudioPlayer {
             bytes.byteOffset,
             bytes.length,
             rpcNoWait);
-
-        // Report that we started playback as soon as we can
-        if (this.playbackState === 'paused')
-            void this.onFeederStateChanged('playing', 'starving');
     }
 
     /** Called by Blazor */
@@ -155,7 +153,10 @@ export class AudioPlayer {
             return;
 
         debugLog?.log(`#${this.id}.end, mustAbort:`, mustAbort);
-        return decoderWorker.end(this.id, mustAbort);
+
+        // This ensures 'end' hit the feeder processor
+        await decoderWorker.end(this.id, mustAbort);
+        await this.whenEnded;
     }
 
     /** Called by Blazor */
@@ -165,7 +166,7 @@ export class AudioPlayer {
             return;
 
         debugLog?.log(`#${this.id}.pause`);
-        await this.feederNode.pause();
+        await this.feederNode.pause(rpcNoWait);
     }
 
     /** Called by Blazor */
@@ -175,109 +176,62 @@ export class AudioPlayer {
             return;
 
         debugLog?.log(`#${this.id}.resume`);
-        await this.feederNode.resume();
-    }
-
-    // Helpers
-
-    private startReportingPlayingTo() {
-        if (this.reportPlayedToHandle)
-            return;
-
-        this.reportPlayedToHandle = self.setInterval(this.reportPlayingAt, this.playingAtUpdatePeriodMs);
-    }
-
-    private stopReportingPlayingTo() {
-        if (!this.reportPlayedToHandle)
-            return;
-
-        clearInterval(this.reportPlayedToHandle);
-        this.reportPlayedToHandle = null;
+        await this.feederNode.resume(rpcNoWait);
     }
 
     // Event handlers
 
-    private onFeederStateChanged = async (playbackState: PlaybackState, bufferState: BufferState) => {
+    private onFeederStateChanged = async (state: FeederState) => {
         if (this.playbackState === 'ended' || !this.isAttached)
             return;
 
-        debugLog?.log(`#${this.id}.onFeederStateChanged: ${playbackState}, ${bufferState}`);
-        const oldPlaybackState = this.playbackState;
-        const oldBufferState = this.bufferState;
-        this.playbackState = playbackState;
-        this.bufferState = bufferState;
-        if (playbackState !== oldPlaybackState) {
-            if (playbackState === 'playing')
-                this.startReportingPlayingTo();
-            else {
-                this.stopReportingPlayingTo();
-                if (playbackState === 'ended') {
-                    await decoderWorker.close(this.id, rpcNoWait);
-                    await this.contextRef.disposeAsync();
-                    this.contextRef = null;
-                    await this.reportOnEnded();
-                }
-                else
-                    await this.reportPausedAt();
-            }
-            this.onPlaybackStateChanged?.(playbackState);
+        if (EnableFrequentDebugLog)
+            debugLog?.log(
+                `#${this.id}.onFeederStateChanged: ${state.playbackState} @ ${state.playingAt}, ` +
+                `buffer: ${state.bufferState} (${state.bufferedDuration}s)`);
+
+        this.playbackState = state.playbackState;
+        if (this.playbackState === 'ended') {
+            this.whenEnded.resolve(undefined);
+            void this.reportEnded();
+
+            // Shutting down the rest
+            await catchErrors(
+                () => decoderWorker.close(this.id, rpcNoWait),
+                e => errorLog?.log(`#${this.id}.end: decoderWorker.close failed:`, e))
+            void this.contextRef.disposeAsync();
+            this.contextRef = null;
         }
-        if (playbackState === 'playing') {
-            if (bufferState !== oldBufferState)
-                await this.reportBufferStateChange();
+        else {
+            const isPaused = state.playbackState === 'paused';
+            const isBufferLow = state.bufferState !== 'ok';
+            void this.reportPlaying(state.playingAt, isPaused, isBufferLow);
         }
     }
 
     // Backend invocation methods
 
-    private reportBufferStateChange = async () => {
+    private reportPlaying = async (playingAt: number, isPaused: boolean, isBufferLow: boolean) => {
         try {
-            debugLog?.log(`#${this.id}.reportBufferStateChange:`, this.bufferState);
-            await this.blazorRef.invokeMethodAsync('OnBufferStateChange', this.bufferState !== 'enough');
+            const stateText = isPaused ? 'paused' : 'playing';
+            const bufferText = isBufferLow ? 'low' : 'ok';
+
+            if (EnableFrequentDebugLog)
+                debugLog?.log(`#${this.id}.reportPlaying: ${stateText} @ ${playingAt}, buffer: ${bufferText}`);
+            await this.blazorRef.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow);
         }
         catch (e) {
-            warnLog?.log(`#${this.id}.reportBufferStateChange: unhandled error:`, e);
+            warnLog?.log(`#${this.id}.reportPlaying: unhandled error:`, e);
         }
     }
 
-    private reportPlayingAt = async () => {
+    private reportEnded = async (message: string | null = null) => {
         try {
-            if (this.playbackState === 'playing') {
-                const state = await this.feederNode.getState();
-                if (enableFrequentDebugLog)
-                    debugLog?.log(
-                        `#${this.id}.reportPlayingAt:`,
-                        `playbackTime:`, state.playingAt,
-                        `bufferedTime:`, state.bufferedDuration);
-                await this.blazorRef.invokeMethodAsync('OnPlayingAt', state.playingAt);
-            }
-        }
-        catch (e) {
-            warnLog?.log(`#${this.id}.reportPlayingAt: unhandled error:`, e);
-        }
-    };
-
-    private reportPausedAt = async () => {
-        try {
-            const state = await this.feederNode.getState();
-            debugLog?.log(
-                `#${this.id}.reportPausedAt:`,
-                `playbackTime:`, state.playingAt,
-                `bufferedTime:`, state.bufferedDuration);
-            await this.blazorRef.invokeMethodAsync('OnPausedAt', state.playingAt);
-        }
-        catch (e) {
-            warnLog?.log(`#${this.id}.reportPausedAt: unhandled error:`, e);
-        }
-    }
-
-    private reportOnEnded = async (message: string | null = null) => {
-        try {
-            debugLog?.log(`#${this.id}.reportOnEnded:`, message);
+            debugLog?.log(`#${this.id}.reportEnded:`, message);
             await this.blazorRef.invokeMethodAsync('OnEnded', message);
         }
         catch (e) {
-            warnLog?.log(`#${this.id}.reportOnEnded: unhandled error:`, e);
+            warnLog?.log(`#${this.id}.reportEnded: unhandled error:`, e);
         }
     }
 }

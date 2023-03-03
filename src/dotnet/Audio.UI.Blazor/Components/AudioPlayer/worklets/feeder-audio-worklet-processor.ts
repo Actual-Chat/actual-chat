@@ -1,17 +1,16 @@
 import Denque from 'denque';
-import { Log, LogLevel, LogScope } from 'logging';
 import { timerQueue } from 'timerQueue';
 import {
     BufferState,
-    FeederAudioNode,
+    FeederAudioWorkletEventHandler,
     FeederAudioWorklet,
     FeederState,
     PlaybackState,
 } from './feeder-audio-worklet-contract';
-import { rpcClientServer, rpcNoWait, RpcNoWait } from 'rpc';
-import { OpusDecoderWorker } from '../workers/opus-decoder-worker-contract';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { Disposable } from 'disposable';
-import { ResolvedPromise } from 'promises';
+import { PromiseSource, ResolvedPromise } from 'promises';
+import { Log, LogLevel, LogScope } from 'logging';
 
 const LogScope: LogScope = 'FeederProcessor';
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -20,6 +19,9 @@ const errorLog = Log.get(LogScope, LogLevel.Error);
 
 const SampleFrequency = 48000;
 const SampleDuration = 1.0 / SampleFrequency;
+const PlayableBufferSize = 0.05; // In seconds
+const OkBufferSize = 10.0; // In seconds
+const StateUpdatePeriod = 0.2;
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements FeederAudioWorklet {
@@ -29,25 +31,21 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
      * 240_000 samples at 48 kHz ~= 5_000 ms
      * 480_000 samples at 48 kHz ~= 10_000 ms
      */
-    private readonly lowBufferThreshold: number = 5.0;
-    /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-    private readonly enoughBufferThreshold: number = 10.0;
-    /** How much seconds do we have in the buffer before we can start playing */
-    private readonly enoughToPlayThreshold: number = 0.1;
-
     private id: string;
-    private workletNode: FeederAudioNode & Disposable;
-    private worker: OpusDecoderWorker & Disposable;
-    // private workerPort: MessagePort;
+    private node: FeederAudioWorkletEventHandler & Disposable;
+    private worker: Disposable;
     private chunkOffset = 0;
     /** In seconds from the start of playing, excluding starving time and processing time */
     private playingAt = 0;
     private playbackState: PlaybackState = 'paused';
-    private bufferState: BufferState = 'enough';
+    private bufferState: BufferState = 'ok';
+    private lastReportedState: FeederState = null;
+    private isEnding = false;
+    private whenEnded = new PromiseSource<void>();
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        this.workletNode = rpcClientServer<FeederAudioNode>(`${LogScope}.server`, this.port, this);
+        this.node = rpcClientServer<FeederAudioWorkletEventHandler>(`${LogScope}.server`, this.port, this);
     }
 
     private get bufferedDuration(): number {
@@ -67,21 +65,12 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     public async init(id: string, workerPort: MessagePort): Promise<void> {
         this.id = id;
-        this.worker = rpcClientServer<OpusDecoderWorker>(`${LogScope}.worker`, workerPort, this);
+        this.worker = rpcServer(`${LogScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
     }
 
-    public async getState(): Promise<FeederState> {
-        return {
-            bufferedDuration: this.bufferedDuration,
-            playingAt: this.playingAt,
-            playbackState: this.playbackState,
-            bufferState: this.bufferState,
-        };
-    }
-
     public frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
-        if (this.playbackState === 'ended')
+        if (this.playbackState === 'ended' || this.isEnding)
             return;
 
         this.chunks.push(new Float32Array(buffer, offset, length));
@@ -89,7 +78,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         return ResolvedPromise.Void;
     }
 
-    public pause(): Promise<void> {
+    public pause(_noWait?: RpcNoWait): Promise<void> {
         if (this.playbackState !== 'playing')
             return;
 
@@ -99,7 +88,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         return ResolvedPromise.Void;
     }
 
-    public resume(): Promise<void> {
+    public resume(_noWait?: RpcNoWait): Promise<void> {
         if (this.playbackState !== 'paused')
             return;
 
@@ -109,23 +98,21 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         return ResolvedPromise.Void;
     }
 
-    public end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void> {
-        if (this.playbackState === 'ended')
+    public async end(mustAbort: boolean, _noWait?: RpcNoWait): Promise<void> {
+        if (this.playbackState === 'ended') {
+            warnLog?.log(`#${this.id}.end, but playback is already ended`);
             return;
+        }
 
-        debugLog?.log(`#${this.id}.end`);
-        if (this.playbackState === 'playing') {
-            if (mustAbort) {
-                this.chunks.clear();
-                this.chunkOffset = 0;
-            }
-            this.chunks.push('end');
+        debugLog?.log(`#${this.id}.end, mustAbort:`, mustAbort);
+
+        this.isEnding = true;
+        this.playbackState = 'playing';
+        if (mustAbort) {
+            this.chunks.clear();
+            this.chunkOffset = 0;
         }
-        else {
-            this.playbackState = 'ended';
-            this.stateHasChanged();
-        }
-        return ResolvedPromise.Void;
+        this.chunks.push('end');
     }
 
     public process(
@@ -162,6 +149,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 channel.fill(0, channelOffset);
                 debugLog?.log(`#${this.id}.process: got 'end'`);
                 this.playbackState = 'ended';
+                this.whenEnded.resolve(undefined);
                 this.stateHasChanged();
                 return false;
             }
@@ -181,24 +169,38 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             }
         }
 
-        const bufferedDuration = this.bufferedDuration;
-        const bufferState =
-            (bufferedDuration < this.lowBufferThreshold)
-            ? 'starving'
-            : (bufferedDuration < this.enoughBufferThreshold ? 'low' : 'enough');
-        if (this.bufferState != bufferState) {
-            this.bufferState = bufferState;
-            this.stateHasChanged();
-        }
+        this.stateHasChanged();
         return true;
     }
 
     private stateHasChanged() {
-        void this.workletNode.stateChanged(this.playbackState, this.bufferState, rpcNoWait);
+        const bufferedDuration = this.bufferedDuration;
+        if (this.isEnding)
+            this.bufferState = 'ok';
+        else {
+            this.bufferState = bufferedDuration < OkBufferSize ? 'low' : 'ok';
+        }
+
+        const state: FeederState = {
+            playbackState: this.playbackState,
+            bufferState: this.bufferState,
+            playingAt: this.playingAt,
+            bufferedDuration: bufferedDuration,
+        }
+        const mustSkip =
+            this.lastReportedState
+            && state.playbackState === this.lastReportedState.playbackState
+            && state.bufferState === this.lastReportedState.bufferState
+            && Math.abs(state.playingAt - this.lastReportedState.playingAt) < StateUpdatePeriod;
+        if (mustSkip)
+            return;
+
+        this.lastReportedState = state;
+        void this.node.onStateChanged(state, rpcNoWait);
     }
 
     private tryBeginPlaying(): void {
-        if (this.playbackState === 'playing' || this.bufferedDuration < this.enoughToPlayThreshold)
+        if (this.playbackState === 'playing' || this.bufferedDuration < PlayableBufferSize)
             return;
 
         debugLog?.log(`#${this.id}.tryBeginPlaying: starting playback`);

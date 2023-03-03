@@ -20,6 +20,7 @@ import { ResolvedPromise, retry } from 'promises';
 import { Versioning } from 'versioning';
 import { Log, LogLevel, LogScope } from 'logging';
 import 'logging-init';
+import { OnDeviceAwake } from 'on-device-awake';
 
 const LogScope: LogScope = 'OpusDecoderWorker'
 const debugLog = Log.get(LogScope, LogLevel.Debug);
@@ -45,11 +46,11 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`<- init`);
     },
 
-    create: async (streamId: string, workletMessagePort: MessagePort): Promise<void> => {
+    create: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
         await serverImpl.close(streamId);
         const decoder = decoderPool.get();
-        const opusDecoder = await OpusDecoder.create(streamId, decoder, workletMessagePort);
+        const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
         decoders.set(streamId, opusDecoder);
         debugLog?.log(`<- #${streamId}.create`);
     },
@@ -73,10 +74,9 @@ const serverImpl: OpusDecoderWorker = {
         }
     },
 
-    end: (streamId: string, mustAbort: boolean): Promise<void> => {
+    end: async (streamId: string, mustAbort: boolean): Promise<void> => {
         debugLog?.log(`#${streamId}.end, mustAbort:`, mustAbort);
-        getDecoder(streamId).end(mustAbort);
-        return ResolvedPromise.Void;
+        await getDecoder(streamId).end(mustAbort);
     },
 
     frame: async (

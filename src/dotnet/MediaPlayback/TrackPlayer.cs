@@ -150,7 +150,7 @@ public abstract class TrackPlayer : ProcessorBase
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
                     if (abortResult.HasError)
-                        OnEnded(abortResult.Error);
+                        SetEndState(abortResult.Error);
                     await WhenCompleted
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
@@ -194,23 +194,15 @@ public abstract class TrackPlayer : ProcessorBase
         }
     }
 
-    protected virtual void OnPlayingAt(TimeSpan offset) => UpdateState(static (arg, state) => {
-        var (offset1, self) = arg;
+    protected void SetPlaybackState(TimeSpan offset, bool isPaused) => UpdateState(static (arg, state) => {
+        var (offset1, isPaused1) = arg;
         return state with {
             IsStarted = true,
-            IsPaused = false,
+            IsPaused = isPaused1,
             PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
         };
-    }, (offset, this));
+    }, (offset, isPaused));
 
-    protected virtual void OnPausedAt(TimeSpan offset) => UpdateState(static (arg, state) => {
-        var (offset1, self) = arg;
-        return state with {
-            IsPaused = true,
-            PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
-        };
-    }, (offset, this));
-
-    protected virtual void OnEnded(Exception? exception = null)
+    protected void SetEndState(Exception? exception = null)
         => UpdateState(static (exception, state) => state with { IsEnded = true, Error = exception }, exception);
 }

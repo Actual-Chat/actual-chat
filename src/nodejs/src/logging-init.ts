@@ -25,6 +25,7 @@ export type LogScope =
     | 'OnDeviceAwakeWorker'
     | 'promises'
     | 'Rpc'
+    | 'AsyncProcessor'
     | 'UndoStack'
     | 'VirtualList'
     // XxxUI
@@ -153,10 +154,11 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
         return;
 
     // Bumping down levels of in-dev scopes
+    // minLevels.set('Versioning', LogLevel.Debug);
     // minLevels.set('Gestures', LogLevel.Debug);
     // minLevels.set('event-handling', LogLevel.Debug);
-    // minLevels.set('Versioning', LogLevel.Debug);
     // minLevels.set('Rpc', LogLevel.Debug);
+    // minLevels.set('AsyncProcessor', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('AudioContextRef', LogLevel.Debug);
