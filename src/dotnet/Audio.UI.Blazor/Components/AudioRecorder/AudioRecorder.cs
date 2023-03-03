@@ -132,7 +132,7 @@ public class AudioRecorder : IAsyncDisposable
 
             MarkRecording();
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) when (e is not OperationCanceledException && e is not AudioRecorderException) {
             Log.LogError(e, $"{nameof(StartRecordingInternal)}: start recording failed");
             MarkStopped();
             throw new AudioRecorderException("Voice recording failed.", e);
