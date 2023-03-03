@@ -55,10 +55,10 @@ public class AudioRecorder : IAsyncDisposable
         _jsRef = null!;
     }
 
-    public async Task<bool> CanRecord(CancellationToken cancellationToken = default)
+    public async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.ConfigureAwait(false);
-        return await _jsRef!.InvokeAsync<bool>("canRecord", cancellationToken).ConfigureAwait(false);
+        return await _jsRef!.InvokeAsync<bool>("requestPermission", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken = default)

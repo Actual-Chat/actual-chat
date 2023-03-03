@@ -1,10 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
 @inherits FusionComponentBase
 @{
     var isRecording = ChatState.IsRecording;
     var cls = "important-item " + (isRecording ? "on" : "off");
 }
-
 @if (isRecording) {
     <MenuEntry
         Class="@cls"
@@ -17,12 +17,18 @@
         Class="@cls"
         Icon="icon-mic"
         Text="Start talking"
-        Click="@(_ => ChatAudioUI.SetRecordingChatId(ChatState.Id))">
+        Click="@OnStartRecordingClick">
     </MenuEntry>
 }
 
 @code {
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    private async Task OnStartRecordingClick() {
+        _ = await AudioRecorder.RequestPermission();
+        await ChatAudioUI.SetRecordingChatId(ChatState.Id);
+    }
 }
