@@ -53,18 +53,18 @@ public class GoogleTranscriberProcess : WorkerBase
             $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
             cancellationToken);
 
-        await ProcessResponses(recognizeResponses, cancellationToken).ConfigureAwait(false);
+        await ProcessResponses(recognizeResponses).ConfigureAwait(false);
     }
 
-    internal async Task ProcessResponses(IAsyncEnumerable<StreamingRecognizeResponse> recognizeResponses, CancellationToken cancellationToken)
+    internal async Task ProcessResponses(IAsyncEnumerable<StreamingRecognizeResponse> recognizeResponses)
     {
         Exception? error = null;
         try {
-            await foreach (var response in recognizeResponses.WithCancellation(cancellationToken).ConfigureAwait(false))
+            await foreach (var response in recognizeResponses.ConfigureAwait(false))
                 ProcessResponse(response);
         }
         catch (Exception e) {
-            Log.LogWarning(e, $"{nameof(GoogleTranscriberProcess)}.{nameof(ProcessResponses)} failed. IsCancelled={{IsCancelled}}", cancellationToken.IsCancellationRequested);
+            Log.LogWarning(e, $"{nameof(GoogleTranscriberProcess)}.{nameof(ProcessResponses)} failed.");
             error = e;
             throw;
         }

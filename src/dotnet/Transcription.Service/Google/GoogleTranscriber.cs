@@ -45,10 +45,10 @@ public class GoogleTranscriber : ITranscriber
         var builder = new SpeechClientBuilder {
             Endpoint = endpoint,
         };
-        var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
+        var speechClient = await builder.BuildAsync(CancellationToken.None).ConfigureAwait(false);
         var recognizeRequests = speechClient
             .StreamingRecognize(
-                new CallSettings(cancellationToken, null, null, null, null, null),
+                CallSettings.FromCancellationToken(CancellationToken.None),
                 new BidirectionalStreamingSettings(1));
         var streamingRecognitionConfig = new StreamingRecognitionConfig {
             Config = new RecognitionConfig {
@@ -124,7 +124,7 @@ public class GoogleTranscriber : ITranscriber
                     .ConfigureAwait(false);
 
                 needsFinally = false;
-                Log.LogDebug("Restarting recognize process for {StreamId}", streamId);
+                Log.LogWarning("Restarting recognize process for {StreamId}", streamId);
                 recognizeRequests = speechClient
                     .StreamingRecognize(
                         CallSettings.FromCancellationToken(cancellationToken1),
