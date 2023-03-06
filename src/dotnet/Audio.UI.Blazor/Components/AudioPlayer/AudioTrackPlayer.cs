@@ -98,7 +98,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, false);
                     break;
                 default:
-                    throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
+                    throw StandardError.NotSupported(command.GetType(), "Unsupported command type.");
                 }
             }).ConfigureAwait(false);
 

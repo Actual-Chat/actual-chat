@@ -18,8 +18,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 {
     protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
-    public int QueueSize { get; init; } = Constants.Queues.MessageProcessorQueueDefaultSize;
-    public int MaxProcessCallDurationMs { get; init; } = Constants.Queues.MessageProcessorMaxProcessCallDurationMs;
+    public int QueueSize { get; init; } = Constants.MessageProcessing.QueueSize;
+    public TimeSpan ProcessCallTimeout { get; init; } = Constants.MessageProcessing.ProcessCallTimeout;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
 
     protected MessageProcessorBase(CancellationTokenSource? stopTokenSource = null)
@@ -92,10 +92,12 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
             Task<object?>? processTask = null;
             try {
                 process.CancellationToken.ThrowIfCancellationRequested();
-                processTask = Process(message, process.CancellationToken);
-                var result = await processTask
-                    .WaitAsync(TimeSpan.FromMilliseconds(MaxProcessCallDurationMs), process.CancellationToken)
-                    .ConfigureAwait(false);
+                object? result;
+                using (var cts = process.CancellationToken.CreateLinkedTokenSource()) {
+                    cts.CancelAfter(ProcessCallTimeout);
+                    processTask = Process(message, cts.Token);
+                    result = await processTask.ConfigureAwait(false);
+                }
                 if (result is Task<object?> resultTask) {
                     // Special case: Process may return Task<Task<object?>>,
                     // in this case we assume the rest of the processing will

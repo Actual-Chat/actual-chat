@@ -46,7 +46,7 @@ public sealed class Playback : ProcessorBase
     {
         var process = Stop(CancellationToken.None);
         await process.WhenCompleted.SuppressExceptions().ConfigureAwait(false);
-        await _messageProcessor.Complete().SuppressExceptions().ConfigureAwait(false);
+        await _messageProcessor.Complete().ConfigureAwait(false);
         await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SuppressExceptions().ConfigureAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
     }
@@ -79,7 +79,7 @@ public sealed class Playback : ProcessorBase
             PauseCommand => OnPauseCommand(),
             ResumeCommand => OnResumeCommand(),
             AbortCommand => OnAbortCommand(),
-            _ => throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.")
+            _ => throw StandardError.NotSupported(command.GetType(), "Unsupported command type."),
         };
 
         async Task<object?> OnPlayTrackCommand(PlayTrackCommand cmd)

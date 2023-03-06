@@ -43,6 +43,9 @@ public static partial class StandardError
     public static Exception NotSupported(string target, string message)
         => NotSupported($"{target}: {message}");
 
+    public static Exception Timeout(string target)
+        => new TimeoutException($"{target} has timed out.");
+
     public static Exception Unavailable(string message)
         => new InvalidOperationException(message);
 

@@ -51,6 +51,9 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper {
     @apply border;
 }
+.chat-audio-panel .recorder-wrapper.applying-changes {
+    @apply opacity-50;
+}
 .recorder-wrapper .recorder-icon {
     @apply h-10 w-10;
 }
