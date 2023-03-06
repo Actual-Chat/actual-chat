@@ -303,7 +303,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 
 .modal-frame.service-modal {
-    @apply md:gap-x-0 md:gap-y-0;
+    @apply md:gap-x-0;
     @apply max-w-72;
 }
 .modal-frame.service-modal .modal-header,
