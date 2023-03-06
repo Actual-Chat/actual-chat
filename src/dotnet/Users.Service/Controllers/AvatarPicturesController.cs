@@ -8,7 +8,8 @@ public class AvatarPicturesController : UploadControllerBase
 {
     private IAvatars Avatars { get; }
 
-    public AvatarPicturesController(IAvatars avatars) => Avatars = avatars;
+    public AvatarPicturesController(IAvatars avatars)
+        => Avatars = avatars;
 
     [HttpPost, Route("api/user-avatars/{avatarId}/upload-picture")]
     public Task<IActionResult> UploadPicture(Symbol avatarId, CancellationToken cancellationToken)
@@ -23,4 +24,8 @@ public class AvatarPicturesController : UploadControllerBase
 
         string GetContentIdPrefix() => $"avatar-pictures/{avatarId.Value.Replace(':', '_')}/picture-";
     }
+
+    [HttpPost, Route("api/user-avatars/upload-picture")]
+    public Task<ActionResult<MediaId>> UploadPicture(CancellationToken cancellationToken)
+        => Upload("media/avatars", cancellationToken);
 }

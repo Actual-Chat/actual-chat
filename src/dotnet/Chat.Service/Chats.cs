@@ -258,7 +258,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
                 await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
 
-                var attachment = new TextEntryAttachment() {
+                var attachment = new TextEntryAttachment {
                     EntryId = textEntryId,
                     Index = index,
                     Length = content.Length,

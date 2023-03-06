@@ -1,4 +1,5 @@
 using ActualChat.Db;
+using ActualChat.Medias.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -13,6 +14,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
+    public DbSet<DbMedia> Medias { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbUser> Users { get; protected set; } = null!;
@@ -24,6 +26,9 @@ public class UsersDbContext : DbContextBase
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
+        model.ApplyConfigurationsFromAssembly(typeof(DbMedia).Assembly).UseSnakeCaseNaming();
+    }
 #pragma warning restore IL2026
 }

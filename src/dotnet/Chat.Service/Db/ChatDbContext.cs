@@ -1,4 +1,5 @@
 using ActualChat.Db;
+using ActualChat.Medias.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
@@ -16,6 +17,7 @@ public class ChatDbContext : DbContextBase
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
+    public DbSet<DbMedia> Medias { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -24,6 +26,9 @@ public class ChatDbContext : DbContextBase
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(ChatDbContext).Assembly).UseSnakeCaseNaming();
+    {
+        model.ApplyConfigurationsFromAssembly(typeof(ChatDbContext).Assembly).UseSnakeCaseNaming();
+        model.ApplyConfigurationsFromAssembly(typeof(DbMedia).Assembly).UseSnakeCaseNaming();
+    }
 #pragma warning restore IL2026
 }

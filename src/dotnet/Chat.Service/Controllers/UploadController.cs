@@ -23,4 +23,8 @@ public class UploadController : UploadControllerBase
 
         string GetContentIdPrefix() => $"chat-pictures/{chatId}/picture-";
     }
+
+    [HttpPost, Route("api/chats/upload-picture")]
+    public Task<ActionResult<MediaId>> UploadPicture(CancellationToken cancellationToken)
+        => Upload("media/chat-pictures", cancellationToken);
 }

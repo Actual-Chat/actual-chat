@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\Medias.Service\Medias.Service.csproj" />
+    <ProjectReference Include="..\Medias\Medias.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
