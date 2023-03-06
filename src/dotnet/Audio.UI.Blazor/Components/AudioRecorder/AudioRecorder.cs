@@ -28,7 +28,7 @@ public class AudioRecorder : IAsyncDisposable
         Session = services.GetRequiredService<Session>();
         JS = services.GetRequiredService<IJSRuntime>();
         _state = services.StateFactory().NewMutable(
-            (AudioRecorderState)default,
+            AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         WhenInitialized = Initialize();
 
