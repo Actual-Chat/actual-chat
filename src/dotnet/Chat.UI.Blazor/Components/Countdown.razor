@@ -13,15 +13,14 @@
 
     [Parameter, EditorRequired] public Moment StopAt { get; set; }
     [Parameter] public string Format { get; set; } = "mm\\:ss";
-    [Parameter] public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(0.9);
+    [Parameter] public TimeSpan UpdatePeriod { get; set; } = TimeSpan.FromSeconds(0.9);
     [Parameter] public string Class { get; set; } = "";
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
-        if (StopAt <= Clocks.CpuClock.Now)
-            return Task.FromResult("");
-
-        var result = (Clocks.CpuClock.Now - StopAt).ToString(Format);
-        Computed.GetCurrent()!.Invalidate(UpdateInterval);
+        var remaining = (StopAt - Clocks.CpuClock.Now).Positive();
+        var result = remaining.ToString(Format);
+        if (remaining > TimeSpan.Zero)
+            Computed.GetCurrent()?.Invalidate(UpdatePeriod, true);
         return Task.FromResult(result);
     }
 }

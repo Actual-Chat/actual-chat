@@ -3,6 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatAudioUI
 {
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
+    private static readonly int MaxStopRecordingTryCount = 3;
 
     protected override Task RunInternal(CancellationToken cancellationToken)
     {
@@ -85,12 +86,12 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         while (true) {
             var cRecordingState = await cRecordingStateBase.When(x => !x.ChatId.IsNone, cancellationToken).ConfigureAwait(false);
-            var worker = FuncWorker.New(ct => RecordInChat(cRecordingState, ct), cancellationToken);
+            var worker = FuncWorker.New(ct => RecordChat(cRecordingState, ct), cancellationToken);
             await worker.Run().ConfigureAwait(false);
         }
     }
 
-    private async Task RecordInChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
+    private async Task RecordChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
     {
         var (chatId, language) = cRecordingState.Value;
         if (!InteractiveUI.IsInteractive.Value) {
@@ -106,7 +107,8 @@ public partial class ChatAudioUI
             }
         }
 
-        Task whenIdle = Stl.Async.TaskExt.NeverEndingTask;
+        Task? whenIdle = null;
+        var whenIdleCts = CancellationSource.NewLinked(cancellationToken);
         try {
             if (!cRecordingState.IsConsistent())
                 return;
@@ -114,28 +116,41 @@ public partial class ChatAudioUI
             await AudioRecorder.StartRecording(chatId, cancellationToken).ConfigureAwait(false);
 
             var whenChanged = ForegroundTask.Run(async () => {
-                await Task.Yield();
                 return await cRecordingState
                     .When(x => x.ChatId != chatId || x.Language != language, cancellationToken)
                     .ConfigureAwait(false);
             }, cancellationToken);
             whenIdle = ForegroundTask.Run(async () => {
-                await Task.Yield();
                 var options = new IdleAudioWatchOptions(AudioSettings.IdleRecordingTimeout,
                     AudioSettings.IdleRecordingTimeoutBeforeCountdown,
                     AudioSettings.IdleRecordingCheckInterval);
-                await foreach (var willStopAt in WatchIdleAudioBoundaries(chatId, options, cancellationToken).ConfigureAwait(false))
+                await foreach (var willStopAt in WatchIdleAudioBoundaries(chatId, options, whenIdleCts.Token).ConfigureAwait(false))
                     _stopRecordingAt.Value = willStopAt;
-            }, cancellationToken);
+            }, whenIdleCts.Token);
             await Task.WhenAny(whenChanged, whenIdle).ConfigureAwait(false);
         }
         finally {
-            if (whenIdle.IsCompleted)
-                await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+            if (whenIdle != null) {
+                if (whenIdle.IsCompleted)
+                    await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+                else {
+                    whenIdleCts.Cancel();
+                    await whenIdle.SuppressExceptions().ConfigureAwait(false);
+                }
+            }
+            _stopRecordingAt.Value = null;
 
             // Stopping the recording
-            while (!await AudioRecorder.StopRecording(CancellationToken.None).ConfigureAwait(false))
+            for (var tryIndex = 0;; tryIndex++) {
+                if (await AudioRecorder.StopRecording(CancellationToken.None).ConfigureAwait(false))
+                    break;
+                if (tryIndex >= MaxStopRecordingTryCount) {
+                    Log.LogError(nameof(RecordChat) + ": couldn't stop recording in {TryCount} tries", MaxStopRecordingTryCount);
+                    break;
+                }
+
                 await Clocks.CpuClock.Delay(1000, CancellationToken.None).ConfigureAwait(false);
+            }
         }
     }
 
