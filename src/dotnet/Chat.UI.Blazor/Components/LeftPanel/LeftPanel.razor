@@ -4,8 +4,8 @@
 
 <SideNav
     Side="SideNavSide.Left"
-    IsOpen="@NavbarUI.IsVisible.Value"
-    VisibilityChanged="@(isOpen => NavbarUI.SetIsVisible(isOpen))">
+    IsOpen="@Panels.Left.IsVisible.Value"
+    VisibilityChanged="@(isOpen => Panels.Left.SetIsVisible(isOpen))">
     <div class="flex-x h-full bg-04">
         <LeftPanelButtons/>
         <LeftPanelContent/>
@@ -13,13 +13,13 @@
 </SideNav>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private PanelsUI Panels { get; init; } = null!;
 
     protected override void OnInitialized()
-        => NavbarUI.VisibilityChanged += OnNavbarVisibilityChanged;
+        => Panels.Left.VisibilityChanged += OnNavbarVisibilityChanged;
 
     public void Dispose()
-        => NavbarUI.VisibilityChanged -= OnNavbarVisibilityChanged;
+        => Panels.Left.VisibilityChanged -= OnNavbarVisibilityChanged;
 
     private void OnNavbarVisibilityChanged(object? sender, EventArgs e)
         => InvokeAsync(StateHasChanged);

@@ -10,7 +10,7 @@
 <SideNav
     Side="SideNavSide.Right"
     IsOpen="@m.IsVisible"
-    VisibilityChanged="@(isOpen => RightPanelUI.SetIsVisible(isOpen))">
+    VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="flex-y md:w-80 h-full border-l border-bg-04">
         <RightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">
@@ -46,7 +46,7 @@
 </SideNav>
 
 @code {
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -62,7 +62,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
+        var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMembers = rules.CanSeeMembers();
         var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);

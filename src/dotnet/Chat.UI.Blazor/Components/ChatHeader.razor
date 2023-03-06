@@ -38,14 +38,13 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     private void OnSwitchRightPanelClick()
-        => RightPanelUI.Toggle();
+        => PanelsUI.Right.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => NavbarUI.SetIsVisible(true);
+        => PanelsUI.Left.SetIsVisible(true);
 }

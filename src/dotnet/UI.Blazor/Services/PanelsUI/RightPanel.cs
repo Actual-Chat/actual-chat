@@ -1,37 +1,32 @@
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.Services;
 
-public class RightPanelUI : IHasServices
+public class RightPanel
 {
     private readonly IStoredState<bool> _isVisible;
     private readonly object _lock = new();
 
-    private History History { get; }
-    private BrowserInfo BrowserInfo { get; }
-
-    public IServiceProvider Services { get; }
+    public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
 
-    public RightPanelUI(IServiceProvider services)
+    public RightPanel(PanelsUI owner)
     {
-        Services = services;
-        History = services.GetRequiredService<History>();
-        BrowserInfo = services.GetRequiredService<BrowserInfo>();
-
+        Owner = owner;
+        var services = owner.Services;
         var stateFactory = services.StateFactory();
-        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanelUI));
+        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanel) + "UI");
         _isVisible = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
                 InitialValue = false,
-                Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !IsNarrow()),
+                Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !Owner.IsNarrow()),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
-        History.Register(new OwnHistoryState(this, false));
+        var history = Owner.History;
+        history.Register(new OwnHistoryState(this, false));
         _isVisible.WhenRead.ContinueWith(
-            _ => History.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
+            _ => history.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
             TaskScheduler.Default);
     }
 
@@ -47,15 +42,12 @@ public class RightPanelUI : IHasServices
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value)
-            History.Save<OwnHistoryState>();
+            Owner.History.Save<OwnHistoryState>();
     }
-
-    private bool IsNarrow()
-        => BrowserInfo.ScreenSize.Value.IsNarrow();
 
     // Nested types
 
-    private sealed record OwnHistoryState(RightPanelUI Host, bool IsVisible) : HistoryState
+    private sealed record OwnHistoryState(RightPanel Host, bool IsVisible) : HistoryState
     {
         public override int BackStepCount => IsVisible ? 1 : 0;
 

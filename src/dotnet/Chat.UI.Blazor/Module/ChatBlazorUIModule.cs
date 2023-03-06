@@ -32,14 +32,13 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
-        services.AddScoped<NavbarUI>(c => new NavbarUI(c));
+        services.AddScoped<NavbarUI>(c => new NavbarUI());
+        services.AddScoped<PanelsUI>(c => new PanelsUI(c));
         services.AddScoped<AuthorUI>(c => new AuthorUI(c));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
-        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);

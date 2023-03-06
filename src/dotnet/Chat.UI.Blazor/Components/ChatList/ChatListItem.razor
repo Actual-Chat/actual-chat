@@ -107,7 +107,7 @@
 
         // This part hides Navbar when you click on selected chat
         await Task.Delay(TimeSpan.FromMilliseconds(100));
-        var navbarUI = ChatUI.Services.GetRequiredService<NavbarUI>();
-        navbarUI.SetIsVisible(false);
+        var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
+        panelsUI.Left.SetIsVisible(false);
     }
 }

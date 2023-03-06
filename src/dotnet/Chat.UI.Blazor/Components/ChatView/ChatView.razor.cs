@@ -32,12 +32,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
     internal IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
     internal Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
     private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
+    private InvisibleDelayer InvisibleDelayer { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -61,6 +64,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 },
                 ComputeIsViewportAboveUnreadEntry);
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
+
+            InvisibleDelayer = new InvisibleDelayer();
+            BrowserInfo.IsHidden.Updated += (_, _) => UpdateInvisibleDelayer();
+            PanelsUI.Middle.IsVisible.Updated += (_, _) => UpdateInvisibleDelayer();
+            UpdateInvisibleDelayer();
         }
         finally {
             _whenInitializedSource.SetResult(Unit.Default);
@@ -139,6 +147,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         CancellationToken cancellationToken)
     {
         await WhenInitialized;
+
+        await InvisibleDelayer.Use();
 
         var chat = Chat;
         var chatId = chat.Id;
@@ -308,8 +318,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEmpty || readPositionState == null)
             return;
 
-        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
+        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid) {
+            Log.LogWarning("About to update read position for chat '{ChatId}' from {CurrentValue} to {NewValue}",
+                Chat.Id, readPositionState.Value.EntryLid, itemVisibility.MaxEntryLid);
             readPositionState.Value = new ChatPosition(itemVisibility.MaxEntryLid);
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -329,5 +342,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var readEntryLid = chatPosition?.EntryLid ?? 0;
         var visibility = await ItemVisibility.Use(cancellationToken);
         return readEntryLid > 0 && visibility.MaxEntryLid > 0 && visibility.MaxEntryLid < readEntryLid;
+    }
+
+    private void UpdateInvisibleDelayer()
+    {
+        var isVisible = !BrowserInfo.IsHidden.Value && PanelsUI.Middle.IsVisible.Value;
+        Log.LogWarning("Chat view is visible: {IsVisible}", isVisible);
+        InvisibleDelayer.SetIsVisible(isVisible);
+        if (!isVisible && _doNotShowNewMessagesSeparator)
+            _doNotShowNewMessagesSeparator = false;
     }
 }

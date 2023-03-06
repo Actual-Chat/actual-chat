@@ -14,7 +14,7 @@
 }
 
 @code {
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
     [Parameter] public EventCallback OnClick { get; set; }
 
@@ -25,5 +25,5 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await RightPanelUI.IsVisible.Use(cancellationToken);
+        => await PanelsUI.Right.IsVisible.Use(cancellationToken);
 }
