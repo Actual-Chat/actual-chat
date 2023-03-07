@@ -115,6 +115,11 @@ const serverImpl: OpusEncoderWorker = {
         lastInitArguments = { sessionId, chatId };
         debugLog?.log(`start`);
 
+        // Ensure audio transport is up and running
+        const pong = await hubConnection.invoke('Ping');
+        if (pong !== 'Pong')
+            warnLog.log(`start: unexpected Ping call result`, pong);
+
         state = 'encoding';
         vadState = 'silence';
     },
