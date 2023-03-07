@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class CircuitTracerProvider : TracerProvider, IDisposable
 {
-    private static long _nextId;
+    private static long _lastId;
 
     public CircuitTracerProvider()
     {
@@ -13,7 +13,7 @@ public class CircuitTracerProvider : TracerProvider, IDisposable
         }
 
         var processId = RuntimeInfo.Process.MachinePrefixedId.Value;
-        var id = Interlocked.Increment(ref _nextId);
+        var id = Interlocked.Increment(ref _lastId);
         Tracer = new Tracer($"{defaultTracer.Name}.Circuit-{processId}-{id.Format()}", defaultTracer.Writer);
     }
 

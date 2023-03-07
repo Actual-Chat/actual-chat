@@ -8,6 +8,7 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class History : IHasServices, IDisposable
 {
     public const int MaxItemCount = 200;
+    public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1);
 
     private Session? _session;
     private Dispatcher? _dispatcher;
@@ -24,8 +25,9 @@ public partial class History : IHasServices, IDisposable
     public Session Session => _session ??= Services.GetRequiredService<Session>();
     public HostInfo HostInfo { get; }
     public UrlMapper UrlMapper { get; }
-    public NavigationManager Nav { get; }
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    public MomentClockSet Clocks { get; }
+    public NavigationManager Nav { get; }
     public IJSRuntime JS { get; }
 
     public HistoryItem? this[long itemId] {
@@ -51,15 +53,20 @@ public partial class History : IHasServices, IDisposable
         ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
+        Clocks = services.Clocks();
         Nav = services.GetRequiredService<NavigationManager>();
         JS = services.GetRequiredService<IJSRuntime>();
 
-        _isSaveSuppressed = new LocalValue<bool>(false);
-        _saveRegion = new LockedRegionWithExitAction("Save", Lock);
-        _locationChangeRegion = new LockedRegionWithExitAction("LocationChange", Lock);
+        _isSaveSuppressed = new RegionalValue<bool>(false);
+        _saveRegion = new NoRecursionRegionWithExitAction("Save", Lock, Log);
+        _locationChangeRegion = new NoRecursionRegionWithExitAction("LocationChange", Lock, Log);
         _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
+        var whenNavigationCompletedSource = TaskSource.New<Unit>(true);
+        _whenNavigationCompleted = whenNavigationCompletedSource.Task;
+        whenNavigationCompletedSource.TrySetResult(default);
+        _processNextNavigationActionUnsafeCached = () => ProcessNextNavigationUnsafe();
 
         if (!HostInfo.AppKind.IsTestServer())
             Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);

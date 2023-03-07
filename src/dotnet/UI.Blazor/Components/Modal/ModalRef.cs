@@ -1,10 +1,12 @@
 ﻿using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 {
+    private static long _lastId;
     private readonly TaskSource<Unit> _whenShownSource = TaskSource.New<Unit>(true);
     private readonly TaskSource<Unit> _whenClosedSource = TaskSource.New<Unit>(true);
     private RenderFragment _view = null!;
@@ -20,7 +22,7 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 
     public ModalRef(ModalOptions options, object model, ModalHost host)
     {
-        Id = $"modal-{Ulid.NewUlid().ToString()}";
+        Id = $"Modal-{model.GetType().GetName()}-{Interlocked.Increment(ref _lastId)}";
         Options = options;
         Model = model;
         Host = host;

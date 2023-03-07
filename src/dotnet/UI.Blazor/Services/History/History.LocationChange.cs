@@ -5,18 +5,11 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
 {
-    private readonly LockedRegionWithExitAction _locationChangeRegion;
-
-    private void LocationChange(HistoryItem newItem, Action? stateMutator = null)
-    {
-        var eventArgs = new LocationChangedEventArgs(newItem.Uri, true);
-        LocationChange(eventArgs, newItem, stateMutator);
-    }
+    private readonly NoRecursionRegionWithExitAction _locationChangeRegion;
 
     private void LocationChange(
         LocationChangedEventArgs eventArgs,
-        HistoryItem? newItem = null,
-        Action? stateMutator = null)
+        HistoryItem? newItem = null)
     {
         using var _ = _locationChangeRegion.Enter();
         if (DebugLog != null) {
@@ -67,18 +60,6 @@ public partial class History
                     else
                         ReplaceNavigationHistoryEntry(currentItem);
                 };
-
-                if (stateMutator != null) {
-                    using (_isSaveSuppressed.Change(true))
-                        try {
-                            stateMutator.Invoke();
-                        }
-                        catch (Exception e) {
-                            Log.LogError(e, "LocationChange: New item updater failed");
-                        }
-                    Save();
-                    currentItem = _currentItem;
-                }
             }
 
             /*
@@ -101,6 +82,17 @@ public partial class History
             catch (Exception ex) {
                 Log.LogError(ex, "LocationChange: One of LocationChanged handlers failed");
             }
+            var exitAction = _locationChangeRegion.ExitAction!;
+            _locationChangeRegion.ExitAction = exitAction == Delegates.Noop
+                ? _processNextNavigationActionUnsafeCached
+                : () => {
+                    try {
+                        exitAction.Invoke();
+                    }
+                    finally {
+                        ProcessNextNavigationUnsafe();
+                    }
+                };
         }
     }
 

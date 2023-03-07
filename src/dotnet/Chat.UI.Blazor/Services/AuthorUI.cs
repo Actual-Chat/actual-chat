@@ -35,7 +35,7 @@ public sealed class AuthorUI
             await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
         else {
             var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
-            History.NavigateTo(Links.Chat(peerChatId));
+            _ = History.NavigateTo(Links.Chat(peerChatId));
         }
     }
 }

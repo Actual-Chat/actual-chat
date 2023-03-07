@@ -190,7 +190,7 @@
             if (createAuthorsError != null)
                 return;
 
-            History.NavigateTo(Links.Chat(chat.Id));
+            _ = History.NavigateTo(Links.Chat(chat.Id));
             // Required for proper navigation to the newly created chat
             await Task.Delay(100);
             Modal.Close();

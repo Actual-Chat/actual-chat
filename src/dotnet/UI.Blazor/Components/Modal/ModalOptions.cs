@@ -2,10 +2,18 @@
 
 public sealed record ModalOptions
 {
-    public static ModalOptions Default { get; } = new() {
+    public static ModalOptions Implicit { get; set; } = new() {
         Class = "modal",
         OverlayClass = "modal-overlay",
         UseFocusTrap = true,
+    };
+    public static ModalOptions Default { get; set; } = new() {
+        Class = "",
+        OverlayClass = "",
+        UseFocusTrap = null,
+    };
+    public static ModalOptions FullScreen { get; set; } = Default with {
+        OverlayClass = "modal-overlay-fullscreen",
     };
 
     public string Class { get; init; } = "";
@@ -13,10 +21,13 @@ public sealed record ModalOptions
     public bool? UseFocusTrap { get; init; }
     public Action<ModalRef>? Closing { get; init; }
 
-    public ModalOptions WithDefaults(ModalOptions defaults)
-        => new() {
-            Class = $"{Class} {defaults.Class}",
-            OverlayClass = $"{OverlayClass} {defaults.OverlayClass}",
-            UseFocusTrap = UseFocusTrap ?? defaults.UseFocusTrap,
+    public ModalOptions WithImplicit(ModalOptions? @implicit = null)
+    {
+        @implicit ??= Implicit;
+        return new () {
+            Class = $"{Class} {@implicit.Class}",
+            OverlayClass = $"{OverlayClass} {@implicit.OverlayClass}",
+            UseFocusTrap = UseFocusTrap ?? @implicit.UseFocusTrap,
         };
+    }
 }
