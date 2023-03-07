@@ -27,13 +27,11 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
         MatchingTypeFinder = services.GetRequiredService<IMatchingTypeFinder>();
     }
 
-    public async Task<ModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
+    public Task<ModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
-        var options = new ModalOptions() {
-            OverlayClass = isFullScreen ? "modal-overlay-fullscreen" : "",
-        };
-        return await Show(model, options);
+        var options = isFullScreen ? ModalOptions.FullScreen : ModalOptions.Default;
+        return Show(model, options);
     }
 
     public async Task<ModalRef> Show<TModel>(TModel model, ModalOptions options)

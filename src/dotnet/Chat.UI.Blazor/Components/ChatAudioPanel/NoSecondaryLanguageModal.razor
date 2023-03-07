@@ -1,7 +1,7 @@
-@namespace ActualChat.UI.Blazor.Components
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using Stl.Extensibility
 @using ActualChat.UI.Blazor.Events
-@implements IModalView<LanguageModal.Model>
+@implements IModalView<NoSecondaryLanguageModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <DialogFrame Class="service-modal">
@@ -20,6 +20,7 @@
 
 @code {
     [Inject] private ModalUI ModalUI { get; set; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -27,8 +28,11 @@
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private void OnClick()
-        => _ = UIEventHub.Publish(new ShowSettingsEvent());
+    private async Task OnClick() {
+        Modal.Close();
+        await History.WhenNavigationCompleted;
+        _ = UIEventHub.Publish(new ShowSettingsEvent());
+    }
 
     public sealed record Model;
 }

@@ -33,7 +33,7 @@
         if (!result.HasError) {
             Modal.Close();
             if (isSelectedChat && !ModalModel.Chat.IsPublic)
-                History.NavigateTo(Links.Chats);
+                _ = History.NavigateTo(Links.Chats);
         }
     }
 

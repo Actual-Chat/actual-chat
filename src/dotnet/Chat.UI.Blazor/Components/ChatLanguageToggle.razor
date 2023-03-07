@@ -33,6 +33,6 @@
         if (languages.Secondary != null)
             await LanguageUI.ChangeChatLanguage(Chat.Id);
         else
-            _ = ModalUI.Show(new LanguageModal.Model());
+            _ = ModalUI.Show(new NoSecondaryLanguageModal.Model());
     }
 }

@@ -29,6 +29,6 @@
 
         var invite = useResult.Value;
         var chatInvite = invite.Details.Chat.Require();
-        History.NavigateTo(Links.Chat(chatInvite.ChatId));
+        _ = History.NavigateTo(Links.Chat(chatInvite.ChatId));
     }
 }

@@ -1,9 +1,10 @@
 namespace ActualChat.Concurrency;
 
-public sealed class LockedRegionWithExitAction
+public sealed class NoRecursionRegionWithExitAction
 {
     private Action? _exitAction;
     private object Lock { get; }
+    private ILogger Log { get; }
 
     public string Name { get; }
     public bool IsInside => _exitAction != null;
@@ -13,13 +14,14 @@ public sealed class LockedRegionWithExitAction
         set => _exitAction = value ?? throw new ArgumentNullException(nameof(value));
     }
 
-    public LockedRegionWithExitAction(string name, object @lock)
+    public NoRecursionRegionWithExitAction(string name, object @lock, ILogger log)
     {
         Name = name;
         Lock = @lock;
+        Log = log;
     }
 
-    public ClosedDisposable<LockedRegionWithExitAction> Enter()
+    public ClosedDisposable<NoRecursionRegionWithExitAction> Enter()
     {
         Monitor.Enter(Lock);
         try {
@@ -31,12 +33,16 @@ public sealed class LockedRegionWithExitAction
             throw;
         }
 
-        return new ClosedDisposable<LockedRegionWithExitAction>(this, static self => {
+        return new ClosedDisposable<NoRecursionRegionWithExitAction>(this, static self => {
             var exitAction = self._exitAction;
             self._exitAction = null;
             try {
                 if (exitAction != Delegates.Noop)
                     exitAction!.Invoke();
+            }
+            catch (Exception e) {
+                // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+                self.Log.LogError(e, $"{self.Name}: ExitAction failed");
             }
             finally {
                 Monitor.Exit(self.Lock);

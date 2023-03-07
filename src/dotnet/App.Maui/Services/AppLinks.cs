@@ -37,10 +37,11 @@ public static class AppLinks
             var serviceProvider = ScopedServicesAccessor.ScopedServices;
             var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
+
             var log = serviceProvider.LogFor(typeof(AppLinks));
             log.LogDebug("AppLink navigates to '{Url}'", localUrl);
             var history = serviceProvider.GetRequiredService<History>();
-            history.NavigateTo(localUrl);
+            _ = history.NavigateTo(localUrl);
         }
         _ = Handle();
     }

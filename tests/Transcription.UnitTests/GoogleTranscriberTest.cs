@@ -15,7 +15,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task DuplicateFinalResponsesTest()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
+        await process.ProcessResponses(GenerateResponses());
 
         var transcripts = await process.GetTranscripts().ToListAsync();
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
@@ -183,7 +183,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"), CancellationToken.None);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"));
 
         var transcripts = await process.GetTranscripts().ToListAsync();
         var transcript = transcripts.ApplyDiffs().Last();
@@ -195,7 +195,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task LongTranscriptProducesCorrectDiff()
     {
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"), CancellationToken.None);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"));
 
         var transcripts = process.GetTranscripts();
         var memoizedTranscripts = transcripts.Memoize();

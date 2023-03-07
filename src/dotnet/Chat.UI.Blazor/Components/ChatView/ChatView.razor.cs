@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
@@ -121,7 +122,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    History.NavigateTo(uriWithoutFragment);
+                    _ = History.NavigateTo(uriWithoutFragment);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();

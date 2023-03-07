@@ -10,6 +10,8 @@ public sealed record HistoryItem(
     NavigationAction OnNavigation = default
     ) : IEnumerable<KeyValuePair<Type, HistoryState>>
 {
+    public static HistoryItem Null => null!;
+
     public long Id { get; init; }
     public bool IsStored => Id != 0;
 

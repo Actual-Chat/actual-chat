@@ -70,7 +70,7 @@ default:
             await ImageViewerUI.Show(url);
             break;
         case MarkupUrlKind.Local:
-            History.NavigateTo(url);
+            _ = History.NavigateTo(url);
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(urlKind));
