@@ -175,7 +175,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             offsetMs += 20;
             frameInBlockCount++;
 
-            if (frameInBlockCount < 3)
+            if (frameInBlockCount <= 5)
                 continue;
 
             frameInBlockCount = 0;
