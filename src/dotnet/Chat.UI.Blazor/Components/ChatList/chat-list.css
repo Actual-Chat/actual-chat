@@ -65,7 +65,7 @@ body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {
 }
 .chat-list .navbar-item .recording-in-chat.on .btn-content,
 body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on .btn-content {
-    @apply text-recorder-on;
+    @apply text-icons-04;
 }
 
 /* Menu */

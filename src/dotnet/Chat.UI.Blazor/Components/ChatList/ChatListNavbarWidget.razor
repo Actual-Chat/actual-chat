@@ -13,8 +13,12 @@
              Class="chats-tab">
             <TitleContent>
                 <span>@filter.Title</span>
-                <UnreadCount Value="@m.UnreadCountsByChatFilter.GetValueOrDefault(filter.Id)" Click="@OnUnreadBadgeClick"/>
             </TitleContent>
+            <AdditionalElement>
+                <div class="c-badge flex items-center justify-center w-6 mr-2">
+                    <UnreadCount Value="@m.UnreadCountsByChatFilter.GetValueOrDefault(filter.Id)" Click="@OnUnreadBadgeClick"/>
+                </div>
+            </AdditionalElement>
             <ChildContent>
                 <div class="flex-y my-2">
                     <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>

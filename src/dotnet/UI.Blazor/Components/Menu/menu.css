@@ -85,10 +85,10 @@ body.hoverable .ac-menu-item:hover .ac-menu-icon {
     @apply text-error;
 }
 body.hoverable .ac-menu-item.important-item.on:hover {
-    @apply bg-error-hover;
+    @apply bg-menuitem-hover-warning;
 }
 body.hoverable .ac-menu-item.warning-item:hover {
-    @apply bg-error-hover;
+    @apply bg-menuitem-hover-warning;
 }
 body.hoverable .ac-menu-item.warning-item:hover .ac-menu-icon > i,
 body.hoverable .ac-menu-item.warning-item:hover .ac-menu-text {
