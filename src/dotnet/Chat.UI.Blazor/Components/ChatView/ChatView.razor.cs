@@ -148,7 +148,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         await WhenInitialized;
 
-        await InvisibleDelayer.Use();
+        var task = InvisibleDelayer.Use();
+        var unblocked = false;
+        if (!task.IsCompleted) {
+            Log.LogWarning("About to await on InvisibleDelayer task");
+            await task;
+            Log.LogWarning("Completed to await on InvisibleDelayer task");
+            unblocked = true;
+        }
 
         var chat = Chat;
         var chatId = chat.Id;
@@ -213,6 +220,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
 
+        Log.LogWarning("Query params. Query='{Query}', chatIdRange='{chatIdRange}', idRangeToLoad='{idRangeToLoad}'",
+            query, chatIdRange, idRangeToLoad);
+
         var idTiles = IdTileStack.GetOptimalCoveringTiles(idRangeToLoad);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
@@ -228,6 +238,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (_itemVisibilityUpdateHasReceived) {
                 var itemVisibility = ItemVisibility.Value;
                 if (itemVisibility.IsEndAnchorVisible) {
+                    var maxEntryLid = itemVisibility.MaxEntryLid;
+                    var lastEntryId = lastTile.Entries.Length > 0 ? lastTile.Entries.Max(c => c.Id.LocalId) : -1;
+                    if (lastEntryId < 0 || maxEntryLid < lastEntryId)
+                        Log.LogWarning("Tracking EndAnchor issue. MaxEntryLid={MaxEntryLid}, LastEntryId={LastEntryId}",
+                            maxEntryLid, lastEntryId);
+                    // TODO(DF): seems required to be reworked
                     var newMessagesSeparatorIsVisible = _initialReadEntryLid.HasValue
                         && itemVisibility.VisibleEntryLids.Contains(_initialReadEntryLid.Value);
                     // If user still sees '-new-' separator while they has reached the end anchor, keep separator displayed.
@@ -248,6 +264,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             hasVeryLastItem,
             TimeZoneConverter);
 
+        if (unblocked && !hasVeryLastItem) {
+            Log.LogError("Does not contain very last item after unblocking. " + System.Environment.NewLine +
+                    "  Query='{Query}', chatIdRange='{chatIdRange}', idRangeToLoad='{idRangeToLoad}'",
+                query, chatIdRange, idRangeToLoad);
+        }
+
         var result = VirtualListData.New(
             new VirtualListDataQuery(idRangeToLoad.AsStringRange()),
             chatMessages,
@@ -260,6 +282,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var highlightedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, entryLid, AssumeValid.Option);
             ChatUI.HighlightEntry(highlightedEntryId, navigate: false);
         }
+
+        Log.LogWarning("Computed Data for VirtualList");
 
         return result;
     }
