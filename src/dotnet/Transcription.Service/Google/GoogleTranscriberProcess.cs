@@ -2,7 +2,6 @@ using System.Numerics;
 using Cysharp.Text;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf;
-using Exception = System.Exception;
 
 namespace ActualChat.Transcription.Google;
 
@@ -41,7 +40,7 @@ public class GoogleTranscriberProcess : WorkerBase
         });
     }
 
-    public IAsyncEnumerable<Transcript> GetTranscripts(
+    public IAsyncEnumerable<Transcript> GetTranscriptDiffs(
         CancellationToken cancellationToken = default)
         => _transcripts.Reader.ReadAllAsync(cancellationToken);
 
@@ -70,7 +69,7 @@ public class GoogleTranscriberProcess : WorkerBase
         }
         finally {
             if (error == null) {
-                var finalTranscript = _state.Complete();
+                var finalTranscript = _state.MarkStable();
                 _transcripts.Writer.TryWrite(finalTranscript);
             }
             _transcripts.Writer.TryComplete(error);
@@ -88,7 +87,7 @@ public class GoogleTranscriberProcess : WorkerBase
             var result = results.Single(r => r.IsFinal);
             if (!TryParseFinal(result, out var text, out var textToTimeMap)) {
                 Log.LogWarning("Final transcript discarded. State.LastStable={LastStable}, Response={Response}",
-                    _state.LastStable, response);
+                    _state.Stable, response);
                 return;
             }
             transcript = _state.AppendStable(text, textToTimeMap);
@@ -105,23 +104,23 @@ public class GoogleTranscriberProcess : WorkerBase
 
             // Google Transcribe issue: doesn't provide IsFinal results time to time, so let's implement some heuristics
             // when we can Complete current transcript
-            if (_state.LastStable == Transcript.EmptyStable) {
-                if (_state.Last.Length > text.Length + 4)
-                    _state.Complete();
+            if (ReferenceEquals(_state.Stable, Transcript.Empty)) {
+                if (_state.Unstable.Length > text.Length + 4)
+                    _state.MarkStable();
             }
             else {
-                var diffMap = _state.LastStable.TextToTimeMap.GetDiffSuffix(_state.Last.TextToTimeMap);
+                var diffMap = _state.Stable.TimeMap.GetDiffSuffix(_state.Unstable.TimeMap);
                 if (diffMap.XRange.Size() > text.Length + 24)
-                    _state.Complete();
+                    _state.MarkStable();
             }
 
-            if (_state.LastStable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
+            if (_state.Stable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
                 // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
 
-            transcript = _state.AppendAlternative(text, endTime);
+            transcript = _state.AppendUnstable(text, endTime);
         }
         DebugLog?.LogDebug("Transcript={Transcript}", transcript);
         _transcripts.Writer.TryWrite(transcript);
@@ -130,9 +129,9 @@ public class GoogleTranscriberProcess : WorkerBase
     private bool TryParseFinal(StreamingRecognitionResult result,
         out string text, out LinearMap textToTimeMap)
     {
-        var lastStable = _state.LastStable;
+        var lastStable = _state.Stable;
         var lastStableTextLength = lastStable.Text.Length;
-        var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
+        var lastStableDuration = lastStable.TimeMap.YRange.End;
 
         var alternative = result.Alternatives.Single();
         var resultEndOffset = result.ResultEndOffset;
@@ -179,7 +178,7 @@ public class GoogleTranscriberProcess : WorkerBase
             mapPoints[^1] = veryLastPoint;
         else
             mapPoints.Add(veryLastPoint);
-        textToTimeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TextToTimeMapTimePrecision);
+        textToTimeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
         return true;
     }
 

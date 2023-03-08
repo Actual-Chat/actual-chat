@@ -31,7 +31,7 @@ public sealed class TranscriptPostProcessor : TranscriptionProcessorBase
             }
 
             var newText = ZString.Concat(text[..contentStart], firstLetterUpper, text[(contentStart + 1)..]);
-            var newTranscript = new Transcript(newText, transcript.TextToTimeMap, transcript.IsStable);
+            var newTranscript = new Transcript(newText, transcript.TimeMap, transcript.IsStable);
             yield return newTranscript;
         }
     }

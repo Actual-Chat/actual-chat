@@ -28,8 +28,7 @@ public class GoogleTranscriber : ITranscriber
         _projectIdTask = BackgroundTask.Run(LoadProjectId);
     }
 
-    public async IAsyncEnumerable<Transcript> Transcribe(
-        Symbol transcriberKey,
+    public async IAsyncEnumerable<TranscriptDiff> Transcribe(
         string streamId,
         AudioSource audioSource,
         TranscriptionOptions options,
@@ -75,7 +74,7 @@ public class GoogleTranscriber : ITranscriber
             .ConcatUntil(silenceAudioSource, TimeSpan.FromSeconds(4), cancellationToken);
         var byteStream = webMStreamAdapter.Write(resultAudioSource, cancellationToken);
         var memoizedByteStream = byteStream.Memoize(cancellationToken);
-        var transcriptChannel = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
+        var transcriptDiffs = Channel.CreateUnbounded<TranscriptDiff>(new UnboundedChannelOptions {
             SingleWriter = true,
             SingleReader = true,
         });
@@ -87,7 +86,7 @@ public class GoogleTranscriber : ITranscriber
             $"{nameof(GoogleTranscriber)}.{nameof(Transcribe)} failed",
             cancellationToken);
 
-        await foreach(var transcript in transcriptChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach(var transcript in transcriptDiffs.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             yield return transcript;
 
         await runTask.ConfigureAwait(false);
@@ -106,8 +105,12 @@ public class GoogleTranscriber : ITranscriber
                     Log);
                 var processRunTask = process.Run();
                 await using var _ = process.ConfigureAwait(false);
-                await foreach (var transcript in process.GetTranscripts(handleTranscriptCts.Token).ConfigureAwait(false))
-                    await transcriptChannel.Writer.WriteAsync(transcript, handleTranscriptCts.Token).ConfigureAwait(false);
+                var lastTranscript = Transcript.Empty;
+                await foreach (var transcript in process.GetTranscriptDiffs(handleTranscriptCts.Token).ConfigureAwait(false)) {
+                    var diff = transcript - lastTranscript;
+                    lastTranscript = transcript;
+                    await transcriptDiffs.Writer.WriteAsync(diff, handleTranscriptCts.Token).ConfigureAwait(false);
+                }
                 await processRunTask.ConfigureAwait(false);
             }
             catch (RpcException e) when (
@@ -144,7 +147,7 @@ public class GoogleTranscriber : ITranscriber
             }
             finally {
                 if (needsFinally)
-                    transcriptChannel.Writer.TryComplete(error);
+                    transcriptDiffs.Writer.TryComplete(error);
             }
         }
     }

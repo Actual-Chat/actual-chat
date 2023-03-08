@@ -51,7 +51,7 @@ public class TranscriptSplitter : TranscriptionProcessorBase
                     var contentStart = suffix.GetContentStart();
                     if (contentStart == suffix.TextRange.End)
                         continue; // Empty suffix
-                    var contentStartTime = suffix.TextToTimeMap.Map(contentStart);
+                    var contentStartTime = suffix.TimeMap.Map(contentStart);
 
                     var pauseDuration = contentStartTime - lastSentTranscript.GetContentEndTime();
                     var maxTextId = await GetMaxTextId(false).ConfigureAwait(false);

@@ -4,8 +4,7 @@ namespace ActualChat.Transcription;
 
 public interface ITranscriber
 {
-    IAsyncEnumerable<Transcript> Transcribe(
-        Symbol transcriberKey,
+    IAsyncEnumerable<TranscriptDiff> Transcribe(
         string streamId,
         AudioSource audioSource,
         TranscriptionOptions options,

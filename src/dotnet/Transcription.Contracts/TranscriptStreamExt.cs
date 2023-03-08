@@ -2,15 +2,15 @@ namespace ActualChat.Transcription;
 
 public static class TranscriptStreamExt
 {
-    public static async IAsyncEnumerable<Transcript> GetDiffs(
+    public static async IAsyncEnumerable<TranscriptDiff> GetDiffs(
         this IAsyncEnumerable<Transcript> transcripts,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var lastTranscript = new Transcript();
+        var lastTranscript = Transcript.Empty;
         await foreach (var transcript in transcripts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var diff = transcript.DiffWith(lastTranscript);
+            var diff = transcript - lastTranscript;
             lastTranscript = transcript;
-            if (diff.Length == 0)
+            if (diff.IsNone)
                 continue;
 
             yield return diff;
@@ -18,21 +18,21 @@ public static class TranscriptStreamExt
     }
 
     public static async IAsyncEnumerable<Transcript> ApplyDiffs(
-        this IAsyncEnumerable<Transcript> diffs,
+        this IAsyncEnumerable<TranscriptDiff> diffs,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        Transcript? transcript = null;
+        Transcript transcript = Transcript.Empty;
         await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            transcript = transcript == null ? diff : transcript.WithDiff(diff);
+            transcript += diff;
             yield return transcript;
         }
     }
 
-    public static IEnumerable<Transcript> ApplyDiffs(this IEnumerable<Transcript> diffs)
+    public static IEnumerable<Transcript> ApplyDiffs(this IEnumerable<TranscriptDiff> diffs)
     {
-        Transcript? transcript = null;
+        Transcript transcript = Transcript.Empty;
         foreach (var diff in diffs) {
-            transcript = transcript == null ? diff : transcript.WithDiff(diff);
+            transcript += diff;
             yield return transcript;
         }
     }

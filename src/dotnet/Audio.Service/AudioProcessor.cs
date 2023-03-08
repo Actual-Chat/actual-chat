@@ -293,7 +293,7 @@ public sealed class AudioProcessor : IAudioProcessor
         }
         finally {
             if (transcript != null && textEntry != null) {
-                var textToTimeMap = transcript.TextToTimeMap.Move(-transcript.TextRange.Start, 0);
+                var textToTimeMap = transcript.TimeMap.Move(-transcript.TextRange.Start, 0);
                 textEntry = textEntry with {
                     Content = transcript.Text,
                     StreamId = Symbol.Empty,

@@ -39,7 +39,7 @@ public class TranscriptUpdateTests : TestBase
         Out.WriteLine(transcript.ToString());
 
         transcript.Text.Length.Should().Be(58);
-        transcript.TextToTimeMap.Data.Should()
+        transcript.TimeMap.Data.Should()
             .Equal(0, 0, 23, 4, 58, 8.34f);
     }
 
@@ -84,17 +84,17 @@ public class TranscriptUpdateTests : TestBase
         var extractor = new TranscriberState();
         var t = new Transcript();
         t.IsStable.Should().BeFalse();
-        t = extractor.AppendAlternative("раз-два-три-четыре-пять,", 4.68f);
+        t = extractor.AppendUnstable("раз-два-три-четыре-пять,", 4.68f);
         t.IsStable.Should().BeFalse();
         t = extractor.AppendStable("раз-два-три-четыре-пять, 67", 4.98f);
         t.IsStable.Should().BeTrue();
-        t = extractor.AppendAlternative(" вот", 8.14f);
+        t = extractor.AppendUnstable(" вот", 8.14f);
         Dump(t);
         t.IsStable.Should().BeFalse();
-        t = extractor.AppendAlternative(" Вот это", 8.56f);
+        t = extractor.AppendUnstable(" Вот это", 8.56f);
         Dump(t);
         t.IsStable.Should().BeFalse();
-        t.TextToTimeMap.Data.Should()
+        t.TimeMap.Data.Should()
             .Equal(0, 0, 27, 4.98f, 35, 8.56f);
     }
 
@@ -104,14 +104,14 @@ public class TranscriptUpdateTests : TestBase
         var extractor = new TranscriberState();
         var t = new Transcript();
         _ = extractor.AppendStable("1", 1);
-        Dump(extractor.LastStable);
+        Dump(extractor.Stable);
         _ = extractor.AppendStable(" 2", 2);
-        Dump(extractor.LastStable);
+        Dump(extractor.Stable);
         _ = extractor.AppendStable(" 3", new LinearMap(3, 2, 5, 3));
-        t = extractor.AppendStable("", extractor.LastStable.TimeRange.End);
+        t = extractor.AppendStable("", extractor.Stable.TimeRange.End);
         Dump(t);
         t.IsStable.Should().BeTrue();
-        t.TextToTimeMap.Length.Should().Be(4);
+        t.TimeMap.Length.Should().Be(4);
     }
 
     [Fact]
@@ -119,14 +119,14 @@ public class TranscriptUpdateTests : TestBase
     {
         var extractor = new TranscriberState();
         var t = new Transcript();
-        _ = extractor.AppendAlternative("1", 1);
-        Dump(extractor.LastStable);
-        t = extractor.AppendAlternative(" 2", 2);
-        Dump(extractor.LastStable);
+        _ = extractor.AppendUnstable("1", 1);
+        Dump(extractor.Stable);
+        t = extractor.AppendUnstable(" 2", 2);
+        Dump(extractor.Stable);
         t.IsStable.Should().BeFalse();
-        t = extractor.Complete();
+        t = extractor.MarkStable();
         t.IsStable.Should().BeTrue();
-        t.TextToTimeMap.Length.Should().Be(2);
+        t.TimeMap.Length.Should().Be(2);
     }
 
     [Fact]
@@ -137,16 +137,16 @@ public class TranscriptUpdateTests : TestBase
         var rnd = new Random(0);
         for (var offset = 0; offset <= text.Length; offset += rnd.Next(3)) {
             var isFinal = rnd.Next(3) == 0;
-            var finalTextLength = extractor.LastStable.Text.Length;
+            var finalTextLength = extractor.Stable.Text.Length;
             var t = isFinal
                 ? extractor.AppendStable(text[finalTextLength..offset], offset)
-                : extractor.AppendAlternative(text[finalTextLength..offset], offset);
+                : extractor.AppendUnstable(text[finalTextLength..offset], offset);
             var expected = text[..offset];
 
             t.Text.Should().Be(expected);
-            t.TextToTimeMap.IsValid().Should().BeTrue();
+            t.TimeMap.IsValid().Should().BeTrue();
             for (var i = 0; i <= offset; i++)
-                t.TextToTimeMap.Map(i).Should().BeApproximately(i, 0.01f);
+                t.TimeMap.Map(i).Should().BeApproximately(i, 0.01f);
         }
     }
 
@@ -159,7 +159,7 @@ public class TranscriptUpdateTests : TestBase
         var o = new Transcript(" поешь", new LinearMap(15, 0, 21, 1));
         var s = o.PassThroughAllSerializers(Out);
         s.Text.Should().Be(o.Text);
-        s.TextToTimeMap.Length.Should().Be(o.TextToTimeMap.Length);
+        s.TimeMap.Length.Should().Be(o.TimeMap.Length);
     }
 
     private void Dump(Transcript transcript)

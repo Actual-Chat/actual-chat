@@ -17,13 +17,13 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GenerateResponses());
 
-        var transcripts = await process.GetTranscripts().ToListAsync();
+        var transcripts = await process.GetTranscriptDiffs().ToListAsync();
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
         transcripts.Max(t => t.TimeRange.End).Should().Be(3.82f);
         var transcript = transcripts.ApplyDiffs().Last();
 
         transcript.Text.Should().Be("проверка связи");
-        var points = transcript.TextToTimeMap.Points.ToArray();
+        var points = transcript.TimeMap.Points.ToArray();
         points.Select(p => p.X).Should()
             .Equal(new[] { 0f, 8, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
         points.Select(p => p.Y).Should()
@@ -185,7 +185,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"));
 
-        var transcripts = await process.GetTranscripts().ToListAsync();
+        var transcripts = await process.GetTranscriptDiffs().ToListAsync();
         var transcript = transcripts.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
@@ -197,7 +197,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"));
 
-        var transcripts = process.GetTranscripts();
+        var transcripts = process.GetTranscriptDiffs();
         var memoizedTranscripts = transcripts.Memoize();
         var diffs = memoizedTranscripts.Replay().GetDiffs(CancellationToken.None);
         var memoizedDiffs = diffs.Memoize();
@@ -211,7 +211,7 @@ public class GoogleTranscriberTest : TestBase
             .LastAsync();
 
         transcript.Text.Should().Be(restoredTranscript.Text);
-        transcript.TextToTimeMap.Data.Should().BeSubsetOf(restoredTranscript.TextToTimeMap.Data);
-        restoredTranscript.TextToTimeMap.Data.Should().BeSubsetOf(transcript.TextToTimeMap.Data);
+        transcript.TimeMap.Data.Should().BeSubsetOf(restoredTranscript.TimeMap.Data);
+        restoredTranscript.TimeMap.Data.Should().BeSubsetOf(transcript.TimeMap.Data);
     }
 }
