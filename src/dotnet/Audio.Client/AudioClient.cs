@@ -62,11 +62,11 @@ public class AudioClient : HubClientBase,
     {
         Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId.Value);
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
-        var transcriptDiffs = connection
+        var diffs = connection
             .StreamAsync<TranscriptDiff>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        await foreach (var transcriptDiff in transcriptDiffs.ConfigureAwait(false))
-            yield return transcriptDiff;
+        await foreach (var diff in diffs.ConfigureAwait(false))
+            yield return diff;
         Log.LogDebug("GetTranscriptDiffStream: Exited; StreamId = {StreamId}", streamId.Value);
     }
 }

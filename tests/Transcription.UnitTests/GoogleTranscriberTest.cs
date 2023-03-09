@@ -199,13 +199,13 @@ public class GoogleTranscriberTest : TestBase
 
         var transcripts = process.Transcribe();
         var memoizedTranscripts = transcripts.Memoize();
-        var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs(CancellationToken.None);
+        var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs();
         var memoizedDiffs = diffs.Memoize();
         await foreach (var diff in memoizedDiffs.Replay())
             Out.WriteLine(diff.ToString());
 
         var transcript = await memoizedTranscripts.Replay().LastAsync();
-        var restoredTranscript = await memoizedDiffs.Replay().ToTranscripts(CancellationToken.None).LastAsync();
+        var restoredTranscript = await memoizedDiffs.Replay().ToTranscripts().LastAsync();
 
         transcript.Text.Should().Be(restoredTranscript.Text);
         transcript.TimeMap.Data.Should().BeSubsetOf(restoredTranscript.TimeMap.Data);

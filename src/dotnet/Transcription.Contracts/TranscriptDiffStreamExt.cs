@@ -2,12 +2,10 @@ namespace ActualChat.Transcription;
 
 public static class TranscriptStreamExt
 {
-    public static async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(
-        this IAsyncEnumerable<Transcript> transcripts,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public static async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(this IAsyncEnumerable<Transcript> transcripts)
     {
         var lastTranscript = Transcript.Empty;
-        await foreach (var transcript in transcripts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var transcript in transcripts.ConfigureAwait(false)) {
             var diff = transcript - lastTranscript;
             lastTranscript = transcript;
             if (diff.IsNone)
@@ -17,8 +15,7 @@ public static class TranscriptStreamExt
         }
     }
 
-    public static IEnumerable<TranscriptDiff> ToTranscriptDiffs(
-        this IEnumerable<Transcript> transcripts)
+    public static IEnumerable<TranscriptDiff> ToTranscriptDiffs(this IEnumerable<Transcript> transcripts)
     {
         var lastTranscript = Transcript.Empty;
         foreach (var transcript in transcripts) {
@@ -31,12 +28,10 @@ public static class TranscriptStreamExt
         }
     }
 
-    public static async IAsyncEnumerable<Transcript> ToTranscripts(
-        this IAsyncEnumerable<TranscriptDiff> diffs,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public static async IAsyncEnumerable<Transcript> ToTranscripts(this IAsyncEnumerable<TranscriptDiff> diffs)
     {
         var transcript = Transcript.Empty;
-        await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var diff in diffs.ConfigureAwait(false)) {
             transcript += diff;
             yield return transcript;
         }

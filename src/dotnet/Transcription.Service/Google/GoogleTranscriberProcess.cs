@@ -85,12 +85,12 @@ public class GoogleTranscriberProcess : WorkerBase
         var hasFinal = results.Any(r => r.IsFinal);
         if (hasFinal) {
             var result = results.Single(r => r.IsFinal);
-            if (!TryParseFinal(result, out var text, out var textToTimeMap)) {
+            if (!TryParseFinal(result, out var text, out var timeMap)) {
                 Log.LogWarning("Final transcript discarded. State.LastStable={LastStable}, Response={Response}",
                     _state.Stable, response);
                 return;
             }
-            transcript = _state.AppendStable(text, textToTimeMap);
+            transcript = _state.AppendStable(text, timeMap);
         }
         else {
             var text = results
@@ -127,7 +127,7 @@ public class GoogleTranscriberProcess : WorkerBase
     }
 
     private bool TryParseFinal(StreamingRecognitionResult result,
-        out string text, out LinearMap textToTimeMap)
+        out string text, out LinearMap timeMap)
     {
         var lastStable = _state.Stable;
         var lastStableTextLength = lastStable.Text.Length;
@@ -168,7 +168,7 @@ public class GoogleTranscriberProcess : WorkerBase
         }
 
         if (mapPoints.Count == 0) {
-            textToTimeMap = default;
+            timeMap = default;
             return false;
         }
 
@@ -178,7 +178,7 @@ public class GoogleTranscriberProcess : WorkerBase
             mapPoints[^1] = veryLastPoint;
         else
             mapPoints.Add(veryLastPoint);
-        textToTimeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
+        timeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
         return true;
     }
 

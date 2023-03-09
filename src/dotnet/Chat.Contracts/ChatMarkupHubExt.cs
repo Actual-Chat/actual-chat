@@ -18,7 +18,7 @@ public static class ChatMarkupHubExt
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
         case { HasMediaEntry: true }:
-            markup = new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
+            markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);
@@ -40,7 +40,7 @@ public static class ChatMarkupHubExt
             markup = systemEntry.Option?.ToMarkup() ?? Markup.Empty;
             break;
         case { HasMediaEntry: true }:
-            markup = new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
+            markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);

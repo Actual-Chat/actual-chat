@@ -166,19 +166,20 @@ public sealed class AudioProcessor : IAudioProcessor
         };
         var transcripts = Transcriber
             .Transcribe(audioSegment.StreamId, audioSegment.Audio, transcriptionOptions, cancellationToken)
-            .Throttle(Settings.TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken);
+            .Throttle(Settings.TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken)
+            .TrimOnCancellation(cancellationToken);
         var memoizedTranscripts = PostProcessTranscript(transcripts).Memoize();
+        cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
 
         var transcriptStreamId = audioSegment.StreamId;
         var publishTask = TranscriptStreamServer.Write(
             transcriptStreamId,
-            memoizedTranscripts.Replay(cancellationToken).ToTranscriptDiffs(cancellationToken),
+            memoizedTranscripts.Replay(cancellationToken).ToTranscriptDiffs(),
             cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(
             audioEntryTask,
             transcriptStreamId,
-            memoizedTranscripts.Replay(cancellationToken),
-            cancellationToken);
+            memoizedTranscripts.Replay(cancellationToken));
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
 
@@ -250,8 +251,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private async Task CreateAndFinalizeTextEntry(
         Task<ChatEntry> audioEntryTask,
         string transcriptStreamId,
-        IAsyncEnumerable<Transcript> diffs,
-        CancellationToken cancellationToken)
+        IAsyncEnumerable<Transcript> transcripts)
     {
         Transcript? lastTranscript = null;
         ChatEntry? chatAudioEntry = null;
@@ -259,7 +259,7 @@ public sealed class AudioProcessor : IAudioProcessor
         IChatsBackend.UpsertEntryCommand? command;
 
         try {
-            await foreach (var transcript in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 lastTranscript = transcript;
                 if (textEntry != null)
                     continue;
@@ -276,7 +276,7 @@ public sealed class AudioProcessor : IAudioProcessor
                     BeginsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                 };
                 command = new IChatsBackend.UpsertEntryCommand(textEntry);
-                textEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+                textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
                     textEntry.Id,
                     textEntry.ChatId);
@@ -284,13 +284,13 @@ public sealed class AudioProcessor : IAudioProcessor
         }
         finally {
             if (lastTranscript != null && textEntry != null) {
-                var textToTimeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0);
+                var timeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0);
                 textEntry = textEntry with {
                     Content = lastTranscript.Text,
                     StreamId = Symbol.Empty,
                     AudioEntryId = chatAudioEntry!.LocalId,
                     EndsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
-                    TextToTimeMap = textToTimeMap,
+                    TimeMap = timeMap,
                 };
                 if (EmptyRegex.IsMatch(textEntry.Content)) {
                     // Final transcript is empty -> remove text entry
@@ -298,7 +298,7 @@ public sealed class AudioProcessor : IAudioProcessor
                     textEntry = textEntry with { IsRemoved = true };
                 }
                 command = new IChatsBackend.UpsertEntryCommand(textEntry);
-                await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+                await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
             }
             // TODO(AY): Maybe publish [Audio: ...] markup here
         }
