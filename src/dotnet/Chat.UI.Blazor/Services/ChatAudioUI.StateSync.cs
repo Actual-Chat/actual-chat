@@ -108,7 +108,7 @@ public partial class ChatAudioUI
         }
 
         Task? whenIdle = null;
-        var whenIdleCts = CancellationSource.NewLinked(cancellationToken);
+        var whenIdleCts = cancellationToken.CreateLinkedTokenSource();
         try {
             if (!cRecordingState.IsConsistent())
                 return;
@@ -130,13 +130,19 @@ public partial class ChatAudioUI
             await Task.WhenAny(whenChanged, whenIdle).ConfigureAwait(false);
         }
         finally {
-            if (whenIdle != null) {
-                if (whenIdle.IsCompleted)
-                    await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
-                else {
-                    whenIdleCts.Cancel();
-                    await whenIdle.SuppressExceptions().ConfigureAwait(false);
+            try {
+                if (whenIdle != null) {
+                    if (whenIdle.IsCompleted)
+                        await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+                    else {
+                        whenIdleCts.CancelAndDisposeSilently();
+                        whenIdleCts = null;
+                        await whenIdle.SuppressExceptions().ConfigureAwait(false);
+                    }
                 }
+            }
+            finally {
+                whenIdleCts.CancelAndDisposeSilently();
             }
             _stopRecordingAt.Value = null;
 
