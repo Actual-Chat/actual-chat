@@ -91,12 +91,22 @@
                 StateHasChanged();
             }
             if (!CanRecord) {
-                _ = ModalUI.Show(new AudioPermissionModal.Model());
+                _ = OnCanNotRecord();
                 return;
             }
 
             _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
         }
+    }
+
+    private async Task OnCanNotRecord() {
+        var model = new AudioPermissionModal.Model();
+        var modalRef = await ModalUI.Show(model);
+        await modalRef.WhenClosed;
+        if (!model.ReevaluatePermissions)
+            return;
+        _canRecord = null;
+        StateHasChanged();
     }
 
     private async Task OnContextMenu() {

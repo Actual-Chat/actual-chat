@@ -9,6 +9,7 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
+using ActualChat.Chat.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using Microsoft.Maui.LifecycleEvents;
@@ -323,6 +324,7 @@ public static partial class MauiProgram
         // to have single audio channel controlled with volume buttons
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
+        services.AddScoped<INoMicHandler>(c => new AndroidNoMicHandler());
 #elif IOS
         services.AddTransient<IDeviceTokenRetriever, IosDeviceTokenRetriever>(_ => new IosDeviceTokenRetriever());
         services.AddScoped<INotificationPermissions>(c => new IosNotificationPermissions());
