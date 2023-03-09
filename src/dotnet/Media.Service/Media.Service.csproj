@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Medias\Medias.csproj" />
+    <ProjectReference Include="..\Media\Media.csproj" />
   </ItemGroup>
 
 </Project>

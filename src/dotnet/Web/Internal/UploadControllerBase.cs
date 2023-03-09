@@ -64,7 +64,7 @@ public abstract class UploadControllerBase : ControllerBase
             return BadRequest("Image is too big");
 
         var mediaId = new MediaId(Ulid.NewUlid().ToString());
-        var media = new Medias.Media(mediaId)
+        var media = new Media.Media(mediaId)
         {
             ContentId = $"{contentPrefix}/{mediaId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,

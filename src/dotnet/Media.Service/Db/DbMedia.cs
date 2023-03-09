@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ActualChat.Medias.Db;
+namespace ActualChat.Media.Db;
 
-[Table("Medias")]
+[Table("Media")]
 public class DbMedia : IHasId<string>, IRequirementTarget
 {
     public DbMedia() { }

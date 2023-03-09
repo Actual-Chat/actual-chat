@@ -1,5 +1,5 @@
 using ActualChat.Db;
-using ActualChat.Medias.Db;
+using ActualChat.Media.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;

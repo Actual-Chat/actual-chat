@@ -1,6 +1,7 @@
 ﻿using Stl.Fusion.Blazor;
 
-namespace ActualChat.Medias;
+#pragma warning disable MA0049 // Allows ActualChat.Media.Media
+namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract]
