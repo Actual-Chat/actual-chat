@@ -61,8 +61,6 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
         services.AddSingleton<TranscriptStreamer>();
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
-        services.AddSingleton<TranscriptSplitter>();
-        services.AddSingleton<TranscriptPostProcessor>();
         services.AddSingleton<AudioStreamServer>();
         services.AddSingleton<AudioStreamProxy>();
         services.AddTransient<IAudioStreamServer>(c => c.GetRequiredService<AudioStreamProxy>());

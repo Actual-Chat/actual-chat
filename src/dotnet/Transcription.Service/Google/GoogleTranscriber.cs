@@ -28,8 +28,8 @@ public class GoogleTranscriber : ITranscriber
         _projectIdTask = BackgroundTask.Run(LoadProjectId);
     }
 
-    public async IAsyncEnumerable<TranscriptDiff> Transcribe(
-        string streamId,
+    public async IAsyncEnumerable<Transcript> Transcribe(
+        string audioStreamId,
         AudioSource audioSource,
         TranscriptionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -60,7 +60,7 @@ public class GoogleTranscriber : ITranscriber
                 // EnableVoiceActivityEvents =
             },
         };
-        Log.LogDebug("Starting recognize process for {StreamId}", streamId);
+        Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
         await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
             StreamingConfig = streamingRecognitionConfig,
             Recognizer = recognizerName,
@@ -74,94 +74,90 @@ public class GoogleTranscriber : ITranscriber
             .ConcatUntil(silenceAudioSource, TimeSpan.FromSeconds(4), cancellationToken);
         var byteStream = webMStreamAdapter.Write(resultAudioSource, cancellationToken);
         var memoizedByteStream = byteStream.Memoize(cancellationToken);
-        var transcriptDiffs = Channel.CreateUnbounded<TranscriptDiff>(new UnboundedChannelOptions {
+        var transcripts = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
             SingleWriter = true,
             SingleReader = true,
         });
 
-        var handleTranscriptCts = cancellationToken.CreateLinkedTokenSource();
-        var runTask = BackgroundTask.Run(
-            () => HandleTranscription(cancellationToken),
+        var transcribeTask = BackgroundTask.Run(
+            () => RetryingTranscribe(cancellationToken),
             Log,
-            $"{nameof(GoogleTranscriber)}.{nameof(Transcribe)} failed",
+            $"{nameof(GoogleTranscriber)}.{nameof(TryTranscribe)} failed",
             cancellationToken);
 
-        await foreach(var transcript in transcriptDiffs.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach(var transcript in transcripts.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             yield return transcript;
+        await transcribeTask.ConfigureAwait(false);
+        yield break;
 
-        await runTask.ConfigureAwait(false);
-
-        async Task HandleTranscription(CancellationToken cancellationToken1)
+        async Task RetryingTranscribe(CancellationToken cancellationToken1)
         {
-            Exception? error = null;
-            retry:
-            var needsFinally = true;
-            try {
-                var process = new GoogleTranscriberProcess(
-                    memoizedByteStream.Replay(handleTranscriptCts.Token),
-                    recognizeRequests,
-                    streamingRecognitionConfig,
-                    Clocks,
-                    Log);
-                var processRunTask = process.Run();
-                await using var _ = process.ConfigureAwait(false);
-                var lastTranscript = Transcript.Empty;
-                await foreach (var transcript in process.GetTranscriptDiffs(handleTranscriptCts.Token).ConfigureAwait(false)) {
-                    var diff = transcript - lastTranscript;
-                    lastTranscript = transcript;
-                    await transcriptDiffs.Writer.WriteAsync(diff, handleTranscriptCts.Token).ConfigureAwait(false);
+            for (var mustExit = false; !mustExit; mustExit = true) {
+                Exception? error = null;
+                var cts = cancellationToken.CreateLinkedTokenSource();
+                try {
+                    await TryTranscribe(cts.Token).ConfigureAwait(false);
                 }
-                await processRunTask.ConfigureAwait(false);
+                catch (RpcException e) when (
+                    e.StatusCode is StatusCode.NotFound
+                    && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer")
+                    && !mustExit) {
+
+                    await CreateRecognizer(speechClient,
+                            recognizerId,
+                            parent,
+                            options,
+                            cancellationToken1)
+                        .ConfigureAwait(false);
+
+                    Log.LogWarning("Restarting recognize process for {AudioStreamId}", audioStreamId);
+                    recognizeRequests = speechClient
+                        .StreamingRecognize(
+                            CallSettings.FromCancellationToken(cancellationToken1),
+                            new BidirectionalStreamingSettings(1));
+                    await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
+                        StreamingConfig = streamingRecognitionConfig,
+                        Recognizer = recognizerName,
+                    }).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    error = e;
+                }
+                finally {
+                    cts.CancelAndDisposeSilently();
+                    if (mustExit)
+                        transcripts.Writer.TryComplete(error);
+                }
             }
-            catch (RpcException e) when (
-                e.StatusCode is StatusCode.NotFound
-                && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer")) {
+        }
 
-                handleTranscriptCts.CancelAndDisposeSilently();
+        async Task TryTranscribe(CancellationToken cancellationToken1)
+        {
+            var process = new GoogleTranscriberProcess(
+                memoizedByteStream.Replay(cancellationToken1),
+                // ReSharper disable once AccessToModifiedClosure
+                recognizeRequests,
+                streamingRecognitionConfig,
+                Clocks,
+                Log);
+            process.Start();
 
-                await CreateRecognizer(speechClient,
-                        recognizerId,
-                        parent,
-                        options,
-                        cancellationToken1)
-                    .ConfigureAwait(false);
-
-                needsFinally = false;
-                Log.LogWarning("Restarting recognize process for {StreamId}", streamId);
-                recognizeRequests = speechClient
-                    .StreamingRecognize(
-                        CallSettings.FromCancellationToken(cancellationToken1),
-                        new BidirectionalStreamingSettings(1));
-                await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
-                    StreamingConfig = streamingRecognitionConfig,
-                    Recognizer = recognizerName,
-                }).ConfigureAwait(false);
-
-                handleTranscriptCts = cancellationToken1.CreateLinkedTokenSource();
-
-                goto retry;
-            }
-            catch (Exception e) {
-                error = e;
-                throw;
-            }
-            finally {
-                if (needsFinally)
-                    transcriptDiffs.Writer.TryComplete(error);
-            }
+            await using var _ = process.ConfigureAwait(false);
+            await foreach (var transcript in process.Transcribe(cancellationToken1).ConfigureAwait(false))
+                await transcripts.Writer.WriteAsync(transcript, cancellationToken1).ConfigureAwait(false);
         }
     }
 
     // Private methods
 
-    private async Task<string> CreateRecognizer(
+    private async Task CreateRecognizer(
         SpeechClient speechClient,
         string recognizerId,
         string recognizerParent,
         TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("Creating new recognizer: Id = {RecognizerName}", recognizerId);
+        DebugLog?.LogDebug("Creating new recognizer: #{RecognizerId}", recognizerId);
         var languageCode = GetLanguageCode(options.Language);
         var createRecognizerRequest = new CreateRecognizerRequest {
             Parent = recognizerParent,
@@ -191,8 +187,8 @@ public class GoogleTranscriber : ITranscriber
         var createRecognizerCompleted = await createRecognizerOperation
             .PollUntilCompletedAsync(null, CallSettings.FromCancellationToken(cancellationToken))
             .ConfigureAwait(false);
-        var newRecognizer = createRecognizerCompleted.Result;
-        return newRecognizer.Name;
+        var result = createRecognizerCompleted.Result;
+        DebugLog?.LogDebug("Creating new recognizer: #{RecognizerId} -> {Result}", recognizerId, result);
     }
 
     // https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages

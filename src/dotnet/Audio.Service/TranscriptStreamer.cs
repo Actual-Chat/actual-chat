@@ -15,7 +15,7 @@ public class TranscriptStreamer : ITranscriptStreamer
         Log = log;
     }
 
-    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         Symbol streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {

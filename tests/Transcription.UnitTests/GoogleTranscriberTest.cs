@@ -17,10 +17,10 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GenerateResponses());
 
-        var transcripts = await process.GetTranscriptDiffs().ToListAsync();
+        var transcripts = await process.Transcribe().ToListAsync();
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
         transcripts.Max(t => t.TimeRange.End).Should().Be(3.82f);
-        var transcript = transcripts.ApplyDiffs().Last();
+        var transcript = transcripts.Last();
 
         transcript.Text.Should().Be("проверка связи");
         var points = transcript.TimeMap.Points.ToArray();
@@ -185,8 +185,8 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"));
 
-        var transcripts = await process.GetTranscriptDiffs().ToListAsync();
-        var transcript = transcripts.ApplyDiffs().Last();
+        var transcripts = await process.Transcribe().ToListAsync();
+        var transcript = transcripts.Last();
         Out.WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
     }
@@ -197,18 +197,15 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"));
 
-        var transcripts = process.GetTranscriptDiffs();
+        var transcripts = process.Transcribe();
         var memoizedTranscripts = transcripts.Memoize();
-        var diffs = memoizedTranscripts.Replay().GetDiffs(CancellationToken.None);
+        var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs(CancellationToken.None);
         var memoizedDiffs = diffs.Memoize();
         await foreach (var diff in memoizedDiffs.Replay())
             Out.WriteLine(diff.ToString());
 
-        var transcript = await memoizedTranscripts.Replay()
-            .LastAsync();
-        var restoredTranscript = await memoizedDiffs.Replay()
-            .ApplyDiffs(CancellationToken.None)
-            .LastAsync();
+        var transcript = await memoizedTranscripts.Replay().LastAsync();
+        var restoredTranscript = await memoizedDiffs.Replay().ToTranscripts(CancellationToken.None).LastAsync();
 
         transcript.Text.Should().Be(restoredTranscript.Text);
         transcript.TimeMap.Data.Should().BeSubsetOf(restoredTranscript.TimeMap.Data);

@@ -54,12 +54,9 @@ public class GoogleTranscriberTest : TestBase
         // using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
         // var writeBuffer = writeBufferLease.Memory;
 
-        var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
-
-        foreach (var diff in diffs)
-            Out.WriteLine(diff.ToString());
-        var transcript = diffs.ApplyDiffs().Last();
-        Out.WriteLine(transcript.ToString());
+        var transcripts = await transcriber.Transcribe("test", audio, options, default).ToListAsync();
+        foreach (var t in transcripts)
+            Out.WriteLine(t.ToString());
     }
 
     [Fact]
@@ -72,13 +69,10 @@ public class GoogleTranscriberTest : TestBase
             Language = "ru-RU",
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
-
-        foreach (var diff in diffs)
-            Out.WriteLine(diff.ToString());
-        var transcript = diffs.ApplyDiffs().Last();
-        Out.WriteLine(transcript.ToString());
-        transcript.TimeRange.Start.Should().Be(0);
+        var transcripts = await transcriber.Transcribe("test", audio, options, default).ToListAsync();
+        foreach (var t in transcripts)
+            Out.WriteLine(t.ToString());
+        transcripts.Last().TimeRange.Start.Should().Be(0);
     }
 
     private async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)

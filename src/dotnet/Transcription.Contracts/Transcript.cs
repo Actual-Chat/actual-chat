@@ -48,17 +48,24 @@ public sealed record Transcript(
     public float GetContentEndTime()
         => TimeMap.Map(GetContentEnd());
 
-    public Transcript GetPrefix(int length)
-        => new(Text[..length], TimeMap.GetPrefix(length, TimeMapEpsilon.X));
-
-    public Transcript GetSuffix(int start)
-        => new(Text[start..], TimeMap.GetSuffix(start, TimeMapEpsilon.X));
-
-    public (Transcript Prefix, Transcript Suffix) Split(int start)
+    public Transcript GetPrefix(int length, float? duration = null)
     {
-        var maps = TimeMap.Split(start);
-        var prefix = new Transcript(Text[..start], maps.Prefix);
-        var suffix = new Transcript(Text[start..], maps.Suffix);
+        var vDuration = duration ?? TimeMap.Map(length);
+        return new (Text[..length], TimeMap.GetPrefix(vDuration, TimeMapEpsilon.X));
+    }
+
+    public Transcript GetSuffix(int start, float? startDuration = null)
+    {
+        var vStartDuration = startDuration ?? TimeMap.Map(start);
+        return new (Text[start..], TimeMap.GetSuffix(vStartDuration, TimeMapEpsilon.X));
+    }
+
+    public (Transcript Prefix, Transcript Suffix) Split(int length, float? duration = null)
+    {
+        var vDuration = duration ?? TimeMap.Map(length);
+        var maps = TimeMap.Split(vDuration);
+        var prefix = new Transcript(Text[..length], maps.Prefix);
+        var suffix = new Transcript(Text[length..], maps.Suffix);
         return (prefix, suffix);
     }
 

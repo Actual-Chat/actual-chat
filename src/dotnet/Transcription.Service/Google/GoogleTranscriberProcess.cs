@@ -40,7 +40,7 @@ public class GoogleTranscriberProcess : WorkerBase
         });
     }
 
-    public IAsyncEnumerable<Transcript> GetTranscriptDiffs(
+    public IAsyncEnumerable<Transcript> Transcribe(
         CancellationToken cancellationToken = default)
         => _transcripts.Reader.ReadAllAsync(cancellationToken);
 

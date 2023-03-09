@@ -98,6 +98,29 @@ public readonly struct LinearMap
         return this;
     }
 
+    public float? TryMap(float x, out int indexOfLowerOrEqualX)
+    {
+        var points = Points;
+        indexOfLowerOrEqualX = points.IndexOfLowerOrEqualX(x);
+        if (indexOfLowerOrEqualX < 0)
+            return null;
+
+        var p0 = points[indexOfLowerOrEqualX];
+        if (indexOfLowerOrEqualX == Length - 1)
+            return x > p0.X ? null : p0.Y;
+
+        var p1 = points[indexOfLowerOrEqualX + 1];
+        var dx = p1.X - p0.X;
+        if (dx <= 0)
+            return p0.X;
+
+        var k = (x - p0.X) / dx;
+        return p0.Y + (k * (p1.Y - p0.Y));
+    }
+
+    public float? TryMap(float value)
+        => TryMap(value, out _);
+
     public float Map(float x, out int indexOfLowerOrEqualX)
     {
         var points = Points;
@@ -106,7 +129,7 @@ public readonly struct LinearMap
             return Points.Length == 0 ? 0 : Points[0].Y;
 
         var p0 = points[indexOfLowerOrEqualX];
-        if (indexOfLowerOrEqualX == Length - 1 || p0.X >= x)
+        if (indexOfLowerOrEqualX == Length - 1)
             return p0.Y;
 
         var p1 = points[indexOfLowerOrEqualX + 1];
