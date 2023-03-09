@@ -17,7 +17,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GenerateResponses());
 
-        var transcripts = await process.Transcribe().ToListAsync();
+        var transcripts = await process.Transcribe(CancellationToken.None).ToListAsync();
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
         transcripts.Max(t => t.TimeRange.End).Should().Be(3.82f);
         var transcript = transcripts.Last();
@@ -185,7 +185,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"));
 
-        var transcripts = await process.Transcribe().ToListAsync();
+        var transcripts = await process.Transcribe(CancellationToken.None).ToListAsync();
         var transcript = transcripts.Last();
         Out.WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
@@ -197,7 +197,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"));
 
-        var transcripts = process.Transcribe();
+        var transcripts = process.Transcribe(CancellationToken.None);
         var memoizedTranscripts = transcripts.Memoize();
         var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs();
         var memoizedDiffs = diffs.Memoize();
