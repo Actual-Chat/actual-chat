@@ -28,7 +28,7 @@ public readonly record struct LinearMapDiff(
     public LinearMap ApplyTo(LinearMap baseMap, float xEpsilon)
         => IsNone
             ? baseMap
-            : baseMap.GetPrefix(Suffix.XRange.Start, xEpsilon).AppendOrUpdateTail(Suffix, xEpsilon);
+            : baseMap.GetPrefix(Suffix.XRange.Start, xEpsilon).AppendOrUpdateSuffix(Suffix, xEpsilon);
 
     // Private methods
 

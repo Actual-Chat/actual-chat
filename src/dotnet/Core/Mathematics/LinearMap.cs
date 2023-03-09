@@ -5,7 +5,7 @@ namespace ActualChat.Mathematics;
 [DataContract]
 public readonly struct LinearMap
 {
-    public static LinearMap Zero { get; } = new(Vector2.Zero, Vector2.Zero);
+    public static LinearMap Zero { get; } = new(Vector2.Zero);
 
     private readonly float[]? _data;
 
@@ -237,14 +237,20 @@ public readonly struct LinearMap
             : this;
 
 
-    public LinearMap AppendOrUpdateTail(LinearMap tail, float xEpsilon = 0)
+    public LinearMap AppendOrUpdateSuffix(LinearMap suffix, float xEpsilon = 0)
     {
-        tail.RequireValid();
+        if (suffix.IsEmpty)
+            return this;
+
+        suffix.RequireValid();
         var points = Points;
-        var i = points.IndexOfLowerOrEqualX(tail[0].X - xEpsilon);
-        return i < 0
-            ? tail
-            : new LinearMap(points[..(i + 1)], tail.Points);
+        var i = points.IndexOfLowerOrEqualX(suffix[0].X - xEpsilon);
+        if (i < 0)
+            return suffix;
+        if (points[i].X < suffix[0].X)
+            return new LinearMap(points[..(i + 1)], suffix.Points);
+
+        return i == 0 ? suffix : new LinearMap(points[..i], suffix.Points);
     }
 
     public LinearMap TrySimplifyToPoint(Vector2 epsilon)

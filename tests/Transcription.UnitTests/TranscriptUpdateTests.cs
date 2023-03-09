@@ -5,7 +5,7 @@ public class TranscriptUpdateTests : TestBase
     public TranscriptUpdateTests(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
-    public void WithDiffTest1()
+    public void WithDiffTest()
     {
         var transcript = new Transcript();
         var diff = new TranscriptDiff(new StringDiff(0, "раз"), new LinearMapDiff(new LinearMap(0, 0, 3, 1.86f)));
@@ -14,9 +14,17 @@ public class TranscriptUpdateTests : TestBase
         transcript += diff;
         Out.WriteLine(transcript.ToString());
 
-        transcript.Text.Length.Should().Be(58);
+        transcript.Text.Length.Should().Be(35);
         transcript.TimeMap.Data.Should()
-            .Equal(0, 0, 23, 4, 58, 8.34f);
+            .Equal(0, 0, 3, 1.86f, 23, 4, 58, 8.34f);
+
+        diff = new(new StringDiff(35, "x"), new LinearMapDiff(new LinearMap(0, 1, 23, 4f, 58, 8.34f)));
+        transcript += diff;
+        Out.WriteLine(transcript.ToString());
+
+        transcript.Text.Length.Should().Be(36);
+        transcript.TimeMap.Data.Should()
+            .Equal(0, 1, 23, 4, 58, 8.34f);
     }
 
     [Fact]
