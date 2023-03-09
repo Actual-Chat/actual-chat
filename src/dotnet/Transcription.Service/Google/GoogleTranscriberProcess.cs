@@ -40,16 +40,26 @@ public class GoogleTranscriberProcess : WorkerBase
         });
     }
 
-    public IAsyncEnumerable<Transcript> Transcribe(
-        CancellationToken cancellationToken = default)
-        => _transcripts.Reader.ReadAllAsync(cancellationToken);
+    public async IAsyncEnumerable<Transcript> Transcribe(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        try {
+            Start();
+            var transcripts = _transcripts.Reader.ReadAllAsync(cancellationToken);
+            await foreach (var transcript in transcripts.ConfigureAwait(false))
+                yield return transcript;
+        }
+        finally {
+            _ = DisposeAsync();
+        }
+    }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)RecognizeStream.GetResponseStream();
         _ = BackgroundTask.Run(() => PushAudio(AudioByteStream),
             Log,
-            $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
+            $"{nameof(GoogleTranscriberProcess)}.{nameof(PushAudio)} failed",
             cancellationToken);
 
         await ProcessResponses(recognizeResponses).ConfigureAwait(false);

@@ -92,7 +92,7 @@ public class GoogleTranscriber : ITranscriber
 
         async Task RetryingTranscribe(CancellationToken cancellationToken1)
         {
-            for (var mustExit = false; !mustExit; mustExit = true) {
+            for (var mustExit = false;; mustExit = true) {
                 Exception? error = null;
                 var cts = cancellationToken.CreateLinkedTokenSource();
                 try {
@@ -103,6 +103,7 @@ public class GoogleTranscriber : ITranscriber
                     && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer")
                     && !mustExit) {
 
+                    error = e;
                     await CreateRecognizer(speechClient,
                             recognizerId,
                             parent,
@@ -123,10 +124,11 @@ public class GoogleTranscriber : ITranscriber
                 catch (Exception e) {
                     error = e;
                 }
-                finally {
-                    cts.CancelAndDisposeSilently();
-                    if (mustExit)
-                        transcripts.Writer.TryComplete(error);
+
+                cts.CancelAndDisposeSilently();
+                if (error == null || mustExit) {
+                    transcripts.Writer.TryComplete(error);
+                    break;
                 }
             }
         }
@@ -140,10 +142,9 @@ public class GoogleTranscriber : ITranscriber
                 streamingRecognitionConfig,
                 Clocks,
                 Log);
-            process.Start();
 
-            await using var _ = process.ConfigureAwait(false);
-            await foreach (var transcript in process.Transcribe(cancellationToken1).ConfigureAwait(false))
+            var readTranscripts = process.Transcribe(cancellationToken1);
+            await foreach (var transcript in readTranscripts.ConfigureAwait(false))
                 await transcripts.Writer.WriteAsync(transcript, cancellationToken1).ConfigureAwait(false);
         }
     }
