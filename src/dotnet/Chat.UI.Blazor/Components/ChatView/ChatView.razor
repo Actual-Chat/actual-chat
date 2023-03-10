@@ -1,10 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Comparison
 
-@{
-    Log.LogInformation("About to render ChatView");
-}
-
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"

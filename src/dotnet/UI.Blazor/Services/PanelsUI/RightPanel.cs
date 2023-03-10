@@ -4,6 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class RightPanel
 {
+    private const string StatePrefix = nameof(RightPanel) + "UI";
     private readonly IStoredState<bool> _isVisible;
     private readonly object _lock = new();
 
@@ -16,7 +17,7 @@ public class RightPanel
         Owner = owner;
         var services = owner.Services;
         var stateFactory = services.StateFactory();
-        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(RightPanel) + "UI");
+        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
         _isVisible = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
                 InitialValue = false,

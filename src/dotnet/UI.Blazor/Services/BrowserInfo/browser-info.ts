@@ -50,7 +50,6 @@ export class BrowserInfo {
 
         ScreenSize.change$.subscribe(_ => this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable))
         fromEvent(document, 'visibilitychange')
-            .pipe(debounceTime(50))
             .subscribe(_ => this.onVisibilityChanged());
         globalThis["browserInfo"] = this;
     }
