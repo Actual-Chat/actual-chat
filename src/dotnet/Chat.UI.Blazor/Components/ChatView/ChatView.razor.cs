@@ -64,7 +64,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ComputeIsViewportAboveUnreadEntry);
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
 
-
             RegionVisibility.IsOverallVisible.Updated += OnRegionVisibilityChanged;
             UpdateInvisibleDelayer();
         }
@@ -310,11 +309,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEmpty || readPositionState == null)
             return;
 
-        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid) {
-            Log.LogWarning("About to update read position for chat '{ChatId}' from {CurrentValue} to {NewValue}",
-                Chat.Id, readPositionState.Value.EntryLid, itemVisibility.MaxEntryLid);
+        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
             readPositionState.Value = new ChatPosition(itemVisibility.MaxEntryLid);
-        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

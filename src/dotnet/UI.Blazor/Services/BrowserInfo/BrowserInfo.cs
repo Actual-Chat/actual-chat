@@ -105,8 +105,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
 
     private void SetIsHidden(bool isHidden)
     {
-        // Log.LogInformation("IsHidden = {IsHidden}", isHidden);
-
         lock (_lock) {
             if (_isHidden.Value == isHidden)
                 return;

@@ -20,6 +20,12 @@ public class RegionVisibility : IDisposable
         UpdateIsOverallVisible();
     }
 
+    public void Dispose()
+    {
+        IsPanelVisible.Updated -= IsPanelVisibleOnUpdated;
+        _isViewportHidden.Updated -= IsViewportHiddenOnUpdated;
+    }
+
     private void IsViewportHiddenOnUpdated(IState<bool> arg1, StateEventKind arg2)
         => UpdateIsOverallVisible();
 
@@ -28,10 +34,4 @@ public class RegionVisibility : IDisposable
 
     private void UpdateIsOverallVisible()
         => _isOverallVisible.Value = !_isViewportHidden.Value && IsPanelVisible.Value;
-
-    public void Dispose()
-    {
-        IsPanelVisible.Updated -= IsPanelVisibleOnUpdated;
-        _isViewportHidden.Updated -= IsViewportHiddenOnUpdated;
-    }
 }
