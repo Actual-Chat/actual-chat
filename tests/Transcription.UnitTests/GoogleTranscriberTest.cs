@@ -1,5 +1,4 @@
 using ActualChat.Module;
-using ActualChat.Testing.Host;
 using ActualChat.Transcription.Google;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
@@ -27,7 +26,9 @@ public class GoogleTranscriberTest : TestBase
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         await transcriber.WhenInitialized;
-        var transcripts = await transcriber.ProcessResponses(GenerateResponses()).ToListAsync();
+        var responses = GenerateResponses();
+        var state = new GoogleTranscribeState(null!, null!, null!);
+        var transcripts = await transcriber.ProcessResponses(state, responses).ToListAsync();
 
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
         transcripts.Max(t => t.TimeRange.End).Should().Be(3.82f);
@@ -195,8 +196,9 @@ public class GoogleTranscriberTest : TestBase
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         await transcriber.WhenInitialized;
+        var state = new GoogleTranscribeState(null!, null!, null!);
         var responses = GoogleTranscriptReader.ReadFromFile("data/transcript.json");
-        var transcripts = await transcriber.ProcessResponses(responses).ToListAsync();
+        var transcripts = await transcriber.ProcessResponses(state, responses).ToListAsync();
 
         var transcript = transcripts.Last();
         Out.WriteLine(transcript.ToString());
@@ -208,8 +210,9 @@ public class GoogleTranscriberTest : TestBase
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
         await transcriber.WhenInitialized;
+        var state = new GoogleTranscribeState(null!, null!, null!);
         var responses = GoogleTranscriptReader.ReadFromFile("data/long-transcript.json");
-        var transcripts = transcriber.ProcessResponses(responses);
+        var transcripts = transcriber.ProcessResponses(state, responses);
 
         var memoizedTranscripts = transcripts.Memoize();
         var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs();

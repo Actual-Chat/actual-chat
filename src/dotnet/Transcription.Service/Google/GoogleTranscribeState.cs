@@ -1,9 +1,26 @@
+using ActualChat.Audio;
+using Google.Cloud.Speech.V2;
+
 namespace ActualChat.Transcription.Google;
 
-public class GoogleTranscriberState
+public class GoogleTranscribeState
 {
+    public AudioSource AudioSource { get; }
+    public SpeechClient.StreamingRecognizeStream RecognizeStream { get; }
+    public ChannelWriter<Transcript> Output { get; }
+
     public Transcript Unstable { get; private set; } = Transcript.Empty;
     public Transcript Stable { get; private set; } = Transcript.Empty;
+
+    public GoogleTranscribeState(
+        AudioSource audioSource,
+        SpeechClient.StreamingRecognizeStream recognizeStream,
+        ChannelWriter<Transcript> output)
+    {
+        AudioSource = audioSource;
+        RecognizeStream = recognizeStream;
+        Output = output;
+    }
 
     public Transcript MarkStable()
         => Update(Unstable, true);

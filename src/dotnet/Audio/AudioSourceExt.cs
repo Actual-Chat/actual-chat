@@ -43,13 +43,13 @@ public static class AudioSourceExt
         this IAsyncEnumerable<AudioFrame> first,
         IAsyncEnumerable<AudioFrame> second)
     {
-        var nextOffset = 0L;
+        var nextOffset = TimeSpan.Zero;
         await foreach (var frame in first.ConfigureAwait(false)) {
-            nextOffset = frame.Offset.Ticks + frame.Duration.Ticks;
+            nextOffset = frame.Offset + frame.Duration;
             yield return frame;
         }
         await foreach (var frame in second.ConfigureAwait(false)) {
-            var offset = frame.Offset.Add(TimeSpan.FromTicks(nextOffset));
+            var offset = frame.Offset + nextOffset;
             yield return new AudioFrame {
                 Offset = offset,
                 Data = frame.Data,
@@ -62,13 +62,13 @@ public static class AudioSourceExt
         IAsyncEnumerable<AudioFrame> second,
         TimeSpan duration)
     {
-        var nextOffset = 0L;
+        var nextOffset = TimeSpan.Zero;
         await foreach (var frame in first.ConfigureAwait(false)) {
-            nextOffset = frame.Offset.Ticks + frame.Duration.Ticks;
+            nextOffset = frame.Offset + frame.Duration;
             yield return frame;
         }
         await foreach (var frame in second.ConfigureAwait(false)) {
-            var offset = frame.Offset.Add(TimeSpan.FromTicks(nextOffset));
+            var offset = frame.Offset + nextOffset;
             if (offset > duration)
                 yield break;
 

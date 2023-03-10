@@ -23,6 +23,7 @@ public class GoogleTranscriber : ITranscriber
     private IServiceProvider Services { get; }
     private CoreSettings CoreSettings { get; }
     private MomentClockSet Clocks { get; }
+    private WebMStreamConverter WebMStreamConverter { get; }
 
     private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
     private StreamingRecognitionConfig RecognitionConfig { get; set; } = null!; // Post-WhenInitialized
@@ -34,9 +35,11 @@ public class GoogleTranscriber : ITranscriber
     public GoogleTranscriber(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Clocks = services.GetRequiredService<MomentClockSet>();
+
         Services = services;
         CoreSettings = services.GetRequiredService<CoreSettings>();
-        Clocks = services.GetRequiredService<MomentClockSet>();
+        WebMStreamConverter = new WebMStreamConverter(Clocks, services.LogFor<WebMStreamConverter>());
         WhenInitialized = Initialize();
     }
 
@@ -91,14 +94,8 @@ public class GoogleTranscriber : ITranscriber
             var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
 
-            var converter = new WebMStreamConverter(Clocks, Log);
-            audioSource = AugmentSourceAudio(audioSource, cancellationToken);
-            var byteStream = converter
-                .ToByteStream(audioSource, cancellationToken)
-                .Memoize(cancellationToken);
-
             try {
-                await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
+                await Transcribe(recognizerName, audioSource, output, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (RpcException e) when (
@@ -107,7 +104,7 @@ public class GoogleTranscriber : ITranscriber
             {
                 await CreateRecognizer(recognizerId, parent, options, cancellationToken)
                     .ConfigureAwait(false);
-                await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
+                await Transcribe(recognizerName, audioSource, output, cancellationToken)
                     .ConfigureAwait(false);
             }
             output.TryComplete();
@@ -122,10 +119,11 @@ public class GoogleTranscriber : ITranscriber
 
     private async Task Transcribe(
         string recognizerName,
-        IAsyncEnumerable<byte[]> audioSource,
+        AudioSource audioSource,
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken)
     {
+        audioSource = AugmentSourceAudio(audioSource, cancellationToken);
         var recognizeStream = SpeechClient.StreamingRecognize(
             CallSettings.FromCancellationToken(cancellationToken),
             new BidirectionalStreamingSettings(1));
@@ -134,12 +132,14 @@ public class GoogleTranscriber : ITranscriber
             Recognizer = recognizerName,
         }).ConfigureAwait(false);
 
+        var state = new GoogleTranscribeState(audioSource, recognizeStream, output);
         // We want to stop both tasks here on any failure, so...
         var cts = cancellationToken.CreateLinkedTokenSource();
         try {
-            var pushAudioTask = PushAudio(audioSource, recognizeStream, cts.Token);
-            var pullResponsesTask = PullResponses(recognizeStream, output, cts.Token);
-            await Task.WhenAll(pushAudioTask, pullResponsesTask).ConfigureAwait(false);
+            var pushAudioTask = PushAudio(state, cts.Token);
+            var pullResponsesTask = PullResponses(state, cts.Token);
+            await pushAudioTask.ConfigureAwait(false);
+            await pullResponsesTask.ConfigureAwait(false);
         }
         finally {
             cts.CancelAndDisposeSilently();
@@ -147,12 +147,15 @@ public class GoogleTranscriber : ITranscriber
     }
 
     private async Task PushAudio(
-        IAsyncEnumerable<byte[]> audioSource,
-        SpeechClient.StreamingRecognizeStream recognizeStream,
+        GoogleTranscribeState state,
         CancellationToken cancellationToken)
     {
+        var recognizeStream = state.RecognizeStream;
         try {
-            await foreach (var chunk in audioSource.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            var byteFrameStream = WebMStreamConverter.ToByteFrameStream(state.AudioSource, cancellationToken);
+            var clock = Clocks.CpuClock;
+            var startedAt = clock.Now;
+            await foreach (var (chunk, lastFrame) in byteFrameStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
                     StreamingConfig = RecognitionConfig,
                     Audio = ByteString.CopyFrom(chunk),
@@ -165,22 +168,19 @@ public class GoogleTranscriber : ITranscriber
             throw;
         }
         finally {
-            await recognizeStream
-                .WriteCompleteAsync()
-                .WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None)
-                .ConfigureAwait(false);
+            _ = recognizeStream.TryWriteCompleteAsync();
         }
     }
 
     private async Task PullResponses(
-        SpeechClient.StreamingRecognizeStream recognizeStream,
-        ChannelWriter<Transcript> output,
+        GoogleTranscribeState state,
         CancellationToken cancellationToken)
     {
         // NOTE(AY): This method isn't supposed to complete the output: this part is done in Transcribe
         try {
-            var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeStream.GetResponseStream();
-            await foreach (var transcript in ProcessResponses(responses).ConfigureAwait(false))
+            var output = state.Output;
+            var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)state.RecognizeStream.GetResponseStream();
+            await foreach (var transcript in ProcessResponses(state, responses).ConfigureAwait(false))
                 await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
@@ -191,9 +191,9 @@ public class GoogleTranscriber : ITranscriber
 
     // It's internal to be accessible from tests
     internal async IAsyncEnumerable<Transcript> ProcessResponses(
+        GoogleTranscribeState state,
         IAsyncEnumerable<StreamingRecognizeResponse> responses)
     {
-        var state = new GoogleTranscriberState();
         await foreach (var response in responses.ConfigureAwait(false)) {
             var transcript = ProcessResponse(state, response);
             if (transcript != null)
@@ -203,7 +203,7 @@ public class GoogleTranscriber : ITranscriber
     }
 
     private Transcript? ProcessResponse(
-        GoogleTranscriberState state,
+        GoogleTranscribeState state,
         StreamingRecognizeResponse response)
     {
         DebugLog?.LogDebug("Response={Response}", response);
@@ -255,7 +255,7 @@ public class GoogleTranscriber : ITranscriber
     }
 
     private bool TryParseFinal(
-        GoogleTranscriberState state,
+        GoogleTranscribeState state,
         StreamingRecognitionResult result,
         out string text,
         out LinearMap timeMap)

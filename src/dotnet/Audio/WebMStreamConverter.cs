@@ -11,7 +11,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
 
     public string WritingApp { get; init; } = "actual-chat";
     public ulong? TrackUid { get; init; }
-    public int FramesPerBlock { get; init; } = 5;
+    public int FramesPerChunk { get; init; } = 5;
 
     public WebMStreamConverter(MomentClockSet clocks, ILogger log)
     {
@@ -158,7 +158,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
 
         var frames = source.GetFrames(cancellationToken);
         short offsetMs = 0;
-        var framesInBlock = 0;
+        var framesInChunk = 0;
         position = 0;
         AudioFrame? lastFrame = null;
         await foreach (var frame in frames.ConfigureAwait(false)) {
@@ -178,11 +178,11 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
             };
             position += WriteModel(block, buffer.Span[position..]);
             offsetMs += 20;
-            framesInBlock++;
+            framesInChunk++;
 
-            if (framesInBlock >= FramesPerBlock) {
+            if (framesInChunk >= FramesPerChunk) {
                 yield return (buffer.Span[..position].ToArray(), lastFrame);
-                framesInBlock = 0;
+                framesInChunk = 0;
                 position = 0;
             }
         }

@@ -32,7 +32,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void TranscriberStateTest1()
     {
-        var state = new GoogleTranscriberState();
+        var state = new GoogleTranscribeState(null!, null!, null!);
         var t = state.AppendUnstable("раз-два-три-четыре-пять,", 4.68f);
         t = state.AppendStable("раз-два-три-четыре-пять, 67", 4.98f);
         t = state.AppendUnstable(" вот", 8.14f);
@@ -45,7 +45,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void TranscriberStateTest2()
     {
-        var state = new GoogleTranscriberState();
+        var state = new GoogleTranscribeState(null!, null!, null!);
         _ = state.AppendStable("1", 1);
         Dump(state.Stable);
         _ = state.AppendStable(" 2", 2);
@@ -59,7 +59,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void TranscriberUnstableTest()
     {
-        var state = new GoogleTranscriberState();
+        var state = new GoogleTranscribeState(null!, null!, null!);
         _ = state.AppendUnstable("1", 1);
         Dump(state.Stable);
         var t = state.AppendUnstable(" 2", 2);
@@ -71,15 +71,15 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void RandomTranscriberStateTest()
     {
-        var extractor = new GoogleTranscriberState();
+        var state = new GoogleTranscribeState(null!, null!, null!);
         var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString();
         var rnd = new Random(0);
         for (var offset = 0; offset <= text.Length; offset += rnd.Next(3)) {
             var isFinal = rnd.Next(3) == 0;
-            var finalTextLength = extractor.Stable.Text.Length;
+            var finalTextLength = state.Stable.Text.Length;
             var t = isFinal
-                ? extractor.AppendStable(text[finalTextLength..offset], offset)
-                : extractor.AppendUnstable(text[finalTextLength..offset], offset);
+                ? state.AppendStable(text[finalTextLength..offset], offset)
+                : state.AppendUnstable(text[finalTextLength..offset], offset);
             var expected = text[..offset];
 
             t.Text.Should().Be(expected);

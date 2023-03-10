@@ -8,7 +8,7 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public int FramesPerBlock { get; init; } = 3;
+    public int FramesPerChunk { get; init; } = 3;
 
     public ActualOpusStreamConverter(MomentClockSet clocks, ILogger log)
     {
@@ -133,17 +133,17 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
         var buffer = bufferLease.Memory;
         yield return (WriteHeader(source), null);
 
-        var framesInBlock = 0;
+        var framesInChunk = 0;
         var position = 0;
         AudioFrame? lastFrame = null;
         await foreach (var frame in source.GetFrames(cancellationToken).ConfigureAwait(false)) {
             lastFrame = frame;
             position += WriteFrame(frame.Data, buffer.Span[position..]);
-            framesInBlock++;
+            framesInChunk++;
 
-            if (framesInBlock >= FramesPerBlock) {
+            if (framesInChunk >= FramesPerChunk) {
                 yield return (buffer.Span[..position].ToArray(), lastFrame);
-                framesInBlock = 0;
+                framesInChunk = 0;
                 position = 0;
             }
         }
