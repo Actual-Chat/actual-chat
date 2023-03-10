@@ -125,6 +125,7 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     stop: async (): Promise<void> => {
+        debugLog?.log(`stop`);
         state = 'ended';
         processQueue('out');
         recordingSubject?.complete();
