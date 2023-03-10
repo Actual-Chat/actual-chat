@@ -35,7 +35,10 @@ public class WebMStreamConverterTest
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var converter = new WebMStreamConverter(MomentClockSet.Default, Log, "opus-media-recorder", 0x00B6F555106DDDC8);
+        var converter = new WebMStreamConverter(MomentClockSet.Default, Log) {
+            WritingApp = "opus-media-recorder",
+            TrackUid = 0x00B6F555106DDDC8,
+        };
         var byteStreamMemoized = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024)
             .Memoize();

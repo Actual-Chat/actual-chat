@@ -6,18 +6,17 @@ namespace ActualChat.Audio;
 
 public sealed class WebMStreamConverter : IAudioStreamConverter
 {
-    private readonly string _writingApp;
-    private readonly ulong? _trackUid;
-
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public WebMStreamConverter(MomentClockSet clocks, ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
+    public string WritingApp { get; init; } = "actual-chat";
+    public ulong? TrackUid { get; init; }
+    public int FramesPerBlock { get; init; } = 5;
+
+    public WebMStreamConverter(MomentClockSet clocks, ILogger log)
     {
         Clocks = clocks;
         Log = log;
-        _writingApp = writingApp;
-        _trackUid = trackUid;
     }
 
     public async Task<AudioSource> FromByteStream(
@@ -95,7 +94,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         return audioSource;
     }
 
-    public async IAsyncEnumerable<byte[]> ToByteStream(
+    public async IAsyncEnumerable<(byte[] Buffer, AudioFrame? LastFrame)> ToByteFrameStream(
         AudioSource source,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -117,14 +116,14 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         var segment = new Segment {
             Info = new Info {
                 TimestampScale = 1000000,
-                MuxingApp = _writingApp,
-                WritingApp = _writingApp,
+                MuxingApp = WritingApp,
+                WritingApp = WritingApp,
             },
             Tracks = new Tracks {
                 TrackEntries = new[] {
                     new TrackEntry {
                         TrackNumber = 1,
-                        TrackUID = _trackUid ?? (ulong)Math.Abs(random.NextInt64()) & 0x0000FF_FFFF_FFFF_FFFF,
+                        TrackUID = TrackUid ?? (ulong)Math.Abs(random.NextInt64()) & 0x0000FF_FFFF_FFFF_FFFF,
                         TrackType = TrackType.Audio,
                         CodecID = "A_OPUS",
                         CodecPrivate = new byte[] {
@@ -155,13 +154,15 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
             Timestamp = 0,
         };
         position += WriteModel(cluster, buffer.Span[position..]);
-        yield return buffer.Span[..position].ToArray();
-        position = 0;
+        yield return (buffer.Span[..position].ToArray(), null);
 
         var frames = source.GetFrames(cancellationToken);
         short offsetMs = 0;
-        var frameInBlockCount = 0;
+        var framesInBlock = 0;
+        position = 0;
+        AudioFrame? lastFrame = null;
         await foreach (var frame in frames.ConfigureAwait(false)) {
+            lastFrame = frame;
             if (offsetMs == 30000) {
                 cluster = new Cluster {
                     Timestamp = cluster.Timestamp + (ulong)offsetMs,
@@ -177,17 +178,18 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
             };
             position += WriteModel(block, buffer.Span[position..]);
             offsetMs += 20;
-            frameInBlockCount++;
+            framesInBlock++;
 
-            if (frameInBlockCount <= 5)
-                continue;
-
-            frameInBlockCount = 0;
-            yield return buffer.Span[..position].ToArray();
-            position = 0;
+            if (framesInBlock >= FramesPerBlock) {
+                yield return (buffer.Span[..position].ToArray(), lastFrame);
+                framesInBlock = 0;
+                position = 0;
+            }
         }
         if (position > 0)
-            yield return buffer.Span[..position].ToArray();
+            yield return (buffer.Span[..position].ToArray(), lastFrame);
+
+        yield break;
 
         int WriteModel(BaseModel model, Span<byte> span)
         {

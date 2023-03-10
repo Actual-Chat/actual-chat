@@ -8,6 +8,8 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
+    public int FramesPerBlock { get; init; } = 3;
+
     public ActualOpusStreamConverter(MomentClockSet clocks, ILogger log)
     {
         Clocks = clocks;
@@ -123,20 +125,32 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
         return audioSource;
     }
 
-    public async IAsyncEnumerable<byte[]> ToByteStream(
+    public async IAsyncEnumerable<(byte[] Buffer, AudioFrame? LastFrame)> ToByteFrameStream(
         AudioSource source,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
         var buffer = bufferLease.Memory;
-        yield return WriteHeader(source);
+        yield return (WriteHeader(source), null);
 
+        var framesInBlock = 0;
         var position = 0;
+        AudioFrame? lastFrame = null;
         await foreach (var frame in source.GetFrames(cancellationToken).ConfigureAwait(false)) {
+            lastFrame = frame;
             position += WriteFrame(frame.Data, buffer.Span[position..]);
-            yield return buffer.Span[..position].ToArray();
-            position = 0;
+            framesInBlock++;
+
+            if (framesInBlock >= FramesPerBlock) {
+                yield return (buffer.Span[..position].ToArray(), lastFrame);
+                framesInBlock = 0;
+                position = 0;
+            }
         }
+        if (position > 0)
+            yield return (buffer.Span[..position].ToArray(), lastFrame);
+
+        yield break;
 
         int WriteFrame(byte[] frame, Span<byte> span)
         {

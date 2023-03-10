@@ -92,9 +92,9 @@ public class GoogleTranscriber : ITranscriber
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
 
             var converter = new WebMStreamConverter(Clocks, Log);
-            var resultAudioSource = AugmentSourceAudio(audioSource, cancellationToken);
+            audioSource = AugmentSourceAudio(audioSource, cancellationToken);
             var byteStream = converter
-                .ToByteStream(resultAudioSource, cancellationToken)
+                .ToByteStream(audioSource, cancellationToken)
                 .Memoize(cancellationToken);
 
             try {
