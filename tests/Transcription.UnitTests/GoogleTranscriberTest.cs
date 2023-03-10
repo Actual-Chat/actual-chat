@@ -26,6 +26,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task DuplicateFinalResponsesTest()
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        await transcriber.WhenInitialized;
         var transcripts = await transcriber.ProcessResponses(GenerateResponses()).ToListAsync();
 
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
@@ -193,6 +194,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task TextToTimeMapTest()
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        await transcriber.WhenInitialized;
         var responses = GoogleTranscriptReader.ReadFromFile("data/transcript.json");
         var transcripts = await transcriber.ProcessResponses(responses).ToListAsync();
 
@@ -205,6 +207,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task LongTranscriptProducesCorrectDiff()
     {
         var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        await transcriber.WhenInitialized;
         var responses = GoogleTranscriptReader.ReadFromFile("data/long-transcript.json");
         var transcripts = transcriber.ProcessResponses(responses);
 

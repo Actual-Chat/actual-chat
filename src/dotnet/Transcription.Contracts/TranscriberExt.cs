@@ -17,6 +17,6 @@ public static class TranscriberExt
         await foreach (var t in output.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             yield return t;
 
-        await transcribeTask.ConfigureAwait(false);
+        await transcribeTask.SuppressExceptions().ConfigureAwait(false);
     }
 }

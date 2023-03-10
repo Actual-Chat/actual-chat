@@ -24,11 +24,12 @@ public class GoogleTranscriber : ITranscriber
     private CoreSettings CoreSettings { get; }
     private MomentClockSet Clocks { get; }
 
-    private Task WhenInitialized { get; }
     private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
     private StreamingRecognitionConfig RecognitionConfig { get; set; } = null!; // Post-WhenInitialized
     private string GoogleProjectId { get; set; } = null!; // Post-WhenInitialized
     private AudioSource SilenceAudioSource { get; set; } = null!; // Post-WhenInitialized
+
+    public Task WhenInitialized { get; }
 
     public GoogleTranscriber(IServiceProvider services)
     {
@@ -81,32 +82,39 @@ public class GoogleTranscriber : ITranscriber
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken = default)
     {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        var languageCode = GetLanguageCode(options.Language);
-        var recognizerId = $"{languageCode.ToLowerInvariant()}";
-        var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
-        var recognizerName = $"{parent}/recognizers/{recognizerId}";
-
-        var converter = new WebMStreamConverter(Clocks, Log);
-        var resultAudioSource = AugmentSourceAudio(audioSource, cancellationToken);
-        var byteStream = converter
-            .ToByteStream(resultAudioSource, cancellationToken)
-            .Memoize(cancellationToken);
-
-        Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
         try {
-            await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
-                .ConfigureAwait(false);
+            await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+            Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
+
+            var languageCode = GetLanguageCode(options.Language);
+            var recognizerId = $"{languageCode.ToLowerInvariant()}";
+            var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
+            var recognizerName = $"{parent}/recognizers/{recognizerId}";
+
+            var converter = new WebMStreamConverter(Clocks, Log);
+            var resultAudioSource = AugmentSourceAudio(audioSource, cancellationToken);
+            var byteStream = converter
+                .ToByteStream(resultAudioSource, cancellationToken)
+                .Memoize(cancellationToken);
+
+            try {
+                await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (RpcException e) when (
+                e.StatusCode is StatusCode.NotFound
+                && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer"))
+            {
+                await CreateRecognizer(recognizerId, parent, options, cancellationToken)
+                    .ConfigureAwait(false);
+                await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            output.TryComplete();
         }
-        catch (RpcException e) when (
-            e.StatusCode is StatusCode.NotFound
-            && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer"))
-        {
-            await CreateRecognizer(recognizerId, parent, options, cancellationToken)
-                .ConfigureAwait(false);
-            await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
-                .ConfigureAwait(false);
+        catch (Exception e) {
+            output.TryComplete(e);
+            throw;
         }
     }
 
@@ -169,6 +177,7 @@ public class GoogleTranscriber : ITranscriber
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken)
     {
+        // NOTE(AY): This method isn't supposed to complete the output: this part is done in Transcribe
         try {
             var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeStream.GetResponseStream();
             await foreach (var transcript in ProcessResponses(responses).ConfigureAwait(false))
@@ -310,7 +319,7 @@ public class GoogleTranscriber : ITranscriber
         TranscriptionOptions options,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("Creating new recognizer: #{RecognizerId}", recognizerId);
+        Log.LogWarning("Creating new recognizer: #{RecognizerId}", recognizerId);
         var languageCode = GetLanguageCode(options.Language);
         var createRecognizerRequest = new CreateRecognizerRequest {
             Parent = recognizerParent,
@@ -341,7 +350,7 @@ public class GoogleTranscriber : ITranscriber
             .PollUntilCompletedAsync(null, CallSettings.FromCancellationToken(cancellationToken))
             .ConfigureAwait(false);
         var result = createRecognizerCompleted.Result;
-        DebugLog?.LogDebug("Creating new recognizer: #{RecognizerId} -> {Result}", recognizerId, result);
+        Log.LogWarning("Creating new recognizer: #{RecognizerId} -> {Result}", recognizerId, result);
     }
 
     private string GetLanguageCode(Language language)
