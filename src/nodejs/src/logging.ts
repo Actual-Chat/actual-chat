@@ -1,4 +1,4 @@
-import { initLogging, LogScope, LogLevel } from 'logging-init';
+import { initLogging, LogLevel, LogScope } from 'logging-init';
 import 'logging-init';
 
 export { LogLevel } from './logging-init';
@@ -106,6 +106,17 @@ export class Log {
             ?? minLevels.get('default')
             ?? this.defaultMinLevel;
         return level >= minLevel ? this.loggerFactory(scope, level) : null;
+    }
+
+    // TODO: replace Log.get with this method body
+    public static getFor(scope: LogScope) {
+        return {
+            logScope: scope,
+            debugLog: this.get(scope, LogLevel.Debug),
+            infoLog: this.get(scope, LogLevel.Info),
+            warnLog: this.get(scope, LogLevel.Warn),
+            errorLog: this.get(scope, LogLevel.Error),
+        };
     }
 
     public static ref(data: object) : object {
