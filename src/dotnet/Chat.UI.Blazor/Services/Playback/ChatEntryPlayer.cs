@@ -40,30 +40,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
         AudioStreamer = services.GetRequiredService<IAudioStreamer>();
     }
 
-    protected override async Task DisposeAsyncCore()
-    {
-        // Default scheduler is used from here
-
-        // This method starts inside 'lock (Lock)' block - see ProcessorBase.DisposeAsync,
-        // so we don't need to acquire this lock here to access EntryPlaybackTasks.
-        var entryPlaybackTasks = EntryPlaybackTasks.ToList();
-        try {
-            await Task.WhenAll(entryPlaybackTasks).ConfigureAwait(false);
-        }
-        finally {
-            Abort();
-            if (Playback.IsPlaying.Value) {
-                var stopProcess = Playback.Stop(CancellationToken.None);
-                try {
-                    await stopProcess.WhenCompleted.ConfigureAwait(false);
-                }
-                catch (Exception e) {
-                    if (e is not OperationCanceledException)
-                        Log.LogError(e, "Failed to stop playback in chat #{ChatId}", ChatId);
-                }
-            }
-        }
-    }
+    protected override Task DisposeAsyncCore()
+        => Abort();
 
     public async Task WhenDonePlaying()
     {
@@ -104,14 +82,14 @@ public sealed class ChatEntryPlayer : ProcessorBase
         }, CancellationToken.None);
     }
 
-    public void Abort()
+    public async Task Abort()
     {
         try {
-            if (!StopTokenSource.IsCancellationRequested)
-                StopTokenSource.Cancel();
+            await Playback.Abort().WhenCompleted.ConfigureAwait(false);
         }
-        catch {
-            // Intended
+        catch (Exception e) {
+            if (e is not OperationCanceledException)
+                Log.LogError(e, "Failed to abort playback in chat #{ChatId}", ChatId);
         }
     }
 

@@ -62,23 +62,19 @@ public class ChatPlayers : WorkerBase
     {
         // TODO(AY): Implement _players cleanup here
         var lastPlaybackState = (PlaybackState?)null;
-        while (!cancellationToken.IsCancellationRequested) {
-            var cPlaybackState = PlaybackState.Computed;
+        await foreach (var cPlaybackState in PlaybackState.Changes(cancellationToken).ConfigureAwait(false)) {
             var newPlaybackState = cPlaybackState.Value;
-            if (newPlaybackState != lastPlaybackState) {
-                try {
-                    await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException) {
-                    // Let's stop everything in this case
-                    await Stop(cancellationToken).SuppressExceptions().ConfigureAwait(false);
-                    newPlaybackState = null;
-                    StopPlayback();
-                }
+            try {
+                await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)
+                    .ConfigureAwait(false);
+                lastPlaybackState = newPlaybackState;
             }
-            lastPlaybackState = newPlaybackState;
-            await cPlaybackState.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                // Let's stop everything in this case
+                StopPlayback();
+                lastPlaybackState = null;
+                _ = StopPlayers();
+            }
         }
     }
 
@@ -103,7 +99,7 @@ public class ChatPlayers : WorkerBase
     {
         if (lastPlaybackState?.GetType() != playbackState?.GetType()) {
             // Mode type change
-            await ExitState(lastPlaybackState, cancellationToken).ConfigureAwait(false);
+            await ExitState(lastPlaybackState).ConfigureAwait(false);
             await EnterState(playbackState, cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -111,14 +107,14 @@ public class ChatPlayers : WorkerBase
         // Same mode, but new settings
         switch (playbackState) {
         case HistoricalPlaybackState historical:
-            await ExitState(lastPlaybackState, cancellationToken).ConfigureAwait(false);
+            await ExitState(lastPlaybackState).ConfigureAwait(false);
             await EnterState(historical, cancellationToken).ConfigureAwait(false);
             break;
         case RealtimePlaybackState realtime:
             var lastRealtime = (RealtimePlaybackState)lastPlaybackState!;
             var removedChatIds = lastRealtime.ChatIds.Except(realtime.ChatIds);
             var addedChatIds = realtime.ChatIds.Except(lastRealtime.ChatIds);
-            await Stop(removedChatIds, ChatPlayerKind.Realtime, cancellationToken).ConfigureAwait(false);
+            await StopPlayers(removedChatIds, ChatPlayerKind.Realtime).ConfigureAwait(false);
             await ResumeRealtimePlayback(addedChatIds, cancellationToken).ConfigureAwait(false);
             break;
         case null:
@@ -149,15 +145,15 @@ public class ChatPlayers : WorkerBase
             }
         }
 
-        async Task ExitState(PlaybackState? state, CancellationToken ct)
+        async Task ExitState(PlaybackState? state)
         {
             if (state is HistoricalPlaybackState historical) {
                 _ = TuneUI.Play("stop-historical-playback", CancellationToken.None);
-                await Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
+                await StopPlayer(historical.ChatId, ChatPlayerKind.Historical);
             }
             else if (state is RealtimePlaybackState realtime) {
                 _ = TuneUI.Play("stop-realtime-playback", CancellationToken.None);
-                await Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
+                await StopPlayers(realtime.ChatIds, ChatPlayerKind.Realtime);
             }
         }
     }
@@ -229,21 +225,21 @@ public class ChatPlayers : WorkerBase
         return player.Start(startAt, cancellationToken);
     }
 
-    private Task Stop(ChatId chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
+    private Task StopPlayer(ChatId chatId, ChatPlayerKind playerKind)
     {
         ChatPlayer? player;
         lock (Lock) player = _players.GetValueOrDefault((chatId, playerKind));
         return player?.Stop() ?? Task.CompletedTask;
     }
 
-    private Task Stop(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind, CancellationToken cancellationToken)
+    private Task StopPlayers(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind)
         => chatIds
-            .Select(chatId => Stop(chatId, playerKind, cancellationToken))
+            .Select(chatId => StopPlayer(chatId, playerKind))
             .Collect();
 
-    private Task Stop(CancellationToken cancellationToken)
+    private Task StopPlayers()
         // ReSharper disable once InconsistentlySynchronizedField
         => _players
-            .Select(kv => Stop(kv.Key.ChatId, kv.Key.PlayerKind, cancellationToken))
+            .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
             .Collect();
 }
