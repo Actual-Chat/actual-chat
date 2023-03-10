@@ -22,6 +22,7 @@ body.hoverable .message-wrapper:hover .avatar-badge {
 .chat-message > .c-author-badge {
     @apply flex-none;
     @apply overflow-hidden;
+    @apply select-none;
 }
 
 .chat-message > .c-content {
