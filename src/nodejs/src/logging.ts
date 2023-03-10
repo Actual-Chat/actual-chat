@@ -69,6 +69,7 @@ export class Log {
     public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
     public static defaultMinLevel = LogLevel.Info;
     public log: (...data: unknown[]) => void;
+    public trace: (...data: unknown[]) => void;
 
     constructor(
         public readonly scope: LogScope,
@@ -91,6 +92,7 @@ export class Log {
             case LogLevel.None:
                 throw new Error('LogLevel.None cannot be used here');
         }
+        this.trace = (...data: unknown[]) => console.trace(prefix, ...data);
     }
 
     public static loggerFactory = (scope: LogScope, level: LogLevel) => new Log(scope, level);
