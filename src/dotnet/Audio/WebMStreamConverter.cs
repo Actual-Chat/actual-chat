@@ -4,7 +4,7 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio;
 
-public sealed class WebMStreamAdapter : IAudioStreamAdapter
+public sealed class WebMStreamConverter : IAudioStreamConverter
 {
     private readonly string _writingApp;
     private readonly ulong? _trackUid;
@@ -12,7 +12,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public WebMStreamAdapter(MomentClockSet clocks, ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
+    public WebMStreamConverter(MomentClockSet clocks, ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
     {
         Clocks = clocks;
         Log = log;
@@ -20,7 +20,9 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         _trackUid = trackUid;
     }
 
-    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public async Task<AudioSource> FromByteStream(
+        IAsyncEnumerable<byte[]> byteStream,
+        CancellationToken cancellationToken = default)
     {
         var formatTask = TaskSource.New<AudioFormat>(true).Task;
         var formatTaskSource = TaskSource.For(formatTask);
@@ -36,7 +38,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
         var target = Channel.CreateBounded<AudioFrame>(
-            new BoundedChannelOptions(Constants.Queues.WebMStreamAdapterQueueSize) {
+            new BoundedChannelOptions(Constants.Queues.WebMStreamConverterQueueSize) {
                 SingleWriter = true,
                 SingleReader = true,
                 AllowSynchronousContinuations = true,
@@ -93,7 +95,9 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         return audioSource;
     }
 
-    public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<byte[]> ToByteStream(
+        AudioSource source,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var random = new Random();
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);

@@ -1,21 +1,22 @@
 using System.Buffers;
 using System.Buffers.Binary;
-using ActualChat.Spans;
 
 namespace ActualChat.Audio;
 
-public class ActualOpusStreamAdapter : IAudioStreamAdapter
+public class ActualOpusStreamConverter : IAudioStreamConverter
 {
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public ActualOpusStreamAdapter(MomentClockSet clocks, ILogger log)
+    public ActualOpusStreamConverter(MomentClockSet clocks, ILogger log)
     {
         Clocks = clocks;
         Log = log;
     }
 
-    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public async Task<AudioSource> FromByteStream(
+        IAsyncEnumerable<byte[]> byteStream,
+        CancellationToken cancellationToken = default)
     {
         var headerTask = TaskSource.New<ActualOpusStreamHeader>(true).Task;
         var formatTaskSource = TaskSource.For(headerTask);
@@ -24,7 +25,7 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
         var target = Channel.CreateBounded<AudioFrame>(
-            new BoundedChannelOptions(Constants.Queues.OpusStreamAdapterQueueSize) {
+            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
                 SingleWriter = true,
                 SingleReader = true,
                 AllowSynchronousContinuations = true,
@@ -122,7 +123,9 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
         return audioSource;
     }
 
-    public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<byte[]> ToByteStream(
+        AudioSource source,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
         var buffer = bufferLease.Memory;

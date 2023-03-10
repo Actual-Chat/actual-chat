@@ -365,10 +365,10 @@ public class AudioProcessorTest : AppHostTestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 

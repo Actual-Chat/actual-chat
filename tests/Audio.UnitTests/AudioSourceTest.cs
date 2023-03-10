@@ -95,15 +95,15 @@ public class AudioSourceTest
         FilePath fileName,
         TimeSpan skipTo = default,
         int blobSize = 128 * 1024,
-        bool webMStream = true,
+        bool isWebMStream = true,
         CancellationToken cancellationToken = default)
     {
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken);
-        var streamAdapter = webMStream
-            ? new WebMStreamAdapter(MomentClockSet.Default, Log)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        var audio = await streamAdapter.Read(byteStream, cancellationToken);
+        var converter = isWebMStream
+            ? new WebMStreamConverter(MomentClockSet.Default, Log)
+            : (IAudioStreamConverter)new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        var audio = await converter.FromByteStream(byteStream, cancellationToken);
         var skipped = audio.SkipTo(skipTo, cancellationToken);
         return skipped;
     }
@@ -113,12 +113,12 @@ public class AudioSourceTest
 
     // Private methods
 
-    private Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool webMStream = true)
+    private Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool isWebMStream = true)
     {
         var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        var streamAdapter = webMStream
-            ? new WebMStreamAdapter(MomentClockSet.Default, Log)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        return stream.WriteByteStream(streamAdapter.Write(source, CancellationToken.None),true);
+        var converter = isWebMStream
+            ? new WebMStreamConverter(MomentClockSet.Default, Log)
+            : (IAudioStreamConverter)new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        return stream.WriteByteStream(converter.ToByteStream(source, CancellationToken.None),true);
     }
 }

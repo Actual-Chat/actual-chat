@@ -1,6 +1,6 @@
-namespace ActualChat.Transcription;
+namespace ActualChat.Transcription.Google;
 
-public class TranscriberState
+public class GoogleTranscriberState
 {
     public Transcript Unstable { get; private set; } = Transcript.Empty;
     public Transcript Stable { get; private set; } = Transcript.Empty;

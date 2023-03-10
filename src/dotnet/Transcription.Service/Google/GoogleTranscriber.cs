@@ -1,55 +1,47 @@
+using System.Numerics;
 using ActualChat.Audio;
 using ActualChat.Module;
+using Cysharp.Text;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
+using Google.Protobuf;
 using Grpc.Core;
 
 namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriber : ITranscriber
 {
-    private static readonly Task<AudioSource> _silenceAudioSourceTask = BackgroundTask.Run(LoadSilenceAudio);
-
-    private readonly Task<string> _projectIdTask;
+    private static readonly string RegionId = "us";
+    private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(4);
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
+    private IServiceProvider Services { get; }
     private CoreSettings CoreSettings { get; }
     private MomentClockSet Clocks { get; }
+
+    private Task WhenInitialized { get; }
+    private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
+    private StreamingRecognitionConfig RecognitionConfig { get; set; } = null!; // Post-WhenInitialized
+    private string GoogleProjectId { get; set; } = null!; // Post-WhenInitialized
+    private AudioSource SilenceAudioSource { get; set; } = null!; // Post-WhenInitialized
 
     public GoogleTranscriber(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Services = services;
         CoreSettings = services.GetRequiredService<CoreSettings>();
         Clocks = services.GetRequiredService<MomentClockSet>();
-        _projectIdTask = BackgroundTask.Run(LoadProjectId);
+        WhenInitialized = Initialize();
     }
 
-    public async IAsyncEnumerable<Transcript> Transcribe(
-        string audioStreamId,
-        AudioSource audioSource,
-        TranscriptionOptions options,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    private async Task Initialize()
     {
-        var region = GetRegionId(options.Language);
-        var languageCode = GetLanguageCode(options.Language);
-        var projectId = await GetProjectId().ConfigureAwait(false);
-        var endpoint = $"{region}-speech.googleapis.com:443";
-        var recognizerId = $"{languageCode.ToLowerInvariant()}";
-        var parent = $"projects/{projectId}/locations/{region}";
-        var recognizerName = $"{parent}/recognizers/{recognizerId}";
-        var builder = new SpeechClientBuilder {
-            Endpoint = endpoint,
-        };
-        var speechClient = await builder.BuildAsync(CancellationToken.None).ConfigureAwait(false);
-        var recognizeRequests = speechClient
-            .StreamingRecognize(
-                CallSettings.FromCancellationToken(CancellationToken.None),
-                new BidirectionalStreamingSettings(1));
-        var streamingRecognitionConfig = new StreamingRecognitionConfig {
+        RecognitionConfig = new StreamingRecognitionConfig {
             Config = new RecognitionConfig {
                 AutoDecodingConfig = new AutoDetectDecodingConfig(),
             },
@@ -60,99 +52,259 @@ public class GoogleTranscriber : ITranscriber
                 // EnableVoiceActivityEvents =
             },
         };
-        Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
-        await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
-            StreamingConfig = streamingRecognitionConfig,
-            Recognizer = recognizerName,
-        }).ConfigureAwait(false);
 
-        var webMStreamAdapter = new WebMStreamAdapter(Clocks, Log);
-        var silenceAudioSource = await _silenceAudioSourceTask.ConfigureAwait(false);
-        var resultAudioSource = silenceAudioSource
-            .Take(TimeSpan.FromMilliseconds(2000), cancellationToken)
-            .Concat(audioSource, cancellationToken)
-            .ConcatUntil(silenceAudioSource, TimeSpan.FromSeconds(4), cancellationToken);
-        var byteStream = webMStreamAdapter.Write(resultAudioSource, cancellationToken);
-        var memoizedByteStream = byteStream.Memoize(cancellationToken);
-        var transcripts = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions {
-            SingleWriter = true,
-            SingleReader = true,
-        });
+        var speechClientBuilder = new SpeechClientBuilder {
+            // See https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
+            Endpoint = $"{RegionId}-speech.googleapis.com:443",
+        };
 
-        var transcribeTask = BackgroundTask.Run(
-            () => RetryingTranscribe(cancellationToken),
-            Log,
-            $"{nameof(GoogleTranscriber)}.{nameof(TryTranscribe)} failed",
-            cancellationToken);
+        // Start a few tasks in parallel
+        var speechClientTask = speechClientBuilder.BuildAsync();
+        var loadSilenceAudioTask = LoadSilenceAudio();
 
-        await foreach(var transcript in transcripts.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-            yield return transcript;
-        await transcribeTask.ConfigureAwait(false);
-        yield break;
-
-        async Task RetryingTranscribe(CancellationToken cancellationToken1)
-        {
-            for (var mustExit = false;; mustExit = true) {
-                Exception? error = null;
-                var cts = cancellationToken.CreateLinkedTokenSource();
-                try {
-                    await TryTranscribe(cts.Token).ConfigureAwait(false);
-                }
-                catch (RpcException e) when (
-                    e.StatusCode is StatusCode.NotFound
-                    && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer")
-                    && !mustExit) {
-
-                    error = e;
-                    await CreateRecognizer(speechClient,
-                            recognizerId,
-                            parent,
-                            options,
-                            cancellationToken1)
-                        .ConfigureAwait(false);
-
-                    Log.LogWarning("Restarting recognize process for {AudioStreamId}", audioStreamId);
-                    recognizeRequests = speechClient
-                        .StreamingRecognize(
-                            CallSettings.FromCancellationToken(cancellationToken1),
-                            new BidirectionalStreamingSettings(1));
-                    await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
-                        StreamingConfig = streamingRecognitionConfig,
-                        Recognizer = recognizerName,
-                    }).ConfigureAwait(false);
-                }
-                catch (Exception e) {
-                    error = e;
-                }
-
-                cts.CancelAndDisposeSilently();
-                if (error == null || mustExit) {
-                    transcripts.Writer.TryComplete(error);
-                    break;
-                }
-            }
+        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty())
+            GoogleProjectId = CoreSettings.GoogleProjectId;
+        else {
+            var platform = await Platform.InstanceAsync().ConfigureAwait(false);
+            GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<GoogleTranscriber>(
+                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
         }
 
-        async Task TryTranscribe(CancellationToken cancellationToken1)
-        {
-            var process = new GoogleTranscriberProcess(
-                memoizedByteStream.Replay(cancellationToken1),
-                // ReSharper disable once AccessToModifiedClosure
-                recognizeRequests,
-                streamingRecognitionConfig,
-                Clocks,
-                Log);
+        SpeechClient = await speechClientTask.ConfigureAwait(false);
+        SilenceAudioSource = await loadSilenceAudioTask.ConfigureAwait(false);
+    }
 
-            var readTranscripts = process.Transcribe(cancellationToken1);
-            await foreach (var transcript in readTranscripts.ConfigureAwait(false))
-                await transcripts.Writer.WriteAsync(transcript, cancellationToken1).ConfigureAwait(false);
+    public async Task Transcribe(
+        string audioStreamId,
+        AudioSource audioSource,
+        TranscriptionOptions options,
+        ChannelWriter<Transcript> output,
+        CancellationToken cancellationToken = default)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var languageCode = GetLanguageCode(options.Language);
+        var recognizerId = $"{languageCode.ToLowerInvariant()}";
+        var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
+        var recognizerName = $"{parent}/recognizers/{recognizerId}";
+
+        var converter = new WebMStreamConverter(Clocks, Log);
+        var resultAudioSource = AugmentSourceAudio(audioSource, cancellationToken);
+        var byteStream = converter
+            .ToByteStream(resultAudioSource, cancellationToken)
+            .Memoize(cancellationToken);
+
+        Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
+        try {
+            await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (RpcException e) when (
+            e.StatusCode is StatusCode.NotFound
+            && e.Status.Detail.OrdinalStartsWith("Unable to find Recognizer"))
+        {
+            await CreateRecognizer(recognizerId, parent, options, cancellationToken)
+                .ConfigureAwait(false);
+            await Transcribe(recognizerName, byteStream.Replay(cancellationToken), output, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
     // Private methods
 
+    private async Task Transcribe(
+        string recognizerName,
+        IAsyncEnumerable<byte[]> audioSource,
+        ChannelWriter<Transcript> output,
+        CancellationToken cancellationToken)
+    {
+        var recognizeStream = SpeechClient.StreamingRecognize(
+            CallSettings.FromCancellationToken(cancellationToken),
+            new BidirectionalStreamingSettings(1));
+        await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
+            StreamingConfig = RecognitionConfig,
+            Recognizer = recognizerName,
+        }).ConfigureAwait(false);
+
+        // We want to stop both tasks here on any failure, so...
+        var cts = cancellationToken.CreateLinkedTokenSource();
+        try {
+            var pushAudioTask = PushAudio(audioSource, recognizeStream, cts.Token);
+            var pullResponsesTask = PullResponses(recognizeStream, output, cts.Token);
+            await Task.WhenAll(pushAudioTask, pullResponsesTask).ConfigureAwait(false);
+        }
+        finally {
+            cts.CancelAndDisposeSilently();
+        }
+    }
+
+    private async Task PushAudio(
+        IAsyncEnumerable<byte[]> audioSource,
+        SpeechClient.StreamingRecognizeStream recognizeStream,
+        CancellationToken cancellationToken)
+    {
+        try {
+            await foreach (var chunk in audioSource.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                var request = new StreamingRecognizeRequest {
+                    StreamingConfig = RecognitionConfig,
+                    Audio = ByteString.CopyFrom(chunk),
+                };
+                await recognizeStream.WriteAsync(request).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) {
+            Log.LogError(e, $"{nameof(PushAudio)} failed");
+            throw;
+        }
+        finally {
+            await recognizeStream
+                .WriteCompleteAsync()
+                .WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private async Task PullResponses(
+        SpeechClient.StreamingRecognizeStream recognizeStream,
+        ChannelWriter<Transcript> output,
+        CancellationToken cancellationToken)
+    {
+        try {
+            var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeStream.GetResponseStream();
+            await foreach (var transcript in ProcessResponses(responses).ConfigureAwait(false))
+                await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, $"{nameof(PullResponses)} failed");
+            throw;
+        }
+    }
+
+    // It's internal to be accessible from tests
+    internal async IAsyncEnumerable<Transcript> ProcessResponses(
+        IAsyncEnumerable<StreamingRecognizeResponse> responses)
+    {
+        var state = new GoogleTranscriberState();
+        await foreach (var response in responses.ConfigureAwait(false)) {
+            var transcript = ProcessResponse(state, response);
+            if (transcript != null)
+                yield return transcript;
+        }
+        yield return state.MarkStable();
+    }
+
+    private Transcript? ProcessResponse(
+        GoogleTranscriberState state,
+        StreamingRecognizeResponse response)
+    {
+        DebugLog?.LogDebug("Response={Response}", response);
+
+        Transcript transcript;
+        var results = response.Results;
+        var hasFinal = results.Any(r => r.IsFinal);
+        if (hasFinal) {
+            var result = results.Single(r => r.IsFinal);
+            if (!TryParseFinal(state, result, out var text, out var timeMap)) {
+                Log.LogWarning("Final transcript discarded. State.LastStable={LastStable}, Response={Response}",
+                    state.Stable, response);
+                return null;
+            }
+            transcript = state.AppendStable(text, timeMap);
+        }
+        else {
+            var text = results
+                .Select(r => r.Alternatives.First().Transcript)
+                .ToDelimitedString("");
+
+            var resultEndOffset = results.First().ResultEndOffset;
+            var endTime = resultEndOffset == null
+                ? null
+                : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
+
+            // Google Transcribe issue: doesn't provide IsFinal results time to time, so let's implement some heuristics
+            // when we can Complete current transcript
+            if (ReferenceEquals(state.Stable, Transcript.Empty)) {
+                if (state.Unstable.Length > text.Length + 4)
+                    state.MarkStable();
+            }
+            else {
+                var diffMap = state.Stable.TimeMap.GetDiffSuffix(state.Unstable.TimeMap);
+                if (diffMap.XRange.Size() > text.Length + 24)
+                    state.MarkStable();
+            }
+
+            if (state.Stable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
+                // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
+                // i.e. they go concatenated with the stable (final) part.
+                text = ZString.Concat(" ", text);
+            }
+
+            transcript = state.AppendUnstable(text, endTime);
+        }
+        DebugLog?.LogDebug("Transcript={Transcript}", transcript);
+        return transcript;
+    }
+
+    private bool TryParseFinal(
+        GoogleTranscriberState state,
+        StreamingRecognitionResult result,
+        out string text,
+        out LinearMap timeMap)
+    {
+        var lastStable = state.Stable;
+        var lastStableTextLength = lastStable.Text.Length;
+        var lastStableDuration = lastStable.TimeMap.YRange.End;
+
+        var alternative = result.Alternatives.Single();
+        var resultEndOffset = result.ResultEndOffset;
+        var endTime = resultEndOffset == null
+            ? null
+            : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
+        text = alternative.Transcript;
+        if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
+            text = " " + text;
+
+        var mapPoints = new List<Vector2>();
+        var parsedOffset = 0;
+        var parsedDuration = lastStableDuration;
+        foreach (var word in alternative.Words) {
+            var wordStartTime = word.StartOffset == null
+                ? 0
+                : (float)word.StartOffset.ToTimeSpan().TotalSeconds;
+            if (wordStartTime < parsedDuration)
+                continue;
+            var wordStart = text.OrdinalIgnoreCaseIndexOf(word.Word, parsedOffset);
+            if (wordStart < 0)
+                continue;
+
+            var wordEndTime = (float)word.EndOffset.ToTimeSpan().TotalSeconds;
+            var wordEnd = wordStart + word.Word.Length;
+
+            mapPoints.Add(new Vector2(lastStableTextLength + wordStart, GetOriginalAudioTime(wordStartTime)));
+            mapPoints.Add(new Vector2(lastStableTextLength + wordEnd, GetOriginalAudioTime(wordEndTime)));
+
+            parsedDuration = wordStartTime;
+            parsedOffset = wordStart + word.Word.Length;
+        }
+
+        if (mapPoints.Count == 0) {
+            timeMap = default;
+            return false;
+        }
+
+        var lastPoint = mapPoints[^1];
+        var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime ?? mapPoints.Max(v => v.Y));
+        if (Math.Abs(lastPoint.X - veryLastPoint.X) < 0.1)
+            mapPoints[^1] = veryLastPoint;
+        else
+            mapPoints.Add(veryLastPoint);
+        timeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TimeMapEpsilon);
+        return true;
+    }
+
+    // Helpers
+
     private async Task CreateRecognizer(
-        SpeechClient speechClient,
         string recognizerId,
         string recognizerParent,
         TranscriptionOptions options,
@@ -182,7 +334,7 @@ public class GoogleTranscriber : ITranscriber
                 },
             },
         };
-        var createRecognizerOperation = await speechClient
+        var createRecognizerOperation = await SpeechClient
             .CreateRecognizerAsync(createRecognizerRequest, cancellationToken)
             .ConfigureAwait(false);
         var createRecognizerCompleted = await createRecognizerOperation
@@ -190,21 +342,6 @@ public class GoogleTranscriber : ITranscriber
             .ConfigureAwait(false);
         var result = createRecognizerCompleted.Result;
         DebugLog?.LogDebug("Creating new recognizer: #{RecognizerId} -> {Result}", recognizerId, result);
-    }
-
-    // https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
-    // See supported languages
-    private string GetRegionId(Language language)
-    {
-        var regionId = CoreSettings.GoogleRegionId.NullIfEmpty()
-            ?? throw StandardError.Configuration(
-                $"{nameof(CoreSettings)}.{nameof(CoreSettings.GoogleRegionId)} is not set.");
-        return (regionId, language.Code.Value) switch {
-            // region-specific recognizer endpoints are slow @ Jan 15, 2023
-            // ("us-central1", "EN") => "us-central1",
-            // ("us-central1", "ES") => "us-central1",
-            _ => "us",
-        };
     }
 
     private string GetLanguageCode(Language language)
@@ -215,27 +352,21 @@ public class GoogleTranscriber : ITranscriber
             _ => language,
         };
 
-    private Task<string> GetProjectId()
-        => _projectIdTask;
+    private float GetOriginalAudioTime(float time)
+        => (float)Math.Round(Math.Max(0, time - SilentPrefixDuration.TotalSeconds), 2);
 
-    private async Task<string> LoadProjectId()
-    {
-        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty())
-            return CoreSettings.GoogleProjectId;
-
-        var platform = await Platform.InstanceAsync().ConfigureAwait(false);
-        if (platform?.ProjectId == null)
-            throw StandardError.NotSupported<GoogleTranscriber>(
-                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
-        return platform.ProjectId;
-    }
+    private AudioSource AugmentSourceAudio(AudioSource audioSource, CancellationToken cancellationToken)
+        => SilenceAudioSource
+            .Take(SilentPrefixDuration, cancellationToken)
+            .Concat(audioSource, cancellationToken)
+            .ConcatUntil(SilenceAudioSource, TimeSpan.FromSeconds(4), cancellationToken);
 
     private static Task<AudioSource> LoadSilenceAudio()
     {
-        var byteStream = typeof(GoogleTranscriberProcess).Assembly
+        var byteStream = typeof(GoogleTranscriber).Assembly
             .GetManifestResourceStream("ActualChat.Transcription.data.silence.opuss")!
             .ReadByteStream(true);
-        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, DefaultLog);
-        return streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = new ActualOpusStreamConverter(MomentClockSet.Default, DefaultLog);
+        return converter.FromByteStream(byteStream, CancellationToken.None);
     }
 }

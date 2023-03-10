@@ -1,3 +1,5 @@
+using ActualChat.Transcription.Google;
+
 namespace ActualChat.Transcription.UnitTests;
 
 public class TranscriptUpdateTests : TestBase
@@ -30,7 +32,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void TranscriberStateTest1()
     {
-        var state = new TranscriberState();
+        var state = new GoogleTranscriberState();
         var t = state.AppendUnstable("раз-два-три-четыре-пять,", 4.68f);
         t = state.AppendStable("раз-два-три-четыре-пять, 67", 4.98f);
         t = state.AppendUnstable(" вот", 8.14f);
@@ -43,7 +45,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void TranscriberStateTest2()
     {
-        var state = new TranscriberState();
+        var state = new GoogleTranscriberState();
         _ = state.AppendStable("1", 1);
         Dump(state.Stable);
         _ = state.AppendStable(" 2", 2);
@@ -57,7 +59,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void TranscriberUnstableTest()
     {
-        var state = new TranscriberState();
+        var state = new GoogleTranscriberState();
         _ = state.AppendUnstable("1", 1);
         Dump(state.Stable);
         var t = state.AppendUnstable(" 2", 2);
@@ -69,7 +71,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void RandomTranscriberStateTest()
     {
-        var extractor = new TranscriberState();
+        var extractor = new GoogleTranscriberState();
         var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString();
         var rnd = new Random(0);
         for (var offset = 0; offset <= text.Length; offset += rnd.Next(3)) {

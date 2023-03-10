@@ -43,8 +43,8 @@ public class GoogleTranscriberTest : TestBase
         //     Path.Combine(Environment.CurrentDirectory, "data", file-name),
         //     FileMode.OpenOrCreate,
         //     FileAccess.ReadWrite)) {
-        //     var webMAdapter = new WebMStreamAdapter(Log);
-        //     var byteStream = webMAdapter.Write(audio, CancellationToken.None);
+        //     var converter = new WebMStreamConverter(Log);
+        //     var byteStream = converter.ToByteStream(audio, CancellationToken.None);
         //     await foreach (var data in byteStream) {
         //         await outputStream.WriteAsync(data, CancellationToken.None);
         //     }
@@ -54,7 +54,7 @@ public class GoogleTranscriberTest : TestBase
         // using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
         // var writeBuffer = writeBufferLease.Memory;
 
-        var transcripts = await transcriber.Transcribe("test", audio, options, default).ToListAsync();
+        var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
         foreach (var t in transcripts)
             Out.WriteLine(t.ToString());
     }
@@ -69,7 +69,7 @@ public class GoogleTranscriberTest : TestBase
             Language = "ru-RU",
         };
         var audio = await GetAudio(fileName);
-        var transcripts = await transcriber.Transcribe("test", audio, options, default).ToListAsync();
+        var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
         foreach (var t in transcripts)
             Out.WriteLine(t.ToString());
         transcripts.Last().TimeRange.Start.Should().Be(0);
@@ -79,10 +79,10 @@ public class GoogleTranscriberTest : TestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = webMStream ?? fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 

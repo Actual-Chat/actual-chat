@@ -70,7 +70,7 @@ public class WebClientTester : IWebClientTester
         var services = new ServiceCollection();
         var configuration = AppServices.GetRequiredService<IConfiguration>();
         Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl).Wait();
-        TestHostFactory.ConfigureLogging(services, output); // Override logging
+        services.ConfigureLogging(output); // Override logging
 
         var serviceProvider = services.BuildServiceProvider();
         serviceProvider.HostedServices().Start().Wait();

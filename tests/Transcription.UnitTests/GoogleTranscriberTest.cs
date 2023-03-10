@@ -1,3 +1,5 @@
+using ActualChat.Module;
+using ActualChat.Testing.Host;
 using ActualChat.Transcription.Google;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
@@ -7,17 +9,25 @@ namespace ActualChat.Transcription.UnitTests;
 public class GoogleTranscriberTest : TestBase
 {
     private ILogger<GoogleTranscriber> Log { get; }
+    private ServiceProvider Services { get; set; }
 
     public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
-        => Log = log;
+    {
+        Log = log;
+        Services = new ServiceCollection()
+            .AddSingleton(new CoreSettings())
+            .AddSingleton(MomentClockSet.Default)
+            .AddSingleton<GoogleTranscriber>()
+            .ConfigureLogging(Out)
+            .BuildServiceProvider();
+    }
 
     [Fact]
     public async Task DuplicateFinalResponsesTest()
     {
-        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GenerateResponses());
+        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        var transcripts = await transcriber.ProcessResponses(GenerateResponses()).ToListAsync();
 
-        var transcripts = await process.Transcribe(CancellationToken.None).ToListAsync();
         transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
         transcripts.Max(t => t.TimeRange.End).Should().Be(3.82f);
         var transcript = transcripts.Last();
@@ -182,10 +192,10 @@ public class GoogleTranscriberTest : TestBase
     [Fact]
     public async Task TextToTimeMapTest()
     {
-        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/transcript.json"));
+        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        var responses = GoogleTranscriptReader.ReadFromFile("data/transcript.json");
+        var transcripts = await transcriber.ProcessResponses(responses).ToListAsync();
 
-        var transcripts = await process.Transcribe(CancellationToken.None).ToListAsync();
         var transcript = transcripts.Last();
         Out.WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
@@ -194,10 +204,10 @@ public class GoogleTranscriberTest : TestBase
     [Fact]
     public async Task LongTranscriptProducesCorrectDiff()
     {
-        var process = new GoogleTranscriberProcess(null!, null!, null!, null!, Log);
-        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("data/long-transcript.json"));
+        var transcriber = Services.GetRequiredService<GoogleTranscriber>();
+        var responses = GoogleTranscriptReader.ReadFromFile("data/long-transcript.json");
+        var transcripts = transcriber.ProcessResponses(responses);
 
-        var transcripts = process.Transcribe(CancellationToken.None);
         var memoizedTranscripts = transcripts.Memoize();
         var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs();
         var memoizedDiffs = diffs.Memoize();
