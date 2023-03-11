@@ -48,7 +48,7 @@ let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'voice';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
-let encoder: Encoder;
+let encoder: Encoder | null;
 let lastInitArguments: { sessionId: string, chatId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
@@ -130,7 +130,7 @@ const serverImpl: OpusEncoderWorker = {
         processQueue('out');
         recordingSubject?.complete();
         recordingSubject = null;
-        encoder.reset();
+        encoder?.reset();
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
