@@ -44,7 +44,7 @@ public sealed class Playback : ProcessorBase
 
     protected override async Task DisposeAsyncCore()
     {
-        var process = Stop(CancellationToken.None);
+        var process = Abort();
         await process.WhenCompleted.SuppressExceptions().ConfigureAwait(false);
         await _messageProcessor.Complete().ConfigureAwait(false);
         await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SuppressExceptions().ConfigureAwait(false);
@@ -69,8 +69,8 @@ public sealed class Playback : ProcessorBase
     public IMessageProcess<ResumeCommand> Resume(CancellationToken cancellationToken)
         => _messageProcessor.Enqueue(ResumeCommand.Instance, cancellationToken);
 
-    public IMessageProcess<AbortCommand> Stop(CancellationToken cancellationToken)
-        => _messageProcessor.Enqueue(AbortCommand.Instance, cancellationToken);
+    public IMessageProcess<AbortCommand> Abort()
+        => _messageProcessor.Enqueue(AbortCommand.Instance);
 
     private Task<object?> ProcessCommand(IPlaybackCommand command, CancellationToken cancellationToken)
     {

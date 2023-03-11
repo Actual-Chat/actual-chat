@@ -66,7 +66,7 @@
         FirstAttachment = Entry.Attachments.FirstOrDefault();
         Markup = Entry.AudioEntryId == null
             ? MarkupParser.Parse(Entry.Content)
-            : new PlayableTextMarkup(Entry.Content, Entry.TextToTimeMap);
+            : new PlayableTextMarkup(Entry.Content, Entry.TimeMap);
     }
 
     private void OnCancel()

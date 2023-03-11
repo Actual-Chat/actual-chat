@@ -84,10 +84,13 @@ public partial class ChatAudioUI
         var cRecordingStateBase = await Computed
             .Capture(() => GetRecordingState(cancellationToken))
             .ConfigureAwait(false);
-        while (true) {
+        while (!cancellationToken.IsCancellationRequested) {
             var cRecordingState = await cRecordingStateBase.When(x => !x.ChatId.IsNone, cancellationToken).ConfigureAwait(false);
-            var worker = FuncWorker.New(ct => RecordChat(cRecordingState, ct), cancellationToken);
-            await worker.Run().ConfigureAwait(false);
+            await BackgroundTask.Run(
+                () => RecordChat(cRecordingState, cancellationToken),
+                Log, $"{nameof(RecordChat)} failed",
+                cancellationToken
+                ).SuppressExceptions().ConfigureAwait(false);
         }
     }
 
@@ -107,38 +110,33 @@ public partial class ChatAudioUI
             }
         }
 
-        Task? whenIdle = null;
-        var whenIdleCts = CancellationSource.NewLinked(cancellationToken);
-        try {
-            if (!cRecordingState.IsConsistent())
-                return;
+        if (!cRecordingState.IsConsistent())
+            return;
 
+        Task? whenIdle = null;
+        var cts = cancellationToken.CreateLinkedTokenSource();
+        try {
             await AudioRecorder.StartRecording(chatId, cancellationToken).ConfigureAwait(false);
 
             var whenChanged = ForegroundTask.Run(async () => {
                 return await cRecordingState
-                    .When(x => x.ChatId != chatId || x.Language != language, cancellationToken)
+                    .When(x => x.ChatId != chatId || x.Language != language, cts.Token)
                     .ConfigureAwait(false);
             }, cancellationToken);
             whenIdle = ForegroundTask.Run(async () => {
                 var options = new IdleAudioWatchOptions(AudioSettings.IdleRecordingTimeout,
                     AudioSettings.IdleRecordingTimeoutBeforeCountdown,
                     AudioSettings.IdleRecordingCheckInterval);
-                await foreach (var willStopAt in WatchIdleAudioBoundaries(chatId, options, whenIdleCts.Token).ConfigureAwait(false))
+                await foreach (var willStopAt in WatchIdleAudioBoundaries(chatId, options, cts.Token).ConfigureAwait(false))
                     _stopRecordingAt.Value = willStopAt;
-            }, whenIdleCts.Token);
+            }, cts.Token);
             await Task.WhenAny(whenChanged, whenIdle).ConfigureAwait(false);
         }
         finally {
-            if (whenIdle != null) {
-                if (whenIdle.IsCompleted)
-                    await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
-                else {
-                    whenIdleCts.Cancel();
-                    await whenIdle.SuppressExceptions().ConfigureAwait(false);
-                }
-            }
+            cts.CancelAndDisposeSilently();
             _stopRecordingAt.Value = null;
+            if (whenIdle is { IsCompleted: true })
+                await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
 
             // Stopping the recording
             for (var tryIndex = 0;; tryIndex++) {

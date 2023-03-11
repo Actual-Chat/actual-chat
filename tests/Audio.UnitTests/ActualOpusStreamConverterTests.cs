@@ -2,25 +2,24 @@ using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class ActualOpusStreamAdapterTests
+public class ActualOpusStreamConverterTests
 {
     private ILogger Log { get; }
 
-    public ActualOpusStreamAdapterTests(ILogger log)
+    public ActualOpusStreamConverterTests(ILogger log)
         => Log = log;
 
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var webMStreamAdapter = new WebMStreamAdapter(MomentClockSet.Default,  Log);
-        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
-            .ReadByteStream(1024);
-        var audio = await webMStreamAdapter.Read(byteStream, default);
-        var outByteStreamMemoized = streamAdapter.Write(audio, CancellationToken.None).Memoize();
+        var webMStreamConverter = new WebMStreamConverter(MomentClockSet.Default,  Log);
+        var opusStreamConverter = new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm").ReadByteStream(1024);
+        var audio = await webMStreamConverter.FromByteStream(byteStream, default);
+        var outByteStreamMemoized = opusStreamConverter.ToByteStream(audio, CancellationToken.None).Memoize();
 
-        var audio1 = await streamAdapter.Read(outByteStreamMemoized.Replay(), CancellationToken.None);
-        var outByteStream1 = streamAdapter.Write(audio1, CancellationToken.None);
+        var audio1 = await opusStreamConverter.FromByteStream(outByteStreamMemoized.Replay(), CancellationToken.None);
+        var outByteStream1 = opusStreamConverter.ToByteStream(audio1, CancellationToken.None);
 
         var inList = await outByteStreamMemoized.Replay().ToListAsync();
         var outList = await outByteStream1.ToListAsync();
@@ -33,15 +32,15 @@ public class ActualOpusStreamAdapterTests
     [Fact]
     public async Task OneByteSequenceCanBeRead()
     {
-        var webMStreamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log);
-        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
+        var webMStreamConverter = new WebMStreamConverter(MomentClockSet.Default, Log);
+        var opusStreamConverter = new ActualOpusStreamConverter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1);
-        var audio = await webMStreamAdapter.Read(byteStream, default);
-        var outByteStreamMemoized = streamAdapter.Write(audio, CancellationToken.None).Memoize();
+        var audio = await webMStreamConverter.FromByteStream(byteStream, default);
+        var outByteStreamMemoized = opusStreamConverter.ToByteStream(audio, CancellationToken.None).Memoize();
 
-        var audio1 = await streamAdapter.Read(outByteStreamMemoized.Replay(), CancellationToken.None);
-        var outByteStream1 = streamAdapter.Write(audio1, CancellationToken.None);
+        var audio1 = await opusStreamConverter.FromByteStream(outByteStreamMemoized.Replay(), CancellationToken.None);
+        var outByteStream1 = opusStreamConverter.ToByteStream(audio1, CancellationToken.None);
 
         var inList = await outByteStreamMemoized.Replay().ToListAsync();
         var outList = await outByteStream1.ToListAsync();
@@ -54,11 +53,11 @@ public class ActualOpusStreamAdapterTests
     [Fact]
     public async Task SuccessfulReadFromFile()
     {
-        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
+        var converter = new ActualOpusStreamConverter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000.opuss")
             .ReadByteStream( 1024);
-        var audio = await streamAdapter.Read(byteStream, default);
-        var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
+        var audio = await converter.FromByteStream(byteStream, default);
+        var outByteStream = converter.ToByteStream(audio, CancellationToken.None);
         var outList = await outByteStream.ToListAsync();
         var outArray = outList.SelectMany(chunk => chunk).ToArray();
         outArray.Length.Should().Be(10571); // we added preSkip and createdAt with this commit
@@ -67,15 +66,15 @@ public class ActualOpusStreamAdapterTests
     [Fact(Skip = "Manual")]
     public async Task ReadWriteFile()
     {
-        var streamAdapter = new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
+        var converter = new ActualOpusStreamConverter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"silence.opuss")
             .ReadByteStream( 1024);
         await using var outputStream = new FileStream(
             Path.Combine(Environment.CurrentDirectory, "data", "silence-prefix.opuss"),
             FileMode.OpenOrCreate,
             FileAccess.ReadWrite);
-        var audio = await streamAdapter.Read(byteStream, default);
-        var outByteStream = streamAdapter.Write(audio, CancellationToken.None).Take(101);
+        var audio = await converter.FromByteStream(byteStream, default);
+        var outByteStream = converter.ToByteStream(audio, CancellationToken.None).Take(101);
         var i = 0;
         await foreach (var x in outByteStream) {
             Log.LogInformation("{I}", i++);

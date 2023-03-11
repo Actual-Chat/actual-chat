@@ -42,7 +42,7 @@ public class AudioHub : Hub
         return Task.CompletedTask;
     }
 
-    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -64,8 +64,16 @@ public class AudioHub : Hub
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        // No cancellation token here as we want to complete processing regardless of current request context state
-        await AudioProcessor.ProcessAudio(audioRecord, preSkipFrames, frameStream, CancellationToken.None)
+
+        var trimDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5);
+        var cancelDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(10);
+
+        using var cancelCts = new CancellationTokenSource(cancelDuration);
+        using var trimCts = new CancellationTokenSource(trimDuration);
+        frameStream = frameStream.TrimOnCancellation(trimCts.Token);
+
+        await AudioProcessor
+            .ProcessAudio(audioRecord, preSkipFrames, frameStream, cancelCts.Token)
             .ConfigureAwait(false);
     }
 

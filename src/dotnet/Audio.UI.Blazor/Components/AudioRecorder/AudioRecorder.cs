@@ -70,7 +70,8 @@ public class AudioRecorder : IAsyncDisposable
             await StopRecordingUnsafe();
 
         MarkStarting(chatId);
-        using var cts = CancellationSource.NewLinked(cancellationToken, StartRecordingTimeout);
+        var cts = cancellationToken.CreateLinkedTokenSource();
+        cts.CancelAfter(StartRecordingTimeout);
         try {
             var isStarted = await _jsRef
                 .InvokeAsync<bool>("startRecording", cts.Token, chatId)
@@ -98,6 +99,9 @@ public class AudioRecorder : IAsyncDisposable
                 throw;
             throw new AudioRecorderException("Failed to start recording.", e);
         }
+        finally {
+            cts.CancelAndDisposeSilently();
+        }
     }
 
     public async Task<bool> StopRecording(CancellationToken cancellationToken = default)
@@ -116,7 +120,7 @@ public class AudioRecorder : IAsyncDisposable
             return true; // Nothing to do
 
         // This method should reliably stop the recording, so we don't use normal cancellation here
-        using var cts = CancellationSource.New(StopRecordingTimeout);
+        var cts = new CancellationTokenSource(StopRecordingTimeout);
         try {
             await _jsRef.InvokeVoidAsync("stopRecording", cts.Token).ConfigureAwait(false);
         }
@@ -127,6 +131,9 @@ public class AudioRecorder : IAsyncDisposable
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             Log.LogError(e, $"{nameof(StopRecordingUnsafe)}: chat #{{ChatId}} - {reason}, recorder state is in doubt", chatId);
             return false;
+        }
+        finally {
+            cts.CancelAndDisposeSilently();
         }
         MarkStopped();
         return true;

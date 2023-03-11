@@ -116,10 +116,10 @@ public class GoogleSpeechToTextTest : TestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = webMStream ?? fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 

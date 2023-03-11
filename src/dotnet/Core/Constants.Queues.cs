@@ -8,8 +8,8 @@ public static partial class Constants
         public static int AsyncMemoizerTargetQueueSize { get; } = 16;
         public static int LocalCommandQueueDefaultSize { get; } = 1024;
         // Audio
-        public static int OpusStreamAdapterQueueSize { get; } = 128;
-        public static int WebMStreamAdapterQueueSize { get; } = 128;
+        public static int OpusStreamConverterQueueSize { get; } = 128;
+        public static int WebMStreamConverterQueueSize { get; } = 128;
         public static int TrackPlayerCommandQueueSize { get; } = 8;
     }
 

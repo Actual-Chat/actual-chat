@@ -1,21 +1,24 @@
 using System.Buffers;
 using System.Buffers.Binary;
-using ActualChat.Spans;
 
 namespace ActualChat.Audio;
 
-public class ActualOpusStreamAdapter : IAudioStreamAdapter
+public class ActualOpusStreamConverter : IAudioStreamConverter
 {
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public ActualOpusStreamAdapter(MomentClockSet clocks, ILogger log)
+    public int FramesPerChunk { get; init; } = 3;
+
+    public ActualOpusStreamConverter(MomentClockSet clocks, ILogger log)
     {
         Clocks = clocks;
         Log = log;
     }
 
-    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public async Task<AudioSource> FromByteStream(
+        IAsyncEnumerable<byte[]> byteStream,
+        CancellationToken cancellationToken = default)
     {
         var headerTask = TaskSource.New<ActualOpusStreamHeader>(true).Task;
         var formatTaskSource = TaskSource.For(headerTask);
@@ -24,7 +27,7 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
         var target = Channel.CreateBounded<AudioFrame>(
-            new BoundedChannelOptions(Constants.Queues.OpusStreamAdapterQueueSize) {
+            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
                 SingleWriter = true,
                 SingleReader = true,
                 AllowSynchronousContinuations = true,
@@ -122,18 +125,32 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
         return audioSource;
     }
 
-    public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<(byte[] Buffer, AudioFrame? LastFrame)> ToByteFrameStream(
+        AudioSource source,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
         var buffer = bufferLease.Memory;
-        yield return WriteHeader(source);
+        yield return (WriteHeader(source), null);
 
+        var framesInChunk = 0;
         var position = 0;
+        AudioFrame? lastFrame = null;
         await foreach (var frame in source.GetFrames(cancellationToken).ConfigureAwait(false)) {
+            lastFrame = frame;
             position += WriteFrame(frame.Data, buffer.Span[position..]);
-            yield return buffer.Span[..position].ToArray();
-            position = 0;
+            framesInChunk++;
+
+            if (framesInChunk >= FramesPerChunk) {
+                yield return (buffer.Span[..position].ToArray(), lastFrame);
+                framesInChunk = 0;
+                position = 0;
+            }
         }
+        if (position > 0)
+            yield return (buffer.Span[..position].ToArray(), lastFrame);
+
+        yield break;
 
         int WriteFrame(byte[] frame, Span<byte> span)
         {

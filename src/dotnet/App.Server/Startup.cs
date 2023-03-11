@@ -39,6 +39,8 @@ public class Startup
                     LogLevel.Debug,
                     new Dictionary<string, LogLevel>(StringComparer.Ordinal) {
                         { "ActualChat", LogLevel.Debug },
+                        { "ActualChat.Transcription", LogLevel.Debug },
+                        { "ActualChat.Transcription.Google", LogLevel.Debug },
                         { "Microsoft", LogLevel.Warning },
                         // { "Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Debug },
                         // { "Microsoft.AspNetCore.Components", LogLevel.Debug },

@@ -4,21 +4,21 @@ using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class WebMStreamAdapterTest
+public class WebMStreamConverterTest
 {
     private ILogger Log { get; }
 
-    public WebMStreamAdapterTest(ILogger log)
+    public WebMStreamConverterTest(ILogger log)
         => Log = log;
 
     [Fact]
     public async Task WrittenStreamIsValid()
     {
-        var streamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log);
+        var converter = new WebMStreamConverter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024);
-        var audio = await streamAdapter.Read(byteStream, default);
-        var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
+        var audio = await converter.FromByteStream(byteStream, default);
+        var outByteStream = converter.ToByteStream(audio, CancellationToken.None);
         var clusterOffsetMs = 0;
         var blockOffsetMs = -1;
         WebMReader.State state = new WebMReader.State();
@@ -35,12 +35,15 @@ public class WebMStreamAdapterTest
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var streamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log, "opus-media-recorder", 0x00B6F555106DDDC8);
+        var converter = new WebMStreamConverter(MomentClockSet.Default, Log) {
+            WritingApp = "opus-media-recorder",
+            TrackUid = 0x00B6F555106DDDC8,
+        };
         var byteStreamMemoized = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024)
             .Memoize();
-        var audio = await streamAdapter.Read(byteStreamMemoized.Replay(), default);
-        var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
+        var audio = await converter.FromByteStream(byteStreamMemoized.Replay(), default);
+        var outByteStream = converter.ToByteStream(audio, CancellationToken.None);
         var inList = await byteStreamMemoized.Replay().ToListAsync();
         var outList = await outByteStream.ToListAsync();
         outList[0][31] = 2; // revert doc version to 2 as before
@@ -50,11 +53,11 @@ public class WebMStreamAdapterTest
     [Fact]
     public async Task OneByteSequenceCanBeRead()
     {
-        var streamAdapter = new WebMStreamAdapter(MomentClockSet.Default, Log);
+        var converter = new WebMStreamConverter(MomentClockSet.Default, Log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1);
-        var audio = await streamAdapter.Read(byteStream, default);
-        var outByteStream = streamAdapter.Write(audio, CancellationToken.None);
+        var audio = await converter.FromByteStream(byteStream, default);
+        var outByteStream = converter.ToByteStream(audio, CancellationToken.None);
         var clusterOffsetMs = 0;
         var blockOffsetMs = -1;
         WebMReader.State state = new WebMReader.State();

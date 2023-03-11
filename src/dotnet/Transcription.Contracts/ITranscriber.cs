@@ -4,10 +4,10 @@ namespace ActualChat.Transcription;
 
 public interface ITranscriber
 {
-    IAsyncEnumerable<Transcript> Transcribe(
-        Symbol transcriberKey,
-        string streamId,
+    Task Transcribe(
+        string audioStreamId,
         AudioSource audioSource,
         TranscriptionOptions options,
-        CancellationToken cancellationToken);
+        ChannelWriter<Transcript> output,
+        CancellationToken cancellationToken = default);
 }

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Cysharp.Text;
 
-namespace ActualChat.Testing.Host;
+namespace ActualChat.Testing;
 
 public class TimestampedTestOutput : ITestOutputHelper
 {

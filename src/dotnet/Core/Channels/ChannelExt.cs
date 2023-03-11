@@ -2,7 +2,12 @@ namespace ActualChat.Channels;
 
 public static class ChannelExt
 {
-    internal static readonly ChannelClosedException ChannelClosedError = new();
+    private static readonly ChannelClosedException ChannelClosedError = new();
+
+    public static UnboundedChannelOptions SingleReaderWriterUnboundedChannelOptions { get; } = new () {
+        SingleReader = true,
+        SingleWriter = true,
+    };
 
     public static AsyncMemoizer<T> Memoize<T>(
         this Channel<T> source,

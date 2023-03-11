@@ -84,7 +84,6 @@ public abstract class ChatPlayer : ProcessorBase
             catch (Exception e) {
                 if (e is not OperationCanceledException)
                     Log.LogError(e, "Playback (reader part) failed in chat #{ChatId}", ChatId);
-                chatEntryPlayer.Abort();
             }
             finally {
                 // We should wait for playback completion first

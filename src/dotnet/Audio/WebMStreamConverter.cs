@@ -4,23 +4,24 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio;
 
-public sealed class WebMStreamAdapter : IAudioStreamAdapter
+public sealed class WebMStreamConverter : IAudioStreamConverter
 {
-    private readonly string _writingApp;
-    private readonly ulong? _trackUid;
-
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public WebMStreamAdapter(MomentClockSet clocks, ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
+    public string WritingApp { get; init; } = "actual-chat";
+    public ulong? TrackUid { get; init; }
+    public int FramesPerChunk { get; init; } = 5;
+
+    public WebMStreamConverter(MomentClockSet clocks, ILogger log)
     {
         Clocks = clocks;
         Log = log;
-        _writingApp = writingApp;
-        _trackUid = trackUid;
     }
 
-    public async Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
+    public async Task<AudioSource> FromByteStream(
+        IAsyncEnumerable<byte[]> byteStream,
+        CancellationToken cancellationToken = default)
     {
         var formatTask = TaskSource.New<AudioFormat>(true).Task;
         var formatTaskSource = TaskSource.For(formatTask);
@@ -36,7 +37,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
         var target = Channel.CreateBounded<AudioFrame>(
-            new BoundedChannelOptions(Constants.Queues.WebMStreamAdapterQueueSize) {
+            new BoundedChannelOptions(Constants.Queues.WebMStreamConverterQueueSize) {
                 SingleWriter = true,
                 SingleReader = true,
                 AllowSynchronousContinuations = true,
@@ -93,7 +94,9 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         return audioSource;
     }
 
-    public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<(byte[] Buffer, AudioFrame? LastFrame)> ToByteFrameStream(
+        AudioSource source,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var random = new Random();
         using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
@@ -113,14 +116,14 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         var segment = new Segment {
             Info = new Info {
                 TimestampScale = 1000000,
-                MuxingApp = _writingApp,
-                WritingApp = _writingApp,
+                MuxingApp = WritingApp,
+                WritingApp = WritingApp,
             },
             Tracks = new Tracks {
                 TrackEntries = new[] {
                     new TrackEntry {
                         TrackNumber = 1,
-                        TrackUID = _trackUid ?? (ulong)Math.Abs(random.NextInt64()) & 0x0000FF_FFFF_FFFF_FFFF,
+                        TrackUID = TrackUid ?? (ulong)Math.Abs(random.NextInt64()) & 0x0000FF_FFFF_FFFF_FFFF,
                         TrackType = TrackType.Audio,
                         CodecID = "A_OPUS",
                         CodecPrivate = new byte[] {
@@ -151,13 +154,15 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             Timestamp = 0,
         };
         position += WriteModel(cluster, buffer.Span[position..]);
-        yield return buffer.Span[..position].ToArray();
-        position = 0;
+        yield return (buffer.Span[..position].ToArray(), null);
 
         var frames = source.GetFrames(cancellationToken);
         short offsetMs = 0;
-        var frameInBlockCount = 0;
+        var framesInChunk = 0;
+        position = 0;
+        AudioFrame? lastFrame = null;
         await foreach (var frame in frames.ConfigureAwait(false)) {
+            lastFrame = frame;
             if (offsetMs == 30000) {
                 cluster = new Cluster {
                     Timestamp = cluster.Timestamp + (ulong)offsetMs,
@@ -173,17 +178,18 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             };
             position += WriteModel(block, buffer.Span[position..]);
             offsetMs += 20;
-            frameInBlockCount++;
+            framesInChunk++;
 
-            if (frameInBlockCount <= 5)
-                continue;
-
-            frameInBlockCount = 0;
-            yield return buffer.Span[..position].ToArray();
-            position = 0;
+            if (framesInChunk >= FramesPerChunk) {
+                yield return (buffer.Span[..position].ToArray(), lastFrame);
+                framesInChunk = 0;
+                position = 0;
+            }
         }
         if (position > 0)
-            yield return buffer.Span[..position].ToArray();
+            yield return (buffer.Span[..position].ToArray(), lastFrame);
+
+        yield break;
 
         int WriteModel(BaseModel model, Span<byte> span)
         {

@@ -314,16 +314,18 @@ public class AudioProcessorTest : AppHostTestBase
         string audioRecordId,
         ITranscriptStreamer transcriptStreamer)
     {
-        var totalLength = 0;
-        // TODO(AK): we need to figure out how to notify consumers about new streamId - with new ChatEntry?
         var audioStreamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
-        var transcriptStreamId = TranscriptSegment.GetStreamId(audioStreamId, 0);
+        var transcriptStreamId = audioStreamId;
         var diffs = transcriptStreamer.GetTranscriptDiffStream(transcriptStreamId, CancellationToken.None);
+        var transcript = Transcript.Empty;
+        var length = 0;
         await foreach (var diff in diffs) {
-            Out.WriteLine(diff.Text);
-            totalLength += diff.Length;
+            transcript += diff;
+            Out.WriteLine($"TextDiff: {diff.TextDiff}");
+            Out.WriteLine($"Transcript: {transcript}");
+            length = transcript.Length;
         }
-        return totalLength;
+        return length;
     }
 
     private static async Task<int> ReadAudio(
@@ -363,10 +365,10 @@ public class AudioProcessorTest : AppHostTestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 

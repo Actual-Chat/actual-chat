@@ -35,7 +35,7 @@ public sealed record ChatEntry(
     [DataMember] public Symbol StreamId { get; init; } = "";
     [DataMember] public long? AudioEntryId { get; init; }
     [DataMember] public long? VideoEntryId { get; init; }
-    [DataMember] public LinearMap TextToTimeMap { get; init; }
+    [DataMember] public LinearMap TimeMap { get; init; }
     [DataMember] public long? RepliedEntryLocalId { get; init; }
     [DataMember] public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
 

@@ -48,7 +48,7 @@
             var entry = model.Entry;
             var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
             var circuitDispatcher = CircuitContext.Dispatcher;
-            var transcripts = diffs.ApplyDiffs(cancellationToken);
+            var transcripts = diffs.ToTranscripts();
             var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;

@@ -11,24 +11,30 @@ public class LinearMapTest : TestBase
     {
         var map = new LinearMap(0, 1).RequireValid();
         map.TryMap(-1).Should().BeNull();
+        map.Map(-1).Should().Be(1f);
         map.TryMap(1).Should().BeNull();
-        map.TryMap(0).Should().Be(1.0f);
+        map.Map(1).Should().Be(1f);
+        map.Map(0).Should().Be(1f);
 
         map = new LinearMap(0, 1, 1, 3).RequireValid();
         map.TryMap(-0.1f).Should().BeNull();
+        map.Map(-0.1f).Should().Be(1f);
         map.TryMap(1.1f).Should().BeNull();
-        map.TryMap(0).Should().Be(1.0f);
-        map.TryMap(1).Should().Be(3.0f);
-        map.TryMap(0.5f).Should().Be(2.0f);
+        map.Map(1.1f).Should().Be(3f);
+        map.Map(0).Should().Be(1f);
+        map.Map(1).Should().Be(3f);
+        map.Map(0.5f).Should().Be(2f);
 
         map = new LinearMap(0, 1, 1, 3, 11, 4).RequireValid();
         map.TryMap(-0.1f).Should().BeNull();
+        map.Map(-0.1f).Should().Be(1f);
         map.TryMap(11.1f).Should().BeNull();
-        map.TryMap(0).Should().Be(1.0f);
-        map.TryMap(1).Should().Be(3.0f);
-        map.TryMap(11).Should().Be(4.0f);
-        map.TryMap(0.5f).Should().Be(2.0f);
-        map.TryMap(6).Should().Be(3.5f);
+        map.Map(11.1f).Should().Be(4f);
+        map.Map(0).Should().Be(1f);
+        map.Map(1).Should().Be(3f);
+        map.Map(11).Should().Be(4f);
+        map.Map(0.5f).Should().Be(2f);
+        map.Map(6).Should().Be(3.5f);
 
         var map1 = map.PassThroughAllSerializers(Out);
         map1.Data.Should().Equal(map.Data);

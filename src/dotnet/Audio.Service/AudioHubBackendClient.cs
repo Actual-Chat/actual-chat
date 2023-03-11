@@ -27,13 +27,13 @@ public class AudioHubBackendClient : HubClientBase,
         return stream;
     }
 
-    public async Task<IAsyncEnumerable<Transcript>> Read(
+    public async Task<IAsyncEnumerable<TranscriptDiff>> Read(
         Symbol streamId,
         CancellationToken cancellationToken)
     {
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var stream = connection
-            .StreamAsync<Transcript>("GetTranscriptStream", streamId.Value, cancellationToken)
+            .StreamAsync<TranscriptDiff>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
             .WithBuffer(TranscriptStreamBufferSize, cancellationToken);
         return stream;
     }
@@ -45,11 +45,11 @@ public class AudioHubBackendClient : HubClientBase,
         await connection.InvokeAsync("WriteAudioStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
+    public async Task Write(Symbol streamId, IAsyncEnumerable<TranscriptDiff> stream, CancellationToken cancellationToken)
     {
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         // wait for stream upload completion
-        await connection.InvokeAsync("WriteTranscriptStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
+        await connection.InvokeAsync("WriteTranscriptDiffStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
