@@ -16,6 +16,7 @@ export class AudioRecorder {
     private whenInitialized: Promise<void>;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
 
+    /** Called by Blazor  */
     public static create(sessionId: string) {
         return new AudioRecorder(sessionId);
     }
@@ -26,6 +27,7 @@ export class AudioRecorder {
 
     }
 
+    /** Called by Blazor  */
     public async dispose(): Promise<void> {
         await opusMediaRecorder.stop();
     }
