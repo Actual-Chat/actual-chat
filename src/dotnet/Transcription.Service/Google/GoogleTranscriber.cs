@@ -75,7 +75,8 @@ public class GoogleTranscriber : ITranscriber
                 $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
         }
 
-        SpeechClient = await speechClientTask.ConfigureAwait(false);
+        if (!OrdinalEquals(GoogleProjectId, "n/a"))
+            SpeechClient = await speechClientTask.ConfigureAwait(false);
         SilenceAudioSource = await loadSilenceAudioTask.ConfigureAwait(false);
     }
 
