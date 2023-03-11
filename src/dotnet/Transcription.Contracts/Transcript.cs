@@ -77,7 +77,7 @@ public sealed record Transcript(
     public Transcript WithSuffix(string suffix, LinearMap suffixTextToTimeMap)
     {
         var text = Text + suffix;
-        var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap);
+        var timeMap = TimeMap.AppendOrUpdateSuffix(suffixTextToTimeMap, TimeMapEpsilon.X);
         return new Transcript(text, timeMap);
     }
 
