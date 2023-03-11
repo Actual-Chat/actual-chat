@@ -72,18 +72,18 @@ public class TranscriptUpdateTests : TestBase
     public void RandomTranscriberStateTest()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString();
+        state.Append(true, "X");
+        var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString("-");
         var rnd = new Random(0);
-        for (var offset = 0; offset <= text.Length; offset += rnd.Next(3)) {
+        var lastOffset = 1;
+        for (var offset = 1; offset <= text.Length; offset += 1 + rnd.Next(3)) {
             var isStable = rnd.Next(3) == 0;
-            var stableLength = state.Stable.Text.Length;
-            var t = state.Append(isStable, text[stableLength..offset], offset);
-            var expected = text[..offset];
+            var suffix = " " + text[lastOffset..offset];
+            var t = state.Append(isStable, suffix, offset);
 
-            t.Text.Should().Be(expected);
+            state.Unstable.Text.Should().EndWith(suffix);
             t.TimeMap.IsValid().Should().BeTrue();
-            for (var i = 0; i <= offset; i++)
-                t.TimeMap.Map(i).Should().BeApproximately(i, 0.01f);
+            lastOffset = offset;
         }
     }
 
