@@ -1,4 +1,3 @@
-import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
@@ -6,12 +5,9 @@ import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'VadAudioWorkletProcessor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, warnLog } = Log.get('VadAudioWorkletProcessor');
 
 const SAMPLES_PER_WINDOW = 768;
 
@@ -24,11 +20,11 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         warnLog?.log('ctor');
-        this.server = rpcServer(`${LogScope}.server`, this.port, this);
+        this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
-        this.worker = rpcClientServer<AudioVadWorker>(`${LogScope}.worker`, workerPort, this);
+        this.worker = rpcClientServer<AudioVadWorker>(`${logScope}.worker`, workerPort, this);
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
     }

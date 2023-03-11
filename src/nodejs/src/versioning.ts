@@ -1,8 +1,6 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'Versioning';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
+const { debugLog, warnLog } = Log.get('Versioning');
 
 export class Versioning {
     private static _artifactVersions: Map<string, string> = null;

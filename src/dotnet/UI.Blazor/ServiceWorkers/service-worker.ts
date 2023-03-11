@@ -1,13 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { stopEvent } from 'event-handling';
 
-const LogScope: LogScope = 'ServiceWorker';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const infoLog = Log.get(LogScope, LogLevel.Info);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, infoLog } = Log.get('ServiceWorker');
 
 // @ts-ignore
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;

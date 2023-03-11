@@ -1,12 +1,8 @@
-import { debounceTime, filter, fromEvent, map, merge, Subject, takeUntil } from 'rxjs';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { stopEvent } from 'event-handling';
-import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
-import { Log, LogLevel, LogScope } from 'logging';
-const LogScope: LogScope = 'LandingLeftMenu';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+import { Log } from 'logging';
+const { debugLog } = Log.get('LandingLeftMenu');
 
 export class LandingLeftMenu {
     private readonly disposed$ = new Subject<void>();

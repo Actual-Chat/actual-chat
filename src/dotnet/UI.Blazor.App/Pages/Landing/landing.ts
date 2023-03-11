@@ -6,11 +6,9 @@ import { stopEvent } from 'event-handling';
 import { Timeout } from 'timeout';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
-import { Log, LogLevel, LogScope } from 'logging';
-const LogScope: LogScope = 'Landing';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+import { Log } from 'logging';
+
+const { debugLog } = Log.get('Landing');
 
 enum ScrollBlock {
     start = 'start',

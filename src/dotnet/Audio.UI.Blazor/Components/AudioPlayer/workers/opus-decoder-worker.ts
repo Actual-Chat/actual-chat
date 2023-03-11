@@ -16,15 +16,12 @@ import { OpusDecoder } from './opus-decoder';
 import { ObjectPool } from 'object-pool';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
 import { RpcNoWait, rpcServer } from 'rpc';
-import { ResolvedPromise, retry } from 'promises';
+import { retry } from 'promises';
 import { Versioning } from 'versioning';
-import { Log, LogLevel, LogScope } from 'logging';
-import 'logging-init';
-import { OnDeviceAwake } from 'on-device-awake';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'OpusDecoderWorker'
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, errorLog } = Log.get('OpusDecoderWorker');
+
 
 // TODO: create wrapper around module for all workers
 
@@ -95,7 +92,7 @@ const serverImpl: OpusDecoderWorker = {
     }
 };
 
-const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
+const server = rpcServer(`${logScope}.server`, worker, serverImpl);
 
 // Helpers
 

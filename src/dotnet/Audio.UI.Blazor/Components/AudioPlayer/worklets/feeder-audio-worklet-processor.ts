@@ -10,12 +10,9 @@ import {
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { Disposable } from 'disposable';
 import { PromiseSource, ResolvedPromise } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'FeederProcessor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
 
 const SampleFrequency = 48000;
 const SampleDuration = 1.0 / SampleFrequency;
@@ -45,7 +42,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        this.node = rpcClientServer<FeederAudioWorkletEventHandler>(`${LogScope}.server`, this.port, this);
+        this.node = rpcClientServer<FeederAudioWorkletEventHandler>(`${logScope}.server`, this.port, this);
     }
 
     private get bufferedDuration(): number {
@@ -65,7 +62,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     public async init(id: string, workerPort: MessagePort): Promise<void> {
         this.id = id;
-        this.worker = rpcServer(`${LogScope}.worker`, workerPort, this);
+        this.worker = rpcServer(`${logScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
     }
 

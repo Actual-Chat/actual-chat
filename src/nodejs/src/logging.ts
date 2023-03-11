@@ -97,7 +97,7 @@ export class Log {
 
     public static loggerFactory = (scope: LogScope, level: LogLevel) => new Log(scope, level);
 
-    public static get(scope: LogScope, level = LogLevel.Info): Log | null {
+    public static get(scope: LogScope) {
         if (!this.isInitialized) {
             this.isInitialized = true;
             initLogging(this);
@@ -107,17 +107,15 @@ export class Log {
         const minLevel = minLevels.get(scope)
             ?? minLevels.get('default')
             ?? this.defaultMinLevel;
-        return level >= minLevel ? this.loggerFactory(scope, level) : null;
-    }
 
-    // TODO: replace Log.get with this method body
-    public static getFor(scope: LogScope) {
+        const getLogger = (level: LogLevel) => level >= minLevel ? this.loggerFactory(scope, level) : null;
+
         return {
             logScope: scope,
-            debugLog: this.get(scope, LogLevel.Debug),
-            infoLog: this.get(scope, LogLevel.Info),
-            warnLog: this.get(scope, LogLevel.Warn),
-            errorLog: this.get(scope, LogLevel.Error),
+            debugLog: getLogger(LogLevel.Debug),
+            infoLog: getLogger(LogLevel.Info),
+            warnLog: getLogger(LogLevel.Warn),
+            errorLog: getLogger(LogLevel.Error),
         };
     }
 

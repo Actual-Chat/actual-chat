@@ -22,12 +22,9 @@ import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'MenuHost';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const {  logScope, debugLog } = Log.get('MenuHost');
 
 enum MenuTrigger {
     None = 0,
@@ -167,7 +164,7 @@ export class MenuHost implements Disposable {
     private show(menu: Menu): void {
         debugLog?.log('show:', menu)
         if (!menu)
-            throw new Error(`${LogScope}.show: menu == null.`);
+            throw new Error(`${logScope}.show: menu == null.`);
 
         this.menu = menu;
         this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
@@ -198,7 +195,7 @@ export class MenuHost implements Disposable {
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {
         if (!menu)
-            throw new Error(`${LogScope}.position: menu == null.`);
+            throw new Error(`${logScope}.position: menu == null.`);
 
         if (updatedMenu) {
             menu.menuElement = updatedMenu.menuElement ?? menu.menuElement;

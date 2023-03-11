@@ -1,8 +1,6 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'ThemeUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('ThemeUI');
 
 export class ThemeUI {
     public static applyTheme(theme: string) {

@@ -1,17 +1,13 @@
 import { Interactive } from 'interactive';
 import { default as NoSleep } from '@uriopass/nosleep.js';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { DocumentEvents } from 'event-handling';
 import { filter, exhaustMap, tap } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
 import { DeviceInfo } from 'device-info';
 
-const LogScope: LogScope = 'KeepAwakeUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const infoLog = Log.get(LogScope, LogLevel.Info);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, infoLog, errorLog } = Log.get('KeepAwakeUI');
 
 const noSleep = new NoSleep();
 

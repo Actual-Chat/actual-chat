@@ -4,19 +4,14 @@ import { Timeout } from 'timeout';
 import { throttle } from 'promises';
 import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'MarkupEditor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('MarkupEditor');
 
 const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
 const CrlfRe = /\r\n/g
-const PrefixLfRe = /^(\s*\n)+/g
-const SuffixLfRe = /(\n\s*)+$/g
 
 export class MarkupEditor {
     static create(

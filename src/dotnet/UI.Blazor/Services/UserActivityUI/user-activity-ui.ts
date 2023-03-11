@@ -1,9 +1,8 @@
 import { EventHandler } from 'event-handling';
 import { Interactive } from 'interactive';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'UserActivityUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
+const { debugLog } = Log.get('UserActivityUI');
 
 export class UserActivityUI {
     private _blazorRef: DotNet.DotNetObject;

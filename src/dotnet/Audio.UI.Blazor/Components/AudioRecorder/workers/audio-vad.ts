@@ -6,9 +6,6 @@ import wasmSimd from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 import { Versioning } from 'versioning';
 
-import { LogScope } from 'logging';
-const LogScope: LogScope = 'AudioVad';
-
 const SAMPLE_RATE = 16000;
 const MIN_SILENCE_SAMPLES = 8000; // 500ms
 const MIN_SPEECH_SAMPLES = 8000; // 500ms

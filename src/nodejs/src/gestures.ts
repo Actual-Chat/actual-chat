@@ -8,11 +8,9 @@ import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
 import { Vector2D } from 'math';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'Gestures';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('Gestures');
 
 export type GestureEvent = PointerEvent | MouseEvent | TouchEvent | WheelEvent;
 
