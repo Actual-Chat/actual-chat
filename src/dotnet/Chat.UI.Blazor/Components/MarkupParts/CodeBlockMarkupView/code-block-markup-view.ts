@@ -2,7 +2,7 @@ import { default as hljs } from 'highlight.js';
 import { Log } from 'logging';
 import 'highlight.js/styles/intellij-light.css'
 
-const { errorLog } = Log.getFor('CodeBlockMarkupView');
+const { errorLog } = Log.get('CodeBlockMarkupView');
 
 export function highlightCode(pre: HTMLPreElement, languageName: string, code: string) {
     try {

@@ -1,11 +1,8 @@
 import { delayAsync, PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
 import { Disposable } from 'disposable';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'Rpc';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog, errorLog } = Log.get('Rpc');
 
 export type RpcNoWait = symbol;
 export const rpcNoWait : RpcNoWait = Symbol('RpcNoWait');

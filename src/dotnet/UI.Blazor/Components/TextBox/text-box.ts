@@ -1,11 +1,8 @@
 import { Disposable } from 'disposable';
 import { Subject, takeUntil, debounceTime, fromEvent } from 'rxjs';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'TextBox';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('TextBox');
 
 export class TextBox implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();

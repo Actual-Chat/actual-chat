@@ -1,12 +1,9 @@
 import { Observable } from 'rxjs';
 import { ResolvedPromise } from 'promises';
 import { EventHandlerSet } from 'event-handling';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'Interactive';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('Interactive');
 
 export class Interactive {
     private static _isInitialized = false;

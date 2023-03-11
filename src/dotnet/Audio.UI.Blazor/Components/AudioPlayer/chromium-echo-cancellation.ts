@@ -1,10 +1,7 @@
 import { DeviceInfo } from 'device-info';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'ChromiumEchoCancellation';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { warnLog, errorLog } = Log.get('ChromiumEchoCancellation');
 
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.

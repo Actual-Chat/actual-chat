@@ -10,10 +10,8 @@ export enum LogLevel {
 export type LogScope =
     'default'
     // Library
-    | 'Versioning'
-    | 'TimerQueue'
+    | 'AsyncProcessor'
     | 'BrowserInfo'
-    | 'Clipboard'
     | 'Gestures'
     | 'event-handling'
     | 'History'
@@ -25,45 +23,51 @@ export type LogScope =
     | 'OnDeviceAwakeWorker'
     | 'promises'
     | 'Rpc'
-    | 'AsyncProcessor'
+    | 'ScreenSize'
+    | 'ServiceWorker'
+    | 'TimerQueue'
     | 'UndoStack'
+    | 'Versioning'
     | 'VirtualList'
     // XxxUI
     | 'DebugUI'
     | 'FocusUI'
     | 'InteractiveUI'
     | 'KeepAwakeUI'
+    | 'LanguageUI'
     | 'NotificationUI'
+    | 'ThemeUI'
     | 'TuneUI'
     | 'UserActivityUI'
     | 'VibrationUI'
     // Audio
     | 'AudioContextRef'
     | 'AudioContextSource'
-    | 'ChromiumEchoCancellation'
-    | 'WarmUpAudioWorkletProcessor'
-    | 'FeederProcessor'
-    | 'FeederNode'
-    | 'OpusEncoderWorker'
-    | 'OpusEncoderWorkletProcessor'
-    | 'OpusDecoder'
-    | 'OpusDecoderWorker'
+    | 'AudioInfo'
     | 'AudioPlayer'
     | 'AudioVad'
+    | 'AudioRecorder'
     | 'AudioVadWorker'
     | 'AudioVadWorkletProcessor'
-    | 'AudioRecorder'
+    | 'ChromiumEchoCancellation'
+    | 'FeederNode'
+    | 'FeederProcessor'
+    | 'OpusEncoderWorkletProcessor'
+    | 'OpusEncoderWorker'
+    | 'OpusDecoder'
+    | 'OpusDecoderWorker'
+    | 'VadAudioWorkletProcessor'
+    | 'WarmUpAudioWorkletProcessor'
     // Isolated components
     | 'ChatMessageEditor'
     | 'CodeBlockMarkupView'
     | 'CopyTrigger'
-    | 'ImageViewer'
     | 'Landing'
     | 'LandingLeftMenu'
     | 'MarkupEditor'
-    | 'PicUpload'
     | 'SideNav'
-    | string;
+    | 'TextBox'
+    | 'TooltipHost';
 
 const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';
@@ -170,10 +174,8 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
-    // minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
-    // minLevels.set('AudioVad', LogLevel.Debug);
     // minLevels.set('AudioVadWorker', LogLevel.Debug);
     // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
     // minLevels.set('History', LogLevel.Debug);

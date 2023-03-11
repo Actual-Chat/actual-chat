@@ -19,12 +19,9 @@ import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'OpusEncoderWorker';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -105,8 +102,8 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
-        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${LogScope}.encoderWorklet`, workletPort, serverImpl);
-        vadWorker = rpcClientServer<AudioVadWorker>(`${LogScope}.vadWorker`, vadPort, serverImpl);
+        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, workletPort, serverImpl);
+        vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
 
         state = 'ended';
     },
@@ -182,7 +179,7 @@ const serverImpl: OpusEncoderWorker = {
         }
     }
 }
-const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
+const server = rpcServer(`${logScope}.server`, worker, serverImpl);
 
 // Helpers
 

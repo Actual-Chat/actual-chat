@@ -1,10 +1,7 @@
 import Heap from 'heap-js';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'TimerQueue';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { errorLog } = Log.get('TimerQueue');
 
 export class TimerQueueTimer {
     constructor(

@@ -2,17 +2,14 @@ import {
     Subject,
     takeUntil,
 } from 'rxjs';
-import { preventDefaultForEvent, stopEvent } from 'event-handling';
+import { preventDefaultForEvent } from 'event-handling';
 import { throttle } from 'promises';
+import { Log } from 'logging';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 
-import { Log, LogLevel, LogScope } from 'logging';
-const LogScope: LogScope = 'MessageEditor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('MessageEditor');
 
 export type PanelMode = 'Normal' | 'Narrow';
 

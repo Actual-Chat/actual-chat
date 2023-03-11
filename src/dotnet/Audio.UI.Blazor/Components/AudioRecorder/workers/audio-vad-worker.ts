@@ -10,12 +10,9 @@ import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { Versioning } from 'versioning';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'AudioVadWorker';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, errorLog } = Log.get('AudioVadWorker');
 
 const CHANNELS = 1;
 const IN_RATE = 48000;
@@ -59,8 +56,8 @@ const serverImpl: AudioVadWorker = {
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
-        vadWorklet = rpcClientServer<AudioVadWorklet>(`${LogScope}.vadWorklet`, workletPort, serverImpl);
-        encoderWorker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.encoderWorker`, encoderWorkerPort, serverImpl);
+        vadWorklet = rpcClientServer<AudioVadWorklet>(`${logScope}.vadWorklet`, workletPort, serverImpl);
+        encoderWorker = rpcClientServer<OpusEncoderWorker>(`${logScope}.encoderWorker`, encoderWorkerPort, serverImpl);
         isActive = true;
     },
 
@@ -85,7 +82,7 @@ const serverImpl: AudioVadWorker = {
         }
     },
 };
-const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
+const server = rpcServer(`${logScope}.server`, worker, serverImpl);
 
 async function processQueue(): Promise<void> {
     if (isVadRunning || resampler == null)

@@ -1,8 +1,3 @@
-import { Log, LogLevel, LogScope } from 'logging';
-
-const LogScope: LogScope = 'dom-helpers';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-
 export function getOrInheritData(target: unknown, dataName: string): [HTMLElement | SVGElement | null, string | null] {
     if (!(target instanceof HTMLElement) && !(target instanceof SVGElement))
         return [null, null];

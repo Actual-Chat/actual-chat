@@ -1,11 +1,7 @@
 import { PromiseSource } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'History';
-const log = Log.get(LogScope, LogLevel.Info);
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { infoLog } = Log.get('History');
 
 export class History {
     private static backendRef: DotNet.DotNetObject = null;
@@ -18,7 +14,7 @@ export class History {
     }
 
     public static async navigateTo(uri: string, mustAddHistoryItem: boolean = false): Promise<void> {
-        log?.log(`navigateTo:`, uri);
+        infoLog?.log(`navigateTo:`, uri);
         await this.whenReady;
         await this.backendRef.invokeMethodAsync('NavigateTo', uri, mustAddHistoryItem);
     };

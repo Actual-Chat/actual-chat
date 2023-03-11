@@ -1,10 +1,6 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'LocalSettings';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const infoLog = Log.get(LogScope, LogLevel.Info);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog } = Log.get('LocalSettings');
 
 export class LocalSettings {
     private static _isInitialized: boolean = false;

@@ -1,9 +1,8 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
 const CheckIntervalMs = 1000;
 const SleepThresholdMs = 4800; // 5s
-const LogScope: LogScope = 'OnDeviceAwakeWorker';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
+const { debugLog } = Log.get('OnDeviceAwakeWorker');
 
 let _lastTime: number = Date.now();
 

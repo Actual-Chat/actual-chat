@@ -2,14 +2,10 @@ import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
-import { Log, LogLevel, LogScope } from 'logging';
-import { debounceTime, fromEvent, } from 'rxjs';
+import { Log } from 'logging';
+import { fromEvent } from 'rxjs';
 
-const LogScope: LogScope = 'BrowserInfo';
-const log = Log.get(LogScope, LogLevel.Info);
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { infoLog } = Log.get('BrowserInfo');
 
 export type AppKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 
@@ -22,7 +18,7 @@ export class BrowserInfo {
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public static init(backendRef1: DotNet.DotNetObject, appKind: AppKind): void {
-        log?.log(`initializing`);
+        infoLog?.log(`initializing`);
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
@@ -44,7 +40,7 @@ export class BrowserInfo {
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
-        log?.log(`init:`, JSON.stringify(initResult));
+        infoLog?.log(`init:`, JSON.stringify(initResult));
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
@@ -57,12 +53,12 @@ export class BrowserInfo {
     // Backend methods
 
     private static onScreenSizeChanged(screenSize: string, isHoverable: boolean): void {
-        log?.log(`onScreenSizeChanged, screenSize:`, screenSize);
+        infoLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable)
     };
 
     private static onVisibilityChanged(): void {
-        log?.log(`onVisibilityChanged, hidden:`, document.hidden);
+        infoLog?.log(`onVisibilityChanged, hidden:`, document.hidden);
         this.backendRef.invokeMethodAsync('OnIsHiddenChanged', document.hidden)
     };
 

@@ -1,14 +1,10 @@
 import DetectRTC from 'detectrtc';
 import { opusMediaRecorder } from './opus-media-recorder';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { PromiseSource } from 'promises';
 
-const LogScope: LogScope = 'AudioRecorder';
-
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioRecorder {
     private readonly sessionId: string;

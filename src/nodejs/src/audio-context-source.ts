@@ -9,15 +9,11 @@ import {
 import { EventHandler } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
 
-const LogScope: LogScope = 'AudioContextSource';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
 const FixCyclePeriodMs = 300;
@@ -259,7 +255,7 @@ export class AudioContextSource {
                     warnLog?.log(`warmup: unsupported message from warm up worklet`);
             };
             whenWarmedUp.setTimeout(MaxWarmupTimeMs, () => {
-                whenWarmedUp.reject(`${LogScope}.warmup: couldn't complete warm-up on time.`);
+                whenWarmedUp.reject(`${logScope}.warmup: couldn't complete warm-up on time.`);
             })
             await whenWarmedUp;
         }
@@ -272,9 +268,9 @@ export class AudioContextSource {
 
     protected async test(context: AudioContext, isLongTest = false): Promise<void> {
         if (context.state !== 'running')
-            throw new Error(`${LogScope}.test: AudioContext isn't running.`);
+            throw new Error(`${logScope}.test: AudioContext isn't running.`);
         if (context[Debug.brokenKey])
-            throw new Error(`${LogScope}.test: AudioContext is broken via .break() call.`);
+            throw new Error(`${logScope}.test: AudioContext is broken via .break() call.`);
 
         const lastTime = context.currentTime;
         const testCycleCount = 5;
@@ -282,7 +278,7 @@ export class AudioContextSource {
         for (let i = 0; i < testCycleCount; i++) {
             await delayAsync(testIntervalMs);
             if (context.state !== 'running')
-                throw new Error(`${LogScope}.test: AudioContext isn't running.`);
+                throw new Error(`${logScope}.test: AudioContext isn't running.`);
             if (context.currentTime != lastTime)
                 break;
             // play silent audio and check state
@@ -291,7 +287,7 @@ export class AudioContextSource {
             }
         }
         if (context.currentTime == lastTime) // AudioContext isn't running
-            throw new Error(`${LogScope}.test: AudioContext is running, but didn't pass currentTime test.`);
+            throw new Error(`${logScope}.test: AudioContext is running, but didn't pass currentTime test.`);
     }
 
     protected async fix(context: AudioContext): Promise<void> {
@@ -300,7 +296,7 @@ export class AudioContextSource {
         try {
             if (!await this.trySuspend(context)) {
                 // noinspection ExceptionCaughtLocallyJS
-                throw new Error(`${LogScope}.fix: couldn't suspend AudioContext`);
+                throw new Error(`${logScope}.fix: couldn't suspend AudioContext`);
             }
             await this.interactiveResume(context);
             await this.test(context);
@@ -351,7 +347,7 @@ export class AudioContextSource {
             const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
             const success = await Promise.race([resumeTask, timerTask]);
             if (!success)
-                throw new Error(`${LogScope}.interactiveResume: timed out while waiting for interaction`);
+                throw new Error(`${logScope}.interactiveResume: timed out while waiting for interaction`);
 
             debugLog?.log(`interactiveResume: succeeded on interaction`);
         }
@@ -375,9 +371,9 @@ export class AudioContextSource {
         const resumeTask = context.resume().then(() => true);
         const timerTask = delayAsync(MaxResumeTimeMs).then(() => false);
         if (!await Promise.race([resumeTask, timerTask]))
-            throw new Error(`${LogScope}.resume: AudioContext.resume() has timed out.`);
+            throw new Error(`${logScope}.resume: AudioContext.resume() has timed out.`);
         if (!this.isRunning(context))
-            throw new Error(`${LogScope}.resume: completed resume, but AudioContext.state != 'running'.`);
+            throw new Error(`${logScope}.resume: completed resume, but AudioContext.state != 'running'.`);
 
         debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
     }
@@ -458,7 +454,7 @@ export class AudioContextSource {
 
     private throwIfUnused(): void {
         if (this._refCount == 0)
-            throw new Error(`${LogScope}.throwIfUnused: context is unused.`);
+            throw new Error(`${logScope}.throwIfUnused: context is unused.`);
     }
 
     private throwIfTooManyResumes(): void {
@@ -470,7 +466,7 @@ export class AudioContextSource {
 
     private throwIfClosed(context: AudioContext): void {
         if (context.state === 'closed')
-            throw new Error(`${LogScope}.throwIfClosed: context is closed.`);
+            throw new Error(`${logScope}.throwIfClosed: context is closed.`);
     }
 
     private isWakeUp(): boolean {

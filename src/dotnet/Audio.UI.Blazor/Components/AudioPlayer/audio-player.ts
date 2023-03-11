@@ -7,12 +7,9 @@ import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { catchErrors, PromiseSource, retry } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'AudioPlayer';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 
@@ -42,7 +39,7 @@ export class AudioPlayer {
 
         const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
         decoderWorkerInstance = new Worker(decoderWorkerPath);
-        decoderWorker = rpcClient<OpusDecoderWorker>(`${LogScope}.decoderWorker`, decoderWorkerInstance);
+        decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
         await decoderWorker.init(Versioning.artifactVersions);
         this.whenInitialized.resolve(undefined);
     }

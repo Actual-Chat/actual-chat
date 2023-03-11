@@ -1,11 +1,8 @@
 import { delayAsync } from 'promises';
 import { Interactive } from 'interactive';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'InteractiveUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('InteractiveUI');
 
 export class InteractiveUI {
     private static backendRef: DotNet.DotNetObject = null;

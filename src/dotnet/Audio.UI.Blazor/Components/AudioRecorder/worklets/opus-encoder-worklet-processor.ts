@@ -5,12 +5,9 @@ import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'OpusEncoderWorkletProcessor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
 const SAMPLES_PER_MS = 48;
 
@@ -39,11 +36,11 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
-        this.server = rpcServer(`${LogScope}.server`, this.port, this);
+        this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
-        this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
+        this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {

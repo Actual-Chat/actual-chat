@@ -9,12 +9,9 @@ import { VirtualListItem } from './ts/virtual-list-item';
 import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { Pivot } from './ts/pivot';
 
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'VirtualList';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('VirtualList');
 
 const UpdateViewportInterval: number = 320;
 const UpdateItemVisibilityInterval: number = 250;

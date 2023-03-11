@@ -1,12 +1,9 @@
 import { Observable } from 'rxjs';
 import { EventHandler, EventHandlerSet } from 'event-handling';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { Versioning } from 'versioning';
 
-const LogScope: LogScope = 'OnDeviceAwake';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('OnDeviceAwake');
 
 export class OnDeviceAwake {
     public static readonly events = new EventHandlerSet<void>(handlers => ensureWorker(handlers));

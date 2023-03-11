@@ -4,12 +4,9 @@ import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { delayAsync, serialize } from 'promises';
 import { DeviceInfo } from 'device-info';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'SideNav';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('SideNav');
 
 const Deceleration = 4; // 1 = full width, per second
 const MinDragOffset = 5; // DeviceInfo.isAndroid ? 5 : 10; // In CSS pixels

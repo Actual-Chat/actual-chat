@@ -1,13 +1,9 @@
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
 import { PromiseSource } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'AudioInfo';
-const log = Log.get(LogScope, LogLevel.Info);
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { infoLog } = Log.get('AudioInfo');
 
 export class AudioInfo {
     private static backendRef: DotNet.DotNetObject = null;
@@ -16,13 +12,13 @@ export class AudioInfo {
 
     public static async init(backendRef1: DotNet.DotNetObject, baseUri: string): Promise<void> {
         this.backendRef = backendRef1;
-        log?.log(`init`);
+        infoLog?.log(`init`);
 
         await opusMediaRecorder.init(baseUri);
         await AudioPlayer.init();
         this.whenReady.resolve(undefined);
         globalThis["audioInfo"] = this;
-        log?.log(`ready`);
+        infoLog?.log(`ready`);
     }
 }
 

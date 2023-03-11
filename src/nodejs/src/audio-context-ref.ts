@@ -8,13 +8,9 @@ import {
 } from 'promises';
 import { nextTickAsync } from 'timeout';
 import { AudioContextSource } from 'audio-context-source';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'AudioContextRef';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('AudioContextRef');
 
 let nextId = 1;
 

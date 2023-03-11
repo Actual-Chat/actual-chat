@@ -1,14 +1,12 @@
-import { PromiseSource } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'DebugUI';
-const log = Log.get(LogScope, LogLevel.Info);
+const { infoLog } = Log.get('DebugUI');
 
 export class DebugUI {
     private static backendRef: DotNet.DotNetObject = null;
 
     public static init(backendRef1: DotNet.DotNetObject): void {
-        log?.log(`init`);
+        infoLog?.log(`init`);
         this.backendRef = backendRef1;
         globalThis["debugUI"] = this;
     }
