@@ -2,13 +2,13 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class SwitchableDelayer
 {
-    private readonly object _syncObject = new ();
+    private readonly object _lock = new ();
     private bool _shouldDelay;
     private Task<Unit>? _delayTask;
 
     public Task Use()
     {
-        lock (_syncObject) {
+        lock (_lock) {
             if (!_shouldDelay)
                 return Task.CompletedTask;
             return _delayTask ??= TaskSource.New<Unit>(false).Task;
@@ -17,7 +17,7 @@ public class SwitchableDelayer
 
     public void Enable(bool shouldDelay)
     {
-        lock (_syncObject) {
+        lock (_lock) {
             if (!shouldDelay) {
                 if (_delayTask != null) {
                     TaskSource.For(_delayTask).TrySetResult(Unit.Default);

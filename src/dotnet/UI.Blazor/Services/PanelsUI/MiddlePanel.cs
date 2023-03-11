@@ -21,13 +21,13 @@ public class MiddlePanel
 
     private async Task<bool> ComputeIsVisible(IComputedState<bool> state, CancellationToken cancellationToken)
     {
-        var screenSize = await Owner.ScreenSize.Use(cancellationToken);
+        var screenSize = await Owner.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         var isWide = screenSize.IsWide();
         if (isWide)
             return true;
-        if (await Owner.Left.IsVisible.Use(cancellationToken))
+        if (await Owner.Left.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return false;
-        if (await Owner.Right.IsVisible.Use(cancellationToken))
+        if (await Owner.Right.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return false;
         return true;
     }
