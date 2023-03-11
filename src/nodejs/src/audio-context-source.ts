@@ -59,16 +59,16 @@ export class AudioContextSource {
     public getRef(operationName: string, options: AudioContextRefOptions) {
         this._refCount++;
         if (this._refCount > 100)
-            warnLog?.log(`getRef: high refCount:`, this._refCount);
-        debugLog?.log(`+ AudioContextRef, refCount:`, this._refCount);
+            warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
+        debugLog?.log(`+ AudioContextRef(${operationName}), refCount:`, this._refCount);
         const result = new AudioContextRef(this, operationName, options);
         void result.whenDisposed().then(() => {
             this._refCount--;
             if (this._refCount < 0) {
-                warnLog?.log(`getRef: negative refCount:`, this._refCount);
+                warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
                 this._refCount = 0;
             }
-            debugLog?.log(`- AudioContextRef, refCount:`, this._refCount);
+            debugLog?.log(`- AudioContextRef(${operationName}), refCount:`, this._refCount);
         });
         return result;
     }
