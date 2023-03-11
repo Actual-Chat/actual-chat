@@ -95,8 +95,11 @@ public class AudioRecorder : IAsyncDisposable
 
             await StopRecordingUnsafe().ConfigureAwait(false);
 
-            if (e is OperationCanceledException)
+            if (e is OperationCanceledException) {
+                if (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                    throw new AudioRecorderException("Failed to start recording in time.", e);
                 throw;
+            }
             throw new AudioRecorderException("Failed to start recording.", e);
         }
         finally {
