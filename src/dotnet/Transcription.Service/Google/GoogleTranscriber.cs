@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Module;
 using Google.Api.Gax;
@@ -12,6 +13,11 @@ namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriber : ITranscriber
 {
+    private static readonly Regex CompleteSentenceOrEmptyRe =
+        new(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline);
+    private static readonly Regex EndsWithWhitespaceOrEmptyRe =
+        new(@"(\s+$)|(^\s*$)", RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline);
+
     private static readonly string RegionId = "us";
     private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(4);
@@ -236,20 +242,27 @@ public class GoogleTranscriber : ITranscriber
         var text = fragments.Select(r => r.Alternatives.First().Transcript).ToDelimitedString("");
         if (string.IsNullOrWhiteSpace(text))
             return null;
+
+        text = FixSuffix(state.Stable.Text, text);
         var endTime = TryGetOriginalAudioTime(results.Last().ResultEndOffset) ?? state.ProcessedAudioDuration;
 
         // Google Transcribe issue: sometimes it omits the final transcript,
         // so we use a heuristic to automatically mark it stable
         if (state.Unstable != state.Stable && !isStable) {
-            // There is an unstable tail + new transcript is unstable
             var lastEndTime = state.Unstable.TimeMap.YRange.End;
-            if (endTime - lastEndTime > 1f) {
-                // AND there is 1s+ delay between the new unstable piece and the old one
-                var newUnstable = GoogleTranscribeState.Append(state.Stable, text, endTime);
-                if (state.Unstable.Text.Length > newUnstable.Text.Length + 4) {
-                    // AND the new piece is shorter than the old one
+            if (endTime - lastEndTime > 0.25f) {
+                // AND there is > .25s delay between the new unstable piece and the old one
+                var legitLengthRatio = (endTime - lastEndTime) switch {
+                    > 1f => 0.9f, // Longer delay => smaller trim allowed
+                    > 0.5f => 0.75f,
+                    _ => 0.6f, // Shorter delay => bigger trim allowed
+                };
+                var lastLength = state.Unstable.Length - state.Stable.Length;
+                var legitLength = Math.Min(
+                    Math.Max(0, lastLength - 3), // Trimming by 3 is always legit
+                    (int)(lastLength * legitLengthRatio));
+                if (text.Length < legitLength)
                     state.Stabilize();
-                }
             }
         }
         var transcript = state.Append(isStable, text, endTime);
@@ -366,6 +379,29 @@ public class GoogleTranscriber : ITranscriber
             _ => language,
         };
 
+    private static string FixSuffix(string prefix, string suffix)
+    {
+        var firstLetterIndex = Transcript.ContentStartRe.Match(suffix).Length;
+        if (firstLetterIndex == suffix.Length)
+            return suffix; // Suffix is all whitespace or empty
+
+        if (firstLetterIndex == 0 && !EndsWithWhitespaceOrEmptyRe.IsMatch(prefix)) {
+            // Add spacer
+            suffix = " " + suffix;
+            firstLetterIndex++;
+        }
+        else if (firstLetterIndex > 0 && EndsWithWhitespaceOrEmptyRe.IsMatch(prefix)) {
+            // Remove spacer
+            suffix = suffix[firstLetterIndex..];
+            firstLetterIndex = 0;
+        }
+
+        if (CompleteSentenceOrEmptyRe.IsMatch(prefix))
+            suffix = suffix.Capitalize(firstLetterIndex);
+
+        return suffix;
+    }
+
     private float? TryGetOriginalAudioTime(Duration? time)
         => time is { } vTime ? GetOriginalAudioTime(vTime) : null;
     private float? TryGetOriginalAudioTime(float? time)
@@ -379,7 +415,7 @@ public class GoogleTranscriber : ITranscriber
         => SilenceAudioSource
             .Take(SilentPrefixDuration, cancellationToken)
             .Concat(audioSource, cancellationToken)
-            .ConcatUntil(SilenceAudioSource, TimeSpan.FromSeconds(4), cancellationToken);
+            .ConcatUntil(SilenceAudioSource, SilentSuffixDuration, cancellationToken);
 
     private static Task<AudioSource> LoadSilenceAudio()
     {

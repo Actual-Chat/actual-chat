@@ -66,9 +66,10 @@ public sealed record Transcript(
     }
 
     public Transcript WithSuffix(string suffix, float? suffixEndTime = null)
+        => WithSuffix(suffix, TimeMap, suffixEndTime);
+    public Transcript WithSuffix(string suffix, LinearMap timeMap, float? suffixEndTime)
     {
         var text = Text + suffix;
-        var timeMap = TimeMap;
         if (suffixEndTime is { } vSuffixEndTime)
             timeMap = timeMap.TryAppend(new Vector2(text.Length, vSuffixEndTime), TimeMapEpsilon.X);
         return new Transcript(text, timeMap);

@@ -39,7 +39,7 @@ public class TranscriptUpdateTests : TestBase
         Dump(t);
         t = state.Append(false, " Вот это", 8.56f);
         Dump(t);
-        t.TimeMap.Data.Should().Equal(0, 0, 27, 4.98f, 35, 8.56f);
+        t.TimeMap.Data.Should().Equal(0, 0, 24, 4.68f, 27, 4.98f, 31, 8.14f, 35, 8.56f);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class TranscriptUpdateTests : TestBase
         var t = state.Append(false, " 2", 2);
         Dump(state.Stable);
         t = state.Stabilize();
-        t.TimeMap.Length.Should().Be(2);
+        t.TimeMap.Length.Should().Be(3);
     }
 
     [Fact]
