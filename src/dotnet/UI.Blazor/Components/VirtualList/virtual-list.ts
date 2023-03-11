@@ -496,6 +496,11 @@ export class VirtualList {
                         ? this.getLastItemKey()
                         : null;
                 if (itemKey == null) {
+                    // let's scroll to the latest edge key when we've got a lot of new messages
+                    if (this._stickyEdge?.edge === VirtualListEdge.End) {
+                        let itemRef = this.getItemRef(this._stickyEdge.itemKey);
+                        this.scrollTo(itemRef, false, 'end');
+                    }
                     this.setStickyEdge(null);
                 } else {
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });

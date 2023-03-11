@@ -8,8 +8,8 @@
 </div>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
     private void OnClick()
-        => NavbarUI.SetIsVisible(true);
+        => PanelsUI.Left.SetIsVisible(true);
 }

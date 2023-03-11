@@ -35,7 +35,6 @@ partial class MauiProgram
                 warmer.ReplicaService<IChatPositions>();
                 warmer.ReplicaService<IMentions>();
 
-                warmer.ComputeService(typeof(RightPanelUI));
                 warmer.ReplicaService<IAuthors>();
 
                 warmer.ComputeService(typeof(ClientFeatures));

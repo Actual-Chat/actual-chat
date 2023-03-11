@@ -2,8 +2,8 @@ import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
-import { Timeout } from 'timeout';
 import { Log, LogLevel, LogScope } from 'logging';
+import { debounceTime, fromEvent, } from 'rxjs';
 
 const LogScope: LogScope = 'BrowserInfo';
 const log = Log.get(LogScope, LogLevel.Info);
@@ -34,6 +34,7 @@ export class BrowserInfo {
         // Call OnInitialized
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
+            isHidden: document.hidden,
             isHoverable: ScreenSize.isHoverable,
             utcOffset: this.utcOffset,
             isMobile: DeviceInfo.isMobile,
@@ -48,6 +49,8 @@ export class BrowserInfo {
         this.whenReady.resolve(undefined);
 
         ScreenSize.change$.subscribe(_ => this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable))
+        fromEvent(document, 'visibilitychange')
+            .subscribe(_ => this.onVisibilityChanged());
         globalThis["browserInfo"] = this;
     }
 
@@ -56,6 +59,11 @@ export class BrowserInfo {
     private static onScreenSizeChanged(screenSize: string, isHoverable: boolean): void {
         log?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable)
+    };
+
+    private static onVisibilityChanged(): void {
+        log?.log(`onVisibilityChanged, hidden:`, document.hidden);
+        this.backendRef.invokeMethodAsync('OnIsHiddenChanged', document.hidden)
     };
 
     private static initBodyClasses() {
@@ -97,6 +105,7 @@ export class BrowserInfo {
 
 export interface InitResult {
     screenSizeText: string;
+    isHidden: boolean,
     isHoverable: boolean,
     utcOffset: number;
     isMobile: boolean;

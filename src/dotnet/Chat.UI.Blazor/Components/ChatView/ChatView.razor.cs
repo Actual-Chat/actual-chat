@@ -14,6 +14,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
     private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
+    private readonly SwitchableDelayer _invisibleDelayer = new ();
 
     private long? _lastNavigateToEntryId;
     private long? _initialReadEntryLid;
@@ -40,6 +41,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
     private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
 
+    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
@@ -62,6 +64,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 },
                 ComputeIsViewportAboveUnreadEntry);
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
+
+            RegionVisibility.IsOverallVisible.Updated += OnRegionVisibilityChanged;
+            UpdateInvisibleDelayer();
         }
         finally {
             _whenInitializedSource.SetResult(Unit.Default);
@@ -70,8 +75,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     public void Dispose()
     {
+        RegionVisibility.IsOverallVisible.Updated -= OnRegionVisibilityChanged;
         Nav.LocationChanged -= OnLocationChanged;
         _disposeToken.Cancel();
+        _invisibleDelayer.Enable(false);
         ReadPositionState?.Dispose();
         ReadPositionState = null;
     }
@@ -140,6 +147,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         CancellationToken cancellationToken)
     {
         await WhenInitialized;
+
+        await _invisibleDelayer.Use();
 
         var chat = Chat;
         var chatId = chat.Id;
@@ -215,17 +224,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .ToList();
 
         // Do not show '-new-' separator after view is scrolled to the end anchor.
-        if (!_doNotShowNewMessagesSeparator) {
-            if (_itemVisibilityUpdateHasReceived) {
-                var itemVisibility = ItemVisibility.Value;
-                if (itemVisibility.IsEndAnchorVisible) {
-                    var newMessagesSeparatorIsVisible = _initialReadEntryLid.HasValue
-                        && itemVisibility.VisibleEntryLids.Contains(_initialReadEntryLid.Value);
-                    // If user still sees '-new-' separator while they has reached the end anchor, keep separator displayed.
-                    if (!newMessagesSeparatorIsVisible)
-                        _doNotShowNewMessagesSeparator = true;
-                }
-            }
+        if (!_doNotShowNewMessagesSeparator && _itemVisibilityUpdateHasReceived) {
+            if (ShouldHideNewMessagesSeparator(ItemVisibility.Value, lastTile))
+                _doNotShowNewMessagesSeparator = true;
         }
         var unreadEntryLidStarts = _doNotShowNewMessagesSeparator
             ? int.MaxValue
@@ -331,4 +332,35 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var visibility = await ItemVisibility.Use(cancellationToken);
         return readEntryLid > 0 && visibility.MaxEntryLid > 0 && visibility.MaxEntryLid < readEntryLid;
     }
+
+    private bool ShouldHideNewMessagesSeparator(ChatViewItemVisibility itemVisibility, ChatTile lastTile)
+    {
+        if (!itemVisibility.IsEndAnchorVisible)
+            return false;
+        var newMessagesSeparatorIsVisible = _initialReadEntryLid.HasValue
+            && itemVisibility.VisibleEntryLids.Contains(_initialReadEntryLid.Value);
+        // If user still sees '-new-' separator while they has reached the end anchor, keep separator displayed.
+        if (newMessagesSeparatorIsVisible)
+            return false;
+        var lastVisibleEntryLid = itemVisibility.MaxEntryLid;
+        var lastEntryId = !lastTile.IsEmpty ? lastTile.Entries.Max(c => c.Id.LocalId) : -1;
+        if (lastEntryId >= 0 && lastVisibleEntryLid < lastEntryId)
+            return false;
+        return true;
+    }
+
+    private void OnRegionVisibilityChanged(IState<bool> arg1, StateEventKind arg2)
+    {
+        var isVisible = RegionVisibility.IsOverallVisible.Value;
+        if (isVisible) {
+            var readPosition = ReadPositionState!.Value.EntryLid;
+            if (readPosition > _initialReadEntryLid)
+                _doNotShowNewMessagesSeparator = false;
+            _initialReadEntryLid = readPosition;
+        }
+        UpdateInvisibleDelayer();
+    }
+
+    private void UpdateInvisibleDelayer()
+        => _invisibleDelayer.Enable(!RegionVisibility.IsOverallVisible.Value);
 }
