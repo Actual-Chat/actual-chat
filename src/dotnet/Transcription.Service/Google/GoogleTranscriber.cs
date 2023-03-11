@@ -1,11 +1,11 @@
 using System.Numerics;
 using ActualChat.Audio;
 using ActualChat.Module;
-using Cysharp.Text;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 
 namespace ActualChat.Transcription.Google;
@@ -15,6 +15,7 @@ public class GoogleTranscriber : ITranscriber
     private static readonly string RegionId = "us";
     private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(4);
+    private static readonly double TranscriptionSpeed = 2;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -123,7 +124,6 @@ public class GoogleTranscriber : ITranscriber
         ChannelWriter<Transcript> output,
         CancellationToken cancellationToken)
     {
-        audioSource = AugmentSourceAudio(audioSource, cancellationToken);
         var recognizeStream = SpeechClient.StreamingRecognize(
             CallSettings.FromCancellationToken(cancellationToken),
             new BidirectionalStreamingSettings(1));
@@ -150,17 +150,34 @@ public class GoogleTranscriber : ITranscriber
         GoogleTranscribeState state,
         CancellationToken cancellationToken)
     {
+        var audioSource = state.AudioSource;
         var recognizeStream = state.RecognizeStream;
         try {
-            var byteFrameStream = WebMStreamConverter.ToByteFrameStream(state.AudioSource, cancellationToken);
+            var transcribedAudioSource = AddSilentPrefixAndSuffix(audioSource, cancellationToken);
+            var byteFrameStream = WebMStreamConverter.ToByteFrameStream(transcribedAudioSource, cancellationToken);
             var clock = Clocks.CpuClock;
             var startedAt = clock.Now;
+            var nextChunkAt = startedAt;
             await foreach (var (chunk, lastFrame) in byteFrameStream.ConfigureAwait(false)) {
+                var delay = nextChunkAt - clock.Now;
+                if (delay > TimeSpan.Zero)
+                    await clock.Delay(delay, cancellationToken).ConfigureAwait(false);
+
                 var request = new StreamingRecognizeRequest {
                     StreamingConfig = RecognitionConfig,
                     Audio = ByteString.CopyFrom(chunk),
                 };
                 await recognizeStream.WriteAsync(request).ConfigureAwait(false);
+
+                if (lastFrame != null) {
+                    var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
+                    if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully())
+                        processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
+                    state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
+                    nextChunkAt = startedAt
+                        + TimeSpan.FromSeconds(processedAudioDuration.TotalSeconds / TranscriptionSpeed)
+                        - TimeSpan.FromMilliseconds(50);
+                }
             }
         }
         catch (Exception e) {
@@ -199,7 +216,9 @@ public class GoogleTranscriber : ITranscriber
             if (transcript != null)
                 yield return transcript;
         }
-        yield return state.MarkStable();
+
+        var finalTranscript = state.Stabilize().WithSuffix("", state.ProcessedAudioDuration);
+        yield return finalTranscript;
     }
 
     private Transcript? ProcessResponse(
@@ -208,52 +227,37 @@ public class GoogleTranscriber : ITranscriber
     {
         DebugLog?.LogDebug("Response={Response}", response);
 
-        Transcript transcript;
         var results = response.Results;
-        var hasFinal = results.Any(r => r.IsFinal);
-        if (hasFinal) {
-            var result = results.Single(r => r.IsFinal);
-            if (!TryParseFinal(state, result, out var text, out var timeMap)) {
-                Log.LogWarning("Final transcript discarded. State.LastStable={LastStable}, Response={Response}",
-                    state.Stable, response);
-                return null;
+        var isStable = results.Any(r => r.IsFinal);
+        var fragments = isStable
+            ? results.Where(r => r.IsFinal)
+            : results;
+        var text = fragments.Select(r => r.Alternatives.First().Transcript).ToDelimitedString("");
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        var endTime = TryGetOriginalAudioTime(results.Last().ResultEndOffset) ?? state.ProcessedAudioDuration;
+
+        // Google Transcribe issue: sometimes it omits the final transcript,
+        // so we use a heuristic to automatically mark it stable
+        if (state.Unstable != state.Stable && !isStable) {
+            // There is an unstable tail + new transcript is unstable
+            var lastEndTime = state.Unstable.TimeMap.YRange.End;
+            if (endTime - lastEndTime > 1f) {
+                // AND there is 1s+ delay between the new unstable piece and the old one
+                var newUnstable = GoogleTranscribeState.Append(state.Stable, text, endTime);
+                if (state.Unstable.Text.Length > newUnstable.Text.Length + 4) {
+                    // AND the new piece is shorter than the old one
+                    state.Stabilize();
+                }
             }
-            transcript = state.AppendStable(text, timeMap);
         }
-        else {
-            var text = results
-                .Select(r => r.Alternatives.First().Transcript)
-                .ToDelimitedString("");
+        var transcript = state.Append(isStable, text, endTime);
 
-            var resultEndOffset = results.First().ResultEndOffset;
-            var endTime = resultEndOffset == null
-                ? null
-                : (float?) resultEndOffset.ToTimeSpan().TotalSeconds;
-
-            // Google Transcribe issue: doesn't provide IsFinal results time to time, so let's implement some heuristics
-            // when we can Complete current transcript
-            if (ReferenceEquals(state.Stable, Transcript.Empty)) {
-                if (state.Unstable.Length > text.Length + 4)
-                    state.MarkStable();
-            }
-            else {
-                var diffMap = state.Stable.TimeMap.GetDiffSuffix(state.Unstable.TimeMap);
-                if (diffMap.XRange.Size() > text.Length + 24)
-                    state.MarkStable();
-            }
-
-            if (state.Stable.Text.Length != 0 && !text.OrdinalStartsWith(" ")) {
-                // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
-                // i.e. they go concatenated with the stable (final) part.
-                text = ZString.Concat(" ", text);
-            }
-
-            transcript = state.AppendUnstable(text, endTime);
-        }
-        DebugLog?.LogDebug("Transcript={Transcript}", transcript);
+        DebugLog?.LogDebug("Transcript={Transcript}, EndTime={EndTime}", transcript, endTime);
         return transcript;
     }
 
+    // This method is unused for now, since we rely on our own time offset computation logic
     private bool TryParseFinal(
         GoogleTranscribeState state,
         StreamingRecognitionResult result,
@@ -361,10 +365,16 @@ public class GoogleTranscriber : ITranscriber
             _ => language,
         };
 
+    private float? TryGetOriginalAudioTime(Duration? time)
+        => time is { } vTime ? GetOriginalAudioTime(vTime) : null;
+    private float? TryGetOriginalAudioTime(float? time)
+        => time is { } vTime ? GetOriginalAudioTime(vTime) : null;
+    private float GetOriginalAudioTime(Duration time)
+        => GetOriginalAudioTime((float)time.ToTimeSpan().TotalSeconds);
     private float GetOriginalAudioTime(float time)
         => (float)Math.Round(Math.Max(0, time - SilentPrefixDuration.TotalSeconds), 2);
 
-    private AudioSource AugmentSourceAudio(AudioSource audioSource, CancellationToken cancellationToken)
+    private AudioSource AddSilentPrefixAndSuffix(AudioSource audioSource, CancellationToken cancellationToken)
         => SilenceAudioSource
             .Take(SilentPrefixDuration, cancellationToken)
             .Concat(audioSource, cancellationToken)

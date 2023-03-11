@@ -8,8 +8,10 @@ public sealed record Transcript(
     [property: DataMember(Order = 0)] string Text,
     [property: DataMember(Order = 1)] LinearMap TimeMap)
 {
-    private static readonly Regex StartRegex = new("^\\s+", RegexOptions.Compiled);
-    private static readonly Regex EndRegex = new("\\s+$", RegexOptions.Compiled);
+    public static readonly Regex ContentStartRe =
+        new(@"^\s*", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.ExplicitCapture);
+    public static readonly Regex ContentEndRe =
+        new(@"\s*$", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.ExplicitCapture);
 
     public static Vector2 TimeMapEpsilon { get; } = new(0.1f, 0.1f);
     public static Transcript Empty { get; } = new();
@@ -31,16 +33,10 @@ public sealed record Transcript(
         => TimeMap.RequireValid();
 
     public int GetContentStart()
-    {
-        var match = StartRegex.Match(Text);
-        return match.Success ? match.Length : 0;
-    }
+        => ContentStartRe.Match(Text).Length;
 
     public int GetContentEnd()
-    {
-        var match = EndRegex.Match(Text);
-        return Length - (match.Success ? match.Length : 0);
-    }
+        => Length - ContentEndRe.Match(Text).Length;
 
     public float GetContentStartTime()
         => TimeMap.Map(GetContentStart());

@@ -167,43 +167,20 @@ public sealed class AudioProcessor : IAudioProcessor
         var transcripts = Transcriber
             .Transcribe(audioSegment.StreamId, audioSegment.Audio, transcriptionOptions, cancellationToken)
             .Throttle(Settings.TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken)
-            .TrimOnCancellation(cancellationToken);
-        var memoizedTranscripts = PostProcessTranscript(transcripts).Memoize();
+            .TrimOnCancellation(cancellationToken)
+            .Memoize();
         cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
 
         var transcriptStreamId = audioSegment.StreamId;
         var publishTask = TranscriptStreamServer.Write(
             transcriptStreamId,
-            memoizedTranscripts.Replay(cancellationToken).ToTranscriptDiffs(),
+            transcripts.Replay(cancellationToken).ToTranscriptDiffs(),
             cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(
             audioEntryTask,
             transcriptStreamId,
-            memoizedTranscripts.Replay(cancellationToken));
+            transcripts.Replay(cancellationToken));
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
-    }
-
-    private async IAsyncEnumerable<Transcript> PostProcessTranscript(IAsyncEnumerable<Transcript> transcripts)
-    {
-        await foreach (var transcript in transcripts.ConfigureAwait(false)) {
-            var text = transcript.Text;
-            var contentStart = transcript.GetContentStart() - transcript.TextRange.Start;
-            if (contentStart == text.Length) {
-                yield return transcript;
-                continue;
-            }
-
-            var firstLetter = text[contentStart];
-            var firstLetterUpper = char.ToUpperInvariant(firstLetter);
-            if (firstLetter == firstLetterUpper) {
-                yield return transcript;
-                continue;
-            }
-
-            var newText = ZString.Concat(text[..contentStart], firstLetterUpper, text[(contentStart + 1)..]);
-            var newTranscript = transcript with { Text = newText };
-            yield return newTranscript;
-        }
     }
 
     private async Task<ChatEntry> CreateAudioEntry(

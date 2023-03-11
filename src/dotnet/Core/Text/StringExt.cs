@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
+using Cysharp.Text;
 
 namespace ActualChat;
 
@@ -38,7 +39,22 @@ public static class StringExt
                 .OrdinalReplace("__", "_");
 
     public static string Capitalize(this string source)
-        => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
+        => source.IsNullOrEmpty() ? source : source.Capitalize(0);
+
+    public static string Capitalize(this string source, int position)
+    {
+        var firstLetter = source[position];
+        var firstLetterUpper = char.ToUpperInvariant(firstLetter);
+        if (firstLetter == firstLetterUpper)
+            return source;
+
+        using var sb = ZString.CreateStringBuilder(true);
+        if (position > 0)
+            sb.Append(source.AsSpan(0, position));
+        sb.Append(firstLetterUpper);
+        sb.Append(source.AsSpan(position + 1));
+        return sb.ToString();
+    }
 
     public static string EnsureSuffix(this string source, string suffix)
         => source.OrdinalEndsWith(suffix) ? source : source + suffix;

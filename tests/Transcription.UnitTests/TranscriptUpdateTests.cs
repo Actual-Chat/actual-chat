@@ -33,11 +33,11 @@ public class TranscriptUpdateTests : TestBase
     public void TranscriberStateTest1()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        var t = state.AppendUnstable("раз-два-три-четыре-пять,", 4.68f);
-        t = state.AppendStable("раз-два-три-четыре-пять, 67", 4.98f);
-        t = state.AppendUnstable(" вот", 8.14f);
+        var t = state.Append(false, "раз-два-три-четыре-пять,", 4.68f);
+        t = state.Append(true, "раз-два-три-четыре-пять, 67", 4.98f);
+        t = state.Append(false, " вот", 8.14f);
         Dump(t);
-        t = state.AppendUnstable(" Вот это", 8.56f);
+        t = state.Append(false, " Вот это", 8.56f);
         Dump(t);
         t.TimeMap.Data.Should().Equal(0, 0, 27, 4.98f, 35, 8.56f);
     }
@@ -46,12 +46,12 @@ public class TranscriptUpdateTests : TestBase
     public void TranscriberStateTest2()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        _ = state.AppendStable("1", 1);
+        _ = state.Append(true, "1", 1);
         Dump(state.Stable);
-        _ = state.AppendStable(" 2", 2);
+        _ = state.Append(true, " 2", 2);
         Dump(state.Stable);
-        _ = state.AppendStable(" 3", new LinearMap(3, 2, 5, 3));
-        var t = state.AppendStable("", state.Stable.TimeRange.End);
+        _ = state.Append(true, " 3", new LinearMap(3, 2, 5, 3));
+        var t = state.Append(true, "", state.Stable.TimeRange.End);
         Dump(t);
         t.TimeMap.Length.Should().Be(4);
     }
@@ -60,11 +60,11 @@ public class TranscriptUpdateTests : TestBase
     public void TranscriberUnstableTest()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        _ = state.AppendUnstable("1", 1);
+        _ = state.Append(false, "1", 1);
         Dump(state.Stable);
-        var t = state.AppendUnstable(" 2", 2);
+        var t = state.Append(false, " 2", 2);
         Dump(state.Stable);
-        t = state.MarkStable();
+        t = state.Stabilize();
         t.TimeMap.Length.Should().Be(2);
     }
 
@@ -75,11 +75,9 @@ public class TranscriptUpdateTests : TestBase
         var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString();
         var rnd = new Random(0);
         for (var offset = 0; offset <= text.Length; offset += rnd.Next(3)) {
-            var isFinal = rnd.Next(3) == 0;
-            var finalTextLength = state.Stable.Text.Length;
-            var t = isFinal
-                ? state.AppendStable(text[finalTextLength..offset], offset)
-                : state.AppendUnstable(text[finalTextLength..offset], offset);
+            var isStable = rnd.Next(3) == 0;
+            var stableLength = state.Stable.Text.Length;
+            var t = state.Append(isStable, text[stableLength..offset], offset);
             var expected = text[..offset];
 
             t.Text.Should().Be(expected);
