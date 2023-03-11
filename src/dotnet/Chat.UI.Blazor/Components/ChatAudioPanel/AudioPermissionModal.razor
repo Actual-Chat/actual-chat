@@ -1,11 +1,16 @@
 @namespace ActualChat.UI.Blazor.Components
 @using Stl.Extensibility
+@using ActualChat.Hosting
 @implements IModalView<AudioPermissionModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
+@{
+    var canConfigure = HostInfo.AppKind == AppKind.MauiApp;
+}
+
 <DialogFrame Class="service-modal">
     <Body>
-    @if (ScreenSize.IsWide()) {
+    @if (!canConfigure) {
         <div class="c-text">
             <p>
                 To be able to record messages and use the microphone please give permission
@@ -26,31 +31,35 @@
                 To use your microphone to record voice messages
             </p>
         </div>
-        <div class="flex-x gap-x-4">
-            <Checkbox
-                IsChecked="true"
-                Class="!flex-none"/>
-            <p class="c-text">Don't ask again</p>
-        </div>
     }
     </Body>
     <Buttons>
-        @if (ScreenSize.IsNarrow()) {
-            <Button Class="btn-modal" Click="@OnClick">Deny</Button>
+        @if (canConfigure) {
+            <Button Class="btn-modal" Click="@OnClose">Deny</Button>
             <Button Class="btn-modal" Click="@OnClick">Allow</Button>
         }
     </Buttons>
 </DialogFrame>
 
 @code {
+    [Inject] public HostInfo HostInfo { get; init; } = null!;
+    [Inject] public INoMicHandler NoMicHandler { get; init; } = null!;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private void OnClick() {
+    private void OnClose()
+        => Modal.Close();
 
+    private async Task OnClick() {
+        await NoMicHandler.Allow();
+        ModalModel.ReevaluatePermissions = true;
+        Modal.Close();
     }
 
-    public sealed record Model;
+    public sealed record Model {
+        public bool ReevaluatePermissions { get; set; }
+    }
 }
