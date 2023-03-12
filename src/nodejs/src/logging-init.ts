@@ -31,6 +31,7 @@ export type LogScope =
     | 'VirtualList'
     // XxxUI
     | 'DebugUI'
+    | 'DeviceAwakeUI'
     | 'FocusUI'
     | 'InteractiveUI'
     | 'KeepAwakeUI'

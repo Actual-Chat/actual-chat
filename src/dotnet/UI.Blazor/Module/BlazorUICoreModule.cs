@@ -102,6 +102,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<FocusUI>(c => new FocusUI(
             c.GetRequiredService<IJSRuntime>()));
         services.AddScoped<KeepAwakeUI>(c => new KeepAwakeUI(c));
+        services.AddScoped<DeviceAwakeUI>(c => new DeviceAwakeUI(c));
         services.AddScoped<UserActivityUI>(c => new UserActivityUI(c));
         services.AddScoped<Escapist>(c => new Escapist(
             c.GetRequiredService<IJSRuntime>()));
