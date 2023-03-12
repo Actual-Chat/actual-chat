@@ -40,6 +40,7 @@ export class AudioContextSource {
     private _resumeCount = 0;
     private _interactiveResumeCount = 0;
     private _refCount = 0;
+    private readonly _refCounts: Map<string, number> = new Map<string, number>();
     private _whenReady = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
 
@@ -53,19 +54,9 @@ export class AudioContextSource {
     }
 
     public getRef(operationName: string, options: AudioContextRefOptions) {
-        this._refCount++;
-        if (this._refCount > 100)
-            warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
-        debugLog?.log(`+ AudioContextRef(${operationName}), refCount:`, this._refCount);
+        this.incrementRefCount(operationName);
         const result = new AudioContextRef(this, operationName, options);
-        void result.whenDisposed().then(() => {
-            this._refCount--;
-            if (this._refCount < 0) {
-                warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
-                this._refCount = 0;
-            }
-            debugLog?.log(`- AudioContextRef(${operationName}), refCount:`, this._refCount);
-        });
+        void result.whenDisposed().then(() => this.decrementRefCount(operationName));
         return result;
     }
 
@@ -101,7 +92,7 @@ export class AudioContextSource {
         this._whenReady.resolve(context);
     }
 
-    public markNotReady(): void {
+    private markNotReady(): void {
         // Invariant it maintains on exit:
         // - _context == null
         // - _whenReady is NOT completed
@@ -482,6 +473,26 @@ export class AudioContextSource {
         // close current AudioContext as it might be corrupted and can produce clicking sound
         void this.closeSilently(this._context);
         this.markNotReady();
+    }
+
+    private incrementRefCount(operationName: string) {
+        const count = (this._refCounts.get(operationName) ?? 0) + 1;
+        this._refCounts.set(operationName, count);
+        this._refCount++;
+        if (this._refCount > 100)
+            warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
+        debugLog?.log(`+ AudioContextRef(${operationName}), refCount: ${operationName}=`, count,  ', total=', this._refCount);
+    }
+
+    private decrementRefCount(operationName: string) {
+        const count = (this._refCounts.get(operationName) ?? 0) - 1;
+        if (count < 0)
+            warnLog?.log(`getRef(${operationName}): negative refCount for ${operationName}:`, count);
+        this._refCounts.set(operationName, count);
+        this._refCount--;
+        if (this._refCount < 0)
+            warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
+        debugLog?.log(`- AudioContextRef(${operationName}), refCount: ${operationName}=`, count, ', total=', this._refCount);
     }
 }
 
