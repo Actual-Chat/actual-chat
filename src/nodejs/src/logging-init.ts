@@ -56,6 +56,7 @@ export type LogScope =
     | 'OpusEncoderWorker'
     | 'OpusDecoder'
     | 'OpusDecoderWorker'
+    | 'OpusMediaRecorder'
     | 'VadAudioWorkletProcessor'
     | 'WarmUpAudioWorkletProcessor'
     // Isolated components
@@ -65,6 +66,7 @@ export type LogScope =
     | 'Landing'
     | 'LandingLeftMenu'
     | 'MarkupEditor'
+    | 'MessageEditor'
     | 'SideNav'
     | 'TextBox'
     | 'TooltipHost';
