@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
-using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -15,7 +14,6 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private ModalUI ModalUI { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
-    private MomentClockSet Clocks { get; }
     private HostInfo HostInfo { get; }
     private ILogger Log { get; }
 
@@ -26,7 +24,6 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public InteractiveUI(IServiceProvider services)
     {
-        Clocks = services.Clocks();
         Log = services.LogFor(GetType());
         HostInfo = services.GetRequiredService<HostInfo>();
 

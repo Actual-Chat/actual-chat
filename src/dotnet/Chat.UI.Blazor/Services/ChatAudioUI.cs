@@ -16,9 +16,9 @@ public partial class ChatAudioUI : WorkerBase
     private IChats Chats { get; }
     private ActiveChatsUI ActiveChatsUI { get; }
     private TuneUI TuneUI { get; }
-    private ErrorUI ErrorUI { get; }
     private LanguageUI LanguageUI { get; }
     private InteractiveUI InteractiveUI { get; }
+    private DeviceAwakeUI DeviceAwakeUI { get; }
     private UICommander UICommander { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
@@ -38,8 +38,8 @@ public partial class ChatAudioUI : WorkerBase
         LanguageUI = services.GetRequiredService<LanguageUI>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
         TuneUI = services.GetRequiredService<TuneUI>();
-        ErrorUI = services.GetRequiredService<ErrorUI>();
         ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
+        DeviceAwakeUI = services.GetRequiredService<DeviceAwakeUI>();
         UICommander = services.UICommander();
         Log = services.LogFor(GetType());
 

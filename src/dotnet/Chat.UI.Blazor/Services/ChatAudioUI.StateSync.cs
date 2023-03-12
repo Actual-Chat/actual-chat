@@ -13,6 +13,7 @@ public partial class ChatAudioUI
             new(nameof(PushRecordingState), PushRecordingState),
             new(nameof(PushRealtimePlaybackState), PushRealtimePlaybackState),
             new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
+            new(nameof(StopOnAwake), StopOnAwake),
         };
         var retryDelays = new RetryDelaySeq(100, 1000);
         return (
@@ -260,6 +261,15 @@ public partial class ChatAudioUI
         finally {
             await SetListeningState(chatId, false).ConfigureAwait(false);
         }
+    }
+
+    private async Task StopOnAwake(CancellationToken cancellationToken)
+    {
+        await DeviceAwakeUI.WhenNextAwake().ConfigureAwait(false);
+        await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+        foreach (var listeningChatId in listeningChatIds)
+            await SetListeningState(listeningChatId, false).ConfigureAwait(false);
     }
 
     // Helpers

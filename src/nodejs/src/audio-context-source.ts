@@ -486,6 +486,8 @@ export class AudioContextSource {
 
     private decrementRefCount(operationName: string) {
         const count = (this._refCounts.get(operationName) ?? 0) - 1;
+        if (count == 0)
+            this._refCounts.delete(operationName);
         if (count < 0)
             warnLog?.log(`getRef(${operationName}): negative refCount for ${operationName}:`, count);
         this._refCounts.set(operationName, count);
