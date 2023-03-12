@@ -9,7 +9,6 @@ public interface IMediaBackend : IComputeService
 
     [DataContract]
     public sealed record CreateMediaCommand(
-        [property: DataMember]
-        Media Media
+        [property: DataMember] Media Media
     ) : ICommand<Media>, IBackendCommand;
 }

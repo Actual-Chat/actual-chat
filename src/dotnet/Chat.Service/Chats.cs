@@ -3,6 +3,7 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Invite.Backend;
 using ActualChat.Kvas;
+using ActualChat.Media;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -20,6 +21,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IInvitesBackend InvitesBackend { get; }
     private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
+    private IMediaBackend MediaBackend { get; }
 
     public Chats(IServiceProvider services) : base(services)
     {
@@ -30,6 +32,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         InvitesBackend = services.GetRequiredService<IInvitesBackend>();
         ServerKvas = services.ServerKvas();
         Backend = services.GetRequiredService<IChatsBackend>();
+        MediaBackend = services.GetRequiredService<IMediaBackend>();
     }
 
     // [ComputeMethod]
@@ -255,18 +258,25 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 var contentLocalId = Ulid.NewUlid().ToString();
                 var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
 
-                var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
-                await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
+                // var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
+                // await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
 
-                var attachment = new TextEntryAttachment {
-                    EntryId = textEntryId,
-                    Index = index,
+                var mediaId = new MediaId(Ulid.NewUlid().ToString());
+                var media = new Media.Media(mediaId) {
                     Length = content.Length,
                     ContentType = contentType,
                     FileName = fileName,
                     ContentId = contentId,
                     Width = attachmentUpload.Width,
                     Height = attachmentUpload.Height,
+                };
+                var createMediaCommand = new IMediaBackend.CreateMediaCommand(media);
+                await Commander.Call(createMediaCommand, true, cancellationToken).ConfigureAwait(false);
+
+                var attachment = new TextEntryAttachment {
+                    EntryId = textEntryId,
+                    Index = index,
+                    MediaId = mediaId,
                 };
                 var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
                 await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);

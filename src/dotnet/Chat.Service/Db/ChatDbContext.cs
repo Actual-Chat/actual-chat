@@ -17,7 +17,7 @@ public class ChatDbContext : DbContextBase
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
-    public DbSet<DbMedia> Medias { get; protected set; } = null!;
+    public DbSet<DbMedia> Media { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
