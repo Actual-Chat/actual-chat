@@ -42,8 +42,7 @@ const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
 class ChatRecording {
     constructor(
         public readonly sessionId: string,
-        public readonly chatId: string,
-        public readonly contextRef: AudioContextRef
+        public readonly chatId: string
     ) { }
 }
 
@@ -60,13 +59,12 @@ export class OpusMediaRecorder {
     private encoderWorklet: OpusEncoderWorklet & Disposable = null;
     private vadWorkletInstance: AudioWorkletNode = null;
     private vadWorklet: AudioVadWorklet & Disposable = null;
+    private state: RecorderState = null;
+    private contextRef: AudioContextRef = null;
 
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
-
-    // TODO: clearer states
-    public state: RecorderState = null;
 
     constructor() {
         this.whenInitialized = new PromiseSource<void>();
@@ -94,7 +92,7 @@ export class OpusMediaRecorder {
     }
 
     public async start(sessionId: string, chatId: string): Promise<void> {
-        debugLog?.log("0");
+        debugLog?.log('start: #', chatId, 'sessionId=', sessionId);
         if (!sessionId || !chatId)
             throw new Error('start: sessionId or chatId is unspecified.');
 
@@ -202,7 +200,8 @@ export class OpusMediaRecorder {
         const contextRef = await audioContextSource.getRef('recording', options);
         try {
             await contextRef.whenFirstTimeReady();
-            this.state = new ChatRecording(sessionId, chatId, contextRef);
+            this.contextRef = contextRef;
+            this.state = new ChatRecording(sessionId, chatId);
 
             await Promise.all([
                 this.encoderWorker.start(sessionId, chatId),
@@ -216,11 +215,14 @@ export class OpusMediaRecorder {
     }
 
     public async stop(): Promise<void> {
+        debugLog?.log(`stop`);
         await this.whenInitialized;
-        if (!this.state)
+        if (!this.contextRef)
             return;
 
-        await this.state.contextRef.disposeAsync();
+        debugLog?.log('stop: disposing audioContextRef')
+        await this.contextRef.disposeAsync();
+        this.contextRef = null;
     }
 
     // Private methods
