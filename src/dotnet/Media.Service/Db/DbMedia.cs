@@ -24,6 +24,9 @@ public class DbMedia : IHasId<string>, IRequirementTarget
     {
         this.RequireSameOrEmptyId(model.Id);
 
+        if (!Id.IsNullOrEmpty())
+            return;
+
         Id = model.Id;
         ContentId = model.ContentId;
         MetadataJson = model.MetadataJson;

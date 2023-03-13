@@ -2,13 +2,15 @@
 
 public interface IMediaBackend : IComputeService
 {
-    // Commands
+    [ComputeMethod]
+    public Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Media> CreateMedia(CreateMediaCommand command, CancellationToken cancellationToken);
+    public Task<Media?> Change(ChangeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public sealed record CreateMediaCommand(
-        [property: DataMember] Media Media
-    ) : ICommand<Media>, IBackendCommand;
+    public sealed record ChangeCommand(
+        [property: DataMember] MediaId Id,
+        [property: DataMember] Change<Media> Change
+    ) : ICommand<Media?>, IBackendCommand;
 }

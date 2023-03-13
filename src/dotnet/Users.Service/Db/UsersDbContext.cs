@@ -1,4 +1,5 @@
 using ActualChat.Db;
+using ActualChat.Media;
 using ActualChat.Media.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -7,14 +8,16 @@ using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Users.Db;
 
-public class UsersDbContext : DbContextBase
+public class UsersDbContext : DbContextBase, IMediaDbContext
 {
     public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;
     public DbSet<DbAccount> Accounts { get; protected set; } = null!;
     public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
-    public DbSet<DbMedia> Medias { get; protected set; } = null!;
+
+    // ActualChat.Media.Service.Db tables
+    public DbSet<DbMedia> Media { get; set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbUser> Users { get; protected set; } = null!;

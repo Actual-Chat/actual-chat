@@ -6,8 +6,7 @@ namespace ActualChat.Media;
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract]
 public sealed record Media(
-    [property: DataMember] MediaId Id,
-    [property: DataMember] long Version = 0
+    [property: DataMember] MediaId Id
     ) : IHasId<MediaId>, IRequirementTarget
 {
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =

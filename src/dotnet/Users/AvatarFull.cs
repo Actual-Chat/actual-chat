@@ -23,6 +23,7 @@ public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Versio
         Name = Name,
         Bio = Bio,
         Picture = Picture,
+        MediaId = MediaId,
     };
 
     public AvatarFull WithMissingPropertiesFrom(AvatarFull? other)

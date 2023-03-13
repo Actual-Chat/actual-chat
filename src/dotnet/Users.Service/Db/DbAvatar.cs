@@ -18,6 +18,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UserId { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
+    public MediaId MediaId { get; set; } = MediaId.None;
     public string Bio { get; set; } = "";
 
     public DbAvatar() { }
@@ -28,6 +29,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = new UserId(UserId),
             Name = Name,
             Picture = Picture,
+            MediaId = MediaId,
             Bio = Bio,
         };
 
@@ -46,6 +48,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Version = model.Version;
         Name = model.Name;
         Picture = model.Picture;
+        MediaId = model.MediaId;
         Bio = model.Bio;
     }
 

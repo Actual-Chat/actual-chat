@@ -1,12 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Stl" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Media\Media.csproj" />
   </ItemGroup>
 
