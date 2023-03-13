@@ -100,7 +100,7 @@
         _form.Title = chat.Title;
         _form.Picture = chat.Picture;
         _form.IsPublic = chat.IsPublic;
-        _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
+        _form.ImageUploadUrl = "/api/chats/upload-picture";
     }
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
@@ -136,8 +136,9 @@
         Modal.Close();
     }
 
-    private void OnImagePicked(string contentId) {
-        _form.Picture = contentId;
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.Picture = mediaContent.ContentId;
+        _form.MediaId = mediaContent.MediaId;
         StateHasChanged();
     }
 
@@ -154,6 +155,7 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
         public string Picture { get; set; } = "";
+        public MediaId MediaId { get; set; } = MediaId.None;
         public bool IsPublic { get; set; }
         public string ImageUploadUrl { get; set; } = "";
 

@@ -36,7 +36,7 @@
                 <FileUpload
                     @key="@_stepModel.AvatarId.Value"
                     id="fileUpload"
-                    UploadUrl="@($"/api/user-avatars/{_stepModel.AvatarId}/upload-picture")"
+                    UploadUrl="@($"/api/avatars/upload-picture")"
                     Uploaded="OnImagePicked"
                     MaxSize="Constants.Chat.PictureFileSizeLimit"
                     accept="image/*"
@@ -144,8 +144,9 @@
         await UICommander.Run(updateAvatarCommand);
     }
 
-    private void OnImagePicked(string contentId) {
-        _stepModel.AvatarPicture = contentId;
+    private void OnImagePicked(MediaContent mediaContent) {
+        _stepModel.AvatarPicture = mediaContent.ContentId;
+        _stepModel.AvatarMediaId = mediaContent.MediaId;
     }
 
     private void OnGenerateAvatarClick() {
@@ -157,5 +158,6 @@
         public string LastName { get; set; } = "";
         public string AvatarPicture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
+        public MediaId AvatarMediaId { get; set; } = MediaId.None;
     }
 }

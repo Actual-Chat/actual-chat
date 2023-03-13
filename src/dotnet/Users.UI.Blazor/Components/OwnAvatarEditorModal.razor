@@ -92,7 +92,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    private string UploadUrl => $"/api/user-avatars/{ModalModel.AvatarId}/upload-picture";
+    private string UploadUrl => "/api/avatars/upload-picture";
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -147,8 +147,9 @@
         CloseModal();
     }
 
-    private void OnImagePicked(string contentId) {
-        _form.Picture = contentId;
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.Picture = mediaContent.ContentId;
+        _form.MediaId = mediaContent.MediaId;
         _form.CopyToBase();
         StateHasChanged();
     }
@@ -203,6 +204,7 @@
         public bool IsActive { get; set; }
         public string IsActiveFieldId { get; set; } = "";
         public string Title { get; set; } = "";
+        public MediaId MediaId { get; set; } = MediaId.None;
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("avatar-editor", componentIdGenerator) {

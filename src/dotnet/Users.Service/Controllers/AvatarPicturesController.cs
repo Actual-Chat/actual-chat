@@ -1,31 +1,47 @@
-using ActualChat.Web.Internal;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
 
 [ApiController]
-public class AvatarPicturesController : UploadControllerBase
+public class AvatarPicturesController : ControllerBase
 {
-    private IAvatars Avatars { get; }
+    private IContentSaver ContentSaver  { get; }
 
-    public AvatarPicturesController(IAvatars avatars)
-        => Avatars = avatars;
-
-    [HttpPost, Route("api/user-avatars/{avatarId}/upload-picture")]
-    public Task<IActionResult> UploadPicture(Symbol avatarId, CancellationToken cancellationToken)
-    {
-        return Upload(ValidateRequest, GetContentIdPrefix, cancellationToken);
-
-        async ValueTask<IActionResult?> ValidateRequest()
-        {
-            var userAvatar = await Avatars.GetOwn(SessionResolver.Session, avatarId, cancellationToken).ConfigureAwait(false);
-            return userAvatar is null ? NotFound() : null;
-        }
-
-        string GetContentIdPrefix() => $"avatar-pictures/{avatarId.Value.Replace(':', '_')}/picture-";
-    }
+    public AvatarPicturesController(IContentSaver contentSaver)
+        => ContentSaver = contentSaver;
 
     [HttpPost, Route("api/user-avatars/upload-picture")]
-    public Task<ActionResult<MediaId>> UploadPicture(CancellationToken cancellationToken)
-        => Upload("media/avatars", cancellationToken);
+    public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
+    {
+        var httpRequest = HttpContext.Request;
+        if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
+            return BadRequest("No file content found");
+
+        if (httpRequest.Form.Files.Count > 1)
+            return BadRequest("Too many files");
+
+        var file = httpRequest.Form.Files[0];
+        if (file.Length == 0)
+            return BadRequest("Image is empty");
+
+        if (file.Length > Constants.Chat.PictureFileSizeLimit)
+            return BadRequest("Image is too big");
+
+        var mediaId = new MediaId(Ulid.NewUlid().ToString());
+        var media = new Media.Media(mediaId)
+        {
+            ContentId = $"media/avatars/{mediaId}{Path.GetExtension(file.FileName)}",
+            FileName = file.FileName,
+            Length = file.Length,
+            ContentType = file.ContentType,
+        };
+
+        var stream = file.OpenReadStream();
+        await using var _ = stream.ConfigureAwait(false);
+
+        var content = new Content(media.ContentId, file.ContentType, stream);
+        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+
+        return Ok(new MediaContent(media.Id, media.ContentId));
+    }
 }

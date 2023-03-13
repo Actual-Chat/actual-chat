@@ -44,6 +44,7 @@ export class FileUpload implements Disposable {
             )
             .subscribe(async (response: Response) => {
                 const text = await response.text();
+                console.log('media id: ', text)
                 await blazorRef.invokeMethodAsync('OnUploaded', text);
             });
     }
