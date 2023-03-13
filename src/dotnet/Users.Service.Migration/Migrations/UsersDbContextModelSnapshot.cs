@@ -17,32 +17,10 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.3")
+                .HasAnnotation("ProductVersion", "7.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ActualChat.Media.Db.DbMedia", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content_id");
-
-                    b.Property<string>("MetadataJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("metadata_json");
-
-                    b.HasKey("Id")
-                        .HasName("pk_media");
-
-                    b.ToTable("media");
-                });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbAccount", b =>
                 {
@@ -113,11 +91,6 @@ namespace ActualChat.Users.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("bio");
-
-                    b.Property<string>("MediaId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("media_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
