@@ -5,11 +5,10 @@
     var m = State.Value;
 }
 
-<NavbarButton
+<NavbarGroupSelectionButton
     Id="@NavbarGroupIds.Chats"
     Title="Chats"
     Tooltip="Chats"
-    TooltipPosition="FloatingPosition.Right"
     ShowBadge="@(m.Count != 0)">
     <ChildContent>
         <i class="icon-message-ellipse text-2xl font-medium"></i>
@@ -17,7 +16,7 @@
     <BadgeContent>
         @m.Count
     </BadgeContent>
-</NavbarButton>
+</NavbarGroupSelectionButton>
 
 @code {
     [Inject] private ChatUI ChatUI { get; init; } = null!;
