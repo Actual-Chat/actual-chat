@@ -452,11 +452,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("index");
 
-                    b.Property<string>("MediaId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("media_id");
-
                     b.Property<string>("MetadataJson")
                         .IsRequired()
                         .HasColumnType("text")
@@ -471,28 +466,6 @@ namespace ActualChat.Chat.Migrations
                         .HasName("pk_text_entry_attachments");
 
                     b.ToTable("text_entry_attachments");
-                });
-
-            modelBuilder.Entity("ActualChat.Media.Db.DbMedia", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content_id");
-
-                    b.Property<string>("MetadataJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("metadata_json");
-
-                    b.HasKey("Id")
-                        .HasName("pk_media");
-
-                    b.ToTable("media");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
