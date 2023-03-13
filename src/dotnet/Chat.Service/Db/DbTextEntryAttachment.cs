@@ -26,15 +26,11 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         => $"{entryId}:{index}";
 
     public TextEntryAttachment ToModel()
-    {
-        var entryId = new TextEntryId(EntryId);
-        var mediaId = new MediaId(MediaId);
-        return new (Id, Version) {
-            EntryId = entryId,
+        => new (Id, Version) {
+            EntryId = new TextEntryId(EntryId),
             Index = Index,
-            MediaId = mediaId,
+            MediaId = new MediaId(MediaId),
         };
-    }
 
     public void UpdateFrom(TextEntryAttachment model)
     {
