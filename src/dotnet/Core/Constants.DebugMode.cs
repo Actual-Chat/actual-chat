@@ -18,24 +18,24 @@ public static partial class Constants
 
         // UI services
         public static readonly bool VirtualList = false;
-        public static readonly bool History = true;
+        public static readonly bool History = false;
         public static readonly bool ChatUI = false;
 
         // Audio
         public static readonly bool WebMReader = false;
         public static readonly bool AudioSource = false;
-        public static readonly bool AudioProcessor = true;
+        public static readonly bool AudioProcessor = false;
         public static readonly bool AudioPlayback = false;
         public static bool AudioPlaybackPlayMyOwnAudio
             => HostInfo.IsDevelopmentInstance && HostInfo.AppKind != AppKind.MauiApp;
-        public static readonly bool AudioRecording = true;
+        public static readonly bool AudioRecording = false;
         public static readonly bool AudioRecordingStream = false;
-        public static readonly bool AudioStreamProxy = true;
+        public static readonly bool AudioStreamProxy = false;
 
         // Transcription
         public static readonly bool Transcription = false;
         public static readonly bool TranscriberAny = false;
-        public static readonly bool TranscriberGoogle = true;
+        public static readonly bool TranscriberGoogle = false;
         public static readonly bool TranscriptStreamProxy = false;
 
         // Misc.
