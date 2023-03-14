@@ -14,6 +14,7 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public RenderFragment? AdditionalElement { get; set; }
     [Parameter] public double Order { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
