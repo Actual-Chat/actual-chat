@@ -9,11 +9,11 @@ using IDispatcher = Microsoft.Maui.Dispatching.IDispatcher;
 
 namespace ActualChat.App.Maui;
 
-partial class MauiProgram
+public static class MauiProgramOptimizations
 {
-    private static Task WarmupFusionServices(IServiceProvider services)
+    public static Task WarmupFusionServices(IServiceProvider services, Tracer tracer)
         => Task.Run(() => {
-            var step = _tracer.Region("WarmupFusionServices");
+            var step = tracer.Region("WarmupFusionServices");
             try {
                 var warmer = new Services.StartupTracing.FusionServicesWarmer(services);
                 warmer.ReplicaService<IServerKvas>();
@@ -52,14 +52,17 @@ partial class MauiProgram
                 warmer.ReplicaService<IRoles>();
             }
             catch (Exception e) {
-                _tracer.Point("WarmupFusionServices failed, error: " + e);
+                tracer.Point("WarmupFusionServices failed, error: " + e);
             }
             finally {
                 step.Close();
             }
         });
 
-    private static void AddDispatcherProxy(IServiceCollection services, bool logAllOperations)
+    public static void EnableDependencyInjectionEventListener()
+        => _ = new Services.StartupTracing.DependencyInjectionEventListener();
+
+    public static void AddDispatcherProxy(IServiceCollection services, bool logAllOperations)
     {
         var dispatcherRegistration =
             services.FirstOrDefault(c => c.ServiceType == typeof(IDispatcher));
@@ -75,7 +78,4 @@ partial class MauiProgram
             dispatcherRegistration.Lifetime);
         services.Add(serviceDescriptor);
     }
-
-    private static void EnableDependencyInjectionEventListener()
-        => _ = new Services.StartupTracing.DependencyInjectionEventListener();
 }

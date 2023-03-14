@@ -185,10 +185,10 @@
     <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsDevMaui)' == 'true'">
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-android'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
-  <ItemGroup Condition="'$(IsDevMaui)' != 'true'">
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-android'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
   <ItemGroup>
