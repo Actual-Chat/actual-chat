@@ -24,10 +24,15 @@ public class LeftPanel
 
     public void SetIsVisible(bool value)
     {
-        var localUrl = History.LocalUrl;
-        value |= localUrl.IsChatRoot(); // Always visible if @ /chat
-        value &= !localUrl.IsDocsOrDocsRoot(); // Always invisible if @ /docs*
-        value |= IsWide(); // Always visible if wide
+        if (IsWide())
+            value = true;
+        else {
+            var localUrl = History.LocalUrl;
+            if (localUrl.IsChatRoot())
+                value = true;
+            else if (localUrl.IsDocsOrDocsRoot())
+                value = false; // This panel isn't used in narrow mode in /docs
+        }
 
         bool oldIsVisible;
         lock (_lock) {

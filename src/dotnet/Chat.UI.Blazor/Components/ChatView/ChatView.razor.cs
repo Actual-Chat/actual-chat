@@ -124,7 +124,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var fragment = new LocalUrl(uri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
         if (long.TryParse(fragment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
             var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
-            var cts = History.TrackChangesAndCancel(x => !OrdinalEquals(x.Uri, uri));
+            var cts = new CancellationTokenSource();
             var cancellationToken = cts.Token;
             _ = ForegroundTask.Run(async () => {
                 try {
@@ -134,7 +134,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 finally {
                     cts.CancelAndDisposeSilently();
                 }
-            });
+            }, CancellationToken.None);
+            History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, uri));
             NavigateToEntry(entryId);
         }
     }

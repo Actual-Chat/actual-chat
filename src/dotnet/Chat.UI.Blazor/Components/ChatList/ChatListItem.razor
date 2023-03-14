@@ -106,9 +106,14 @@
             return;
 
         // This part hides LeftPanel when you select the chat
-        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        var chatUrl = Links.Chat(ChatInfo.Id);
         var history = ChatUI.Services.GetRequiredService<History>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+        await history
+            .When(_ => history.LocalUrl.Value.OrdinalStartsWith(chatUrl), cts.Token)
+            .SuppressCancellation();
         await history.WhenNavigationCompleted;
+
         var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
         panelsUI.Left.SetIsVisible(false);
     }
