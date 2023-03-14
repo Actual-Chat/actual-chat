@@ -27,8 +27,11 @@ public partial class History
             return EnqueueNavigation(() => {
                 if (!force && OrdinalEquals(uri, _uri)) {
                     DebugLog?.LogDebug("NavigateTo: {Uri} - skipped (same URI + no force option)", uri);
+                    lock (Lock)
+                        ProcessNextNavigationUnsafe();
                     return;
                 }
+
                 if (DebugLog != null) {
                     using var sb = ZString.CreateStringBuilder(true);
                     sb.Append("NavigateTo: {Uri}, ");
@@ -46,7 +49,7 @@ public partial class History
                 }
                 var eventArgs = new LocationChangedEventArgs(uri, true);
                 var newItem = mustReplace
-                    ? _currentItem with { Uri = uri } 
+                    ? _currentItem with { Uri = uri }
                     : NewItemUnsafe(uri);
                 LocationChange(eventArgs, newItem, mustReplace);
             });

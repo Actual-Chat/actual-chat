@@ -7,7 +7,9 @@ public class LeftPanel
     private readonly IMutableState<bool> _isVisible;
     private readonly object _lock = new();
 
-    private ILogger Log { get; }
+    private IServiceProvider Services => Owner.Services;
+    private History History => Owner.History;
+
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
@@ -16,15 +18,13 @@ public class LeftPanel
     public LeftPanel(PanelsUI owner)
     {
         Owner = owner;
-        Log = Owner.Services.LogFor(GetType());
-
-        _isVisible = Owner.Services.StateFactory().NewMutable(true);
-        Owner.History.Register(new OwnHistoryState(this, true));
+        _isVisible = Services.StateFactory().NewMutable(true);
+        History.Register(new OwnHistoryState(this, true));
     }
 
     public void SetIsVisible(bool value)
     {
-        var localUrl = Owner.History.LocalUrl;
+        var localUrl = History.LocalUrl;
         value |= localUrl.IsChatRoot(); // Always visible if @ /chat
         value &= !localUrl.IsDocsOrDocsRoot(); // Always invisible if @ /docs*
         value |= IsWide(); // Always visible if wide
@@ -36,8 +36,7 @@ public class LeftPanel
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value) {
-            Log.LogDebug("Visibility changed: {IsVisible}", value);
-            Owner.History.Save<OwnHistoryState>();
+            History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -59,10 +58,7 @@ public class LeftPanel
             => With(Host.IsVisible.Value);
 
         public override void Apply(HistoryTransition transition)
-        {
-            var isHistoryMove = transition.LocationChangeKind is LocationChangeKind.HistoryMove;
-            Host.SetIsVisible(IsVisible && isHistoryMove);
-        }
+            => Host.SetIsVisible(IsVisible);
 
         public override HistoryState? Back()
             => BackStepCount == 0 ? null : With(!IsVisible);

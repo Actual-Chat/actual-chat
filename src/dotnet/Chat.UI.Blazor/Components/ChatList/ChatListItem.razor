@@ -102,11 +102,13 @@
         var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
         _ = tuneUI.Play("select-chat");
 
-        if (ScreenSize.IsWide() || !State.Value.IsSelected)
+        if (ScreenSize.IsWide())
             return;
 
-        // This part hides Navbar when you click on selected chat
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
+        // This part hides LeftPanel when you select the chat
+        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        var history = ChatUI.Services.GetRequiredService<History>();
+        await history.WhenNavigationCompleted;
         var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
         panelsUI.Left.SetIsVisible(false);
     }

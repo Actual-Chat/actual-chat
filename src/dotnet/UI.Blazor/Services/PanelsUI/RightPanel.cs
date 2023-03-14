@@ -8,6 +8,9 @@ public class RightPanel
     private readonly IStoredState<bool> _isVisible;
     private readonly object _lock = new();
 
+    private IServiceProvider Services => Owner.Services;
+    private History History => Owner.History;
+
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
@@ -15,19 +18,17 @@ public class RightPanel
     public RightPanel(PanelsUI owner)
     {
         Owner = owner;
-        var services = owner.Services;
-        var stateFactory = services.StateFactory();
-        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
+        var stateFactory = Services.StateFactory();
+        var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
         _isVisible = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
                 InitialValue = false,
                 Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !Owner.IsNarrow()),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
-        var history = Owner.History;
-        history.Register(new OwnHistoryState(this, false));
+        History.Register(new OwnHistoryState(this, false));
         _isVisible.WhenRead.ContinueWith(
-            _ => history.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
+            _ => History.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
             TaskScheduler.Default);
     }
 
@@ -43,7 +44,7 @@ public class RightPanel
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value)
-            Owner.History.Save<OwnHistoryState>();
+            History.Save<OwnHistoryState>();
     }
 
     // Nested types
