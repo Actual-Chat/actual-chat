@@ -26,6 +26,15 @@
     @apply font-normal;
 }
 
+/* Tabs */
+.navbar-chats .tab-panel-tabs .chats-tab {
+    @apply flex-y h-full;
+    @apply overflow-y-visible md:overflow-y-auto custom-scrollbar;
+}
+.navbar-chats .tab-panel-tabs .c-container .c-badge {
+    @apply flex-x items-center justify-center;
+}
+
 /* Sort button */
 .navbar-chats .chat-list-sort-btn .btn-content {
     @apply -mb-1;

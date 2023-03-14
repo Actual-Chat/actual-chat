@@ -37,8 +37,8 @@
                                 <div class="tab-panel-bottom-hill"></div>
                             }
                         </div>
-                        @if (tab.AdditionalElement != null) {
-                            @tab.AdditionalElement
+                        @if (tab.TitleExtras != null) {
+                            @tab.TitleExtras
                         }
                     </div>
                 }
@@ -98,4 +98,7 @@
     internal void UnregisterTab(Tab tab) {
         _tabs.Remove(tab);
     }
+
+    internal void TabContentChanged()
+        => StateHasChanged();
 }

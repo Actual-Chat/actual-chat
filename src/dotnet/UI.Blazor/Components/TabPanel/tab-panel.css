@@ -60,9 +60,6 @@
     @apply max-h-14 p-0 m-0;
     @apply border-b border-bg-04;
 }
-.side-nav .tab-panel-tabs .chats-tab {
-    @apply flex-y h-full overflow-y-visible md:overflow-y-auto custom-scrollbar;
-}
 .side-nav .tab-panel-tabs .btn-group {
     @apply min-h-14 justify-start px-4 gap-x-0;
 }

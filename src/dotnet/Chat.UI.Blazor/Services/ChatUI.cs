@@ -257,10 +257,10 @@ public partial class ChatUI : WorkerBase, IHasServices
         => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
 
     [ComputeMethod]
-    public virtual async Task<Trimmed<int>> GetUnreadCount(ChatListFilter filter, CancellationToken cancellationToken)
+    public virtual async Task<Trimmed<int>> GetUnreadChatCount(ChatListFilter filter, CancellationToken cancellationToken)
     {
         var chats = await ListFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
-        return chats.UnreadMessageCount();
+        return chats.UnreadChatCount();
     }
 
     [ComputeMethod]

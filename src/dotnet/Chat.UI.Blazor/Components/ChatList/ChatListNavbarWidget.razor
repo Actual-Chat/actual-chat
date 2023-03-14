@@ -4,21 +4,28 @@
     var m = State.Value;
     var settings = ChatUI.ListSettings.Value;
 
-    RenderFragment RenderTabContent(ChatListFilter filter, double order) =>
-        @<Tab
-             @key="@filter.Id.Value"
-             Id="@filter.Id.Value"
-             Title="@filter.Title"
-             Order="@order"
-             Class="chats-tab">
+    RenderFragment RenderTabContent(ChatListFilter filter, double order) {
+        var id = filter.Id.Value;
+        var title = filter.Title;
+        var unreadChatCount = m.UnreadChatCounts.GetValueOrDefault(filter.Id);
+        var contentVersion = (id, title, unreadChatCount);
+        return @<Tab
+            @key="@id"
+            Id="@id"
+            Title="@title"
+            ContentVersion="@contentVersion"
+            Order="@order"
+            Class="chats-tab">
             <TitleContent>
-                <span>@filter.Title</span>
+                <span>@title</span>
             </TitleContent>
-            <AdditionalElement>
-                <div class="c-badge flex items-center justify-center w-6 mr-2">
-                    <UnreadCount Value="@m.UnreadCountsByChatFilter.GetValueOrDefault(filter.Id)" Click="@OnUnreadBadgeClick"/>
-                </div>
-            </AdditionalElement>
+            <TitleExtras>
+                @if (unreadChatCount.Value != 0) {
+                    <div class="c-badge">
+                        <UnreadCount Value="@unreadChatCount" Click="@OnUnreadBadgeClick"/>
+                    </div>
+                }
+            </TitleExtras>
             <ChildContent>
                 <div class="flex-y my-2">
                     <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
@@ -26,6 +33,7 @@
                 </div>
             </ChildContent>
         </Tab>;
+    }
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
@@ -73,7 +81,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Loading,
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.Get(0.1),
             Category = GetStateCategory(),
         };
 
@@ -87,12 +95,12 @@
         region.Close();
 
         region = tracer.Region("Call ChatUI.GetUnreadCount");
-        var unreadCounts = await ChatListFilter.All
-            .Select(async x => new {
-                FilterId = x.Id,
-                UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken),
-            })
-            .Collect();
+        var unreadChatCounts = (await ChatListFilter.All
+            .Select(async x => {
+                var unreadChatCount = await ChatUI.GetUnreadChatCount(x, cancellationToken).ConfigureAwait(false);
+                return (FilterId: x.Id, UnreadChatCount: unreadChatCount);
+            }).Collect()
+            ).ToDictionary(x => x.FilterId, x => x.UnreadChatCount);
         region.Close();
 
         region = tracer.Region("Chore chat list");
@@ -120,7 +128,7 @@
         return new Model {
             PinnedChats = pinnedChats,
             UnpinnedChats = unpinnedChats,
-            UnreadCountsByChatFilter = unreadCounts.ToDictionary(x => x.FilterId, x => x.UnreadCount),
+            UnreadChatCounts = unreadChatCounts,
         };
     }
 
@@ -157,6 +165,6 @@
         public List<ChatInfo> PinnedChats { get; init; } = _emptyList;
         public List<ChatInfo> UnpinnedChats { get; init; } = _emptyList;
         public IEnumerable<ChatInfo> AllChats => PinnedChats.Concat(UnpinnedChats);
-        public Dictionary<Symbol, Trimmed<int>> UnreadCountsByChatFilter { get; init; } = new();
+        public Dictionary<Symbol, Trimmed<int>> UnreadChatCounts { get; init; } = new();
     }
 }
