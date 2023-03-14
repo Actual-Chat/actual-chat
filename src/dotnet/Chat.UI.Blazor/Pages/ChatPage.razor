@@ -94,7 +94,7 @@
                 chatId = Constants.Chat.AnnouncementsChatId;
             }
             if (!chatId.IsNone)
-                _ = History.NavigateTo(Links.Chat(chatId));
+                _ = History.NavigateTo(Links.Chat(chatId), true);
         }
 
         ChatUI.SelectChat(chatId);

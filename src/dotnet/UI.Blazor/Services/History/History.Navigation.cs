@@ -1,3 +1,5 @@
+using Cysharp.Text;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
@@ -7,24 +9,46 @@ public partial class History
     private volatile Task<Unit> _whenNavigationCompleted;
     private CancellationTokenSource? _whenNavigationCompletedTimeoutCts;
 
+    // ReSharper disable once InconsistentlySynchronizedField
     public Task WhenNavigationCompleted => _whenNavigationCompleted;
 
     [JSInvokable]
-    public Task NavigateTo(string uri, bool mustAddHistoryItem = false)
+    public Task NavigateTo(string uri, bool mustReplace = false, bool force = false)
     {
+        var fixedUri = new LocalUrl(uri).Value;
+        if (!OrdinalEquals(uri, fixedUri)) {
+            Log.LogWarning("NavigateTo: {Uri} is fixed to {FixedUri}", uri, fixedUri);
+            uri = fixedUri;
+        }
         lock (Lock) {
-            var newUri = new LocalUrl(uri).Value;
-            if (!mustAddHistoryItem && OrdinalEquals(newUri, _uri)) {
-                DebugLog?.LogDebug("NavigateTo: skipped (same URI): {Uri}", uri);
-                return Task.CompletedTask;
-            }
             if (_locationChangeRegion.IsInside)
                 throw StandardError.Internal("NavigateTo is invoked from LocationChange.");
 
             return EnqueueNavigation(() => {
-                var eventArgs = new LocationChangedEventArgs(newUri, true);
-                var newItem = NewItemUnsafe(newUri);
-                LocationChange(eventArgs, newItem);
+                if (!force && OrdinalEquals(uri, _uri)) {
+                    DebugLog?.LogDebug("NavigateTo: {Uri} - skipped (same URI + no force option)", uri);
+                    return;
+                }
+                if (DebugLog != null) {
+                    using var sb = ZString.CreateStringBuilder(true);
+                    sb.Append("NavigateTo: {Uri}, ");
+                    if (mustReplace || force) {
+                        sb.Append("options: ");
+                        if (mustReplace)
+                            sb.Append("mustReplace, ");
+                        if (force)
+                            sb.Append("force, ");
+                    }
+                    sb.Remove(sb.Length - 2, 2); // Removing trailing ", "
+                    var message = sb.ToString();
+                    // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+                    DebugLog?.LogDebug(message, uri);
+                }
+                var eventArgs = new LocationChangedEventArgs(uri, true);
+                var newItem = mustReplace
+                    ? _currentItem with { Uri = uri } 
+                    : NewItemUnsafe(uri);
+                LocationChange(eventArgs, newItem, mustReplace);
             });
         }
     }

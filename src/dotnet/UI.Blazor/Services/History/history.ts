@@ -13,9 +13,9 @@ export class History {
         globalThis["App"]["history"] = this;
     }
 
-    public static async navigateTo(uri: string, mustAddHistoryItem: boolean = false): Promise<void> {
-        infoLog?.log(`navigateTo:`, uri);
+    public static async navigateTo(uri: string, mustReplace: boolean = false, force: boolean = false): Promise<void> {
+        infoLog?.log(`navigateTo:`, uri, mustReplace, force);
         await this.whenReady;
-        await this.backendRef.invokeMethodAsync('NavigateTo', uri, mustAddHistoryItem);
+        await this.backendRef.invokeMethodAsync('NavigateTo', uri, mustReplace, force);
     };
 }

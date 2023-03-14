@@ -9,7 +9,8 @@ public partial class History
 
     private void LocationChange(
         LocationChangedEventArgs eventArgs,
-        HistoryItem? newItem = null)
+        HistoryItem? newItem = null,
+        bool mustReplace = false)
     {
         using var _ = _locationChangeRegion.Enter();
         if (DebugLog != null) {
@@ -31,8 +32,9 @@ public partial class History
 
             HistoryItem currentItem;
             var locationChangeKind = LocationChangeKind.HistoryMove;
-            var parsedItemId = ItemIdFormatter.Parse(eventArgs.HistoryEntryState);
-            if (parsedItemId is { } itemId && GetItemByIdUnsafe(itemId) is { } existingItem) {
+            if (newItem == null
+                && ItemIdFormatter.Parse(eventArgs.HistoryEntryState) is { } itemId
+                && GetItemByIdUnsafe(itemId) is { } existingItem) {
                 currentItem = _currentItem = existingItem;
                 if (!OrdinalEquals(uri, currentItem.Uri)) {
                     Log.LogWarning(
@@ -53,9 +55,12 @@ public partial class History
             else {
                 locationChangeKind = LocationChangeKind.NewUri;
                 currentItem = newItem ?? NewItemUnsafe();
-                AddItem(ref currentItem);
+                if (mustReplace)
+                    ReplaceItem(ref currentItem);
+                else
+                    AddItem(ref currentItem);
                 _locationChangeRegion.ExitAction = () => {
-                    if (newItem != null)
+                    if (newItem != null && !mustReplace)
                         AddNavigationHistoryEntry(currentItem);
                     else
                         ReplaceNavigationHistoryEntry(currentItem);
