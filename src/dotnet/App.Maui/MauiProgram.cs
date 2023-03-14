@@ -9,12 +9,8 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
-using ActualChat.Chat.UI.Blazor.Components;
-using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Notification.UI.Blazor;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor;
-using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
 
@@ -28,10 +24,6 @@ public static partial class MauiProgram
 
     public static MauiApp CreateMauiApp()
     {
-#if ANDROID
-        Android.Util.Log.Debug(AndroidConstants.LogTag, "MauiProgram.CreateMauiApp");
-#endif
-
         Log.Logger = CreateLoggerConfiguration().CreateLogger();
         Tracer.Default = _tracer = CreateTracer();
         _tracer.Point("Tracer and Logger are ready");
@@ -39,7 +31,7 @@ public static partial class MauiProgram
 #if WINDOWS
         if (_tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
-            EnableDependencyInjectionEventListener();
+            MauiProgramOptimizations.EnableDependencyInjectionEventListener();
         }
 #endif
 
@@ -59,29 +51,15 @@ public static partial class MauiProgram
     }
 
     private static LoggerConfiguration CreateLoggerConfiguration()
-    {
-        var loggerConfiguration = new LoggerConfiguration()
+        => new LoggerConfiguration()
             .MinimumLevel.Is(LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .WriteTo.Sentry(options => options.ConfigureForApp())
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
-            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
-#if WINDOWS
-        loggerConfiguration = loggerConfiguration
-            .WriteTo.Debug(
-                outputTemplate:"[{Timestamp:HH:mm:ss.fff} {Level:u3} ({ThreadID})] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
-#elif ANDROID
-        loggerConfiguration = loggerConfiguration
-            .WriteTo.AndroidTaggedLog(
-                AndroidConstants.LogTag,
-                outputTemplate: "({ThreadID}) [{SourceContext}] {Message:l{NewLine:l}{Exception:l}");
-#elif IOS
-        loggerConfiguration = loggerConfiguration.WriteTo.NSLog();
-#endif
-        return loggerConfiguration;
-    }
+            .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui")
+            .ConfigurePlatformLogger();
 
     private static Tracer CreateTracer()
     {
@@ -108,7 +86,7 @@ public static partial class MauiProgram
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
-            .ConfigureLifecycleEvents(ConfigureLifecycleEvents)
+            .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents)
             .UseAppLinks();
 
         var services = builder.Services;
@@ -122,11 +100,12 @@ public static partial class MauiProgram
         services.AddLogging(logging => ConfigureLogging(logging, true));
 
         services.TryAddSingleton(builder.Configuration);
+        services.AddPlatformServices();
 
         services.AddSingleton(new TracerProvider(_tracer));
         if (_tracer.IsEnabled) {
             // Use AddDispatcherProxy only to research purpose
-            // AddDispatcherProxy(services, false);
+            // MauiProgramOptimizations.AddDispatcherProxy(services, false);
         }
 
         var settings = new ClientAppSettings();
@@ -154,10 +133,6 @@ public static partial class MauiProgram
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
-#if ANDROID
-        services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
-            Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
-#endif
         var step = _tracer.Region("ConfigureServices");
         ConfigureServices(services);
         step.Close();
@@ -168,7 +143,7 @@ public static partial class MauiProgram
 
         AppServices = mauiApp.Services;
 
-        _ = WarmupFusionServices(AppServices);
+        _ = MauiProgramOptimizations.WarmupFusionServices(AppServices, _tracer);
 
         Constants.HostInfo = AppServices.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
@@ -243,56 +218,6 @@ public static partial class MauiProgram
         => start
             .GetAwaiter().GetResult();
 
-    private static void ConfigureLifecycleEvents(ILifecycleBuilder events)
-    {
-#if ANDROID
-        events.AddAndroid(android => {
-            android.OnBackPressed(activity => {
-                _ = HandleBackPressed(activity);
-                return true;
-            });
-        });
-#endif
-    }
-
-#if ANDROID
-    private static async Task HandleBackPressed(Android.App.Activity activity)
-    {
-        var webView = Application.Current?.MainPage is MainPage mainPage ? mainPage.PlatformWebView : null;
-        var goBack = webView != null ? await TryGoBack(webView).ConfigureAwait(false) : false;
-        if (goBack)
-            return;
-        // Move app to background as Home button acts.
-        // It prevents scenario when app is running, but activity is destroyed.
-        activity.MoveTaskToBack(true);
-    }
-
-    private static async Task<bool> TryGoBack(Android.Webkit.WebView webView)
-    {
-        var canGoBack = webView.CanGoBack();
-        if (canGoBack) {
-            webView.GoBack();
-            return true;
-        }
-        // Sometimes Chromium reports that it can't go back while there are 2 items in the history.
-        // It seems that this bug exists for a while, not fixed yet and there is not plans to do it.
-        // https://bugs.chromium.org/p/chromium/issues/detail?id=1098388
-        // https://github.com/flutter/flutter/issues/59185
-        // But we can use web api to navigate back.
-        var list = webView.CopyBackForwardList();
-        var canGoBack2 = list.Size > 1 && list.CurrentIndex > 0;
-        if (canGoBack2) {
-            if (ScopedServicesAccessor.IsInitialized) {
-                var jsRuntime = ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>();
-                await jsRuntime.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
-                return true;
-            }
-        }
-        return false;
-    }
-
-#endif
-
     private static void ConfigureServices(IServiceCollection services)
     {
         // HttpClient
@@ -317,24 +242,6 @@ public static partial class MauiProgram
         // UI
         services.AddSingleton<NavigationInterceptor>(c => new NavigationInterceptor(c));
         services.AddTransient<MainPage>();
-
-#if ANDROID
-        services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
-        // Temporarily disabled switch between loud speaker and earpiece
-        // to have single audio channel controlled with volume buttons
-        //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
-        services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
-        services.AddScoped<INoMicHandler>(c => new AndroidNoMicHandler());
-#elif IOS
-        services.AddTransient<IDeviceTokenRetriever, IosDeviceTokenRetriever>(_ => new IosDeviceTokenRetriever());
-        services.AddScoped<INotificationPermissions>(c => new IosNotificationPermissions());
-#elif MACCATALYST
-        services.AddTransient<IDeviceTokenRetriever, MacDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
-                services.AddScoped<INotificationPermissions>(c => new MacNotificationPermissions());
-#elif WINDOWS
-        services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
-        services.AddScoped<INotificationPermissions>(c => new WindowsNotificationPermissions());
-#endif
 
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
@@ -397,4 +304,8 @@ public static partial class MauiProgram
             step.Close();
             return sessionId;
         });
+
+    private static partial void AddPlatformServices(this IServiceCollection services);
+    private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events);
+    private static partial LoggerConfiguration ConfigurePlatformLogger(this LoggerConfiguration loggerConfiguration);
 }
