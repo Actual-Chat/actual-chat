@@ -2,6 +2,10 @@
     @apply inline-block relative top-0.5 -bottom-0.5 mr-1;
 }
 
+.chat-message-markup span.highlighted {
+    background: #FFC1233D;
+}
+
 .mention-markup {
     @apply inline-block align-middle;
     @apply my-[1px] px-1.5 pb-0.5;

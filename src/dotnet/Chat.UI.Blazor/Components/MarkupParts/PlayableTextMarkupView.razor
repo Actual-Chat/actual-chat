@@ -14,12 +14,17 @@
         };
     var playOnClickIsEnabled = !ScreenSize.IsNarrow();
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
+    var highlightRange = m.Highlight ?? new Range<int>(-1,-1);
 }
 <span class="@containerCls @colorCls">
     @for (var i = 0; i < Markup.Words.Length; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
         var cls = GetPlayingClass(status);
+        var isHighlighted = highlightRange.Contains(word.TextRange);
+        if (isHighlighted)
+            cls += " highlighted";
+
         @if (!playOnClickIsEnabled) {
             <span class="@cls">@word.Value</span>
         } else {
@@ -37,6 +42,7 @@
 
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
+    [Inject] private HighlightUI HighlightUI { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
@@ -47,14 +53,20 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var model = await InnerComputeState(cancellationToken);
+        var map = await GetPlaybackMap(cancellationToken);
+        var highlight = await GetHighlightRange(cancellationToken);
+        var model = new Model {
+            Map = map,
+            Highlight = highlight,
+        };
         if (_rendered is not { Map: { } })
             return model; // Never rendered
 
         var colorLease = ActualizeColorLease(model, _rendered);
-        var map = EnrichMapWithPlayedStatus(model.Map, _rendered.Map);
+        map = EnrichMapWithPlayedStatus(map, _rendered.Map);
         return new Model {
             Map = map,
+            Highlight = model.Highlight,
             ColorLease = colorLease,
             Color = colorLease?.Color ?? _rendered.Color,
         };
@@ -133,30 +145,30 @@
         return colorLease;
     }
 
-    private async Task<Model> InnerComputeState(CancellationToken cancellationToken)
+    private async Task<WordPlayback[]?> GetPlaybackMap(CancellationToken cancellationToken)
     {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var audioEntryId = Entry.AudioEntryId;
         if (audioEntryId == null)
-            return Model.None;
+            return null;
 
         var timeRange = Markup.TimeRange;
         if (timeRange.IsEmpty)
-            return Model.None;
+            return null;
 
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
         if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken) is not ChatAudioTrackInfo trackInfo)
-            return Model.None;
+            return null;
 
         var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken);
         if (playbackState == null || playbackState.IsEnded)
-            return Model.None;
+            return null;
 
         var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)
             .TotalSeconds;
         var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
         if (!playingAtNearbyRange.Overlaps(timeRange))
-            return Model.None;
+            return null;
 
         var map = new WordPlayback[Markup.Words.Length];
         for (var i = 0; i < Markup.Words.Length; i++) {
@@ -167,7 +179,7 @@
 
         var isEmpty = map.All(c => c == WordPlayback.None);
         if (isEmpty)
-            return Model.None;
+            return null;
 
         for (var i = 0; i < Markup.Words.Length; i++) {
             var prev = i > 0 ? map[i - 1] : WordPlayback.None;
@@ -183,7 +195,7 @@
             map[i] = actual;
         }
 
-        return new Model { Map = map };
+        return map;
     }
 
     private string GetPlayingClass(WordPlayback status) {
@@ -211,6 +223,9 @@
         return "";
     }
 
+    private Task<Range<int>?> GetHighlightRange(CancellationToken cancellationToken)
+        => HighlightUI.GetHighlightRange(Entry.Id, cancellationToken);
+
     public override ValueTask DisposeAsync() {
         var m = State.Value;
         m.ColorLease?.Release();
@@ -224,7 +239,7 @@
         PlayingStart = Playing | 0x01,
         PlayingEnd   = Playing | 0x02,
         Played       = 0x80,
-        PlayedStart =  Played | 0x01,
+        PlayedStart  = Played  | 0x01,
     }
 
     public sealed record Model {
@@ -233,6 +248,7 @@
         public WordPlayback[]? Map { get; init; }
         public PlayableTextColor? Color { get; init; }
         public IPlayableTextColorLease? ColorLease { get; init; }
+        public Range<int>? Highlight { get; init; }
         public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
     }
 }
