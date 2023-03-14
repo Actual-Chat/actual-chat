@@ -138,20 +138,15 @@ export class ChatMessageEditor {
 
     /** Called by Blazor */
     public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
-        const formData = new FormData();
         const attachments = [];
-        if (this.attachments.size > 0) {
-            let i = 0;
-            this.attachments.forEach(attachment => {
-                formData.append('files[' + i + ']', attachment.File);
-                attachments.push({ 'id': i, 'filename': attachment.File.name, 'description': '' });
-                i++;
-            });
-        }
-
-        const payload = { 'text': text, 'attachments': attachments, 'repliedChatEntryId': repliedChatEntryId };
-        const payloadJson = JSON.stringify(payload);
-        formData.append('payload_json', payloadJson);
+        this.attachments.forEach(attachment => {
+            attachments.push(attachment.MediaId);
+        });
+        const payload = {
+            'text': text,
+            'attachments': attachments,
+            'repliedChatEntryId': repliedChatEntryId
+        };
 
         debugLog?.log(`post: sending request with ${attachments.length} attachment(s)`);
         let url = 'api/chats/' + chatId + '/message';
@@ -161,7 +156,7 @@ export class ChatMessageEditor {
             url = new URL(url, baseUri).toString();
         const response = await fetch(url, {
             method: 'POST',
-            body: formData,
+            body: JSON.stringify(payload),
             credentials: 'include' // required to include third-party cookies in cross origin request when running in MAUI
         });
 
@@ -365,7 +360,13 @@ export class ChatMessageEditor {
     }
 
     private async addAttachment(file: File): Promise<boolean> {
-        const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
+        const attachment: Attachment = {
+            Id: this.attachmentsIdSeed,
+            File: file,
+            Url: '',
+            MediaId: '',
+            Progress: 0,
+        };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
         const isAdded: boolean = await this.blazorRef.invokeMethodAsync(
@@ -379,6 +380,13 @@ export class ChatMessageEditor {
             this.attachments.set(attachment.Id, attachment);
             this.updateHasContent();
             TuneUI.play('change-attachments');
+            const upload = this.uploadFile(
+                file,
+                (progressPercent) => {
+                    attachment.Progress = progressPercent;
+                }
+            );
+            upload.then(x => attachment.MediaId = x.MediaId);
         }
         return isAdded;
     }
@@ -398,10 +406,43 @@ export class ChatMessageEditor {
         const [html] = this.chatId && LocalSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
         this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
     }
+
+    private async uploadFile(
+        file: File,
+        progressReporter: (progressPercent: number) => void,
+    ): Promise<UploadResponse> {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            const xhr = new XMLHttpRequest();
+            xhr.upload.onprogress = function(e) {
+                const progress = Math.floor(e.loaded / e.total * 1000) / 10;
+                progressReporter(progress);
+            };
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        resolve(xhr.response);
+                    } else {
+                        reject(xhr.statusText);
+                    }
+                }
+            };
+            xhr.open('post', 'api/chats/upload-picture', true);
+            xhr.send(formData);
+        })
+    }
 }
 
 interface Attachment {
     File: File;
     Url: string;
     Id: number;
+    MediaId: string;
+    Progress: number;
+}
+
+interface UploadResponse {
+    MediaId: string;
+    ContentId: string;
 }
