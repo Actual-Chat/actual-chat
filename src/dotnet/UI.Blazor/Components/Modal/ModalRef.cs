@@ -28,8 +28,8 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
         Host = host;
     }
 
-    public bool Close(bool forceClose = false)
-        => Host.Close(Id, forceClose);
+    public bool Close(bool force = false)
+        => Host.Close(Id, force);
 
     // IModalRefImpl implementation
 

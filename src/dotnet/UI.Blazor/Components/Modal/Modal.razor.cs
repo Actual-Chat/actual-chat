@@ -27,8 +27,8 @@ public partial class Modal : FusionComponentBase, IDisposable
         }
     }
 
-    public bool Close(bool forceClose = false)
-        => Ref.Close(forceClose);
+    public bool Close(bool force = false)
+        => Ref.Close(force);
 
     // Private methods
 

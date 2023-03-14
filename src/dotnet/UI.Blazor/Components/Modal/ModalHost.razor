@@ -69,13 +69,13 @@
         return modalRef;
     }
 
-    public bool Close(Symbol id, bool forceClose)
+    public bool Close(Symbol id, bool force)
     {
         var modalRef = FindRef(id);
         if (modalRef == null)
             return true;
 
-        if (!CloseInternal(modalRef, forceClose))
+        if (!CloseInternal(modalRef, force))
             return false;
 
         OnModalClosed?.Invoke();
@@ -84,12 +84,12 @@
         return true;
     }
 
-    public bool CloseAll(bool forceClose)
+    public bool CloseAll(bool force)
     {
         var modalRefs = _refs;
         for (var i = modalRefs.Count - 1; i >= 0; i--) {
             var modalRef = modalRefs[i];
-            if (!CloseInternal(modalRef, forceClose))
+            if (!CloseInternal(modalRef, force))
                 break;
         }
         if (_refs == modalRefs)
@@ -103,9 +103,9 @@
 
     // Private methods
 
-    private bool CloseInternal(ModalRef modalRef, bool forceClose)
+    private bool CloseInternal(ModalRef modalRef, bool force)
     {
-        var mustClose = forceClose || modalRef.Model is not IOptionallyClosable oc || oc.CanBeClosed;
+        var mustClose = force || modalRef.Model is not IOptionallyClosable oc || oc.CanBeClosed;
         if (!mustClose)
             return false;
 
