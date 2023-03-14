@@ -210,7 +210,7 @@ body.narrow .landing-header .header-text {
     @apply pt-2 md:pt-4;
 }
 .landing .page.full-screen-page {
-    height: calc(var(--vh, 100vh));
+    height: calc(var(--wh, 100vh));
 }
 .landing .page.full-screen-page.no-auto-scroll {
     @apply h-full;
@@ -364,7 +364,7 @@ body.narrow .landing-menu .c-container {
     @apply rounded-r-2xl;
     @apply pl-12;
     height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
+    height: calc(var(--wh, 1vh) * 100);
 }
 body.narrow .landing .landing-menu {
     @apply flex-x;

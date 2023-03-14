@@ -145,9 +145,9 @@ export class Landing {
     private onScreenSizeChange() {
         const h = window.innerHeight;
         const w = window.innerWidth;
-        const hvRatio = h / w;
-        document.documentElement.style.setProperty('--vh', `${h}px`);
-        let useFullScreenPages = ScreenSize.isNarrow() ? (hvRatio >= 1.85 && hvRatio <= 2.25) : (h >= 700);
+        const hwRatio = h / w;
+        document.documentElement.style.setProperty('--wh', `${h}px`);
+        let useFullScreenPages = ScreenSize.isNarrow() ? (hwRatio >= 1.8 && hwRatio <= 2.5) : (h >= 700);
         if (useFullScreenPages)
             this.landing.classList.remove('no-full-screen-pages');
         else
