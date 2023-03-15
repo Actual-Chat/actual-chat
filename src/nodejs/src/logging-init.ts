@@ -175,11 +175,11 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
-    minLevels.set('OpusMediaRecorder', LogLevel.Debug);
-    minLevels.set('AudioVadWorker', LogLevel.Debug);
-    minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
-    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('OpusMediaRecorder', LogLevel.Debug);
+    // minLevels.set('AudioVadWorker', LogLevel.Debug);
+    // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
+    // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
 
