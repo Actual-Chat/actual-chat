@@ -98,7 +98,7 @@ public partial class ChatAudioUI : WorkerBase
         });
     }
 
-    public ValueTask ClearListeningState()
+    public ValueTask ClearListeningChats()
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
             var oldActiveChats = activeChats;
             foreach (var chat in oldActiveChats) {

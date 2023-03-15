@@ -20,7 +20,6 @@ export type LogScope =
     | 'MenuHost'
     | 'ModalHost'
     | 'OnDeviceAwake'
-    | 'OnDeviceAwakeWorker'
     | 'promises'
     | 'Rpc'
     | 'ScreenSize'

@@ -1,4 +1,5 @@
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -10,9 +11,8 @@ public abstract class ChatPlayer : ProcessorBase
     /// Once enqueued, playback loop continues, so the larger is this duration,
     /// the higher is the chance to enqueue the next entry on time.
     /// </summary>
-    protected static readonly TimeSpan EnqueueAheadDuration = TimeSpan.FromSeconds(1);
-    protected static readonly TimeSpan InfDuration = 2 * Constants.Chat.MaxEntryDuration;
-    protected static readonly TimeSpan MaxPlayStartTime = TimeSpan.FromSeconds(3);
+    protected static readonly TimeSpan EnqueueAheadDuration = TimeSpan.FromSeconds(2);
+    protected static readonly TimeSpan MaxEntryDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5);
 
     private volatile CancellationTokenSource? _playTokenSource;
     private volatile Task? _whenPlaying = null;
@@ -22,11 +22,13 @@ public abstract class ChatPlayer : ProcessorBase
     protected IServiceProvider Services { get; }
     protected IAuthors Authors { get; }
     protected IChats Chats { get; }
+    protected InteractiveUI InteractiveUI { get; }
 
     public Session Session { get; }
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
+    public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
     protected ChatPlayer(Session session, ChatId chatId, IServiceProvider services)
@@ -41,6 +43,7 @@ public abstract class ChatPlayer : ProcessorBase
         Playback = services.GetRequiredService<IPlaybackFactory>().Create();
         Authors = services.GetRequiredService<IAuthors>();
         Chats = services.GetRequiredService<IChats>();
+        InteractiveUI = services.GetRequiredService<InteractiveUI>();
     }
 
     protected override async Task DisposeAsyncCore()
@@ -111,6 +114,14 @@ public abstract class ChatPlayer : ProcessorBase
         }
         playTokenSource?.CancelAndDisposeSilently();
         return whenPlaying ?? Task.CompletedTask;
+    }
+
+    protected async ValueTask<bool> CanContinuePlayback(CancellationToken cancellationToken)
+    {
+        if (InteractiveUI.IsInteractive.Value)
+            return true;
+
+        return await InteractiveUI.Demand(Operation, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods

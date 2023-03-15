@@ -1,15 +1,26 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
 {
+    private DeviceAwakeUI DeviceAwakeUI { get; }
+
     public HistoricalChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
-        => PlayerKind = ChatPlayerKind.Historical;
+    {
+        PlayerKind = ChatPlayerKind.Historical;
+        DeviceAwakeUI = services.GetRequiredService<DeviceAwakeUI>();
+    }
 
     protected override async Task Play(
         ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
     {
-        var cpuClock = Clocks.CpuClock;
+        var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || !chat.Rules.CanRead())
+            return;
+
+        Operation = $"replaying \"{chat.Title}\"";
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
@@ -21,51 +32,54 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return;
         }
 
-        var playbackBlockEnd = cpuClock.Now - TimeSpan.FromDays(1); // Any time in past
-        var playbackOffset = playbackBlockEnd - Moment.EpochStart; // now - playTime
-        var overallPauseDelay = TimeSpan.Zero;
+        var clock = Clocks.CpuClock;
+        var lastPlaybackBlockEnd = default(Moment);
+        var realStartAt = RealNow();
 
         idRange = (startEntry.LocalId, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.StreamId.IsEmpty) // Streaming entry
-                continue;
-            if (entry.EndsAt < startAt)
-                // We're normally starting @ (startAt - ChatConstants.MaxEntryDuration),
-                // so we need to skip a few entries.
+            if (entry.IsStreaming)
                 continue;
 
-            var now = cpuClock.Now;
-            var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
-            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + InfDuration;
-            entryEndsAt = Moment.Min(entryEndsAt, entry.ContentEndsAt ?? entryEndsAt);
-            var skipTo = entryBeginsAt - entry.BeginsAt;
-            if (playbackBlockEnd < entryBeginsAt + playbackOffset) {
-                // There is a gap between the currently playing "block" and the entry.
-                // This means we're still playing the "historical" block, and the new entry
-                // starts with some gap after it; we're going to nullify this gap here by
-                // adjusting realtimeOffset.
-                playbackBlockEnd = Moment.Max(now, playbackBlockEnd);
-                playbackOffset = playbackBlockEnd - entryBeginsAt;
+            var playbackNow = PlaybackNow();
+            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + MaxEntryDuration;
+            if (entryEndsAt < playbackNow)
+                continue;
+
+            if (lastPlaybackBlockEnd != default && lastPlaybackBlockEnd < entry.BeginsAt) {
+                // There is a gap between the last playing "block" and the entry,
+                // so we should offset PlaybackNow() time to skip it.
+                realStartAt -= entry.BeginsAt - lastPlaybackBlockEnd;
+                lastPlaybackBlockEnd = entryEndsAt;
+                playbackNow = PlaybackNow();
+            }
+            else {
+                // There is no gap between the last playing "block" and the entry.
+                lastPlaybackBlockEnd = Moment.Max(entryEndsAt, lastPlaybackBlockEnd);
             }
 
-            // We need to shift calculated playAt on overall pause duration.
-            // Otherwise next track can start too early.
-            var playAt = entryBeginsAt + playbackOffset + overallPauseDelay;
-            playbackBlockEnd = Moment.Max(playbackBlockEnd, entryEndsAt + playbackOffset);
-
-            var enqueueDelay = (playAt - now - EnqueueAheadDuration).Positive();
+            var enqueueDelay = (entry.BeginsAt - playbackNow - EnqueueAheadDuration).Positive();
             Log.LogInformation("+ ChatEntry #{EntryId}, Delay: {EnqueueDelay}", entry.Id.Value, enqueueDelay);
+
             var sw = Stopwatch.StartNew();
-            await EnqueueDelay(enqueueDelay, cpuClock, cancellationToken);
+            var oldSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
+            await EnqueueDelay(enqueueDelay, cancellationToken);
+            if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
+                return;
+            var dSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value - oldSleepDuration;
             sw.Stop();
-            var pauseDelay = sw.Elapsed - enqueueDelay;
-            if (enqueueDelay > TimeSpan.Zero)
-                pauseDelay -= enqueueDelay;
-            if (pauseDelay > TimeSpan.Zero)
-                overallPauseDelay += pauseDelay;
-            entryPlayer.EnqueueEntry(entry, skipTo, playAt);
+            realStartAt += (sw.Elapsed - enqueueDelay - dSleepDuration).Positive();
+
+            playbackNow = PlaybackNow();
+            var skipTo = playbackNow - entry.BeginsAt;
+            var playAt = clock.Now + (-skipTo).Positive();
+            entryPlayer.EnqueueEntry(entry, skipTo.Positive(), playAt);
         }
+
+        Moment RealNow() => Clocks.CpuClock.Now - DeviceAwakeUI.TotalSleepDuration.Value;
+        TimeSpan PlaybackDuration() => RealNow() - realStartAt;
+        Moment PlaybackNow() => startAt + PlaybackDuration();
     }
 
     public Task<Moment?> GetRewindMoment(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)
@@ -97,7 +111,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var remainedShift = shift;
         var lastShiftPosition = playingAt;
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.StreamId.IsEmpty) // Streaming entry
+            if (entry.IsStreaming) // Streaming entry
                 continue;
             if (entry.EndsAt < playingAt)
                 // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
@@ -105,7 +119,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 continue;
 
             var entryBeginsAt = Moment.Max(entry.BeginsAt, lastShiftPosition);
-            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + InfDuration;
+            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + MaxEntryDuration;
 
             var expectedRewindPosition = entryBeginsAt + remainedShift;
             if (expectedRewindPosition <= entryEndsAt)
@@ -176,7 +190,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         return lastShiftPosition; // return min position that we reached
     }
 
-    private async Task EnqueueDelay(TimeSpan delay, IMomentClock cpuClock, CancellationToken cancellationToken)
+    private async Task EnqueueDelay(TimeSpan delay, CancellationToken cancellationToken)
     {
         // Waits for enqueue delay.
         // If pause is activated during enqueue delay, enqueue delay is extended by the duration of the pause.
@@ -193,7 +207,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             var sw = Stopwatch.StartNew();
             var cts = cancellationToken.CreateLinkedTokenSource();
             try {
-                var delayTask = cpuClock.Delay(delay, cts.Token);
+                var delayTask = Clocks.CpuClock.Delay(delay, cts.Token);
                 var isPausedInvalidatedTask = cIsPaused.WhenInvalidated(cts.Token);
                 await Task.WhenAny(delayTask, isPausedInvalidatedTask).ConfigureAwait(false);
                 cts.Token.ThrowIfCancellationRequested();

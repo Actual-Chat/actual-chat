@@ -13,7 +13,7 @@ public partial class ChatAudioUI
             new(nameof(PushRecordingState), PushRecordingState),
             new(nameof(PushRealtimePlaybackState), PushRealtimePlaybackState),
             new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
-            new(nameof(StopOnAwake), StopOnAwake),
+            new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
         };
         var retryDelays = new RetryDelaySeq(100, 1000);
         return (
@@ -174,46 +174,35 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
         var cActualPlaybackState = playbackState.Computed;
 
+        var syncedPlaybackState = (RealtimePlaybackState?)null;
         while (!cancellationToken.IsCancellationRequested) {
             var expectedPlaybackState = cExpectedPlaybackState.Value;
             var actualPlaybackState = cActualPlaybackState.Value;
-            if (actualPlaybackState is null or RealtimePlaybackState) {
-                if (!ReferenceEquals(actualPlaybackState, expectedPlaybackState)) {
-                    if (expectedPlaybackState == null) {
-                        Log.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
-                        ChatPlayers.StopPlayback();
-                    }
-                    else {
-                        if (actualPlaybackState == null && !InteractiveUI.IsInteractive.Value) {
-                            var isConfirmed = false;
-                            var chats = await expectedPlaybackState.ChatIds
-                                .Select(id => Chats.Get(Session, id, cancellationToken))
-                                .Collect()
-                                .ConfigureAwait(false);
-                            var chatTitles = chats
-                                .SkipNullItems()
-                                .Select(c => $"\"{c.Title}\"")
-                                .ToCommaPhrase();
-                            if (!chatTitles.IsNullOrEmpty()) { // It's empty if there are no chats
-                                var operation = "listening in " + chatTitles;
-                                isConfirmed = await InteractiveUI.Demand(operation, cancellationToken).ConfigureAwait(false);
-                            }
-                            if (!isConfirmed) {
-                                await ClearListeningState().ConfigureAwait(false);
-                                // An extra pause to make sure we don't apply changes too frequently
-                                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-                                continue;
-                            }
-                        }
-                        Log.LogDebug(nameof(PushRealtimePlaybackState) + ": starting playback");
-                        ChatPlayers.StartRealtimePlayback(expectedPlaybackState);
-                    }
-
-                    // An extra pause to make sure we don't apply changes too frequently
-                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-                }
+            if (actualPlaybackState is HistoricalPlaybackState) {
+                // Historical playback "overrides" realtime playback
+                syncedPlaybackState = null; // But we must re-sync once it completes
+                goto skip;
             }
 
+            if (ReferenceEquals(expectedPlaybackState, syncedPlaybackState))
+                goto skip; // Already in sync
+            if (ReferenceEquals(expectedPlaybackState, actualPlaybackState)) {
+                // It's _somehow_ in sync - normally we shouldn't land here
+                syncedPlaybackState = expectedPlaybackState;
+                goto skip;
+            }
+
+            syncedPlaybackState = expectedPlaybackState;
+            if (expectedPlaybackState != null) {
+                Log.LogDebug(nameof(PushRealtimePlaybackState) + ": starting playback");
+                ChatPlayers.StartRealtimePlayback(expectedPlaybackState);
+            }
+            else {
+                Log.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
+                ChatPlayers.StopPlayback();
+            }
+
+            skip:
             Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
             await Task.WhenAny(
                 cActualPlaybackState.WhenInvalidated(cancellationToken),
@@ -270,13 +259,14 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task StopOnAwake(CancellationToken cancellationToken)
+    private async Task StopRecordingOnAwake(CancellationToken cancellationToken)
     {
-        await DeviceAwakeUI.WhenNextAwake().ConfigureAwait(false);
+        var totalSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
+        await DeviceAwakeUI.TotalSleepDuration
+            .When(x => x != totalSleepDuration, cancellationToken)
+            .ConfigureAwait(false);
+
         await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
-        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
-        foreach (var listeningChatId in listeningChatIds)
-            await SetListeningState(listeningChatId, false).ConfigureAwait(false);
     }
 
     // Helpers

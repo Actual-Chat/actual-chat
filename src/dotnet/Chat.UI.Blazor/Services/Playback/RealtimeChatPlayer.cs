@@ -3,7 +3,9 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
     /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
-    private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
+    private static readonly TimeSpan SkipTo = TimeSpan.Zero;
+    private static readonly TimeSpan MaxClientToServerTimeOffset = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan MaxEntryBeginsAtDisorder = TimeSpan.FromSeconds(5);
 
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.AudioPlayback;
@@ -16,8 +18,15 @@ public sealed class RealtimeChatPlayer : ChatPlayer
     protected override async Task Play(
         ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
     {
-        startAt = Clocks.SystemClock.Now; // We always override startAt here
+        var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || !chat.Rules.CanRead())
+            return;
+
+        Operation = $"listening \"{chat.Title}\"";
+        // We always override startAt here
+        startAt = Clocks.SystemClock.Now - MaxClientToServerTimeOffset;
         DebugLog?.LogDebug("[RealtimeChatPlayer] Play: {ChatId}, {StartedAt}", ChatId, startAt);
+
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
@@ -28,10 +37,11 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.EndsAt < startAt)
-                // We're starting @ (startAt - ChatConstants.MaxEntryDuration),
-                // so we need to skip a few entries.
-                // Note that streaming entries have EndsAt == null, so we don't skip them.
+            if (!entry.IsStreaming)
+                // Non-streaming entry:
+                // - We were asleep & missed a bunch of entries
+                // - Or audioEntryReader is still enumerating "early" entries
+                //   @ (startAt - ChatConstants.MaxEntryDuration)
                 continue;
 
             if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
@@ -41,12 +51,12 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                     continue;
             }
 
-            var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
-            var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
-            var skipTo = entryBeginsAt - entry.BeginsAt;
-
             DebugLog?.LogDebug("[RealtimeChatPlayer] Player.EnqueueEntry: {ChatId}, {EntryId}", ChatId, entry.Id);
-            entryPlayer.EnqueueEntry(entry, skipTo);
+            startAt = Moment.Max(startAt, entry.BeginsAt - MaxEntryBeginsAtDisorder);
+            if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
+                return;
+
+            entryPlayer.EnqueueEntry(entry, SkipTo);
         }
     }
 }
