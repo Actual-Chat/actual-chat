@@ -22,27 +22,27 @@
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" OnCloseModalClick="OnCloseClick">
         @if (showMyAccount) {
-            <SettingsTab Title="My account" Id="myAccount" IconTitle="person">
+            <SettingsTab @key="1" Title="My account" Id="myAccount" IconTitle="person">
                 <MyAccount/>
             </SettingsTab>
         }
 
         @if (showChatFolder) {
-            <SettingsTab Title="Chat folder" Id="chatFolder" IconTitle="folder">
+            <SettingsTab @key="2" Title="Chat folder" Id="chatFolder" IconTitle="folder">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
         }
 
         @if (showNotification) {
-            <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
+            <SettingsTab @key="3" Title="Notification" Id="notification" IconTitle="bell">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
         }
 
         @if (showLanguages) {
-            <SettingsTab Title="Languages" Id="languages" IconTitle="language">
+            <SettingsTab @key="4" Title="Languages" Id="languages" IconTitle="language">
                 <TitleContent>
                     <LanguageShortcut/>
                 </TitleContent>
@@ -53,7 +53,7 @@
         }
 
         @if (showThemeToggle) {
-            <SettingsTab Title="Dark theme" TitleComment="Work in progress" HasSeparator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+            <SettingsTab @key="5" Title="Dark theme" TitleComment="Work in progress" HasSeparator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
                 <TitleContent>
                     <ThemeToggle/>
                 </TitleContent>
@@ -61,7 +61,7 @@
         }
 
         @if (showLogout) {
-            <SettingsTab Title="Log out" Id="logOut" IconTitle="log-out">
+            <SettingsTab @key="6" Title="Log out" Id="logOut" IconTitle="log-out">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
