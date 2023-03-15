@@ -3,6 +3,7 @@
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
+    scroll-behavior: smooth; /* This is absolutely required on iOS, otherwise you get tons of visual issues */
 }
 
 .virtual-list::-webkit-scrollbar {
