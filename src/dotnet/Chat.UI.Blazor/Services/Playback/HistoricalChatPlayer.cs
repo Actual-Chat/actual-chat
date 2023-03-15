@@ -20,7 +20,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         if (chat == null || !chat.Rules.CanRead())
             return;
 
-        Operation = $"replaying \"{chat.Title}\"";
+        Operation = $"historical playback in \"{chat.Title}\"";
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
