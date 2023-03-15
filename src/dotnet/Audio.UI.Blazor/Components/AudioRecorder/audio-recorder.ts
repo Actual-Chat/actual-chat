@@ -25,11 +25,18 @@ export class AudioRecorder {
 
     /** Called by Blazor  */
     public async dispose(): Promise<void> {
-        await opusMediaRecorder.stop();
+        debugLog?.log(`-> dispose()`);
+        try {
+            await opusMediaRecorder.stop();
+        } catch (e) {
+            errorLog?.log(`dispose: failed to stop recording`, e);
+            throw e;
+        }
     }
 
     /** Called by Blazor  */
     public async requestPermission(): Promise<boolean> {
+        debugLog?.log(`-> requestPermission()`);
         await this.whenInitialized;
 
         const hasMicrophone = DetectRTC.isAudioContextSupported
@@ -40,9 +47,13 @@ export class AudioRecorder {
         if (!hasMicrophone) {
             // requests microphone permission
             try {
+                debugLog?.log(`requestPermission: detecting active tracks to stop`);
                 const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
-                stream.getAudioTracks().forEach(t => t.stop());
-                stream.getVideoTracks().forEach(t => t.stop());
+                const audioTracks = stream.getAudioTracks();
+                const videoTracks = stream.getVideoTracks();
+                debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
+                audioTracks.forEach(t => t.stop());
+                videoTracks.forEach(t => t.stop());
                 this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
             }
             catch (error) {
@@ -106,10 +117,10 @@ export class AudioRecorder {
                 throw new Error('Recording has been stopped.')
             this.state = 'recording';
         }
-        catch (error) {
-            errorLog?.log(`startRecording: unhandled error:`, error);
+        catch (e) {
+            errorLog?.log(`startRecording: unhandled error:`, e);
             this.state = 'failed';
-            throw error;
+            throw e;
         }
         finally {
             debugLog?.log(`<- startRecording()`);

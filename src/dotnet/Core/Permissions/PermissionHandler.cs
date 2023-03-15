@@ -32,6 +32,9 @@ public abstract class PermissionHandler : WorkerBase
         => CheckOrRequest(true, cancellationToken);
     public async ValueTask<bool> CheckOrRequest(bool mustRequest, CancellationToken cancellationToken = default)
     {
+        if (_cached.Value == true)
+            return true;
+
         using var _ = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
 
         if (_cached.Value == true)

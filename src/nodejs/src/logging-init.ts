@@ -172,18 +172,15 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioPlayer', LogLevel.Debug);
     minLevels.set('AudioRecorder', LogLevel.Debug);
-    // minLevels.set('OpusDecoder', LogLevel.Debug);
-    // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
-    // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    // minLevels.set('FeederProcessor', LogLevel.Debug);
-    // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
     // minLevels.set('AudioVadWorker', LogLevel.Debug);
     // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('FeederProcessor', LogLevel.Debug);
     // minLevels.set('History', LogLevel.Debug);
-    // minLevels.set('MenuHost', LogLevel.Debug);
-    // minLevels.set('MarkupEditor', LogLevel.Debug);
-    // minLevels.set('ChatMessageEditor', LogLevel.Debug);
+    // minLevels.set('OpusDecoder', LogLevel.Debug);
+    // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
+    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
+    minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
+    minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
 
@@ -192,6 +189,11 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('KeepAwakeUI', LogLevel.Debug);
     minLevels.set('NotificationUI', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
+
+    // Isolated components
+    // minLevels.set('MenuHost', LogLevel.Debug);
+    // minLevels.set('MarkupEditor', LogLevel.Debug);
+    // minLevels.set('ChatMessageEditor', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);
