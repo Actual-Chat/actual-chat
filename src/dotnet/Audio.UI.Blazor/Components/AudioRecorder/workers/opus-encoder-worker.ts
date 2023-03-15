@@ -113,7 +113,9 @@ const serverImpl: OpusEncoderWorker = {
         debugLog?.log(`start`);
 
         // Ensure audio transport is up and running
+        debugLog?.log(`start: -> hub.ping()`);
         const pong = await hubConnection.invoke('Ping');
+        debugLog?.log(`start: <- hub.ping(): `, pong);
         if (pong !== 'Pong')
             warnLog.log(`start: unexpected Ping call result`, pong);
 
