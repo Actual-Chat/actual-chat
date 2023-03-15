@@ -19,14 +19,18 @@ public class AudioRecorder : IAsyncDisposable
     private Session Session { get; }
     private IJSRuntime JS { get; }
 
-    public Task WhenInitialized { get; }
+    public MicrophonePermissionHandler MicrophonePermission { get; }
     public IState<AudioRecorderState> State => _state;
+    public Task WhenInitialized { get; }
+
 
     public AudioRecorder(IServiceProvider services)
     {
         Log = services.LogFor<AudioRecorder>();
         Session = services.GetRequiredService<Session>();
         JS = services.GetRequiredService<IJSRuntime>();
+        MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
+
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
@@ -46,12 +50,6 @@ public class AudioRecorder : IAsyncDisposable
         using var _ = await _stateLock.Lock().ConfigureAwait(false);
         await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
         _jsRef = null!;
-    }
-
-    public async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
-    {
-        await WhenInitialized.ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<bool>("requestPermission", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StartRecording(ChatId chatId, CancellationToken cancellationToken = default)
@@ -140,6 +138,12 @@ public class AudioRecorder : IAsyncDisposable
         }
         MarkStopped();
         return true;
+    }
+
+    internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
+    {
+        await WhenInitialized.ConfigureAwait(false);
+        return await _jsRef.InvokeAsync<bool>("requestPermission", cancellationToken).ConfigureAwait(false);
     }
 
     // MarkXxx

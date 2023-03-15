@@ -142,6 +142,9 @@ body.hoverable .btn.btn-text:focus:hover {
 body.hoverable .btn.btn-modal:hover {
     @apply bg-secondary;
 }
+.btn.btn-modal.btn-narrow {
+    @apply min-w-12;
+}
 
 .btn.btn-xs {
     @apply h-8 md:h-6 min-h-8 md:min-h-6;

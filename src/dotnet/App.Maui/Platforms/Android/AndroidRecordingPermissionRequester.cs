@@ -1,13 +1,11 @@
-using ActualChat.Chat.UI.Blazor.Components;
-using Android;
+using ActualChat.Audio.UI.Blazor.Services;
 using Android.Content;
-using Android.Content.PM;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidNoMicHandler : INoMicHandler
+public class AndroidRecordingPermissionRequester : IRecordingPermissionRequester
 {
-    public Task Allow()
+    public Task<bool> TryRequest()
     {
         var context = Platform.AppContext;
         var intent = new Intent();
@@ -17,17 +15,17 @@ public class AndroidNoMicHandler : INoMicHandler
         intent.AddFlags(ActivityFlags.NewTask);
         intent.AddFlags(ActivityFlags.NoHistory);
         intent.AddFlags(ActivityFlags.ExcludeFromRecents);
-        var task = TaskSource.New<Unit>(true).Task;
+        var resultSource = TaskSource.New<bool>(true);
 
         void ActivityStateChanged(object? sender, ActivityStateChangedEventArgs args) {
-            if (args.Activity is MainActivity && args.State == ActivityState.Resumed) {
-                TaskSource.For(task).TrySetResult(Unit.Default);
+            if (args is { Activity: MainActivity, State: ActivityState.Resumed }) {
+                resultSource.TrySetResult(true);
                 Platform.ActivityStateChanged -= ActivityStateChanged;
             }
         }
 
         Platform.ActivityStateChanged += ActivityStateChanged;
         context.StartActivity(intent);
-        return task;
+        return resultSource.Task;
     }
 }

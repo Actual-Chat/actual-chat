@@ -5,7 +5,7 @@ namespace ActualChat.Audio;
 public abstract class StreamServerBase<TItem> : IDisposable
 {
     private readonly CancellationTokenSource _disposeCts = new ();
-    private readonly ConcurrentDictionary<Symbol, Expiring<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new ();
+    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
     protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(600);
@@ -68,14 +68,14 @@ public abstract class StreamServerBase<TItem> : IDisposable
 
     // Private methods
 
-    private Expiring<Symbol, Task<AsyncMemoizer<TItem>>> GetOrAddStream(Symbol streamId, TimeSpan expiresIn)
+    private ExpiringEntry<Symbol, Task<AsyncMemoizer<TItem>>> GetOrAddStream(Symbol streamId, TimeSpan expiresIn)
     {
         var entry = _streams.GetOrAdd(streamId,
             static (streamId1, arg) => {
                 var (self, expiresIn) = arg;
                 var memoizerTask = TaskSource.New<AsyncMemoizer<TItem>>(true).Task;
                 var disposeTokenSource = self._disposeCts.Token.CreateLinkedTokenSource();
-                var entry = Expiring
+                var entry = ExpiringEntry
                     .New(self._streams, streamId1, memoizerTask, disposeTokenSource)
                     .SetDisposer(e => {
                         if (memoizerTask.IsCompleted)

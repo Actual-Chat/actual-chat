@@ -3,9 +3,11 @@
 @implements IModalView<SettingsModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<AccountFull>
-
 @{
     var account = State.Value;
+    if (ReferenceEquals(account, AccountFull.Loading))
+        return;
+
     var isGuestOrNone = account.IsGuestOrNone;
     var showMyAccount = !isGuestOrNone;
     var showChatFolder = !isGuestOrNone && _enableIncompleteUI;
@@ -75,7 +77,7 @@
 
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -86,17 +88,17 @@
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
-            InitialValue = AccountFull.Loading,
+            InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(),
         };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => Accounts.GetOwn(Session, cancellationToken);
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
 
     private void OnCloseClick()
         => Modal.Close();
 
     public sealed record Model {
-        public static Model None { get; } = new();
+        public static Model Instance { get; } = new();
     }
 }

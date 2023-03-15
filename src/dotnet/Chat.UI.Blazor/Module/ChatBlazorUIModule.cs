@@ -37,7 +37,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<AuthorUI>(c => new AuthorUI(c));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
-        services.AddScoped<INoMicHandler>(c => new NullNoMicHandler());
 
         // Chat UI
         fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
@@ -64,7 +63,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var eventHub = services.UIEventHub();
         eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
             var modalUI = services.GetRequiredService<ModalUI>();
-            modalUI.Show(new SettingsModal.Model(), true);
+            modalUI.Show(SettingsModal.Model.Instance, true);
             return Task.CompletedTask;
         });
     }

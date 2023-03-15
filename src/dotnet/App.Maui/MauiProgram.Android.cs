@@ -1,4 +1,4 @@
-using ActualChat.Chat.UI.Blazor.Components;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
@@ -23,8 +23,8 @@ public static partial class MauiProgram
         // Temporarily disabled switch between loud speaker and earpiece
         // to have single audio channel controlled with volume buttons
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
-        services.AddScoped<INotificationPermissions>(c => new AndroidNotificationPermissions());
-        services.AddScoped<INoMicHandler>(c => new AndroidNoMicHandler());
+        services.AddScoped<INotificationPermissions>(_ => new AndroidNotificationPermissions());
+        services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

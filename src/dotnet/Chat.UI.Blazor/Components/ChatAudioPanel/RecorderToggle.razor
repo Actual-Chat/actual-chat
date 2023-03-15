@@ -8,7 +8,7 @@
     var applyingChangesClass = m.IsApplyingChanges ? "applying-changes" : "";
 }
 
-@if (CanRecord) {
+@if (m.HasMicrophonePermission != false) {
     <div class="recorder-wrapper @animatorClass @applyingChangesClass">
         <ButtonRound
             Class="record-off-btn"
@@ -39,16 +39,14 @@
 }
 
 @code {
-    private bool? _canRecord = null;
     private OnOffAnimator _animator = null!;
 
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    private bool CanRecord => _canRecord ?? true;
-    private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsRecording => !IsLoading && State.Value.IsRecording;
+    private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
     private bool IsForcePush { get; set; } = false;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
@@ -73,51 +71,31 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         var recorderState = await AudioRecorder.State.Use(cancellationToken);
+        var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
         var isRecording = recordingChatId == Chat.Id;
         var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
-        return new Model(Chat, isRecording, isApplyingChanges);
+        return new Model(Chat, isRecording, isApplyingChanges, hasMicrophonePermission);
     }
 
     private async Task OnClick() {
-        if (IsLoading)
+        if (IsChatChanging)
             return; // Loading
 
         if (IsRecording) {
             _ = ChatAudioUI.SetRecordingChatId(default);
         }
         else {
-            if (_canRecord == null) {
-                _canRecord = await AudioRecorder.RequestPermission();
-                StateHasChanged();
-            }
-            if (!CanRecord) {
-                _ = OnCanNotRecord();
+            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
                 return;
-            }
 
             _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
         }
     }
 
-    private async Task OnCanNotRecord() {
-        var model = new AudioPermissionModal.Model();
-        var modalRef = await ModalUI.Show(model);
-        await modalRef.WhenClosed;
-        if (!model.ReevaluatePermissions)
-            return;
-        _canRecord = null;
-        StateHasChanged();
-    }
-
     private async Task OnContextMenu() {
         if (IsForcePush)
             return;
-
-        if (_canRecord == null) {
-            _canRecord = await AudioRecorder.RequestPermission();
-            StateHasChanged();
-        }
-        if (!CanRecord || IsLoading)
+        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
             return;
 
         IsForcePush = true;
@@ -132,10 +110,13 @@
         _ = ChatAudioUI.SetRecordingChatId(default);
     }
 
+    // Nested types
+
     public sealed record Model(
         Chat Chat,
         bool IsRecording = false,
-        bool IsApplyingChanges = false
+        bool IsApplyingChanges = false,
+        bool? HasMicrophonePermission = null
     ) {
         public static Model Loading { get; } = new(Chat.Loading, false, true);
     }
