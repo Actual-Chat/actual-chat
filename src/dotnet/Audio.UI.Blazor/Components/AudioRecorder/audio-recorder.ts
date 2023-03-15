@@ -20,7 +20,6 @@ export class AudioRecorder {
     public constructor(sessionId: string) {
         this.sessionId = sessionId;
         this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
-
     }
 
     /** Called by Blazor  */
@@ -45,7 +44,7 @@ export class AudioRecorder {
             && DetectRTC.isWebsiteHasMicrophonePermissions;
 
         if (!hasMicrophone) {
-            // requests microphone permission
+            // Requests microphone permission
             try {
                 debugLog?.log(`requestPermission: detecting active tracks to stop`);
                 const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});

@@ -7,7 +7,7 @@ import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
 
-const { logScope, warnLog } = Log.get('VadAudioWorkletProcessor');
+const { logScope, warnLog } = Log.get('AudioVadWorkletProcessor');
 
 const SAMPLES_PER_WINDOW = 768;
 

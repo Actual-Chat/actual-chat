@@ -44,21 +44,21 @@ export type LogScope =
     | 'AudioContextRef'
     | 'AudioContextSource'
     | 'AudioInfo'
+    // Audio playback
     | 'AudioPlayer'
-    | 'AudioVad'
-    | 'AudioRecorder'
-    | 'AudioVadWorker'
-    | 'AudioVadWorkletProcessor'
-    | 'ChromiumEchoCancellation'
-    | 'FeederNode'
-    | 'FeederProcessor'
-    | 'OpusEncoderWorkletProcessor'
-    | 'OpusEncoderWorker'
     | 'OpusDecoder'
     | 'OpusDecoderWorker'
+    | 'FeederNode'
+    | 'FeederProcessor'
+    // Audio recording
+    | 'AudioRecorder'
     | 'OpusMediaRecorder'
-    | 'VadAudioWorkletProcessor'
+    | 'AudioVadWorker'
+    | 'AudioVadWorkletProcessor'
+    | 'OpusEncoderWorkletProcessor'
+    | 'OpusEncoderWorker'
     | 'WarmUpAudioWorkletProcessor'
+    | 'ChromiumEchoCancellation' // Unused
     // Isolated components
     | 'ChatMessageEditor'
     | 'CodeBlockMarkupView'
@@ -171,16 +171,15 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
     minLevels.set('AudioPlayer', LogLevel.Debug);
-    minLevels.set('AudioRecorder', LogLevel.Debug);
-    // minLevels.set('AudioVadWorker', LogLevel.Debug);
-    // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
-    // minLevels.set('FeederProcessor', LogLevel.Debug);
-    // minLevels.set('History', LogLevel.Debug);
     // minLevels.set('OpusDecoder', LogLevel.Debug);
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
+    // minLevels.set('FeederProcessor', LogLevel.Debug);
+    minLevels.set('AudioRecorder', LogLevel.Debug);
+    minLevels.set('OpusMediaRecorder', LogLevel.Debug);
+    minLevels.set('AudioVadWorker', LogLevel.Debug);
+    minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
-    minLevels.set('OpusMediaRecorder', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
 
@@ -191,6 +190,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('TuneUI', LogLevel.Debug);
 
     // Isolated components
+    // minLevels.set('History', LogLevel.Debug);
     // minLevels.set('MenuHost', LogLevel.Debug);
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);

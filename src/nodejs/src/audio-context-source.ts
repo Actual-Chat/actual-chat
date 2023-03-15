@@ -34,7 +34,7 @@ const Debug = {
 
 export class AudioContextSource {
     private _context: AudioContext | null = null;
-    private _onDeviceAwakeHandler: EventHandler<void>;
+    private _onDeviceAwakeHandler: EventHandler<number>;
     private _deviceWokeUpAt = 0;
     private _isInteractiveWasReset = false;
     private _resumeCount = 0;
@@ -470,7 +470,7 @@ export class AudioContextSource {
         debugLog?.log(`onDeviceAwake`);
         this._deviceWokeUpAt = Date.now();
         this._isInteractiveWasReset = false;
-        // close current AudioContext as it might be corrupted and can produce clicking sound
+        // Close current AudioContext as it might be corrupted and can produce clicking sound
         void this.closeSilently(this._context);
         this.markNotReady();
     }
@@ -481,7 +481,7 @@ export class AudioContextSource {
         this._refCount++;
         if (this._refCount > 100)
             warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
-        debugLog?.log(`+ AudioContextRef(${operationName}), refCount: ${operationName}=`, count,  ', total=', this._refCount);
+        debugLog?.log(`+ AudioContextRef(${operationName}), refCount: ${operationName} =`, count,  ', total =', this._refCount);
     }
 
     private decrementRefCount(operationName: string) {
@@ -494,7 +494,7 @@ export class AudioContextSource {
         this._refCount--;
         if (this._refCount < 0)
             warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
-        debugLog?.log(`- AudioContextRef(${operationName}), refCount: ${operationName}=`, count, ', total=', this._refCount);
+        debugLog?.log(`- AudioContextRef(${operationName}), refCount: ${operationName} =`, count, ', total =', this._refCount);
     }
 }
 
