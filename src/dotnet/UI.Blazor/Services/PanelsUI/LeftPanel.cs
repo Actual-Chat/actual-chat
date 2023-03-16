@@ -1,5 +1,3 @@
-using ActualChat.UI.Blazor.Services.Internal;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public class LeftPanel
