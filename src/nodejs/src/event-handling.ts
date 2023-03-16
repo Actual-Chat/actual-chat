@@ -129,6 +129,11 @@ class DocumentEventSet {
     public readonly pointerUp$: Observable<PointerEvent>;
     public readonly pointerCancel$: Observable<PointerEvent>;
 
+    public readonly touchStart$: Observable<TouchEvent>;
+    public readonly touchMove$: Observable<TouchEvent>;
+    public readonly touchEnd$: Observable<TouchEvent>;
+    public readonly touchCancel$: Observable<TouchEvent>;
+
     public readonly keyDown$: Observable<KeyboardEvent>;
     public readonly keyUp$: Observable<KeyboardEvent>;
 
@@ -153,6 +158,11 @@ class DocumentEventSet {
         this.pointerMove$ = fromEvent(document, 'pointermove', options) as Observable<PointerEvent>;
         this.pointerUp$ = fromEvent(document, 'pointerup', options) as Observable<PointerEvent>;
         this.pointerCancel$ = fromEvent(document, 'pointercancel', options) as Observable<PointerEvent>;
+
+        this.touchStart$ = fromEvent(document, 'touchstart', options) as Observable<TouchEvent>;
+        this.touchMove$ = fromEvent(document, 'touchmove', options) as Observable<TouchEvent>;
+        this.touchEnd$ = fromEvent(document, 'touchend', options) as Observable<TouchEvent>;
+        this.touchCancel$ = fromEvent(document, 'touchcancel', options) as Observable<TouchEvent>;
 
         this.keyDown$ = fromEvent(document, 'keydown', options) as Observable<KeyboardEvent>;
         this.keyUp$ = fromEvent(document, 'keyup', options) as Observable<KeyboardEvent>;

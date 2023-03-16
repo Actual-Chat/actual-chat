@@ -28,6 +28,14 @@ export class Vector2D {
     public get squareLength(): number {
         return this.x * this.x + this.y * this.y;
     }
+
+    public isHorizontal(minRatio = 1) {
+        return Math.abs(this.x) > minRatio * Math.abs(this.y);
+    }
+
+    public isVertical(minRatio = 1) {
+        return Math.abs(this.y) > minRatio * Math.abs(this.x);
+    }
 }
 
 export function clamp(n: number, min: number, max: number) {

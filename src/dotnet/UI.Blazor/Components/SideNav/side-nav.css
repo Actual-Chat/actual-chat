@@ -50,12 +50,12 @@ body.narrow:has(.side-nav.side-nav-right.open) .side-nav.side-nav-left.open {
 /* Drawer */
 .side-nav .side-nav-drawer {
     @apply fixed;
-    @apply top-14 bottom-14 w-[15px];
+    @apply top-14 bottom-14 w-0;
     @apply bg-transparent;
 }
 .side-nav.side-nav-left .side-nav-drawer {
-    @apply -right-[15px];
+    @apply -right-0;
 }
 .side-nav.side-nav-right .side-nav-drawer {
-    @apply -left-[15px]
+    @apply -left-0
 }
