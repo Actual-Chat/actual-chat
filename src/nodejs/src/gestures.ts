@@ -268,8 +268,8 @@ class HighlightGesture extends Gesture {
                 return;
 
 
-            target.style.touchAction = 'none';
-            target.setPointerCapture(event.pointerId);
+            target.style.touchAction = 'pan-y';
+            // target.setPointerCapture(event.pointerId);
             // event.preventDefault();
             const gesture = new HighlightGesture(event, target);
             Gestures.addActive(gesture);
@@ -286,6 +286,35 @@ class HighlightGesture extends Gesture {
             // Events that we track
             DocumentEvents.capturedPassive.pointerMove$.subscribe((e: PointerEvent) => {
                 console.log('move', e.clientX, e.clientY, e);
+                const currentPoint = new Vector2D(e.clientX, e.clientY);
+                const moveVector = currentPoint.sub(startPoint);
+                if (Math.abs(moveVector.x) > 10 && Math.abs(moveVector.y) < 10) {
+                    // horizontal move
+                    virtualContainer.setPointerCapture(e.pointerId);
+                }
+                else if (!virtualContainer.hasPointerCapture(e.pointerId)) {
+                    // skip
+                    return;
+                }
+
+                const element = document.elementFromPoint(e.clientX, e.clientY) as HTMLSpanElement;
+                if (element.nodeName == 'SPAN' && !(element.classList.contains('highlighting'))) {
+                    let parent = element.parentElement;
+                    while (parent != virtualContainer && parent != null) {
+                        parent = parent.parentElement;
+                    }
+                    if (parent == null) {
+                        // dispose as current span doesn't belong to virtual list
+                        virtualContainer.releasePointerCapture(e.pointerId);
+                        virtualContainer.style.touchAction = 'auto';
+                        this.dispose();
+                        return;
+                    }
+
+                    element.classList.add('highlighting');
+                    element.dataset.highlightId = e.pointerId.toString();
+                }
+                // console.log(element);
                 // e.preventDefault();
             }),
             DocumentEvents.capturedPassive.pointerUp$.subscribe((e: PointerEvent) => {

@@ -25,12 +25,25 @@
         if (isHighlighted)
             cls += " highlighted";
 
-        @if (!playOnClickIsEnabled) {
-            <span class="@cls">@word.Value</span>
-        } else {
-            <span
-                class="@cls"
-                @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
+        var hasClassAttribute = !cls.IsNullOrEmpty();
+        @switch (hasClassAttribute, playOnClickIsEnabled)
+        {
+            case (true, true):
+                <span
+                    class="@cls"
+                    @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
+                break;
+            case (true, false):
+                <span
+                    class="@cls">@word.Value</span>
+                break;
+            case (false, true):
+                <span
+                    @onclick="@(_ => OnClick(word.TextRange.Start))">@word.Value</span>
+                break;
+            default:
+                <span>@word.Value</span>
+                break;
         }
     }
 </span>
