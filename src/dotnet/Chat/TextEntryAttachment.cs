@@ -14,8 +14,8 @@ public sealed record TextEntryAttachment(
     [DataMember] public int Index { get; init; }
     [DataMember] public MediaId MediaId { get; init; }
 
-    // Populated on reads by AuthorsBackend
-    [DataMember] public Media.Media Media { get; init; } = null!;
+    // Populated on reads by ChatsBackend
+    [DataMember] public Media.Media? Media { get; init; }
 
     // Computed properties
 

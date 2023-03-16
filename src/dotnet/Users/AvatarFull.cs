@@ -15,6 +15,9 @@ public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Versio
 
     [DataMember] public UserId UserId { get; init; }
 
+    // Populated on reads by AvatarsBackend
+    [DataMember] public Media.Media? Media { get; init; }
+
     public AvatarFull() : this(Symbol.Empty) { }
 
     // Helpers

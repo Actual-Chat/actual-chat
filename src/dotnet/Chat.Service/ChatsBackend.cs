@@ -1,10 +1,10 @@
-using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
 using ActualChat.Contacts;
+using ActualChat.Media;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +20,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IAuthorsBackend AuthorsBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
+    private IMediaBackend MediaBackend { get; }
     private IMarkupParser MarkupParser { get; }
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
@@ -34,6 +35,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
+        MediaBackend = services.GetRequiredService<IMediaBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
         ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
@@ -234,13 +236,27 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false)
             : (IReadOnlyCollection<DbTextEntryAttachment>)Array.Empty<DbTextEntryAttachment>();
+
         var attachmentsLookup = allAttachments.ToLookup(x => x.EntryId, StringComparer.Ordinal);
-        var entries = dbEntries.Select(e => {
-                var entryAttachments = attachmentsLookup[e.Id].Select(a => a.ToModel());
+        var entries = await dbEntries.Select(async e => {
+                var entryAttachments = await attachmentsLookup[e.Id]
+                    .Select(async dbAttachment => {
+                        var attachment = dbAttachment.ToModel();
+                        if (!attachment.MediaId.IsNone) {
+                            var media = await MediaBackend.Get(attachment.MediaId, cancellationToken).ConfigureAwait(false);
+                            attachment = attachment with { Media = media };
+                        }
+
+                        return attachment;
+                    })
+                    .Collect()
+                    .ConfigureAwait(false);
+
                 return e.ToModel(entryAttachments);
             })
-            .ToImmutableArray();
-        return new ChatTile(idTileRange, true, entries);
+            .Collect()
+            .ConfigureAwait(false);
+        return new ChatTile(idTileRange, true, entries.ToImmutableArray());
     }
 
     // [CommandHandler]
