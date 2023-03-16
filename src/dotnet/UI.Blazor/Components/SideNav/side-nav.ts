@@ -46,10 +46,7 @@ export class SideNav extends DisposableBag {
         public readonly options: SideNavOptions,
     ) {
         super();
-        if (DeviceInfo.isIos)
-            return; // No way to turn off overscroll in Safari, so...
-
-        const pullGestureDisposer = SideNavPullDetectGesture.use(this);
+        const pullGestureDisposer = DeviceInfo.isIos ? null : SideNavPullDetectGesture.use(this);
         if (this.side == SideNavSide.Left) {
             SideNav.left = this;
             this.addDisposables(pullGestureDisposer, { dispose() { SideNav.left = null }});
