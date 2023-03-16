@@ -19,7 +19,7 @@ export class TuneUI {
         'stop-historical-playback': [20],
         'stop-realtime-playback': [20],
         // Chat UI
-        'select-chat': [20],
+        'select-chat': [],
         'pin-unpin-chat': [50],
         // ChatMessageEditor
         'send-message': [50],
