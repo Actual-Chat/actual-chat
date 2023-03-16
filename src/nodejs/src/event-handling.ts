@@ -121,6 +121,7 @@ class DocumentEventSet {
     public readonly contextmenu$: Observable<MouseEvent>;
     public readonly wheel$: Observable<WheelEvent>;
     public readonly scroll$: Observable<Event>;
+    public readonly visibilityChange$: Observable<Event>;
 
     public readonly pointerOver$: Observable<PointerEvent>;
     public readonly pointerDown$: Observable<PointerEvent>;
@@ -145,6 +146,7 @@ class DocumentEventSet {
         this.contextmenu$ = fromEvent(document, 'contextmenu', options) as Observable<MouseEvent>;
         this.wheel$ = fromEvent(document, 'wheel', options) as Observable<WheelEvent>;
         this.scroll$ = isActive ? null : fromEvent(document.defaultView, 'scroll', options);
+        this.visibilityChange$ = fromEvent(document, 'visibilitychange',options);
 
         this.pointerOver$ = fromEvent(document, 'pointerover', options) as Observable<PointerEvent>;
         this.pointerDown$ = fromEvent(document, 'pointerdown', options) as Observable<PointerEvent>;
