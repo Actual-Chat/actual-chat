@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
@@ -10,13 +11,16 @@ public class UploadController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private ILogger<UploadController> Log { get; }
+    private ICommander Commander { get; }
 
     public UploadController(
         IContentSaver contentSaver,
-        ILogger<UploadController> log)
+        ILogger<UploadController> log,
+        ICommander commander)
     {
         ContentSaver = contentSaver;
         Log = log;
+        Commander = commander;
     }
 
     [HttpPost, Route("api/chats/upload-picture")]
@@ -48,6 +52,13 @@ public class UploadController : ControllerBase
             Width = imageSize?.Width ?? 0,
             Height = imageSize?.Height ?? 0,
         };
+
+        var changeCommand = new IMediaBackend.ChangeCommand(
+            mediaId,
+            new Change<Media.Media> {
+                Create = media,
+            });
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
         using var stream = new MemoryStream(processedFile.Content);
         var content = new Content(media.ContentId, file.ContentType, stream);

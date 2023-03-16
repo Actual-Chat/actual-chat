@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -5,10 +6,16 @@ namespace ActualChat.Users.Controllers;
 [ApiController]
 public class AvatarPicturesController : ControllerBase
 {
-    private IContentSaver ContentSaver  { get; }
+    private IContentSaver ContentSaver { get; }
+    private ICommander Commander { get; }
 
-    public AvatarPicturesController(IContentSaver contentSaver)
-        => ContentSaver = contentSaver;
+    public AvatarPicturesController(
+        IContentSaver contentSaver,
+        ICommander commander)
+    {
+        ContentSaver = contentSaver;
+        Commander = commander;
+    }
 
     [HttpPost, Route("api/user-avatars/upload-picture")]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
@@ -28,13 +35,19 @@ public class AvatarPicturesController : ControllerBase
             return BadRequest("Image is too big");
 
         var mediaId = new MediaId(Ulid.NewUlid().ToString());
-        var media = new Media.Media(mediaId)
-        {
+        var media = new Media.Media(mediaId) {
             ContentId = $"media/avatars/{mediaId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,
         };
+
+        var changeCommand = new IMediaBackend.ChangeCommand(
+            mediaId,
+            new Change<Media.Media> {
+                Create = media,
+            });
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
         var stream = file.OpenReadStream();
         await using var _ = stream.ConfigureAwait(false);
