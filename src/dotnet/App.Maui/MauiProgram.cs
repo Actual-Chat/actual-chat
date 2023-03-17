@@ -97,7 +97,12 @@ public static partial class MauiProgram
         builder.Services.AddBlazorWebViewDeveloperTools();
 // #endif
 
-        services.AddLogging(logging => ConfigureLogging(logging, true));
+        services.AddLogging(logging => {
+            // Remove direct Sentry logger provider.
+            // Sentry logging will go indirectly via Serilog logger provider with Sentry sink.
+            logging.ClearProviders();
+            ConfigureLogging(logging, true);
+        });
 
         services.TryAddSingleton(builder.Configuration);
         services.AddPlatformServices();
