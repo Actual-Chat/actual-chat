@@ -384,6 +384,10 @@ export class ChatMessageEditor {
                 file,
                 (progressPercent) => {
                     attachment.Progress = progressPercent;
+                    const progressDiv: HTMLDivElement = this.editorDiv.querySelector(`.attachment-${attachment.Id}`);
+                    if (progressDiv) {
+                        progressDiv.style.width = `${progressPercent}%`;
+                    }
                 }
             );
             upload.then(x => attachment.MediaId = x.MediaId);
