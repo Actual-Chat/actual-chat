@@ -7,6 +7,7 @@
     @apply transition-transform duration-200 ease-out;
     transform: none;
     touch-action: pan-y;
+    will-change: custom; /* Ensures its own composition layer */
 }
 
 .side-nav.side-nav-dragging {

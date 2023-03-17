@@ -15,6 +15,10 @@
                                 btn - [...] hover menu
 */
 
+.navbar-chats {
+    will-change: custom; /* Ensures its own composition layer */
+}
+
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
