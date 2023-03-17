@@ -6,7 +6,7 @@ import { getOrInheritData } from 'dom-helpers';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
 import { DeviceInfo } from 'device-info';
 
-const { debugLog, infoLog, errorLog } = Log.get('KeepAwakeUI');
+const { debugLog, errorLog } = Log.get('KeepAwakeUI');
 
 const noSleep = new NoSleep();
 
@@ -94,15 +94,16 @@ export class KeepAwakeUI {
         return noSleep.enable()
             .then(() => debugLog?.log('enableNoSleep: success'))
             .catch(e => errorLog?.log('enableNoSleep: error:', e))
-            .finally(() => infoLog?.log('<- enableNoSleep()'));
+            .finally(() => debugLog?.log('<- enableNoSleep()'));
     }
 
     private static disableNoSleep() {
         debugLog?.log('-> disableNoSleep()');
         try {
-            if (!noSleep.isEnabled)
+            if (!noSleep.isEnabled) {
                 debugLog?.log('<- disableNoSleep(): already disabled');
-            return;
+                return;
+            }
 
             noSleep.disable();
             debugLog?.log('disableNoSleep: success');
