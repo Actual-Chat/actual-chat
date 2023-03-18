@@ -14,7 +14,6 @@ public partial class ChatUI : WorkerBase, IHasServices
     private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
-    private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
 
@@ -33,6 +32,7 @@ public partial class ChatUI : WorkerBase, IHasServices
     private ModalUI ModalUI { get; }
     private ActiveChatsUI ActiveChatsUI { get; }
     private ChatAudioUI ChatAudioUI { get; }
+    private ChatEditorUI ChatEditorUI { get; }
     private History History { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
@@ -43,7 +43,6 @@ public partial class ChatUI : WorkerBase, IHasServices
     public IServiceProvider Services { get; }
     public IStoredState<ChatListSettings> ListSettings { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
-    public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
 
@@ -67,6 +66,7 @@ public partial class ChatUI : WorkerBase, IHasServices
         ModalUI = services.GetRequiredService<ModalUI>();
         ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
         ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
+        ChatEditorUI = services.GetRequiredService<ChatEditorUI>();
         History = services.GetRequiredService<History>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
@@ -76,9 +76,6 @@ public partial class ChatUI : WorkerBase, IHasServices
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)) {
             Corrector = FixChatId,
         });
-        _relatedChatEntry = StateFactory.NewMutable(
-            (RelatedChatEntry?)null,
-            StateCategories.Get(type, nameof(RelatedChatEntry)));
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
@@ -328,46 +325,10 @@ public partial class ChatUI : WorkerBase, IHasServices
             _selectedChatId.Value = chatId;
         }
 
-        HideRelatedEntry(false);
+        ChatEditorUI.HideRelatedEntry(false);
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
-        UICommander.RunNothing();
+        _ = UICommander.RunNothing();
         return true;
-    }
-
-    public void ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
-    {
-        var relatedChatEntry = new RelatedChatEntry(kind, entryId);
-        lock (_lock) {
-            if (_relatedChatEntry.Value == relatedChatEntry)
-                return;
-
-            _relatedChatEntry.Value = relatedChatEntry;
-        }
-        if (focusOnEditor)
-            _ = UIEventHub.Publish<FocusChatMessageEditorEvent>();
-        if (updateUI)
-            UICommander.RunNothing();
-
-        var tuneName = kind switch {
-            RelatedEntryKind.Reply => "reply-message",
-            RelatedEntryKind.Edit => "edit-message",
-            _ => "",
-        };
-        if (!tuneName.IsNullOrEmpty())
-            TuneUI.Play(tuneName);
-    }
-
-    public void HideRelatedEntry(bool updateUI = true)
-    {
-        lock (_lock) {
-            if (_relatedChatEntry.Value == null)
-                return;
-
-            _relatedChatEntry.Value = null;
-        }
-        if (updateUI)
-            UICommander.RunNothing();
-        TuneUI.Play("cancel");
     }
 
     public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)

@@ -117,12 +117,11 @@ public partial class ChatAudioUI
         Task? whenIdle = null;
         var cts = cancellationToken.CreateLinkedTokenSource();
         try {
-            var chatUI = ChatUIAccessor();
-            var relatedChatEntry = await chatUI.RelatedChatEntry.Use(cancellationToken);
+            var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
             var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
                 ? relatedChatEntry.Value.Id
                 : ChatEntryId.None;
-            chatUI.HideRelatedEntry();
+            ChatEditorUI.HideRelatedEntry();
 
             await AudioRecorder.StartRecording(chatId, repliedChatEntryId, cancellationToken).ConfigureAwait(false);
 
