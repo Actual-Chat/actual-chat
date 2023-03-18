@@ -40,6 +40,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Chat UI
         fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);

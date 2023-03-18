@@ -101,6 +101,7 @@
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
@@ -175,9 +176,9 @@
             AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
             _ = MarkupEditorRef.Clear();
 
-            var relatedChatEntry = ChatUI.RelatedChatEntry.Value;
+            var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
-            ChatUI.HideRelatedEntry(updateUI: false);
+            ChatEditorUI.HideRelatedEntry(updateUI: false);
 
             long readEntryLid;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
@@ -214,7 +215,7 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        ChatUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
+        ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
         await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 
@@ -233,32 +234,12 @@
 
     // Event handlers
 
-    private async Task OnOpenPrevious() {
-        var chatId = ChatUI.SelectedChatId.Value;
-        if (chatId.IsNone)
-            return;
-
-        var author = await Authors.GetOwn(Session, chatId, CancellationToken.None);
-        if (author == null)
-            return;
-
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None);
-        var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
-        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text, idTileLayer);
-        var lastEditableEntry = await chatEntryReader.GetLast(
-            chatIdRange,
-            x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },
-            1000, // Max. 1000 entries to scan upwards
-            CancellationToken.None);
-        if (lastEditableEntry == null)
-            return;
-
-        await Edit(lastEditableEntry, CancellationToken.None);
-    }
+    private Task OnOpenPrevious()
+        => ChatEditorUI.EditLast(ChatUI.SelectedChatId.Value);
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
-        ChatUI.HideRelatedEntry();
+        ChatEditorUI.HideRelatedEntry();
         await MarkupEditorRef.Clear(mustFocus: true);
     }
 

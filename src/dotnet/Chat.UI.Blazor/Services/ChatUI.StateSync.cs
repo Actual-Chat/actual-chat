@@ -1,6 +1,4 @@
-﻿using ActualChat.UI.Blazor.Services;
-
-namespace ActualChat.Chat.UI.Blazor.Services;
+﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatUI
 {

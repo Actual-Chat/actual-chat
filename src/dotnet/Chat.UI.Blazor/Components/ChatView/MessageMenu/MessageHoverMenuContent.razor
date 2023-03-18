@@ -32,7 +32,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
@@ -53,7 +53,7 @@
     }
 
     private void Reply(ChatEntry chatEntry)
-        => ChatUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
         return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
