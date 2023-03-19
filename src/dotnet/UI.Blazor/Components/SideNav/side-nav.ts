@@ -142,7 +142,7 @@ class SideNavPullDetectGesture extends Gesture {
                 const isOpenSign = sideNav.isOpen ? 1 : -1;
                 const openDirectionSign = isLeft ? 1 : -1;
                 const allowedDirectionSign = openDirectionSign * -isOpenSign;
-                if (!offset.isHorizontal(2) || Math.abs(Math.sign(offset.x) - allowedDirectionSign) > 0.1) {
+                if (!offset.isHorizontal() || Math.abs(Math.sign(offset.x) - allowedDirectionSign) > 0.1) {
                     // Wrong direction
                     debugLog?.log(`SideNavPullDetectGesture.touchMove: wrong direction`);
                     this.dispose();
@@ -230,7 +230,7 @@ class SideNavPullGesture extends Gesture {
 
             const coords = getCoords(event);
             const offset = coords.sub(origin);
-            if (!offset.isHorizontal(2)) {
+            if (!offset.isHorizontal()) {
                 // Wrong direction
                 endMove(event, true);
                 return;
