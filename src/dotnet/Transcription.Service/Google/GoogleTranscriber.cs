@@ -259,7 +259,7 @@ public class GoogleTranscriber : ITranscriber
                 };
                 var lastLength = state.Unstable.Length - state.Stable.Length;
                 var legitLength = Math.Min(
-                    Math.Max(0, lastLength - 3), // Trimming by 3 is always legit
+                    Math.Max(0, lastLength - 4), // Trimming by 4 is always legit
                     (int)(lastLength * legitLengthRatio));
                 if (text.Length < legitLength)
                     state.Stabilize();
