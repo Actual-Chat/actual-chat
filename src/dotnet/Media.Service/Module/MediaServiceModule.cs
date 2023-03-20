@@ -3,8 +3,6 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Redis.Module;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
@@ -23,25 +21,6 @@ public class MediaServiceModule : HostModule<MediaSettings>
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
-
-        // ASP.NET Core authentication providers
-        var authentication = services.AddAuthentication(options => {
-            options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        });
-        authentication.AddCookie(options => {
-            options.LoginPath = "/signIn";
-            options.LogoutPath = "/signOut";
-            if (IsDevelopmentInstance)
-                options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-            // This controls the expiration time stored in the cookie itself
-            options.ExpireTimeSpan = TimeSpan.FromDays(14);
-            options.SlidingExpiration = true;
-            // And this controls when the browser forgets the cookie
-            options.Events.OnSigningIn = ctx => {
-                ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
-                return Task.CompletedTask;
-            };
-        });
 
         // Redis
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();
@@ -68,6 +47,7 @@ public class MediaServiceModule : HostModule<MediaSettings>
                 return true;
             return false;
         });
+
         var fusion = services.AddFusion();
 
         // Module's own services
