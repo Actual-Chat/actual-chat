@@ -12,6 +12,7 @@ public partial class MauiBlazorWebViewHandler
         Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
         base.ConnectHandler(platformView);
 
+        PlatformView.ScrollView.Bounces = false;
         PlatformView.AllowsBackForwardNavigationGestures = false;
         SetSessionIdCookie(UrlMapper.BaseUri.Host, true);
         SetSessionIdCookie("0.0.0.0", false);
