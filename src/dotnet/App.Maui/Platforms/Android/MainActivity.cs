@@ -33,6 +33,8 @@ namespace ActualChat.App.Maui;
     new [] { Intent.ActionView },
     DataSchemes = new [] { "http", "https" },
     DataHost = MauiConstants.Host,
+    DataPaths = new [] { "/" },
+    DataPathPrefixes = new [] { "/chat/", "/join/", "/u/", "/user/invite/" },
     AutoVerify = true,
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public class MainActivity : MauiAppCompatActivity
