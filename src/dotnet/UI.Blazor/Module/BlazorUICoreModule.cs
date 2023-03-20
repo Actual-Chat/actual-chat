@@ -120,6 +120,8 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Host-specific services
         services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
+        services.AddScoped<IRestartService, WebpageReloadService>(c => new WebpageReloadService(
+            c.GetRequiredService<NavigationManager>()));
 
         // Initializes History
         services.ConfigureUILifetimeEvents(
