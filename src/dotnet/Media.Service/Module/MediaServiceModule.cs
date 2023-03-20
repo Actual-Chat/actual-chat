@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
+using ActualChat.Redis.Module;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -41,6 +42,10 @@ public class MediaServiceModule : HostModule<MediaSettings>
                 return Task.CompletedTask;
             };
         });
+
+        // Redis
+        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        redisModule.AddRedisDb<MediaDbContext>(services, Settings.Redis);
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
