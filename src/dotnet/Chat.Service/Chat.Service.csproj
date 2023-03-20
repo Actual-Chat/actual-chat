@@ -11,7 +11,6 @@
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Invite.Contracts\Invite.Contracts.csproj" />
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
-    <ProjectReference Include="..\Media.Service\Media.Service.csproj" />
     <ProjectReference Include="..\Notification.Contracts\Notification.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />

@@ -4,15 +4,11 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
-using ActualChat.Commands;
-using ActualChat.Media;
-using ActualChat.Media.Db;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
-using Stl.Redis;
 
 namespace ActualChat.Chat.Module;
 
@@ -58,9 +54,6 @@ public class ChatServiceModule : HostModule<ChatSettings>
             db.AddShardLocalIdGenerator(dbContext => dbContext.Roles,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             db.AddEntityResolver<string, DbRole>();
-
-            // DbMedia
-            db.AddEntityResolver<string, DbMedia>();
         });
 
         // Commander & Fusion
@@ -102,9 +95,6 @@ public class ChatServiceModule : HostModule<ChatSettings>
         // Reactions
         fusion.AddComputeService<IReactions, Reactions>();
         fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
-
-        // Media
-        fusion.AddComputeService<IMediaBackend, MediaBackend<ChatDbContext>>();
 
         // ContentSaver
         services.AddResponseCaching();

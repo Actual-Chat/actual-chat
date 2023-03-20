@@ -2,8 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.Media;
-using ActualChat.Media.Db;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -86,7 +84,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbAvatar>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();
-            db.AddEntityResolver<string, DbMedia>();
 
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
@@ -143,7 +140,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
         fusion.AddComputeService<IChatPositions, ChatPositions>();
         fusion.AddComputeService<IChatPositionsBackend, ChatPositionsBackend>();
-        fusion.AddComputeService<IMediaBackend, MediaBackend<UsersDbContext>>();
         fusion.AddComputeService<IServerKvas, ServerKvas>();
         fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();

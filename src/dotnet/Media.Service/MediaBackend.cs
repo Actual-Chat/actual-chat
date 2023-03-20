@@ -1,11 +1,9 @@
 using ActualChat.Media.Db;
-using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
-public class MediaBackend<TMediaDbContext> : DbServiceBase<TMediaDbContext>, IMediaBackend
-    where TMediaDbContext : DbContext, IMediaDbContext
+internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
 {
     private IDbEntityResolver<string, DbMedia> DbMediaResolver { get; }
 

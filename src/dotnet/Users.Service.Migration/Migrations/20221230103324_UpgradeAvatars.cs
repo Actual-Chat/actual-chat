@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat;
+using ActualChat.Chat;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
@@ -12,6 +12,7 @@ using Stl.Reflection;
 #pragma warning disable MA0004
 #pragma warning disable VSTHRD002
 #pragma warning disable CA1847
+#pragma warning disable CS0162
 
 namespace ActualChat.Users.Migrations
 {
