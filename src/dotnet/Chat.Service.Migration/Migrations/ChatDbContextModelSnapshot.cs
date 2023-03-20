@@ -457,11 +457,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("index");
 
-                    b.Property<string>("MediaId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("media_id");
-
                     b.Property<string>("MetadataJson")
                         .IsRequired()
                         .HasColumnType("text")
