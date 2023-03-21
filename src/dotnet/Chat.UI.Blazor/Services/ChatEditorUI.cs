@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatEditorUI
+public class ChatEditorUI : WorkerBase
 {
     private readonly object _lock = new();
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
@@ -11,9 +11,11 @@ public class ChatEditorUI
     private Session Session { get; }
     private IAuthors Authors { get; }
     private IChats Chats { get; }
+    private LocalSettings LocalSettings { get; }
     private TuneUI TuneUI { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
+    // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
     public ChatEditorUI(IServiceProvider services)
@@ -21,6 +23,7 @@ public class ChatEditorUI
         Session = services.GetRequiredService<Session>();
         Authors = services.GetRequiredService<IAuthors>();
         Chats = services.GetRequiredService<IChats>();
+        LocalSettings = services.GetRequiredService<LocalSettings>();
         TuneUI = services.GetRequiredService<TuneUI>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
@@ -29,42 +32,57 @@ public class ChatEditorUI
         _relatedChatEntry = services.StateFactory().NewMutable(
             (RelatedChatEntry?)null,
             StateCategories.Get(type, nameof(RelatedChatEntry)));
+
+        Start();
     }
 
-    public void ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
+    public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
+        => ShowRelatedEntry(new RelatedChatEntry(kind, entryId), focusOnEditor, updateUI);
+
+    public async Task ShowRelatedEntry(RelatedChatEntry relatedChatEntry, bool focusOnEditor, bool updateUI = true)
     {
-        var relatedChatEntry = new RelatedChatEntry(kind, entryId);
-        lock (_lock) {
+        lock (_lock)
+        {
             if (_relatedChatEntry.Value == relatedChatEntry)
                 return;
 
             _relatedChatEntry.Value = relatedChatEntry;
         }
+
         if (focusOnEditor)
             _ = UIEventHub.Publish<FocusChatMessageEditorEvent>();
         if (updateUI)
             _ = UICommander.RunNothing();
+        _ = PlayTune();
+        await SaveRelatedEntry(relatedChatEntry.Id.ChatId, relatedChatEntry);
 
-        var tuneName = kind switch {
-            RelatedEntryKind.Reply => "reply-message",
-            RelatedEntryKind.Edit => "edit-message",
-            _ => "",
-        };
-        if (!tuneName.IsNullOrEmpty())
-            TuneUI.Play(tuneName);
+        ValueTask PlayTune()
+        {
+            var tuneName = relatedChatEntry.Kind switch
+            {
+                RelatedEntryKind.Reply => "reply-message",
+                RelatedEntryKind.Edit => "edit-message",
+                _ => "",
+            };
+            return !tuneName.IsNullOrEmpty() ? TuneUI.Play(tuneName) : ValueTask.CompletedTask;
+        }
     }
 
-    public void HideRelatedEntry(bool updateUI = true)
+    public async Task HideRelatedEntry(bool updateUI = true)
     {
+        RelatedChatEntry? old;
         lock (_lock) {
             if (_relatedChatEntry.Value == null)
                 return;
 
+            old = _relatedChatEntry.Value;
             _relatedChatEntry.Value = null;
         }
         if (updateUI)
             _ = UICommander.RunNothing();
         _ = TuneUI.Play("cancel");
+        if (old != null)
+            await SaveRelatedEntry(old.Value.Id.ChatId, null).ConfigureAwait(false);
     }
 
     public Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken = default)
@@ -92,5 +110,43 @@ public class ChatEditorUI
             return;
 
         await Edit(lastEditableEntry, cancellationToken).ConfigureAwait(false);
+    }
+
+    private Task SaveRelatedEntry(ChatId chatId, RelatedChatEntry? relatedChatEntry)
+        => LocalSettings.SetDraftRelatedEntry(chatId, relatedChatEntry);
+
+    public async Task RestoreRelatedEntry(ChatId chatId)
+    {
+        if (chatId.IsNone)
+            return;
+
+        var relatedEntry = await LocalSettings.GetDraftRelatedEntry(chatId).ConfigureAwait(false);
+        lock (_lock)
+            _relatedChatEntry.Value = relatedEntry;
+    }
+
+    protected override Task RunInternal(CancellationToken cancellationToken)
+        => HideWhenRelatedEntryRemoved(cancellationToken);
+
+    private async Task HideWhenRelatedEntryRemoved(CancellationToken cancellationToken)
+    {
+        var cRelatedChatEntry = await Computed.Capture(() => GetRelatedChatEntry(cancellationToken)).ConfigureAwait(false);
+        await foreach (var change in cRelatedChatEntry.Changes(cancellationToken).ConfigureAwait(false))
+        {
+            var (chatEntryLink, chatEntry) = change.Value;
+            if (chatEntryLink != null && chatEntry == null)
+                await HideRelatedEntry().ConfigureAwait(false);
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<(RelatedChatEntry?, ChatEntry?)> GetRelatedChatEntry(CancellationToken cancellationToken)
+    {
+        var entryLink = await RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
+        if (entryLink == null)
+            return (null, null);
+
+        var entry = await Chats.GetEntry(Session, entryLink.Value.Id, cancellationToken).ConfigureAwait(false);
+        return (entryLink, entry);
     }
 }

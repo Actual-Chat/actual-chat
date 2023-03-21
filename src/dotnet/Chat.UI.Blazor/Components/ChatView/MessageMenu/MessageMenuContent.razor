@@ -91,7 +91,7 @@
         };
     }
 
-    private void Reply(ChatEntry chatEntry)
+    private Task Reply(ChatEntry chatEntry)
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task Edit(ChatEntry chatEntry)

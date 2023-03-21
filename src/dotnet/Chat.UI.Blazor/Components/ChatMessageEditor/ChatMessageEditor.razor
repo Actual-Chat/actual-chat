@@ -135,8 +135,9 @@
 
         if (JSRef != null!) {
             // Only when rendered
+            // TODO: attachments must be saved/restored with draft
             await ClearAttachments();
-            await MarkupEditorRef.Clear(Autofocus);
+            await UpdateChatId();
         }
     }
 
@@ -148,6 +149,8 @@
                 Ref, BlazorRef);
             await MarkupEditorRef.WhenReady;
             await JSRef.InvokeVoidAsync("onMarkupEditorReady", MarkupEditorRef.JSRef);
+            await UpdateChatId();
+            await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
         }
     }
 
@@ -178,7 +181,7 @@
 
             var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
-            ChatEditorUI.HideRelatedEntry(updateUI: false);
+            await ChatEditorUI.HideRelatedEntry(false);
 
             long readEntryLid;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
@@ -215,7 +218,7 @@
 
     private async Task Edit(ChatEntry chatEntry, CancellationToken cancellationToken)
     {
-        ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
+        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Edit, chatEntry.Id, focusOnEditor: true);
         await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 
@@ -232,6 +235,9 @@
         return JSRef.InvokeVoidAsync("clearAttachments");
     }
 
+    private ValueTask UpdateChatId()
+        => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
+
     // Event handlers
 
     private Task OnOpenPrevious()
@@ -239,7 +245,7 @@
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
-        ChatEditorUI.HideRelatedEntry();
+        await ChatEditorUI.HideRelatedEntry();
         await MarkupEditorRef.Clear(mustFocus: true);
     }
 

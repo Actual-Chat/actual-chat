@@ -7,14 +7,23 @@ public static class KvasExt
     // Get, Set, Remove w/ <T>
 
     public static async ValueTask<Option<T>> Get<T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
-    {
+  {
         var data = await kvas.Get(key, cancellationToken).ConfigureAwait(false);
         return data is null ? Option<T>.None : Serializer.Read<T>(data);
     }
 
+    public static ValueTask<T?> GetValue<T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
+        => GetValue<T>(kvas, key, default, cancellationToken);
+
+    public static async ValueTask<T?> GetValue<T>(this IKvas kvas, string key, T? @default, CancellationToken cancellationToken = default)
+    {
+        var (hasValue, value) = await Get<T>(kvas, key, cancellationToken).ConfigureAwait(false);
+        return hasValue ? value ?? @default : @default;
+    }
+
     public static Task Set<T>(this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)
     {
-        var data = Serializer.Write(value);
+        var data = value == null ? null : Serializer.Write(value);
         return kvas.Set(key, data, cancellationToken);
     }
 

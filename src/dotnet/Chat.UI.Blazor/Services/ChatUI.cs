@@ -316,7 +316,7 @@ public partial class ChatUI : WorkerBase, IHasServices
         return chatId;
     }
 
-    public bool SelectChat(ChatId chatId)
+    public async Task<bool> SelectChat(ChatId chatId)
     {
         lock (_lock) {
             if (_selectedChatId.Value == chatId)
@@ -325,7 +325,7 @@ public partial class ChatUI : WorkerBase, IHasServices
             _selectedChatId.Value = chatId;
         }
 
-        ChatEditorUI.HideRelatedEntry(false);
+        await ChatEditorUI.RestoreRelatedEntry(chatId).ConfigureAwait(false);
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
         _ = UICommander.RunNothing();
         return true;

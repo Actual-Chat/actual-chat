@@ -1,6 +1,8 @@
 import {
     Subject,
     takeUntil,
+    debounceTime,
+    tap,
 } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
 import { throttle } from 'promises';
@@ -8,12 +10,14 @@ import { Log } from 'logging';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
+import { LocalSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
 
 const { debugLog } = Log.get('MessageEditor');
 
 export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
+    private readonly backupRequired$ = new Subject<void>();
     private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
@@ -34,6 +38,7 @@ export class ChatMessageEditor {
     private isNotifyPanelOpen: boolean = false;
     private attachmentsIdSeed: number = 0;
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
+    private chatId: string;
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -59,6 +64,7 @@ export class ChatMessageEditor {
         this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
+        this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
 
         this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
         this.attachmentListObserver.observe(this.editorDiv, {
@@ -73,9 +79,10 @@ export class ChatMessageEditor {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
+        this.backupRequired$.complete();
         this.disposed$.next();
         this.disposed$.complete();
         this.input.removeEventListener('paste', this.onInputPaste);
@@ -120,12 +127,16 @@ export class ChatMessageEditor {
     public onMarkupEditorReady(markupEditor: MarkupEditor)
     {
         this.markupEditor = markupEditor;
-        markupEditor.changed = () => this.updateHasContent();
+        markupEditor.changed = () => {
+            this.backupRequired$.next();
+            this.updateHasContent();
+        }
         this.updateHasContent();
         if (this.isNarrowScreen)
             this.markupEditor.contentDiv.blur(); // We want to see the placeholder on mobile when you open a chat
     }
 
+    /** Called by Blazor */
     public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
         const formData = new FormData();
         const attachments = [];
@@ -169,6 +180,7 @@ export class ChatMessageEditor {
         this.filePicker.click();
     };
 
+    /** Called by Blazor */
     public removeAttachment(id: number) {
         TuneUI.play('change-attachments');
         const attachment = this.attachments.get(id);
@@ -178,6 +190,7 @@ export class ChatMessageEditor {
         this.updateHasContent();
     }
 
+    /** Called by Blazor */
     public clearAttachments() {
         if (this.attachments.size != 0)
             TuneUI.play('change-attachments');
@@ -188,6 +201,12 @@ export class ChatMessageEditor {
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
         this.updateHasContent();
+    }
+
+    /** Called by Blazor */
+    public setChatId(chatId: string) {
+        this.chatId = chatId;
+        this.restoreDraft();
     }
 
     // Event handlers
@@ -337,7 +356,7 @@ export class ChatMessageEditor {
     };
 
     private endAnimations(): void {
-        this.notifyPanel.classList.remove('panel-opening', 'panel-closing');
+        this.notifyPanel.classList.remove('ha-opening', 'panel-closing');
         const playbackWrapper = this.editorDiv.querySelector('.playback-wrapper');
         if (!playbackWrapper)
             return;
@@ -362,6 +381,22 @@ export class ChatMessageEditor {
             TuneUI.play('change-attachments');
         }
         return isAdded;
+    }
+
+    private saveDraft() {
+        if (!this.chatId)
+            return;
+
+        const text = this.markupEditor.getHtml();
+        const data = {
+            [`MessageDraft.${this.chatId}.Html`]: !!text ? text : null,
+        };
+        LocalSettings.setMany(data);
+    }
+
+    private restoreDraft() {
+        const [html] = this.chatId && LocalSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
+        this.markupEditor.setHtml(html ?? "");
     }
 }
 

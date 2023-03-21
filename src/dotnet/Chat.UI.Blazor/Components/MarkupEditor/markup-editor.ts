@@ -156,8 +156,13 @@ export class MarkupEditor {
         return isEditable;
     }
 
+    /** Called by Blazor */
     public getText() {
         return this.contentDiv.innerText;
+    }
+
+    public getHtml() {
+        return this.contentDiv.innerHTML;
     }
 
     public setHtml(html: string, mustFocus: boolean = false, clearUndoStack: boolean = true) {

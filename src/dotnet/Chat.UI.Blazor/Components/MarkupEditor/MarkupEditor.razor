@@ -79,10 +79,14 @@
         return text;
     }
 
-    public async ValueTask SetText(string text, bool mustFocus = false) {
-        var markup = MarkupParser.Parse(text);
-        markup = await MentionNamer.Apply(markup, default).ConfigureAwait(false);
-        await SetMarkup(markup, mustFocus);
+    public async ValueTask SetText(string? text, bool mustFocus = false) {
+        if (text.IsNullOrEmpty())
+            await Clear(mustFocus);
+        else {
+            var markup = MarkupParser.Parse(text);
+            markup = await MentionNamer.Apply(markup, default).ConfigureAwait(false);
+            await SetMarkup(markup, mustFocus);
+        }
     }
 
     public async ValueTask SetMarkup(Markup markup, bool mustFocus = false) {

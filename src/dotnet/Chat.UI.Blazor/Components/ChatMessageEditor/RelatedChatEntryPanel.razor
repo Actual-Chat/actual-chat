@@ -26,8 +26,6 @@
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
         var entry = await Chats.GetEntry(Session, entryId, cancellationToken);
         if (entry == null) {
-            // The entry was removed
-            ChatEditorUI.HideRelatedEntry();
             return null;
         }
 
