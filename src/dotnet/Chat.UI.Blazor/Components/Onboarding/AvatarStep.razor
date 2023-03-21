@@ -94,7 +94,7 @@
         _stepModel.LastName = account.LastName;
 
         if (!account.Avatar.Id.IsEmpty) {
-            _stepModel.AvatarPicture = account.Avatar.Picture;
+            _stepModel.AvatarPicture = account.Avatar.Media?.ContentId ?? "";
             _stepModel.AvatarId = account.Avatar.Id;
             return;
         }
@@ -109,7 +109,7 @@
             return;
 
         _stepModel.AvatarId = newAvatar.Id;
-        _stepModel.AvatarPicture = newAvatar.Picture;
+        _stepModel.AvatarPicture = newAvatar.Media?.ContentId ?? "";
         var setDefaultAvatarCommand = new IAvatars.SetDefaultCommand(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
     }
@@ -138,7 +138,7 @@
             new Change<AvatarFull> {
                 Update = avatar with {
                     Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
-                    Picture = _stepModel.AvatarPicture,
+                    MediaId = _stepModel.AvatarMediaId,
                 },
             });
         await UICommander.Run(updateAvatarCommand);

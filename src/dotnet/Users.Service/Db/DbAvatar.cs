@@ -17,6 +17,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public string? UserId { get; set; }
     public string Name { get; set; } = "";
+    [Obsolete("Use MediaId")]
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string Bio { get; set; } = "";
@@ -28,7 +29,6 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new(Id, Version) {
             UserId = new UserId(UserId),
             Name = Name,
-            Picture = Picture,
             MediaId = new MediaId(MediaId),
             Bio = Bio,
         };
@@ -47,7 +47,6 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Name = model.Name;
-        Picture = model.Picture;
         MediaId = model.MediaId;
         Bio = model.Bio;
     }

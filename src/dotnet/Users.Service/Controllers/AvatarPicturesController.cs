@@ -34,7 +34,7 @@ public class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Chat.PictureFileSizeLimit)
             return BadRequest("Image is too big");
 
-        var mediaId = new MediaId(Ulid.NewUlid().ToString());
+        var mediaId = new MediaId($"avatars:{Ulid.NewUlid().ToString()}");
         var media = new Media.Media(mediaId) {
             ContentId = $"media/avatars/{mediaId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,

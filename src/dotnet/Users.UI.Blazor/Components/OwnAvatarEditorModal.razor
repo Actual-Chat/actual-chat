@@ -109,7 +109,7 @@
         }
 
         _form.Name = avatar?.Name ?? "";
-        _form.Picture = avatar?.Picture ?? "";
+        _form.Picture = avatar?.Media?.ContentId ?? "";
         _form.Bio = avatar?.Bio ?? "";
         _form.IsDefault = isDefault;
         _form.IsActive = isActive;
@@ -129,7 +129,7 @@
         avatar = avatar with {
             Name = _form.Name,
             Bio = _form.Bio,
-            Picture = _form.Picture,
+            MediaId = _form.MediaId,
         };
         var command = new IAvatars.ChangeCommand(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
             Update = avatar,

@@ -3,7 +3,6 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Invite.Backend;
 using ActualChat.Kvas;
-using ActualChat.Media;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -19,7 +18,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IInvitesBackend InvitesBackend { get; }
     private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
-    private IMediaBackend MediaBackend { get; }
 
     public Chats(IServiceProvider services) : base(services)
     {
@@ -30,7 +28,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         InvitesBackend = services.GetRequiredService<IInvitesBackend>();
         ServerKvas = services.ServerKvas();
         Backend = services.GetRequiredService<IChatsBackend>();
-        MediaBackend = services.GetRequiredService<IMediaBackend>();
     }
 
     // [ComputeMethod]
@@ -50,7 +47,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             chat ??= new Chat(chatId);
             chat = chat with {
                 Title = contact.Account.Avatar.Name,
-                Picture = contact.Account.Avatar.Picture,
+                Media = contact.Account.Avatar.Media,
             };
         }
         else if (chat == null)

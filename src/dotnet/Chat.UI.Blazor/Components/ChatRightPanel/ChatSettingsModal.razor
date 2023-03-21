@@ -98,7 +98,7 @@
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
         _form ??= new(ComponentIdGenerator);
         _form.Title = chat.Title;
-        _form.Picture = chat.Picture;
+        _form.Picture = chat.Media?.ContentId ?? "";
         _form.IsPublic = chat.IsPublic;
         _form.ImageUploadUrl = "/api/chats/upload-picture";
     }
@@ -127,7 +127,7 @@
         var newChat = chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,
-            Picture = _form.Picture,
+            MediaId = _form.MediaId,
         };
         var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),

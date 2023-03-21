@@ -31,10 +31,11 @@ public sealed record Chat(
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
-    [DataMember] public string Picture { get; init; } = "";
+    [DataMember] public MediaId MediaId { get; init; } = MediaId.None;
 
     // Populated only on front-end
     [DataMember] public AuthorRules Rules { get; init; } = null!;
+    [DataMember] public Media.Media? Media { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatKind Kind => Id.Kind;
