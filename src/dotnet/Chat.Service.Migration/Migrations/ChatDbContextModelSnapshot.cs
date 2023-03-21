@@ -113,11 +113,6 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("kind");
 
-                    b.Property<string>("MediaId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("media_id");
-
                     b.Property<string>("Picture")
                         .IsRequired()
                         .HasColumnType("text")
