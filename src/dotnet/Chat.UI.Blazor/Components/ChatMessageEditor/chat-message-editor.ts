@@ -156,6 +156,9 @@ export class ChatMessageEditor {
             url = new URL(url, baseUri).toString();
         const response = await fetch(url, {
             method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            },
             body: JSON.stringify(payload),
             credentials: 'include' // required to include third-party cookies in cross origin request when running in MAUI
         });
@@ -390,7 +393,9 @@ export class ChatMessageEditor {
                     }
                 }
             );
-            upload.then(x => attachment.MediaId = x.MediaId);
+            upload.then(x => {
+                attachment.MediaId = x.mediaId;
+            });
         }
         return isAdded;
     }
@@ -414,7 +419,7 @@ export class ChatMessageEditor {
     private async uploadFile(
         file: File,
         progressReporter: (progressPercent: number) => void,
-    ): Promise<UploadResponse> {
+    ): Promise<MediaContent> {
         return new Promise((resolve, reject) => {
             const formData = new FormData();
             formData.append('file', file, file.name);
@@ -426,7 +431,7 @@ export class ChatMessageEditor {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === XMLHttpRequest.DONE) {
                     if (xhr.status === 200) {
-                        resolve(xhr.response);
+                        resolve(JSON.parse(xhr.response));
                     } else {
                         reject(xhr.statusText);
                     }
@@ -446,7 +451,7 @@ interface Attachment {
     Progress: number;
 }
 
-interface UploadResponse {
-    MediaId: string;
-    ContentId: string;
+interface MediaContent {
+    mediaId: string;
+    contentId: string;
 }
