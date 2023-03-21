@@ -121,7 +121,7 @@ public partial class ChatAudioUI
             var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
                 ? relatedChatEntry.Value.Id
                 : ChatEntryId.None;
-            ChatEditorUI.HideRelatedEntry();
+            await ChatEditorUI.HideRelatedEntry().ConfigureAwait(false);
 
             await AudioRecorder.StartRecording(chatId, repliedChatEntryId, cancellationToken).ConfigureAwait(false);
 
