@@ -37,7 +37,7 @@ public class FirebaseMessagingClient
         var isChatRelated = !chatId.IsNone;
         var isTextEntryRelated = chatEntryId is { IsNone: false, Kind: ChatEntryKind.Text };
         var tag = isTextEntryRelated
-            ? chatEntryId.Value
+            ? chatEntryId.ChatId.Value
             : isChatRelated ? chatId.Value : "topic";
         var link = isTextEntryRelated
             ? UrlMapper.ToAbsolute(Links.Chat(chatId, chatEntryId.LocalId))
@@ -73,7 +73,7 @@ public class FirebaseMessagingClient
                     DefaultSound = true,
                     LocalOnly = false,
                     // NotificationCount = TODO(AK): Set unread message count!
-                    Icon = absoluteIconUrl,
+                    ImageUrl = iconUrl,
                     ChannelId = NotificationConstants.ChannelIds.Default,
                 },
                 Priority = Priority.Normal,
