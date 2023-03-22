@@ -1,4 +1,4 @@
-import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
+import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import {
     Cancelled,
     delayAsync,
@@ -11,7 +11,7 @@ import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
-import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
+import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
 

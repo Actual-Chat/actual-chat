@@ -1,5 +1,5 @@
-import { audioContextSource } from 'audio-context-source';
-import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
+import { audioContextSource } from '../../Services/audio-context-source';
+import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';

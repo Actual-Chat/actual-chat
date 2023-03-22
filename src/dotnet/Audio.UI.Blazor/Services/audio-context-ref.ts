@@ -7,7 +7,7 @@ import {
     waitAsync,
 } from 'promises';
 import { nextTickAsync } from 'timeout';
-import { AudioContextSource } from 'audio-context-source';
+import { AudioContextSource } from './audio-context-source';
 import { Log } from 'logging';
 
 const { debugLog, errorLog } = Log.get('AudioContextRef');
