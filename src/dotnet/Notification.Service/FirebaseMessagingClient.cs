@@ -73,7 +73,8 @@ public class FirebaseMessagingClient
                     DefaultSound = true,
                     LocalOnly = false,
                     // NotificationCount = TODO(AK): Set unread message count!
-                    ImageUrl = absoluteIconUrl,
+                    //Icon = default, /* contains icon resource for android app, specify nothing, use app icon */
+                    //ImageUrl = default, /* default notification layout expands image and it looks ugly, so we do not specify an image */
                     ChannelId = NotificationConstants.ChannelIds.Default,
                 },
                 Priority = Priority.Normal,
@@ -96,7 +97,6 @@ public class FirebaseMessagingClient
                     Tag = tag,
                     RequireInteraction = false,
                     Icon = absoluteIconUrl,
-                    Image = absoluteIconUrl,
                 },
                 FcmOptions = new WebpushFcmOptions {
                     Link = OrdinalEquals(UrlMapper.BaseUri.Host, "localhost")

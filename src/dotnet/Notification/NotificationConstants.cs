@@ -2,8 +2,6 @@ namespace ActualChat.Notification;
 
 public static class NotificationConstants
 {
-    public static readonly TimeSpan MessageNotificationThrottleInterval = TimeSpan.FromSeconds(30);
-
     public static class ChannelIds
     {
         // TODO: create more channels and groups

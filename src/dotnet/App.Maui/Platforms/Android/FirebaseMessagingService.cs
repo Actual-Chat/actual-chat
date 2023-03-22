@@ -1,6 +1,5 @@
 using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
-using ActualChat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
 using AndroidX.Core.App;
@@ -24,7 +23,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     public override void OnMessageReceived(RemoteMessage message)
     {
-        Log.LogDebug("FirebaseMessagingService.OnMessageReceived. MessageId={MessageId}", message.MessageId);
+        Log.LogDebug("FirebaseMessagingService.OnMessageReceived. MessageId='{MessageId}', CollapseKey='{CollapseKey}'",
+            message.MessageId, message.CollapseKey);
 
         base.OnMessageReceived(message);
 
@@ -54,8 +54,12 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         SendNotification(notification.Body, notification.Title, message.Data);
     }
 
-    private void SendNotification(string messageBody, string title, IDictionary<string, string> data)
+    private void SendNotification(
+        string messageBody,
+        string title,
+        IDictionary<string, string> data)
     {
+        data.TryGetValue("tag", out var tag);
         var intent = new Intent(this, typeof(MainActivity));
         intent.AddFlags(ActivityFlags.SingleTop);
 
@@ -67,15 +71,16 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         var pendingIntent = PendingIntent.GetActivity(this,
             MainActivity.NotificationID, intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        var notificationBuilder = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
+        var notification = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
             .SetContentTitle(title)
             .SetSmallIcon(Resource.Mipmap.appicon)
             .SetContentText(messageBody)
             .SetContentIntent(pendingIntent)
             .SetAutoCancel(true) // closes notification after tap
-            .SetPriority((int)NotificationPriority.High);
+            .SetPriority((int)NotificationPriority.High)
+            .Build();
 
         var notificationManager = NotificationManagerCompat.From(this);
-        notificationManager.Notify(MainActivity.NotificationID, notificationBuilder.Build());
+        notificationManager.Notify(tag, 0, notification);
     }
 }
