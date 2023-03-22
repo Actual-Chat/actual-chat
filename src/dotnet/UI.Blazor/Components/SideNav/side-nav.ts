@@ -6,6 +6,7 @@ import { DocumentEvents, preventDefaultForEvent } from 'event-handling';
 import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
+import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 
 const { debugLog } = Log.get('SideNav');
 
@@ -46,7 +47,7 @@ export class SideNav extends DisposableBag {
         public readonly options: SideNavOptions,
     ) {
         super();
-        const pullGestureDisposer = DeviceInfo.isIos ? null : SideNavPullDetectGesture.use(this);
+        const pullGestureDisposer = DeviceInfo.isIos && BrowserInfo.appKind !== 'MauiApp' ? null : SideNavPullDetectGesture.use(this);
         if (this.side == SideNavSide.Left) {
             SideNav.left = this;
             this.addDisposables(pullGestureDisposer, { dispose() { SideNav.left = null }});
