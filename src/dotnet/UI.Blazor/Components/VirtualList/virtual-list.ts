@@ -1,5 +1,5 @@
-import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
-import { clamp } from 'math';
+import { debounce, delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
+import { clamp, Vector2D } from 'math';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
@@ -10,6 +10,9 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { Pivot } from './ts/pivot';
 
 import { Log } from 'logging';
+import { DocumentEvents, preventDefaultForEvent } from 'event-handling';
+import { Gesture, Gestures } from 'gestures';
+import { Disposable, fromSubscription } from 'disposable';
 
 const { debugLog } = Log.get('VirtualList');
 
@@ -29,7 +32,6 @@ const UpdateTimeout: number = 800;
 export class VirtualList {
     /** ref to div.virtual-list */
     private readonly _ref: HTMLElement;
-    private readonly _containerRef: HTMLElement;
     private readonly _renderStateRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _spacerRef: HTMLElement;
@@ -52,6 +54,7 @@ export class VirtualList {
     private readonly _newItemRefs: Array<HTMLLIElement> = [];
     private readonly _statistics: VirtualListStatistics = new VirtualListStatistics();
     private readonly _keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    private readonly _detectHighlightGesture: Disposable;
 
     private _isDisposed = false;
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
@@ -77,6 +80,8 @@ export class VirtualList {
     private _viewport: NumberRange | null = null;
     private _shouldRecalculateItemRange: boolean = true;
 
+    public readonly containerRef: HTMLElement;
+
     public static create(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
@@ -99,10 +104,12 @@ export class VirtualList {
         this._abortController = new AbortController();
         this._spacerRef = this._ref.querySelector(':scope > .spacer-start');
         this._endSpacerRef = this._ref.querySelector(':scope > .spacer-end');
-        this._containerRef = this._ref.querySelector(':scope > .virtual-container');
         this._renderStateRef = this._ref.querySelector(':scope > .data.render-state');
         this._renderIndexRef = this._ref.querySelector(':scope > .data.render-index');
         this._endAnchorRef = this._ref.querySelector(':scope > .end-anchor');
+        this._detectHighlightGesture = DetectHighlightGesture.use(this);
+
+        this.containerRef = this._ref.querySelector(':scope > .virtual-container');
 
         // Events & observers
         const listenerOptions = { signal: this._abortController.signal };
@@ -111,7 +118,7 @@ export class VirtualList {
         this._renderEndObserver.observe(
             this._renderIndexRef,
             { attributes: true, attributeFilter: ['data-render-index'] });
-        this._renderEndObserver.observe(this._containerRef, { childList: true });
+        this._renderEndObserver.observe(this.containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
         // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
         // Trigger callbacks as early as it can on any intersection change, even 1 percent
@@ -205,6 +212,7 @@ export class VirtualList {
         this._whenUpdateCompleted?.resolve(undefined);
         clearInterval(this._ironPantsIntervalHandle);
         this._ref.removeEventListener('scroll', this.onScroll);
+        this._detectHighlightGesture.dispose();
     }
 
     private get hasUnmeasuredItems(): boolean {
@@ -749,7 +757,7 @@ export class VirtualList {
         if (itemRefs.length && itemRefs[0])
             return itemRefs;
 
-        const itemRefCollection = this._containerRef.getElementsByClassName('item new') as HTMLCollectionOf<HTMLLIElement>;
+        const itemRefCollection = this.containerRef.getElementsByClassName('item new') as HTMLCollectionOf<HTMLLIElement>;
         itemRefs.length = itemRefCollection.length;
         for (let i = 0; i < itemRefCollection.length; i++) {
             itemRefs[i] = itemRefCollection[i];
@@ -762,7 +770,7 @@ export class VirtualList {
         if (itemRefs.length && itemRefs[0])
             return itemRefs;
 
-        const itemRefCollection = this._containerRef.children as HTMLCollectionOf<HTMLLIElement>;
+        const itemRefCollection = this.containerRef.children as HTMLCollectionOf<HTMLLIElement>;
         itemRefs.length = itemRefCollection.length;
         for (let i = 0; i < itemRefCollection.length; i++) {
             itemRefs[i] = itemRefCollection[i];
@@ -779,7 +787,7 @@ export class VirtualList {
     }
 
     private getFirstItemRef(): HTMLElement | null {
-        const itemRef = this._containerRef.firstElementChild;
+        const itemRef = this.containerRef.firstElementChild;
         if (itemRef == null || !itemRef.classList.contains('item'))
             return null;
         return itemRef as HTMLElement;
@@ -790,7 +798,7 @@ export class VirtualList {
     }
 
     private getLastItemRef(): HTMLElement | null {
-        const itemRef = this._containerRef.lastElementChild;
+        const itemRef = this.containerRef.lastElementChild;
         if (itemRef == null || !itemRef.classList.contains('item'))
             return null;
         return itemRef as HTMLElement;
@@ -1022,7 +1030,211 @@ export class VirtualList {
     }
 }
 
+// Gestures
+
+class DetectHighlightGesture extends Gesture {
+    public static use(list: VirtualList): Disposable {
+        debugLog?.log(`DetectHighlightGesture.use()`);
+
+        return fromSubscription(DocumentEvents.capturedPassive.touchStart$.subscribe((event: TouchEvent) => {
+            const target = event.target;
+            if (!(target instanceof HTMLSpanElement))
+                return;
+
+            let parent = target.parentElement;
+            while (parent != null && parent != list.containerRef)
+                parent = parent.parentElement;
+
+            if (parent == null)
+                // virtual list is not found
+                return;
+
+            for (const activeGesture of Gestures.activeGestures)
+                if (activeGesture instanceof HighlightGesture)
+                    return; // Highlight gesture is already active
+
+            Gestures.addActive(new DetectHighlightGesture(list, getCoords(event), event));
+        }));
+    }
+
+    constructor(
+        public readonly list: VirtualList,
+        public readonly origin: Vector2D,
+        public readonly touchStartEvent: TouchEvent,
+    ) {
+        super();
+        debugLog?.log(`DetectHighlightGesture.constructor()`);
+        const startedAt = Date.now();
+
+        this.addDisposables(
+            DocumentEvents.capturedPassive.touchEnd$.subscribe(() => this.dispose()),
+            DocumentEvents.capturedPassive.touchCancel$.subscribe(() => this.dispose()),
+            DocumentEvents.capturedPassive.touchMove$.subscribe((event: TouchEvent) => {
+                const coords = getCoords(event);
+                const offset = coords.sub(this.origin);
+                if (offset.length < 10 || Date.now() - startedAt < 100)
+                    return; // Too small move distance or too early to start highlight
+
+                if (!offset.isHorizontal(2)) {
+                    // Wrong direction
+                    debugLog?.log(`DetectHighlightGesture.touchMove: vertical move`);
+                    this.dispose();
+                    return;
+                }
+
+                // Gestures.addActive(new HighlightGesture(list, origin, startedAt, touchStartEvent, event));
+                this.dispose();
+            }),
+        );
+    }
+}
+
+class HighlightGesture extends Gesture {
+    constructor(
+        public readonly list: VirtualList,
+        origin: Vector2D,
+        startedAt: number,
+        touchStartEvent: TouchEvent,
+        firstMoveEvent: TouchEvent,
+    ) {
+        super();
+
+        const endMove = (event: TouchEvent, isCancelled: boolean) => {
+            debugLog?.log('HighlightGesture.endMove:', event, ', isCancelled:', isCancelled);
+
+            // const moveDuration = Date.now() - startedAt;
+            // if (moveDuration < 150)
+            //     isCancelled = true;
+
+            // this.dispose();
+        }
+
+        const move = (event: TouchEvent) => {
+            console.log(event);
+            // if (event !== firstMoveEvent && event.cancelable && !event.defaultPrevented)
+            //     preventDefaultForEvent(event);
+
+            const coords = getCoords(event);
+            const offset = coords.sub(origin);
+            if (!offset.isHorizontal(2)) {
+                // Wrong direction
+                endMove(event, true);
+                return;
+            }
+        }
+
+        move(firstMoveEvent);
+
+        this.addDisposables(
+            DocumentEvents.active.touchEnd$.subscribe(e => endMove(e, false)),
+            DocumentEvents.active.touchCancel$.subscribe(e => endMove(e, true)),
+            DocumentEvents.active.touchMove$.subscribe(move),
+        );
+    }
+}
+
+// class HighlightGesture extends Gesture {
+//     public static cancelLongPressDistance: number;
+//     public static defaultDelayMs = 500;
+//
+//     public static use(list: VirtualList): void {
+//         debugLog?.log(`HighlightGesture.use`);
+//         DocumentEvents.capturedActive.pointerDown$.subscribe((event: PointerEvent) => {
+//             // if (event.button !== 0) // Only primary button
+//             //     return;
+//             console.log('down', event.clientX, event.clientY, event);
+//             let target = event.target as HTMLElement;
+//             while (target != null) {
+//                 if (target.nodeName == 'UL' && target.classList.contains('virtual-container'))
+//                     break;
+//                 target = target.parentElement;
+//             }
+//             if (target == null)
+//                 // virtual list is not found
+//                 return;
+//
+//
+//             target.style.touchAction = 'pan-y';
+//             // target.setPointerCapture(event.pointerId);
+//             // event.preventDefault();
+//             const gesture = new HighlightGesture(list, event, target);
+//             Gestures.addActive(gesture);
+//         });
+//     }
+//
+//     constructor(
+//         public readonly list: VirtualList,
+//         public readonly startEvent: PointerEvent,
+//         public readonly virtualContainer: HTMLElement
+//     ) {
+//         super();
+//         const startPoint = new Vector2D(startEvent.clientX, startEvent.clientY);
+//         this.addDisposables(
+//             // Events that we track
+//             DocumentEvents.capturedPassive.pointerMove$.subscribe((e: PointerEvent) => {
+//                 console.log('move', e.clientX, e.clientY, e);
+//                 const currentPoint = new Vector2D(e.clientX, e.clientY);
+//                 const moveVector = currentPoint.sub(startPoint);
+//                 if (Math.abs(moveVector.x) > 10 && Math.abs(moveVector.y) < 10) {
+//                     // horizontal move
+//                     virtualContainer.setPointerCapture(e.pointerId);
+//                 }
+//                 else if (!virtualContainer.hasPointerCapture(e.pointerId)) {
+//                     // skip
+//                     return;
+//                 }
+//
+//                 const element = document.elementFromPoint(e.clientX, e.clientY) as HTMLSpanElement;
+//                 if (element.nodeName == 'SPAN' && !(element.classList.contains('highlighting'))) {
+//                     let parent = element.parentElement;
+//                     while (parent != virtualContainer && parent != null) {
+//                         parent = parent.parentElement;
+//                     }
+//                     if (parent == null) {
+//                         // dispose as current span doesn't belong to virtual list
+//                         virtualContainer.releasePointerCapture(e.pointerId);
+//                         virtualContainer.style.touchAction = 'auto';
+//                         this.dispose();
+//                         return;
+//                     }
+//
+//                     element.classList.add('highlighting');
+//                     element.dataset.highlightId = e.pointerId.toString();
+//                 }
+//                 // console.log(element);
+//                 // e.preventDefault();
+//             }),
+//             DocumentEvents.capturedPassive.pointerUp$.subscribe((e: PointerEvent) => {
+//                 console.log('up', e);
+//                 virtualContainer.releasePointerCapture(e.pointerId);
+//                 virtualContainer.style.touchAction = 'auto';
+//                 this.dispose();
+//             }),
+//             DocumentEvents.capturedPassive.pointerCancel$.subscribe((e: PointerEvent) => {
+//                 console.log('cancel', virtualContainer.style.touchAction, e);
+//                 virtualContainer.releasePointerCapture(e.pointerId);
+//                 this.dispose();
+//             }),
+//             // {
+//             //     dispose: () => virtualContainer.style.touchAction = 'auto'
+//             // },
+//         );
+//     }
+// }
+
+
 // Helper functions
+
+function getCoords(e: PointerEvent | TouchEvent): Vector2D {
+    if (e['touches']) {
+        const touch = (e as TouchEvent).touches[0];
+        return new Vector2D(touch.pageX, touch.pageY);
+    }
+
+    const pe = e as PointerEvent;
+    return new Vector2D(pe.pageX, pe.pageY);
+}
+
 function getItemKey(itemRef?: HTMLElement): string | null {
     // return itemRef?.dataset['key'];
     return itemRef?.id;

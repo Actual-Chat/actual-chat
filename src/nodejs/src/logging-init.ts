@@ -182,6 +182,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
+    minLevels.set('VirtualList', LogLevel.Debug);
 
     // XxxUI
     // minLevels.set('FocusUI', LogLevel.Debug);

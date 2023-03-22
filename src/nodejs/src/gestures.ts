@@ -23,7 +23,6 @@ export class Gestures {
         DataHrefGesture.use();
         SuppressDefaultContextMenuGesture.use();
         ContextMenuGesture.use();
-        HighlightGesture.use();
     }
 
     public static addActive(gesture: Gesture): Gesture {
@@ -243,94 +242,6 @@ class ContextMenuGesture extends Gesture {
                         new WaitForEventGesture('pointercancel', () => suppressGesture.dispose()));
                 }
             }),
-        );
-    }
-}
-
-class HighlightGesture extends Gesture {
-    public static cancelLongPressDistance: number;
-    public static defaultDelayMs = 500;
-
-    public static use(): void {
-        debugLog?.log(`HighlightGesture.use`);
-        DocumentEvents.capturedActive.pointerDown$.subscribe((event: PointerEvent) => {
-            // if (event.button !== 0) // Only primary button
-            //     return;
-            console.log('down', event.clientX, event.clientY, event);
-            let target = event.target as HTMLElement;
-            while (target != null) {
-                if (target.nodeName == 'UL' && target.classList.contains('virtual-container'))
-                    break;
-                target = target.parentElement;
-            }
-            if (target == null)
-                // virtual list is not found
-                return;
-
-
-            target.style.touchAction = 'pan-y';
-            // target.setPointerCapture(event.pointerId);
-            // event.preventDefault();
-            const gesture = new HighlightGesture(event, target);
-            Gestures.addActive(gesture);
-        });
-    }
-
-    constructor(
-        public readonly startEvent: PointerEvent,
-        public readonly virtualContainer: HTMLElement
-    ) {
-        super();
-        const startPoint = new Vector2D(startEvent.clientX, startEvent.clientY);
-        this.toDispose.push(
-            // Events that we track
-            DocumentEvents.capturedPassive.pointerMove$.subscribe((e: PointerEvent) => {
-                console.log('move', e.clientX, e.clientY, e);
-                const currentPoint = new Vector2D(e.clientX, e.clientY);
-                const moveVector = currentPoint.sub(startPoint);
-                if (Math.abs(moveVector.x) > 10 && Math.abs(moveVector.y) < 10) {
-                    // horizontal move
-                    virtualContainer.setPointerCapture(e.pointerId);
-                }
-                else if (!virtualContainer.hasPointerCapture(e.pointerId)) {
-                    // skip
-                    return;
-                }
-
-                const element = document.elementFromPoint(e.clientX, e.clientY) as HTMLSpanElement;
-                if (element.nodeName == 'SPAN' && !(element.classList.contains('highlighting'))) {
-                    let parent = element.parentElement;
-                    while (parent != virtualContainer && parent != null) {
-                        parent = parent.parentElement;
-                    }
-                    if (parent == null) {
-                        // dispose as current span doesn't belong to virtual list
-                        virtualContainer.releasePointerCapture(e.pointerId);
-                        virtualContainer.style.touchAction = 'auto';
-                        this.dispose();
-                        return;
-                    }
-
-                    element.classList.add('highlighting');
-                    element.dataset.highlightId = e.pointerId.toString();
-                }
-                // console.log(element);
-                // e.preventDefault();
-            }),
-            DocumentEvents.capturedPassive.pointerUp$.subscribe((e: PointerEvent) => {
-                console.log('up', e);
-                virtualContainer.releasePointerCapture(e.pointerId);
-                virtualContainer.style.touchAction = 'auto';
-                this.dispose();
-            }),
-            DocumentEvents.capturedPassive.pointerCancel$.subscribe((e: PointerEvent) => {
-                console.log('cancel', virtualContainer.style.touchAction, e);
-                virtualContainer.releasePointerCapture(e.pointerId);
-                this.dispose();
-            }),
-            // {
-            //     dispose: () => virtualContainer.style.touchAction = 'auto'
-            // },
         );
     }
 }
