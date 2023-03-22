@@ -31,9 +31,9 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 
 let codecModule: Codec | null = null;
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 4;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 5; // 20ms * 5 = 100ms
 const FADE_CHUNKS = 2;
-const CHUNK_SIZE = 960;
+const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
@@ -42,7 +42,7 @@ const worker = self as unknown as Worker;
 let hubConnection: signalR.HubConnection;
 let recordingSubject: signalR.Subject<Uint8Array> = null;
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
-let vadState: 'voice' | 'silence' = 'voice';
+let vadState: 'voice' | 'silence' = 'silence';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
@@ -105,6 +105,13 @@ const serverImpl: OpusEncoderWorker = {
         encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, workletPort, serverImpl);
         vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
 
+        // Ensure audio transport is up and running
+        debugLog?.log(`init: -> hub.ping()`);
+        const pong = await hubConnection.invoke('Ping');
+        debugLog?.log(`init: <- hub.ping(): `, pong);
+        if (pong !== 'Pong')
+            warnLog?.log(`init: unexpected Ping call result`, pong);
+
         state = 'ended';
     },
 
@@ -112,19 +119,15 @@ const serverImpl: OpusEncoderWorker = {
         lastInitArguments = { sessionId, chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
-        // Ensure audio transport is up and running
-        debugLog?.log(`start: -> hub.ping()`);
-        const pong = await hubConnection.invoke('Ping');
-        debugLog?.log(`start: <- hub.ping(): `, pong);
-        if (pong !== 'Pong')
-            warnLog.log(`start: unexpected Ping call result`, pong);
-
         state = 'encoding';
-        vadState = 'silence';
+        if (vadState === 'voice')
+            await startRecording();
+        // do not set vadState there - it's independent from the recording state
     },
 
     stop: async (): Promise<void> => {
         debugLog?.log(`stop`);
+
         state = 'ended';
         processQueue('out');
         recordingSubject?.complete();
@@ -151,8 +154,11 @@ const serverImpl: OpusEncoderWorker = {
         const newVadState = change.kind === 'end' ? 'silence' : 'voice';
         if (vadState === newVadState)
             return;
-        if (state !== 'encoding')
+        if (state !== 'encoding') {
+            // set state, then leave since we are not recording
+            vadState = newVadState;
             return;
+        }
 
         if (newVadState === 'silence') {
             // set state, then complete the stream
@@ -165,20 +171,17 @@ const serverImpl: OpusEncoderWorker = {
             chunkTimeOffset = 0;
         }
         else {
+            // set state, then start new stream - several audio chunks can be buffered at the recordingSubject
+            // while hubConnection.send is being processed
+            vadState = newVadState;
+
             if (!lastInitArguments)
                 throw new Error('Unable to resume streaming lastNewStreamMessage is null');
 
             // start new stream and then set state
-            const { sessionId, chatId, repliedChatEntryId } = lastInitArguments;
             lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
-            recordingSubject?.complete(); // Just in case
-            recordingSubject = new signalR.Subject<Uint8Array>();
-            if (!encoder)
-                encoder = new codecModule.Encoder();
-            const preSkip = encoder.preSkip;
-            await hubConnection.send('ProcessAudio', sessionId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
-            vadState = newVadState;
-            processQueue('in');
+
+            await startRecording();
         }
     }
 }
@@ -203,6 +206,18 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
         },
     };
+}
+
+async function startRecording(): Promise<void> {
+    const { sessionId, chatId, repliedChatEntryId } = lastInitArguments;
+
+    recordingSubject?.complete(); // Just in case
+    recordingSubject = new signalR.Subject<Uint8Array>();
+    if (!encoder)
+        encoder = new codecModule.Encoder();
+    const preSkip = encoder.preSkip;
+    await hubConnection.send('ProcessAudio', sessionId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
+    processQueue('in');
 }
 
 function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {

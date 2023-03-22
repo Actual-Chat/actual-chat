@@ -78,6 +78,7 @@ public class AudioRecorder : IAsyncDisposable
                 .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId)
                 .ConfigureAwait(false);
             if (!isStarted) {
+                MicrophonePermission.Reset();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
                 // Cancel recording
                 MarkStopped();

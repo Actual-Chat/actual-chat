@@ -151,20 +151,20 @@ export class OpusMediaRecorder {
 
             await catchErrors(
                 () => this.encoderWorkletInstance?.disconnect(),
-                e => warnLog.log('start.detach encoderWorkletInstance.disconnect error:', e));
+                e => warnLog?.log('start.detach encoderWorkletInstance.disconnect error:', e));
             this.encoderWorkletInstance = null;
             await catchErrors(
                 () => this.encoderWorklet?.dispose(),
-                e => warnLog.log('start.detach encoderWorklet.dispose error:', e));
+                e => warnLog?.log('start.detach encoderWorklet.dispose error:', e));
             this.encoderWorklet = null;
 
             await catchErrors(
                 () => this.vadWorkletInstance?.disconnect(),
-                e => warnLog.log('start.detach vadWorkletInstance.disconnect error:', e));
+                e => warnLog?.log('start.detach vadWorkletInstance.disconnect error:', e));
             this.vadWorkletInstance = null;
             await catchErrors(
                 () => this.vadWorklet?.dispose(),
-                e => warnLog.log('start.detach vadWorklet.dispose error:', e));
+                e => warnLog?.log('start.detach vadWorklet.dispose error:', e));
             this.vadWorklet = null;
 
             if (this.stream) {
@@ -174,20 +174,20 @@ export class OpusMediaRecorder {
                 for (let track of tracks) {
                     await catchErrors(
                         () => track.stop(),
-                        e => warnLog.log('start.detach track.stop error:', e));
+                        e => warnLog?.log('start.detach track.stop error:', e));
                     await catchErrors(
                         () => this.stream.removeTrack(track),
-                        e => warnLog.log('start.detach stream.removeTrack error:', e));
+                        e => warnLog?.log('start.detach stream.removeTrack error:', e));
                 }
             }
             this.stream = null;
 
             await catchErrors(
                 () => this.encoderWorker?.stop(),
-                e => warnLog.log('start.detach encoderWorker.stop error:', e));
+                e => warnLog?.log('start.detach encoderWorker.stop error:', e));
             await catchErrors(
                 () => this.source?.disconnect(),
-                e => warnLog.log('start.detach source.disconnect error:', e));
+                e => warnLog?.log('start.detach source.disconnect error:', e));
             this.source = null;
 
             this.state = null;

@@ -11,7 +11,7 @@ public abstract class PermissionHandler : WorkerBase
 
     protected IMomentClock Clock { get; init; }
     protected AsyncLock AsyncLock { get; } = new (ReentryMode.CheckedPass);
-    protected TimeSpan ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
+    protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
     public IState<bool?> Cached => _cached;
 
@@ -60,6 +60,9 @@ public abstract class PermissionHandler : WorkerBase
         return isGranted;
     }
 
+    public void Reset()
+        => _cached.Value = null;
+
     // Protected methods
 
     protected abstract Task<bool> Check(CancellationToken cancellationToken);
@@ -78,10 +81,14 @@ public abstract class PermissionHandler : WorkerBase
             expirationCts = cancellationToken.CreateLinkedTokenSource();
             var expirationToken = expirationCts.Token;
             var cExpected = cCached;
-            var _ = BackgroundTask.Run(async () => {
-                await Clock.Delay(ExpirationPeriod, expirationToken).ConfigureAwait(false);
-                await Set(null, cExpected, cancellationToken).ConfigureAwait(false);
-            }, Log, "Expiration task failed", CancellationToken.None);
+            if (ExpirationPeriod is { } expirationPeriod)
+                _ = BackgroundTask.Run(async () => {
+                        await Clock.Delay(expirationPeriod, expirationToken).ConfigureAwait(false);
+                        await Set(null, cExpected, cancellationToken).ConfigureAwait(false);
+                    },
+                    Log,
+                    "Expiration task failed",
+                    CancellationToken.None);
         }
     }
 

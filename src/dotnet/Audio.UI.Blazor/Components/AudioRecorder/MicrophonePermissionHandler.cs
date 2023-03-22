@@ -14,7 +14,8 @@ public class MicrophonePermissionHandler : PermissionHandler
     protected ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
 
     public MicrophonePermissionHandler(IServiceProvider services, bool mustStart = true)
-        : base(services, mustStart) { }
+        : base(services, mustStart)
+        => ExpirationPeriod = null; // We don't need expiration period - AudioRecorder is able to reset cached permission in case of recording failure
 
     protected override Task<bool> Check(CancellationToken cancellationToken)
         => AudioRecorder.RequestPermission(cancellationToken);

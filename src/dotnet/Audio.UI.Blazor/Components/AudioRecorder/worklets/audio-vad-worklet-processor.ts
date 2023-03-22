@@ -19,7 +19,6 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        warnLog?.log('ctor');
         this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 

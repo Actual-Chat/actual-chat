@@ -95,14 +95,14 @@ export class AudioPlayer {
             if (decoderToFeederWorkletChannel) {
                 await catchErrors(
                     () => decoderWorker.close(this.id),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
                 this.decoderToFeederWorkletChannel = null;
                 await catchErrors(
                     () => decoderToFeederWorkletChannel?.port1.close(),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
                 await catchErrors(
                     () => decoderToFeederWorkletChannel?.port2.close(),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
             }
 
             const feederNode = this.feederNode;
@@ -110,7 +110,7 @@ export class AudioPlayer {
                 this.feederNode = null;
                 await catchErrors(
                     () => feederNode.disconnect(),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
                 feederNode.onStateChanged = null;
             }
         }
