@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
-import { audioContextSource } from 'audio-context-source';
+import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
+import { audioContextSource } from '../../Services/audio-context-source';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';

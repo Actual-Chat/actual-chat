@@ -193,7 +193,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\math.ts = src\nodejs\src\math.ts
 		src\nodejs\src\keyboard.ts = src\nodejs\src\keyboard.ts
-		src\nodejs\src\audio-context-source.ts = src\nodejs\src\audio-context-source.ts
 		src\nodejs\src\interactive.ts = src\nodejs\src\interactive.ts
 		src\nodejs\src\gestures.ts = src\nodejs\src\gestures.ts
 		src\nodejs\src\device-info.ts = src\nodejs\src\device-info.ts
@@ -201,7 +200,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\resettable.ts = src\nodejs\src\resettable.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
-		src\nodejs\src\audio-context-ref.ts = src\nodejs\src\audio-context-ref.ts
 		src\nodejs\src\async-processor.ts = src\nodejs\src\async-processor.ts
 	EndProjectSection
 EndProject
