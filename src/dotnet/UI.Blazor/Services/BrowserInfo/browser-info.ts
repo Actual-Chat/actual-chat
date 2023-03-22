@@ -40,7 +40,7 @@ export class BrowserInfo {
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
-        infoLog?.log(`init:`, JSON.stringify(initResult));
+        infoLog?.log(`init:`, JSON.stringify(initResult), appKind);
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 

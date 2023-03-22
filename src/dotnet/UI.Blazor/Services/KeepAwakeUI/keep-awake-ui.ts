@@ -24,7 +24,7 @@ export class KeepAwakeUI {
         }
     };
 
-    public static warmup() {
+    private static warmup() {
         debugLog?.log('-> warmup()');
         return this.enableNoSleep().then(() => {
                 if (!this.mustKeepAwake) {
@@ -37,17 +37,19 @@ export class KeepAwakeUI {
     }
 
     /*
-    * Workaround for iOS safari
+    * Workaround for safari
     * */
-    public static subscribeOnKeepAwakeTriggers() {
-        if (!DeviceInfo.isSafari || BrowserInfo.appKind === 'WasmApp')
+    public static async subscribeOnKeepAwakeTriggers() {
+        await BrowserInfo.whenReady;
+        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isSafari;
+        if (!isSsbSafari)
             return;
 
         if (this.isSubscribedOnClick)
             return;
 
         debugLog?.log('subscribeOnKeepAwake');
-        DocumentEvents.active.click$
+        const subscription = DocumentEvents.active.click$
             .pipe(
                 filter(ev => {
                     const [triggerElement, mustKeepAwake] = getOrInheritData(ev.target, 'mustKeepAwake');
@@ -57,26 +59,32 @@ export class KeepAwakeUI {
                 exhaustMap(() => this.enableNoSleep()),
             ).subscribe();
         this.isSubscribedOnClick = true;
+        await subscription;
     }
 
     /*
     * Workaround for iOS safari
     * Fixes issue when hiding browser or switching between apps or force sleep breaks keep awake functionality
     * */
-    public static subscribeOnDocumentVisibility() {
-        if (!DeviceInfo.isSafari || BrowserInfo.appKind === 'WasmApp')
+    public static async subscribeOnDocumentVisibility() {
+        await BrowserInfo.whenReady;
+        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isSafari;
+        if (!isSsbSafari)
             return;
 
-        DocumentEvents.active.visibilityChange$
+        await DocumentEvents.active.visibilityChange$
             .pipe(concatMap(async () => {
                 if (document.visibilityState == 'hidden')
                     this.disableNoSleep();
-                else if(this.mustKeepAwake)
+                else if (this.mustKeepAwake)
                     return this.enableNoSleep();
             })).subscribe();
     }
 
-    public static subscribeOnFirstInteraction() {
+    public static async subscribeOnFirstInteraction() {
+        await BrowserInfo.whenReady;
+        if (BrowserInfo.appKind === 'MauiApp')
+            return;
         // TODO: find out what's wrong with Interactive - why it breaks user gesture context in safari
         document.body.addEventListener(
             'click',
@@ -116,6 +124,6 @@ export class KeepAwakeUI {
     }
 }
 
-KeepAwakeUI.subscribeOnFirstInteraction();
-KeepAwakeUI.subscribeOnKeepAwakeTriggers();
-KeepAwakeUI.subscribeOnDocumentVisibility();
+KeepAwakeUI.subscribeOnFirstInteraction().then();
+KeepAwakeUI.subscribeOnKeepAwakeTriggers().then();
+KeepAwakeUI.subscribeOnDocumentVisibility().then();
