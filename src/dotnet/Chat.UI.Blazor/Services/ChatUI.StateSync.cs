@@ -16,8 +16,8 @@ public partial class ChatUI
         return (
             from chain in baseChains
             select chain
+                .LogBoundary(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
-                // .LogBoundary(LogLevel.Debug, Log)
             ).RunIsolated(cancellationToken);
     }
 

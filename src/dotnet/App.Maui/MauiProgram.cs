@@ -247,6 +247,7 @@ public static partial class MauiProgram
         // UI
         services.AddSingleton<NavigationInterceptor>(c => new NavigationInterceptor(c));
         services.AddTransient<MainPage>();
+        services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
 
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
