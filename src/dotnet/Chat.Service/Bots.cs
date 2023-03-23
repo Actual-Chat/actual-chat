@@ -12,9 +12,7 @@ public static class Bots
             UserId = Constants.User.Walle.UserId,
             Avatar = new AvatarFull {
                 Name = Constants.User.Walle.Name,
-                Media = new Media.Media {
-                    ContentId = Constants.User.Walle.Picture,
-                },
+                Picture = Constants.User.Walle.Picture,
             },
         };
 }

@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Media;
 using Microsoft.Toolkit.HighPerformance;
 using Stl.Fusion.Authentication.Commands;
 
@@ -57,7 +56,6 @@ public partial class UsersDbInitializer
     {
         var commander = Services.Commander();
         var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
-        var mediaBackend = Services.GetRequiredService<IMediaBackend>();
 
         var isAdmin = userId == Constants.User.Admin.UserId;
         var userIdentity = new UserIdentity("internal", userId);
@@ -81,26 +79,15 @@ public partial class UsersDbInitializer
 
         // Create avatar
         var avatarBio = isAdmin ? "Admin" : $"I'm just a {name} test bot";
-        var mediaId = new MediaId($"avatars:{Ulid.NewUlid().ToString()}");
         var avatarPicture = isAdmin
             ? Constants.User.Admin.Picture
             : $"https://avatars.dicebear.com/api/bottts/{userId.Value.GetDjb2HashCode()}.svg";
-        var media = new Media.Media(mediaId) {
-            ContentId = avatarPicture,
-        };
-        var changeMediaCommand = new IMediaBackend.ChangeCommand(
-            mediaId,
-            new Change<Media.Media> {
-                Create = media,
-            });
-        await commander.Call(changeMediaCommand, cancellationToken).ConfigureAwait(false);
-
         var changeAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull {
                 UserId = account.Id,
                 Name = name,
                 Bio = avatarBio,
-                MediaId = mediaId,
+                Picture = avatarPicture,
             },
         });
         var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);

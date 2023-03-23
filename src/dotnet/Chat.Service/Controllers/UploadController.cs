@@ -43,7 +43,7 @@ public class UploadController : ControllerBase
         var fileInfo = await ReadFileContent(file, cancellationToken).ConfigureAwait(false);
         var (processedFile, imageSize) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
 
-        var mediaId = new MediaId($"attachments:{Ulid.NewUlid().ToString()}");
+        var mediaId = new MediaId($"{Ulid.NewUlid().ToString()}");
         var media = new Media.Media(mediaId) {
             ContentId = $"media/attachments/{mediaId}{Path.GetExtension(file.FileName)}",
             FileName = fileInfo.FileName,

@@ -17,8 +17,8 @@ internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
             return null;
 
         var dbMedia = await DbMediaResolver.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        var userAvatar = dbMedia?.ToModel();
-        return userAvatar;
+        var media = dbMedia?.ToModel();
+        return media;
     }
 
     // [CommandHandler]

@@ -66,6 +66,6 @@
         return $"hsl({h}, 30%, 80%)";
     }
 
-    private async Task OnUploaded(MediaContent mediaId)
-        => await ImagePicked.InvokeAsync(mediaId).ConfigureAwait(false);
+    private async Task OnUploaded(MediaContent mediaContent)
+        => await ImagePicked.InvokeAsync(mediaContent).ConfigureAwait(false);
 }

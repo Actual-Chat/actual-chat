@@ -127,9 +127,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         => new() {
             UserId = account.Id,
             Name = account.FullName,
-            Media = new Media.Media {
-                ContentId = DefaultUserPicture.Get(account.FullName),
-            },
+            Picture = DefaultUserPicture.Get(account.FullName),
             Bio = "",
         };
 }

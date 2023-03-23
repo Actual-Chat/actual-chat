@@ -36,7 +36,7 @@
                     </FormSection>
 
                     <FormSection For="() => _form.IsPublic" Class="flex h-12 md:h-8 justify-center">
-                        <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
+                        <ToggleEdit Id="@_form.IsPublicFormId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
                     </FormSection>
                 }
                 @if (_form.IsPublic) {
@@ -98,7 +98,7 @@
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
         _form ??= new(ComponentIdGenerator);
         _form.Title = chat.Title;
-        _form.Picture = chat.Media?.ContentId ?? "";
+        _form.Picture = chat.Picture?.ContentId ?? "";
         _form.IsPublic = chat.IsPublic;
         _form.ImageUploadUrl = "/api/chats/upload-picture";
     }
@@ -127,7 +127,7 @@
         var newChat = chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,
-            MediaId = _form.MediaId,
+            MediaId = _form.PictureId,
         };
         var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
@@ -138,7 +138,7 @@
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form.Picture = mediaContent.ContentId;
-        _form.MediaId = mediaContent.MediaId;
+        _form.PictureId = mediaContent.MediaId;
         StateHasChanged();
     }
 
@@ -155,20 +155,20 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
         public string Picture { get; set; } = "";
-        public MediaId MediaId { get; set; } = MediaId.None;
+        public MediaId PictureId { get; set; } = MediaId.None;
         public bool IsPublic { get; set; }
         public string ImageUploadUrl { get; set; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
-        public string PictureId { get; }
-        public string IsPublicId { get; }
+        public string PictureFormId { get; }
+        public string IsPublicFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
-            PictureId = $"{FormId}-picture";
-            IsPublicId = $"{FormId}-is-public";
+            PictureFormId = $"{FormId}-picture";
+            IsPublicFormId = $"{FormId}-is-public";
         }
     }
 

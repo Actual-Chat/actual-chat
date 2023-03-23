@@ -17,7 +17,7 @@ public class AvatarPicturesController : ControllerBase
         Commander = commander;
     }
 
-    [HttpPost, Route("api/user-avatars/upload-picture")]
+    [HttpPost, Route("api/avatars/upload-picture")]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
     {
         var httpRequest = HttpContext.Request;
@@ -34,7 +34,7 @@ public class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Chat.PictureFileSizeLimit)
             return BadRequest("Image is too big");
 
-        var mediaId = new MediaId($"avatars:{Ulid.NewUlid().ToString()}");
+        var mediaId = new MediaId($"{Ulid.NewUlid().ToString()}");
         var media = new Media.Media(mediaId) {
             ContentId = $"media/avatars/{mediaId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,

@@ -318,9 +318,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         => new() {
             Name = RandomNameGenerator.Default.Generate(author.Id),
             Bio = "",
-            Media = new Media.Media {
-                ContentId = DefaultUserPicture.GetBoringAvatar(author.Id),
-            },
+            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
         };
 
     private AuthorFull[] GetDefaultPeerChatAuthors(PeerChatId chatId)

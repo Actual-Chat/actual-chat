@@ -319,8 +319,8 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)
          => chat.Kind switch {
-             ChatKind.Group => chat.Media?.ContentId.IsNullOrEmpty() == false
-                 ? UrlMapper.ContentUrl(chat.Media.ContentId)
+             ChatKind.Group => chat.Picture?.ContentId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(chat.Picture.ContentId)
                  : "/favicon.ico",
              ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
                  ? UrlMapper.ContentUrl(author.Avatar.Media.ContentId)

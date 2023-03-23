@@ -52,7 +52,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
-        return dbChat?.ToModel();
+        var chat = dbChat?.ToModel();
+        if (chat == null)
+            return null;
+
+        if (chat.MediaId.IsNone)
+            return chat;
+
+        var media = await MediaBackend.Get(chat.MediaId, cancellationToken).ConfigureAwait(false);
+        return chat with { Picture = media };
     }
 
     // [ComputeMethod]
@@ -242,12 +250,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 var entryAttachments = await attachmentsLookup[e.Id]
                     .Select(async dbAttachment => {
                         var attachment = dbAttachment.ToModel();
-                        if (!attachment.MediaId.IsNone) {
-                            var media = await MediaBackend.Get(attachment.MediaId, cancellationToken).ConfigureAwait(false);
-                            attachment = attachment with { Media = media };
-                        }
+                        if (attachment.MediaId.IsNone)
+                            return attachment;
 
-                        return attachment;
+                        var media = await MediaBackend.Get(attachment.MediaId, cancellationToken).ConfigureAwait(false);
+                        return attachment with { Media = media! };
                     })
                     .Collect()
                     .ConfigureAwait(false);

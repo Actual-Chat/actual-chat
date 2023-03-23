@@ -25,8 +25,10 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 
         var dbUserAvatar = await DbAvatarResolver.Get(avatarId, cancellationToken).ConfigureAwait(false);
         var userAvatar = dbUserAvatar?.ToModel();
+        if (userAvatar == null)
+            return null;
 
-        if (userAvatar?.MediaId == null || userAvatar.MediaId.IsNone)
+        if (userAvatar.MediaId.IsNone)
             return userAvatar;
 
         var media = await MediaBackend.Get(userAvatar.MediaId, cancellationToken).ConfigureAwait(false);

@@ -47,7 +47,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             chat ??= new Chat(chatId);
             chat = chat with {
                 Title = contact.Account.Avatar.Name,
-                Media = contact.Account.Avatar.Media,
+                Picture = contact.Account.Avatar.Media,
             };
         }
         else if (chat == null)
