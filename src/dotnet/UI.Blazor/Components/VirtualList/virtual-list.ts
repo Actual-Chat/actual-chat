@@ -1038,42 +1038,58 @@ class DetectHighlightGesture extends Gesture {
 
         return fromSubscription(DocumentEvents.capturedPassive.touchStart$.subscribe((event: TouchEvent) => {
             const target = event.target;
-            if (!(target instanceof HTMLSpanElement))
+            if (!(target instanceof HTMLSpanElement)) {
+                console.log('1', target);
                 return;
+            }
+
+            const span = target as HTMLSpanElement;
+            if (span.classList.length != 0 && !span.classList.contains('chat-entry-kind-marker')) {
+                console.log('2', target);
+                return; // let's start highlight on words without highlight
+            }
 
             let parent = target.parentElement;
             while (parent != null && parent != list.containerRef)
                 parent = parent.parentElement;
 
             if (parent == null)
-                // virtual list is not found
-                return;
+                return; // virtual list is not found
 
-            for (const activeGesture of Gestures.activeGestures)
+            for (const activeGesture of Gestures.activeGestures) {
+                if (activeGesture instanceof DetectHighlightGesture)
+                    return; // Detect highlight gesture is already active
                 if (activeGesture instanceof HighlightGesture)
                     return; // Highlight gesture is already active
+            }
 
-            Gestures.addActive(new DetectHighlightGesture(list, getCoords(event), event));
+            Gestures.addActive(new DetectHighlightGesture(list, event));
         }));
     }
 
     constructor(
-        public readonly list: VirtualList,
-        public readonly origin: Vector2D,
-        public readonly touchStartEvent: TouchEvent,
+        private readonly list: VirtualList,
+        private readonly touchStartEvent: TouchEvent,
     ) {
         super();
         debugLog?.log(`DetectHighlightGesture.constructor()`);
+
+        const origin = getPosition(touchStartEvent);
         const startedAt = Date.now();
 
         this.addDisposables(
             DocumentEvents.capturedPassive.touchEnd$.subscribe(() => this.dispose()),
             DocumentEvents.capturedPassive.touchCancel$.subscribe(() => this.dispose()),
             DocumentEvents.capturedPassive.touchMove$.subscribe((event: TouchEvent) => {
-                const coords = getCoords(event);
-                const offset = coords.sub(this.origin);
-                if (offset.length < 10 || Date.now() - startedAt < 100)
+                const coords = getPosition(event);
+                const offset = coords.sub(origin);
+                const duration = Date.now() - startedAt;
+                const length = offset.length;
+                const speed = length * 1000 / duration;
+                if (length < 10 || duration < 100)
                     return; // Too small move distance or too early to start highlight
+                if (speed > 90)
+                    return; // Let's use highlight with slower gesture, and use faster one for reply
 
                 if (!offset.isHorizontal(2)) {
                     // Wrong direction
@@ -1082,7 +1098,7 @@ class DetectHighlightGesture extends Gesture {
                     return;
                 }
 
-                // Gestures.addActive(new HighlightGesture(list, origin, startedAt, touchStartEvent, event));
+                Gestures.addActive(new HighlightGesture(list, origin, startedAt, touchStartEvent, event));
                 this.dispose();
             }),
         );
@@ -1102,19 +1118,31 @@ class HighlightGesture extends Gesture {
         const endMove = (event: TouchEvent, isCancelled: boolean) => {
             debugLog?.log('HighlightGesture.endMove:', event, ', isCancelled:', isCancelled);
 
-            // const moveDuration = Date.now() - startedAt;
-            // if (moveDuration < 150)
-            //     isCancelled = true;
+            const moveDuration = Date.now() - startedAt;
+            if (moveDuration < 150)
+                isCancelled = true;
 
-            // this.dispose();
+            this.dispose();
         }
 
         const move = (event: TouchEvent) => {
-            console.log(event);
-            // if (event !== firstMoveEvent && event.cancelable && !event.defaultPrevented)
-            //     preventDefaultForEvent(event);
+            // console.log(event);
+            if (event !== firstMoveEvent && event.cancelable && !event.defaultPrevented)
+                preventDefaultForEvent(event);
 
-            const coords = getCoords(event);
+            const clientPosition = getPosition(event);
+            const span = document.elementFromPoint(clientPosition.x, clientPosition.y) as HTMLSpanElement;
+            if (!(span instanceof HTMLSpanElement) || !(span.parentElement instanceof HTMLSpanElement)) {
+                // not a word markup
+                this.dispose();
+                return;
+            }
+
+            if (!span.classList.contains('highlighting')) {
+               span.classList.add('highlighting');
+            }
+
+            const coords = getPosition(event);
             const offset = coords.sub(origin);
             if (!offset.isHorizontal(2)) {
                 // Wrong direction
@@ -1225,7 +1253,7 @@ class HighlightGesture extends Gesture {
 
 // Helper functions
 
-function getCoords(e: PointerEvent | TouchEvent): Vector2D {
+function getPosition(e: PointerEvent | TouchEvent): Vector2D {
     if (e['touches']) {
         const touch = (e as TouchEvent).touches[0];
         return new Vector2D(touch.pageX, touch.pageY);

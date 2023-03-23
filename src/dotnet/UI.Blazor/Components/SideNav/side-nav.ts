@@ -11,7 +11,7 @@ import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 const { debugLog } = Log.get('SideNav');
 
 const Deceleration = 4; // 1 = full width, per second
-const PullBoundary = 0.2; // 20% of the screen width
+const PullBoundary = 0.15; // 15% of the screen width ~ author badge zone in chat message
 const PrePullDistance = 5; // DeviceInfo.isAndroid ? 5 : 10; // In CSS pixels
 const PrePullDurationMs = 100;
 const MinPullDurationMs = 150;
