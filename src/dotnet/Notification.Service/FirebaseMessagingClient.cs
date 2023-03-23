@@ -59,9 +59,9 @@ public class FirebaseMessagingClient
                 // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
                 // Notification = default,
                 Data = new Dictionary<string, string>(StringComparer.Ordinal) {
-                    { nameof(NotificationConstants.MessageDataKeys.Title), title },
-                    { nameof(NotificationConstants.MessageDataKeys.Body), content },
-                    { nameof(NotificationConstants.MessageDataKeys.ImageUrl), absoluteIconUrl },
+                    { NotificationConstants.MessageDataKeys.Title, title },
+                    { NotificationConstants.MessageDataKeys.Body, content },
+                    { NotificationConstants.MessageDataKeys.ImageUrl, absoluteIconUrl },
                 },
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */
