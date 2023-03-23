@@ -2,6 +2,7 @@ using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using Android.App;
 using Android.Content;
+using Android.Graphics;
 using AndroidX.Core.App;
 using Firebase.Messaging;
 
@@ -11,9 +12,18 @@ namespace ActualChat.App.Maui;
 [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
 public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
+    private const int ImageCacheSize = 5;
+
+    private static readonly ThreadSafeLruCache<string, Bitmap?> _imagesCache = new (ImageCacheSize);
+    private static FirebaseMessagingUtils? _utils;
+
     private ILogger Log { get; set; } = NullLogger.Instance;
+
     public override void OnCreate()
-        => Log = AppServices.LogFor<FirebaseMessagingService>();
+    {
+        _utils ??= new FirebaseMessagingUtils(ApplicationContext!);
+        Log = AppServices.LogFor<FirebaseMessagingService>();
+    }
 
     public override void OnNewToken(string token)
     {
@@ -28,35 +38,51 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         base.OnMessageReceived(message);
 
+        string? title;
+        string? text;
+        string? imageUrl;
+
         // There are 2 types of messages:
         // https://firebase.google.com/docs/cloud-messaging/concept-options#notifications_and_data_messages
         var notification = message.GetNotification();
-        if (notification == null) {
-            // Data message is delivered both in foreground and background modes.
-            // For now we have no messages of this type.
-            // Nothing to do.
-            return;
-        }
-
-        // Notification message is delivered here only when app is foreground.
         var data = message.Data;
-        data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
-        var chatId = new ChatId(sChatId, ParseOrNone.Option);
-        if (!chatId.IsNone && ScopedServicesAccessor.IsInitialized) {
-            var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationUI>();
-            if (handler.IsAlreadyThere(chatId)) {
-                // Do nothing if notification leads to the active chat.
-                Log.LogDebug("FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: \'{ChatId}\'.", chatId);
-                return;
+        // Now we use Data message to deliver notifications to Android.
+        // This allows us to control notification display style both when app is in foreground and in background modes.
+        if (notification == null) {
+            data.TryGetValue(NotificationConstants.MessageDataKeys.Title, out title);
+            data.TryGetValue(NotificationConstants.MessageDataKeys.Body, out text);
+            data.TryGetValue(NotificationConstants.MessageDataKeys.ImageUrl, out imageUrl);
+        }
+        else {
+            // Backward compatibility, we still can accept notification messages.
+            title = notification.Title;
+            text = notification.Body;
+            imageUrl = notification.ImageUrl.ToString();
+        }
+        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(text))
+            return;
+
+        if (_utils!.IsAppForeground()) {
+            data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
+            var chatId = new ChatId(sChatId, ParseOrNone.Option);
+            if (!chatId.IsNone && ScopedServicesAccessor.IsInitialized) {
+                var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationUI>();
+                if (handler.IsAlreadyThere(chatId)) {
+                    // Do nothing if notification leads to the active chat.
+                    Log.LogDebug("FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: \'{ChatId}\'.",
+                        chatId);
+                    return;
+                }
             }
         }
 
-        SendNotification(notification.Body, notification.Title, message.Data);
+        ShowNotification(title, text, imageUrl, message.Data);
     }
 
-    private void SendNotification(
-        string messageBody,
+    private void ShowNotification(
         string title,
+        string text,
+        string? imageUrl,
         IDictionary<string, string> data)
     {
         data.TryGetValue("tag", out var tag);
@@ -71,16 +97,34 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         var pendingIntent = PendingIntent.GetActivity(this,
             MainActivity.NotificationID, intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        var notification = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
+        var notificationBuilder = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
             .SetContentTitle(title)
             .SetSmallIcon(Resource.Mipmap.appicon)
-            .SetContentText(messageBody)
+            .SetContentText(text)
             .SetContentIntent(pendingIntent)
             .SetAutoCancel(true) // closes notification after tap
-            .SetPriority((int)NotificationPriority.High)
-            .Build();
-
+            .SetPriority((int)NotificationPriority.High);
+        if (imageUrl != null) {
+            var largeImage = ResolveImage(imageUrl);
+            if (largeImage != null)
+                notificationBuilder.SetLargeIcon(largeImage);
+        }
+        var notification = notificationBuilder.Build();
         var notificationManager = NotificationManagerCompat.From(this);
         notificationManager.Notify(tag, 0, notification);
+    }
+
+    private Bitmap? ResolveImage(string imageUrl)
+    {
+        if (string.IsNullOrEmpty(imageUrl))
+            return null;
+        return _imagesCache.GetOrCreate(imageUrl, DownloadImage);
+    }
+
+    private static Bitmap? DownloadImage(string imageUrl)
+    {
+        var imageDownloader = FirebaseMessagingUtils.StartImageDownloadInBackground(new Uri(imageUrl));
+        var largeImage = FirebaseMessagingUtils.WaitForAndApplyImageDownload(imageDownloader);
+        return largeImage;
     }
 }
