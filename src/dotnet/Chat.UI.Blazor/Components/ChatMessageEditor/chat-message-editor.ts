@@ -396,7 +396,7 @@ export class ChatMessageEditor {
 
     private restoreDraft() {
         const [html] = this.chatId && LocalSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
-        this.markupEditor.setHtml(html ?? "");
+        this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
     }
 }
 
