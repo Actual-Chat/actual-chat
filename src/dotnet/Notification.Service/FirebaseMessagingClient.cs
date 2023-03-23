@@ -53,37 +53,41 @@ public class FirebaseMessagingClient
                 { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
                 { NotificationConstants.MessageDataKeys.Link, link },
             },
-            Notification = new FirebaseAdmin.Messaging.Notification {
-                Title = title,
-                Body = content,
-                // ImageUrl = TODO(AK): add first image url if the message contains images
-            },
             Android = new AndroidConfig {
-                Notification = new AndroidNotification {
-                    // Color = ??? TODO(AK): set color
-                    // For test purpose put priority to high
-                    // To have notification message appears on top of screen no matter what type notification it is.
-                    // Later I want to keep this behavior only for 'mention' and 'reply' messages.
-                    // Normal messages will be shown only in system tray without popping up on top of a screen.
-                    Priority = NotificationPriority.HIGH,
-                    // Sound = ??? TODO(AK): set sound
-                    Tag = tag,
-                    Visibility = NotificationVisibility.PRIVATE,
-                    // ClickAction = ?? TODO(AK): Set click action for Android
-                    DefaultSound = true,
-                    LocalOnly = false,
-                    // NotificationCount = TODO(AK): Set unread message count!
-                    //Icon = default, /* contains icon resource for android app, specify nothing, use app icon */
-                    //ImageUrl = default, /* default notification layout expands image and it looks ugly, so we do not specify an image */
-                    ChannelId = NotificationConstants.ChannelIds.Default,
+                // Notification = new AndroidNotification {
+                //     // Color = ??? TODO(AK): set color
+                //     // For test purpose put priority to high
+                //     // To have notification message appears on top of screen no matter what type notification it is.
+                //     // Later I want to keep this behavior only for 'mention' and 'reply' messages.
+                //     // Normal messages will be shown only in system tray without popping up on top of a screen.
+                //     Priority = NotificationPriority.HIGH,
+                //     // Sound = ??? TODO(AK): set sound
+                //     Tag = tag,
+                //     Visibility = NotificationVisibility.PRIVATE,
+                //     // ClickAction = ?? TODO(AK): Set click action for Android
+                //     DefaultSound = true,
+                //     LocalOnly = false,
+                //     // NotificationCount = TODO(AK): Set unread message count!
+                //     //Icon = default, /* contains icon resource for android app, specify nothing, use app icon */
+                //     //ImageUrl = default, /* default notification layout expands image and it looks ugly, so we do not specify an image */
+                //     ChannelId = NotificationConstants.ChannelIds.Default,
+                // },
+                Data = new Dictionary<string, string>(StringComparer.Ordinal) {
+                    { nameof(AndroidNotification.Title), title },
+                    { nameof(AndroidNotification.Body), content },
+                    { nameof(AndroidNotification.ImageUrl), absoluteIconUrl },
                 },
-                Priority = Priority.Normal,
-                CollapseKey = "topics",
+                Priority = Priority.High,
+                // CollapseKey = "topics", /* We don't use collapsible messages */
                 // RestrictedPackageName = TODO(AK): Set android package name
                 TimeToLive = TimeSpan.FromMinutes(180),
             },
             Apns = new ApnsConfig {
                 Aps = new Aps {
+                    Alert = new ApsAlert {
+                        Title = title,
+                        Body = content,
+                    },
                     Sound = "default",
                     MutableContent = true,
                     ThreadId = "topics",
