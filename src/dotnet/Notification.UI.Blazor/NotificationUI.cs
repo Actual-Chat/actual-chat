@@ -9,8 +9,8 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 {
     private readonly object _lock = new();
     private readonly IMutableState<PermissionState> _state;
+    private readonly IMutableState<string?> _deviceId;
     private readonly TaskSource<Unit> _whenReady;
-    private string? _deviceId;
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private History History { get; }
@@ -23,6 +23,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
+    public IState<string?> DeviceId => _deviceId;
 
     public NotificationUI(IServiceProvider services)
     {
@@ -30,11 +31,12 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
 
-        _state = services.StateFactory().NewMutable<PermissionState>();
+        var stateFactory = services.StateFactory();
+        _state = stateFactory.NewMutable(default(PermissionState), nameof(State));
+        _deviceId = stateFactory.NewMutable(default(string?), nameof(DeviceId));
         _whenReady = TaskSource.New<Unit>(true);
 
         WhenInitialized = Initialize();
-
 
         async Task Initialize()
         {
@@ -56,32 +58,13 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         }
     }
 
-
-    [ComputeMethod]
-    public virtual async Task<string?> GetDeviceId()
-    {
-        await WhenInitialized;
-
-        lock (_lock)
-            return _deviceId;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<bool> IsDeviceRegistered()
-    {
-        await WhenInitialized;
-
-        lock (_lock)
-            return _deviceId != null;
-    }
-
     public async Task EnsureDeviceRegistered(CancellationToken cancellationToken)
     {
-        if (_deviceId != null)
+        // ReSharper disable once InconsistentlySynchronizedField
+        if (_deviceId.Value != null)
             return;
-
         lock (_lock)
-            if (_deviceId != null)
+            if (_deviceId.Value != null)
                 return;
 
         var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken);
@@ -130,7 +113,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
                 History.NavigateTo(relativeUrl);
         });
         return Task.CompletedTask;
-
     }
 
     public void UpdateNotificationStatus(PermissionState newState)
@@ -165,11 +147,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     private async Task RegisterDevice(string deviceId, CancellationToken cancellationToken) {
         lock (_lock)
-            _deviceId = deviceId;
-        using (Computed.Invalidate()) {
-            _ = GetDeviceId();
-            _ = IsDeviceRegistered();
-        }
+            _deviceId.Value = deviceId;
 
         var command = new INotifications.RegisterDeviceCommand(Session, deviceId, DeviceType.WebBrowser);
         await UICommander.Run(command, cancellationToken);

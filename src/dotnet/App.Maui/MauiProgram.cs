@@ -213,15 +213,10 @@ public static partial class MauiProgram
 
     private static void StartHostedServices(MauiApp mauiApp)
     {
-        var start = mauiApp.Services.HostedServices()
-            .Start();
-        AwaitHostedServicesStart(start);
-        // wait on purpose, CreateMauiApp is synchronous.
+        var startTask = mauiApp.Services.HostedServices().Start();
+        // Sync wait is on purpose - CreateMauiApp is synchronous!
+        startTask.GetAwaiter().GetResult();
     }
-
-    private static void AwaitHostedServicesStart(Task start)
-        => start
-            .GetAwaiter().GetResult();
 
     private static void ConfigureServices(IServiceCollection services)
     {

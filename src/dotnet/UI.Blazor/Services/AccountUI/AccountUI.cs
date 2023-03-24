@@ -1,9 +1,10 @@
 using ActualChat.Hosting;
 using ActualChat.Users;
+using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class AccountUI : WorkerBase
+public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly TaskSource<Unit> _whenLoadedSource;
     private readonly IMutableState<AccountFull> _ownAccount;
@@ -45,8 +46,10 @@ public partial class AccountUI : WorkerBase
             InitialValue = ownAccount,
             Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
         });
-        Start();
     }
+
+    void INotifyInitialized.Initialized()
+        => Start();
 
     public async Task SignOut()
     {

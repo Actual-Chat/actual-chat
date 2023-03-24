@@ -9,7 +9,7 @@ public interface IPlaybackFactory
 /// <inheritdoc cref="IPlaybackFactory"/>
 public class PlaybackFactory : IPlaybackFactory
 {
-    private readonly IActivePlaybackInfo _activePlaybackInfo;
+    private readonly ActivePlaybackInfo _activePlaybackInfo;
     private readonly IStateFactory _stateFactory;
     private readonly ITrackPlayerFactory _trackPlayerFactory;
     private readonly ILogger<Playback> _playbackLog;
@@ -19,7 +19,7 @@ public class PlaybackFactory : IPlaybackFactory
     {
         _stateFactory = services.GetRequiredService<IStateFactory>();
         _trackPlayerFactory = services.GetRequiredService<ITrackPlayerFactory>();
-        _activePlaybackInfo = services.GetRequiredService<IActivePlaybackInfo>();
+        _activePlaybackInfo = services.GetRequiredService<ActivePlaybackInfo>();
         _playbackLog = services.GetRequiredService<ILogger<Playback>>();
         _onTrackPlayingChanged = OnTrackPlayingChanged;
     }

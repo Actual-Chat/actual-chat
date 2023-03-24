@@ -5,11 +5,12 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : WorkerBase, IHasServices
+public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
@@ -89,8 +90,10 @@ public partial class ChatUI : WorkerBase, IHasServices
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ChatPosition>>(CreateReadPositionState);
-        Start();
     }
+
+    void INotifyInitialized.Initialized()
+        => Start();
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> List(CancellationToken cancellationToken = default)

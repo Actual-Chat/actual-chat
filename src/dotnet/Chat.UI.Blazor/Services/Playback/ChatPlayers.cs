@@ -1,8 +1,9 @@
 using ActualChat.UI.Blazor.Services;
+using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatPlayers : WorkerBase
+public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
@@ -31,8 +32,10 @@ public class ChatPlayers : WorkerBase
         _playbackState = stateFactory.NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
-        Start();
     }
+
+    void INotifyInitialized.Initialized()
+        => Start();
 
     protected override Task DisposeAsyncCore()
     {

@@ -10,7 +10,7 @@ using Stl.Fusion.EntityFramework.Internal;
 
 namespace ActualChat.Users;
 
-public class AuthCommandFilters : DbServiceBase<UsersDbContext>
+public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
 {
     protected IAuthBackend AuthBackend { get; }
     protected IAccountsBackend AccountsBackend { get; }

@@ -28,7 +28,7 @@ public class BlazorUIAppModule : HostModule, IBlazorUIModule
         });
 
         var fusion = services.AddFusion();
-        fusion.AddComputeService<AppPresenceReporter.Worker>(ServiceLifetime.Transient);
+        fusion.AddComputeService<AppPresenceReporterWorker>(ServiceLifetime.Transient);
         services.AddScoped<AppPresenceReporter>();
         services.AddSingleton(_ => new AppPresenceReporter.Options {
             AwayTimeout = Constants.Presence.AwayTimeout,

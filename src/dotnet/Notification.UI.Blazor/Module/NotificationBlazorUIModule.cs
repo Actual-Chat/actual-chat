@@ -22,7 +22,7 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
 
         // Scoped / Blazor Circuit services
-        fusion.AddComputeService<NotificationUI>(ServiceLifetime.Scoped);
+        services.AddScoped<NotificationUI>();
 
         if (HostInfo.AppKind == AppKind.MauiApp)
             return;

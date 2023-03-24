@@ -2,6 +2,7 @@
 using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using ActualChat.Internal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -102,7 +103,7 @@ public class CoreModule : HostModule<CoreSettings>
         });
 
         // Features
-        fusionClient.AddReplicaService<ServerFeaturesClient.IClient, ServerFeaturesClient.IClientDef>();
+        fusionClient.AddReplicaService<IServerFeaturesClient, IServerFeaturesClientDef>();
         fusion.AddComputeService<IServerFeatures, ServerFeaturesClient>();
     }
 }

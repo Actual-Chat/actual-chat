@@ -23,7 +23,7 @@ public class ClientDefsTest : AppHostTestBase
     {
         public void Validate(IServiceCollection serviceCollection)
         {
-            var skippedServiceTypes = new HashSet<Type>() { typeof(ILiveTime) };
+            var skippedServiceTypes = new HashSet<Type>();
             var computeServiceTypes = (
                 from d in serviceCollection
                 where d.Lifetime is not ServiceLifetime.Scoped
@@ -36,9 +36,6 @@ public class ClientDefsTest : AppHostTestBase
                 ).ToList();
             var clientDefMap = GetClientDefMap();
             foreach (var serviceType in computeServiceTypes) {
-                if (serviceType == typeof(ILiveTime))
-                    continue;
-
                 var clientDef = clientDefMap.GetValueOrDefault(serviceType.Name + "ClientDef")
                     ?? throw new Exception($"{serviceType} does not have client def.");
 

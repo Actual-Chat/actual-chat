@@ -84,7 +84,7 @@ namespace ActualChat.UI.Blazor.App
                 typeof(ChatModule),
             };
             pluginTypes.AddRange(platformPluginTypes);
-            pluginHostBuilder.UsePlugins(pluginTypes);
+            pluginHostBuilder.UsePlugins(false, pluginTypes);
             var trace = Tracer.Default;
             var step = trace.Region("Building PluginHost");
             var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);

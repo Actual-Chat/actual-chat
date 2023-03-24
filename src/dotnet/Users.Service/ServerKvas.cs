@@ -149,14 +149,14 @@ public class ServerKvas : IServerKvas
     private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user == null ? null : Backend.GetUserPrefix(new UserId(user.Id));
+        return user == null ? null : ServerKvasBackendExt.GetUserPrefix(new UserId(user.Id));
     }
 
     private async ValueTask<string?> GetGuestPrefix(Session session, CancellationToken cancellationToken)
     {
         var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var guestId = sessionInfo.GetGuestId();
-        return guestId.IsNone ? null : Backend.GetUserPrefix(guestId);
+        return guestId.IsNone ? null : ServerKvasBackendExt.GetUserPrefix(guestId);
     }
 
     private async ValueTask<Dictionary<string, string>?> TryMigrateKeys(

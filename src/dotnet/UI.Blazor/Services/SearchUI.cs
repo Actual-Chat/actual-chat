@@ -2,7 +2,7 @@ using ActualChat.Search;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class SearchUI
+public class SearchUI : IComputeService
 {
     public IMutableState<string> Text { get; }
 

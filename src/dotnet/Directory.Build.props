@@ -79,11 +79,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and !($(MSBuildProjectFile.Contains('App.Maui')))">
-    <PackageReference Include="ActualLab.Generators" />
-    <PackageReference Include="ActualLab.Generators.Abstractions" />
-
-    <!-- Global usings -->
-    <Using Include="ActualLab.Generators" />
+    <PackageReference Include="Stl.Generators" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">

@@ -1,15 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public interface ILiveTime : IComputeService
-{
-    [ComputeMethod]
-    Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);
-
-    string GetDeltaText(Moment time);
-    string GetDeltaText(Moment time, Moment now);
-}
-
-public class LiveTime : ILiveTime
+public class LiveTime : IComputeService
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
@@ -22,7 +13,7 @@ public class LiveTime : ILiveTime
         Clocks = clocks;
     }
 
-    // [ComputeMethod]
+    [ComputeMethod]
     public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
     {
         var (text, delay) = GetDeltaTextImpl(time, Clocks.SystemClock.Now);

@@ -3,7 +3,7 @@ using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
-public class DedicatedEventHandler
+public class DedicatedEventHandler : IComputeService
 {
     private ScheduledCommandTestService TestService { get; }
 

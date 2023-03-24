@@ -1,6 +1,6 @@
 namespace ActualChat.Chat.UI.Blazor.Testing;
 
-public class VirtualListTestService
+public class VirtualListTestService : IComputeService
 {
     private static readonly string[] Words = { "best", "virtual", "scroll", "ever", "100%", "absolutely" };
 

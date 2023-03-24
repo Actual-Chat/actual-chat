@@ -1,19 +1,21 @@
 namespace ActualChat.MediaPlayback;
 
-public class ActivePlaybackInfo : IActivePlaybackInfo
+public class ActivePlaybackInfo : IComputeService
 {
     private readonly ConcurrentDictionary<Symbol, TrackInfo> _trackInfos = new();
     private readonly ConcurrentDictionary<Symbol, PlayerState> _trackPlaybackStates = new();
 
+    [ComputeMethod]
     public virtual Task<PlayerState?> GetTrackPlaybackState(
         Symbol trackId,
         CancellationToken cancellationToken)
         => Task.FromResult(_trackPlaybackStates.GetValueOrDefault(trackId));
 
+    [ComputeMethod]
     public virtual Task<TrackInfo?> GetTrackInfo(Symbol trackId, CancellationToken cancellationToken)
         => Task.FromResult(_trackInfos.GetValueOrDefault(trackId));
 
-    public void RegisterStateChange(TrackInfo trackInfo, PlayerState state)
+    public virtual void RegisterStateChange(TrackInfo trackInfo, PlayerState state)
     {
         var trackId = trackInfo.TrackId;
 

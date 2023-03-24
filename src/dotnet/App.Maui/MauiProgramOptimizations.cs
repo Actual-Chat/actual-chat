@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
@@ -15,39 +16,38 @@ public static class MauiProgramOptimizations
         => Task.Run(() => {
             var step = tracer.Region("WarmupFusionServices");
             try {
-                var warmer = new Services.StartupTracing.FusionServicesWarmer(services);
+                var warmer = new ServiceWarmer(services);
                 warmer.ReplicaService<IServerKvas>();
                 warmer.ReplicaService<IAuth>();
                 warmer.ReplicaService<IAccounts>();
                 warmer.ReplicaService<IUserPresences>();
                 warmer.ReplicaService<IChats>();
 
-                warmer.ComputeService(typeof(ChatAudioUI));
-                warmer.ComputeService(typeof(AppPresenceReporter.Worker));
-                warmer.ComputeService(typeof(ChatPlayers));
-                warmer.ComputeService(typeof(ActiveChatsUI));
+                warmer.ComputeService<ChatAudioUI>();
+                warmer.ComputeService<AppPresenceReporterWorker>();
+                warmer.ComputeService<ChatPlayers>();
 
                 // after app rendered
 
-                warmer.ComputeService(typeof(AccountUI));
-                warmer.ComputeService(typeof(ChatUI));
+                warmer.ComputeService<AccountUI>();
+                warmer.ComputeService<ChatUI>();
                 warmer.ReplicaService<ActualChat.Contacts.IContacts>();
                 warmer.ReplicaService<IChatPositions>();
                 warmer.ReplicaService<IMentions>();
 
                 warmer.ReplicaService<IAuthors>();
 
-                warmer.ComputeService(typeof(ClientFeatures));
-                warmer.ComputeService(typeof(ServerFeatures));
-                warmer.ReplicaService<ServerFeaturesClient.IClient>();
+                warmer.ComputeService<ClientFeatures>();
+                warmer.ComputeService<ServerFeatures>();
+                warmer.ReplicaService<IServerFeaturesClient>();
 
-                warmer.ComputeService(typeof(SearchUI));
+                warmer.ComputeService<SearchUI>();
                 warmer.ReplicaService<IAvatars>();
-                warmer.ComputeService(typeof(MediaPlayback.ActivePlaybackInfo));
-                warmer.ComputeService(typeof(LiveTime));
+                warmer.ComputeService<MediaPlayback.ActivePlaybackInfo>();
+                warmer.ComputeService<LiveTime>();
 
-                warmer.ComputeService(typeof(ChatRecordingActivity));
-                warmer.ComputeService(typeof(NotificationUI));
+                warmer.ComputeService<ChatRecordingActivity>();
+                warmer.ComputeService<NotificationUI>();
 
                 warmer.ReplicaService<IRoles>();
             }

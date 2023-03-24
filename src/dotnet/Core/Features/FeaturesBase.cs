@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-public interface IFeatures : IComputeService, IHasServices
+public interface IFeatures : IComputeService
 {
     [ComputeMethod]
     Task<object?> Get(Type featureType, CancellationToken cancellationToken);
@@ -24,6 +24,7 @@ public abstract class FeaturesBase : IFeatures
         Services = services;
     }
 
+    // [ComputeMethod]
     public virtual async Task<object?> Get(Type featureType, CancellationToken cancellationToken)
     {
         try {
@@ -37,6 +38,7 @@ public abstract class FeaturesBase : IFeatures
         }
     }
 
+    // [ComputeMethod]
     public virtual async Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken)
     {
         var value = await Get(featureTypeRef.Resolve(), cancellationToken).ConfigureAwait(false);

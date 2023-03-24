@@ -15,7 +15,7 @@ else {
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IBackendStatus BackendStatus { get; init; } = null!;
+    [Inject] private BackendStatus BackendStatus { get; init; } = null!;
 
     protected override ComputedState<ImmutableList<(string Backend, Exception Error)>>.Options GetStateOptions()
         => new() {

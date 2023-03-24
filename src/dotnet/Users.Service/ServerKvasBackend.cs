@@ -37,13 +37,6 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], e.Value)).ToImmutableList();
     }
 
-    public string GetUserPrefix(UserId userId)
-        => userId.IsNone
-            ? ""
-            : userId.IsGuest
-                ? $"g/{userId}/"
-                : $"u/{userId}/";
-
     // Command handlers
 
     // [CommandHandler]

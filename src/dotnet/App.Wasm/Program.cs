@@ -7,17 +7,22 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sentry;
+using Stl.CommandR.Interception;
+using Stl.Fusion.Bridge.Interception;
+using Stl.Fusion.Interception;
 using Stl.Interception.Interceptors;
+using Stl.Interception.Internal;
 
 namespace ActualChat.App.Wasm;
 
 public static class Program
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceProxy))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeView<,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandServiceInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeServiceInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReplicaServiceInterceptor))]
     public static async Task Main(string[] args)
     {
         var tracer = Tracer.Default =

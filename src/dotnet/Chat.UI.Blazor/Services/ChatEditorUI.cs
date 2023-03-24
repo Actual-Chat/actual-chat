@@ -1,9 +1,10 @@
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
+using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatEditorUI : WorkerBase
+public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly object _lock = new();
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
@@ -32,9 +33,10 @@ public class ChatEditorUI : WorkerBase
         _relatedChatEntry = services.StateFactory().NewMutable(
             (RelatedChatEntry?)null,
             StateCategories.Get(type, nameof(RelatedChatEntry)));
-
-        Start();
     }
+
+    void INotifyInitialized.Initialized()
+        => Start();
 
     public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
         => ShowRelatedEntry(new RelatedChatEntry(kind, entryId), focusOnEditor, updateUI);

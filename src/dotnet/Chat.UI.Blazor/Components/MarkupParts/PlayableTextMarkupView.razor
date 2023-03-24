@@ -35,7 +35,7 @@
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Model? _rendered;
 
-    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }

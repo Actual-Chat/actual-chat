@@ -7,8 +7,6 @@ public interface IServerKvasBackend : IComputeService
     [ComputeMethod]
     Task<ImmutableList<(string Key, string Value)>> List(string prefix, CancellationToken cancellationToken = default);
 
-    string GetUserPrefix(UserId userId);
-
     [CommandHandler]
     Task SetMany(SetManyCommand command, CancellationToken cancellationToken = default);
 

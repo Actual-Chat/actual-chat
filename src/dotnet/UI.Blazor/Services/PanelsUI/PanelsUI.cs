@@ -1,3 +1,5 @@
+using Stl.Interception;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public class PanelsUI : WorkerBase, IHasServices
@@ -18,7 +20,6 @@ public class PanelsUI : WorkerBase, IHasServices
         Left = new LeftPanel(this);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);
-
         Start();
     }
 

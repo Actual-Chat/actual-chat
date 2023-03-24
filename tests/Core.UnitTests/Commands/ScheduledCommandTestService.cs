@@ -3,7 +3,7 @@ using ActualChat.Commands;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
-public class ScheduledCommandTestService
+public class ScheduledCommandTestService : IComputeService
 {
     public readonly ConcurrentQueue<IEventCommand> ProcessedEvents = new();
 

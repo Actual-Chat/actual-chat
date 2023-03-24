@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Primitives;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.Processing;
 
@@ -142,13 +143,13 @@ public class MessageController : ControllerBase
         // So we need to switch width and height to get appropriate size for image preview.
         var imageProcessingRequired = imageInfo.Metadata.ExifProfile != null || resizeRequired;
         if (!imageProcessingRequired)
-            return new ProcessedFileInfo(file, imageInfo.Size());
+            return new ProcessedFileInfo(file, imageInfo.Size);
 
         Size imageSize;
         byte[] content;
         var targetStream = new MemoryStream(file.Content.Length);
         await using (var _ = targetStream.ConfigureAwait(false))
-        using (Image image = Image.Load(SixLabors.ImageSharp.Configuration.Default, file.Content, out var imageFormat)) {
+        using (Image image = Image.Load(file.Content)) {
             image.Mutate(img => {
                 // https://github.com/SixLabors/ImageSharp/issues/790#issuecomment-447581798
                 img.AutoOrient();
@@ -156,8 +157,8 @@ public class MessageController : ControllerBase
                     img.Resize(new ResizeOptions {Mode = ResizeMode.Max, Size = new Size(sizeLimit)});
             });
             image.Metadata.ExifProfile = null;
-            imageSize = image.Size();
-            await image.SaveAsync(targetStream, imageFormat).ConfigureAwait(false);
+            imageSize = image.Size;
+            await image.SaveAsync(targetStream, image.Metadata.DecodedImageFormat!).ConfigureAwait(false);
             targetStream.Position = 0;
             content = targetStream.ToArray();
         }
@@ -165,7 +166,7 @@ public class MessageController : ControllerBase
         return new ProcessedFileInfo(file with { Content = content }, imageSize);
     }
 
-    private async Task<IImageInfo?> GetImageInfo(FileInfo file)
+    private async Task<ImageInfo?> GetImageInfo(FileInfo file)
     {
         try {
             using var stream = new MemoryStream(file.Content);

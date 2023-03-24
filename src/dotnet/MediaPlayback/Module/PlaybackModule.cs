@@ -20,6 +20,6 @@ public class PlaybackModule : HostModule
         services.TryAddScoped<IPlaybackFactory>(sp=> new PlaybackFactory(sp));
 
         var fusion = services.AddFusion();
-        fusion.AddComputeService<IActivePlaybackInfo, ActivePlaybackInfo>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ActivePlaybackInfo>(ServiceLifetime.Scoped);
     }
 }
