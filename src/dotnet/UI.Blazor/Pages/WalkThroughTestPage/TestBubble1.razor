@@ -1,0 +1,32 @@
+@inherits BubbleBase
+
+<BubbleContent Class="bg-bubble text-04">
+    <Body>
+        <div class="text-headline-1">
+            Create
+        </div>
+        <ul class="list-disc mx-4 text-sm">
+            <li>New group chat</li>
+            <li>Add new contact</li>
+        </ul>
+    </Body>
+    <Counter>
+        1 of 3
+    </Counter>
+    <Buttons>
+        <Button Class="btn-bubble" Click="@OnClick">Skip</Button>
+        <Button
+            Class="btn-bubble"
+            data-bubble="@(BubbleRef.New<TestBubble2>("account-button"))"
+            data-bubble-trigger="@BubbleTrigger.Primary"
+            data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
+            Next
+        </Button>
+    </Buttons>
+</BubbleContent>
+
+
+
+@code {
+    private void OnClick() {}
+}

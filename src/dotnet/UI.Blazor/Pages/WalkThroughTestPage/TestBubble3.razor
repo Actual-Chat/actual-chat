@@ -1,0 +1,29 @@
+@inherits BubbleBase
+
+<BubbleContent Class="p-4 bg-bubble text-04">
+    <Body>
+        <div class="text-headline-1">
+            Listen button
+        </div>
+        <ul class="list-disc mx-4 text-sm">
+            <li>listen to other users' messages when they record them live</li>
+        </ul>
+    </Body>
+    <Counter>
+        3 of 3
+    </Counter>
+    <Buttons>
+        <Button Class="btn-bubble" Click="@OnClick">Skip</Button>
+        <Button
+            Class="btn-bubble"
+            data-bubble="@(BubbleRef.New<TestBubble3>("record-off-button"))"
+            data-bubble-trigger="@BubbleTrigger.Primary"
+            data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            Next
+        </Button>
+    </Buttons>
+</BubbleContent>
+
+@code {
+    private void OnClick() {}
+}

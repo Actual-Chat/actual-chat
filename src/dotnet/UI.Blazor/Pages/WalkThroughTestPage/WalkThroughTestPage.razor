@@ -1,0 +1,45 @@
+@page "/test/walk-through"
+@using ActualChat.UI.Blazor.Services
+@using System.Text
+
+<MainHeader>Walk-Through Test Page</MainHeader>
+
+<div class="flex-1 flex-x justify-between">
+    <Button
+        id="wt-btn-1"
+        Class="btn-primary wt-btn-1"
+        data-bubble="@(BubbleRef.New<TestBubble1>("create-button"))"
+        data-bubble-trigger="@BubbleTrigger.Primary"
+        data-bubble-placement="@(FloatingPosition.LeftStart.ToPositionString())">
+        Start
+    </Button>
+    <Button
+        Class="btn-primary"
+        Click="@(_ => OnClick(1))">
+        Button #2
+    </Button>
+</div>
+
+<div class="flex-x justify-between">
+    <Button
+        Class="btn-primary"
+        Click="@(_ => OnClick(1))">
+        Button #3
+    </Button>
+    <button
+        id="record-off-button"
+        class="flex items-center justify-center w-12 h-12 rounded-full bg-primary"
+        onclick="@(() => OnClick(1))">
+        <img src="/dist/images/logo-white.svg" alt="logo" class="recorder-icon h-8">
+    </button>
+</div>
+
+@code {
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    private void OnClick(int count) {
+        var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
+        ErrorUI.ShowError(result);
+    }
+}

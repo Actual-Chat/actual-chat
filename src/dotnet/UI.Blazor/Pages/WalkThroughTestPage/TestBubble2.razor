@@ -1,0 +1,31 @@
+@inherits BubbleBase
+
+<BubbleContent Class="p-4 bg-bubble text-04">
+    <Body>
+        <div class="text-headline-1">
+            Manage Account Settings
+        </div>
+        <ul class="list-disc mx-4 text-sm">
+            <li>edit your profile</li>
+            <li>create and switch your avatars</li>
+            <li>manage languages</li>
+        </ul>
+    </Body>
+    <Counter>
+        2 of 3
+    </Counter>
+    <Buttons>
+        <Button Class="btn-bubble" Click="@OnClick">Skip</Button>
+        <Button
+            Class="btn-bubble"
+            data-bubble="@(BubbleRef.New<TestBubble3>("record-off-button"))"
+            data-bubble-trigger="@BubbleTrigger.Primary"
+            data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+            Next
+        </Button>
+    </Buttons>
+</BubbleContent>
+
+@code {
+    private void OnClick() {}
+}

@@ -146,6 +146,22 @@ body.hoverable .btn.btn-modal:hover {
     @apply min-w-12;
 }
 
+.btn.btn-bubble {
+    @apply min-w-20;
+    @apply px-2;
+    @apply border-0;
+    @apply text-04 text-headline-1;
+}
+.btn.btn-bubble .btn-content {
+    @apply bg-transparent;
+}
+.btn.btn-bubble:active {
+    @apply bg-bubble-btn-hover;
+}
+body.hoverable .btn.btn-bubble:hover {
+    @apply bg-bubble-btn-hover;
+}
+
 .btn.btn-xs {
     @apply h-8 md:h-6 min-h-8 md:min-h-6;
     @apply min-w-0 md:min-w-16;

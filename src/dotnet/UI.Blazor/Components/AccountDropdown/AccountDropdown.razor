@@ -9,7 +9,7 @@
         return;
 
     if (!account.IsGuestOrNone) {
-        <button class="account-btn btn-square" @onclick="@OnSettingsClick">
+        <button id="account-button" class="account-btn btn-square" @onclick="@OnSettingsClick">
             <AccountView/>
         </button>
     } else {

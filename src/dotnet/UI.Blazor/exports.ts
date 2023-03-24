@@ -17,6 +17,7 @@ export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 export * from './Services/VibrationUI/vibration-ui';
 
+export * from './Components/Bubble/bubble-host';
 export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
