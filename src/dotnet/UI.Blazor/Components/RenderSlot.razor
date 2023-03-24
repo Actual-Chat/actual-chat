@@ -14,6 +14,8 @@
             Category = GetStateCategory(),
         };
 
-    protected override async Task<RenderIntoSlot?> ComputeState(CancellationToken cancellationToken)
-        => await RenderVars.RenderSlot(Name).Use(cancellationToken);
+    protected override async Task<RenderIntoSlot?> ComputeState(CancellationToken cancellationToken) {
+        var slots = await RenderVars.RenderSlot(Name).Use(cancellationToken);
+        return slots.LastOrDefault();
+    }
 }
