@@ -2,7 +2,6 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
-using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -27,7 +26,7 @@ public static class MauiProgramOptimizations
                 warmer.ComputeService<AppPresenceReporterWorker>();
                 warmer.ComputeService<ChatPlayers>();
 
-                // after app rendered
+                // After app rendered
 
                 warmer.ComputeService<AccountUI>();
                 warmer.ComputeService<ChatUI>();
@@ -47,8 +46,6 @@ public static class MauiProgramOptimizations
                 warmer.ComputeService<LiveTime>();
 
                 warmer.ComputeService<ChatRecordingActivity>();
-                warmer.ComputeService<NotificationUI>();
-
                 warmer.ReplicaService<IRoles>();
             }
             catch (Exception e) {
