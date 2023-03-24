@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ActualChat.Media.Migrations
 {
     /// <inheritdoc />
-    public partial class AddDbOperation : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -27,6 +27,21 @@ namespace ActualChat.Media.Migrations
                     table.PrimaryKey("pk_operations", x => x.id);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "media",
+                columns: table => new
+                {
+                    id = table.Column<string>(type: "text", nullable: false),
+                    scope = table.Column<string>(type: "text", nullable: false),
+                    localid = table.Column<string>(name: "local_id", type: "text", nullable: false),
+                    contentid = table.Column<string>(name: "content_id", type: "text", nullable: false),
+                    metadatajson = table.Column<string>(name: "metadata_json", type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_media", x => x.id);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "ix_commit_time",
                 table: "_operations",
@@ -43,6 +58,9 @@ namespace ActualChat.Media.Migrations
         {
             migrationBuilder.DropTable(
                 name: "_operations");
+
+            migrationBuilder.DropTable(
+                name: "media");
         }
     }
 }

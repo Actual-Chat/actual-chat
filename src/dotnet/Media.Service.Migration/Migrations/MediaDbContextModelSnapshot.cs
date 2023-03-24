@@ -33,10 +33,20 @@ namespace ActualChat.Media.Migrations
                         .HasColumnType("text")
                         .HasColumnName("content_id");
 
+                    b.Property<string>("LocalId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("local_id");
+
                     b.Property<string>("MetadataJson")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("metadata_json");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
 
                     b.HasKey("Id")
                         .HasName("pk_media");
