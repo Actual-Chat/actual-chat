@@ -23,8 +23,8 @@ public class UploadController : ControllerBase
         Commander = commander;
     }
 
-    [HttpPost, Route("api/chats/upload-picture")]
-    public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
+    [HttpPost, Route("api/chats/{chatId}/upload-picture")]
+    public async Task<ActionResult<MediaContent>> UploadPicture(ChatId chatId, CancellationToken cancellationToken)
     {
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
@@ -43,9 +43,10 @@ public class UploadController : ControllerBase
         var fileInfo = await ReadFileContent(file, cancellationToken).ConfigureAwait(false);
         var (processedFile, imageSize) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
 
-        var mediaId = new MediaId($"{Ulid.NewUlid().ToString()}");
+        var mediaId = new MediaId(chatId, Generate.Option);
+        var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
         var media = new Media.Media(mediaId) {
-            ContentId = $"media/attachments/{mediaId}{Path.GetExtension(file.FileName)}",
+            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
             FileName = fileInfo.FileName,
             Length = fileInfo.Length,
             ContentType = fileInfo.ContentType,

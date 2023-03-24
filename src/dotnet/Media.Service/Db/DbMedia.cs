@@ -11,11 +11,13 @@ public class DbMedia : IHasId<string>, IRequirementTarget
 
     [Key] public string Id { get; set; } = "";
 
+    public string Scope { get; set; } = "";
+    public string LocalId { get; set; } = "";
     public string ContentId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
 
     public Media ToModel()
-        => new (new MediaId(Id)) {
+        => new (new MediaId(Id, Scope, LocalId, AssumeValid.Option)) {
             ContentId = ContentId,
             MetadataJson = MetadataJson,
         };
@@ -28,6 +30,8 @@ public class DbMedia : IHasId<string>, IRequirementTarget
             return;
 
         Id = model.Id;
+        Scope = model.Id.Scope;
+        LocalId = model.Id.LocalId;
         ContentId = model.ContentId;
         MetadataJson = model.MetadataJson;
     }

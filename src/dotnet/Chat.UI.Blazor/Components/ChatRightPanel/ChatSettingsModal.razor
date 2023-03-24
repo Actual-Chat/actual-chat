@@ -100,7 +100,7 @@
         _form.Title = chat.Title;
         _form.Picture = chat.Picture?.ContentId ?? "";
         _form.IsPublic = chat.IsPublic;
-        _form.ImageUploadUrl = "/api/chats/upload-picture";
+        _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
     }
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {

@@ -8,13 +8,19 @@ public class AvatarPicturesController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private ICommander Commander { get; }
+    private ISessionResolver SessionResolver { get; }
+    private IAuth Auth { get; }
 
     public AvatarPicturesController(
         IContentSaver contentSaver,
-        ICommander commander)
+        ICommander commander,
+        ISessionResolver sessionResolver,
+        IAuth auth)
     {
         ContentSaver = contentSaver;
         Commander = commander;
+        SessionResolver = sessionResolver;
+        Auth = auth;
     }
 
     [HttpPost, Route("api/avatars/upload-picture")]
@@ -34,9 +40,11 @@ public class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Chat.PictureFileSizeLimit)
             return BadRequest("Image is too big");
 
-        var mediaId = new MediaId($"{Ulid.NewUlid().ToString()}");
+        var user = await Auth.GetUser(SessionResolver.Session, cancellationToken).ConfigureAwait(false);
+        var mediaId = new MediaId(user!.Id, Generate.Option);
+        var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
         var media = new Media.Media(mediaId) {
-            ContentId = $"media/avatars/{mediaId}{Path.GetExtension(file.FileName)}",
+            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,

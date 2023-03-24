@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using ActualChat.Internal;
 using Stl.Fusion.Blazor;
+using Stl.Generators;
 
 namespace ActualChat;
 
@@ -12,10 +13,20 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly struct MediaId : ISymbolIdentifier<MediaId>
 {
+    private const char Separator = ':';
+
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
     public static MediaId None => default;
 
     [DataMember(Order = 0)]
     public Symbol Id { get; }
+
+    // Set on deserialization
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string Scope { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string LocalId { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -30,14 +41,19 @@ public readonly struct MediaId : ISymbolIdentifier<MediaId>
         => this = Parse(id);
     public MediaId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
+    public MediaId(string scope, Generate _)
+        => this = new MediaId($"{scope}{Separator}{IdGenerator.Next()}");
 
-    public MediaId(Symbol id, AssumeValid _)
+    public MediaId(Symbol id, string scope, string localId, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
             return;
         }
+
         Id = id;
+        Scope = scope;
+        LocalId = localId;
     }
 
     // Conversion
@@ -64,7 +80,19 @@ public readonly struct MediaId : ISymbolIdentifier<MediaId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        result = new MediaId(s, AssumeValid.Option);
+        var parts = s.Split(Separator);
+        if (parts.Length != 2)
+            return false;
+
+        var scope = parts[0];
+        if (!Alphabet.AlphaNumericDash.IsMatch(scope))
+            return false;
+
+        var localId = parts[1];
+        if (!Alphabet.AlphaNumeric.IsMatch(localId))
+            return false;
+
+        result = new MediaId(s, scope, localId, AssumeValid.Option);
         return true;
     }
 }

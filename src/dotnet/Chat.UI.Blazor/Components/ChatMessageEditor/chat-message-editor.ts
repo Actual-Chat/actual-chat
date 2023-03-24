@@ -437,7 +437,7 @@ export class ChatMessageEditor {
                     }
                 }
             };
-            xhr.open('post', 'api/chats/upload-picture', true);
+            xhr.open('post', `api/chats/${this.chatId}/upload-picture`, true);
             xhr.send(formData);
         })
     }
