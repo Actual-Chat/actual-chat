@@ -48,8 +48,8 @@ export class VirtualList {
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
     private readonly _items: Map<string, VirtualListItem>;
-    private readonly _itemRefs: Array<HTMLElement> = [];
-    private readonly _newItemRefs: Array<Element> = [];
+    private readonly _itemRefs: Array<HTMLLIElement> = [];
+    private readonly _newItemRefs: Array<HTMLLIElement> = [];
     private readonly _statistics: VirtualListStatistics = new VirtualListStatistics();
     private readonly _keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -744,12 +744,12 @@ export class VirtualList {
             await this.requestData(true);
     }
 
-    private getNewItemRefs(): Element[] {
+    private getNewItemRefs(): HTMLLIElement[] {
         const itemRefs = this._newItemRefs;
         if (itemRefs.length && itemRefs[0])
             return itemRefs;
 
-        const itemRefCollection = this._containerRef.getElementsByClassName('item new');
+        const itemRefCollection = this._containerRef.getElementsByClassName('item new') as HTMLCollectionOf<HTMLLIElement>;
         itemRefs.length = itemRefCollection.length;
         for (let i = 0; i < itemRefCollection.length; i++) {
             itemRefs[i] = itemRefCollection[i];
@@ -757,12 +757,12 @@ export class VirtualList {
         return itemRefs;
     }
 
-    private getAllItemRefs(): HTMLElement[] {
+    private getAllItemRefs(): HTMLLIElement[] {
         const itemRefs = this._itemRefs;
         if (itemRefs.length && itemRefs[0])
             return itemRefs;
 
-        const itemRefCollection = this._containerRef.getElementsByTagName('li');
+        const itemRefCollection = this._containerRef.children as HTMLCollectionOf<HTMLLIElement>;
         itemRefs.length = itemRefCollection.length;
         for (let i = 0; i < itemRefCollection.length; i++) {
             itemRefs[i] = itemRefCollection[i];
