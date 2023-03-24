@@ -99,7 +99,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
         var notificationBuilder = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
             .SetContentTitle(title)
-            .SetSmallIcon(Resource.Mipmap.appicon)
+            // The small icon should be opaque white
+            // https://doc.batch.com/android/advanced/customizing-notifications/#setting-up-custom-push-icons
+            .SetSmallIcon(Resource.Drawable.notification_app_icon)
             .SetContentText(text)
             .SetContentIntent(pendingIntent)
             .SetAutoCancel(true) // closes notification after tap
