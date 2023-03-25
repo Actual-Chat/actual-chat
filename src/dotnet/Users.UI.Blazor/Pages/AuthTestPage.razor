@@ -8,6 +8,7 @@
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>Authentication Test Page</MainHeader>
 
 @if (error != null) {
