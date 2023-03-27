@@ -46,6 +46,7 @@ public static class Program
             step = tracer.Region("Building wasm host");
             var host = builder.Build();
             step.Close();
+
             Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));

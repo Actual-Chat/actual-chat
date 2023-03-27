@@ -19,6 +19,7 @@ using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Client;
 using Stl.Generators;
+using Stl.Interception.Interceptors;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.App
@@ -54,6 +55,11 @@ namespace ActualChat.UI.Blazor.App
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatModule))]
         public static async Task ConfigureServices(IServiceCollection services, AppKind appKind, params Type[] platformPluginTypes)
         {
+#if !DEBUG
+            InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+#endif
+            var tracer = Tracer.Default;
+
             // Commander - it must be added first to make sure its options are set
             var commander = services.AddCommander().Configure(new CommanderOptions() {
                 AllowDirectCommandHandlerCalls = false,
@@ -85,8 +91,8 @@ namespace ActualChat.UI.Blazor.App
             };
             pluginTypes.AddRange(platformPluginTypes);
             pluginHostBuilder.UsePlugins(false, pluginTypes);
-            var trace = Tracer.Default;
-            var step = trace.Region("Building PluginHost");
+
+            var step = tracer.Region("Building PluginHost");
             var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
             step.Close();
             services.AddSingleton(plugins);
@@ -132,7 +138,7 @@ namespace ActualChat.UI.Blazor.App
             });
 
             // Injecting plugin services
-            step = trace.Region("Injecting plugin services");
+            step = tracer.Region("Injecting plugin services");
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
             step.Close();
         }
