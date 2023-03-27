@@ -3,10 +3,12 @@
 @{
     var slotState = RenderVars.RenderSlot(Name);
     var slotComputed = slotState.Computed;
-    if (slotComputed.Value == this)
+
+    var items = slotState.Value;
+    if (items.Contains(this))
         slotComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
     else
-        slotState.Value = this;
+        slotState.Value = items.Add(this);
 }
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;
@@ -14,6 +16,8 @@
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    public void Dispose()
-        => RenderVars.RenderSlot(Name).Value = null;
+    public void Dispose() {
+        var slotState = RenderVars.RenderSlot(Name);
+        slotState.Value = slotState.Value.Remove(this);
+    }
 }
