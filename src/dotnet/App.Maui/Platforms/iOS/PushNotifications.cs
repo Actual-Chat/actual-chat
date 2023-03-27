@@ -20,6 +20,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     private IFirebaseCloudMessaging Messaging { get; }
     private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
+    private UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
     private ILogger Log { get; }
 
     public PushNotifications(IServiceProvider services)
@@ -36,7 +37,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         // prevent null ref for windows+iphone
         // see https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
 #if !HOTRESTART
-        CrossFirebase.Initialize(new (isCloudMessagingEnabled: true));
+        CrossFirebase.Initialize(new(isCloudMessagingEnabled: true));
 #endif
     }
 
@@ -48,7 +49,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
     public async Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
     {
-        var settings = await UNUserNotificationCenter.Current.GetNotificationSettingsAsync().ConfigureAwait(false);
+        var settings = await NotificationCenter.GetNotificationSettingsAsync().ConfigureAwait(false);
         switch (settings.AuthorizationStatus) {
         case UNAuthorizationStatus.NotDetermined:
             return PermissionState.Prompt;
@@ -65,7 +66,21 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
     public async Task RequestNotificationPermissions(CancellationToken cancellationToken)
     {
-        await Messaging.CheckIfValidAsync().ConfigureAwait(false);
+        // TODO: replace with Messaging.CheckIfValidAsync() when they await result
+        if (!UIDevice.CurrentDevice.CheckSystemVersion(10, 0))
+            return;
+
+        // For iOS 10 display notification (sent via APNS)
+        var options = UNAuthorizationOptions.Alert
+            | UNAuthorizationOptions.Badge
+            | UNAuthorizationOptions.Sound;
+        var (granted, error) = await NotificationCenter.RequestAuthorizationAsync(options)
+            .ConfigureAwait(false);
+        if (granted)
+            Log.LogInformation("RequestNotificationPermissions: granted", granted);
+        else
+            Log.LogWarning("RequestNotificationPermissions: denied, {Error}", error);
+
         var newState = await GetNotificationPermissionState(cancellationToken).ConfigureAwait(false);
         NotificationUI.UpdateNotificationStatus(newState);
     }
