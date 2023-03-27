@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor;
+using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
 
@@ -148,7 +149,7 @@ public static partial class MauiProgram
 
         AppServices = mauiApp.Services;
 
-        _ = MauiProgramOptimizations.WarmupFusionServices(AppServices, _tracer);
+        //_ = MauiProgramOptimizations.WarmupFusionServices(AppServices, _tracer);
 
         Constants.HostInfo = AppServices.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
@@ -247,6 +248,9 @@ public static partial class MauiProgram
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
+
+        services.AddSingleton<Func<IJSRuntime>>(c =>
+            () => ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>());
     }
 
     private static Task<Symbol> GetSessionId()

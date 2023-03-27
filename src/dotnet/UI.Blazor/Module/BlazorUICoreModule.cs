@@ -6,6 +6,7 @@ using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Stl.Fusion.Bridge;
 using Stl.Fusion.Bridge.Interception;
 using Stl.Fusion.Diagnostics;
 using Stl.Plugins;
@@ -124,6 +125,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             events => events.OnCircuitContextCreated += c => c.GetRequiredService<History>());
 
         InjectDiagnosticsServices(services);
+
+        if (appKind.IsClient()) {
+            services.AddSingleton(_ => new IndexedDbReplicaCache.Options());
+            services.AddSingleton<ReplicaCache, IndexedDbReplicaCache>();
+            services.TryAddSingleton<Func<IJSRuntime>>(c => ()
+                => c.GetRequiredService<IJSRuntime>());
+        }
     }
 
     private void InjectDiagnosticsServices(IServiceCollection services)
