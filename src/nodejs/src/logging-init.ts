@@ -12,6 +12,7 @@ export type LogScope =
     // Library
     | 'AsyncProcessor'
     | 'BrowserInfo'
+    | 'BubbleHost'
     | 'Gestures'
     | 'event-handling'
     | 'History'

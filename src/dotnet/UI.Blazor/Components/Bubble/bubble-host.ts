@@ -22,12 +22,9 @@ import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'BubbleHost';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const {  logScope, debugLog } = Log.get('BubbleHost');
 
 enum BubbleTrigger {
     None = 0,
@@ -171,7 +168,7 @@ export class BubbleHost implements Disposable {
     private show(bubble: Bubble): void {
         debugLog?.log('show:', bubble)
         if (!bubble)
-            throw new Error(`${LogScope}.show: bubble == null.`);
+            throw new Error(`${logScope}.show: bubble == null.`);
 
         this.bubble = bubble;
         this.blazorRef.invokeMethodAsync('OnShowRequest', bubble.id, bubble.bubbleRef);
@@ -199,7 +196,7 @@ export class BubbleHost implements Disposable {
 
     private async position(bubble: Bubble, updatedBubble?: Bubble): Promise<void> {
         if (!bubble)
-            throw new Error(`${LogScope}.position: bubble == null.`);
+            throw new Error(`${logScope}.position: bubble == null.`);
 
         if (updatedBubble) {
             bubble.bubbleElement = updatedBubble.bubbleElement ?? bubble.bubbleElement;

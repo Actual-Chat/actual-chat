@@ -3,6 +3,7 @@
 <div class="navbar-button @Class">
     <ButtonSquare
         Click="@Click"
+        Id="@Id"
         Class="@ButtonClass"
         Tooltip="@Tooltip"
         ContentClass="navbar-button-content"
@@ -13,6 +14,7 @@
 </div>
 
 @code {
+    [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
