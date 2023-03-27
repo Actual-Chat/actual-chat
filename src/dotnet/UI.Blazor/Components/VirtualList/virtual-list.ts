@@ -28,6 +28,7 @@ const RemoveOldItemsDebounce: number = 2000;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const UpdateTimeout: number = 800;
+const LineHeight: number = 20;
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -62,6 +63,7 @@ export class VirtualList {
     private _whenUpdateCompleted: PromiseSource<void> | null = null;
     private _pivots: Pivot[] = [];
     private _top: number;
+    private highlightId: number;
 
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
@@ -213,6 +215,10 @@ export class VirtualList {
         clearInterval(this._ironPantsIntervalHandle);
         this._ref.removeEventListener('scroll', this.onScroll);
         this._detectHighlightGesture.dispose();
+    }
+
+    public getNextHighlightId(): number {
+        return this.highlightId++;
     }
 
     private get hasUnmeasuredItems(): boolean {
@@ -1106,6 +1112,13 @@ class DetectHighlightGesture extends Gesture {
 }
 
 class HighlightGesture extends Gesture {
+    private readonly id: number;
+    private readonly leftEdges: Vector2D[];
+    private readonly rightEdges: Vector2D[];
+
+    private previousMove: Vector2D;
+    private direction: 'left' | 'right';
+
     constructor(
         public readonly list: VirtualList,
         origin: Vector2D,
@@ -1114,6 +1127,21 @@ class HighlightGesture extends Gesture {
         firstMoveEvent: TouchEvent,
     ) {
         super();
+
+        const startPosition = getPosition(touchStartEvent);
+        const movePosition = getPosition(firstMoveEvent);
+        this.id = list.getNextHighlightId();
+        this.leftEdges = [];
+        this.rightEdges = [];
+        this.previousMove = movePosition;
+        const left = startPosition.x < movePosition.x
+             ? startPosition
+             : movePosition;
+        const right = startPosition.x >= movePosition.x
+             ? startPosition
+             : movePosition;
+        this.leftEdges.push(left);
+        this.rightEdges.push(right);
 
         const endMove = (event: TouchEvent, isCancelled: boolean) => {
             debugLog?.log('HighlightGesture.endMove:', event, ', isCancelled:', isCancelled);
@@ -1130,11 +1158,15 @@ class HighlightGesture extends Gesture {
             if (event !== firstMoveEvent && event.cancelable && !event.defaultPrevented)
                 preventDefaultForEvent(event);
 
-            const clientPosition = getPosition(event);
-            const span = document.elementFromPoint(clientPosition.x, clientPosition.y) as HTMLSpanElement;
+            const position = getPosition(event);
+            const move = position.sub(this.previousMove);
+
+
+            const span = document.elementFromPoint(position.x, position.y) as HTMLSpanElement;
             if (!(span instanceof HTMLSpanElement) || !(span.parentElement instanceof HTMLSpanElement)) {
                 // not a word markup
-                this.dispose();
+                console.log('3', position);
+                endMove(event, true);
                 return;
             }
 
@@ -1142,13 +1174,16 @@ class HighlightGesture extends Gesture {
                span.classList.add('highlighting');
             }
 
-            const coords = getPosition(event);
-            const offset = coords.sub(origin);
+            const edge = this.leftEdges[this.leftEdges.length - 1];
+            const offset = position.sub(edge);
             if (!offset.isHorizontal(2)) {
                 // Wrong direction
+                console.log('4', position);
                 endMove(event, true);
                 return;
             }
+
+            this.previousMove = position;
         }
 
         move(firstMoveEvent);
