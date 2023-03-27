@@ -48,7 +48,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     public Task<string?> GetDeviceToken(CancellationToken cancellationToken)
         => Messaging.GetTokenAsync();
 
-    async Task<PermissionState> INotificationPermissions.GetNotificationPermissionState(CancellationToken cancellationToken)
+    public async Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
     {
         var settings = await UNUserNotificationCenter.Current.GetNotificationSettingsAsync().ConfigureAwait(false);
         switch (settings.AuthorizationStatus) {
@@ -65,8 +65,12 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         }
     }
 
-    Task INotificationPermissions.RequestNotificationPermissions(CancellationToken cancellationToken)
-        => Messaging.CheckIfValidAsync();
+    public async Task RequestNotificationPermissions(CancellationToken cancellationToken)
+    {
+        await Messaging.CheckIfValidAsync().ConfigureAwait(false);
+        var newState = await GetNotificationPermissionState(cancellationToken).ConfigureAwait(false);
+        NotificationUI.UpdateNotificationStatus(newState);
+    }
 
     private void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
