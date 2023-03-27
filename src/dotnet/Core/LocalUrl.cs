@@ -33,7 +33,7 @@ public readonly struct LocalUrl : IEquatable<LocalUrl>
     public static LocalUrl? FromAbsolute(string url, UrlMapper mapper)
     {
         var origin = mapper.BaseUri.OriginalString.TrimEnd('/');
-        if (!url.OrdinalStartsWith(url))
+        if (!url.OrdinalStartsWith(origin))
             return null;
 
         var relativeUrl = url[origin.Length..];

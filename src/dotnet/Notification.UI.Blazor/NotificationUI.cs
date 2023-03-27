@@ -70,9 +70,8 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
                 return;
 
         var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
-        if (deviceId != null) {
+        if (deviceId != null)
             await RegisterDevice(deviceId, cancellationToken).ConfigureAwait(false);
-        }
     }
 
     public async ValueTask RegisterRequestNotificationHandler(ElementReference reference)
