@@ -95,6 +95,11 @@
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
+    <CreatePackage>false</CreatePackage>
+    <CodesignProvision>Automatic</CodesignProvision>
+    <CodesignKey>iPhone Developer</CodesignKey>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
@@ -105,6 +110,10 @@
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
+    <PackageReference Include="Plugin.Firebase" />
   </ItemGroup>
 
   <ItemGroup>
@@ -127,6 +136,7 @@
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Android\**\*.cs" />
     <None Include="**\Android\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <None Remove="GoogleService-Info.plist" />
   </ItemGroup>
 
   <!-- Both iOS and Mac Catalyst -->
@@ -191,6 +201,14 @@
   <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-android'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-ios'">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-ios'">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Resources\Images\" />
   </ItemGroup>

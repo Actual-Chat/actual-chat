@@ -274,7 +274,7 @@ public class MainActivity : MauiAppCompatActivity
             await loadingUI.WhenLoaded.ConfigureAwait(true);
             var handler = serviceProvider.GetRequiredService<NotificationUI>();
             Log.LogDebug("NotificationTap navigates to '{Url}'", url);
-            _ = handler.HandleNotificationNavigation(url);
+            handler.DispatchNotificationNavigation(url);
         }
         _ = Handle();
     }

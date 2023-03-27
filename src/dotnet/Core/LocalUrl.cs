@@ -30,6 +30,15 @@ public readonly struct LocalUrl : IEquatable<LocalUrl>
     public override string ToString()
         => Value;
 
+    public static LocalUrl? FromAbsolute(string url, UrlMapper mapper)
+    {
+        var origin = mapper.BaseUri.OriginalString.TrimEnd('/');
+        if (!url.OrdinalStartsWith(url))
+            return null;
+
+        var relativeUrl = url[origin.Length..];
+        return relativeUrl;
+    }
     public string ToAbsolute(UrlMapper urlMapper)
         => urlMapper.ToAbsolute(this);
     public string ToAbsolute(NavigationManager nav)
