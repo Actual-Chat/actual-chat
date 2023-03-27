@@ -6,7 +6,7 @@ import { AudioVadWorker } from './audio-vad-worker-contract';
 import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
-import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
+import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { Versioning } from 'versioning';
@@ -32,9 +32,11 @@ let isVadRunning = false;
 let isActive = false;
 
 const serverImpl: AudioVadWorker = {
-    create: async (artifactVersions: Map<string, string>): Promise<void> => {
-        if (vadWorklet != null || encoderWorker != null)
-            throw new Error('Already initialized.');
+    create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
+        if (resampler != null && voiceDetector != null) {
+            await voiceDetector.init();
+            return;
+        }
 
         debugLog?.log(`-> onCreate`);
         Versioning.init(artifactVersions);

@@ -9,7 +9,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'promises';
-import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Versioning } from 'versioning';
@@ -54,9 +54,9 @@ let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
 const serverImpl: OpusEncoderWorker = {
-    create: async (artifactVersions: Map<string, string>, audioHubUrl: string): Promise<void> => {
-        if (encoderWorklet != null || vadWorker != null)
-            throw new Error('Already initialized.');
+    create: async (artifactVersions: Map<string, string>, audioHubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
+        if (codecModule)
+            return;
 
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);

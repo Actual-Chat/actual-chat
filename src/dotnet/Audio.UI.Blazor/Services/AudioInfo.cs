@@ -23,17 +23,19 @@ public sealed class AudioInfo : IAudioInfoBackend, IDisposable
     public void Dispose()
         => _backendRef.DisposeSilently();
 
-    public async Task Initialize()
+    public Task Initialize()
+        => new AsyncChain(nameof(Initialize), InitializeInternal)
+            .Log(Log)
+            .Retry(new RetryDelaySeq(1, 5), 3)
+            .LogBoundary(LogLevel.Warning, Log)
+            .RunIsolated();
+
+    private async Task InitializeInternal(CancellationToken cancellationToken)
     {
-        try {
-            _backendRef = DotNetObjectReference.Create<IAudioInfoBackend>(this);
-            await JS.InvokeVoidAsync(
-                $"{AudioBlazorUIModule.ImportName}.AudioInfo.init",
-                _backendRef);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "Audio pipeline initialization failed");
-            throw;
-        }
+        var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
+        await JS.InvokeVoidAsync(
+            $"{AudioBlazorUIModule.ImportName}.AudioInfo.init",
+            cancellationToken,
+            backendRef);
     }
 }

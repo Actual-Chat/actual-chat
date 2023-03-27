@@ -15,7 +15,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import { OpusDecoder } from './opus-decoder';
 import { ObjectPool } from 'object-pool';
 import { OpusDecoderWorker } from './opus-decoder-worker-contract';
-import { RpcNoWait, rpcServer } from 'rpc';
+import { RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import { retry } from 'promises';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
@@ -32,8 +32,11 @@ const decoders = new Map<string, OpusDecoder>();
 const decoderPool = new ObjectPool<Decoder>(() => new codecModule.Decoder());
 
 const serverImpl: OpusDecoderWorker = {
-    init: async (artifactVersions: Map<string, string>): Promise<void> => {
+    create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
         debugLog?.log(`-> init`);
+        if (codecModule)
+            return;
+
         Versioning.init(artifactVersions);
 
         // Load & warm-up codec
@@ -43,7 +46,7 @@ const serverImpl: OpusDecoderWorker = {
         debugLog?.log(`<- init`);
     },
 
-    create: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
+    init: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
         await serverImpl.close(streamId);
         const decoder = decoderPool.get();

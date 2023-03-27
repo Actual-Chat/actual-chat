@@ -40,7 +40,7 @@ export class AudioPlayer {
         const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
         decoderWorkerInstance = new Worker(decoderWorkerPath);
         decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
-        await decoderWorker.init(Versioning.artifactVersions);
+        await decoderWorker.create(Versioning.artifactVersions, { type: 'rpc-timeout', timeoutMs: 20_000 });
         this.whenInitialized.resolve(undefined);
     }
 
@@ -78,7 +78,7 @@ export class AudioPlayer {
             feederNode.onStateChanged = this.onFeederStateChanged;
 
             // Create decoder worker
-            await decoderWorker.create(this.id, this.decoderToFeederWorkletChannel.port1);
+            await decoderWorker.init(this.id, this.decoderToFeederWorkletChannel.port1);
 
             feederNode.connect(context.destination);
 

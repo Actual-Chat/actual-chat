@@ -71,13 +71,20 @@ export class OpusMediaRecorder {
     }
 
     public async init(baseUri: string): Promise<void> {
-        const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
-        this.encoderWorkerInstance = new Worker(encoderWorkerPath);
-        this.encoderWorker = rpcClient<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance)
+        if (this.whenInitialized.isCompleted())
+            return;
 
-        const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
-        this.vadWorkerInstance = new Worker(vadWorkerPath);
-        this.vadWorker = rpcClient<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance)
+        if (!this.encoderWorker) {
+            const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
+            this.encoderWorkerInstance = new Worker(encoderWorkerPath);
+            this.encoderWorker = rpcClient<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance);
+        }
+
+        if (!this.vadWorker) {
+            const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
+            this.vadWorkerInstance = new Worker(vadWorkerPath);
+            this.vadWorker = rpcClient<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance);
+        }
 
         if (this.origin.includes('0.0.0.0')) {
             // use server address if the app is MAUI
@@ -85,8 +92,13 @@ export class OpusMediaRecorder {
         }
         const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
         await Promise.all([
-            this.encoderWorker.create(Versioning.artifactVersions, audioHubUrl),
-            this.vadWorker.create(Versioning.artifactVersions),
+            this.encoderWorker.create(
+                Versioning.artifactVersions,
+                audioHubUrl,
+               { type: 'rpc-timeout', timeoutMs: 20_000 }),
+            this.vadWorker.create(
+                Versioning.artifactVersions,
+                { type: 'rpc-timeout', timeoutMs: 20_000 }),
         ]);
         this.whenInitialized.resolve(undefined);
     }
