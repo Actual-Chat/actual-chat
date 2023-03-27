@@ -110,7 +110,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         var relativeUrl = LocalUrl.FromAbsolute(url, UrlMapper);
         if (relativeUrl?.IsChatId() == true) {
             await History.NavigateTo(relativeUrl);
-            PanelsUI.Left.SetIsVisible(false);
+            PanelsUI.Middle.EnsureVisible();
         }
     }
 
