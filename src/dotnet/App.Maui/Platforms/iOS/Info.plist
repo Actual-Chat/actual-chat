@@ -45,5 +45,7 @@
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Need access to your microphone to record audio messages</string>
+    <key>aps-environment</key>
+    <string>development</string>
 </dict>
 </plist>
