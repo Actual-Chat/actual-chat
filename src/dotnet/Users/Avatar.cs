@@ -22,7 +22,7 @@ public record Avatar(
 
     [DataMember] public string Name { get; init; } = "";
     [DataMember] public string Picture { get; init; } = "";
-    [DataMember] public MediaId MediaId { get; init; } = MediaId.None;
+    [DataMember] public MediaId MediaId { get; init; }
     [DataMember] public string Bio { get; init; } = "";
 
     // Populated only on reads

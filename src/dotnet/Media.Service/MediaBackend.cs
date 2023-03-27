@@ -48,7 +48,7 @@ internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
                 dbContext.Remove(dbMedia);
         }
         else {
-            throw new NotSupportedException();
+            throw new NotSupportedException("Update is not supported.");
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -31,7 +31,7 @@ public sealed record Chat(
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
-    [DataMember] public MediaId MediaId { get; init; } = MediaId.None;
+    [DataMember] public MediaId MediaId { get; init; }
 
     // Populated only on front-end
     [DataMember] public AuthorRules Rules { get; init; } = null!;

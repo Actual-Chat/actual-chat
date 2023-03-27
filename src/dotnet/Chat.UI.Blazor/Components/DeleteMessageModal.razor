@@ -24,8 +24,7 @@
                     </div>
                     <div class="message-content">
                         @if (FirstAttachment != null) {
-                            var isImage = FirstAttachment.Media.ContentType.OrdinalIgnoreCaseStartsWith("image");
-                            @if (isImage) {
+                            @if (FirstAttachment.IsImage()) {
                                 <ImageAttachment Attachment="@FirstAttachment"/>
                             } else {
                                 <FileAttachment Attachment="@FirstAttachment"/>
