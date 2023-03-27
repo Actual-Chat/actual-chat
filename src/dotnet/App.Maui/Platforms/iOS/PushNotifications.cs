@@ -82,9 +82,14 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
         async Task Handle()
         {
-            await LoadingUI.WhenLoaded.ConfigureAwait(false);
-            Log.LogDebug("NotificationTap navigates to '{Url}'", url);
-            NotificationUI.DispatchNotificationNavigation(url);
+            try {
+                await LoadingUI.WhenLoaded.ConfigureAwait(false);
+                Log.LogDebug("NotificationTap navigates to '{Url}'", url);
+                NotificationUI.DispatchNotificationNavigation(url);
+            }
+            catch (Exception ex) {
+                Log.LogError(ex, "Failed to handle notification tap");
+            }
         }
     }
 }
