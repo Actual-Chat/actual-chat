@@ -62,6 +62,9 @@ module.exports = {
   darkMode: 'media',
   theme: {
     extend: {
+      backdropBlur: {
+        xs: '2px',
+      },
       colors: {
         'counter': 'var(--counter)',
         'counter-navgroup': 'var(--counter-navgroup)',
@@ -370,6 +373,9 @@ module.exports = {
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
       'notify-toggle-show': 'notify-toggle-show 150ms ease-in-out',
+      'opacity-0-100-0': 'opacity-0-100-0 3s ease-in-out infinite',
+      'opacity-10-20-10': 'opacity-10-20-10 3s ease-in-out infinite',
+      'backdrop-2-4-2': 'backdrop-2-4-2 3s ease-in-out infinite',
 
     },
     aspectRatio: {
@@ -1144,6 +1150,32 @@ module.exports = {
               'background': '',
               'border-left': '2px solid transparent',
           },
+      },
+      'opacity-0-100-0': {
+        '0%, 100%': {
+          opacity: 0,
+        },
+        '50%': {
+          opacity: 1,
+        },
+      },
+      'opacity-10-20-10': {
+        '0%, 100%': {
+          opacity: 0.1,
+        },
+        '50%': {
+          opacity: 0.2,
+        },
+      },
+      'backdrop-2-4-2': {
+        '0%, 100%': {
+          opacity: 0.9,
+          'backdrop-filter': 'blur(2px)',
+        },
+        '50%': {
+          opacity: 0.8,
+          'backdrop-filter': 'blur(4px)',
+        },
       },
     },
     letterSpacing: {
