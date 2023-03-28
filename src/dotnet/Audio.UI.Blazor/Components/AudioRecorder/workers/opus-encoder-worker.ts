@@ -256,12 +256,21 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     fadeWindowIndex = null;
             }
 
+
+            // this fake chunk emulates clicky sound
+            // const typedViewFakeChunk = encoder.encode(silenceChunk.buffer);
+            // const fakeChunk = new Uint8Array(typedViewFakeChunk.length);
+            // fakeChunk.set(typedViewFakeChunk);
+            // recordingSubject?.next(fakeChunk);
+
             // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
             const typedViewEncodedChunk = encoder.encode(buffer);
-            void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
             const encodedChunk = new Uint8Array(typedViewEncodedChunk.length);
             encodedChunk.set(typedViewEncodedChunk);
             recordingSubject?.next(encodedChunk);
+
+            void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
+
             chunkTimeOffset += 20;
         }
         if (fade === 'out') {

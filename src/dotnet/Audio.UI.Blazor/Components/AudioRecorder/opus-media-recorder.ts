@@ -111,62 +111,18 @@ export class OpusMediaRecorder {
         await this.whenInitialized;
         await this.stop();
 
-        const attach = async (context: AudioContext) => {
-            const encoderWorkerToWorkletChannel = new MessageChannel();
-            const encoderWorkerToVadWorkerChannel = new MessageChannel();
-            const t1 = this.encoderWorker.init(encoderWorkerToWorkletChannel.port1, encoderWorkerToVadWorkerChannel.port1);
-
-            // Encoder worklet init
-            const encoderWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
-                channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-                processorOptions: {
-                    timeSlice: 20, // hard-coded 20ms at the codec level
-                } as ProcessorOptions,
-            };
-            this.encoderWorkletInstance = new AudioWorkletNode(
-                context,
-                'opus-encoder-worklet-processor',
-                encoderWorkletOptions);
-            this.encoderWorklet = rpcClient<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, this.encoderWorkletInstance.port);
-            await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
-
-            const vadWorkerChannel = new MessageChannel();
-            const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
-
-            // VAD worklet init
-            const vadWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
-                channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-            };
-            this.vadWorkletInstance = new AudioWorkletNode(context, 'audio-vad-worklet-processor', vadWorkletOptions);
-            this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
-            void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
-
-            await Promise.all([t1, t2]);
-
-            this.stream = await OpusMediaRecorder.getMicrophoneStream();
-            this.source = context.createMediaStreamSource(this.stream);
-            this.source.connect(this.vadWorkletInstance);
-            this.source.connect(this.encoderWorkletInstance);
-        }
-
         const detach = async () => {
-            if (this.state == null)
-                return;
-
             await catchErrors(
                 () => this.encoderWorkletInstance?.disconnect(),
                 e => warnLog?.log('start.detach encoderWorkletInstance.disconnect error:', e));
             this.encoderWorkletInstance = null;
             await catchErrors(
-                () => this.encoderWorklet?.dispose(),
+                () => {
+                    if (this.encoderWorklet) {
+                        void this.encoderWorklet.stop(rpcNoWait);
+                        this.encoderWorklet.dispose();
+                    }
+                },
                 e => warnLog?.log('start.detach encoderWorklet.dispose error:', e));
             this.encoderWorklet = null;
 
@@ -175,24 +131,16 @@ export class OpusMediaRecorder {
                 e => warnLog?.log('start.detach vadWorkletInstance.disconnect error:', e));
             this.vadWorkletInstance = null;
             await catchErrors(
-                () => this.vadWorklet?.dispose(),
+                () => {
+                    if (this.vadWorklet) {
+                        void this.vadWorklet.stop(rpcNoWait);
+                        this.vadWorklet.dispose();
+                    }
+                },
                 e => warnLog?.log('start.detach vadWorklet.dispose error:', e));
             this.vadWorklet = null;
 
-            if (this.stream) {
-                const tracks = new Array<MediaStreamTrack>()
-                tracks.push(...this.stream.getAudioTracks());
-                tracks.push(...this.stream.getVideoTracks());
-                for (let track of tracks) {
-                    await catchErrors(
-                        () => track.stop(),
-                        e => warnLog?.log('start.detach track.stop error:', e));
-                    await catchErrors(
-                        () => this.stream.removeTrack(track),
-                        e => warnLog?.log('start.detach stream.removeTrack error:', e));
-                }
-            }
-            this.stream = null;
+            await this.stopMicrophoneStream();
 
             await catchErrors(
                 () => this.encoderWorker?.stop(),
@@ -203,6 +151,86 @@ export class OpusMediaRecorder {
             this.source = null;
 
             this.state = null;
+        }
+
+        const attach = async (context: AudioContext) => {
+            if (!this.encoderWorkletInstance
+                || !this.vadWorkletInstance
+                || this.encoderWorkletInstance.context !== context
+                || this.vadWorkletInstance.context !== context) {
+
+                if (this.encoderWorkletInstance) {
+                    void this.vadWorklet?.stop(rpcNoWait);
+                    void this.encoderWorklet?.stop(rpcNoWait);
+                    await detach();
+                }
+
+                const encoderWorkerToWorkletChannel = new MessageChannel();
+                const encoderWorkerToVadWorkerChannel = new MessageChannel();
+                const t1 = this.encoderWorker.init(
+                    encoderWorkerToWorkletChannel.port1,
+                    encoderWorkerToVadWorkerChannel.port1);
+
+                // Encoder worklet init
+                const encoderWorkletOptions: AudioWorkletNodeOptions = {
+                    numberOfInputs: 1,
+                    numberOfOutputs: 1,
+                    channelCount: 1,
+                    channelInterpretation: 'speakers',
+                    channelCountMode: 'explicit',
+                    processorOptions: {
+                        timeSlice: 20, // hard-coded 20ms at the codec level
+                    } as ProcessorOptions,
+                };
+                this.encoderWorkletInstance = new AudioWorkletNode(
+                    context,
+                    'opus-encoder-worklet-processor',
+                    encoderWorkletOptions);
+                this.encoderWorklet = rpcClient<OpusEncoderWorklet>(
+                    `${logScope}.encoderWorklet`,
+                    this.encoderWorkletInstance.port);
+                await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
+
+                const vadWorkerChannel = new MessageChannel();
+                const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
+
+                // VAD worklet init
+                const vadWorkletOptions: AudioWorkletNodeOptions = {
+                    numberOfInputs: 1,
+                    numberOfOutputs: 1,
+                    channelCount: 1,
+                    channelInterpretation: 'speakers',
+                    channelCountMode: 'explicit',
+                };
+                this.vadWorkletInstance = new AudioWorkletNode(
+                    context,
+                    'audio-vad-worklet-processor',
+                    vadWorkletOptions);
+                this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
+                void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
+
+                await Promise.all([t1, t2]);
+            }
+
+            // stop active microphone stream if exists
+            await this.stopMicrophoneStream();
+            try {
+                const stream = await OpusMediaRecorder.getMicrophoneStream();
+                // multiple microphone stream can be acquired with multiple attach() calls
+                if (!this.stream) {
+                    this.stream = stream;
+                    this.source = context.createMediaStreamSource(this.stream);
+                    this.source.connect(this.vadWorkletInstance);
+                    this.source.connect(this.encoderWorkletInstance);
+                }
+                else {
+                    await OpusMediaRecorder.stopStreamTracks(stream);
+                }
+            }
+            catch (e) {
+                await this.stopMicrophoneStream();
+                warnLog?.log('start.attach getMicrophoneStream() error:', e);
+            }
         }
 
         const options: AudioContextRefOptions = {
@@ -217,10 +245,11 @@ export class OpusMediaRecorder {
 
             await Promise.all([
                 this.encoderWorker.start(sessionId, chatId, repliedChatEntryId),
-                await this.vadWorker.reset(),
+                this.vadWorker.reset(),
             ]);
         }
         catch (e) {
+            await this.stopMicrophoneStream();
             void contextRef.disposeAsync();
             throw e;
         }
@@ -229,6 +258,9 @@ export class OpusMediaRecorder {
     public async stop(): Promise<void> {
         debugLog?.log(`stop`);
         await this.whenInitialized;
+        await this.stopMicrophoneStream();
+        void this.vadWorklet?.stop(rpcNoWait);
+        void this.encoderWorklet?.stop(rpcNoWait);
         if (!this.contextRef)
             return;
 
@@ -239,13 +271,40 @@ export class OpusMediaRecorder {
 
     // Private methods
 
+    private async stopMicrophoneStream(): Promise<void> {
+        warnLog?.log('stopMicrophoneStream()');
+        if (this.source)
+            this.source.disconnect();
+        this.source = null;
+
+        await OpusMediaRecorder.stopStreamTracks(this.stream);
+        this.stream = null;
+    }
+
+    private static async stopStreamTracks(stream?: MediaStream): Promise<void> {
+        if (stream) {
+            const tracks = new Array<MediaStreamTrack>()
+            tracks.push(...stream.getAudioTracks());
+            tracks.push(...stream.getVideoTracks());
+            for (let track of tracks) {
+                await catchErrors(
+                    () => track.stop(),
+                    e => warnLog?.log('start.detach track.stop error:', e));
+                await catchErrors(
+                    () => stream.removeTrack(track),
+                    e => warnLog?.log('start.detach stream.removeTrack error:', e));
+            }
+        }
+    }
+
     private static async getMicrophoneStream(): Promise<MediaStream> {
         /**
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
          */
+        let mediaStream: MediaStream = null;
         try {
-            debugLog?.log('-> getMicrophoneStream');
+            warnLog?.log('-> getMicrophoneStream');
             const constraints: MediaStreamConstraints & any = {
                 audio: {
                     channelCount: 1,
@@ -276,18 +335,19 @@ export class OpusMediaRecorder {
                 },
                 video: false,
             };
-            let mediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
+            mediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
             const tracks = mediaStream.getAudioTracks();
             if (!tracks[0]) {
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('UnknownError, media track not found.');
             }
 
-            debugLog?.log('<- getMicrophoneStream. mediaStream.active =', mediaStream.active);
+            warnLog?.log('<- getMicrophoneStream. mediaStream.active =', mediaStream.active);
             return mediaStream;
         }
         catch (e) {
-            errorLog?.log('Error getting microphone stream', e);
+            await OpusMediaRecorder.stopStreamTracks(mediaStream);
+            warnLog?.log('Error getting microphone stream', e);
             throw e;
         }
     }

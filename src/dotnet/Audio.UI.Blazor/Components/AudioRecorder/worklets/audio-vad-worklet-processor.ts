@@ -12,20 +12,26 @@ const { logScope, warnLog } = Log.get('AudioVadWorkletProcessor');
 const SAMPLES_PER_WINDOW = 768;
 
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
-    private buffer: AudioRingBuffer;
-    private bufferPool: ObjectPool<ArrayBuffer>;
+    private readonly buffer: AudioRingBuffer;
+    private readonly bufferPool: ObjectPool<ArrayBuffer>;
+
+    private state: 'running' | 'stopped' = 'running';
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
+        this.buffer = new AudioRingBuffer(8192, 1);
+        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
         this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<AudioVadWorker>(`${logScope}.worker`, workerPort, this);
-        this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
+    }
+
+    public async stop(_noWait?: RpcNoWait): Promise<void> {
+        this.state = 'stopped';
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
@@ -34,12 +40,16 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         timerQueue?.triggerExpired();
-        if (inputs == null
-            || inputs.length === 0
-            || inputs[0].length === 0
-            || outputs == null
-            || outputs.length === 0
-            || outputs[0].length === 0)
+        const hasInput = inputs
+            && inputs.length !== 0
+            && inputs[0].length !== 0;
+        const hasOutput = outputs
+            && outputs.length !== 0
+            && outputs[0].length !== 0;
+
+        if (this.state === 'stopped')
+            return false;
+        if (!hasInput || !hasOutput)
             return true;
 
         const input = inputs[0];

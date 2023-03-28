@@ -45,19 +45,27 @@ export class AudioRecorder {
 
         if (!hasMicrophone) {
             // Requests microphone permission
+            let stream: MediaStream = null;
             try {
                 debugLog?.log(`requestPermission: detecting active tracks to stop`);
-                const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 const audioTracks = stream.getAudioTracks();
                 const videoTracks = stream.getVideoTracks();
                 debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
-                audioTracks.forEach(t => t.stop());
-                videoTracks.forEach(t => t.stop());
+
                 this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
             }
             catch (error) {
                 errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
                 return false;
+            }
+            finally {
+                if (stream) {
+                    const audioTracks = stream.getAudioTracks();
+                    const videoTracks = stream.getVideoTracks();
+                    audioTracks.forEach(t => t.stop());
+                    videoTracks.forEach(t => t.stop());
+                }
             }
 
             return true;

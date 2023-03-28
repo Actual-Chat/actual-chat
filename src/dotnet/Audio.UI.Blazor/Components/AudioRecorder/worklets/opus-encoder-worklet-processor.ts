@@ -20,6 +20,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
+    private state: 'running' | 'stopped' = 'running';
     private server: Disposable;
     private worker: OpusEncoderWorker & Disposable;
 
@@ -43,6 +44,10 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
     }
 
+    public async stop(_noWait?: RpcNoWait): Promise<void> {
+        this.state = 'stopped';
+    }
+
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
         this.bufferPool.release(buffer);
     }
@@ -50,12 +55,18 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         timerQueue?.triggerExpired();
         try {
-            if (inputs == null
-                || inputs.length === 0
-                || inputs[0].length === 0
-                || outputs == null
-                || outputs.length === 0)
+            const hasInput = inputs
+                && inputs.length !== 0
+                && inputs[0].length !== 0;
+            const hasOutput = outputs
+                && outputs.length !== 0
+                && outputs[0].length !== 0;
+
+            if (this.state === 'stopped')
+                return false;
+            if (!hasInput || !hasOutput)
                 return true;
+
             const input = inputs[0];
             const output = outputs[0];
 
