@@ -283,11 +283,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Extend requested range if it's close to chat Id range
         var isCloseToTheEnd = queryRange.End >= chatIdRange.End - (PageSize / 2);
         var isCloseToTheStart = queryRange.Start <= chatIdRange.Start + (PageSize / 2);
+        var isClientRequest = query.VirtualRange.HasValue;
         var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch
         {
             (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
-            (_, true) => new Range<long>(queryRange.Start, chatIdRange.End).Expand(1),
-            (true, _) => new Range<long>(chatIdRange.Start, queryRange.End).Expand(1),
+            (_, true) when isClientRequest => new Range<long>(queryRange.Start, chatIdRange.End + 2),
+            (_, true) => new Range<long>(chatIdRange.End - (2 * PageSize), chatIdRange.End + 2),
+            (true, _) => new Range<long>(chatIdRange.Start, queryRange.End),
             _ => queryRange,
         };
         return extendedRange;
