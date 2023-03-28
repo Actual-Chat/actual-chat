@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.CloudMessaging;
@@ -16,6 +17,8 @@ public static partial class MauiProgram
         services.AddScoped<PushNotifications>(c => new PushNotifications(c));
         services.AddScoped<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
         services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<PushNotifications>());
+
+        services.AddScoped<IAudioOutputController, IosAudioOutputController>(c => new IosAudioOutputController(c));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

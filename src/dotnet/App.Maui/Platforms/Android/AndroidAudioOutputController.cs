@@ -74,11 +74,11 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
     // TODO(DF):
     // May be I can get rid of AudioSwitch. But I need to test how _audioManager.SetCommunicationDevice works.
     // This is API 31 level. Which is available since Android 12.
-    public async ValueTask<bool> ToggleAudio(bool mustEnable)
+    public async ValueTask SetAudioEnabled(bool mustEnable)
     {
         lock (_lock) {
             if (_isAudioOn.Value == mustEnable)
-                return mustEnable;
+                return;
 
             Log.LogDebug("ToggleAudio({MustEnable})", mustEnable);
             if (mustEnable) {
@@ -93,16 +93,15 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
         }
         if (mustEnable) {
             await _isSpeakerphoneOnStored.WhenRead.ConfigureAwait(false);
-            _ = ToggleSpeakerphone(IsSpeakerphoneOn.Value);
+            _ = SetSpeakerphoneEnabled(IsSpeakerphoneOn.Value);
         }
-        return mustEnable;
     }
 
-    public ValueTask<bool> ToggleSpeakerphone(bool mustEnable)
+    public ValueTask SetSpeakerphoneEnabled(bool mustEnable)
     {
         lock (_lock) {
             if (IsSpeakerphoneActuallyOn() == mustEnable)
-                return ValueTask.FromResult(mustEnable);
+                return ValueTask.CompletedTask;
 
             Log.LogDebug("ToggleSpeakerphone({MustEnable})", mustEnable);
             if (mustEnable) {
@@ -119,7 +118,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
             _isSpeakerphoneOnStored.Value = IsSpeakerphoneActuallyOn(true);
             IsSpeakerphoneOn.Invalidate();
         }
-        return ValueTask.FromResult(mustEnable);
+        return ValueTask.CompletedTask;
     }
 
     // Private methods

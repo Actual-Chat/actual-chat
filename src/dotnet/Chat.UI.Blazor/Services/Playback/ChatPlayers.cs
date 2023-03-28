@@ -128,7 +128,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
 
         async Task EnterState(PlaybackState? state, CancellationToken ct)
         {
-            await AudioOutputController.ToggleAudio(state != null).ConfigureAwait(false);
+            await AudioOutputController.SetAudioEnabled(state != null).ConfigureAwait(false);
             if (state is HistoricalPlaybackState historical) {
                 _ = TuneUI.Play("start-historical-playback", CancellationToken.None);
                 var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);

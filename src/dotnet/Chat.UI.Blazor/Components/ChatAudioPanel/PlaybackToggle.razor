@@ -63,7 +63,7 @@
     }
 
     private void OnToggleAudioOutputClick()
-        => AudioOutputController.ToggleSpeakerphone(!AudioOutputController.IsSpeakerphoneOn.Value);
+        => AudioOutputController.SetSpeakerphoneEnabled(!AudioOutputController.IsSpeakerphoneOn.Value);
 
 
     public sealed record Model(

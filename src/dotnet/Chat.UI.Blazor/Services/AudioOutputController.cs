@@ -4,8 +4,8 @@ public interface IAudioOutputController
 {
     IState<bool> IsAudioOn { get; }
     IState<bool> IsSpeakerphoneOn { get; }
-    ValueTask<bool> ToggleAudio(bool mustEnable);
-    ValueTask<bool> ToggleSpeakerphone(bool mustEnable);
+    ValueTask SetAudioEnabled(bool mustEnable);
+    ValueTask SetSpeakerphoneEnabled(bool mustEnable);
 }
 
 public sealed class AudioOutputController : IAudioOutputController
@@ -28,9 +28,12 @@ public sealed class AudioOutputController : IAudioOutputController
             StateCategories.Get(type, nameof(IsSpeakerphoneOn)));
     }
 
-    public ValueTask<bool> ToggleAudio(bool mustEnable)
-        => ValueTaskExt.FromResult(_isAudioOn.Value = mustEnable);
+    public ValueTask SetAudioEnabled(bool mustEnable)
+    {
+        _isAudioOn.Value = mustEnable;
+        return ValueTask.CompletedTask;
+    }
 
-    public ValueTask<bool> ToggleSpeakerphone(bool mustEnable)
-        => ValueTaskExt.FalseTask;
+    public ValueTask SetSpeakerphoneEnabled(bool mustEnable)
+        => ValueTaskExt.CompletedTask;
 }
