@@ -19,7 +19,7 @@ public partial class MauiBlazorWebViewHandler
         InjectInitPageScript();
     }
 
-    void SetSessionIdCookie(string domain, bool secure)
+    private void SetSessionIdCookie(string domain, bool secure)
     {
         var properties = new NSDictionary(
             NSHttpCookie.KeyName, "FusionAuth.SessionId",
