@@ -248,6 +248,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             hasVeryLastItem,
             scrollToKey);
 
+        var visibility = ItemVisibility.Value;
+        // Keep most recent entry as read if end anchor is visible
+        if (visibility != ChatViewItemVisibility.Empty
+            && visibility.IsEndAnchorVisible
+            && hasVeryLastItem
+            && chatEntries.Count > 0) {
+            var lastEntryId = chatEntries[^1].Id.LocalId;
+            if (lastEntryId > readEntryLid && ReadPositionState != null)
+                ReadPositionState.Value = new ChatPosition(lastEntryId);
+        }
+
         if (isHighlighted) {
             // highlight entry when it has already been loaded
             var highlightedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, entryLid, AssumeValid.Option);

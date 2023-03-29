@@ -11,7 +11,7 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.8)]
     Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,

@@ -149,7 +149,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         return result;
     }
 
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.6)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("Get: {ChatId}", chatId.Value);
@@ -270,18 +270,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         return chatInfo?.UnreadCount ?? new ();
     }
 
-    // Not compute method!
-    public Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
-    {
-        var unreadCount = 0;
-        if (readEntryLid > 0 && !chatNews.IsNone) {
-            // Otherwise the chat wasn't ever opened
-            var lastId = chatNews.TextEntryIdRange.End - 1;
-            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
-        }
-        return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
-    }
-
     // SetXxx & Add/RemoveXxx
 
     public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);
@@ -360,6 +348,18 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     }
 
     // Private methods
+
+    // Not compute method!
+    private Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
+    {
+        var unreadCount = 0;
+        if (readEntryLid > 0 && !chatNews.IsNone) {
+            // Otherwise the chat wasn't ever opened
+            var lastId = chatNews.TextEntryIdRange.End - 1;
+            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
+        }
+        return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
+    }
 
     private Task<ISyncedState<ChatPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
