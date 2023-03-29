@@ -204,9 +204,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
                 mustScrollToEntry = true;
         }
-        var scrollToKey = mustScrollToEntry
-            ? entryLid.Format()
-            : null;
 
         // If we are scrolling somewhere - let's load the date near the entryId
         var idRangeToLoad = GetIdRangeToLoad(query, mustScrollToEntry ? entryLid : 0, chatIdRange);
@@ -223,6 +220,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
+
+        var scrollToKey = mustScrollToEntry
+            ? GetScrollToKey(chatEntries, entryLid)
+            : null;
 
         // Do not show '-new-' separator after view is scrolled to the end anchor.
         if (!_doNotShowNewMessagesSeparator && _itemVisibilityUpdateHasReceived) {
@@ -304,6 +305,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ => queryRange,
         };
         return extendedRange;
+    }
+
+    private string? GetScrollToKey(List<ChatEntry> chatEntries, long scrollToEntryLid)
+    {
+        var scrollToEntry = chatEntries.FindLast(x => x.LocalId <= scrollToEntryLid)
+            ?? chatEntries.Find(x => x.LocalId > scrollToEntryLid);
+        if (scrollToEntry is not null)
+            return scrollToEntry.LocalId.Format();
+
+        Log.LogWarning("Failed to find entry to scroll to #{EntryLid}", scrollToEntryLid);
+        return null;
     }
 
     // Event handlers
