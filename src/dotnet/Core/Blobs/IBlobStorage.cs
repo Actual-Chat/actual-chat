@@ -16,6 +16,11 @@ public interface IBlobStorage : IAsyncDisposable
         string contentType,
         CancellationToken cancellationToken);
 
+    Task Copy(
+        string oldPath,
+        string newPath,
+        CancellationToken cancellationToken);
+
     Task Delete(
         IReadOnlyCollection<string> paths,
         CancellationToken cancellationToken);
