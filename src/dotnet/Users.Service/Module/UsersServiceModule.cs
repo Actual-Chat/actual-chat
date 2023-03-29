@@ -132,6 +132,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
+        fusion.AddComputeService<ISystemProperties, SystemProperties>();
         fusion.AddComputeService<IAccounts, Accounts>();
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();

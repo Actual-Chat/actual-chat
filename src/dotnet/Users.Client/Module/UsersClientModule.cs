@@ -3,6 +3,7 @@ using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using Stl.Fusion.Client;
+using Stl.Interception;
 using Stl.Plugins;
 
 namespace ActualChat.Users.Module;
@@ -29,6 +30,7 @@ public class UsersClientModule : HostModule
         });
         var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
 
+        fusionClient.AddReplicaService<ISystemProperties, ISystemPropertiesClientDef>();
         fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
         fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
         fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();

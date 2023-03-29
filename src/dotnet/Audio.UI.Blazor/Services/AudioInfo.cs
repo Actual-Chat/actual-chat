@@ -24,18 +24,14 @@ public sealed class AudioInfo : IAudioInfoBackend, IDisposable
         => _backendRef.DisposeSilently();
 
     public Task Initialize()
-        => new AsyncChain(nameof(Initialize), InitializeInternal)
+        => new AsyncChain(nameof(Initialize), async ct => {
+                var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
+                await JS.InvokeVoidAsync(
+                    $"{AudioBlazorUIModule.ImportName}.AudioInfo.init",
+                    ct,
+                    backendRef);
+            })
             .Log(Log)
-            .Retry(new RetryDelaySeq(1, 5), 3)
-            .LogBoundary(LogLevel.Warning, Log)
+            .RetryForever(new RetryDelaySeq(0.5, 3), Log)
             .RunIsolated();
-
-    private async Task InitializeInternal(CancellationToken cancellationToken)
-    {
-        var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
-        await JS.InvokeVoidAsync(
-            $"{AudioBlazorUIModule.ImportName}.AudioInfo.init",
-            cancellationToken,
-            backendRef);
-    }
 }

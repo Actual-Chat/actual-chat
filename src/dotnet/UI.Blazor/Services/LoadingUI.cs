@@ -1,5 +1,3 @@
-using Trace = Sentry.Protocol.Trace;
-
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>

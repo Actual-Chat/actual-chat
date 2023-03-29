@@ -72,19 +72,21 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             c.GetRequiredService<Session>()));
         if (appKind.IsServer())
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
-        else
+        else {
             services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
+            services.AddSingleton<ServerTimeSync>();
+            services.AddHostedService<ServerTimeSync>();
+        }
         services.AddScoped<ComponentIdGenerator>(_ => new ComponentIdGenerator());
         services.AddScoped<RenderVars>(c => new RenderVars(
             c.GetRequiredService<IStateFactory>()));
 
         // UI events
-        services.AddScoped<LoadingUI>(c => new LoadingUI(c));
         services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
             c.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
         services.AddScoped<UIEventHub>(c => new UIEventHub(c));
 
-        // General UI services
+        services.AddScoped<LoadingUI>(c => new LoadingUI(c));
         services.AddScoped<ClipboardUI>(c => new ClipboardUI(
             c.GetRequiredService<IJSRuntime>()));
         services.AddScoped<InteractiveUI>(c => new InteractiveUI(c));

@@ -15,12 +15,12 @@ public partial class ChatAudioUI
             new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
             new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
         };
-        var retryDelays = new RetryDelaySeq(100, 1000);
+        var retryDelays = new RetryDelaySeq(0.1, 1);
         return (
             from chain in baseChains
             select chain
                 .RetryForever(retryDelays, Log)
-                .LogBoundary(LogLevel.Debug, Log)
+                .Log(LogLevel.Debug, Log)
             ).RunIsolated(cancellationToken);
     }
 

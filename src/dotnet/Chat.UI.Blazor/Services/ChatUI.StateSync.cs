@@ -12,11 +12,11 @@ public partial class ChatUI
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
-        var retryDelays = new RetryDelaySeq(100, 1000);
+        var retryDelays = new RetryDelaySeq(0.1, 1);
         return (
             from chain in baseChains
             select chain
-                .LogBoundary(LogLevel.Debug, Log)
+                .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
     }

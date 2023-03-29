@@ -1,7 +1,17 @@
+using ActualChat.Hosting;
 using ActualChat.Kvas;
 using RestEase;
 
 namespace ActualChat.Users;
+
+[BasePath("systemProperties")]
+public interface ISystemPropertiesClientDef
+{
+    [Get(nameof(GetTime))]
+    Task<double> GetTime(CancellationToken cancellationToken);
+    [Get(nameof(GetMinClientVersion))]
+    Task<string?> GetMinClientVersion(AppKind appKind, CancellationToken cancellationToken);
+}
 
 [BasePath("accounts")]
 public interface IAccountsClientDef

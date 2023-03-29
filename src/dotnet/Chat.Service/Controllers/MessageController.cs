@@ -2,10 +2,6 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Primitives;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Metadata.Profiles.Exif;
-using SixLabors.ImageSharp.Processing;
 
 namespace ActualChat.Chat.Controllers;
 
