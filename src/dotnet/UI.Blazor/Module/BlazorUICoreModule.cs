@@ -4,7 +4,6 @@ using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
-using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.Fusion.Bridge.Interception;
@@ -28,9 +27,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         var appKind = HostInfo.AppKind;
         if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
-
-        // Third-party Blazor components
-        services.AddBlazoredSessionStorage();
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
         ComputedStateComponent.DefaultOptions =

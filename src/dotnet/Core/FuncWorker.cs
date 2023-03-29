@@ -26,6 +26,6 @@ public sealed class FuncWorker : WorkerBase
         : base(cancellationTokenSource)
         => TaskFactory = taskFactory;
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
         => await TaskFactory(cancellationToken).ConfigureAwait(false);
 }

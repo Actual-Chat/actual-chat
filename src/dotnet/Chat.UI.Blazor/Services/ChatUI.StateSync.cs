@@ -4,7 +4,7 @@ public partial class ChatUI
 {
     // All state sync logic should be here
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),

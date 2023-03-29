@@ -52,7 +52,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     }
 
     void INotifyInitialized.Initialized()
-        => Start();
+        => this.Start();
 
     // ChatAudioUI is disabled until the moment user visits ChatPage
     public void Enable()

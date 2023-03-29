@@ -35,7 +35,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     }
 
     void INotifyInitialized.Initialized()
-        => Start();
+        => this.Start();
 
     protected override Task DisposeAsyncCore()
     {
@@ -61,7 +61,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
 
     // Protected methods
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         // TODO(AY): Implement _players cleanup here
         var lastPlaybackState = (PlaybackState?)null;

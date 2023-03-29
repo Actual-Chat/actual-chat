@@ -5,7 +5,7 @@ public partial class ChatAudioUI
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
     private static readonly int MaxStopRecordingTryCount = 3;
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateActiveChatDependencies), InvalidateActiveChatDependencies),

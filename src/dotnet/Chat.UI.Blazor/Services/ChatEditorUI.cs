@@ -36,7 +36,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
     }
 
     void INotifyInitialized.Initialized()
-        => Start();
+        => this.Start();
 
     public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
         => ShowRelatedEntry(new RelatedChatEntry(kind, entryId), focusOnEditor, updateUI);
@@ -127,7 +127,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
             _relatedChatEntry.Value = relatedEntry;
     }
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
         => HideWhenRelatedEntryRemoved(cancellationToken);
 
     private async Task HideWhenRelatedEntryRemoved(CancellationToken cancellationToken)

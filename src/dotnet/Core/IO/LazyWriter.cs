@@ -21,7 +21,7 @@ public class LazyWriter<T> : WorkerBase
             SingleReader = true,
             SingleWriter = false,
         });
-        Start();
+        this.Start();
     }
 
     public void Add(T item)
@@ -40,7 +40,7 @@ public class LazyWriter<T> : WorkerBase
         return command.WhenFlushed.WaitAsync(cancellationToken);
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         using var abortCts = new CancellationTokenSource();
         var abortToken = abortCts.Token;

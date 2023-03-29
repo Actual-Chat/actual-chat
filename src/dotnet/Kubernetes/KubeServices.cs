@@ -85,10 +85,10 @@ public class KubeServices : IKubeInfo
                 ImmutableArray<KubeEndpoint>.Empty,
                 ImmutableArray<KubePort>.Empty);
             State = services.StateFactory().NewMutable(initialValue);
-            Start();
+            this.Start();
         }
 
-        protected override async Task RunInternal(CancellationToken cancellationToken)
+        protected override async Task OnRun(CancellationToken cancellationToken)
         {
             var retries = new RetryDelaySeq(1, 10);
             var failureCount = 0;

@@ -16,7 +16,7 @@ public class TaskEventListener : WorkerBase
         Services = services;
         Log = services.LogFor(GetType());
     }
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var tEventSource = Type.GetType("System.Threading.Tasks.TplEventSource")!;
         var fLog = tEventSource.GetField("Log", BindingFlags.Static | BindingFlags.Public)!;

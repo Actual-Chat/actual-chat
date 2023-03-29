@@ -39,7 +39,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));
-        Start();
+
+        this.Start();
         var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
         try {
             var queueTask = Queue!.Writer.WriteAsync(process, cancellationToken);
@@ -61,17 +62,18 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     public Task Complete(CancellationToken cancellationToken = default)
     {
-        Start();
+        this.Start();
         Queue!.Writer.TryComplete();
         return WhenRunning == null ? Task.CompletedTask : WhenRunning.WaitAsync(cancellationToken);
     }
 
     protected abstract Task<object?> Process(TMessage message, CancellationToken cancellationToken);
 
-    protected override Task OnStarting(CancellationToken cancellationToken)
+    protected override Task OnStart(CancellationToken cancellationToken)
     {
         if (Queue != null!)
             return Task.CompletedTask;
+
         Queue = Channel.CreateBounded<IMessageProcess<TMessage>>(
             new BoundedChannelOptions(QueueSize) {
                 SingleReader = true,
@@ -82,11 +84,11 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         return Task.CompletedTask;
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
-            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(RunInternal) + " cycle");
+            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(OnRun) + " cycle");
             var message = process.Message;
             process.MarkStarted();
             Task<object?>? processTask = null;

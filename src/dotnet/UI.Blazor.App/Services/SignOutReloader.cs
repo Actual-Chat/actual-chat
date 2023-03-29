@@ -21,7 +21,7 @@ public class SignOutReloader : WorkerBase
         Clocks = services.Clocks();
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var session = Services.GetRequiredService<Session>();
         var auth = Services.GetRequiredService<IAuth>();

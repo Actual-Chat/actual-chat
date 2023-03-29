@@ -16,7 +16,7 @@
     <NpgsqlVersion>7.0.1</NpgsqlVersion>
     <RedisVersion>2.6.96</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>5.1.6</StlFusionVersion>
+    <StlFusionVersion>5.1.11</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
@@ -26,7 +26,6 @@
   <ItemGroup Label="Nupkg Versions">
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="6.0.2" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
-    <PackageVersion Include="Blazored.SessionStorage" Version="2.3.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FirebaseAdmin" Version="2.3.0" />
     <PackageVersion Include="Google.Api.Gax" Version="4.3.1" />

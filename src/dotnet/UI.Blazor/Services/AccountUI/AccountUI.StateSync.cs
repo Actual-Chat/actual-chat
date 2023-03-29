@@ -6,7 +6,7 @@ public partial class AccountUI
 {
     // All state sync logic should be here
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
         => Task.WhenAll(
             SyncOwnAccount(cancellationToken),
             Task.CompletedTask); // Just to add more items w/o need to worry about comma :)

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui;
 
-public class MauiBlazorApp : UI.Blazor.App.App
+public class MauiBlazorApp : UI.Blazor.App.AppBase
 {
     [Inject] private IServiceProvider Services { get; init; } = null!;
 

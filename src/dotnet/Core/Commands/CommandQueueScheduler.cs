@@ -32,7 +32,7 @@ public class CommandQueueScheduler : WorkerBase
             Settings.MaxKnownCommandAge);
     }
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
         var priorities = new [] {
             QueuedCommandPriority.Low,

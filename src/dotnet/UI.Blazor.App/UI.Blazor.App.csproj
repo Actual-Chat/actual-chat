@@ -14,10 +14,5 @@
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <TypeScriptCompile Include="Pages\Landing\landing.ts" />
-    <TypeScriptCompile Include="Pages\Test\js-test-page.ts" />
-  </ItemGroup>
 
 </Project>

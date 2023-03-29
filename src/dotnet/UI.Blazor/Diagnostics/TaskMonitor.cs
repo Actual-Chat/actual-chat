@@ -18,7 +18,7 @@ public class TaskMonitor : WorkerBase
         Clocks = services.Clocks();
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var scheduler = TaskScheduler.Current;
         var tScheduler = scheduler.GetType();

@@ -1,5 +1,3 @@
-using Stl.Interception;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public class PanelsUI : WorkerBase, IHasServices
@@ -20,7 +18,7 @@ public class PanelsUI : WorkerBase, IHasServices
         Left = new LeftPanel(this);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);
-        Start();
+        this.Start();
     }
 
     public bool IsNarrow()
@@ -28,7 +26,7 @@ public class PanelsUI : WorkerBase, IHasServices
     public bool IsWide()
         => ScreenSize.Value.IsWide();
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
         => History.Dispatcher.InvokeAsync(async () => {
             var lastIsWide = IsWide();
             await foreach (var _ in ScreenSize.Changes(cancellationToken)) {

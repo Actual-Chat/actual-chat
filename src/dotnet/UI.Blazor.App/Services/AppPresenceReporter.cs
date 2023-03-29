@@ -13,7 +13,7 @@ public class AppPresenceReporter : WorkerBase
     public AppPresenceReporter(IServiceProvider services)
         => Services = services;
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
         // Worker class is needed to offload services resolving from main thread
         var worker = Services.GetRequiredService<AppPresenceReporterWorker>();

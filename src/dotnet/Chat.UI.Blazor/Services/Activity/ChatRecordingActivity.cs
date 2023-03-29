@@ -49,7 +49,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
 
     // Protected & private methods
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var startAt = Owner.Clocks.SystemClock.Now;
         var idRange = await Owner.Chats.GetIdRange(Owner.Session, ChatId, ChatEntryKind.Audio, cancellationToken)

@@ -49,7 +49,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     }
 
     void INotifyInitialized.Initialized()
-        => Start();
+        => this.Start();
 
     public async Task SignOut()
     {

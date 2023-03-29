@@ -93,7 +93,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     }
 
     void INotifyInitialized.Initialized()
-        => Start();
+        => this.Start();
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> List(CancellationToken cancellationToken = default)

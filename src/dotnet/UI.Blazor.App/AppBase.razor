@@ -1,5 +1,4 @@
 @using Stl.Plugins
-@using ActualChat.Kvas
 @using ActualChat.Hosting
 @using ActualChat.Audio.UI.Blazor.Services
 @implements IDisposable
@@ -7,6 +6,7 @@
     // We can't render anything till the moment a few key components completed the initialization
     if (!_whenReadyToRender.IsCompletedSuccessfully)
         return;
+
     _tracer.Point("Rendered");
     LoadingUI.ReportAppAboutRenderContent();
 }
@@ -51,12 +51,12 @@
     [Inject] private History History { get; init; } = null!;
     [Inject] private UILifetimeEvents UILifetimeEvents { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private ILogger<App> Log { get; init; } = null!;
+    [Inject] private ILogger<AppBase> Log { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     [Parameter] public string SessionId { get; set; } = Symbol.Empty;
 
-    public App() {
+    public AppBase() {
         _disposeTokenSource = new CancellationTokenSource();
         _disposeToken = _disposeTokenSource.Token;
     }
@@ -65,7 +65,7 @@
         LoadingUI.ReportAppInitialized();
         _tracer = Services.Tracer(GetType());
         _tracer.Point("OnInitialized");
-        UIAssembly ??= typeof(App).Assembly;
+        UIAssembly ??= typeof(AppBase).Assembly;
         UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
@@ -75,12 +75,14 @@
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
             if (SessionProvider.HasSession) {
-                if (SessionProvider.Session != session)
+                if (SessionProvider.Session != session) {
                     // No way to change Session other than page reload
                     Nav.NavigateTo(Nav.Uri, true);
+                }
             }
-            else
+            else {
                 SessionProvider.Session = session;
+            }
         }
 
         CircuitContext.RootComponent = this;

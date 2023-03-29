@@ -41,9 +41,9 @@ public class ThemeUI : WorkerBase
         WhenReady = TaskSource.New<Unit>(true).Task;
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Tracer.Point("RunInternal");
+        Tracer.Point("OnRun");
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         Tracer.Point("WhenFirstTimeRead");
         await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))

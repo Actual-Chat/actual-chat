@@ -25,7 +25,7 @@ public abstract class PermissionHandler : WorkerBase
             (bool?)null,
             StateCategories.Get(GetType(), nameof(Cached)));
         if (mustStart)
-            Start();
+            this.Start();
     }
 
     public ValueTask<bool> CheckOrRequest(CancellationToken cancellationToken = default)
@@ -68,7 +68,7 @@ public abstract class PermissionHandler : WorkerBase
     protected abstract Task<bool> Check(CancellationToken cancellationToken);
     protected abstract Task<bool> Request(CancellationToken cancellationToken);
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         CancellationTokenSource? expirationCts = null;
         await foreach (var cCached in Cached.Changes(cancellationToken).ConfigureAwait(false)) {
