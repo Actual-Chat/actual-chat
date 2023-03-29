@@ -3,6 +3,7 @@
 @{
     var m = State.Value;
     var settings = ChatUI.ListSettings.Value;
+    var isLoaded = m != Model.Loading;
 
     RenderFragment RenderTabContent(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
@@ -26,12 +27,16 @@
                     </div>
                 }
             </TitleExtras>
-            <ChildContent>
-                <div class="flex-y my-2">
-                    <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
-                    <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
-                </div>
-            </ChildContent>
+               <ChildContent>
+                   <div class="flex-y my-2">
+                       @if (isLoaded) {
+                           <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
+                           <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
+                       } else {
+                           <ChatListSkeleton />
+                       }
+                   </div>
+               </ChildContent>
         </Tab>;
     }
 }
@@ -133,10 +138,9 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        if (State.Value != Model.Loading) {
+        LoadingUI.MarkLoaded();
+        if (State.Value != Model.Loading)
             _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
-            LoadingUI.MarkLoaded();
-        }
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
