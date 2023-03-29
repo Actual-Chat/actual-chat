@@ -30,9 +30,11 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             return; // Blazor UI only module
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
+        // ComputedStateComponent.DefaultOptions =
+        //     ComputedStateComponentOptions.RecomputeOnParametersSet
+        //     | ComputedStateComponentOptions.SynchronizeComputeState;
         ComputedStateComponent.DefaultOptions =
-            ComputedStateComponentOptions.RecomputeOnParametersSet
-            | ComputedStateComponentOptions.SynchronizeComputeState;
+            ComputedStateComponentOptions.RecomputeOnParametersSet;
 
         // Fusion
         var fusion = services.AddFusion();
@@ -127,8 +129,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         InjectDiagnosticsServices(services);
 
         if (appKind.IsClient()) {
-            services.AddSingleton(_ => new IndexedDbReplicaCache.Options());
-            services.AddSingleton<ReplicaCache, IndexedDbReplicaCache>();
+            services.AddSingleton(_ => new PersistentStorageReplicaCache.Options());
+            services.AddSingleton<ReplicaCache, PersistentStorageReplicaCache>();
+            services.AddSingleton<IReplicaCacheStore>(c
+                => new IndexedDbReplicaCacheStore(c.GetRequiredService<Func<IJSRuntime>>()));
             services.TryAddSingleton<Func<IJSRuntime>>(c => ()
                 => c.GetRequiredService<IJSRuntime>());
         }

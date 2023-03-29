@@ -19,7 +19,7 @@ public static partial class Constants
         // UI services
         public static readonly bool VirtualList = false;
         public static readonly bool History = false;
-        public static readonly bool ChatUI = false;
+        public static readonly bool ChatUI = true;
 
         // Audio
         public static readonly bool WebMReader = false;

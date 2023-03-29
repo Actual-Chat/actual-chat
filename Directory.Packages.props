@@ -56,6 +56,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
     <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
+    <PackageVersion Include="sqlite-net-pcl" Version="1.8.116" />
+    <PackageVersion Include="SQLitePCLRaw.core" Version="2.1.4" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.4" />
+    <PackageVersion Include="SQLitePCLRaw.provider.dynamic_cdecl" Version="2.1.4" />
+    <PackageVersion Include="SQLitePCLRaw.provider.sqlite3" Version="2.1.4" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
@@ -172,7 +177,7 @@
     <PackageVersion Include="Roslynator.Analyzers" Version="4.2.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit.analyzers" Version="1.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
-    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Stl.Generators" Version="$(StlFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Android -->
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />

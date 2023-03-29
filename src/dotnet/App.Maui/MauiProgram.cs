@@ -32,7 +32,7 @@ public static partial class MauiProgram
 #if WINDOWS
         if (_tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
-            MauiProgramOptimizations.EnableDependencyInjectionEventListener();
+            // MauiProgramOptimizations.EnableDependencyInjectionEventListener();
         }
 #endif
 
@@ -53,9 +53,10 @@ public static partial class MauiProgram
 
     private static LoggerConfiguration CreateLoggerConfiguration()
         => new LoggerConfiguration()
-            .MinimumLevel.Is(LogEventLevel.Information)
+            .MinimumLevel.Is(LogEventLevel.Debug)
+            //.MinimumLevel.Is(LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("System", LogEventLevel.Warning)
+            //.MinimumLevel.Override("System", LogEventLevel.Warning)
             .WriteTo.Sentry(options => options.ConfigureForApp())
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
@@ -251,6 +252,12 @@ public static partial class MauiProgram
 
         services.AddSingleton<Func<IJSRuntime>>(c =>
             () => ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>());
+        // services.AddSingleton<IReplicaCacheStore>(c
+        //     => new SqlLiteWithPrefetchReplicaCacheStore());
+        // services.AddSingleton<IReplicaCacheStore>(c
+        //     => new SqlLiteReplicaCacheStore());
+        services.AddSingleton<IReplicaCacheStore>(c
+            => new SqlLiteReplicaCacheStoreNonAsync());
     }
 
     private static Task<Symbol> GetSessionId()

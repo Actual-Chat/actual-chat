@@ -179,6 +179,14 @@
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
+    <PackageReference Include="sqlite-net-pcl" />
+    <!-- Additional packages to 'sqlite-net-pcl'. Required for Android -->
+    <!-- It seems only this one is needed extra https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
+    <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <!--    <PackageReference Include="SQLitePCLRaw.core" />-->
+    <!--    <PackageReference Include="SQLitePCLRaw.provider.dynamic_cdecl" />-->
+    <!--    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" />-->
+    <!-- End of additional packages to 'sqlite-net-pcl'. Required for Android -->
     <!--
       MAUI msbuild tasks doesn't work with
       <Content Include="..\UI.Blazor.Host\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
@@ -187,14 +195,12 @@
      -->
     <Watch Include="wwwroot\dist\**" />
   </ItemGroup>
-
   <ItemGroup>
     <Content Remove="appsettings.Development.json" />
     <Content Remove="appsettings.json" />
     <Content Remove="Platforms\Android\Resources\google-services.json.dev" />
     <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
   </ItemGroup>
-
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-android'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
