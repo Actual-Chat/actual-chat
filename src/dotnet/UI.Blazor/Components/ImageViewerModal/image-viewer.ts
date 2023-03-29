@@ -23,7 +23,6 @@ export class ImageViewer {
     ) {
         this.image = imageViewer.querySelector('img');
         this.overlay = this.imageViewer.closest('.modal-overlay');
-        this.imageViewer.classList.add('bg-01');
 
         imageViewer.addEventListener('wheel', this.onWheel);
         imageViewer.addEventListener('pointerdown', this.onPointerDown);
