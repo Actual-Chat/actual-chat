@@ -19,7 +19,7 @@ public class LeftPanel
         _isVisible = Services.StateFactory().NewMutable(true);
         History.Register(new OwnHistoryState(this, true));
         if (GetIsVisibleOverride() is false || History.LocalUrl.IsChat())
-            History.WhenNavigationCompleted.ContinueWith(_ => SetIsVisible(false), TaskScheduler.Current);
+            SetIsVisible(false);
     }
 
     public void SetIsVisible(bool value)
