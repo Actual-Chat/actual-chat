@@ -30,11 +30,16 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             return; // Blazor UI only module
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
-        // ComputedStateComponent.DefaultOptions =
-        //     ComputedStateComponentOptions.RecomputeOnParametersSet
-        //     | ComputedStateComponentOptions.SynchronizeComputeState;
-        ComputedStateComponent.DefaultOptions =
-            ComputedStateComponentOptions.RecomputeOnParametersSet;
+        if (appKind.IsMauiApp()) {
+            // TODO(DF): Test if we can use these options for web app
+            ComputedStateComponent.DefaultOptions =
+                ComputedStateComponentOptions.RecomputeOnParametersSet;
+        }
+        else {
+            ComputedStateComponent.DefaultOptions =
+                ComputedStateComponentOptions.RecomputeOnParametersSet
+                | ComputedStateComponentOptions.SynchronizeComputeState;
+        }
 
         // Fusion
         var fusion = services.AddFusion();
@@ -131,10 +136,11 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         if (appKind.IsClient()) {
             services.AddSingleton(_ => new PersistentStorageReplicaCache.Options());
             services.AddSingleton<ReplicaCache, PersistentStorageReplicaCache>();
-            services.AddSingleton<IReplicaCacheStore>(c
-                => new IndexedDbReplicaCacheStore(c.GetRequiredService<Func<IJSRuntime>>()));
-            services.TryAddSingleton<Func<IJSRuntime>>(c => ()
-                => c.GetRequiredService<IJSRuntime>());
+            services.TryAddSingleton<IReplicaCacheStorage>(c => new IndexedDbReplicaCacheStorage(
+                c.GetRequiredService<IndexedDbReplicaCacheStorage.JSRuntimeAccessor>()));
+            services.TryAddSingleton<IndexedDbReplicaCacheStorage.JSRuntimeAccessor>(c =>
+                new IndexedDbReplicaCacheStorage.JSRuntimeAccessor(
+                () => c.GetRequiredService<IJSRuntime>()));
         }
     }
 

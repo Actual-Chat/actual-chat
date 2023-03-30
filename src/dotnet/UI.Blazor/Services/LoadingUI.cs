@@ -18,6 +18,7 @@ public sealed class LoadingUI
     public static TimeSpan MauiAppBuildTime { get; private set; } = TimeSpan.Zero;
     public TimeSpan AppInitTime { get; private set; } = TimeSpan.Zero;
     public TimeSpan AppAboutRenderContentTime { get; private set; } = TimeSpan.Zero;
+    public TimeSpan ChatListLoaded { get; private set; } = TimeSpan.Zero;
 
     public LoadingUI(IServiceProvider services)
     {
@@ -45,6 +46,13 @@ public sealed class LoadingUI
         if (AppAboutRenderContentTime > TimeSpan.Zero)
             return;
         AppAboutRenderContentTime = Tracer.Elapsed;
+    }
+
+    public void ReportChatListLoaded()
+    {
+        if (ChatListLoaded > TimeSpan.Zero)
+            return;
+        ChatListLoaded = Tracer.Elapsed;
     }
 
     public void MarkLoaded()

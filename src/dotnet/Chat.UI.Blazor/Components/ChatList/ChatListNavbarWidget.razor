@@ -145,8 +145,10 @@
     protected override void OnAfterRender(bool firstRender) {
         Log.LogInformation("OnAfterRender ChatListNavbarWidget. firstRender={firstRender}", firstRender);
         LoadingUI.MarkLoaded();
-        if (State.Value != Model.Loading)
+        if (State.Value != Model.Loading) {
+            LoadingUI.ReportChatListLoaded();
             _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
+        }
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {

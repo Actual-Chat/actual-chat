@@ -11,7 +11,6 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor;
-using Microsoft.JSInterop;
 using Serilog;
 using Serilog.Events;
 
@@ -53,10 +52,11 @@ public static partial class MauiProgram
 
     private static LoggerConfiguration CreateLoggerConfiguration()
         => new LoggerConfiguration()
-            .MinimumLevel.Is(LogEventLevel.Debug)
-            //.MinimumLevel.Is(LogEventLevel.Information)
+            .MinimumLevel.Is(LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            //.MinimumLevel.Override("System", LogEventLevel.Warning)
+            .MinimumLevel.Override("System", LogEventLevel.Warning)
+            .MinimumLevel.Override("ActualChat.UI.Blazor.Services.PersistentStorageReplicaCache", LogEventLevel.Debug)
+            .MinimumLevel.Override("ActualChat.UI.Blazor.Services.ReplicaCacheStoragePerfMonitor", LogEventLevel.Debug)
             .WriteTo.Sentry(options => options.ConfigureForApp())
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
@@ -249,15 +249,6 @@ public static partial class MauiProgram
         ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
-
-        services.AddSingleton<Func<IJSRuntime>>(c =>
-            () => ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>());
-        // services.AddSingleton<IReplicaCacheStore>(c
-        //     => new SqlLiteWithPrefetchReplicaCacheStore());
-        // services.AddSingleton<IReplicaCacheStore>(c
-        //     => new SqlLiteReplicaCacheStore());
-        services.AddSingleton<IReplicaCacheStore>(c
-            => new SqlLiteReplicaCacheStoreNonAsync());
     }
 
     private static Task<Symbol> GetSessionId()
