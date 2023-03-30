@@ -15,7 +15,7 @@ public interface IChatsClientDef
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetNews)), ReplicaMethod(InvalidationDelay = 0.8, CacheBehavior = ReplicaCacheBehavior.DefaultValue)]
+    [Get(nameof(GetNews))]
     Task<ChatNews> GetNews(
         Session session,
         ChatId chatId,
