@@ -319,9 +319,11 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)
          => chat.Kind switch {
-             ChatKind.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
-             ChatKind.Peer => !author.Avatar.Picture.IsNullOrEmpty()
-                 ? UrlMapper.ContentUrl(author.Avatar.Picture)
+             ChatKind.Group => chat.Picture?.ContentId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(chat.Picture.ContentId)
+                 : "/favicon.ico",
+             ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(author.Avatar.Media.ContentId)
                  : "/favicon.ico",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null),
          };

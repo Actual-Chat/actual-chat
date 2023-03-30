@@ -2,12 +2,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var attachment = Attachment;
-    var url = UrlMapper.ContentUrl(Attachment.ContentId);
+    var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
     var previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
     var wrapperStyle = DefaultWrapperStyle;
     var imgStyle = DefaultImgStyle;
-    if (attachment.Height > 0 && attachment.Width > 0) {
-        var (width, height) = (attachment.Width, attachment.Height)
+    if (attachment.Media.Height > 0 && attachment.Media.Width > 0) {
+        var (width, height) = (attachment.Media.Width, attachment.Media.Height)
             .ToVector2()
             .ScaleToFitInto(MaxSize)
             .ToIntPair();
@@ -20,7 +20,7 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Width, attachment.Height, ChatEntry))"
+       @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry))"
        @onclick:preventDefault="true">
         <img class="inline skeleton" style="@imgStyle" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
     </a>

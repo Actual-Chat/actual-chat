@@ -62,8 +62,10 @@ public class ChatMarkupHubExtTest
             throw StandardError.Constraint($"Failed to find content type for '{file}'");
 
         return new TextEntryAttachment {
-            FileName = file,
-            ContentType = contentType,
+            Media = new Media.Media {
+                FileName = file,
+                ContentType = contentType,
+            },
         };
     }
 }

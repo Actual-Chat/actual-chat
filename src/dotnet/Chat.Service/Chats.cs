@@ -11,8 +11,6 @@ namespace ActualChat.Chat;
 
 public class Chats : DbServiceBase<ChatDbContext>, IChats
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-
     private IAccounts Accounts { get; }
     private IAuthors Authors { get; }
     private IAuthorsBackend AuthorsBackend { get; }
@@ -49,7 +47,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             chat ??= new Chat(chatId);
             chat = chat with {
                 Title = contact.Account.Avatar.Name,
-                Picture = contact.Account.Avatar.Picture,
+                Picture = contact.Account.Avatar.Media,
             };
         }
         else if (chat == null)
@@ -250,23 +248,10 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             textEntryId = textEntry.Id.ToTextEntryId();
 
             for (var index = 0; index < command.Attachments.Length; index++) {
-                var attachmentUpload = command.Attachments[index];
-                var (fileName, content, contentType) = attachmentUpload;
-                var contentLocalId = Ulid.NewUlid().ToString();
-                var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
-
-                var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
-                await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
-
-                var attachment = new TextEntryAttachment() {
+                var attachment = new TextEntryAttachment {
                     EntryId = textEntryId,
                     Index = index,
-                    Length = content.Length,
-                    ContentType = contentType,
-                    FileName = fileName,
-                    ContentId = contentId,
-                    Width = attachmentUpload.Width,
-                    Height = attachmentUpload.Height,
+                    MediaId = command.Attachments[index],
                 };
                 var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
                 await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);

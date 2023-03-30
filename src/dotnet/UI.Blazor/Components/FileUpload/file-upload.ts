@@ -43,8 +43,8 @@ export class FileUpload implements Disposable {
                 switchMap((promise: Promise<Response>) => from(promise)),
             )
             .subscribe(async (response: Response) => {
-                const text = await response.text();
-                await blazorRef.invokeMethodAsync('OnUploaded', text);
+                const mediaContent = await response.json();
+                await blazorRef.invokeMethodAsync('OnUploaded', mediaContent);
             });
     }
 

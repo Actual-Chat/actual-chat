@@ -14,24 +14,23 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string EntryId { get; set; } = "";
+    public string MediaId { get; set; } = "";
     public int Index { get; set; }
 
+    [Obsolete("Use MediaId")]
     public string ContentId { get; set; } = "";
+    [Obsolete("Use MediaId")]
     public string MetadataJson { get; set; } = "";
 
     public static string ComposeId(TextEntryId entryId, int index)
         => $"{entryId}:{index}";
 
     public TextEntryAttachment ToModel()
-    {
-        var entryId = new TextEntryId(EntryId);
-        return new (Id, Version) {
-            EntryId = entryId,
+        => new (Id, Version) {
+            EntryId = new TextEntryId(EntryId),
             Index = Index,
-            ContentId = ContentId,
-            MetadataJson = MetadataJson
+            MediaId = new MediaId(MediaId),
         };
-    }
 
     public void UpdateFrom(TextEntryAttachment model)
     {
@@ -43,7 +42,6 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         Version = model.Version;
         EntryId = model.EntryId;
         Index = model.Index;
-        ContentId = model.ContentId;
-        MetadataJson = model.MetadataJson;
+        MediaId = model.MediaId;
     }
 }

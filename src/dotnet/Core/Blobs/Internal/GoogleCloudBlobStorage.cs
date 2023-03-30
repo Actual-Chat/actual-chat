@@ -71,6 +71,20 @@ internal class GoogleCloudBlobStorage : IBlobStorage
             .ConfigureAwait(false);
     }
 
+    public async Task Copy(string oldPath, string newPath, CancellationToken cancellationToken)
+    {
+        if (oldPath == null) throw new ArgumentNullException(nameof(oldPath));
+        if (newPath == null) throw new ArgumentNullException(nameof(newPath));
+
+        await _client.CopyObjectAsync(
+                _bucket,
+                oldPath,
+                _bucket,
+                newPath,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task Delete(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
     {
         if (paths == null) throw new ArgumentNullException(nameof(paths));

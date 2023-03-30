@@ -1,4 +1,4 @@
-﻿using ActualChat.Comparison;
+using ActualChat.Comparison;
 using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
@@ -31,10 +31,11 @@ public sealed record Chat(
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
-    [DataMember] public string Picture { get; init; } = "";
+    [DataMember] public MediaId MediaId { get; init; }
 
     // Populated only on front-end
     [DataMember] public AuthorRules Rules { get; init; } = null!;
+    [DataMember] public Media.Media? Picture { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public ChatKind Kind => Id.Kind;
@@ -52,5 +53,5 @@ public sealed record ChatDiff : RecordDiff
     [DataMember] public string? Title { get; init; }
     [DataMember] public ChatKind? Kind { get; init; }
     [DataMember] public bool? IsPublic { get; init; }
-    [DataMember] public string? Picture { get; init; }
+    [DataMember] public MediaId? MediaId { get; init; }
 }

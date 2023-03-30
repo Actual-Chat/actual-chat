@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Chat.Service\Chat.Service.csproj" />
+    <ProjectReference Include="..\Media.Service\Media.Service.csproj" />
   </ItemGroup>
 
   <ItemGroup>

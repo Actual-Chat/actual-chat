@@ -2,8 +2,7 @@
 
 namespace ActualChat.Chat;
 
-public class
-    ContentSaverBackend : IContentSaverBackend
+public class ContentSaverBackend : IContentSaverBackend
 {
     private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
     private IContentSaver ContentSaver { get; }

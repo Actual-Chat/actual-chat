@@ -82,15 +82,15 @@ public partial class UsersDbInitializer
         var avatarPicture = isAdmin
             ? Constants.User.Admin.Picture
             : $"https://avatars.dicebear.com/api/bottts/{userId.Value.GetDjb2HashCode()}.svg";
-        var changeCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull() {
+        var changeAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
+            Create = new AvatarFull {
                 UserId = account.Id,
                 Name = name,
                 Bio = avatarBio,
                 Picture = avatarPicture,
             },
         });
-        var avatar = await commander.Call(changeCommand, cancellationToken).ConfigureAwait(false);
+        var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);
 
         // Set this avatar as the default one
         var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();

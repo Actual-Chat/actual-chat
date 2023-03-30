@@ -155,4 +155,12 @@ public static class StringExt
         var hashBytes = sha1.ComputeHash(inputBytes);
         return Convert.ToHexString(hashBytes);
     }
+
+    // ReSharper disable once InconsistentNaming
+    public static string GetSHA256HashCode(this string input)
+    {
+        var inputBytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
+        return Convert.ToHexString(hashBytes);
+    }
 }

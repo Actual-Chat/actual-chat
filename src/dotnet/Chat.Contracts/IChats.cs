@@ -82,8 +82,8 @@ public interface IChats : IComputeService
         [property: DataMember] Option<long?> RepliedChatEntryId = default
         ) : ISessionCommand<ChatEntry>
     {
-        [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =
-            ImmutableArray<TextEntryAttachmentUpload>.Empty;
+        [DataMember] public ImmutableArray<MediaId> Attachments { get; set; } =
+            ImmutableArray<MediaId>.Empty;
     }
 
     [DataContract]
