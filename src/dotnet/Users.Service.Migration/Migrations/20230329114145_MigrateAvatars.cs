@@ -20,7 +20,7 @@ namespace ActualChat.Users.Migrations
             UpAsync(migrationBuilder).Wait();
         }
 
-                private async Task UpAsync(MigrationBuilder migrationBuilder)
+        private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
             var dbInitializer = DbInitializer.Get<UsersDbInitializer>();
             var mediaDbInitializer = await DbInitializer.Get<MediaDbInitializer>()
@@ -28,7 +28,8 @@ namespace ActualChat.Users.Migrations
                 .ConfigureAwait(false);
             var log = dbInitializer.Services.LogFor(GetType());
 
-            var blobStorage = dbInitializer.Services.GetRequiredService<IBlobStorage>();
+            var blobStorageProvider = dbInitializer.Services.GetRequiredService<IBlobStorageProvider>();
+            var blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
             using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
             using var mediaDbContext = mediaDbInitializer.DbHub.CreateDbContext(true);

@@ -27,7 +27,8 @@ namespace ActualChat.Chat.Migrations
                 .CompleteEarlierMigrations(this)
                 .ConfigureAwait(false);
             var log = dbInitializer.Services.LogFor(GetType());
-            var blobStorage = dbInitializer.Services.GetRequiredService<IBlobStorage>();
+            var blobStorageProvider = dbInitializer.Services.GetRequiredService<IBlobStorageProvider>();
+            var blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
             var skip = 0;
             const int take = 100;

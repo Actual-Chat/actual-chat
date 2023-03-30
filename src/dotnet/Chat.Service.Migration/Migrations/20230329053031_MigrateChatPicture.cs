@@ -28,7 +28,8 @@ namespace ActualChat.Chat.Migrations
                 .ConfigureAwait(false);
             var log = dbInitializer.Services.LogFor(GetType());
 
-            var blobStorage = dbInitializer.Services.GetRequiredService<IBlobStorage>();
+            var blobStorageProvider = dbInitializer.Services.GetRequiredService<IBlobStorageProvider>();
+            var blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
             using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
             using var mediaDbContext = mediaDbInitializer.DbHub.CreateDbContext(true);
