@@ -2,28 +2,36 @@
     @apply absolute top-0;
     @apply flex;
     @apply h-full w-full;
-    @apply bg-black;
-    @apply animate-opacity-10-20-10;
+    @apply backdrop-blur-sm;
+    background: rgba(0, 0, 0, 0.5);
+}
+body.narrow .background {
+    background: rgba(0, 0, 0, 0.8);
 }
 .image-background {
     @apply absolute top-0 z-10;
     @apply flex items-center justify-center;
     @apply h-full w-full;
-    @apply bg-transparent;
-    @apply animate-backdrop-2-4-2;
+    @apply overflow-hidden;
 }
 .image-background .c-circle {
     @apply flex items-center justify-center;
-    @apply min-w-88 min-h-88;
+    @apply w-88 h-88;
     @apply rounded-full;
-    background: rgba(0, 0, 0, 0.5);
-    box-shadow: 0 0 30px 30px rgba(0, 0, 0, 0.5);
+    @apply md:backdrop-blur-sm;
 }
 .image-background .after-circle {
     @apply absolute z-minus;
-    @apply min-w-88 min-h-88;
+    @apply w-88 h-88;
     @apply rounded-full;
-    background: rgba(0, 0, 0, 0.4);
-    box-shadow: 0 0 30px 30px rgba(0, 0, 0, 0.4);
-    @apply animate-opacity-0-100-0;
+    @apply blur;
+    @apply animate-scaling-5;
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 30px 30px rgba(0, 0, 0, 0.6);
+}
+body.narrow .image-background .after-circle {
+    @apply hidden;
+}
+body.narrow .image-background .c-circle img {
+    @apply animate-pulse;
 }
