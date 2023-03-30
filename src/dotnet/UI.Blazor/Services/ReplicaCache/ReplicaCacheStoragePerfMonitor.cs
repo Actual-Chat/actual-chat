@@ -35,6 +35,9 @@ public class ReplicaCacheStoragePerfMonitor : IReplicaCacheStorage
             regionResult.Duration, region.StartedAt + regionResult.Duration, regionResult.CompletionIndex, key);
     }
 
+    public Task Clear()
+        => Storage.Clear();
+
     private class PerfMetrics
     {
         private readonly object _lock = new ();

@@ -15,12 +15,17 @@ public class IndexedDbReplicaCacheStorage : IReplicaCacheStorage
     public async Task<string?> TryGetValue(string key)
         => await JsAccessor.JS.InvokeAsync<string?>(
             $"{BlazorUICoreModule.ImportName}.ReplicaCache.get",
-            key);
+            key).ConfigureAwait(false);
 
     public async Task SetValue(string key, string value)
         => await JsAccessor.JS.InvokeAsync<string?>(
             $"{BlazorUICoreModule.ImportName}.ReplicaCache.set",
-            key, value);
+            key, value).ConfigureAwait(false);
+
+    public async Task Clear()
+        => await JsAccessor.JS.InvokeAsync<string?>(
+            $"{BlazorUICoreModule.ImportName}.ReplicaCache.clear")
+            .ConfigureAwait(false);
 
     public class JSRuntimeAccessor
     {

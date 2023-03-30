@@ -67,6 +67,14 @@ public class SQLiteReplicaCacheStore : IReplicaCacheStorage
         }
     }
 
+    public async Task Clear()
+    {
+        var database = await _initDb.ConfigureAwait(false);
+        if (database == null)
+            return;
+        database.Table<KeyValueItem>().Where(c => true).Delete();
+    }
+
     private SQLiteConnection? InitDatabase()
     {
         try {
