@@ -1,6 +1,4 @@
 Near-term:
-- ISystemInfo + ServerClock
-- Real-time playback: use ServerClock
 - Real-time playback: don't render it as historical
 - Counters, etc. - use InvalidationDelay  
 
