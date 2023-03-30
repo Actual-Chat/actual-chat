@@ -632,6 +632,7 @@ module.exports = {
       ],
       serif: ['ui-serif', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
       mono: [
+        'TT Commons Pro Mono',
         'ui-monospace',
         'SFMono-Regular',
         'Menlo',

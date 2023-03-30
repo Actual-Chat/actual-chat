@@ -41,3 +41,16 @@
     font-stretch: normal;
     font-variant: normal;
 }
+
+
+@font-face {
+    font-family: TT Commons Pro Mono;
+    src: url("TT-Commons-Pro-Mono-Regular.woff2") format("woff2"),
+    url("TT-Commons-Pro-Mono-Regular.otf") format("opentype"),
+    url("TT-Commons-Pro-Mono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+    font-variant: normal;
+    font-face-name: ui-monospace;
+}
