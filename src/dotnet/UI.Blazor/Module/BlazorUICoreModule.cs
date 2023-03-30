@@ -70,8 +70,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<AccountSettings>(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
             c.GetRequiredService<Session>()));
-        if (appKind.IsServer())
+        if (appKind.IsServer()) {
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
+            MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
+        }
         else {
             services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
             services.AddSingleton<ServerTimeSync>();
