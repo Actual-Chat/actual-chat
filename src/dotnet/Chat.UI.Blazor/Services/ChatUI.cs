@@ -139,9 +139,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     {
         var sw = Stopwatch.StartNew();
         DebugLog?.LogDebug("-> ListUnordered");
-        var isMainThread = !(Thread.CurrentThread.IsBackground || Thread.CurrentThread.IsThreadPoolThread);
-        if (isMainThread)
-            DebugLog?.LogDebug("-> StackTrace:" + Environment.NewLine + Environment.StackTrace);
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("-> ListUnordered.Contacts ({IdsLength})", contactIds.Length);
         var contacts = await contactIds

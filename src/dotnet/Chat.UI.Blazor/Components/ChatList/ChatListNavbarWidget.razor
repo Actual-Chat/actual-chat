@@ -4,7 +4,6 @@
     var m = State.Value;
     var settings = ChatUI.ListSettings.Value;
     var isLoaded = m != Model.Loading;
-    Log.LogInformation("Rendering ChatListNavbarWidget. IsLoaded={IsLoaded}", isLoaded);
 
     RenderFragment RenderTabContent(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
@@ -82,7 +81,6 @@
     [Inject] private SearchUI SearchUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private ILogger<ChatListNavbarWidget> Log { get; init; } = null!;
     [Inject] private Tracer Tracer { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -92,10 +90,7 @@
             Category = GetStateCategory(),
         };
 
-    protected override Task<Model> ComputeState(CancellationToken cancellationToken)
-        => CalculateChatList(cancellationToken);
-
-    protected async Task<Model> CalculateChatList(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var tracer = ReferenceEquals(State.Value, Model.Loading)
             ? Tracer[$"{nameof(ChatListNavbarWidget)}.{nameof(ComputeState)}"]
             : Tracer.None;
@@ -143,7 +138,6 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        Log.LogInformation("OnAfterRender ChatListNavbarWidget. firstRender={firstRender}", firstRender);
         LoadingUI.MarkLoaded();
         if (State.Value != Model.Loading) {
             LoadingUI.ReportChatListLoaded();

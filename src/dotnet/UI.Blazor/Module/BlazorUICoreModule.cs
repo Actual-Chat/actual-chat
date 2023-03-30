@@ -133,7 +133,11 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         InjectDiagnosticsServices(services);
 
-        if (appKind.IsClient()) {
+        /* if (appKind.IsClient()) {
+         Temporarily disabled for wasm due to bad results.
+         Async nature of Indexed Db API gives high values for IndexedDbReplicaCacheStorage.TryGetValue invokes
+          */
+        if (appKind.IsMauiApp()) {
             services.AddSingleton(_ => new PersistentStorageReplicaCache.Options());
             services.AddSingleton<ReplicaCache, PersistentStorageReplicaCache>();
             services.TryAddSingleton<IReplicaCacheStorage>(c => new IndexedDbReplicaCacheStorage(
