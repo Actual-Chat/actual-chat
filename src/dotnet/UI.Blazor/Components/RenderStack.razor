@@ -5,13 +5,22 @@
     if (items.Count == 0)
         return;
 
-    var orderedItems = items.OrderBy(x => x.Order).ThenBy(x => x.Key) as IEnumerable<RenderIntoStack>;
+    var orderedItems = items
+        .OrderBy(x => x.Order).ThenBy(x => x.Key) as IEnumerable<RenderIntoStack>;
     if (IsReversed)
         orderedItems = orderedItems.Reverse();
+
+    var knownKeys = new HashSet<string>(StringComparer.Ordinal);
 }
 
 @foreach (var item in orderedItems) {
+    if (item.IsDisposed)
+        continue;
+
     if (!item.Key.IsNullOrEmpty()) {
+        if (!knownKeys.Add(item.Key))
+            continue;  // It seems sometimes Blazor disposes the component way too late
+
         <NoComponent @key="item.Key">
             @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
         </NoComponent>

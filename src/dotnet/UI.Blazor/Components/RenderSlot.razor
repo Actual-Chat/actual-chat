@@ -1,7 +1,11 @@
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<RenderIntoSlot?>
-
-@State.Value?.ChildContent
+@{
+    var item = State.Value;
+    if (item == null || item.IsDisposed)
+        return;
+}
+@item.ChildContent
 
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;
@@ -15,7 +19,7 @@
         };
 
     protected override async Task<RenderIntoSlot?> ComputeState(CancellationToken cancellationToken) {
-        var slots = await RenderVars.RenderSlot(Name).Use(cancellationToken);
-        return slots.LastOrDefault();
+        var items = await RenderVars.RenderSlot(Name).Use(cancellationToken);
+        return items.LastOrDefault(c => !c.IsDisposed);
     }
 }

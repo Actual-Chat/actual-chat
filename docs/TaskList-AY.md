@@ -1,7 +1,4 @@
 Near-term:
-- Counters, etc. - check AK's InvalidationDelay + other stuff
-- Navigate to chat on mobile
-- RenderSlot / RenderIntoSlot - check why it may stuck w/ updates
 - ChatView - check why it "stucks" sometimes & updates only after a few messages are posted
 
 Mid-term:
