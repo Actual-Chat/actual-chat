@@ -18,19 +18,14 @@ public class LeftPanel
         Owner = owner;
         _isVisible = Services.StateFactory().NewMutable(true);
         History.Register(new OwnHistoryState(this, true));
+        if (GetIsVisibleOverride() is false || History.LocalUrl.IsChat())
+            History.WhenNavigationCompleted.ContinueWith(_ => SetIsVisible(false), TaskScheduler.Current);
     }
 
     public void SetIsVisible(bool value)
     {
-        if (IsWide())
-            value = true;
-        else {
-            var localUrl = History.LocalUrl;
-            if (localUrl.IsChatRoot())
-                value = true;
-            else if (localUrl.IsDocsOrDocsRoot())
-                value = false; // This panel isn't used in narrow mode in /docs
-        }
+        if (GetIsVisibleOverride() is { } valueOverride)
+            value = valueOverride;
 
         bool oldIsVisible;
         lock (_lock) {
@@ -42,6 +37,22 @@ public class LeftPanel
             History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    // Private methods
+
+    private bool? GetIsVisibleOverride()
+    {
+        if (IsWide())
+            return true;
+
+        var localUrl = History.LocalUrl;
+        if (localUrl.IsDocsOrDocsRoot())
+            return false; // This panel isn't used in narrow mode in /docs
+        if (localUrl.IsChatRoot())
+            return true;
+
+        return null;
     }
 
     private bool IsWide()

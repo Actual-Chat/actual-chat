@@ -33,10 +33,12 @@ public class MiddlePanel
         var isWide = screenSize.IsWide();
         if (isWide)
             return true;
+
         if (await Owner.Left.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return false;
         if (await Owner.Right.IsVisible.Use(cancellationToken).ConfigureAwait(false))
             return false;
+
         return true;
     }
 
