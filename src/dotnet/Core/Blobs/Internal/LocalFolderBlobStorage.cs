@@ -71,7 +71,12 @@ internal class LocalFolderBlobStorage : IBlobStorage
         ValidatePath(oldPath);
         ValidatePath(newPath);
 
-        File.Copy(oldPath, newPath);
+        var fullOldPath = BaseDirectory & oldPath;
+        var fullNewPath = BaseDirectory & newPath;
+
+        Directory.CreateDirectory(fullNewPath.DirectoryPath);
+
+        File.Copy(fullOldPath, fullNewPath);
 
         return Task.CompletedTask;
     }
