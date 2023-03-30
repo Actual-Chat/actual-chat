@@ -18,7 +18,7 @@ public static partial class Constants
 
         // UI services
         public static readonly bool VirtualList = false;
-        public static readonly bool History = true;
+        public static readonly bool History = false;
         public static readonly bool ChatUI = false;
 
         // Audio
