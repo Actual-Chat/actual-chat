@@ -1,5 +1,5 @@
 // Styles
-import './fonts/icon.css';
+import './fonts/svgtofont/icon.css';
 import './fonts/tt-commons-pro.css';
 import './node_modules/fork-awesome/css/fork-awesome.min.css';
 import './styles/index.css';

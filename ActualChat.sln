@@ -233,7 +233,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubernetes.IntegrationTests
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "fonts", "fonts", "{01FE15A6-B885-42C8-AE7D-8571C85CB8D3}"
 	ProjectSection(SolutionItems) = preProject
-		src\nodejs\fonts\icon.css = src\nodejs\fonts\icon.css
 		src\nodejs\fonts\tt-commons-pro.css = src\nodejs\fonts\tt-commons-pro.css
 	EndProjectSection
 EndProject
@@ -258,6 +257,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-92B2-4BC2-9970-8AFF829A1987}"
 	ProjectSection(SolutionItems) = preProject
 		docs\TaskList-AY.md = docs\TaskList-AY.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\fonts\svgtofont\icon.css = src\nodejs\fonts\svgtofont\icon.css
 	EndProjectSection
 EndProject
 Global
@@ -740,6 +744,7 @@ Global
 		{F8F99599-9170-4F00-820A-A32B8968913D} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
 		{C8C7078E-2C76-4DA6-BCEA-837092D36627} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
 		{E1F15D0C-E16A-4B2A-8886-6A8DD0E6C373} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
+		{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10} = {01FE15A6-B885-42C8-AE7D-8571C85CB8D3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
