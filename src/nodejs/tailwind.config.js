@@ -355,6 +355,7 @@ module.exports = {
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
+      'scaling-5': 'scaling-5 2s ease-in-out infinite',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
@@ -1126,6 +1127,14 @@ module.exports = {
           transform: 'scale(1)',
         },
         to: {
+          transform: 'scale(1.05)',
+        },
+      },
+      'scaling-5': {
+        '0%, 100%': {
+          transform: 'scale(1)',
+        },
+        '50%': {
           transform: 'scale(1.05)',
         },
       },
