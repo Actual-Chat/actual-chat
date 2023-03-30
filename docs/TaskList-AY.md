@@ -1,6 +1,7 @@
 Near-term:
 - Real-time playback: don't render it as historical
-- Counters, etc. - use InvalidationDelay  
+- Counters, etc. - check AK's InvalidationDelay + other stuff
+- Navigate to chat on mobile
 
 Mid-term:
 - AuthorModal - fix view (for you & anonymous authors)
