@@ -13,7 +13,7 @@ public class AppReplicaCache : ReplicaCache
         public ITextSerializer KeySerializer { get; } =
             new NewtonsoftJsonSerializer(new JsonSerializerSettings { Formatting = Formatting.None });
         public ITextSerializer ValueSerializer { get; } =
-            new NewtonsoftJsonSerializer();
+            new NewtonsoftJsonSerializer(new JsonSerializerSettings { Formatting = Formatting.None });
     }
 
     private bool DebugMode => Constants.DebugMode.ReplicaCache;
@@ -50,7 +50,7 @@ public class AppReplicaCache : ReplicaCache
             return null;
         }
 
-        var output = ValueSerializer.Read<Result<T>>(sValue);
+        var output = ValueSerializer.Read<T>(sValue);
         DebugLog?.LogDebug("Get({Key}) -> {Result}", key, output);
         return output;
     }
@@ -64,7 +64,7 @@ public class AppReplicaCache : ReplicaCache
             return;
 
         var key = GetKey(input);
-        var value = ValueSerializer.Write(output);
+        var value = ValueSerializer.Write(output.Value);
         DebugLog?.LogDebug("Set({Key}) <- {Result}", key, output.Value);
         Store.Set(key, value);
     }

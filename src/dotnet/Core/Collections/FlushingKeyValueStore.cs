@@ -35,7 +35,7 @@ public abstract class FlushingKeyValueStore : WorkerBase
             sw.Start();
             foreach (var (key, value) in batch) {
                 await StorageSet(key, value, cancellationToken).ConfigureAwait(false);
-                WriteCache.TryRemove(new KeyValuePair<HashedString, string>(key, value));
+                WriteCache.TryRemove(new KeyValuePair<HashedString, string?>(key, value));
             }
             sw.Stop();
             itemCount += batch.Count;
