@@ -32,7 +32,7 @@ public static class StringExt
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
 
     public static string ToSnakeCase(this string input)
-        => string.IsNullOrEmpty(input)
+        => input.IsNullOrEmpty()
             ? input
             : CamelCaseRegex.Replace(input, "$1_$2")
                 .ToLower(CultureInfo.InvariantCulture)

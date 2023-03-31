@@ -3,7 +3,8 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.JSInterop;
+using Stl.Fusion.Bridge;
+using Stl.IO;
 using Stl.Plugins;
 
 namespace ActualChat.App.Maui.Module;
@@ -21,10 +22,11 @@ public class BlazorUIClientAppModule : HostModule, IBlazorUIModule
         services.AddScoped<IClientAuth, MauiClientAuth>();
 
         // Replica cache
-        services.AddSingleton<IndexedDbReplicaCacheStorage.JSRuntimeAccessor>(_ =>
-            new IndexedDbReplicaCacheStorage.JSRuntimeAccessor(
-                () => ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>()));
-        services.AddSingleton<IReplicaCacheStorage>(c => new SQLiteReplicaCacheStore(
-            c.LogFor<SQLiteReplicaCacheStore>()));
+        services.AddSingleton<ReplicaCache>(c => {
+            var dbPath = new FilePath(FileSystem.AppDataDirectory) & "ReplicaCache.db3";
+            var store = new SQLiteKeyValueStore(dbPath, c).Start();
+            var options = new AppReplicaCache.Options(store);
+            return new AppReplicaCache(options, c);
+        });
     }
 }

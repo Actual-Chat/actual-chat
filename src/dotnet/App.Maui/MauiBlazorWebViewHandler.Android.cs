@@ -25,7 +25,8 @@ public partial class MauiBlazorWebViewHandler
         var jsInterface = new JavascriptToAndroidInterface(this, platformView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");
-        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
+        platformView.SetWebViewClient(
+            new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
     }
 
     private class WebViewClientOverride : WebViewClient

@@ -106,6 +106,5 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-        services.TryAddSingleton<OtelMetrics>();
     }
 }

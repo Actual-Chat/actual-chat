@@ -225,9 +225,9 @@ public static partial class MauiProgram
         // HttpClient
 #if !WINDOWS
         services.RemoveAll<IHttpClientFactory>();
-        services.AddSingleton<NativeHttpClientFactory>(c => new NativeHttpClientFactory(c));
-        services.TryAddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
-        services.TryAddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
+        services.AddSingleton(c => new NativeHttpClientFactory(c));
+        services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
+        services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
         AppStartup.ConfigureServices(services, AppKind.MauiApp, typeof(Module.BlazorUIClientAppModule)).Wait();
 
@@ -260,7 +260,7 @@ public static partial class MauiProgram
             var storage = SecureStorage.Default;
             try {
                 var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(storedSessionId)) {
+                if (!storedSessionId.IsNullOrEmpty()) {
                     sessionId = storedSessionId;
                     Log.Information("Successfully read stored Session ID");
                 }

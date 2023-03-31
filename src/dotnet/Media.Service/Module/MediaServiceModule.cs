@@ -55,6 +55,5 @@ public class MediaServiceModule : HostModule<MediaSettings>
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-        services.TryAddSingleton<OtelMetrics>();
     }
 }

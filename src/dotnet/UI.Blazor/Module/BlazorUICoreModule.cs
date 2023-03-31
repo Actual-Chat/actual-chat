@@ -137,18 +137,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         InjectDiagnosticsServices(services);
 
-        /* if (appKind.IsClient()) {
-         Temporarily disabled for wasm due to bad results.
-         Async nature of Indexed Db API gives high values for IndexedDbReplicaCacheStorage.TryGetValue invokes
-          */
-        if (appKind.IsMauiApp()) {
-            services.AddSingleton(_ => new PersistentStorageReplicaCache.Options());
-            services.AddSingleton<ReplicaCache, PersistentStorageReplicaCache>();
-            services.TryAddSingleton<IReplicaCacheStorage>(c => new IndexedDbReplicaCacheStorage(
-                c.GetRequiredService<IndexedDbReplicaCacheStorage.JSRuntimeAccessor>()));
-            services.TryAddSingleton<IndexedDbReplicaCacheStorage.JSRuntimeAccessor>(c =>
-                new IndexedDbReplicaCacheStorage.JSRuntimeAccessor(
-                () => c.GetRequiredService<IJSRuntime>()));
+        // Temporarily disabled for WASM due to bad performance
+        if (false && appKind.IsWasmApp()) {
+            services.AddSingleton<ReplicaCache>(c => {
+                var store = new IndexedDbKeyValueStore(c).Start();
+                var options = new AppReplicaCache.Options(store);
+                return new AppReplicaCache(options, c);
+            });
         }
     }
 

@@ -50,11 +50,10 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddSingleton<AudioHubBackend>();
         services.AddSingleton<AudioHubBackendClientFactory>();
 
-        services.TryAddSingleton<AudioProcessor.Options>();
+        services.AddSingleton<AudioProcessor.Options>();
         services.AddSingleton<AudioProcessor>();
         services.AddTransient<IAudioProcessor>(c => c.GetRequiredService<AudioProcessor>());
 
-        services.TryAddSingleton<OtelMetrics>();
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
         services.AddSingleton<AudioStreamer>();

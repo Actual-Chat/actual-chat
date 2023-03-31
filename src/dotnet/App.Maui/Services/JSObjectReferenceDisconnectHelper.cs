@@ -13,31 +13,37 @@ namespace ActualChat.App.Maui.Services;
 public static class JSObjectReferenceDisconnectHelper
 {
     private static readonly ConditionalWeakTable<IJSRuntime, object> _disconnectedRuntimes = new ();
-    private static readonly Func<JSObjectReference, JSRuntime> _getRuntime;
+    private static readonly Func<JSObjectReference, JSRuntime> _getJSRuntime;
 
     static JSObjectReferenceDisconnectHelper()
     {
-        var fi = typeof(JSObjectReference).GetField("_jsRuntime", BindingFlags.Instance | BindingFlags.NonPublic);
-        var p = Expression.Parameter(typeof(JSObjectReference));
-        var ma = Expression.Field(p, fi!);
-        var lambda = Expression.Lambda<Func<JSObjectReference, JSRuntime>>(ma, p);
-        _getRuntime = lambda.Compile();
+        var parameter = Expression.Parameter(typeof(JSObjectReference));
+        _getJSRuntime = Expression.Lambda<Func<JSObjectReference, JSRuntime>>(
+            Expression.Field(
+                parameter,
+                typeof(JSObjectReference).GetField("_jsRuntime", BindingFlags.Instance | BindingFlags.NonPublic)!),
+            parameter
+            ).Compile();
     }
 
     public static bool TestIfIsDisconnected(IJSObjectReference jsRef)
     {
-        var jsRef2 = jsRef as JSObjectReference;
-        if (jsRef2 == null)
+        var typedJSRef = jsRef as JSObjectReference;
+        if (typedJSRef == null)
             return false;
-        var runtime = _getRuntime(jsRef2);
-        if (_disconnectedRuntimes.TryGetValue(runtime, out _))
+
+        var js = _getJSRuntime.Invoke(typedJSRef);
+        if (_disconnectedRuntimes.TryGetValue(js, out _))
             return true;
+
         return false;
     }
 
-    public static void MarkAsDisconnected(IJSRuntime jsRuntime)
+    public static void MarkAsDisconnected(IJSRuntime js)
     {
-        if (jsRuntime == null) throw new ArgumentNullException(nameof(jsRuntime));
-        _disconnectedRuntimes.Add(jsRuntime, _disconnectedRuntimes);
+        if (js == null)
+            throw new ArgumentNullException(nameof(js));
+
+        _disconnectedRuntimes.Add(js, _disconnectedRuntimes);
     }
 }

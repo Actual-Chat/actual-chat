@@ -35,8 +35,9 @@ public class MobileAuthClient
 
     public async Task<bool> SignInGoogle(string code)
     {
-        if (string.IsNullOrEmpty(code))
+        if (code.IsNullOrEmpty())
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
+
         var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
         var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {

@@ -8,7 +8,7 @@ public class MauiBlazorApp : UI.Blazor.App.AppBase
 
     protected override void OnInitialized()
     {
-        ScopedServicesAccessor.ScopedServices = Services;
+        ScopedServices = Services;
         base.OnInitialized();
     }
 
@@ -18,7 +18,7 @@ public class MauiBlazorApp : UI.Blazor.App.AppBase
         // Which dispose Renderer with all components.
         // And after that container is disposed.
         // So we forget previous scoped services container in advance.
-        ScopedServicesAccessor.Forget();
+        DiscardScopedServices();
         base.Dispose();
     }
 

@@ -80,8 +80,8 @@ public class CoreModule : HostModule<CoreSettings>
 
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty()) {
-            services.TryAddSingleton<IContentTypeProvider>(sp
-                => sp.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
+            services.AddSingleton<IContentTypeProvider>(c
+                => c.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
             services.AddSingleton<IBlobStorageProvider>(c => new TempFolderBlobStorageProvider(c));
         }
         else

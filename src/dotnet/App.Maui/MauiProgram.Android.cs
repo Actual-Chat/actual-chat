@@ -61,9 +61,9 @@ public static partial class MauiProgram
         var list = webView.CopyBackForwardList();
         var canGoBack2 = list.Size > 1 && list.CurrentIndex > 0;
         if (canGoBack2) {
-            if (ScopedServicesAccessor.IsInitialized) {
-                var jsRuntime = ScopedServicesAccessor.ScopedServices.GetRequiredService<IJSRuntime>();
-                await jsRuntime.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
+            if (AreScopedServicesReady) {
+                var js = ScopedServices.GetRequiredService<IJSRuntime>();
+                await js.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
                 return true;
             }
         }

@@ -78,7 +78,7 @@ public class MobileAuthController : Controller
         if (!auth.Succeeded
             || auth.Principal == null
             || !auth.Principal.Identities.Any(id => id.IsAuthenticated)
-            || string.IsNullOrEmpty(auth.Properties.GetTokenValue("access_token"))) {
+            || auth.Properties.GetTokenValue("access_token").IsNullOrEmpty()) {
             // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
         }
@@ -97,8 +97,8 @@ public class MobileAuthController : Controller
             // Build the result url
             var url = CallbackScheme + "://#" + string.Join(
                 "&",
-                qs.Where(kvp => !string.IsNullOrEmpty(kvp.Value))
-                .Select(kvp => $"{WebUtility.UrlEncode(kvp.Key)}={WebUtility.UrlEncode(kvp.Value)}"));
+                qs.Where(kv => !kv.Value.IsNullOrEmpty())
+                .Select(kv => $"{WebUtility.UrlEncode(kv.Key)}={WebUtility.UrlEncode(kv.Value)}"));
 
             // Redirect to final url
             Request.HttpContext.Response.Redirect(url);
@@ -135,7 +135,7 @@ public class MobileAuthController : Controller
         using var tokens = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
         if (tokens.Error != null)
             return BadRequest(tokens.Error);
-        if (string.IsNullOrEmpty(tokens.AccessToken))
+        if (tokens.AccessToken.IsNullOrEmpty())
             return BadRequest("Failed to retrieve access token.");
 
         // Get the Google user

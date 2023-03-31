@@ -27,13 +27,13 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     public override void OnNewToken(string token)
     {
-        Log.LogDebug("FirebaseMessagingService.OnNewToken: \'{Token}\'", token);
+        Log.LogDebug("OnNewToken: '{Token}'", token);
         base.OnNewToken(token);
     }
 
     public override void OnMessageReceived(RemoteMessage message)
     {
-        Log.LogDebug("FirebaseMessagingService.OnMessageReceived. MessageId='{MessageId}', CollapseKey='{CollapseKey}'",
+        Log.LogDebug("OnMessageReceived: message #{MessageId}, CollapseKey='{CollapseKey}'",
             message.MessageId, message.CollapseKey);
 
         base.OnMessageReceived(message);
@@ -59,17 +59,18 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             text = notification.Body;
             imageUrl = notification.ImageUrl.ToString();
         }
-        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(text))
+        if (title.IsNullOrEmpty() || text.IsNullOrEmpty())
             return;
 
         if (_utils!.IsAppForeground()) {
             data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
             var chatId = new ChatId(sChatId, ParseOrNone.Option);
-            if (!chatId.IsNone && ScopedServicesAccessor.IsInitialized) {
-                var handler = ScopedServicesAccessor.ScopedServices.GetRequiredService<NotificationUI>();
+            if (!chatId.IsNone && AreScopedServicesReady) {
+                var handler = ScopedServices.GetRequiredService<NotificationUI>();
                 if (handler.IsAlreadyThere(chatId)) {
                     // Do nothing if notification leads to the active chat.
-                    Log.LogDebug("FirebaseMessagingService.OnMessageReceived. Notification in the active chat while app is foreground. ChatId: \'{ChatId}\'.",
+                    Log.LogDebug(
+                        "OnMessageReceived: notification in the active chat while app is foreground, chat #{ChatId}",
                         chatId);
                     return;
                 }
@@ -117,11 +118,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     }
 
     private Bitmap? ResolveImage(string imageUrl)
-    {
-        if (string.IsNullOrEmpty(imageUrl))
-            return null;
-        return _imagesCache.GetOrCreate(imageUrl, DownloadImage);
-    }
+        => imageUrl.IsNullOrEmpty()
+            ? null
+            : _imagesCache.GetOrCreate(imageUrl, DownloadImage);
 
     private static Bitmap? DownloadImage(string imageUrl)
     {
