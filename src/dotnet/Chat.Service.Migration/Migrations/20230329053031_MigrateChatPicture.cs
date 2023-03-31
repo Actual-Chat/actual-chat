@@ -42,9 +42,9 @@ namespace ActualChat.Chat.Migrations
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            log.LogInformation("Upgrading {Count} chats", dbChats.Count);
+            log.LogInformation("Upgrading {Count} chat pictures", dbChats.Count);
 
-            var blobs = new List<(string oldPath, string newPath)>(dbChats.Count);
+            var blobs = new List<(string OldPath, string NewPath)>(dbChats.Count);
 
             foreach (var dbChat in dbChats) {
                 var mediaId = new MediaId(dbChat.Id, Generate.Option);
@@ -60,25 +60,30 @@ namespace ActualChat.Chat.Migrations
                 dbChat.Picture = "";
             }
 
-            log.LogInformation("- Saving changes");
-
+            log.LogInformation("Saving Media DB changes");
             await mediaDbContext.SaveChangesAsync().ConfigureAwait(false);
 
-            foreach (var blob in blobs) {
-                await blobStorage.Copy(blob.oldPath, blob.newPath, CancellationToken.None).ConfigureAwait(false);
-            }
+            await Parallel.ForEachAsync(blobs,
+                new ParallelOptions() { MaxDegreeOfParallelism = 4 },
+                async (blob, ct) => {
+                    var isCopied = await blobStorage.CopyIfExists(blob.OldPath, blob.NewPath, ct).ConfigureAwait(false);
+                    if (!isCopied)
+                        log.LogWarning("Couldn't copy blob: {Blob}", blob.OldPath);
+                }).ConfigureAwait(false);
 
+            log.LogInformation("Saving Chats DB changes");
             await dbContext.SaveChangesAsync().ConfigureAwait(false);
 
-            await blobStorage.Delete(blobs.ConvertAll(x => x.oldPath), CancellationToken.None).ConfigureAwait(false);
+            await Parallel.ForEachAsync(blobs,
+                new ParallelOptions() { MaxDegreeOfParallelism = 4 },
+                async (blob, ct) => await blobStorage.Delete(blob.OldPath, ct).ConfigureAwait(false)
+            ).ConfigureAwait(false);
 
-            log.LogInformation("Upgrading chats: done");
+            log.LogInformation("Upgrading chat pictures: done");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
-        {
-
-        }
+        { }
     }
 }
