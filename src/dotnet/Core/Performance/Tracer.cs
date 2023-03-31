@@ -46,6 +46,6 @@ public sealed class Tracer
     public void Point(string label, TimeSpan elapsed)
         => Writer?.Invoke(new TracePoint(this, label, elapsed));
 
-    public TraceRegion Region(string label, bool logEnter = false)
+    public TraceRegion Region(string label, bool logEnter = true)
         => new(this, label, logEnter);
 }

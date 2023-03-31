@@ -11,12 +11,10 @@ public class NavigationInterceptor
 
     internal bool TryIntercept(Uri uri)
     {
-        var nav = ScopedServicesAccessor.IsInitialized
-            ? ScopedServicesAccessor.ScopedServices.GetRequiredService<NavigationManager>()
-            : null;
-        if (nav == null)
+        if (!AreScopedServicesReady)
             return false;
 
+        var nav = ScopedServices.GetRequiredService<NavigationManager>();
         var baseUri = UrlMapper.BaseUri;
         if (baseUri.IsBaseOf(uri)) {
             var relativeUri = baseUri.MakeRelativeUri(uri);

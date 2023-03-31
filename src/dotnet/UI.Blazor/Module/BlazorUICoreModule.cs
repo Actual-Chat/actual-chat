@@ -6,6 +6,7 @@ using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Stl.Fusion.Bridge;
 using Stl.Fusion.Bridge.Interception;
 using Stl.Fusion.Diagnostics;
 using Stl.Plugins;
@@ -29,9 +30,16 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             return; // Blazor UI only module
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
-        ComputedStateComponent.DefaultOptions =
-            ComputedStateComponentOptions.RecomputeOnParametersSet
-            | ComputedStateComponentOptions.SynchronizeComputeState;
+        if (appKind.IsMauiApp()) {
+            // TODO(DF): Test if we can use these options for web app
+            ComputedStateComponent.DefaultOptions =
+                ComputedStateComponentOptions.RecomputeOnParametersSet;
+        }
+        else {
+            ComputedStateComponent.DefaultOptions =
+                ComputedStateComponentOptions.RecomputeOnParametersSet
+                | ComputedStateComponentOptions.SynchronizeComputeState;
+        }
 
         // Fusion
         var fusion = services.AddFusion();
@@ -128,6 +136,15 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             events => events.OnCircuitContextCreated += c => c.GetRequiredService<History>());
 
         InjectDiagnosticsServices(services);
+
+        // Temporarily disabled for WASM due to bad performance
+        if (false && appKind.IsWasmApp()) {
+            services.AddSingleton<ReplicaCache>(c => {
+                var store = new IndexedDbKeyValueStore(c).Start();
+                var options = new AppReplicaCache.Options(store);
+                return new AppReplicaCache(options, c);
+            });
+        }
     }
 
     private void InjectDiagnosticsServices(IServiceCollection services)

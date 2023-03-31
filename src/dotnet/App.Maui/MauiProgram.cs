@@ -31,7 +31,7 @@ public static partial class MauiProgram
 #if WINDOWS
         if (_tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
-            MauiProgramOptimizations.EnableDependencyInjectionEventListener();
+            // MauiProgramOptimizations.EnableDependencyInjectionEventListener();
         }
 #endif
 
@@ -51,15 +51,20 @@ public static partial class MauiProgram
     }
 
     private static LoggerConfiguration CreateLoggerConfiguration()
-        => new LoggerConfiguration()
+    {
+        var configuration = new LoggerConfiguration()
             .MinimumLevel.Is(LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
-            .WriteTo.Sentry(options => options.ConfigureForApp())
+            .MinimumLevel.Override("ActualChat.UI.Blazor.Services.AppReplicaCache", LogEventLevel.Debug)
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui")
             .ConfigurePlatformLogger();
+        if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
+            configuration = configuration.WriteTo.Sentry(options => options.ConfigureForApp());
+        return configuration;
+    }
 
     private static Tracer CreateTracer()
     {
@@ -79,10 +84,11 @@ public static partial class MauiProgram
 
     private static MauiApp CreateMauiAppInternal()
     {
-        var builder = MauiApp.CreateBuilder();
-        builder
-            .UseMauiApp<App>()
-            .UseSentry(options => options.ConfigureForApp())
+        var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
+        if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
+            builder = builder.UseSentry(options => options.ConfigureForApp());
+
+        builder = builder
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
@@ -148,7 +154,7 @@ public static partial class MauiProgram
 
         AppServices = mauiApp.Services;
 
-        _ = MauiProgramOptimizations.WarmupFusionServices(AppServices, _tracer);
+        //_ = MauiProgramOptimizations.WarmupFusionServices(AppServices, _tracer);
 
         Constants.HostInfo = AppServices.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
@@ -168,10 +174,10 @@ public static partial class MauiProgram
     private static void AwaitInitSessionInfoTask(Task initSessionInfoTask)
         => initSessionInfoTask.GetAwaiter().GetResult();
 
-    private static ILoggingBuilder ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
+    private static void ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
     {
         var minLevel = Log.Logger.IsEnabled(LogEventLevel.Debug) ? LogLevel.Debug : LogLevel.Information;
-        return logging
+        logging
             .AddSerilog(Log.Logger, dispose: disposeSerilog)
             .SetMinimumLevel(minLevel);
     }
@@ -184,7 +190,7 @@ public static partial class MauiProgram
                 .BuildServiceProvider();
             var log = services.GetRequiredService<ILogger<MauiApp>>();
             try {
-                // Manually configure http client as we don't have it configured globally at DI level
+                // Manually configure HTTP client as we don't have it configured globally at DI level
                 using var httpClient = new HttpClient(new HttpClientHandler {
                     SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                     UseCookies = false,
@@ -223,9 +229,9 @@ public static partial class MauiProgram
         // HttpClient
 #if !WINDOWS
         services.RemoveAll<IHttpClientFactory>();
-        services.AddSingleton<NativeHttpClientFactory>(c => new NativeHttpClientFactory(c));
-        services.TryAddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
-        services.TryAddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
+        services.AddSingleton(c => new NativeHttpClientFactory(c));
+        services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
+        services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
         AppStartup.ConfigureServices(services, AppKind.MauiApp, typeof(Module.BlazorUIClientAppModule)).Wait();
 
@@ -258,7 +264,7 @@ public static partial class MauiProgram
             var storage = SecureStorage.Default;
             try {
                 var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(storedSessionId)) {
+                if (!storedSessionId.IsNullOrEmpty()) {
                     sessionId = storedSessionId;
                     Log.Information("Successfully read stored Session ID");
                 }

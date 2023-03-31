@@ -22,10 +22,11 @@ public sealed record HostInfo
 
     public string BaseUrl {
         get {
-            if (!string.IsNullOrEmpty(_baseUrl))
+            if (!_baseUrl.IsNullOrEmpty())
                 return _baseUrl;
             if (BaseUrlProvider == null)
                 throw StandardError.Constraint<InvalidOperationException>("BaseUrlProvider is not specified");
+
             return BaseUrlProvider();
         }
         init => _baseUrl = value;

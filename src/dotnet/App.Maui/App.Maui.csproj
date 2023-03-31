@@ -181,6 +181,11 @@
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
+    <PackageReference Include="sqlite-net-pcl" />
+    <!--
+      We needed an extra package to use SQLite on Android
+      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
+    <PackageReference Include="SQLitePCLRaw.bundle_green" />
     <!--
       MAUI msbuild tasks doesn't work with
       <Content Include="..\UI.Blazor.Host\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />

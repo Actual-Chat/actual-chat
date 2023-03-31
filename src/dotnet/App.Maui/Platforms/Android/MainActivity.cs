@@ -62,8 +62,8 @@ public class MainActivity : MauiAppCompatActivity
     {
         var isLoaded = false;
         CurrentActivity = this;
-        if (ScopedServicesAccessor.IsInitialized) {
-            var loadingUI = ScopedServicesAccessor.ScopedServices.GetRequiredService<LoadingUI>();
+        if (AreScopedServicesReady) {
+            var loadingUI = ScopedServices.GetRequiredService<LoadingUI>();
             isLoaded = loadingUI.WhenLoaded.IsCompleted;
             // If app is put to background with back button
             // and user brings app to foreground by launching app icon or picking app from recents,
@@ -219,8 +219,9 @@ public class MainActivity : MauiAppCompatActivity
     private async Task OnSignInWithGoogle(GoogleSignInAccount account)
     {
         var code = account.ServerAuthCode;
-        if (string.IsNullOrEmpty(code))
+        if (code.IsNullOrEmpty())
             return;
+
         var mobileAuthClient = AppServices.GetRequiredService<MobileAuthClient>();
         await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
     }
@@ -266,39 +267,39 @@ public class MainActivity : MauiAppCompatActivity
         if (url.IsNullOrEmpty())
             return;
 
+        _ = Handle();
+
         async Task Handle()
         {
-            await ScopedServicesAccessor.WhenInitialized.ConfigureAwait(true);
-            var serviceProvider = ScopedServicesAccessor.ScopedServices;
-            var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
+            await WhenScopedServicesReady.ConfigureAwait(true);
+            var loadingUI = ScopedServices.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
-            var handler = serviceProvider.GetRequiredService<NotificationUI>();
+            var handler = ScopedServices.GetRequiredService<NotificationUI>();
             Log.LogDebug("NotificationTap navigates to '{Url}'", url);
             handler.DispatchNotificationNavigation(url);
         }
-        _ = Handle();
     }
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
         private readonly object _syncObject = new ();
-        private IServiceProvider? _serviceProvider;
+        private IServiceProvider? _lastScopedServices;
         private LoadingUI? _loadingUI;
 
         public bool OnPreDraw()
         {
             lock (_syncObject) {
-                if (!ScopedServicesAccessor.IsInitialized)
+                if (!AreScopedServicesReady)
                     return false;
 
-                var svpHasChanged = false;
-                var svp = ScopedServicesAccessor.ScopedServices;
-                if (_serviceProvider == null || !ReferenceEquals(svp, _serviceProvider)) {
-                    svpHasChanged = true;
-                    _serviceProvider = svp;
+                var scopedServicesChanged = false;
+                var scopedServices = ScopedServices;
+                if (_lastScopedServices == null || !ReferenceEquals(scopedServices, _lastScopedServices)) {
+                    scopedServicesChanged = true;
+                    _lastScopedServices = scopedServices;
                 }
-                if (_loadingUI == null || svpHasChanged)
-                    _loadingUI = _serviceProvider.GetRequiredService<LoadingUI>();
+                if (_loadingUI == null || scopedServicesChanged)
+                    _loadingUI = _lastScopedServices.GetRequiredService<LoadingUI>();
                 return _loadingUI.WhenLoaded.IsCompleted;
             }
         }

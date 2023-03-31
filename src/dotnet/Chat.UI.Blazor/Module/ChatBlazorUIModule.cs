@@ -51,7 +51,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings
-        services.TryAddSingleton<AudioSettings>(c => new AudioSettings());
+        services.AddSingleton<AudioSettings>(_ => new AudioSettings());
         services.AddScoped<LanguageUI>(c => new LanguageUI(c));
         services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
 

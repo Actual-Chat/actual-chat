@@ -137,6 +137,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(CancellationToken cancellationToken = default)
     {
+        var sw = Stopwatch.StartNew();
         DebugLog?.LogDebug("-> ListUnordered");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         DebugLog?.LogDebug("-> ListUnordered.Contacts ({IdsLength})", contactIds.Length);
@@ -145,7 +146,8 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
             .Collect()
             .ConfigureAwait(false);
         var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
-        DebugLog?.LogDebug("<- ListUnordered");
+        sw.Stop();
+        DebugLog?.LogDebug("<- ListUnordered ({Duration}ms)", sw.ElapsedMilliseconds);
         return result;
     }
 

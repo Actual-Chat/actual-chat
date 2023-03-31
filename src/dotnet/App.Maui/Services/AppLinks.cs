@@ -31,18 +31,18 @@ public static class AppLinks
             return;
 
         var localUrl = uri.PathAndQuery + uri.Fragment;
+        _ = Handle();
+
         async Task Handle()
         {
-            await ScopedServicesAccessor.WhenInitialized.ConfigureAwait(true);
-            var serviceProvider = ScopedServicesAccessor.ScopedServices;
-            var loadingUI = serviceProvider.GetRequiredService<LoadingUI>();
+            await WhenScopedServicesReady.ConfigureAwait(true);
+            var loadingUI = ScopedServices.GetRequiredService<LoadingUI>();
             await loadingUI.WhenLoaded.ConfigureAwait(true);
 
-            var log = serviceProvider.LogFor(typeof(AppLinks));
+            var log = ScopedServices.LogFor(typeof(AppLinks));
             log.LogDebug("AppLink navigates to '{Url}'", localUrl);
-            var history = serviceProvider.GetRequiredService<History>();
+            var history = ScopedServices.GetRequiredService<History>();
             _ = history.NavigateTo(localUrl);
         }
-        _ = Handle();
     }
 }
