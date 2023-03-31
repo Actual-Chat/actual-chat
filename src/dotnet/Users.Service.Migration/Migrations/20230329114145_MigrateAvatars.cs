@@ -42,9 +42,9 @@ namespace ActualChat.Users.Migrations
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            log.LogInformation("Upgrading {Count} avatars", dbAvatars.Count);
+            log.LogInformation("Upgrading {Count} avatars...", dbAvatars.Count);
 
-            var blobs = new List<(string oldPath, string newPath)>(dbAvatars.Count);
+            var blobs = new List<(string OldPath, string NewPath)>(dbAvatars.Count);
 
             foreach (var dbAvatar in dbAvatars) {
                 if (dbAvatar.Picture.StartsWith("http", StringComparison.InvariantCultureIgnoreCase))
@@ -63,25 +63,30 @@ namespace ActualChat.Users.Migrations
                 dbAvatar.Picture = "";
             }
 
-            log.LogInformation("- Saving changes");
-
+            log.LogInformation("Saving Media DB changes");
             await mediaDbContext.SaveChangesAsync().ConfigureAwait(false);
 
-            foreach (var blob in blobs) {
-                await blobStorage.Copy(blob.oldPath, blob.newPath, CancellationToken.None).ConfigureAwait(false);
-            }
+            await Parallel.ForEachAsync(blobs,
+                new ParallelOptions() { MaxDegreeOfParallelism = 4 },
+                async (blob, ct) => {
+                    var isCopied = await blobStorage.CopyIfExists(blob.OldPath, blob.NewPath, ct).ConfigureAwait(false);
+                    if (!isCopied)
+                        log.LogWarning("Couldn't copy blob: {Blob}", blob.OldPath);
+                }).ConfigureAwait(false);
 
+            log.LogInformation("Saving Avatars DB changes");
             await dbContext.SaveChangesAsync().ConfigureAwait(false);
 
-            await blobStorage.Delete(blobs.ConvertAll(x => x.oldPath), CancellationToken.None).ConfigureAwait(false);
+            await Parallel.ForEachAsync(blobs,
+                new ParallelOptions() { MaxDegreeOfParallelism = 4 },
+                async (blob, ct) => await blobStorage.DeleteIfExists(blob.OldPath, ct).ConfigureAwait(false)
+            ).ConfigureAwait(false);
 
             log.LogInformation("Upgrading avatars: done");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
-        {
-
-        }
+        { }
     }
 }

@@ -31,8 +31,8 @@ namespace ActualChat.Chat.Migrations
             var blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
             var skip = 0;
-            const int take = 100;
-            var blobs = new List<(string oldPath, string newPath)>(take);
+            const int batchSize = 100;
+            var blobs = new List<(string OldPath, string NewPath)>(batchSize);
 
             while (true) {
                 using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
@@ -43,7 +43,7 @@ namespace ActualChat.Chat.Migrations
                     .Where(x => x.ContentId != "")
                     .OrderBy(c => c.Id)
                     .Skip(skip)
-                    .Take(take)
+                    .Take(batchSize)
                     .ToListAsync()
                     .ConfigureAwait(false);
 
@@ -72,22 +72,29 @@ namespace ActualChat.Chat.Migrations
                     dbAttachment.ContentId = "";
                 }
 
-                log.LogInformation("- Saving changes");
-
+                log.LogInformation("Saving Media DB changes");
                 await mediaDbContext.SaveChangesAsync().ConfigureAwait(false);
 
-                foreach (var blob in blobs) {
-                    await blobStorage.Copy(blob.oldPath, blob.newPath, CancellationToken.None).ConfigureAwait(false);
-                }
+                await Parallel.ForEachAsync(blobs,
+                    new ParallelOptions() { MaxDegreeOfParallelism = 4 },
+                    async (blob, ct) => {
+                        var isCopied = await blobStorage.CopyIfExists(blob.OldPath, blob.NewPath, ct).ConfigureAwait(false);
+                        if (!isCopied)
+                            log.LogWarning("Couldn't copy blob: {Blob}", blob.OldPath);
+                    }).ConfigureAwait(false);
 
+                log.LogInformation("Saving Chats DB changes");
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
 
-                await blobStorage.Delete(blobs.ConvertAll(x => x.oldPath), CancellationToken.None).ConfigureAwait(false);
+                await Parallel.ForEachAsync(blobs,
+                    new ParallelOptions() { MaxDegreeOfParallelism = 4 },
+                    async (blob, ct) => await blobStorage.DeleteIfExists(blob.OldPath, ct).ConfigureAwait(false)
+                ).ConfigureAwait(false);
 
-                if (dbAttachments.Count < take)
+                if (dbAttachments.Count < batchSize)
                     break;
 
-                skip += take;
+                skip += batchSize;
                 blobs.Clear();
             }
 
@@ -96,8 +103,6 @@ namespace ActualChat.Chat.Migrations
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
-        {
-
-        }
+        { }
     }
 }
