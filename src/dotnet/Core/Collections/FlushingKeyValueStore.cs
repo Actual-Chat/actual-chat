@@ -11,7 +11,7 @@ public abstract class FlushingKeyValueStore : WorkerBase
 
     public ValueTask<string?> Get(HashedString key, CancellationToken cancellationToken = default)
         => WriteCache.TryGetValue(key, out var value)
-            ? ValueTask.FromResult((string?)value)
+            ? ValueTask.FromResult(value)
             : StorageGet(key, cancellationToken);
 
     public void Set(HashedString key, string? value)
