@@ -34,7 +34,12 @@ public static class Program
 
         tracer.Point("Wasm.Program.Main");
         // Capture blazor bootstrapping errors
-        using var sdk = SentrySdk.Init(options => options.ConfigureForApp());
+
+        // NOTE(AY): This thing takes 1 second on Windows!
+        var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp);
+        var sentrySdkDisposable = isSentryEnabled
+            ? SentrySdk.Init(options => options.ConfigureForApp())
+            : null;
         try {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             var baseUrl = builder.HostEnvironment.BaseAddress;
@@ -57,9 +62,15 @@ public static class Program
             await host.RunAsync().ConfigureAwait(false);
         }
         catch (Exception exc) {
+            if (!isSentryEnabled)
+                throw;
+
             SentrySdk.CaptureException(exc);
             await SentrySdk.FlushAsync().ConfigureAwait(false);
             throw;
+        }
+        finally {
+            sentrySdkDisposable.DisposeSilently();
         }
     }
 

@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+
 namespace ActualChat;
 
 public static partial class Constants
@@ -34,12 +36,7 @@ public static partial class Constants
             public static string Picture { get; } = "https://avatars.dicebear.com/api/bottts/12.svg";
         }
 
-        public static class Claims
-        {
-            public static string Status { get; } = "urn:actual.chat:status";
-        }
-
-        public static IReadOnlySet<UserId> SystemUserIds = new HashSet<UserId>(new [] {Admin.UserId, Walle.UserId});
+        public static IReadOnlySet<UserId> SystemUserIds = new HashSet<UserId>(new [] { Admin.UserId, Walle.UserId });
         public static int TestBotCount { get; } = 30;
     }
 
@@ -47,11 +44,6 @@ public static partial class Constants
     {
         public const int FileSizeLimit = 25 * 1024 * 1024; // 25MB
         public const int FileCountLimit = 10;
-    }
-
-    public static class Headers
-    {
-        public const string ContentType = "Content-Type";
     }
 
     public static class Presence
@@ -65,5 +57,10 @@ public static partial class Constants
     public static class Contacts
     {
         public static TimeSpan MinTouchInterval { get; } =  TimeSpan.FromSeconds(10);
+    }
+
+    public static class Sentry
+    {
+        public static HashSet<AppKind> EnabledFor { get; } = new();
     }
 }

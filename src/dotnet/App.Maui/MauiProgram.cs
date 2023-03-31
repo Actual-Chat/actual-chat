@@ -51,17 +51,20 @@ public static partial class MauiProgram
     }
 
     private static LoggerConfiguration CreateLoggerConfiguration()
-        => new LoggerConfiguration()
+    {
+        var configuration = new LoggerConfiguration()
             .MinimumLevel.Is(LogEventLevel.Information)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
-            .MinimumLevel.Override("ActualChat.UI.Blazor.Services.PersistentStorageReplicaCache", LogEventLevel.Debug)
-            .MinimumLevel.Override("ActualChat.UI.Blazor.Services.ReplicaCacheStoragePerfMonitor", LogEventLevel.Debug)
-            .WriteTo.Sentry(options => options.ConfigureForApp())
+            .MinimumLevel.Override("ActualChat.UI.Blazor.Services.AppReplicaCache", LogEventLevel.Debug)
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui")
             .ConfigurePlatformLogger();
+        if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
+            configuration = configuration.WriteTo.Sentry(options => options.ConfigureForApp());
+        return configuration;
+    }
 
     private static Tracer CreateTracer()
     {
@@ -81,10 +84,11 @@ public static partial class MauiProgram
 
     private static MauiApp CreateMauiAppInternal()
     {
-        var builder = MauiApp.CreateBuilder();
-        builder
-            .UseMauiApp<App>()
-            .UseSentry(options => options.ConfigureForApp())
+        var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
+        if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
+            builder = builder.UseSentry(options => options.ConfigureForApp());
+
+        builder = builder
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
@@ -170,10 +174,10 @@ public static partial class MauiProgram
     private static void AwaitInitSessionInfoTask(Task initSessionInfoTask)
         => initSessionInfoTask.GetAwaiter().GetResult();
 
-    private static ILoggingBuilder ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
+    private static void ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
     {
         var minLevel = Log.Logger.IsEnabled(LogEventLevel.Debug) ? LogLevel.Debug : LogLevel.Information;
-        return logging
+        logging
             .AddSerilog(Log.Logger, dispose: disposeSerilog)
             .SetMinimumLevel(minLevel);
     }
@@ -186,7 +190,7 @@ public static partial class MauiProgram
                 .BuildServiceProvider();
             var log = services.GetRequiredService<ILogger<MauiApp>>();
             try {
-                // Manually configure http client as we don't have it configured globally at DI level
+                // Manually configure HTTP client as we don't have it configured globally at DI level
                 using var httpClient = new HttpClient(new HttpClientHandler {
                     SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                     UseCookies = false,
