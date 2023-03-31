@@ -1,6 +1,5 @@
 using Cysharp.Text;
 using Microsoft.Toolkit.HighPerformance;
-using Newtonsoft.Json;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Interception;
 
@@ -11,9 +10,9 @@ public class AppReplicaCache : ReplicaCache
     public sealed record Options(FlushingKeyValueStore Store)
     {
         public ITextSerializer KeySerializer { get; } =
-            new NewtonsoftJsonSerializer(new JsonSerializerSettings { Formatting = Formatting.None });
+            new SystemJsonSerializer(new JsonSerializerOptions() { WriteIndented = false });
         public ITextSerializer ValueSerializer { get; } =
-            new NewtonsoftJsonSerializer(new JsonSerializerSettings { Formatting = Formatting.None });
+            new SystemJsonSerializer(new JsonSerializerOptions() { WriteIndented = false });
     }
 
     private bool DebugMode => Constants.DebugMode.ReplicaCache;
