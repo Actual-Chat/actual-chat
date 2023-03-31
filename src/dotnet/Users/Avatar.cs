@@ -22,7 +22,11 @@ public record Avatar(
 
     [DataMember] public string Name { get; init; } = "";
     [DataMember] public string Picture { get; init; } = "";
+    [DataMember] public MediaId MediaId { get; init; }
     [DataMember] public string Bio { get; init; } = "";
+
+    // Populated only on reads
+    [DataMember] public Media.Media? Media { get; init; }
 
     public Avatar() : this(Symbol.Empty) { }
 
@@ -38,6 +42,8 @@ public record Avatar(
             avatar = avatar with { Name = other.Name };
         if (avatar.Bio.IsNullOrEmpty())
             avatar = avatar with { Bio = other.Bio };
+        if (avatar.MediaId.IsNone)
+            avatar = avatar with { MediaId = other.MediaId };
         if (avatar.Picture.IsNullOrEmpty())
             avatar = avatar with { Picture = other.Picture };
         return avatar;

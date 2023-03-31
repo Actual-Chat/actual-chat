@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.2")
+                .HasAnnotation("ProductVersion", "7.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -91,6 +91,11 @@ namespace ActualChat.Users.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("bio");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
 
                     b.Property<string>("Name")
                         .IsRequired()

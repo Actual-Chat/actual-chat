@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat;
+using ActualChat.Chat;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
@@ -12,6 +12,7 @@ using Stl.Reflection;
 #pragma warning disable MA0004
 #pragma warning disable VSTHRD002
 #pragma warning disable CA1847
+#pragma warning disable CS0162
 
 namespace ActualChat.Users.Migrations
 {
@@ -26,6 +27,8 @@ namespace ActualChat.Users.Migrations
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
+            return; // Obsolete: applied to all of our DBs
+
             var dbInitializer = DbInitializer.Get<UsersDbInitializer>();
             var chatDbInitializer = await DbInitializer.Get<ChatDbInitializer>().CompleteEarlierMigrations(this);
             var log = dbInitializer.Services.LogFor(GetType());

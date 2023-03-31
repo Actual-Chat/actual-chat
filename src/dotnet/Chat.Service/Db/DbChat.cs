@@ -17,7 +17,9 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public string Title { get; set; } = "";
     public ChatKind Kind { get; set; }
+    [Obsolete("Use MediaId")]
     public string Picture { get; set; } = "";
+    public string MediaId { get; set; } = "";
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
@@ -32,7 +34,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
-            Picture = Picture,
+            MediaId = new MediaId(MediaId),
         };
 
     public void UpdateFrom(Chat model)
@@ -47,6 +49,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         CreatedAt = model.CreatedAt;
         IsPublic = model.IsPublic;
         Kind = model.Kind;
-        Picture = model.Picture;
+        MediaId = model.MediaId;
     }
 }

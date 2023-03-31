@@ -114,7 +114,7 @@ public static class ChatMarkupHubExt
         };
         var fileText = fileCount switch {
             0 => "",
-            1 => firstFile!.FileName,
+            1 => firstFile!.Media.FileName,
             _ => $"{fileCount.Format()} files",
         };
         var text = (imageText.Length, fileText.Length) switch {

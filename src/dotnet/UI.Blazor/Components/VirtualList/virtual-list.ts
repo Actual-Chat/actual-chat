@@ -43,7 +43,6 @@ export class VirtualList {
     private readonly _scrollPivotObserver: IntersectionObserver;
     private readonly _skeletonObserver0: IntersectionObserver;
     private readonly _skeletonObserver1: IntersectionObserver;
-    private readonly _skeletonObserver2: IntersectionObserver;
     private readonly _ironPantsIntervalHandle: number;
     private readonly _unmeasuredItems: Set<string>;
     private readonly _visibleItems: Set<string>;
@@ -150,15 +149,6 @@ export class VirtualList {
                 rootMargin: `${SkeletonDetectionBoundary}px`,
                 threshold: visibilityThresholds,
             });
-        this._skeletonObserver2 = new IntersectionObserver(
-            this.onSkeletonVisibilityChange,
-            {
-                root: this._ref,
-                // Extend visibility outside of the viewport
-                rootMargin: `${2*SkeletonDetectionBoundary}px`,
-                threshold: visibilityThresholds,
-
-            });
 
         this._ironPantsIntervalHandle = self.setInterval(this.onIronPantsHandle, IronPantsHandlePeriod);
 
@@ -170,8 +160,6 @@ export class VirtualList {
         this._skeletonObserver0.observe(this._endSpacerRef);
         this._skeletonObserver1.observe(this._spacerRef);
         this._skeletonObserver1.observe(this._endSpacerRef);
-        this._skeletonObserver2.observe(this._spacerRef);
-        this._skeletonObserver2.observe(this._endSpacerRef);
 
         this._items = new Map<string, VirtualListItem>();
         this._renderState = {
@@ -197,7 +185,6 @@ export class VirtualList {
         this._renderEndObserver.disconnect();
         this._skeletonObserver0.disconnect();
         this._skeletonObserver1.disconnect();
-        this._skeletonObserver2.disconnect();
         this._visibilityObserver.disconnect();
         this._scrollPivotObserver.disconnect();
         this._sizeObserver.disconnect();
@@ -416,6 +403,7 @@ export class VirtualList {
             // reset turn off attempt
             this.turnOffIsNearSkeletonDebounced.reset();
             this.turnOffIsNearSkeletonDebounced();
+            this.updateViewportThrottled();
         }
         else
             this.turnOffIsNearSkeletonDebounced();
@@ -684,7 +672,7 @@ export class VirtualList {
             this.onItemVisibilityChange(intersections, this._visibilityObserver);
         }
         if (this._isNearSkeleton) {
-            void this.updateViewportThrottled();
+            this.updateViewportThrottled();
         }
     };
 
@@ -692,10 +680,6 @@ export class VirtualList {
         this._isScrolling = true;
         this.turnOffIsScrollingDebounced();
         this.requestOlfItemsRemovalDebounced.reset();
-        if (this._isRendering || this._isDisposed)
-            return;
-
-        this.updateViewportThrottled();
     };
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce, true);
@@ -890,11 +874,17 @@ export class VirtualList {
         if (this._isRendering || !this._viewport || !this._itemRange)
             return;
 
-        this._query = this.getDataQuery(getRidOfOldItems);
-        if (!this.dataRequestIsRequired(this._query) && !this._isNearSkeleton && !getRidOfOldItems)
+        const query = this.getDataQuery(getRidOfOldItems);
+        const isDataRequestIsRequired = this.dataRequestIsRequired(query);
+        if (!isDataRequestIsRequired && !getRidOfOldItems) {
+            console.log('Skipping data query..');
             return;
-        if (this._query.isNone)
+        }
+        console.log('Data query:', isDataRequestIsRequired, this._isNearSkeleton, getRidOfOldItems);
+        if (query.isNone)
             return;
+
+        this._query = query;
 
         const whenUpdateCompleted = this._whenUpdateCompleted;
         if (whenUpdateCompleted && !whenUpdateCompleted.isCompleted())
@@ -903,8 +893,6 @@ export class VirtualList {
         const newWhenUpdateCompleted = new PromiseSourceWithTimeout<void>();
         newWhenUpdateCompleted.setTimeout(UpdateTimeout, () => {
             newWhenUpdateCompleted.resolve(undefined);
-            // to request data again after timeout
-            this.updateViewportThrottled();
         })
         this._whenUpdateCompleted = newWhenUpdateCompleted;
 

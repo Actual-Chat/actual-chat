@@ -63,6 +63,24 @@ internal class LocalFolderBlobStorage : IBlobStorage
         await dataStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task Copy(string oldPath, string newPath, CancellationToken cancellationToken)
+    {
+        if (oldPath == null) throw new ArgumentNullException(nameof(oldPath));
+        if (newPath == null) throw new ArgumentNullException(nameof(newPath));
+
+        ValidatePath(oldPath);
+        ValidatePath(newPath);
+
+        var fullOldPath = BaseDirectory & oldPath;
+        var fullNewPath = BaseDirectory & newPath;
+
+        Directory.CreateDirectory(fullNewPath.DirectoryPath);
+
+        File.Copy(fullOldPath, fullNewPath);
+
+        return Task.CompletedTask;
+    }
+
     public Task Delete(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
     {
         if (paths == null) throw new ArgumentNullException(nameof(paths));

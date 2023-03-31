@@ -89,6 +89,8 @@
     <EnableTrimAnalyzer>True</EnableTrimAnalyzer>
     <PublishTrimmed>True</PublishTrimmed>
     <TrimMode>partial</TrimMode>
+    <AndroidDexTool>d8</AndroidDexTool>
+    <AndroidLinkTool>r8</AndroidLinkTool>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">

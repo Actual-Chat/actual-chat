@@ -18,6 +18,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? UserId { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
+    public string MediaId { get; set; } = "";
     public string Bio { get; set; } = "";
 
     public DbAvatar() { }
@@ -27,8 +28,9 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new(Id, Version) {
             UserId = new UserId(UserId),
             Name = Name,
-            Picture = Picture,
+            MediaId = new MediaId(MediaId),
             Bio = Bio,
+            Picture = Picture,
         };
 
     public void UpdateFrom(AvatarFull model)
@@ -45,8 +47,9 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Id = id;
         Version = model.Version;
         Name = model.Name;
-        Picture = model.Picture;
+        MediaId = model.MediaId;
         Bio = model.Bio;
+        Picture = model.Picture;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAvatar>

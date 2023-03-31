@@ -17,7 +17,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.3")
+                .HasAnnotation("ProductVersion", "7.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -112,6 +112,11 @@ namespace ActualChat.Chat.Migrations
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
 
                     b.Property<string>("Picture")
                         .IsRequired()
@@ -451,6 +456,11 @@ namespace ActualChat.Chat.Migrations
                     b.Property<int>("Index")
                         .HasColumnType("integer")
                         .HasColumnName("index");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
 
                     b.Property<string>("MetadataJson")
                         .IsRequired()

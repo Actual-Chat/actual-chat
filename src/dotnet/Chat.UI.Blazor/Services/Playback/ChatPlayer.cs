@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.Services;
 
@@ -18,8 +19,13 @@ public abstract class ChatPlayer : ProcessorBase
     private volatile Task? _whenPlaying = null;
 
     protected ILogger Log { get; }
-    protected MomentClockSet Clocks { get; }
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected bool DebugMode => Constants.DebugMode.AudioPlayback;
+
     protected IServiceProvider Services { get; }
+    protected MomentClockSet Clocks { get; }
+    protected HostInfo HostInfo { get; }
+
     protected IAuthors Authors { get; }
     protected IChats Chats { get; }
     protected InteractiveUI InteractiveUI { get; }
@@ -36,6 +42,7 @@ public abstract class ChatPlayer : ProcessorBase
         Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
+        HostInfo = services.GetRequiredService<HostInfo>();
 
         ChatId = chatId;
         Session = session;
@@ -127,5 +134,5 @@ public abstract class ChatPlayer : ProcessorBase
     // Protected methods
 
     protected abstract Task Play(
-        ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken);
+        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken);
 }

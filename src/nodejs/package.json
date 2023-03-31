@@ -5,7 +5,7 @@
     "build:Debug": "webpack --mode development",
     "build:Release": "webpack --mode production",
     "watch": "webpack --mode development --watch",
-    "font": "svgtofont --sources ./icons --output ./fonts",
+    "font": "svgtofont --sources ./icons --output ./fonts/svgtofont",
     "lint": "eslint --ext .ts --config .eslintrc.yml ../"
   },
   "devDependencies": {

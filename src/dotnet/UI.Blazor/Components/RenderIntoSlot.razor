@@ -1,14 +1,8 @@
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
 @{
-    var slotState = RenderVars.RenderSlot(Name);
-    var slotComputed = slotState.Computed;
-
-    var items = slotState.Value;
-    if (items.Contains(this))
-        slotComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
-    else
-        slotState.Value = items.Add(this);
+    var items = RenderVars.RenderSlot(Name);
+    items.Set(r => r.Value.Add(this)); // Set also invalidates mutable state in any case
 }
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;
@@ -16,8 +10,11 @@
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    public bool IsDisposed { get; private set; }
+
     public void Dispose() {
-        var slotState = RenderVars.RenderSlot(Name);
-        slotState.Value = slotState.Value.Remove(this);
+        IsDisposed = true;
+        var items = RenderVars.RenderSlot(Name);
+        items.Set(r => r.Value.Remove(this));
     }
 }

@@ -37,12 +37,13 @@
         _avatarClass = GetSizeClass();
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
-        if (Avatar.Picture.IsNullOrEmpty()) {
+        var avatarPicture = Avatar.Media?.ContentId ?? Avatar.Picture;
+        if (avatarPicture.IsNullOrEmpty()) {
             _avatarPictureUrl = DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString());
-        } else if (Avatar.Picture.StartsWith("http")) {
-            _avatarPictureUrl = Avatar.Picture;
+        } else if (avatarPicture.StartsWith("http")) {
+            _avatarPictureUrl = avatarPicture;
         } else {
-            var contentUrl = UrlMapper.ContentUrl(Avatar.Picture);
+            var contentUrl = UrlMapper.ContentUrl(avatarPicture);
             _avatarPictureUrl = UrlMapper.ImagePreview128Url(contentUrl);
         }
     }

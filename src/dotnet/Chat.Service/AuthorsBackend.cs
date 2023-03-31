@@ -221,12 +221,11 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             if (author.IsAnonymous) {
                 if (author.AvatarId.IsEmpty) {
                     // Creating a random avatar for anonymous authors w/o pre-selected avatar
-                    var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
-                        Create = new AvatarFull() {
+                    var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull> {
+                        Create = new AvatarFull {
                             UserId = userId,
                             Name = RandomNameGenerator.Default.Generate(),
                             Bio = "Someone anonymous",
-                            Picture = "", // NOTE(AY): Add a random one?
                         },
                     });
                     var avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
@@ -318,8 +317,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     private AvatarFull GetDefaultAvatar(AuthorFull author)
         => new() {
             Name = RandomNameGenerator.Default.Generate(author.Id),
-            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
             Bio = "",
+            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
         };
 
     private AuthorFull[] GetDefaultPeerChatAuthors(PeerChatId chatId)

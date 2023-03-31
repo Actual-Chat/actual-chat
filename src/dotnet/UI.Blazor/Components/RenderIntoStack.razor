@@ -1,13 +1,8 @@
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
 @{
-    var stackState = RenderVars.RenderStack(Name);
-    var stackStateComputed = stackState.Computed;
-    var items = stackState.Value;
-    if (items.Contains(this))
-        stackStateComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
-    else
-        stackState.Value = MustPrepend ? items.Insert(0, this) : items.Add(this);
+    var items = RenderVars.RenderStack(Name);
+    items.Set(r => MustPrepend ? r.Value.Insert(0, this) : r.Value.Add(this));
 }
 @code {
     [Inject] private RenderVars RenderVars { get; init; } = null!;
@@ -18,8 +13,11 @@
     [Parameter] public bool MustPrepend { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    public bool IsDisposed { get; private set; }
+
     public void Dispose() {
-        var stackState = RenderVars.RenderStack(Name);
-        stackState.Value = stackState.Value.Remove(this);
+        IsDisposed = true;
+        var items = RenderVars.RenderStack(Name);
+        items.Set(r => r.Value.Remove(this));
     }
 }

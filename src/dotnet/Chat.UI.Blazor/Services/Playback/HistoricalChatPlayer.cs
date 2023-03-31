@@ -14,7 +14,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     }
 
     protected override async Task Play(
-        ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
+        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
         if (chat == null || !chat.Rules.CanRead())
@@ -25,14 +25,14 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
-            .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null) {
             Log.LogWarning("Couldn't find start entry");
             return;
         }
 
-        var clock = Clocks.CpuClock;
+        var cpuClock = Clocks.CpuClock;
         var lastPlaybackBlockEnd = default(Moment);
         var realStartAt = RealNow();
 
@@ -67,19 +67,25 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             await EnqueueDelay(enqueueDelay, cancellationToken);
             if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
                 return;
+
             var dSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value - oldSleepDuration;
             sw.Stop();
             realStartAt += (sw.Elapsed - enqueueDelay - dSleepDuration).Positive();
 
             playbackNow = PlaybackNow();
-            var skipTo = playbackNow - entry.BeginsAt;
-            var playAt = clock.Now + (-skipTo).Positive();
-            entryPlayer.EnqueueEntry(entry, skipTo.Positive(), playAt);
+            if (entryEndsAt < playbackNow)
+                continue;
+
+            var skipOffset = playbackNow - entry.BeginsAt;
+            var skipTo = skipOffset.Positive();
+            var playAt = cpuClock.Now + (-skipOffset).Positive();
+            DebugLog?.LogDebug("Play.EnqueueEntry: {EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
+            entryPlayer.EnqueueEntry(entry, skipTo, playAt);
         }
 
         Moment RealNow() => Clocks.CpuClock.Now - DeviceAwakeUI.TotalSleepDuration.Value;
         TimeSpan PlaybackDuration() => RealNow() - realStartAt;
-        Moment PlaybackNow() => startAt + PlaybackDuration();
+        Moment PlaybackNow() => minPlayAt + PlaybackDuration();
     }
 
     public Task<Moment?> GetRewindMoment(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)

@@ -22,7 +22,7 @@ public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Versio
     public Avatar ToAvatar() => new(Id, Version) {
         Name = Name,
         Bio = Bio,
-        Picture = Picture,
+        MediaId = MediaId,
     };
 
     public AvatarFull WithMissingPropertiesFrom(AvatarFull? other)
