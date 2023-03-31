@@ -27,6 +27,17 @@ internal class GoogleCloudBlobStorage : IBlobStorage
         return ValueTask.CompletedTask;
     }
 
+    public async Task<bool> Exists(string path, CancellationToken cancellationToken)
+    {
+        try {
+            await _client.GetObjectAsync(_bucket, path, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (GoogleApiException e) when (e.HttpStatusCode == HttpStatusCode.NotFound) {
+            return false;
+        }
+    }
+
     public async Task<Stream?> Read(string path, CancellationToken cancellationToken)
     {
         var stream = MemoryStreamManager.GetStream();
@@ -71,15 +82,4 @@ internal class GoogleCloudBlobStorage : IBlobStorage
 
     public Task Delete(string path, CancellationToken cancellationToken)
         => _client.DeleteObjectAsync(_bucket, path, cancellationToken: cancellationToken);
-
-    public async Task<bool> Exists(string path, CancellationToken cancellationToken)
-    {
-        try {
-            await _client.GetObjectAsync(_bucket, path, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return true;
-        }
-        catch (GoogleApiException e) when (e.HttpStatusCode == HttpStatusCode.NotFound) {
-            return false;
-        }
-    }
 }

@@ -88,7 +88,7 @@ namespace ActualChat.Chat.Migrations
 
                 await Parallel.ForEachAsync(blobs,
                     new ParallelOptions() { MaxDegreeOfParallelism = 4 },
-                    async (blob, ct) => await blobStorage.Delete(blob.OldPath, ct).ConfigureAwait(false)
+                    async (blob, ct) => await blobStorage.DeleteIfExists(blob.OldPath, ct).ConfigureAwait(false)
                 ).ConfigureAwait(false);
 
                 if (dbAttachments.Count < batchSize)

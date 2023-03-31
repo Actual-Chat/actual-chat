@@ -13,4 +13,15 @@ public static class BlobStorageExt
         await storage.Copy(oldPath, newPath, cancellationToken).ConfigureAwait(false);
         return true;
     }
+
+    public static async Task<bool> DeleteIfExists(this IBlobStorage storage,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        if (!await storage.Exists(path, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        await storage.Delete(path, cancellationToken).ConfigureAwait(false);
+        return true;
+    }
 }

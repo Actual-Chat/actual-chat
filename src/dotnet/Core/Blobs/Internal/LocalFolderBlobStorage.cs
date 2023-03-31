@@ -22,6 +22,19 @@ internal class LocalFolderBlobStorage : IBlobStorage
     public ValueTask DisposeAsync()
         => ValueTask.CompletedTask;
 
+    public Task<bool> Exists(string path, CancellationToken cancellationToken)
+    {
+        ValidatePath(path);
+
+        var fullPath = (BaseDirectory & path).Value;
+        if (File.Exists(fullPath))
+            return Stl.Async.TaskExt.TrueTask;
+        if (Directory.Exists(fullPath))
+            return Stl.Async.TaskExt.TrueTask;
+
+        return Stl.Async.TaskExt.FalseTask;
+    }
+
     public Task<Stream?> Read(string path, CancellationToken cancellationToken)
     {
         ValidatePath(path);
@@ -84,19 +97,6 @@ internal class LocalFolderBlobStorage : IBlobStorage
             Directory.Delete(fullPath, true);
 
         return Task.CompletedTask;
-    }
-
-    public Task<bool> Exists(string path, CancellationToken cancellationToken)
-    {
-        ValidatePath(path);
-
-        var fullPath = (BaseDirectory & path).Value;
-        if (File.Exists(fullPath))
-            return Stl.Async.TaskExt.TrueTask;
-        if (Directory.Exists(fullPath))
-            return Stl.Async.TaskExt.TrueTask;
-
-        return Stl.Async.TaskExt.FalseTask;
     }
 
     // Private methods
