@@ -5,7 +5,7 @@ public abstract class FlushingKeyValueStore : WorkerBase
     protected readonly ConcurrentDictionary<HashedString, string?> WriteCache = new();
 
     public ILogger? Log { get; init; }
-    public TimeSpan InitialFlushDelay { get; init; } = TimeSpan.FromSeconds(3);
+    public TimeSpan InitialFlushDelay { get; init; } = TimeSpan.FromSeconds(5);
     public RandomTimeSpan FlushPeriod { get; init; } = TimeSpan.FromSeconds(1).ToRandom(0.1);
     public RetryDelaySeq FlushRetryDelays { get; init; } = new(0.25, 1);
 
