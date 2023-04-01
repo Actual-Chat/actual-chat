@@ -168,9 +168,9 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('AsyncProcessor', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
-    minLevels.set('AudioContextRef', LogLevel.Debug);
-    minLevels.set('AudioContextSource', LogLevel.Debug);
-    minLevels.set('AudioPlayer', LogLevel.Debug);
+    // minLevels.set('AudioContextRef', LogLevel.Debug);
+    // minLevels.set('AudioContextSource', LogLevel.Debug);
+    // minLevels.set('AudioPlayer', LogLevel.Debug);
     // minLevels.set('OpusDecoder', LogLevel.Debug);
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
@@ -180,7 +180,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
-    minLevels.set('VirtualList', LogLevel.Debug);
+    // minLevels.set('VirtualList', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
 

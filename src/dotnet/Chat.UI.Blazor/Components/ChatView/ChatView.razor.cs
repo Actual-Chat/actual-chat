@@ -20,6 +20,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private long? _initialReadEntryLid;
     private bool _itemVisibilityUpdateHasReceived;
     private bool _doNotShowNewMessagesSeparator;
+    private IMutableState<ChatViewItemVisibility> _itemVisibility = null!;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -35,11 +36,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    internal IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
-    internal Task WhenInitialized => _whenInitializedSource.Task;
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
-    private IMutableState<ChatViewItemVisibility> ItemVisibility { get; set; } = null!;
     private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
+
+    public IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
+    public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
+    public Task WhenInitialized => _whenInitializedSource.Task;
 
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
     [CascadingParameter] public Chat Chat { get; set; } = null!;
@@ -52,7 +54,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             NavigateToEntryLid = StateFactory.NewMutable(
                 (long?)null,
                 StateCategories.Get(GetType(), nameof(NavigateToEntryLid)));
-            ItemVisibility = StateFactory.NewMutable(
+            _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(GetType(), nameof(ItemVisibility)));
             ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
@@ -328,10 +330,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.ContentEquals(lastItemVisibility))
             return;
 
-        ItemVisibility.Value = itemVisibility;
-        if (lastItemVisibility.IsEndAnchorVisible != itemVisibility.IsEndAnchorVisible)
-            StateHasChanged(); // To re-render NavigateToEnd
-
+        _itemVisibility.Value = itemVisibility;
         var readPositionState = ReadPositionState;
         if (itemVisibility.IsEmpty || readPositionState == null)
             return;

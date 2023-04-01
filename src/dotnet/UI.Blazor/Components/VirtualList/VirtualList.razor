@@ -75,22 +75,20 @@
                 ? "item"
                 : itemClassBase;
 
-            <li @key="item.Key.Value"
-                id="@item.Key.Value"
-                class="@itemClass"
-                data-count-as="@item.CountAs">
-                @Item(item)
-            </li>
-            /* NOTE(AY): I thought Blazor doesn't properly compare keys here,
-              So I ended up writing component wrapper for item.
-              But it looks like it does.
-
-            <VirtualListItem
-                @key="@item.Key.Value"
-                Item="@item"
-                Class="@itemClass"
-                Content="@Item"/>
-            */
+            @if (item.CountAs != 1) {
+                <li id="@item.Key"
+                    @key="@item.Key"
+                    class="@itemClass"
+                    data-count-as="@item.CountAs">
+                    @Item(item)
+                </li>
+            } else {
+                <li id="@item.Key"
+                    @key="@item.Key"
+                    class="@itemClass">
+                    @Item(item)
+                </li>
+            }
         }
         @if (items.Count == 0 && Data != VirtualListData<TItem>.None) {
             @Empty

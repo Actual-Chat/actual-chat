@@ -1,5 +1,11 @@
 ﻿.virtual-list {
     height: 100%;
+    /*width: 100%;*/
+    /*top:0;*/
+    /*bottom:0;*/
+    /*left: 0;*/
+    /*right: 0;*/
+    /*position: absolute;*/
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -17,8 +23,11 @@ body.device-ios .virtual-list {
     list-style-type: none;
 }
 
+.virtual-list ul.virtual-container li.item {
+    @apply flex flex-y;
+}
+
 .virtual-list ul.virtual-container li.item.new {
     position: absolute;
     top: 20000px;
 }
-

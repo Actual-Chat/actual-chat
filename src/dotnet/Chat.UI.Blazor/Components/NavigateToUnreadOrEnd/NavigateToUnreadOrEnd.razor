@@ -29,7 +29,6 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public bool IsVisible { get; set; }
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
 
     protected override void OnInitialized() {
@@ -52,7 +51,12 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = new ChatId(ChatSid, ParseOrNone.Option);
-        if (!IsVisible || chatId.IsNone)
+        if (chatId.IsNone)
+            return Model.Invisible;
+
+        var itemVisibility = await ChatView.ItemVisibility.Use(cancellationToken);
+        var isVisible = !itemVisibility.IsEndAnchorVisible;
+        if (!isVisible)
             return Model.Invisible;
 
         var chat = await ChatUI.Get(chatId, cancellationToken);

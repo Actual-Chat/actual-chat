@@ -263,20 +263,6 @@ export class VirtualList {
             }
         }
 
-        // first render
-        if (mutations.length === 0) {
-            for (const itemRef of this.getAllItemRefs()) {
-                const key = getItemKey(itemRef);
-                if (!key)
-                    continue;
-
-                if (this._items.has(key))
-                    continue;
-
-                const newItem = this.createListItem(key, itemRef);
-                this._items.set(key, newItem);
-            }
-        }
         // make rendered items visible
         for (const itemRef of this.getNewItemRefs()) {
             itemRef.classList.remove('new');
@@ -535,8 +521,8 @@ export class VirtualList {
         }
     }
 
-    private readonly updateViewportThrottled = throttle(() => this.updateViewport(), UpdateViewportInterval, 'delayHead');
-    private readonly updateViewport = serialize(async () => {
+    private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval, 'delayHead');
+    private readonly updateViewport = serialize(async (getRidOfOldItems?: boolean) => {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
             return;
@@ -545,24 +531,30 @@ export class VirtualList {
         if (rs.renderIndex === -1)
             return;
 
-        const viewport = await new Promise<NumberRange | null>(resolve => {
-            requestAnimationFrame(() => {
-                const viewportHeight = this._ref.clientHeight;
-                const scrollHeight = this._ref.scrollHeight;
-                const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
-                const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
-                let viewport: NumberRange | null = null;
-                const fullRange = this.fullRange;
-                if (fullRange != null) {
-                    viewport = clientViewport.fitInto(fullRange);
-                }
-                resolve(viewport);
-            });
-        });
+        const rangeStarts = new Array<number>();
+        const rangeEnds = new Array<number>();
+        for (const key of this._visibleItems.values()) {
+            const item = this._items.get(key);
+            if (!item) {
+                debugLog?.log('updateViewport: can not find item by visible key:', key)
+                continue;
+            }
+            if (item.isMeasured) {
+                rangeStarts.push(item.range.start);
+                rangeEnds.push(item.range.end);
+            }
+        }
+
+        const viewport: NumberRange | null = (!this.fullRange || rangeStarts.length === 0)
+            ? null
+            : new NumberRange(Math.min(...rangeStarts), Math.max(...rangeEnds));
 
         // update item range
         const isViewportUnknown = viewport == null;
-        this.ensureItemRangeCalculated(isViewportUnknown);
+        if (!this.ensureItemRangeCalculated(isViewportUnknown) && !this._itemRange) {
+            this.updateViewportThrottled();
+            return;
+        }
 
         if (isViewportUnknown)
             debugLog?.log(`updateViewport: `, null);
@@ -576,7 +568,7 @@ export class VirtualList {
 
         this._viewport = viewport;
         if (!isViewportUnknown)
-            await this.requestData();
+            await this.requestData(getRidOfOldItems);
         else
             this.updateViewportThrottled();
     }, 2);
@@ -613,7 +605,7 @@ export class VirtualList {
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
         const countAs = getItemCountAs(itemRef);
-        const newItem = new VirtualListItem(itemKey, countAs);
+        const newItem = new VirtualListItem(itemKey, countAs ?? 1);
         this._unmeasuredItems.add(itemKey);
         this._sizeObserver.observe(itemRef, { box: 'border-box' });
         this._visibilityObserver.observe(itemRef);
@@ -679,7 +671,7 @@ export class VirtualList {
     private onScroll = (): void => {
         this._isScrolling = true;
         this.turnOffIsScrollingDebounced();
-        this.requestOlfItemsRemovalDebounced.reset();
+        this.requestOldItemsRemovalDebounced.reset();
     };
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce, true);
@@ -687,7 +679,13 @@ export class VirtualList {
         this._isScrolling = false;
         this._scrollDirection = 'none';
 
-        this.forceRepaintThrottled();
+        // this line below can fix rendering artifacts when some entries are blank
+        // but adds significant stutter during scroll
+        // this.forceRepaintThrottled();
+
+        if (this._isRendering || this._isDisposed)
+            return;
+
         this.markItemsForRemoval();
     }
 
@@ -697,7 +695,7 @@ export class VirtualList {
         if (!viewport || !itemRange)
             return;
 
-        const loadZoneSize = viewport.size * 3;
+        const loadZoneSize = viewport.size;
         let bufferZoneSize = loadZoneSize * 2;
         const bufferZone = new NumberRange(
             viewport.start - bufferZoneSize,
@@ -707,6 +705,7 @@ export class VirtualList {
         if (oldItemsRange.size <=0)
             return;
 
+        let hasOldItems = false;
         const items = this._orderedItems;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
@@ -715,17 +714,21 @@ export class VirtualList {
 
             if (item.range.intersectWith(oldItemsRange).size > 0) {
                 item.isOld = true;
-                this.requestOlfItemsRemovalDebounced();
+                hasOldItems = true;
             }
         }
+        if (hasOldItems)
+            this.requestOldItemsRemovalDebounced();
+        else
+            this.updateViewportThrottled();
     }
 
-    private requestOlfItemsRemovalDebounced = debounce(() => this.requestOlfItemsRemoval(), RemoveOldItemsDebounce, true);
-    private async requestOlfItemsRemoval(): Promise<void> {
+    private requestOldItemsRemovalDebounced = debounce(() => this.requestOldItemsRemoval(), RemoveOldItemsDebounce, true);
+    private async requestOldItemsRemoval(): Promise<void> {
         const items = this._orderedItems;
         const oldCount = items.reduceRight((prev, item) => (!!item.isOld ? 1 : 0) + prev, 0);
         if (oldCount > 20)
-            await this.requestData(true);
+            await this.updateViewportThrottled(true);
     }
 
     private getNewItemRefs(): HTMLLIElement[] {
@@ -827,12 +830,15 @@ export class VirtualList {
         if (!isRecalculationForced && (this.hasUnmeasuredItems || (!this._shouldRecalculateItemRange && this._itemRange)))
             return false;
 
+        if (this.hasUnmeasuredItems)
+            return false;
+
         if (isRecalculationForced)
             this.updateOrderedItems();
 
         // nothing to do when there are no items rendered
         if ((this._orderedItems?.length ?? 0) == 0)
-            return;
+            return false;
 
         const orderedItems = this._orderedItems;
         let cornerStoneItemIndex = orderedItems.length - 1;
@@ -877,7 +883,6 @@ export class VirtualList {
         const query = this.getDataQuery(getRidOfOldItems);
         const isDataRequestIsRequired = this.dataRequestIsRequired(query);
         if (!isDataRequestIsRequired && !getRidOfOldItems) {
-            console.log('Skipping data query..');
             return;
         }
         console.log('Data query:', isDataRequestIsRequired, this._isNearSkeleton, getRidOfOldItems);
@@ -893,7 +898,7 @@ export class VirtualList {
         const newWhenUpdateCompleted = new PromiseSourceWithTimeout<void>();
         newWhenUpdateCompleted.setTimeout(UpdateTimeout, () => {
             newWhenUpdateCompleted.resolve(undefined);
-        })
+        });
         this._whenUpdateCompleted = newWhenUpdateCompleted;
 
         if (getRidOfOldItems) {
@@ -981,10 +986,29 @@ export class VirtualList {
             }
         }
         if (startIndex < 0) {
-            // No items inside the bufferZone, so we'll take the first or the last item
-            startIndex = endIndex = items[0].range.end < bufferZone.start
-                ? 0
-                : items.length - 1;
+            // No items inside the bufferZone, so we'll take at least 2 of the viewport of existing items
+            if (items[0].range.start > loadZone.end) {
+                startIndex = endIndex = 0;
+                let existingItemsHeight = 0;
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    endIndex = i;
+                    existingItemsHeight += item.size;
+                    if (existingItemsHeight > viewport.size * 2)
+                        break;
+                }
+            }
+            else {
+                startIndex = endIndex = items.length - 1;
+                let existingItemsHeight = 0;
+                for (let i = items.length - 1; i >= 0; i--) {
+                    const item = items[i];
+                    startIndex = i;
+                    existingItemsHeight += item.size;
+                    if (existingItemsHeight > viewport.size * 2)
+                        break;
+                }
+            }
         }
 
         const firstItem = items[startIndex];
@@ -1002,9 +1026,6 @@ export class VirtualList {
         const query = new VirtualListDataQuery(keyRange, virtualRange);
         query.expandStartBy = expandStartBy / responseFulfillmentRatio;
         query.expandEndBy = expandEndBy / responseFulfillmentRatio;
-
-        if (query.expandStartBy === query.expandEndBy && query.expandEndBy === 0 && !getRidOfOldItems)
-            return this._lastQuery;
 
         return query;
     }
