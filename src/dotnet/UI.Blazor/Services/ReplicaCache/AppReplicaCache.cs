@@ -9,10 +9,13 @@ public class AppReplicaCache : ReplicaCache
 {
     public sealed record Options(FlushingKeyValueStore Store)
     {
-        public ITextSerializer KeySerializer { get; } =
-            new SystemJsonSerializer(new JsonSerializerOptions() { WriteIndented = false });
-        public ITextSerializer ValueSerializer { get; } =
-            new SystemJsonSerializer(new JsonSerializerOptions() { WriteIndented = false });
+        // It's important to use a shared options instance here:
+        // - https://www.meziantou.net/avoid-performance-issue-with-jsonserializer-by-reusing-the-same-instance-of-json.htm
+        private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = false };
+        private static readonly ITextSerializer Serializer = new SystemJsonSerializer(SerializerOptions);
+
+        public ITextSerializer KeySerializer { get; } = Serializer;
+        public ITextSerializer ValueSerializer { get; } = Serializer;
     }
 
     private bool DebugMode => Constants.DebugMode.ReplicaCache;
