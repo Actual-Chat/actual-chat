@@ -84,6 +84,11 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on .btn-content 
     @apply text-icons-04;
 }
 
+/* Hide avatar name skeletons - otherwise they're blinking on refresh */
+.chat-list .navbar-item-content .avatar-name.skeleton {
+    @apply hidden;
+}
+
 /* Menu */
 .chat-list .navbar-item .menu {
     @apply flex-none flex-x;
