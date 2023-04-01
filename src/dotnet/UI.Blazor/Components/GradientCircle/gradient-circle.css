@@ -3,10 +3,13 @@
     @apply flex;
     @apply h-full w-full;
     @apply backdrop-blur-sm;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(255, 255, 255, 0.2);
+}
+.first-loading-visible-component .background {
+    background: rgba(255, 255, 255, 0.1);
 }
 body.narrow .background {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(255, 255, 255, 0.3);
 }
 .image-background {
     @apply absolute top-0 z-10;
@@ -15,23 +18,48 @@ body.narrow .background {
     @apply overflow-hidden;
 }
 .image-background .c-circle {
-    @apply flex items-center justify-center;
-    @apply w-88 h-88;
+    @apply flex-y items-center justify-center gap-y-2;
+    @apply w-88 h-88 md:w-96 md:h-96;
     @apply rounded-full;
     @apply md:backdrop-blur-sm;
+    @apply bg-01;
+    @apply text-2xl font-semibold text-03;
 }
 .image-background .after-circle {
     @apply absolute z-minus;
-    @apply w-88 h-88;
+    @apply w-88 h-88 md:w-96 md:h-96;
     @apply rounded-full;
     @apply blur;
-    @apply animate-scaling-5;
-    background: rgba(0, 0, 0, 0.6);
-    box-shadow: 0 0 30px 30px rgba(0, 0, 0, 0.6);
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 0 50px 50px rgba(255, 255, 255, 1);
 }
-body.narrow .image-background .after-circle {
-    @apply hidden;
+.c-circle .c-text {
+    @apply text-03;
+    @apply animate-pulse-70;
 }
-body.narrow .image-background .c-circle img {
-    @apply animate-pulse;
+.c-circle img {
+    @apply animate-pulse-70;
+}
+.first-loading-visible-component .c-circle {
+    @apply w-64 h-64;
+    @apply rounded-5xl;
+    @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
+}
+.first-loading-visible-component .c-circle .c-text {
+    @apply animate-none;
+}
+.first-loading-visible-component .c-circle img {
+    @apply animate-none;
+}
+
+.first-loading-visible-component .c-circle:before {
+    @apply absolute top-0 left-0;
+    @apply w-full;
+    @apply opacity-50;
+    @apply blur-sm;
+    @apply animate-shine;
+    content: '';
+    height: 200%;
+    background: linear-gradient(to left, transparent 0%, #fff 40%, #fff 60%, transparent 100%);
+    transform: translate(-100%, -25%) rotate(10deg);
 }
