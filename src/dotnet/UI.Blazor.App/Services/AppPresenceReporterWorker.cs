@@ -25,7 +25,7 @@ public class AppPresenceReporterWorker : IComputeService
         Auth = services.GetRequiredService<IAuth>();
         Accounts = services.GetRequiredService<IAccounts>();
         SessionResolver = services.GetRequiredService<ISessionResolver>();
-        Clocks = Settings.Clocks ?? services.Clocks();
+        Clocks = services.Clocks();
         UserActivityUI = services.GetRequiredService<UserActivityUI>();
         UserPresences = services.GetRequiredService<IUserPresences>();
         ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
