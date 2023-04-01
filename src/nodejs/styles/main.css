@@ -122,3 +122,7 @@ input.input-underlined {
     @apply h-auto;
     @apply overflow-y-auto;
 }
+
+body:has(.first-loading) .first-loading-visible-component {
+    @apply hidden;
+}

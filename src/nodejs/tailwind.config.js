@@ -330,7 +330,9 @@ module.exports = {
       spin: 'spin 1s linear infinite',
       ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'pulse-70': 'pulse-70 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'shine': 'shine 4s infinite',
       'scale': 'scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'decrease': 'decrease 500ms ease-in-out',
       'increase': 'increase 500ms ease-in-out',
@@ -854,9 +856,25 @@ module.exports = {
           opacity: '.5',
         },
       },
+      'pulse-70': {
+        '50%': {
+          opacity: '.7',
+        },
+      },
       'custom-pulse': {
         '50%': {
           opacity: '.1',
+        },
+      },
+      'shine': {
+        '0%': {
+          transform: 'translate(-100%, -25%) rotate(10deg)',
+        },
+        '20%': {
+          transform: 'translate(100%, -25%) rotate(10deg)',
+        },
+        '100%': {
+          transform: 'translate(100%, -25%) rotate(10deg)',
         },
       },
       'scale': {
