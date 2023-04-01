@@ -5,7 +5,7 @@
     @apply backdrop-blur-sm;
     background: rgba(255, 255, 255, 0.2);
 }
-.first-loading-visible-component .background {
+.until-content-ready .background {
     background: rgba(255, 255, 255, 0.1);
 }
 body.narrow .background {
@@ -40,19 +40,19 @@ body.narrow .background {
 .c-circle img {
     @apply animate-pulse-70;
 }
-.first-loading-visible-component .c-circle {
+.until-content-ready .c-circle {
     @apply w-64 h-64;
     @apply rounded-5xl;
     @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
 }
-.first-loading-visible-component .c-circle .c-text {
+.until-content-ready .c-circle .c-text {
     @apply animate-none;
 }
-.first-loading-visible-component .c-circle img {
+.until-content-ready .c-circle img {
     @apply animate-none;
 }
 
-.first-loading-visible-component .c-circle:before {
+.until-content-ready .c-circle:before {
     @apply absolute top-0 left-0;
     @apply w-full;
     @apply opacity-50;
