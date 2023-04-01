@@ -10,7 +10,7 @@
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem
         ? 0
-        : renderIndex == 0
+        : renderIndex == 0 && Data.Items.Count == 0
             ? 1000 // initial spacer size to cover all list area on first load
             : SpacerSize;
     var endSpacerSize = Data.HasVeryLastItem
