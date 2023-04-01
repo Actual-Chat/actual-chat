@@ -1,11 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <ItemGroup>
-      <PackageReference Include="Stl.Fusion" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Media\Media.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Media\Media.csproj" />
+  </ItemGroup>
 
 </Project>

@@ -24,14 +24,13 @@
     <ApplicationIdGuid>7AC72B49-8FEA-45AB-B7B8-C32719677E9D</ApplicationIdGuid>
 
     <!-- Required for C# Hot Reload -->
-    <UseInterpreter Condition="'$(Configuration)' == 'Debug' OR '$(Configuration)'=='Debug-maui'">True</UseInterpreter>
+    <UseInterpreter Condition="'$(Configuration)' == 'Debug'">True</UseInterpreter>
 
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">33.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
-    <Configurations>Debug;Release;Debug-maui</Configurations>
 
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
@@ -79,18 +78,28 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-<!--    <AndroidLinkTool>r8</AndroidLinkTool>-->
-<!-- r8, full Trimming and LLVM optimization doesn work, it shows following error
- java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;"
- field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses
--->
-    <EnableLLVM>False</EnableLLVM>
-    <AndroidEnableProfiledAot>True</AndroidEnableProfiledAot>
-    <EnableTrimAnalyzer>True</EnableTrimAnalyzer>
-    <PublishTrimmed>True</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <!--
+    r8 + full еrimming and LLVM optimization doesn't work, it shows following error:
+    java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;"
+    field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses
+    
+    Relevant issue:
+    - https://github.com/dotnet/maui/issues/13413
+    -->
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
+    <!-- Trimming & AOT options -->
+    <EnableLLVM>False</EnableLLVM>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <!-- <DebuggerSupport>false</DebuggerSupport> -->
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <EventSourceSupport>false</EventSourceSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
@@ -102,6 +111,9 @@
     <CodesignProvision>Automatic</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
   </PropertyGroup>
+  
+  <!-- Platform-specific references -->
+
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
@@ -117,6 +129,8 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
     <PackageReference Include="Plugin.Firebase" />
   </ItemGroup>
+  
+  <!-- Resources -->
 
   <ItemGroup>
     <!-- App Icon -->
@@ -131,6 +145,8 @@
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
   </ItemGroup>
+  
+  <!-- Platform-specific files to compile -->
 
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-android')) != true">
