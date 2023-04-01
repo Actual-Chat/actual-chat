@@ -123,6 +123,6 @@ input.input-underlined {
     @apply overflow-y-auto;
 }
 
-body:has(.first-loading) .first-loading-visible-component {
+body:has(.first-loading) .until-content-ready {
     @apply hidden;
 }
