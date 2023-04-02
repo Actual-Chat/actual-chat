@@ -2,21 +2,23 @@ namespace ActualChat.App.Maui.Services;
 
 public record ClientAppSettings
 {
-    private readonly TaskSource<string> _taskSource = TaskSource.New<string>(true);
+    private readonly Task<string> _sessionIdTask = TaskSource.New<string>(true).Task;
 
     public string SessionId {
         get {
             var task = GetSessionId();
             if (!task.IsCompleted)
-                throw StandardError.Internal("Invalid prop usage. Task is not completed yet.");
+                throw StandardError.Internal("SetSessionId is not invoked yet.");
+
  #pragma warning disable VSTHRD002
             return task.GetAwaiter().GetResult();
  #pragma warning restore VSTHRD002
         }
     }
 
-    public Task<string> GetSessionId() => _taskSource.Task;
+    public Task<string> GetSessionId()
+        => _sessionIdTask;
 
     public void SetSessionId(string sessionId)
-        => _taskSource.SetResult(sessionId);
+        => TaskSource.For(_sessionIdTask).SetResult(sessionId);
 }

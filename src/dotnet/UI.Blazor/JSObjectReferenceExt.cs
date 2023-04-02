@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor;
 /// </summary>
 public static class JSObjectReferenceExt
 {
-    public static Func<IJSObjectReference, bool>? TestIfIsDisconnected { get; set; }
+    public static Func<IJSObjectReference, bool>? TestIfDisconnected { get; set; }
 
     public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef, string jsDisposeMethodName = "")
     {
@@ -16,7 +16,7 @@ public static class JSObjectReferenceExt
 
         async ValueTask DisposeSilentlyAsyncImpl(IJSObjectReference jsObjectRef1, string jsDisposeMethodName1)
         {
-            if (TestIfIsDisconnected?.Invoke(jsObjectRef1) ?? false)
+            if (TestIfDisconnected?.Invoke(jsObjectRef1) ?? false)
                 return;
 
             if (!jsDisposeMethodName1.IsNullOrEmpty())

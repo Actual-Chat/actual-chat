@@ -250,16 +250,17 @@ public static partial class MauiProgram
         services.AddTransient<MainPage>();
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
 
-        ActualChat.UI.Blazor.JSObjectReferenceExt.TestIfIsDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
+        JSObjectReferenceExt.TestIfDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
     }
 
     private static Task<Symbol> GetSessionId()
         => BackgroundTask.Run(async () => {
-            var step = _tracer.Region("Getting session id");
-            Symbol sessionId = Symbol.Empty;
             const string sessionIdStorageKey = "Fusion.SessionId";
+            Symbol sessionId = Symbol.Empty;
+
+            var step = _tracer.Region("Getting session id");
             Log.Information("About to read stored Session ID");
             var storage = SecureStorage.Default;
             try {
@@ -280,22 +281,22 @@ public static partial class MauiProgram
             }
             if (sessionId.IsEmpty) {
                 sessionId = new SessionFactory().CreateSession().Id;
-                bool saved = false;
+                bool isSaved;
                 try {
                     if (storage.Remove(sessionIdStorageKey))
                         Log.Information("Removed stored Session ID");
                     else
                         Log.Information("Did not Remove stored Session ID");
                     await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
-                    saved = true;
+                    isSaved = true;
                 }
                 catch (Exception e) {
-                    saved = false;
+                    isSaved = false;
                     Log.Warning(e, "Failed to store Session ID");
-                    // ignored
-                    // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                    // Ignored, see:
+                    // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
                 }
-                if (!saved) {
+                if (!isSaved) {
                     Log.Information("Second attempt to store Session ID");
                     try {
                         storage.RemoveAll();
@@ -303,8 +304,8 @@ public static partial class MauiProgram
                     }
                     catch (Exception e) {
                         Log.Warning(e, "Failed to store Session ID second time");
-                        // ignored
-                        // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+                        // Ignored, see:
+                        // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
                     }
                 }
             }

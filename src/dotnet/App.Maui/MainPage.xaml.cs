@@ -28,7 +28,7 @@ public partial class MainPage : ContentPage
         _blazorWebView.Loaded += OnBlazorWebViewLoaded;
 
         _blazorWebView.RootComponents.Add(
-            new Microsoft.AspNetCore.Components.WebView.Maui.RootComponent {
+            new RootComponent {
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
                 Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {

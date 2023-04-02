@@ -39,7 +39,7 @@ namespace ActualChat.App.Maui;
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public class MainActivity : MauiAppCompatActivity
 {
-    private const int RC_SIGN_IN_GOOGLE = 800;
+    private const int GoogleSignInRequestCode = 800;
     // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
 #if ISDEVMAUI
     private const string ServerGoogleClientId = "367046672456-75p2d55jama2mtivjbcgp0hkaa6jsihq.apps.googleusercontent.com";
@@ -178,7 +178,7 @@ public class MainActivity : MauiAppCompatActivity
 
     public Task SignInWithGoogle()
     {
-        StartActivityForResult(_googleSignInClient.SignInIntent, RC_SIGN_IN_GOOGLE);
+        StartActivityForResult(_googleSignInClient.SignInIntent, GoogleSignInRequestCode);
         return Task.CompletedTask;
     }
 
@@ -197,7 +197,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == RC_SIGN_IN_GOOGLE) {
+        if (requestCode == GoogleSignInRequestCode) {
             async Task CheckResult(Intent data1)
             {
                 try {
@@ -229,7 +229,7 @@ public class MainActivity : MauiAppCompatActivity
     private void CreateNotificationChannel()
     {
         if (OperatingSystem.IsOSPlatformVersionAtLeast("android", 26)) {
-            var notificationManager = (NotificationManager)GetSystemService(Android.Content.Context.NotificationService)!;
+            var notificationManager = (NotificationManager)GetSystemService(NotificationService)!;
             // After you create a notification channel,
             // you cannot change the notification behaviors—the user has complete control at that point.
             // Though you can still change a channel's name and description.
