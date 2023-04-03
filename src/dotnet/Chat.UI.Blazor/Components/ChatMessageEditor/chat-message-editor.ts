@@ -140,6 +140,8 @@ export class ChatMessageEditor {
     public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
         const attachments = [];
         this.attachments.forEach(attachment => {
+            if (!attachment.MediaId)
+                return;
             attachments.push(attachment.MediaId);
         });
         const payload = {
@@ -368,7 +370,6 @@ export class ChatMessageEditor {
             File: file,
             Url: '',
             MediaId: '',
-            Progress: 0,
         };
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
@@ -385,12 +386,8 @@ export class ChatMessageEditor {
             TuneUI.play('change-attachments');
             const upload = this.uploadFile(
                 file,
-                (progressPercent) => {
-                    attachment.Progress = progressPercent;
-                    const progressDiv: HTMLDivElement = this.editorDiv.querySelector(`.attachment-${attachment.Id}`);
-                    if (progressDiv) {
-                        progressDiv.style.width = `${progressPercent}%`;
-                    }
+                async (progressPercent) => {
+                    await this.blazorRef.invokeMethodAsync('UpdateProgress', attachment.Id, Math.trunc(progressPercent));
                 }
             );
             upload.then(x => {
@@ -448,7 +445,6 @@ interface Attachment {
     Url: string;
     Id: number;
     MediaId: string;
-    Progress: number;
 }
 
 interface MediaContent {

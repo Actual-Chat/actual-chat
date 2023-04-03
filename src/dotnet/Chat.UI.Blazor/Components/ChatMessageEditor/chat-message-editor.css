@@ -264,7 +264,10 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
     @apply h-[5px];
     @apply bg-[#0ea5e9];
     @apply rounded-md;
-    transition: width 2s ease-in-out;
+    transition: all 150ms ease-in-out;
+}
+.attachment-upload-completed {
+    @apply bg-[#2FCB5B];
 }
 .add-attachment.btn .btn-content {
     @apply bg-04;

@@ -164,6 +164,10 @@
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
         => AttachmentListRef.Add(id, url, fileName, fileType, length);
 
+    [JSInvokable]
+    public void UpdateProgress(int id, int progress)
+        => AttachmentListRef.UpdateProgress(id, progress);
+
     // Private methods
     [Inject] private BannerUI BannerUI { get; set; } = null!;
 
@@ -171,6 +175,10 @@
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
         var attachments = AttachmentListRef.Attachments;
+        if (attachments.Any() && !attachments.All(x => x.Uploaded)) {
+            return;
+        }
+
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
