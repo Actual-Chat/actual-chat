@@ -48,7 +48,6 @@ export class VirtualList {
     private readonly _visibleItems: Set<string>;
     private readonly _items: Map<string, VirtualListItem>;
     private readonly _itemRefs: Array<HTMLLIElement> = [];
-    private readonly _newItemRefs: Array<HTMLLIElement> = [];
     private readonly _statistics: VirtualListStatistics = new VirtualListStatistics();
     private readonly _keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
@@ -212,7 +211,6 @@ export class VirtualList {
         this._isRendering = true;
 
         this._itemRefs.fill(null);
-        this._newItemRefs.fill(null);
 
         const removedCount = mutations.reduce((prev, m) => prev+ m.removedNodes.length, 0);
         const addedCount = mutations.reduce((prev, m) => prev+ m.addedNodes.length, 0);
@@ -252,7 +250,6 @@ export class VirtualList {
                 if (!key)
                     continue;
 
-                itemRef.classList.remove('new');
                 if (this._items.has(key)) {
                     const item = this._items.get(key);
                     item.isOld = false;
@@ -262,11 +259,6 @@ export class VirtualList {
                 const newItem = this.createListItem(key, itemRef);
                 this._items.set(key, newItem);
             }
-        }
-
-        // make rendered items visible
-        for (const itemRef of this.getNewItemRefs()) {
-            itemRef.classList.remove('new');
         }
 
         this.updateOrderedItems();
@@ -280,7 +272,7 @@ export class VirtualList {
         }
     };
 
-    private onResize = (entries: ResizeObserverEntry[], observer: ResizeObserver): void => {
+    private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
         let itemsWereMeasured = false;
         for (const entry of entries) {
             const contentBoxSize = Array.isArray(entry.contentBoxSize)
@@ -363,7 +355,7 @@ export class VirtualList {
         }
     };
 
-    private onScrollPivotVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+    private onScrollPivotVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
         if (this._isRendering)
             return;
 
@@ -380,7 +372,7 @@ export class VirtualList {
             });
     };
 
-    private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], observer: IntersectionObserver): void => {
+    private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
         let isNearSkeleton = false;
         for (const entry of entries) {
             isNearSkeleton ||= entry.isIntersecting
@@ -618,39 +610,6 @@ export class VirtualList {
         return newItem;
     }
 
-    // force repaint to fix blank item rendering issue
-    private forceRepaintThrottled = throttle(() => this.forceRepaint(), UpdateItemVisibilityInterval, 'default');
-    private forceRepaint(items: HTMLElement[] | null = null): void {
-        if (items == null) {
-            const visibleItemRefs = new Array<HTMLElement>();
-            const visibleItems = this._visibleItems;
-            for (let itemKey of visibleItems) {
-                const itemRef = this.getItemRef(itemKey);
-                if (itemRef) {
-                    visibleItemRefs.push(itemRef);
-                }
-            }
-            items = visibleItemRefs;
-        }
-        else if (items.length <= 0)
-            return;
-
-        requestAnimationFrame(() => {
-            items.forEach(itemRef => {
-                // you can use scale(1) or translate(0, 0), etc
-                itemRef.style.setProperty('transform', 'translateZ(0)');
-            });
-
-            requestAnimationFrame(() => {
-                items.forEach(itemRef => {
-                    // this will remove the property 1 frame later
-                    itemRef.style.removeProperty('transform');
-                });
-            });
-        });
-    }
-
-
     // Event handlers
 
     private onIronPantsHandle = (): void => {
@@ -734,19 +693,6 @@ export class VirtualList {
         const oldCount = items.reduceRight((prev, item) => (!!item.isOld ? 1 : 0) + prev, 0);
         if (oldCount > 20)
             await this.updateViewportThrottled(true);
-    }
-
-    private getNewItemRefs(): HTMLLIElement[] {
-        const itemRefs = this._newItemRefs;
-        if (itemRefs.length && itemRefs[0])
-            return itemRefs;
-
-        const itemRefCollection = this._containerRef.getElementsByClassName('item new') as HTMLCollectionOf<HTMLLIElement>;
-        itemRefs.length = itemRefCollection.length;
-        for (let i = 0; i < itemRefCollection.length; i++) {
-            itemRefs[i] = itemRefCollection[i];
-        }
-        return itemRefs;
     }
 
     private getAllItemRefs(): HTMLLIElement[] {
@@ -890,7 +836,6 @@ export class VirtualList {
         if (!isDataRequestIsRequired && !getRidOfOldItems) {
             return;
         }
-        console.log('Data query:', isDataRequestIsRequired, this._isNearSkeleton, getRidOfOldItems);
         if (query.isNone)
             return;
 

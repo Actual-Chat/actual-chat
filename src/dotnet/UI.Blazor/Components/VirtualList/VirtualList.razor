@@ -35,12 +35,8 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
-    var visibleKeys = LastReportedItemVisibility.VisibleKeys;
     var items = Data.Items;
     LastData = Data;
-    var itemClassBase = Data.Query.IsNone
-        ? "item"
-        : "item new";
 }
 
 <div @ref="Ref"
@@ -71,21 +67,17 @@
     <ul @key="VirtualListSpecialKeys.Container"
         class="@flexClass virtual-container">
         @foreach (var item in items) {
-            var itemClass = visibleKeys.Contains(item.Key)
-                ? "item"
-                : itemClassBase;
-
             @if (item.CountAs != 1) {
                 <li id="@item.Key"
                     @key="@item.Key"
-                    class="@itemClass"
+                    class="item"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
                 <li id="@item.Key"
                     @key="@item.Key"
-                    class="@itemClass">
+                    class="item">
                     @Item(item)
                 </li>
             }
