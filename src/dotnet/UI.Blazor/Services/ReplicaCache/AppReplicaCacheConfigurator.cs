@@ -21,7 +21,9 @@ public class AppReplicaCacheConfigurator : IAppReplicaCacheConfigurator
     public bool ShouldForceFlushAfterSet(ComputeMethodDef def)
     {
         var mi = def.Method;
-        if (!_forceFlush.TryGetValue(mi.DeclaringType!, out var methods))
+        if (mi.DeclaringType == null)
+            return false;
+        if (!_forceFlush.TryGetValue(mi.DeclaringType, out var methods))
             return false;
         return methods.Contains(mi.Name);
     }
