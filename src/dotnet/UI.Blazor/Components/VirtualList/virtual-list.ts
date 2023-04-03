@@ -58,6 +58,7 @@ export class VirtualList {
     private _whenUpdateCompleted: PromiseSource<void> | null = null;
     private _pivots: Pivot[] = [];
     private _top: number;
+    private _lastVisibleItem: string | null = null;
 
     private _isRendering: boolean = false;
     private _isNearSkeleton: boolean = false;
@@ -335,6 +336,7 @@ export class VirtualList {
                 this._visibleItems.add(key);
             }
 
+            this._lastVisibleItem = key;
             this._top = entry.rootBounds.top + VisibilityEpsilon;
         }
         if (hasChanged) {
@@ -533,7 +535,10 @@ export class VirtualList {
 
         const rangeStarts = new Array<number>();
         const rangeEnds = new Array<number>();
-        for (const key of this._visibleItems.values()) {
+        const visibleItems = this._visibleItems.size > 0
+            ? this._visibleItems
+            : new Array(1).fill(this._lastVisibleItem);
+        for (const key of visibleItems.values()) {
             const item = this._items.get(key);
             if (!item) {
                 debugLog?.log('updateViewport: can not find item by visible key:', key)
