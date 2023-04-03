@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20230329103438_MigrateAttachments")]
+    [Migration("20230403111639_MigrateAttachments")]
     partial class MigrateAttachments
     {
         /// <inheritdoc />
