@@ -13,6 +13,11 @@
         </div>
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in Attachments) {
+                var uploadStyle = $"width: {attachment.Progress}%;";
+                var uploadProgressClass = "attachment-upload-progress";
+                if (attachment.Uploaded) {
+                    uploadProgressClass += " attachment-upload-completed";
+                }
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
                         <div class="attachment-item">
@@ -30,7 +35,7 @@
                         <div class="attachment-filename" title="@attachment.FileName">
                             @attachment.FileName
                         </div>
-                        <div class="attachment-upload-progress attachment-@attachment.Id"></div>
+                        <div class="@uploadProgressClass" style="@uploadStyle"></div>
                     </div>
                 </li>
             }
@@ -84,6 +89,15 @@
         });
         StateHasChanged();
         return true;
+    }
+
+    public void UpdateProgress(int id, int progress) {
+        var attachment = Attachments.FirstOrDefault(x => x.Id == id);
+        if (attachment == null)
+            return;
+
+        attachment.Progress = progress;
+        StateHasChanged();
     }
 
     private ValueTask ShowFilePicker()
