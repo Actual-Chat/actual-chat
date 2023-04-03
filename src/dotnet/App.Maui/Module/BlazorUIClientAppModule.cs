@@ -22,10 +22,14 @@ public class BlazorUIClientAppModule : HostModule, IBlazorUIModule
         services.AddScoped<IClientAuth, MauiClientAuth>();
 
         // Replica cache
+        services.AddSingleton<AppReplicaCacheConfigurator>();
         services.AddSingleton<ReplicaCache>(c => {
             var dbPath = new FilePath(FileSystem.AppDataDirectory) & "ReplicaCache.db3";
             var store = new SQLiteKeyValueStore(dbPath, c).Start();
-            var options = new AppReplicaCache.Options(store);
+            var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
+            var options = new AppReplicaCache.Options(store) {
+                ShouldForceFlushAfterSet = configurator.ShouldForceFlushAfterSet,
+            };
             return new AppReplicaCache(options, c);
         });
     }

@@ -16,6 +16,7 @@ public class AppReplicaCache : ReplicaCache
 
         public ITextSerializer KeySerializer { get; } = Serializer;
         public ITextSerializer ValueSerializer { get; } = Serializer;
+        public Func<ComputeMethodDef, bool> ShouldForceFlushAfterSet { get; init; } = _ => false;
     }
 
     private bool DebugMode => Constants.DebugMode.ReplicaCache;
@@ -27,6 +28,7 @@ public class AppReplicaCache : ReplicaCache
     private FlushingKeyValueStore Store { get; }
     private ITextSerializer KeySerializer { get; }
     private ITextSerializer ValueSerializer { get; }
+    private Func<ComputeMethodDef,bool> ShouldForceFlushAfterSet { get; }
 
     public AppReplicaCache(Options settings, IServiceProvider services)
         : base(services)
@@ -35,6 +37,7 @@ public class AppReplicaCache : ReplicaCache
         Store = settings.Store;
         KeySerializer = settings.KeySerializer;
         ValueSerializer = settings.ValueSerializer;
+        ShouldForceFlushAfterSet = settings.ShouldForceFlushAfterSet;
         Log.LogInformation("Store type: {StoreType}", Store.GetType().GetName());
         _whenReady = Task.Run(Initialize);
     }
@@ -69,6 +72,8 @@ public class AppReplicaCache : ReplicaCache
         var value = ValueSerializer.Write(output.Value);
         DebugLog?.LogDebug("Set({Key}) <- {Result}", key, output.Value);
         Store.Set(key, value);
+        if (ShouldForceFlushAfterSet(input.MethodDef))
+            _ = Store.Flush(cancellationToken);
     }
 
     // Private methods

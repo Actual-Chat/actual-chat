@@ -1,7 +1,10 @@
+using Stl.Locking;
+
 namespace ActualChat.Collections;
 
 public abstract class FlushingKeyValueStore : WorkerBase
 {
+    private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
     protected readonly ConcurrentDictionary<HashedString, string?> WriteCache = new();
 
     public ILogger? Log { get; init; }
@@ -25,6 +28,7 @@ public abstract class FlushingKeyValueStore : WorkerBase
 
     public virtual async Task Flush(CancellationToken cancellationToken = default)
     {
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         var itemCount = 0;
         var sw = new Stopwatch();
         while (true) {

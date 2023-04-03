@@ -137,11 +137,19 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         InjectDiagnosticsServices(services);
 
+        // Force app replica cache store flushing just after updating value for Users.IAccounts.GetOwn
+        services.ConfigureAppReplicaCache(c =>
+            c.ForceFlush(typeof(Users.IAccounts), nameof(Users.IAccounts.GetOwn)));
+
         // Temporarily disabled for WASM due to bad performance
         if (false && appKind.IsWasmApp()) {
+            services.AddSingleton<AppReplicaCacheConfigurator>();
             services.AddSingleton<ReplicaCache>(c => {
                 var store = new IndexedDbKeyValueStore(c).Start();
-                var options = new AppReplicaCache.Options(store);
+                var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
+                var options = new AppReplicaCache.Options(store) {
+                    ShouldForceFlushAfterSet = configurator.ShouldForceFlushAfterSet,
+                };
                 return new AppReplicaCache(options, c);
             });
         }

@@ -28,7 +28,9 @@ public partial class AccountUI
 
             var hasLoaded = _ownAccount.Value == AccountFull.Loading;
 
-            _ownAccount.Value = ownAccount;
+            // avoid excessive own account updates
+            if (_ownAccount.Value != ownAccount)
+                _ownAccount.Value = ownAccount;
             _whenLoadedSource.TrySetResult(default);
             if (hasLoaded)
                 Tracer.Point("SyncOwnAccount: OwnAccount is loaded");
