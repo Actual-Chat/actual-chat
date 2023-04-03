@@ -40,7 +40,6 @@ namespace ActualChat.Chat.Migrations
                 mediaDbContext.ChangeTracker.AutoDetectChangesEnabled = false;
 
                 var dbAttachments = await dbContext.TextEntryAttachments
-                    .Where(x => x.ContentId != "")
                     .OrderBy(c => c.Id)
                     .Skip(skip)
                     .Take(batchSize)
@@ -53,6 +52,9 @@ namespace ActualChat.Chat.Migrations
                 log.LogInformation("Upgrading {Count} attachments", dbAttachments.Count);
 
                 foreach (var dbAttachment in dbAttachments) {
+                    if (dbAttachment.ContentId.IsNullOrEmpty())
+                        continue;
+
                     var attachment = dbAttachment.ToModel();
                     var mediaId = new MediaId(attachment.ChatId, Generate.Option);
                     var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
