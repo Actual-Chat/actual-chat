@@ -145,15 +145,18 @@
     </div>
 </div>
 
-<div class="until-content-ready">
-    <div class="background"></div>
-    <div class="image-background">
-        <div class="after-circle"></div>
-        <div class="c-circle">
-            <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-48 h-48">
+@if (!isServerSideBlazor) {
+    <div class="until-content-ready">
+        <div class="background"></div>
+        <div class="image-background">
+            <div class="gradient-circle"></div>
+            <div class="after-circle"></div>
+            <div class="c-circle">
+                <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
+            </div>
         </div>
     </div>
-</div>
+}
 
 @if (isCloseWindowRequest) {
     <script>

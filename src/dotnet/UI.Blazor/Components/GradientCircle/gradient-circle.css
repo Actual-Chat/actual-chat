@@ -40,11 +40,17 @@ body.narrow .background {
 .c-circle img {
     @apply animate-pulse-70;
 }
+.until-content-ready .gradient-circle {
+    @apply absolute z-minus;
+    @apply w-48 h-48 md:w-96 md:h-96;
+    @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
+}
 .until-content-ready .after-circle {
     @apply w-36 h-36 md:w-72 md:h-72;
     @apply rounded-5xl;
-    @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
-    @apply blur-none shadow-none;
+    @apply bg-transparent;
+    box-shadow: 0 0 0 100vw #fff;
+    @apply blur-none;
     animation: rotate 5s infinite;
 }
 .until-content-ready .c-circle {
