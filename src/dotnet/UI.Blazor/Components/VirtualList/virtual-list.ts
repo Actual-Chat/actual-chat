@@ -10,18 +10,19 @@ import { VirtualListStatistics } from './ts/virtual-list-statistics';
 import { Pivot } from './ts/pivot';
 
 import { Log } from 'logging';
+import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 
 const { debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 320;
+const UpdateViewportInterval: number = 200;
 const UpdateItemVisibilityInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
-const MaxExpandBy: number = 320;
+const MaxExpandBy: number = 160;
 const ScrollDebounce: number = 600;
-const RemoveOldItemsDebounce: number = 2000;
+const RemoveOldItemsDebounce: number = 600;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const UpdateTimeout: number = 800;
@@ -107,9 +108,6 @@ export class VirtualList {
         const listenerOptions = { signal: this._abortController.signal };
         this._ref.addEventListener('scroll', this.onScroll, listenerOptions);
         this._renderEndObserver = new MutationObserver(this.maybeOnRenderEnd);
-        this._renderEndObserver.observe(
-            this._renderIndexRef,
-            { attributes: true, attributeFilter: ['data-render-index'] });
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
         // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
@@ -122,14 +120,14 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
-                threshold: [0, 1],
+                threshold: [0, 0.9, 1],
             });
         this._scrollPivotObserver = new IntersectionObserver(
             this.onScrollPivotVisibilityChange,
             {
                 root: this._ref,
-                // track fully visible items
-                rootMargin: `${VisibilityEpsilon}px`,
+                // Extend visibility outside of the viewport.
+                rootMargin: `100px`,
                 // Receive callback on any intersection change, even 1 percent.
                 threshold: visibilityThresholds,
             });
@@ -137,7 +135,6 @@ export class VirtualList {
             this.onSkeletonVisibilityChange,
             {
                 root: this._ref,
-                // Extend visibility outside of the viewport
                 rootMargin: `-5px`,
                 threshold: visibilityThresholds,
             });
@@ -359,17 +356,14 @@ export class VirtualList {
         if (this._isRendering)
             return;
 
-        const viewportSize = this._viewport?.size ?? MinViewPortSize;
-        const relativeViewport = new NumberRange(-viewportSize/2, 1.5*viewportSize);
+        // get 10  closest to viewport entries
         this._pivots = entries
-            .filter(entry => relativeViewport.contains(entry.boundingClientRect.top))
-            .map(entry => {
-                const pivot: Pivot = {
-                    itemKey: getItemKey(entry.target as HTMLElement),
-                    offset: entry.boundingClientRect.top,
-                };
-                return pivot;
-            });
+            .map((entry): Pivot => ({
+                itemKey: getItemKey(entry.target as HTMLElement),
+                offset: entry.boundingClientRect.top,
+            }))
+            .sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset))
+            .slice(0, 10);
     };
 
     private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -483,23 +477,33 @@ export class VirtualList {
                     if (!pivotRef)
                         continue;
 
-                    new Promise<void>(resolve => {
-                        requestAnimationFrame(() => {
+                    let scrollTop: number | null = null;
+                    let shouldResync = false;
+                    fastRaf({
+                        read: () => {
                             const pivotOffset = pivot.offset;
                             const itemRect = pivotRef.getBoundingClientRect();
                             const currentPivotOffset = itemRect.top;
                             const dPivotOffset = pivotOffset - currentPivotOffset;
+                            scrollTop = this._ref.scrollTop
                             if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
                                 debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
+                                scrollTop -= dPivotOffset;
+                                shouldResync = true;
+                            }
+                        },
+                        write: () => {
+                            if (shouldResync) {
                                 // debug helper
                                 // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-                                this._ref.scrollTop -= dPivotOffset;
+                                this._ref.scrollTop = scrollTop;
                             } else {
-                                debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ${pivotOffset} ~ ${itemRect.top}`, pivot);
+                                debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
                             }
-                            resolve();
-                        });
+                        }
                     });
+                    // wait for scroll resync
+                    await fastWriteRaf();
 
                     break;
                 }
@@ -542,9 +546,23 @@ export class VirtualList {
             }
         }
 
-        const viewport: NumberRange | null = (!this.fullRange || rangeStarts.length === 0)
+        let viewport: NumberRange | null = (!this.fullRange || rangeStarts.length === 0)
             ? null
             : new NumberRange(Math.min(...rangeStarts), Math.max(...rangeEnds));
+
+        if (!viewport && this.fullRange) {
+            // fallback viewport calculation
+            await fastReadRaf();
+            const viewportHeight = this._ref.clientHeight - this._endAnchorRef.getBoundingClientRect().height;
+            const scrollHeight = this._ref.scrollHeight;
+            const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
+            const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
+            let viewport: NumberRange | null = null;
+            const fullRange = this.fullRange;
+            if (fullRange != null) {
+                viewport = clientViewport.fitInto(fullRange);
+            }
+        }
 
         // update item range
         const isViewportUnknown = viewport == null;
@@ -636,6 +654,20 @@ export class VirtualList {
         this._isScrolling = true;
         this.turnOffIsScrollingDebounced();
         this.requestOldItemsRemovalDebounced.reset();
+
+        // large messages is being displayed and probably can have outdated pivot offset
+        // let's update offset
+        if (this._pivots.length <= 2) {
+            fastRaf(() => {
+                // double-check as pivots might be recalculated already
+                if (this._pivots.length <= 2) {
+                    for (let pivot of this._pivots) {
+                        const pivotRef = this.getItemRef(pivot.itemKey);
+                        pivot.offset = pivotRef.getBoundingClientRect().top;
+                    }
+                }
+            }, 'pivotRecalculate');
+        }
     };
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce, true);
