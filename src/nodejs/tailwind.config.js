@@ -150,6 +150,7 @@ module.exports = {
         'hover': 'var(--hover)',
         'place': 'var(--place)',
         'badge': 'var(--badge)',
+        'new-separator': 'var(--new-separator)',
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'gradient-stop-01': 'var(--gradient-stop-01)',
         'gradient-stop-02': 'var(--gradient-stop-02)',
@@ -332,7 +333,7 @@ module.exports = {
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'pulse-70': 'pulse-70 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      'shine': 'shine 4s infinite',
+      'shine': 'shine 2500ms infinite',
       'scale': 'scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'decrease': 'decrease 500ms ease-in-out',
       'increase': 'increase 500ms ease-in-out',
@@ -870,7 +871,7 @@ module.exports = {
         '0%': {
           transform: 'translate(-100%, -25%) rotate(10deg)',
         },
-        '20%': {
+        '40%': {
           transform: 'translate(100%, -25%) rotate(10deg)',
         },
         '100%': {
