@@ -109,10 +109,11 @@ body.hoverable .chat-header-title:hover {
 }
 
 .new-separator {
-    @apply bg-04;
+    @apply hidden;
 }
 .new-separator-title {
-    @apply bg-04 text-02 rounded-md;
+    @apply bg-new-separator;
+    @apply text-icons-04;
 }
 
 .message-content {

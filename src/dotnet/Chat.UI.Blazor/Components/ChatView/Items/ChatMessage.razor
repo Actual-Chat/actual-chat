@@ -29,7 +29,7 @@
     <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
 }
 @if (message.IsFirstUnread) {
-    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+    <Separator Title="New messages" TitleClass="new-separator-title"/>
 }
 @if (isSystem) {
 <div class="@cls"

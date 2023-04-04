@@ -40,10 +40,18 @@ body.narrow .background {
 .c-circle img {
     @apply animate-pulse-70;
 }
-.until-content-ready .c-circle {
-    @apply w-64 h-64;
+.until-content-ready .after-circle {
+    @apply w-36 h-36 md:w-72 md:h-72;
     @apply rounded-5xl;
     @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
+    @apply blur-none shadow-none;
+    animation: rotate 5s infinite;
+}
+.until-content-ready .c-circle {
+    @apply w-36 h-36 md:w-64 md:h-64;
+    @apply rounded-5xl;
+    @apply bg-transparent;
+    @apply backdrop-blur-none;
 }
 .until-content-ready .c-circle .c-text {
     @apply animate-none;
@@ -62,4 +70,15 @@ body.narrow .background {
     height: 200%;
     background: linear-gradient(to left, transparent 0%, #fff 40%, #fff 60%, transparent 100%);
     transform: translate(-100%, -25%) rotate(10deg);
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    20% { transform: rotate(90deg); }
+    25% { transform: rotate(90deg); }
+    45% { transform: rotate(180deg); }
+    50% { transform: rotate(180deg); }
+    70% { transform: rotate(270deg); }
+    75% { transform: rotate(270deg); }
+    100% { transform: rotate(360deg); }
 }
