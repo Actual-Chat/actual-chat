@@ -108,9 +108,6 @@ body.hoverable .chat-header-title:hover {
     @apply text-02;
 }
 
-.new-separator {
-    @apply hidden;
-}
 .new-separator-title {
     @apply bg-new-separator;
     @apply text-icons-04;
@@ -120,14 +117,39 @@ body.hoverable .chat-header-title:hover {
     @apply flex-1 overflow-hidden;
     @apply rounded-sm;
 }
-
+.system-entry {
+    @apply self-center;
+    @apply w-fit;
+}
+.system-entry .chat-message-markup {
+    @apply flex items-center gap-x-0.5;
+}
+.system-entry * {
+    @apply text-xs font-medium;
+}
 .system-entry .message-content {
     @apply flex-x justify-center items-center gap-x-2;
+    @apply bg-02;
+    @apply rounded-full;
+    @apply px-2;
 }
 .system-entry .message-content .avatar-name {
-    @apply font-bold text-03;
+    @apply font-semibold;
     @apply cursor-pointer;
     @apply hover:opacity-80;
+}
+.system-entry .mention-markup,
+.system-entry .mention-markup.mention-markup-own {
+    @apply p-0;
+    @apply bg-transparent;
+}
+.system-entry .mention-markup *,
+.system-entry .mention-markup.mention-markup-own * {
+    @apply m-0;
+    @apply text-xs font-medium;
+}
+.system-entry .icon-at {
+    @apply hidden;
 }
 
 .chat-message-quote {
