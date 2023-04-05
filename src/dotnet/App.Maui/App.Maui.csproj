@@ -82,7 +82,7 @@
     r8 + full еrimming and LLVM optimization doesn't work, it shows following error:
     java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;"
     field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses
-    
+
     Relevant issue:
     - https://github.com/dotnet/maui/issues/13413
     -->
@@ -111,7 +111,7 @@
     <CodesignProvision>Automatic</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
   </PropertyGroup>
-  
+
   <!-- Platform-specific references -->
 
   <ItemGroup>
@@ -129,7 +129,7 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
     <PackageReference Include="Plugin.Firebase" />
   </ItemGroup>
-  
+
   <!-- Resources -->
 
   <ItemGroup>
@@ -145,7 +145,7 @@
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
   </ItemGroup>
-  
+
   <!-- Platform-specific files to compile -->
 
   <!-- Android -->
@@ -196,6 +196,7 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
+    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.File" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
     <PackageReference Include="sqlite-net-pcl" />
     <!--

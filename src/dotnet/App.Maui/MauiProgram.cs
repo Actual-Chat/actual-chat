@@ -63,6 +63,15 @@ public static partial class MauiProgram
             .ConfigurePlatformLogger();
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
             configuration = configuration.WriteTo.Sentry(options => options.ConfigureForApp());
+#if WINDOWS
+        var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder;
+        var timeSuffix = DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+        var fileName = $"actual.chat.{timeSuffix}.log";
+        configuration = configuration.WriteTo.File(
+            Path.Combine(localFolder.Path, "Logs", fileName),
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}",
+            fileSizeLimitBytes: 20 * 1024 * 1024);
+#endif
         return configuration;
     }
 
