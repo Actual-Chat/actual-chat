@@ -68,7 +68,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _initialReadEntryLid = ReadPositionState.Value.EntryLid;
 
             RegionVisibility.IsOverallVisible.Updated += OnRegionVisibilityChanged;
-            UpdateInvisibleDelayer();
         }
         finally {
             _whenInitializedSource.SetResult(Unit.Default);
@@ -151,7 +150,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         await WhenInitialized;
 
-        await _invisibleDelayer.Use();
+        var canContinue = await _invisibleDelayer.CanContinueExecution();
+        if (!canContinue)
+            return oldData;
 
         var chat = Chat;
         var chatId = chat.Id;
@@ -387,5 +388,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     }
 
     private void UpdateInvisibleDelayer()
-        => _invisibleDelayer.Enable(!RegionVisibility.IsOverallVisible.Value);
+    {
+        var isVisible = RegionVisibility.IsOverallVisible.Value;
+        _invisibleDelayer.Enable(!isVisible);
+    }
 }
