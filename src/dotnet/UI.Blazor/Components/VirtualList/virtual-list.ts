@@ -660,11 +660,16 @@ export class VirtualList {
         if (this._pivots.length <= 2) {
             fastRaf(() => {
                 // double-check as pivots might be recalculated already
+                const pivots = new Array<Pivot>();
                 if (this._pivots.length <= 2) {
                     for (let pivot of this._pivots) {
                         const pivotRef = this.getItemRef(pivot.itemKey);
-                        pivot.offset = pivotRef.getBoundingClientRect().top;
+                        if (pivotRef) {
+                            pivot.offset = pivotRef.getBoundingClientRect().top;
+                            pivots.push(pivot);
+                        }
                     }
+                    this._pivots = pivots;
                 }
             }, 'pivotRecalculate');
         }
