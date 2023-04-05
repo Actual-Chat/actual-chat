@@ -239,33 +239,44 @@ public class GoogleTranscriber : ITranscriber
         var fragments = isStable
             ? results.Where(r => r.IsFinal)
             : results;
-        var text = fragments.Select(r => r.Alternatives.First().Transcript).ToDelimitedString("");
-        if (string.IsNullOrWhiteSpace(text))
-            return null;
-
-        text = FixSuffix(state.Stable.Text, text);
+        // google transcriber can return final result without transcript (alternatives)
+        var text = fragments
+            .Select(r => r.Alternatives.Count > 0
+                ? r.Alternatives.First().Transcript
+                : "")
+            .ToDelimitedString("");
         var endTime = TryGetOriginalAudioTime(results.Last().ResultEndOffset) ?? state.ProcessedAudioDuration;
+        Transcript? transcript = null;
+        if (string.IsNullOrWhiteSpace(text)) {
+            if (!isStable)
+                return null;
 
-        // Google Transcribe issue: sometimes it omits the final transcript,
-        // so we use a heuristic to automatically mark it stable
-        if (state.Unstable != state.Stable && !isStable) {
-            var lastEndTime = state.Unstable.TimeMap.YRange.End;
-            if (endTime - lastEndTime > 0.25f) {
-                // AND there is > .25s delay between the new unstable piece and the old one
-                var legitLengthRatio = (endTime - lastEndTime) switch {
-                    > 1f => 0.9f, // Longer delay => smaller trim allowed
-                    > 0.5f => 0.75f,
-                    _ => 0.6f, // Shorter delay => bigger trim allowed
-                };
-                var lastLength = state.Unstable.Length - state.Stable.Length;
-                var legitLength = Math.Min(
-                    Math.Max(0, lastLength - 4), // Trimming by 4 is always legit
-                    (int)(lastLength * legitLengthRatio));
-                if (text.Length < legitLength)
-                    state.Stabilize();
-            }
+            transcript = state.Stabilize();
         }
-        var transcript = state.Append(isStable, text, endTime);
+        else {
+            text = FixSuffix(state.Stable.Text, text);
+
+            // Google Transcribe issue: sometimes it omits the final transcript,
+            // so we use a heuristic to automatically mark it stable
+            if (state.Unstable != state.Stable && !isStable) {
+                var lastEndTime = state.Unstable.TimeMap.YRange.End;
+                if (endTime - lastEndTime > 0.25f) {
+                    // AND there is > .25s delay between the new unstable piece and the old one
+                    var legitLengthRatio = (endTime - lastEndTime) switch {
+                        > 1f => 0.9f, // Longer delay => smaller trim allowed
+                        > 0.5f => 0.75f,
+                        _ => 0.6f, // Shorter delay => bigger trim allowed
+                    };
+                    var lastLength = state.Unstable.Length - state.Stable.Length;
+                    var legitLength = Math.Min(
+                        Math.Max(0, lastLength - 4), // Trimming by 4 is always legit
+                        (int)(lastLength * legitLengthRatio));
+                    if (text.Length < legitLength)
+                        state.Stabilize();
+                }
+            }
+            transcript = state.Append(isStable, text, endTime);
+        }
 
         DebugLog?.LogDebug("Transcript={Transcript}, EndTime={EndTime}", transcript, endTime);
         return transcript;
