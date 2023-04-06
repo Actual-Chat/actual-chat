@@ -11,6 +11,7 @@ import { Pivot } from './ts/pivot';
 
 import { Log } from 'logging';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
+import { DeviceInfo } from 'device-info';
 
 const { debugLog } = Log.get('VirtualList');
 
@@ -429,6 +430,10 @@ export class VirtualList {
         try {
             this._renderState = rs;
 
+            // fix iOS MAUI scroll issue after first renders
+            if (rs.renderIndex === 0 && DeviceInfo.isIos)
+                fastRaf({ write: () => this.forceReflow() });
+
             // Update statistics
             const ratio = this._statistics.responseFulfillmentRatio;
             if (rs.query.expandStartBy > 0 && !rs.hasVeryFirstItem)
@@ -499,7 +504,13 @@ export class VirtualList {
                             if (shouldResync) {
                                 // debug helper
                                 // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+                                // if (DeviceInfo.isIos) {
+                                //     this._ref.style.overflow = 'hidden';
+                                // }
                                 this._ref.scrollTop = scrollTop;
+                                // if (DeviceInfo.isIos) {
+                                //     this._ref.style.overflow = '';
+                                // }
                             } else {
                                 debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
                             }
@@ -784,6 +795,12 @@ export class VirtualList {
         return itemRect.top >= viewRect.top && itemRect.top <= viewRect.bottom
             && itemRect.bottom >= viewRect.top && itemRect.bottom <= viewRect.bottom
             && itemRect.height > 0;
+    }
+
+    private forceReflow(): void {
+        this._ref.style.display = 'none';
+        void this._ref.offsetWidth;
+        this._ref.style.display = '';
     }
 
     private scrollTo(

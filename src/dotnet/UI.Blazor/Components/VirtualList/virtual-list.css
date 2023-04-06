@@ -3,10 +3,7 @@
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    will-change: custom; /* Ensures its own composition layer */
-}
-body.device-ios .virtual-list {
-    scroll-behavior: smooth; /* This is absolutely required on iOS, otherwise you get tons of visual issues */
+    will-change: scroll-position, contents;
 }
 
 .virtual-list::-webkit-scrollbar {
