@@ -5,27 +5,16 @@
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
 @{
     var m = State.Value;
-    var title = $"Author: {m.Author.Avatar.Name}";
+    var title = m.IsOwn ? "Your profile" : $"{m.Author.Avatar.Name}";
     var onClick = m.IsOwn
         ? EventCallback.Factory.Create<MouseEventArgs>(this, OnAuthorClicked)
         : EventCallback<MouseEventArgs>.Empty;
 }
 
-<DialogFrame Title="@title">
+<DialogFrame Title="@title" Class="author-modal" HasHeader="false">
     <Body>
-    <div class="flex-x items-center gap-x-3">
-        <AuthorCircle AuthorSid="@AuthorId" Size="SquareSize.Size12" ShowPresence="true" ShowRecording="true" Click="@onClick" />
-        <AuthorName AuthorSid="@AuthorId" Class="text-02 font-semibold text-lg" ShowDetailsOnClick="false" Click="@onClick" />
-    </div>
-    <div>
-        @if (m.IsOwn) {
-            <span>It's you.</span>
-        }
-    </div>
+        <AuthorModalContent AuthorSid="@AuthorId" Author="@m.Author" IsOwn="@m.IsOwn"/>
     </Body>
-    <Buttons>
-        <Button Class="btn-primary" Click="@(_ => Modal.Close())">Close</Button>
-    </Buttons>
 </DialogFrame>
 
 @code {

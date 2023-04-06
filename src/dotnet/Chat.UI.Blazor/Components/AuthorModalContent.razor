@@ -1,0 +1,84 @@
+@{
+    var headerTitle = Author.IsAnonymous ? "Anonymous author" : Author.Avatar.Name;
+}
+
+<Tile>
+    <TileItem IsHoverable="false" Class="header-tile-item">
+        <Right>
+            @if (IsOwn) {
+                <TileButtons HideEditButton="false" OnEditClick="@OnEditClick"/>
+            } else {
+                <TileButtons HideCloseButton="false" OnCloseClick="@(_ => Modal.Close())"/>
+            }
+        </Right>
+        <Content>
+            @headerTitle
+        </Content>
+    </TileItem>
+
+    <TileItem IsHoverable="false" Class="first-tile-item">
+        <Icon>
+            @if (Author.IsAnonymous) {
+                <AnonymousIcon Class="w-12 h-12"></AnonymousIcon>
+            } else {
+                <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size12" ShowPresence="true" ShowRecording="true"/>
+            }
+        </Icon>
+        <Right>
+        </Right>
+        <Content>
+            @if (Author.IsAnonymous) {
+                <span class="avatar-name truncate font-medium text-title-1 text-01">
+                    Anonymous
+                </span>
+            } else {
+                <AuthorName AuthorSid="@Author.Id" Class="text-01 font-medium text-title-1" ShowDetailsOnClick="false"/>
+            }
+        </Content>
+        <Caption>
+            Name
+        </Caption>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-at text-xl"></i>
+        </Icon>
+        <Content>
+            @Author.Avatar.Name
+        </Content>
+        <Caption>
+            Username
+        </Caption>
+    </TileItem>
+
+    <TileItem>
+        <Icon>
+            <i class="icon-person text-xl"></i>
+        </Icon>
+        <Content>
+            @Author.Avatar.Bio
+        </Content>
+        <Caption>
+            Bio
+        </Caption>
+    </TileItem>
+    @* <LinkTileItem Link="@Links.User(account.Id)" Caption="Link to your account"/> *@
+</Tile>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsOwn { get; set; }
+
+    private Task OnEditClick()
+        => ModalUI.Show(OwnAccountEditorModal.Model.Default);
+}
