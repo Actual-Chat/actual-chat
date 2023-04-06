@@ -2,7 +2,6 @@ using ActualChat.Commands;
 using ActualChat.Kvas;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
-using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -64,7 +63,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
             dbUser.Name = newName;
         }
 
-        await UpdatePresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -143,23 +141,10 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        await UpdatePresence(dbContext, userId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
-
-    private async Task UpdatePresence(UsersDbContext dbContext, UserId userId, CancellationToken cancellationToken)
-    {
-        var dbUserPresence = await dbContext.UserPresences.ForUpdate()
-            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbUserPresence == null) {
-            dbUserPresence = new DbUserPresence() { UserId = userId };
-            dbContext.Add(dbUserPresence);
-        }
-        dbUserPresence.OnlineCheckInAt = Clocks.SystemClock.Now;
-    }
 
     private void InvalidatePresenceIfOffline(UserId userId)
     {

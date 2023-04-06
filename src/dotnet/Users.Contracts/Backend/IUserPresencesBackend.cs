@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IUserPresences : IComputeService
+public interface IUserPresencesBackend : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 30)]
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
@@ -10,6 +10,6 @@ public interface IUserPresences : IComputeService
 
     [DataContract]
     public sealed record CheckInCommand(
-        [property: DataMember] Session Session
-    ) : ISessionCommand<Unit>;
+        [property: DataMember] UserId UserId
+    ) : ICommand<Unit>, IBackendCommand;
 }
