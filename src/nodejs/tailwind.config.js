@@ -1583,6 +1583,7 @@ module.exports = {
       'menu-overlay': '901',
       'menu-hover': '902',
       'menu': '903',
+      'button': '950',
       'tooltip': '999',
     },
   },
