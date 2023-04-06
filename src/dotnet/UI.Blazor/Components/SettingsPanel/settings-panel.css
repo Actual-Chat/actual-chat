@@ -184,3 +184,7 @@ body.hoverable .tile-btn:hover {
 .settings-header-title .modal-toggle {
     @apply block md:hidden;
 }
+
+.header-tile-item .tile-item-icon {
+    @apply hidden;
+}
