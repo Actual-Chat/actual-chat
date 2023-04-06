@@ -108,6 +108,9 @@ export class VirtualList {
         const listenerOptions = { signal: this._abortController.signal };
         this._ref.addEventListener('scroll', this.onScroll, listenerOptions);
         this._renderEndObserver = new MutationObserver(this.maybeOnRenderEnd);
+        this._renderEndObserver.observe(
+            this._renderIndexRef,
+            { attributes: true, attributeFilter: ['data-render-index'] });
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
         // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
