@@ -230,8 +230,6 @@ public class MobileAuthController : Controller
     public async Task SignOut(string sessionId, CancellationToken cancellationToken)
     {
         var session = new Session(sessionId);
-        // Ideally updatePresence should be done once important things are completed
-        await using var _ = AsyncDisposable.New(() => Auth.UpdatePresence(session, cancellationToken).ToValueTask()).ConfigureAwait(false);
         await Commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
 
         await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);

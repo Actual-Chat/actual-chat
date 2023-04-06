@@ -1,30 +1,29 @@
-using ActualChat.Users.Db;
-using Stl.Fusion.EntityFramework;
-
 namespace ActualChat.Users;
 
-public class UserPresences : DbServiceBase<UsersDbContext>, IUserPresences
+public class UserPresences : IUserPresences
 {
-    private IDbEntityResolver<string, DbUserPresence> DbUserPresenceResolver { get; }
+    private IUserPresencesBackend Backend { get; }
+    private IAccounts Accounts { get; }
+    private ICommander Commander { get; }
 
-    public UserPresences(IServiceProvider services)
-        : base(services)
-        => DbUserPresenceResolver = services.DbEntityResolver<string, DbUserPresence>();
-
-    [ComputeMethod(AutoInvalidationDelay = 61)]
-    public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
+    public UserPresences(IUserPresencesBackend backend, IAccounts accounts, ICommander commander, ILogger<UserPresences> log)
     {
-        var dbUserPresence = await DbUserPresenceResolver.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (dbUserPresence == null)
-            return Presence.Offline;
+        Backend = backend;
+        Accounts = accounts;
+        Commander = commander;
+    }
 
-        var inactiveFor = Clocks.SystemClock.Now - dbUserPresence.OnlineCheckInAt.ToMoment();
-        if (inactiveFor > Constants.Presence.OfflineTimeout)
-            return Presence.Offline;
+    // [ComputeMethod]
+    public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
+        => await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
 
-        if (inactiveFor > Constants.Presence.AwayTimeout)
-            return Presence.Away;
+    // [CommandHandler]
+    public virtual async Task CheckIn(IUserPresences.CheckInCommand command, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return;
 
-        return Presence.Online;
+        await Commander.Call(new IUserPresencesBackend.CheckInCommand(account.Id), cancellationToken).ConfigureAwait(false);
     }
 }

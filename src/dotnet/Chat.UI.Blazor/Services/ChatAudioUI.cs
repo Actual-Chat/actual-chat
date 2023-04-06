@@ -8,6 +8,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
+    private readonly IMutableState<Moment?> _audioStoppedAt;
     private readonly TaskSource<Unit> _whenEnabledSource;
 
     private Session Session { get; }
@@ -28,6 +29,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
     public Task<Unit> WhenEnabled => _whenEnabledSource.Task;
+    public IState<Moment?> AudioStoppedAt => _audioStoppedAt;
 
     public ChatAudioUI(IServiceProvider services)
     {
@@ -48,7 +50,9 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 
         _whenEnabledSource = TaskSource.New<Unit>(true);
         // Read entry states from other windows / devices are delayed by 1s
-        _stopRecordingAt = services.StateFactory().NewMutable<Moment?>();
+        var stateFactory = services.StateFactory();
+        _stopRecordingAt = stateFactory.NewMutable<Moment?>();
+        _audioStoppedAt = stateFactory.NewMutable<Moment?>();
     }
 
     void INotifyInitialized.Initialized()

@@ -52,6 +52,8 @@ public partial class ChatAudioUI
                         _ = GetState(c.ChatId);
                 }
             }
+            if ((oldRecordingChat != default && newRecordingChat == default) || (newListeningChats.Count == 0 && oldListeningChats.Count > 0))
+                _audioStoppedAt.Value = Now;
 
             oldRecordingChat = newRecordingChat;
             oldListeningChats = newListeningChats;

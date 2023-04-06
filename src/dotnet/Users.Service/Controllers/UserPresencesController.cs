@@ -8,11 +8,19 @@ namespace ActualChat.Users.Controllers;
 public class UserPresencesController : ControllerBase, IUserPresences
 {
     private IUserPresences Service { get; }
+    private ICommander Commander { get; }
 
-    public UserPresencesController(IUserPresences service)
-        => Service = service;
+    public UserPresencesController(IUserPresences service, ICommander commander)
+    {
+        Service = service;
+        Commander = commander;
+    }
 
     [HttpGet, Publish]
     public Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
         => Service.Get(userId, cancellationToken);
+
+    [HttpPost]
+    public Task CheckIn(IUserPresences.CheckInCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
 }

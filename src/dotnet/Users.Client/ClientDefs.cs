@@ -33,6 +33,8 @@ public interface IUserPresencesClientDef
 {
     [Get(nameof(Get))]
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
+    [Post(nameof(CheckIn))]
+    Task CheckIn([Body] IUserPresences.CheckInCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("avatars")]
