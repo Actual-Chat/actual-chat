@@ -4,14 +4,13 @@ public class PresenceInvalidator : WorkerBase
 {
     private readonly SortedCheckIns _awayQueue = new ();
     private readonly SortedCheckIns _offlineQueue = new ();
-    private static readonly TimeSpan Eps = TimeSpan.FromMilliseconds(50);
-    private Action<UserId> Callback { get; }
+    private Action<IReadOnlyList<UserId>> Callback { get; }
     private MomentClockSet Clocks { get; }
     private ILogger<PresenceInvalidator> Log { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
     public PresenceInvalidator(
-        Action<UserId> callback,
+        Action<IReadOnlyList<UserId>> callback,
         MomentClockSet clocks,
         ILogger<PresenceInvalidator> log)
     {
@@ -49,24 +48,16 @@ public class PresenceInvalidator : WorkerBase
 
     private async Task InvalidateOnTimeout(SortedCheckIns queue, SortedCheckIns? nextQueue, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var earliest = queue.GetEarliest();
-            if (earliest == null)
+        while (!cancellationToken.IsCancellationRequested) {
+            var toInvalidate = queue.PopRange(Now - timeout);
+            if (toInvalidate.Count == 0)
             {
                 await Task.Delay(timeout, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            var delay = timeout - TimeSince(earliest);
-            if (delay > Eps)
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-
             // invalidate only if user has not checked in since then
-            if (queue.TryRemoveExact(earliest)) {
-                Callback(earliest.UserId);
-                nextQueue?.Set(earliest.UserId, earliest.At);
-            }
+            Callback(toInvalidate.Select(x => x.UserId).ToList());
         }
     }
 
