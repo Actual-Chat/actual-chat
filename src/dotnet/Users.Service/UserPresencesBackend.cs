@@ -62,9 +62,10 @@ public class UserPresencesBackend : IUserPresencesBackend, IDisposable
         return Presence.Offline;
     }
 
-    private void Invalidate(UserId userId)
+    private void Invalidate(IReadOnlyList<UserId> userIds)
     {
         using (Computed.Invalidate())
-            _ = Get(userId, default);
+            foreach (var userId in userIds)
+                _ = Get(userId, default);
     }
 }

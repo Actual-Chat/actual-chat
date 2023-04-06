@@ -7,12 +7,6 @@ public sealed class SortedCheckIns
     // sorted because we always want to take the earliest one
     private readonly SortedSet<UserCheckIn> _sortedItems = new (CheckInComparer.Default);
 
-    public UserCheckIn? GetEarliest()
-    {
-        lock (_lock)
-            return _sortedItems.Min;
-    }
-
     public UserCheckIn? Set(UserId userId, Moment lastCheckInAt)
     {
         lock (_lock) {
@@ -24,18 +18,13 @@ public sealed class SortedCheckIns
         }
     }
 
-    public bool TryRemoveExact(UserCheckIn toRemove)
+    public IReadOnlyList<UserCheckIn> PopRange(Moment max)
     {
-        lock (_lock)
-        {
-            if (!_sortedItems.TryGetValue(toRemove, out var actual))
-                return false;
-
-            // skip if timestamps are not equal
-            if (actual != toRemove)
-                return false;
-
-            return _sortedItems.Remove(toRemove);
+        lock (_lock) {
+            var view = _sortedItems.GetViewBetween(null, new UserCheckIn(UserId.None, max));
+            var checkIns = view.ToList();
+            view.Clear();
+            return checkIns;
         }
     }
 
