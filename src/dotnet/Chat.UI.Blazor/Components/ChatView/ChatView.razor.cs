@@ -356,7 +356,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatPosition = readPositionState != null ? await readPositionState.Use(cancellationToken) : null;
         var readEntryLid = chatPosition?.EntryLid ?? 0;
         var visibility = await ItemVisibility.Use(cancellationToken);
-        return readEntryLid > 0 && visibility.MaxEntryLid > 0 && visibility.MaxEntryLid < readEntryLid;
+        var chatInfo = await ChatUI.Get(Chat.Id, cancellationToken).ConfigureAwait(true);
+        var lastEntryId = chatInfo?.News.LastTextEntry?.Id ?? ChatEntryId.None;
+        if (lastEntryId.IsNone)
+            return false;
+        return lastEntryId.LocalId > readEntryLid
+            && readEntryLid > 0
+            && visibility.MaxEntryLid > 0
+            && visibility.MaxEntryLid < readEntryLid;
     }
 
     private bool ShouldHideNewMessagesSeparator(ChatViewItemVisibility itemVisibility, ChatTile lastTile)
