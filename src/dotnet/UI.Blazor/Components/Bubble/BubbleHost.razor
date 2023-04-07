@@ -1,0 +1,196 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@implements IAsyncDisposable
+@implements IHasServices
+@{
+    RenderFragment RenderBubble(BubbleModel bubble) =>
+        @<div
+             id="@bubble.Id"
+             @key="bubble.Id"
+             class="@(GetBubbleCssClass(bubble))">
+            <ul class="ac-bubble-list">
+                <DynamicComponent Type="@bubble.Ref.BubbleType" Parameters="@bubble.Parameters"/>
+            </ul>
+        </div>;
+    var bubble = _bubble;
+}
+
+<div class="ac-bubble-host @(GetHostCssClass())">
+    <CascadingValue Value="@this" IsFixed="true">
+        @if (IsOverlayVisible()) {
+            <div class="ac-bubble-overlay">
+                @if (bubble != null) {
+                    @RenderBubble(bubble);
+                }
+            </div>
+        } else {
+            @if (bubble != null) {
+                @RenderBubble(bubble);
+            }
+        }
+    </CascadingValue>
+</div>
+
+@code {
+    private BubbleModel? _bubble;
+    private string? _jsBubbleId;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<BubbleHost> _blazorRef = null!;
+
+    [Inject] public IServiceProvider Services { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+
+    protected override void OnInitialized()
+        => History.Register(new OwnHistoryState(this, false));
+
+    public ValueTask Show(
+        BubbleRef bubbleRef,
+        string triggerElementId,
+        string? placement = null,
+        bool isHoverBubble = false)
+        => _jsRef.InvokeVoidAsync("showOrPosition", bubbleRef, isHoverBubble, triggerElementId, placement);
+
+    public ValueTask Show(
+        BubbleRef bubbleRef,
+        ElementReference triggerElement,
+        string? placement = null,
+        bool isHoverBubble = false)
+        => _jsRef.InvokeVoidAsync("showOrPosition", bubbleRef, isHoverBubble, triggerElement, placement);
+
+    public async ValueTask Hide() {
+        var bubble = _bubble;
+        if (bubble != null) {
+            _bubble = null;
+            StateHasChanged();
+            if (!bubble.IsHoverBubble)
+                History.Save<OwnHistoryState>();
+        }
+
+        if (_jsBubbleId != null) {
+            _jsBubbleId = null;
+            await _jsRef.InvokeVoidAsync("hideById", _jsBubbleId);
+        }
+    }
+
+    public ValueTask Position(IBubble bubble)
+        => Position(bubble.Id);
+    public ValueTask Position(string bubbleId) {
+        if (_jsBubbleId != bubbleId)
+            return ValueTask.CompletedTask;
+
+        return _jsRef.InvokeVoidAsync("positionById", bubbleId);
+    }
+
+    // JS interface
+
+    [JSInvokable]
+    public Task OnShowRequest(string id, string bubbleRefValue, bool isHoverBubble) {
+        if (_bubble?.Id == id)
+            return Task.CompletedTask;
+
+        _jsBubbleId = id;
+        var bubbleRef = BubbleRef.Parse(bubbleRefValue);
+        var bubble = new BubbleModel(
+            id,
+            bubbleRef,
+            new Dictionary<string, object>() {
+                { nameof(IBubble.Id), id },
+                { nameof(IBubble.Arguments), bubbleRef.Arguments },
+            },
+            isHoverBubble);
+
+        _bubble = bubble;
+        if (!bubble.IsHoverBubble)
+            History.Save<OwnHistoryState>();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnHideRequest(string id) {
+        var bubble = _bubble;
+        if (bubble?.Id != id)
+            return Task.CompletedTask;
+
+        _jsBubbleId = null;
+        _bubble = null;
+        if (!bubble.IsHoverBubble)
+            History.Save<OwnHistoryState>();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // Protected & private methods
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            var identifier = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        if (ScreenSize.IsNarrow() && _bubble?.IsHoverBubble == true)
+            await Hide();
+    }
+
+    private bool IsOverlayVisible()
+        => ScreenSize.IsNarrow() && _bubble?.IsHoverBubble == false;
+
+    private string GetHostCssClass()
+        => IsOverlayVisible() ? "has-overlay" : "";
+
+    private string GetBubbleCssClass(BubbleModel bubble) {
+        var cls = bubble.IsHoverBubble
+            ? "ac-bubble-hover"
+            : "ac-bubble";
+        if (IsOverlayVisible())
+            cls += " !block";
+        return cls;
+    }
+
+    // Nested types
+
+    private sealed record OwnHistoryState(BubbleHost Host, bool IsBubbleShown) : HistoryState
+    {
+        public override int BackStepCount => IsBubbleShown ? 1 : 0;
+
+        public override string Format()
+            => IsBubbleShown.ToString();
+
+        public override HistoryState Save()
+            => With(Host._bubble is { IsHoverBubble: false });
+
+        public override void Apply(HistoryTransition transition) {
+            var bubble = Host._bubble;
+            if (!IsBubbleShown && bubble is { IsHoverBubble: false })
+                _ = Host.Hide();
+        }
+
+        public override HistoryState? Back()
+            => BackStepCount == 0 ? null : With(false);
+
+    // "With" helpers
+
+        public OwnHistoryState With(bool isBubbleShown)
+            => IsBubbleShown == isBubbleShown ? this : this with { IsBubbleShown = isBubbleShown };
+    }
+
+    private sealed record BubbleModel(
+        string Id,
+        BubbleRef Ref,
+        Dictionary<string, object> Parameters,
+        bool IsHoverBubble);
+}
