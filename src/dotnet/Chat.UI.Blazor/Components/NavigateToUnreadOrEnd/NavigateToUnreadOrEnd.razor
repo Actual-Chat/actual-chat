@@ -2,6 +2,8 @@
 @inherits ComputedStateComponent<NavigateToUnreadOrEnd.Model>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
     _animator.State = m.IsVisible;
     if (_animator.MustHideComponent)
         return;
@@ -30,6 +32,7 @@
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     protected override void OnInitialized() {
 
@@ -52,12 +55,17 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = new ChatId(ChatSid, ParseOrNone.Option);
         if (chatId.IsNone)
-            return Model.Invisible;
+            return Model.None;
+
+        var isContainerVisible = await RegionVisibility.IsOverallVisible.Use(cancellationToken);
+        if (!isContainerVisible)
+            return Model.None;
 
         var itemVisibility = await ChatView.ItemVisibility.Use(cancellationToken);
         var isVisible = !itemVisibility.IsEndAnchorVisible;
         if (!isVisible)
             return Model.Invisible;
+
 
         var chat = await ChatUI.Get(chatId, cancellationToken);
         if (chat == null)
@@ -93,6 +101,7 @@
 
     public sealed record Model(bool IsVisible, ChatEntryId LastEntryId, Trimmed<int> UnreadCount, bool IsAboveUnreadEntry)
     {
+        public static Model None { get; } = new(false, default, default, default);
         public static Model Invisible { get; } = new(false, default, default, default);
     }
 }
