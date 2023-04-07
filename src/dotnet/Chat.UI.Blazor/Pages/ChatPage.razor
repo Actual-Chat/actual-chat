@@ -43,15 +43,17 @@
 @if (ReferenceEquals(m, Model.Loading)) {
     return;
 }
-@if (m.ChatId.IsNone) {
-    <NoChatSelected/>
-} else if (chat == null) {
-    <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
-} else {
-    <CascadingValue Value="chat" @key="chat.Id.Value">
-        <ChatView @ref="_chatViewRef" />
-    </CascadingValue>
-}
+<ErrorBarrier>
+    @if (m.ChatId.IsNone) {
+        <NoChatSelected/>
+    } else if (chat == null) {
+        <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+    } else {
+        <CascadingValue Value="chat" @key="chat.Id.Value">
+            <ChatView @ref="_chatViewRef" />
+        </CascadingValue>
+    }
+</ErrorBarrier>
 
 @code {
     private Model? _rendered;
