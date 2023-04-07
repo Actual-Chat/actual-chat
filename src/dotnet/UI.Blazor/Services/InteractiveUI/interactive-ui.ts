@@ -12,6 +12,9 @@ export class InteractiveUI {
         debugLog?.log(`init`);
         this.backendRef = backendRef;
         Interactive.isInteractiveChanged.add(() => this.sync());
+        // sync if is already interactive
+        if (Interactive.isInteractive)
+            void this.sync();
     }
 
     // Private methods
