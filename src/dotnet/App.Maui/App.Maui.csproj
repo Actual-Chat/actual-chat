@@ -78,14 +78,6 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <!--
-    r8 + full еrimming and LLVM optimization doesn't work, it shows following error:
-    java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;"
-    field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses
-
-    Relevant issue:
-    - https://github.com/dotnet/maui/issues/13413
-    -->
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
     <!-- Trimming & AOT options -->
@@ -235,6 +227,10 @@
 
   <ItemGroup>
     <Folder Include="Resources\Images\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProguardConfiguration Include="proguard.cfg" />
   </ItemGroup>
 
   <!-- Versions -->

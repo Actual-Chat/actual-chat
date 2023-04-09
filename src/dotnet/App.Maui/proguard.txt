@@ -1,3 +1,0 @@
--keepmembers public class androidx.security.crypto.** {
-    public <fields>;
-}
