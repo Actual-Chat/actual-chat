@@ -1,43 +1,25 @@
-import {
-    merge,
-    Subject,
-    takeUntil,
-} from 'rxjs';
+import { Subject } from 'rxjs';
 import {
     computePosition,
     flip,
     Middleware,
     offset,
     Placement,
-    ReferenceElement,
     shift,
-    VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { DocumentEvents, stopEvent } from 'event-handling';
-import { getOrInheritData } from 'dom-helpers';
 import { delayAsync } from 'promises';
-import { nextTick } from 'timeout';
-import { Vector2D } from 'math';
-import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
 import { Log } from 'logging';
 
-const {  logScope, debugLog } = Log.get('BubbleHost');
-
-enum BubbleTrigger {
-    None = 0,
-    Primary = 1,
-    Secondary = 2,
-}
+const { logScope, debugLog } = Log.get('BubbleHost');
 
 interface Bubble {
     id: string;
     bubbleRef: string;
     triggerElement: HTMLElement;
     placement: Placement;
-    position: Vector2D | null;
     historyStepId: string | null;
     bubbleElement: HTMLElement | null;
 }
@@ -53,15 +35,6 @@ export class BubbleHost implements Disposable {
 
     constructor(private readonly blazorRef: DotNet.DotNetObject) {
         debugLog?.log('constructor');
-
-        // Escapist.event$
-        //     .pipe(takeUntil(this.disposed$))
-        //     .subscribe((event: KeyboardEvent) => {
-        //         if (this.bubble != null) {
-        //             stopEvent(event);
-        //             this.hide();
-        //         }
-        //     });
     }
 
     public dispose(): void {
@@ -80,9 +53,8 @@ export class BubbleHost implements Disposable {
         bubbleRef: string,
         triggerElement: HTMLElement | string,
         placement?: Placement | null,
-        position?: Vector2D | null,
     ): void {
-        let bubble = this.create(bubbleRef, triggerElement, placement, position);
+        let bubble = this.create(bubbleRef, triggerElement, placement);
         if (this.isShown(bubble))
             void this.position(this.bubble, bubble);
         else
@@ -121,7 +93,6 @@ export class BubbleHost implements Disposable {
         bubbleRef: string,
         triggerElement: HTMLElement | SVGElement | string,
         placement: Placement | null,
-        position: Vector2D | null,
     ): Bubble {
         if (!(triggerElement instanceof HTMLElement)) {
             const triggerElementId = triggerElement as string;
@@ -133,7 +104,6 @@ export class BubbleHost implements Disposable {
             bubbleRef: bubbleRef,
             triggerElement: triggerElement,
             placement: placement,
-            position: position,
             historyStepId: null,
             bubbleElement: null,
         };
@@ -182,7 +152,6 @@ export class BubbleHost implements Disposable {
         if (updatedBubble) {
             bubble.bubbleElement = updatedBubble.bubbleElement ?? bubble.bubbleElement;
             bubble.placement = updatedBubble.placement ?? bubble.placement;
-            bubble.position = updatedBubble.position ?? bubble.position;
         }
 
         let bubbleElement = bubble.bubbleElement;
@@ -193,36 +162,12 @@ export class BubbleHost implements Disposable {
         if (bubbleElement.style.display != 'block')
             bubbleElement.style.display = 'block'
 
-        let referenceElement: ReferenceElement;
         const middleware: Middleware[] = [];
-        const position = bubble.position;
-        if (position && !isButtonTrigger(bubble.triggerElement)) {
-            // Pointer relative positioning
-            referenceElement = {
-                getBoundingClientRect() {
-                    return {
-                        width: 0,
-                        height: 0,
-                        x: position.x,
-                        y: position.y,
-                        top: position.y,
-                        left: position.x,
-                        right: position.x,
-                        bottom: position.y,
-                    };
-                },
-            } as VirtualElement;
-            middleware.push(flip());
-            middleware.push(shift({ padding: 5 }));
-        } else {
-            // Trigger element relative positioning
-            referenceElement = bubble.triggerElement;
-            middleware.push(offset(6));
-            middleware.push(flip());
-            middleware.push(shift({ padding: 5 }));
-        }
+        middleware.push(offset(6));
+        middleware.push(flip());
+        middleware.push(shift({ padding: 5 }));
         const { x, y } = await computePosition(
-            referenceElement,
+            bubble.triggerElement,
             bubbleElement,
             {
                 placement: bubble.placement ?? 'top',
@@ -244,15 +189,4 @@ let nextId = () => 'bubble:' + (_nextId++).toString();
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
     const placement = triggerElement.dataset['bubblePlacement'];
     return placement?.length > 0 ? placement as Placement : null;
-}
-
-function isButtonTrigger(triggerElement: HTMLElement | null): boolean {
-    if (!triggerElement)
-        return false;
-
-    if (!(triggerElement.closest('button') instanceof HTMLElement))
-        return false;
-
-    // Buttons inside bubbles aren't counted as triggers
-    return triggerElement.closest('.ac-bubble, .ac-bubble-hover') == null;
 }
