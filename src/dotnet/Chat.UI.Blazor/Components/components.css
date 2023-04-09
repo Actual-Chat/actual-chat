@@ -195,12 +195,30 @@ body.hoverable .people-tab .avatar-badge:hover {
     @apply max-h-8;
     @apply text-title-1 text-02;
 }
+.author-modal .tile-item-body-content {
+    @apply text-01;
+}
+.author-modal .first-tile-item {
+    @apply gap-x-4;
+}
 .author-modal .first-tile-item .tile-item-icon {
     @apply max-w-fit;
 }
 body.hoverable .author-modal .tile,
 body.hoverable .author-modal .tile:hover {
     @apply p-0;
+    @apply shadow-none;
+}
+body.narrow .author-modal {
+    @apply absolute bottom-6 left-6 right-6;
+    @apply w-auto h-auto;
+    @apply p-0;
+    @apply rounded-lg;
+}
+body.narrow .author-modal .dialog-buttons {
+    @apply py-2;
+}
+.author-modal .tile {
     @apply shadow-none;
 }
 
