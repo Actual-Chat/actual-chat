@@ -13,8 +13,16 @@
 
 <DialogFrame Title="@title" Class="author-modal" HasHeader="false">
     <Body>
-        <AuthorModalContent AuthorSid="@AuthorId" Author="@m.Author" IsOwn="@m.IsOwn"/>
+    <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn"/>
     </Body>
+    <Buttons>
+        @if (m.IsOwn) {
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="onClick">Edit Profile</Button>
+        } else {
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Close</Button>
+        }
+    </Buttons>
 </DialogFrame>
 
 @code {
@@ -65,6 +73,9 @@
     }
 
     public sealed record Model(AuthorId AuthorId);
+
+    private void OnCancel()
+        => Modal.Close();
 
     private async Task OnAuthorClicked()
         => await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, OnAvatarSelected));
