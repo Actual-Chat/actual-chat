@@ -202,7 +202,7 @@ jobs:
       - name: Debug Build for tests
         run: |-
           dotnet run --project build --configuration Release -- restore
-          dotnet build --nologo --no-restore --configuration Debug
+          dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
         env:
