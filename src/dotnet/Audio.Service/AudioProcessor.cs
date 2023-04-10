@@ -8,15 +8,18 @@ using Cysharp.Text;
 
 namespace ActualChat.Audio;
 
-public sealed class AudioProcessor : IAudioProcessor
+public sealed partial class AudioProcessor : IAudioProcessor
 {
     public record Options
     {
         public TimeSpan TranscriptDebouncePeriod { get; set; } = TimeSpan.FromSeconds(0.2);
         public bool IsEnabled { get; init; } = true;
     }
+    
+    [GeneratedRegex("^\\s*$")]
+    private static partial Regex EmptyRegexFactory();
 
-    private static readonly Regex EmptyRegex = new ("^\\s*$", RegexOptions.Compiled);
+    private static readonly Regex EmptyRegex = EmptyRegexFactory();
 
     private ILogger Log { get; }
     private ILogger OpenAudioSegmentLog { get; }

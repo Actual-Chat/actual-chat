@@ -8,13 +8,21 @@ using Cysharp.Text;
 
 namespace ActualChat;
 
-public static class StringExt
+public static partial class StringExt
 {
-    private static readonly Regex CaseChangeRegex =
-        new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+    [GeneratedRegex("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.ExplicitCapture)]
+    private static partial Regex CaseChangeRegexFactory();
+
+    [GeneratedRegex(@"([a-z0-9])([A-Z])")]
+    private static partial Regex CamelCaseRegexFactory();
+
+    [GeneratedRegex(@"([^\r\n]*)(?:\r?\n)", RegexOptions.ExplicitCapture)]
+    private static partial Regex NewLineRegexFactory();
+
+    private static readonly Regex CaseChangeRegex = CaseChangeRegexFactory();
 #pragma warning disable MA0023
-    private static readonly Regex CamelCaseRegex = new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
-    private static readonly Regex NewLineRegex = new(@"([^\r\n]*)(?:\r?\n)", RegexOptions.Compiled);
+    private static readonly Regex CamelCaseRegex = CamelCaseRegexFactory();
+    private static readonly Regex NewLineRegex = NewLineRegexFactory();
 #pragma warning restore MA0023
 
     public static string RequireNonEmpty(this string? source, string name)

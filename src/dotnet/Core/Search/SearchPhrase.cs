@@ -4,9 +4,12 @@ using Cysharp.Text;
 namespace ActualChat.Search;
 
 [DataContract]
-public sealed class SearchPhrase
+public sealed partial class SearchPhrase
 {
-    private static readonly Regex TermSplitRegex = new("[\\s_]+", RegexOptions.Compiled);
+    [GeneratedRegex("[\\s_]+")]
+    private static partial Regex TermSplitRegexFactory();
+
+    private static readonly Regex TermSplitRegex = TermSplitRegexFactory();
 
     private string? _text;
     private Regex? _termRegex;

@@ -4,14 +4,18 @@ using System.Text.RegularExpressions;
 namespace ActualChat.Transcription;
 
 [DataContract]
-public sealed record Transcript(
+public sealed partial record Transcript(
     [property: DataMember(Order = 0)] string Text,
     [property: DataMember(Order = 1)] LinearMap TimeMap)
 {
-    public static readonly Regex ContentStartRe =
-        new(@"^\s*", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.ExplicitCapture);
-    public static readonly Regex ContentEndRe =
-        new(@"\s*$", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.ExplicitCapture);
+    [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex ContentStartRegexFactory();
+
+    [GeneratedRegex(@"\s*$", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex ContentEndRegexFactory();
+
+    public static readonly Regex ContentStartRegex = ContentStartRegexFactory();
+    public static readonly Regex ContentEndRegex = ContentEndRegexFactory();
 
     public static Vector2 TimeMapEpsilon { get; } = new(0.1f, 0.1f);
     public static Transcript Empty { get; } = new();
@@ -33,10 +37,10 @@ public sealed record Transcript(
         => TimeMap.RequireValid();
 
     public int GetContentStart()
-        => ContentStartRe.Match(Text).Length;
+        => ContentStartRegex.Match(Text).Length;
 
     public int GetContentEnd()
-        => Length - ContentEndRe.Match(Text).Length;
+        => Length - ContentEndRegex.Match(Text).Length;
 
     public float GetContentStartTime()
         => TimeMap.Map(GetContentStart());

@@ -2,10 +2,14 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat.Chat;
 
-public sealed record PlayableTextMarkup(string Text, LinearMap TimeMap) : TextMarkup(Text)
+public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) : TextMarkup(Text)
 {
     private const float InfTime = 1e6f;
-    private static readonly Regex WordRegex = new("\\S+\\s+", RegexOptions.Compiled);
+
+    [GeneratedRegex("\\S+\\s+")]
+    private static partial Regex WordRegexFactory();
+
+    private static readonly Regex WordRegex = WordRegexFactory();
 
     private ImmutableArray<Word>? _words;
 

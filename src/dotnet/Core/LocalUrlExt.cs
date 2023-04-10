@@ -2,9 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat;
 
-public static class LocalUrlExt
+public static partial class LocalUrlExt
 {
-    private static readonly Regex ChatIdOrMessageRe = new (@"^/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\d+)?");
+    [GeneratedRegex(@"^/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\d+)?")]
+    private static partial Regex ChatIdOrMessageRegexFactory();
+
+    private static readonly Regex ChatIdOrMessageRegex = ChatIdOrMessageRegexFactory();
     public static bool IsHome(this LocalUrl url)
         => url == Links.Home;
 
@@ -23,7 +26,7 @@ public static class LocalUrlExt
         => url.Value.OrdinalStartsWith("/chat/");
     public static bool IsChatId(this LocalUrl url)
     {
-        var match = ChatIdOrMessageRe.Match(url);
+        var match = ChatIdOrMessageRegex.Match(url);
         if (!match.Success)
             return false;
 

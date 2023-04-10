@@ -3,10 +3,13 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
-public sealed class UrlMapper
+public sealed partial class UrlMapper
 {
+    [GeneratedRegex(@"^[\w\d]+://")]
+    private static partial Regex IsAbsoluteUrlRegexFactory();
+
+    private static readonly Regex IsAbsoluteUrlRegex = new(@"^[\w\d]+://", RegexOptions.Compiled);
     private static readonly char[] UriPathEndChar = new[] { '#', '?' };
-    private static readonly Regex IsAbsoluteUrlRe = new(@"^[\w\d]+://", RegexOptions.Compiled);
 
     private string _baseUrlWithoutBackslash;
 
@@ -53,7 +56,7 @@ public sealed class UrlMapper
     }
 
     public static bool IsAbsolute(string url)
-        => IsAbsoluteUrlRe.IsMatch(url);
+        => IsAbsoluteUrlRegex.IsMatch(url);
 
     public string ToAbsolute(string url, bool allowAbsoluteUrl = false)
         => ToAbsolute(BaseUrl, url, allowAbsoluteUrl);

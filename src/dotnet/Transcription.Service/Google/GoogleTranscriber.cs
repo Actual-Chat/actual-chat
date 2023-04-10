@@ -11,12 +11,16 @@ using Grpc.Core;
 
 namespace ActualChat.Transcription.Google;
 
-public class GoogleTranscriber : ITranscriber
+public partial class GoogleTranscriber : ITranscriber
 {
-    private static readonly Regex CompleteSentenceOrEmptyRe =
-        new(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline);
-    private static readonly Regex EndsWithWhitespaceOrEmptyRe =
-        new(@"(\s+$)|(^\s*$)", RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline);
+    [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex CompleteSentenceOrEmptyRegexFactory();
+
+    [GeneratedRegex(@"(\s+$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
+    private static partial Regex EndsWithWhitespaceOrEmptyRegexFactory();
+
+    private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
+    private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
 
     private static readonly string RegionId = "us";
     private static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
@@ -392,22 +396,22 @@ public class GoogleTranscriber : ITranscriber
 
     private static string FixSuffix(string prefix, string suffix)
     {
-        var firstLetterIndex = Transcript.ContentStartRe.Match(suffix).Length;
+        var firstLetterIndex = Transcript.ContentStartRegex.Match(suffix).Length;
         if (firstLetterIndex == suffix.Length)
             return suffix; // Suffix is all whitespace or empty
 
-        if (firstLetterIndex == 0 && !EndsWithWhitespaceOrEmptyRe.IsMatch(prefix)) {
+        if (firstLetterIndex == 0 && !EndsWithWhitespaceOrEmptyRegex.IsMatch(prefix)) {
             // Add spacer
             suffix = " " + suffix;
             firstLetterIndex++;
         }
-        else if (firstLetterIndex > 0 && EndsWithWhitespaceOrEmptyRe.IsMatch(prefix)) {
+        else if (firstLetterIndex > 0 && EndsWithWhitespaceOrEmptyRegex.IsMatch(prefix)) {
             // Remove spacer
             suffix = suffix[firstLetterIndex..];
             firstLetterIndex = 0;
         }
 
-        if (CompleteSentenceOrEmptyRe.IsMatch(prefix))
+        if (CompleteSentenceOrEmptyRegex.IsMatch(prefix))
             suffix = suffix.Capitalize(firstLetterIndex);
 
         return suffix;

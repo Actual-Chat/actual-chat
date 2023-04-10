@@ -2,11 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat.Chat;
 
-public sealed record UrlMarkup(string Url) : Markup
+public sealed partial record UrlMarkup(string Url) : Markup
 {
-    private static readonly Regex ImageUrlRegex = new(
-        "\\.(jpg|jpeg|png|gif|png|webp)$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+    [GeneratedRegex("\\.(jpg|jpeg|png|gif|png|webp)$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
+    private static partial Regex ImageUrlRegexFactory();
+
+    private static readonly Regex ImageUrlRegex = ImageUrlRegexFactory();
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsImage => ImageUrlRegex.IsMatch(Url);

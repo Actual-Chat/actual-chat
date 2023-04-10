@@ -3,9 +3,12 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public abstract record MarkupHtmlFormatterBase : MarkupFormatterBase
+public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
 {
-    private static readonly Regex NewLineRegex = new(@"\r?\n", RegexOptions.Compiled);
+    [GeneratedRegex(@"\r?\n")]
+    private static partial Regex NewLineRegexFactory();
+
+    private static readonly Regex NewLineRegex = NewLineRegexFactory();
 
     public string UrlClass { get; init; } = "markup-url";
     public string MentionClass { get; init; } = "markup-mention";
