@@ -8,10 +8,10 @@ public sealed partial class UrlMapper
     [GeneratedRegex(@"^[\w\d]+://")]
     private static partial Regex IsAbsoluteUrlRegexFactory();
 
-    private static readonly Regex IsAbsoluteUrlRegex = new(@"^[\w\d]+://", RegexOptions.Compiled);
+    private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
     private static readonly char[] UriPathEndChar = new[] { '#', '?' };
 
-    private string _baseUrlWithoutBackslash;
+    private readonly string _baseUrlWithoutBackslash;
 
     public Uri BaseUri { get; }
     public bool IsActualChat { get; }
