@@ -215,9 +215,6 @@ body.narrow .author-modal {
     @apply p-0;
     @apply rounded-lg;
 }
-body.narrow .author-modal .dialog-buttons {
-    @apply py-2;
-}
 .author-modal .tile {
     @apply shadow-none;
 }

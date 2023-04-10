@@ -6,9 +6,6 @@
 @{
     var m = State.Value;
     var title = m.IsOwn ? "Your profile" : $"{m.Author.Avatar.Name}";
-    var onClick = m.IsOwn
-        ? EventCallback.Factory.Create<MouseEventArgs>(this, OnAuthorClicked)
-        : EventCallback<MouseEventArgs>.Empty;
 }
 
 <DialogFrame Title="@title" Class="author-modal" HasHeader="false">
@@ -18,7 +15,7 @@
     <Buttons>
         @if (m.IsOwn) {
             <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="onClick">Edit Profile</Button>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnAuthorClicked">Edit Profile</Button>
         } else {
             <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Close</Button>
         }
