@@ -7,30 +7,30 @@
     var cls = m ? "text-primary" : "text-icons-01";
 }
 
-@if (!HideSetDefaultButton) {
+@if (SetDefaultClick.HasDelegate) {
     <ButtonRound
         Class="btn-sm transparent"
         Tooltip="Set default"
         TooltipPosition="FloatingPosition.Top"
-        Click="@OnSetDefaultClick">
+        Click="@SetDefaultClick">
         <i class="icon-star text-xl @cls"></i>
     </ButtonRound>
 }
-@if (!HideEditButton) {
+@if (EditClick.HasDelegate) {
     <ButtonRound
         Class="btn-sm transparent tile-btn"
         Tooltip="Edit"
         TooltipPosition="FloatingPosition.Top"
-        Click="OnEditClick">
+        Click="EditClick">
         <i class="icon-edit text-xl"></i>
     </ButtonRound>
 }
-@if (!HideCloseButton) {
+@if (CloseClick.HasDelegate) {
     <ButtonRound
         Class="btn-sm transparent"
         Tooltip="Close"
         TooltipPosition="FloatingPosition.Top"
-        Click="@OnCloseClick">
+        Click="@CloseClick">
         <i class="icon-close text-xl @cls"></i>
     </ButtonRound>
 }
@@ -40,13 +40,10 @@
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    [Parameter] public bool HideEditButton { get; set; } = true;
-    [Parameter] public bool HideSetDefaultButton { get; set; } = true;
-    [Parameter] public bool HideCloseButton { get; set; } = true;
     [Parameter] public AvatarFull Avatar { get; set; } = AvatarFull.None;
-    [Parameter] public EventCallback OnEditClick { get; set; }
-    [Parameter] public EventCallback OnSetDefaultClick { get; set; }
-    [Parameter] public EventCallback OnCloseClick { get; set; }
+    [Parameter] public EventCallback EditClick { get; set; }
+    [Parameter] public EventCallback SetDefaultClick { get; set; }
+    [Parameter] public EventCallback CloseClick { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {

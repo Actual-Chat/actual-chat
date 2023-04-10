@@ -1,6 +1,12 @@
 .avatar-select-modal {
     @apply bg-02 w-auto;
 }
+.avatar-select-modal .dialog-body {
+    @apply py-2;
+}
+.avatar-select-modal .dialog-buttons {
+    @apply hidden;
+}
 .avatar-select {
     @apply flex-y gap-y-2 w-full md:w-80;
 }

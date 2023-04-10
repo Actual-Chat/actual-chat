@@ -14,11 +14,9 @@
                 </Icon>
                 <Right>
                     <TileButtons
-                        HideEditButton="false"
-                        HideSetDefaultButton="false"
                         Avatar="@avatar"
-                        OnEditClick="@(() => EditAvatar(avatar, "Edit avatar"))"
-                        OnSetDefaultClick="@(() => SetDefaultAvatar(avatar))"/>
+                        EditClick="@(() => EditAvatar(avatar, "Edit avatar"))"
+                        SetDefaultClick="@(() => SetDefaultAvatar(avatar))"/>
                 </Right>
                 <Content>
                     @avatar.Name
