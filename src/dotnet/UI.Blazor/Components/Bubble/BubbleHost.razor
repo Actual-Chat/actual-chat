@@ -2,32 +2,11 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
-@implements IHasServices
-@{
-    RenderFragment RenderBubble(BubbleModel bubble) =>
-        @<div
-             id="@bubble.Id"
-             @key="bubble.Id"
-             class="@(GetBubbleCssClass(bubble))">
-            <ul class="ac-bubble-list">
-                <DynamicComponent Type="@bubble.Ref.BubbleType" Parameters="@bubble.Parameters"/>
-            </ul>
-        </div>;
-    var bubble = _bubble;
-}
 
-<div class="ac-bubble-host @(GetHostCssClass())">
+<div class="ac-bubble-host">
     <CascadingValue Value="@this" IsFixed="true">
-        @if (IsOverlayVisible()) {
-            <div class="ac-bubble-overlay">
-                @if (bubble != null) {
-                    @RenderBubble(bubble);
-                }
-            </div>
-        } else {
-            @if (bubble != null) {
-                @RenderBubble(bubble);
-            }
+        @if (_bubble != null) {
+            <DynamicComponent Type="@_bubble.Ref.BubbleType" Parameters="@_bubble.Parameters"/>
         }
     </CascadingValue>
 </div>
@@ -38,7 +17,6 @@
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
-    [Inject] public IServiceProvider Services { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
@@ -139,19 +117,6 @@
         return Task.CompletedTask;
     }
 
-    private bool IsOverlayVisible()
-        => ScreenSize.IsNarrow();
-
-    private string GetHostCssClass()
-        => IsOverlayVisible() ? "has-overlay" : "";
-
-    private string GetBubbleCssClass(BubbleModel bubble) {
-        var cls = "ac-bubble";
-        if (IsOverlayVisible())
-            cls += " !block";
-        return cls;
-    }
-
     // Nested types
 
     private sealed record OwnHistoryState(BubbleHost Host, bool IsBubbleShown) : HistoryState
@@ -173,7 +138,7 @@
         public override HistoryState? Back()
             => BackStepCount == 0 ? null : With(false);
 
-    // "With" helpers
+        // "With" helpers
 
         public OwnHistoryState With(bool isBubbleShown)
             => IsBubbleShown == isBubbleShown ? this : this with { IsBubbleShown = isBubbleShown };

@@ -1,0 +1,17 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits BubbleBase
+
+Create @_group @_order
+
+@code {
+    private string? _group;
+    private string? _order;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var group, var order ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _group = group;
+        _order = order;
+    }
+}

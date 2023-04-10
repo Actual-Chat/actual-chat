@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.Components
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Events
 @using ActualChat.UI.Blazor.Services
@@ -9,7 +9,11 @@
         return;
 
     if (!account.IsGuestOrNone) {
-        <button class="account-btn btn-square" @onclick="@OnSettingsClick">
+        <button
+            class="account-btn btn-square"
+            data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>("chats", "3"))"
+            data-bubble-placement="@(FloatingPosition.Right.ToPositionString())"
+            @onclick="@OnSettingsClick">
             <AccountView/>
         </button>
     } else {

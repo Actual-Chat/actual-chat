@@ -37,6 +37,15 @@
                 SelectedTabIdChanged="@OnSelectedTabIdChanged">
                 <AdditionalButton>
                     <ChatListSortButton />
+                    <ButtonRound
+                        Class="chat-list-sort-btn btn-sm"
+                        data-bubble="@(BubbleRef.New<ChatListTabsBubble>("chats", "2"))"
+                        data-bubble-placement="@(FloatingPosition.Right.ToPositionString())"
+                        data-menu="@(MenuRef.New<ChatListSortMenu>())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                        <i class="@settings.Order.GetIcon() text-2xl"></i>
+                    </ButtonRound>
                 </AdditionalButton>
                 <ChildContent>
                     @for (var i = 0; i < ChatListFilter.All.Length; i++) {
