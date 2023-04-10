@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
 
-public class ContentController : ControllerBase
+public sealed class ContentController : ControllerBase
 {
     private readonly IBlobStorageProvider _blobs;
 

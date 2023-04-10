@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Audio.Controllers;
 
 [Route("api/[controller]/[action]")]
-public class AudioController : ControllerBase
+public sealed class AudioController : ControllerBase
 {
     private readonly IBlobStorageProvider _blobs;
 
