@@ -5,7 +5,7 @@ namespace ActualChat.Notification.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class NotificationsController : ControllerBase, INotifications
+public sealed class NotificationsController : ControllerBase, INotifications
 {
     private INotifications Service { get; }
     private ICommander Commander { get; }

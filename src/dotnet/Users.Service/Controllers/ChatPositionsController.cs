@@ -5,7 +5,7 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class ChatPositionsController: ControllerBase, IChatPositions
+public sealed class ChatPositionsController: ControllerBase, IChatPositions
 {
     private IChatPositions Service { get; }
     private ICommander Commander { get; }

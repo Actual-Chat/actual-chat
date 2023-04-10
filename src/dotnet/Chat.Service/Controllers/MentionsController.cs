@@ -5,7 +5,7 @@ namespace ActualChat.Chat.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class MentionsController : ControllerBase, IMentions
+public sealed class MentionsController : ControllerBase, IMentions
 {
     private IMentions Service { get; }
 

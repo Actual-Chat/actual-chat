@@ -5,7 +5,7 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class UserPresencesController : ControllerBase, IUserPresences
+public sealed class UserPresencesController : ControllerBase, IUserPresences
 {
     private IUserPresences Service { get; }
     private ICommander Commander { get; }

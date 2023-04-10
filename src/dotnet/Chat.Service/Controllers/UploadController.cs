@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Chat.Controllers;
 
 [ApiController]
-public class UploadController : ControllerBase
+public sealed class UploadController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private ILogger<UploadController> Log { get; }

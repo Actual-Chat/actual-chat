@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Users.Controllers;
 
 [ApiController]
-public class AvatarPicturesController : ControllerBase
+public sealed class AvatarPicturesController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private ICommander Commander { get; }

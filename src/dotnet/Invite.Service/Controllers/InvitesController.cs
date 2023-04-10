@@ -5,7 +5,7 @@ namespace ActualChat.Invite.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class InvitesController : ControllerBase, IInvites
+public sealed class InvitesController : ControllerBase, IInvites
 {
     private IInvites Service { get; }
     private ICommander Commander { get; }

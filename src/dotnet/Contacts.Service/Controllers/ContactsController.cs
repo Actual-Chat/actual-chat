@@ -5,7 +5,7 @@ namespace ActualChat.Contacts.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class ContactsController : ControllerBase, IContacts
+public sealed class ContactsController : ControllerBase, IContacts
 {
     private IContacts Service { get; }
     private ICommander Commander { get; }

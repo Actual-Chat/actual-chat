@@ -5,7 +5,7 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class AvatarsController : ControllerBase, IAvatars
+public sealed class AvatarsController : ControllerBase, IAvatars
 {
     private IAvatars Service { get; }
     private ICommander Commander { get; }
