@@ -65,17 +65,6 @@
 </Tile>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
-
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
-
-    private Task OnEditClick()
-        => ModalUI.Show(OwnAccountEditorModal.Model.Default);
 }

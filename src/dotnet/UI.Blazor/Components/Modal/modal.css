@@ -120,6 +120,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .dialog-buttons {
     @apply flex-x justify-end;
+    @apply py-2;
     @apply overflow-hidden;
 }
 .dialog-buttons.full-width {
