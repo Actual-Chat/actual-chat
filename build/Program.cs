@@ -340,7 +340,7 @@ internal static class Program
             try {
                 var dotnetTask = Cli
                     .Wrap(dotnet)
-                    .WithArguments($"build -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
+                    .WithArguments($"build ActualChat.sln -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
