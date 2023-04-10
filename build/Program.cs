@@ -413,19 +413,9 @@ internal static class Program
         Target("restore", async () => {
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try {
-                await Cli.Wrap(dotnet).WithArguments($"msbuild " +
-                        "ActualChat.sln " +
-                        "-noLogo " +
-                        "-t:Restore " +
-                        "-p:RestoreForce=true " +
-                        "-maxCpuCount " +
-                        "-nodeReuse:false " +
-                        "-p:UseRazorBuildServer=false " +
-                        "-p:UseSharedCompilation=false " +
-                        "-p:EnableAnalyzer=false " +
-                        "-p:EnableNETAnalyzers=false " +
-                        $"-p:Configuration={configuration}"
-                    ).ToConsole(Green("dotnet restore: "))
+                await Cli.Wrap(dotnet).WithArguments("restore ActualChat.sln")
+                    .ToConsole(Green("dotnet restore: "))
+                    .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
             }
             finally {
