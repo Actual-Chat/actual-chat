@@ -5,9 +5,9 @@ namespace ActualChat.App.Server.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class ServerFeaturesController : ControllerBase, IServerFeatures
+public sealed class ServerFeaturesController : ControllerBase, IServerFeatures
 {
-    protected IServerFeatures Service { get; }
+    private IServerFeatures Service { get; }
 
     public IServiceProvider Services { get; }
 

@@ -6,7 +6,7 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class ServerKvasController : ControllerBase, IServerKvas
+public sealed class ServerKvasController : ControllerBase, IServerKvas
 {
     private IServerKvas Service { get; }
     private ICommander Commander { get; }

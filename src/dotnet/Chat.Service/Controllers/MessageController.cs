@@ -3,7 +3,7 @@
 namespace ActualChat.Chat.Controllers;
 
 [ApiController]
-public class MessageController : ControllerBase
+public sealed class MessageController : ControllerBase
 {
     private readonly ISessionResolver _sessionResolver;
     private readonly ICommander _commander;

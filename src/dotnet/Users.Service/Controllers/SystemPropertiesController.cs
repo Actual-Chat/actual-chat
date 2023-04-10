@@ -6,7 +6,7 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors]
-public class SystemPropertiesController : ControllerBase, ISystemProperties
+public sealed class SystemPropertiesController : ControllerBase, ISystemProperties
 {
     private ISystemProperties Service { get; }
 

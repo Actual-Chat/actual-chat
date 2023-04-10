@@ -16,7 +16,7 @@ namespace ActualChat.Users.Controllers;
 
 [Route("mobileAuth")]
 [ApiController]
-public class MobileAuthController : Controller
+public sealed class MobileAuthController : Controller
 {
     private const string CallbackScheme = "xamarinessentials";
 

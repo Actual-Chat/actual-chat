@@ -5,7 +5,7 @@ namespace ActualChat.Chat.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class ReactionsController : ControllerBase, IReactions
+public sealed class ReactionsController : ControllerBase, IReactions
 {
     private ICommander Commander { get; }
     private IReactions Service { get; }

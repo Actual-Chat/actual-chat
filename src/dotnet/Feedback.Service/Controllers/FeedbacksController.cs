@@ -5,7 +5,7 @@ namespace ActualChat.Feedback.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors, UseDefaultSession]
-public class FeedbacksController : ControllerBase, IFeedbacks
+public sealed class FeedbacksController : ControllerBase, IFeedbacks
 {
     private IFeedbacks Service { get; }
     private ICommander Commander { get; }
