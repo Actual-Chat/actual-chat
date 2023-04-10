@@ -60,18 +60,26 @@ public class AppReplicaCache : ReplicaCache
         return output;
     }
 
-    protected override async ValueTask SetInternal<T>(ComputeMethodInput input, Result<T> output, CancellationToken cancellationToken)
+    protected override async ValueTask SetInternal<T>(ComputeMethodInput input, Result<T>? output, CancellationToken cancellationToken)
     {
         var ready = await _whenReady.ConfigureAwait(false);
         if (!ready)
             return;
-        if (output.HasError) // Don't store error outputs
-            return;
 
         var key = GetKey(input);
-        var value = ValueSerializer.Write(output.Value);
-        DebugLog?.LogDebug("Set({Key}) <- {Result}", key, output.Value);
-        Store.Set(key, value);
+        if (output is { } vOutput && !vOutput.HasError) {
+            var value = ValueSerializer.Write(vOutput.Value);
+            DebugLog?.LogDebug("Set({Key}) <- {Result}", key, vOutput.Value);
+            Store.Set(key, value);
+        }
+        else {
+            var message = !output.HasValue
+                ? "Set({Key}) <- clear(invalidation)"
+                : "Set({Key}) <- clear(error)";
+            DebugLog?.LogDebug(message, key);
+            Store.Set(key, null);
+        }
+
         if (ShouldForceFlushAfterSet(input.MethodDef))
             _ = Store.Flush(cancellationToken);
     }

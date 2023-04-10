@@ -14,9 +14,9 @@
     <MicrosoftExtensionsVersion>7.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>7.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>7.0.1</NpgsqlVersion>
-    <RedisVersion>2.6.96</RedisVersion>
+    <RedisVersion>2.6.104</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>5.1.17</StlFusionVersion>
+    <StlFusionVersion>5.1.25</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
@@ -97,7 +97,7 @@
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
-    <PackageVersion Include="RestEase" Version="1.6.1" />
+    <PackageVersion Include="RestEase" Version="1.6.2" />
     <PackageVersion Include="Pidgin" Version="3.2.1" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.2" />
     <PackageVersion Include="Polly" Version="7.2.3" />
@@ -175,7 +175,7 @@
     <PackageVersion Include="Roslynator.Analyzers" Version="4.2.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit.analyzers" Version="1.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
-    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Stl.Generators" Version="$(StlFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Android -->
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
