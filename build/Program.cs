@@ -217,6 +217,7 @@ internal static class Program
         Target("unit-tests", async () => {
             await Cli.Wrap(dotnet)
                 .WithArguments("test " +
+                "ActualChat.sln " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~UnitTests\" " +
                 "--no-restore " +
@@ -304,7 +305,8 @@ internal static class Program
 
         Target("integration-tests", async () => {
             await Cli.Wrap(dotnet)
-                .WithArguments($"test " +
+                .WithArguments("test " +
+                "ActualChat.sln " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\" " +
                 "--no-restore " +
@@ -411,7 +413,9 @@ internal static class Program
         Target("restore", async () => {
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try {
-                await Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
+                await Cli.Wrap(dotnet).WithArguments($"msbuild " +
+                        "ActualChat.sln " +
+                        "-noLogo " +
                         "-t:Restore " +
                         "-p:RestoreForce=true " +
                         "-maxCpuCount " +
