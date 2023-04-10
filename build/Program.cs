@@ -217,6 +217,7 @@ internal static class Program
         Target("unit-tests", async () => {
             await Cli.Wrap(dotnet)
                 .WithArguments("test " +
+                "ActualChat.sln " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~UnitTests\" " +
                 "--no-restore " +
@@ -304,7 +305,8 @@ internal static class Program
 
         Target("integration-tests", async () => {
             await Cli.Wrap(dotnet)
-                .WithArguments($"test " +
+                .WithArguments("test " +
+                "ActualChat.sln " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\" " +
                 "--no-restore " +
@@ -338,7 +340,7 @@ internal static class Program
             try {
                 var dotnetTask = Cli
                     .Wrap(dotnet)
-                    .WithArguments($"build -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
+                    .WithArguments($"build ActualChat.sln -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
@@ -411,17 +413,9 @@ internal static class Program
         Target("restore", async () => {
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try {
-                await Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
-                        "-t:Restore " +
-                        "-p:RestoreForce=true " +
-                        "-maxCpuCount " +
-                        "-nodeReuse:false " +
-                        "-p:UseRazorBuildServer=false " +
-                        "-p:UseSharedCompilation=false " +
-                        "-p:EnableAnalyzer=false " +
-                        "-p:EnableNETAnalyzers=false " +
-                        $"-p:Configuration={configuration}"
-                    ).ToConsole(Green("dotnet restore: "))
+                await Cli.Wrap(dotnet).WithArguments("restore ActualChat.sln")
+                    .ToConsole(Green("dotnet restore: "))
+                    .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
             }
             finally {
