@@ -2,18 +2,26 @@ namespace ActualChat.Users;
 
 public sealed class SortedCheckIns
 {
+    private static readonly UserId _maxUserId = new (new string('z', 8));
     private readonly object _lock = new ();
     // not just queue to avoid duplicates in case of frequent check-ins
     // sorted because we always want to take the earliest one
     private readonly SortedSet<UserCheckIn> _sortedItems = new (CheckInComparer.Default);
+    private readonly Dictionary<UserId, Moment> _items = new ();
 
-    public UserCheckIn? Set(UserId userId, Moment lastCheckInAt)
+    public UserCheckIn? Set(UserCheckIn checkIn)
     {
         lock (_lock) {
-            var item = new UserCheckIn(userId, lastCheckInAt);
-            if (_sortedItems.TryGetValue(item, out var previous))
-                _sortedItems.Remove(item); // force put into the end
-            _sortedItems.Add(item);
+            UserCheckIn? previous = null;
+            if (_items.TryGetValue(checkIn.UserId, out var prevAt)) {
+                if (prevAt >= checkIn.At)
+                    return null;
+
+                previous = checkIn with { At = prevAt };
+                _sortedItems.Remove(previous); // force put into the end
+            }
+            _items[checkIn.UserId] = checkIn.At;
+            _sortedItems.Add(checkIn);
             return previous;
         }
     }
@@ -21,9 +29,13 @@ public sealed class SortedCheckIns
     public IReadOnlyList<UserCheckIn> PopRange(Moment max)
     {
         lock (_lock) {
-            var view = _sortedItems.GetViewBetween(null, new UserCheckIn(UserId.None, max));
+            var view = _sortedItems.GetViewBetween(null, new UserCheckIn(_maxUserId, max));
             var checkIns = view.ToList();
-            view.Clear();
+            if (checkIns.Count > 0) {
+                view.Clear();
+                foreach (var checkIn in checkIns)
+                    _items.Remove(checkIn.UserId);
+            }
             return checkIns;
         }
     }

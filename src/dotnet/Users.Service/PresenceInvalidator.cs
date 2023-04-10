@@ -21,7 +21,7 @@ public class PresenceInvalidator : WorkerBase
 
     public bool HandleCheckIn(UserId userId, Moment lastCheckInAt)
     {
-        var previous = _awayQueue.Set(userId, lastCheckInAt);
+        var previous = _awayQueue.Set(new (userId, lastCheckInAt));
         return IsOutdated(previous);
     }
 
