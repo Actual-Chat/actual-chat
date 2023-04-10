@@ -19,12 +19,10 @@ public class UserPresencesBackend : IUserPresencesBackend, IDisposable
         => _presenceInvalidator.Dispose();
 
     // [ComputeMethod]
-
     public virtual Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
         => Task.FromResult(GetPresence(userId));
 
     // [CommandHandler]
-
     public virtual Task CheckIn(IUserPresencesBackend.CheckInCommand command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
