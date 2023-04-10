@@ -94,6 +94,17 @@
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
+  <!-- Android custom AOT profile -->
+
+  <PropertyGroup>
+    <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <AndroidAotProfile Include="custom.aprof" />
+  </ItemGroup>
+
+  <!--  -->
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
   </PropertyGroup>
@@ -116,6 +127,7 @@
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
+    <PackageReference Include="Mono.AotProfiler.Android" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
