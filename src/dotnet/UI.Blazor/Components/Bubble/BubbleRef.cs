@@ -7,30 +7,28 @@ public readonly struct BubbleRef
     private const char Separator = '|';
 
     public Type BubbleType { get; }
-    public string[] Arguments { get; }
+    public string Group { get; }
+    public int Order { get; }
 
-    public static BubbleRef New<TBubble>()
+    public static BubbleRef New<TBubble>(string group, int order)
         where TBubble : IBubble
-        => new (typeof(TBubble));
-    public static BubbleRef New<TBubble>(params string[] arguments)
-        where TBubble : IBubble
-        => new (typeof(TBubble), arguments);
+        => new (typeof(TBubble), group, order);
 
-    public BubbleRef(Type bubbleType)
-        : this(bubbleType, Array.Empty<string>()) { }
-    public BubbleRef(Type bubbleType, params string[] arguments)
+    public BubbleRef(Type bubbleType, string group, int order)
     {
         BubbleType = bubbleType;
-        Arguments = arguments;
+        Group = group;
+        Order = order;
     }
 
     public override string ToString()
     {
-        var buffer = MemoryBuffer<string>.LeaseAndSetCount(false, Arguments.Length + 1);
+        var buffer = MemoryBuffer<string>.LeaseAndSetCount(false, 3);
         var span = buffer.Span;
         try {
             span[0] = BubbleRegistry.GetTypeId(BubbleType).Value;
-            Arguments.CopyTo(span.Slice(1));
+            span[1] = Group;
+            span[2] = Order.ToString(CultureInfo.InvariantCulture);
             return ZString.Join(Separator, (ReadOnlySpan<string>) span);
         }
         finally {
@@ -46,15 +44,15 @@ public readonly struct BubbleRef
     public static bool TryParse(string value, out BubbleRef result)
     {
         var parts = value.Split(Separator);
-        if (parts.Length == 0) {
+        if (parts.Length != 3) {
             result = default;
             return false;
         }
 
         var typeId = parts[0];
-        result = parts.Length == 1
-            ? new BubbleRef(BubbleRegistry.GetType(typeId))
-            : new BubbleRef(BubbleRegistry.GetType(typeId), parts[1..]);
+        var group = parts[1];
+        var order = int.Parse(parts[2], CultureInfo.InvariantCulture);
+        result = new BubbleRef(BubbleRegistry.GetType(typeId), group, order);
         return true;
     }
 }

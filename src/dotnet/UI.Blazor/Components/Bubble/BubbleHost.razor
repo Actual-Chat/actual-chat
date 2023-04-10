@@ -6,7 +6,7 @@
 <div class="ac-bubble-host">
     <CascadingValue Value="@this" IsFixed="true">
         @if (_bubble != null) {
-            <DynamicComponent Type="@_bubble.Ref.BubbleType" Parameters="@_bubble.Parameters"/>
+            <DynamicComponent Type="@_bubble.Ref.BubbleType" />
         }
     </CascadingValue>
 </div>
@@ -76,13 +76,7 @@
 
         _jsBubbleId = id;
         var bubbleRef = BubbleRef.Parse(bubbleRefValue);
-        var bubble = new BubbleModel(
-            id,
-            bubbleRef,
-            new Dictionary<string, object>() {
-                { nameof(IBubble.Id), id },
-                { nameof(IBubble.Arguments), bubbleRef.Arguments },
-            });
+        var bubble = new BubbleModel(id, bubbleRef);
 
         _bubble = bubble;
         History.Save<OwnHistoryState>();
@@ -144,8 +138,5 @@
             => IsBubbleShown == isBubbleShown ? this : this with { IsBubbleShown = isBubbleShown };
     }
 
-    private sealed record BubbleModel(
-        string Id,
-        BubbleRef Ref,
-        Dictionary<string, object> Parameters);
+    private sealed record BubbleModel(string Id, BubbleRef Ref);
 }

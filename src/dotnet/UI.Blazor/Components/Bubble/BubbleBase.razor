@@ -3,7 +3,6 @@
 
 @code {
     [Parameter] public string Id { get; set; } = "";
-    [Parameter] public string[] Arguments { get; set; } = Array.Empty<string>();
 
     [CascadingParameter] public BubbleHost Host { get; set; } = null!;
 
