@@ -76,6 +76,15 @@ public class ChatAttachmentsUI : IComputeService
         InvalidateEditorAttachments();
     }
 
+    // TODO: consider chatId
+    public void Remove(Attachment attachment)
+    {
+        lock (_lock) {
+            _editorAttachments.RemoveAll(x => x.Id == attachment.Id);
+            _uploading.Remove(attachment.Id);
+        }
+    }
+
     private void InvalidateEditorAttachments()
     {
         using (Computed.Invalidate())

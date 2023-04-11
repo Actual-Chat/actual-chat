@@ -233,8 +233,10 @@
     private ValueTask ShowFilePicker()
         => JSRef.InvokeVoidAsync("showFilePicker");
 
-    private ValueTask RemoveAttachment(Attachment attachment) {
-        AttachmentListRef.Attachments = AttachmentListRef.Attachments.Remove(attachment);
+    private ValueTask RemoveAttachment(Attachment attachment)
+    {
+        ChatAttachmentsUI.Remove(attachment);
+        // TODO: probably move to chat-attachments-ui.ts or attachment-list.ts
         return JSRef.InvokeVoidAsync("removeAttachment", attachment.Id);
     }
 
