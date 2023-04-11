@@ -151,11 +151,7 @@ export class ChatMessageEditor {
         };
 
         debugLog?.log(`post: sending request with ${attachments.length} attachment(s)`);
-        let url = 'api/chats/' + chatId + '/message';
-        // @ts-ignore
-        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
-        if (baseUri)
-            url = new URL(url, baseUri).toString();
+        let url = this.getUrl(`api/chats/${chatId}/message`);
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -434,9 +430,16 @@ export class ChatMessageEditor {
                     }
                 }
             };
-            xhr.open('post', `api/chats/${this.chatId}/upload-picture`, true);
+            const url = this.getUrl(`api/chats/${this.chatId}/upload-picture`)
+            xhr.open('post', url, true);
             xhr.send(formData);
         })
+    }
+
+    private getUrl(url: string) {
+        // @ts-ignore
+        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
+        return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }
 
