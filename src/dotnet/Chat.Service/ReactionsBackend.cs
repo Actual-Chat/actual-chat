@@ -60,7 +60,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
         }
 
         var emoji = Emoji.Get(reaction.EmojiId).Require();
-        var entry = await GetChatEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
         var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, cancellationToken).Require().ConfigureAwait(false);
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).Require().ConfigureAwait(false);
 
@@ -159,19 +159,5 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             entry = entry with { HasReactions = hasReactions };
             entry = await Commander.Call(new IChatsBackend.UpsertEntryCommand(entry), cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    private async Task<ChatEntry?> GetChatEntry(ChatEntryId entryId, CancellationToken cancellationToken)
-    {
-        var idTile = IdTileStack.FirstLayer.GetTile(entryId.LocalId);
-        var chatTile = await ChatsBackend.GetTile(
-                entryId.ChatId,
-                entryId.Kind,
-                idTile.Range,
-                false,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var entry = chatTile.Entries.FirstOrDefault(x => x.LocalId == entryId.LocalId);
-        return entry;
     }
 }
