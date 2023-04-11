@@ -84,6 +84,7 @@
     private static object MentionListManagerKey { get; } = new();
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
+    private readonly AsyncLock _lock = new(ReentryMode.CheckedPass);
 
     private bool Autofocus => ScreenSize.IsWide();
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
@@ -103,6 +104,8 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
+    [Inject] private ChatMessagesUI ChatMessagesUI { get; init; } = null!;
+    [Inject] private ChatAttachmentsUI ChatAttachmentsUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -162,30 +165,26 @@
 
     [JSInvokable]
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
-        => AttachmentListRef.Add(id, url, fileName, fileType, length);
+    // TODO: check if they are really nullable
+        => ChatAttachmentsUI.Add(new (id, url, fileName ?? "", fileType ?? "", length));
 
     [JSInvokable]
     public void UpdateProgress(int id, int progress)
-        => AttachmentListRef.UpdateProgress(id, progress);
+        => ChatAttachmentsUI.UpdateProgress(id, progress);
 
     // Private methods
     [Inject] private BannerUI BannerUI { get; set; } = null!;
 
     private async Task Post(string? text = null) {
+        using var __ = await _lock.Lock();
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
-        var attachments = AttachmentListRef.Attachments;
-        if (attachments.Any() && !attachments.All(x => x.Uploaded)) {
-            return;
-        }
-
-        if (text.IsNullOrEmpty() && !attachments.Any())
-            return;
 
         _ = TuneUI.Play("send-message");
         try {
-            AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
             _ = MarkupEditorRef.Clear();
+
+            await ChatMessagesUI.EnqueueForPosting(Chat.Id, text);
 
             var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
@@ -218,8 +217,9 @@
             _ = ActiveChatsUI.AddActiveChat(Chat.Id);
             await ClearAttachments();
         }
-        catch (Exception e) {
-            AttachmentListRef.Attachments = attachments;
+        catch (Exception e)
+        {
+            await MarkupEditorRef.SetText(text);
             ErrorUI.ShowError(e);
         }
     }

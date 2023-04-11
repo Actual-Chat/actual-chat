@@ -1,13 +1,11 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public class Attachment
+public record Attachment(int Id, string Url, string FileName, string FileType, int Length)
 {
-    public int Id { get; init; }
-    public string Url { get; init; } = "";
-    public string FileName { get; init; } = "";
-    public string FileType { get; init; } = "";
-    public int Length { get; init; }
-    public int Progress { get; set; } = 0;
-    public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
+    public int Progress { get; init; }
+    public bool IsImage => FileType.OrdinalIgnoreCaseStartsWith("image");
     public bool Uploaded => Progress == 100;
+
+    public Attachment WithProgress(int value)
+        => this with { Progress = value };
 }

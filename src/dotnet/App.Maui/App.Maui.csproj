@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFrameworks>net7.0-android;net7.0-ios;net7.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks>net7.0-ios;</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net7.0-windows10.0.22000.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
@@ -113,6 +113,11 @@
     <CreatePackage>false</CreatePackage>
     <CodesignProvision>Automatic</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
+    <CodesignKey>Apple Development: Frol Chizhov (6824A38F9V)</CodesignKey>
+    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
   </PropertyGroup>
 
   <!-- Platform-specific references -->

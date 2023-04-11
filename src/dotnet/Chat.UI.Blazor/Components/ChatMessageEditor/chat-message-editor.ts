@@ -200,6 +200,11 @@ export class ChatMessageEditor {
     }
 
     /** Called by Blazor */
+    public getAttachments() {
+        return [...this.attachments.values()].map(x => x.MediaId);
+    }
+
+    /** Called by Blazor */
     public setChatId(chatId: string) {
         this.chatId = chatId;
         this.restoreDraft();
@@ -409,6 +414,7 @@ export class ChatMessageEditor {
         this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
     }
 
+    // TODO: extract to chat-attachments-ui.ts
     private async uploadFile(
         file: File,
         progressReporter: (progressPercent: number) => void,
