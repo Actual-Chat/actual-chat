@@ -55,9 +55,6 @@
 }
 
 @code {
-    private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
-
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private ChatAttachmentsUI ChatAttachmentsUI { get; init; } = null!;
 
     [Parameter] public EventCallback<Attachment> RemoveClick { get; set; }
@@ -73,5 +70,5 @@
         => new() { InitialValue = ImmutableArray<Attachment>.Empty, Category = GetStateCategory() };
 
     protected override Task<ImmutableArray<Attachment>> ComputeState(CancellationToken cancellationToken)
-        => Task.FromResult(ChatAttachmentsUI.GetEditorAttachments(cancellationToken));
+        => ChatAttachmentsUI.GetEditorAttachments(cancellationToken);
 }

@@ -5,6 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ChatAttachmentsUI : IComputeService
 {
     private readonly object _lock = new ();
+    // TODO: consider chat id
     private readonly List<Attachment> _editorAttachments = new ();
     private readonly Dictionary<int, Attachment> _uploading = new ();
 
@@ -50,10 +51,10 @@ public class ChatAttachmentsUI : IComputeService
     }
 
     [ComputeMethod]
-    public ImmutableArray<Attachment> GetEditorAttachments(CancellationToken cancellationToken = default)
+    public virtual Task<ImmutableArray<Attachment>> GetEditorAttachments(CancellationToken cancellationToken = default)
     {
         lock (_lock)
-            return _editorAttachments.ToImmutableArray();
+            return Task.FromResult(_editorAttachments.ToImmutableArray());
     }
 
     public ImmutableArray<Attachment> PopAll()

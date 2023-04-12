@@ -65,6 +65,7 @@ public class ChatMessagesUI : WorkerBase, IComputeService, INotifyInitialized
     private async Task DispatchQueue(CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await Task.Delay(1000).ConfigureAwait(false); // TODO: remove
         // TODO: continue if some entry fails
         while (_queue.TryPeek(out var change)) {
             var (chatId, text, attachments, relatedEntry) = change;

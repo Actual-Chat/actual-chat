@@ -1,6 +1,6 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public record Attachment(int Id, string Url, string FileName, string FileType, int Length)
+public record Attachment(ChatId ChatId, int Id, string Url, string FileName, string FileType, int Length)
 {
     public int Progress { get; init; }
     public bool IsImage => FileType.OrdinalIgnoreCaseStartsWith("image");

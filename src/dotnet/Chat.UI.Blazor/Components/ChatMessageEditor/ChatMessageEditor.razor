@@ -166,7 +166,7 @@
     [JSInvokable]
     public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
     // TODO: check if they are really nullable
-        => ChatAttachmentsUI.Add(new (id, url, fileName ?? "", fileType ?? "", length));
+        => ChatAttachmentsUI.Add(new (Chat.Id, id, url, fileName ?? "", fileType ?? "", length));
 
     [JSInvokable]
     public void UpdateProgress(int id, int progress)
