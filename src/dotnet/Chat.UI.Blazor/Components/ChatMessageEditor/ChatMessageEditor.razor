@@ -108,6 +108,7 @@
     [Inject] private ChatAttachmentsUI ChatAttachmentsUI { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
+    [Inject] private BannerUI BannerUI { get; set; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -164,16 +165,19 @@
         => NotifyCallPanelRef.Close();
 
     [JSInvokable]
-    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
+    public bool AddAttachment(ChatId chatId, int id, string url, string? fileName, string? fileType, int length)
     // TODO: check if they are really nullable
-        => ChatAttachmentsUI.Add(new (Chat.Id, id, url, fileName ?? "", fileType ?? "", length));
+        => ChatAttachmentsUI.Add(new (chatId, id, url, fileName ?? "", fileType ?? "", length));
 
     [JSInvokable]
-    public void UpdateProgress(int id, int progress)
-        => ChatAttachmentsUI.UpdateProgress(id, progress);
+    public void UpdateProgress(ChatId chatId, int id, int progress)
+        => ChatAttachmentsUI.UpdateProgress(chatId, id, progress);
+
+    [JSInvokable]
+    public void CompleteUpload(ChatId chatId, int id, MediaId mediaId)
+        => ChatAttachmentsUI.CompleteUpload(chatId, id, mediaId);
 
     // Private methods
-    [Inject] private BannerUI BannerUI { get; set; } = null!;
 
     private async Task Post(string? text = null) {
         using var __ = await _lock.Lock();

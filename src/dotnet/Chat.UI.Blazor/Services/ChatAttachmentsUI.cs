@@ -7,7 +7,7 @@ public class ChatAttachmentsUI : IComputeService
     private readonly object _lock = new ();
     // TODO: consider chat id
     private readonly List<Attachment> _editorAttachments = new ();
-    private readonly Dictionary<int, Attachment> _uploading = new ();
+    private readonly Dictionary<Key, Attachment> _uploading = new ();
 
     private ErrorUI ErrorUI { get; }
 
@@ -27,6 +27,7 @@ public class ChatAttachmentsUI : IComputeService
             }
 
             _editorAttachments.Add(attachment);
+            _uploading.Add(new (attachment.ChatId, attachment.Id), attachment);
         }
 
         InvalidateEditorAttachments();
@@ -34,12 +35,13 @@ public class ChatAttachmentsUI : IComputeService
         return true;
     }
 
-    public void UpdateProgress(int id, int progress)
+    public void UpdateProgress(ChatId chatId, int id, int progress)
     {
         lock (_lock) {
-            var uploading = _uploading[id]?.WithProgress(progress);
+            var key = new Key(chatId, id);
+            var uploading = _uploading[key]?.WithProgress(progress);
             if (uploading is not null)
-                _uploading[id] = uploading;
+                _uploading[key] = uploading;
 
             var idx = _editorAttachments.FindIndex(x => x.Id == id);
             if (idx >= 0) {
@@ -50,9 +52,28 @@ public class ChatAttachmentsUI : IComputeService
         }
     }
 
+    public void CompleteUpload(ChatId chatId, int id, MediaId mediaId)
+    {
+        lock (_lock) {
+            var key = new Key(chatId, id);
+            var uploading = _uploading[key]?.WithMediaId(mediaId);
+            if (uploading is not null)
+                _uploading[key] = uploading;
+
+            // TODO: not nice that _editorAttachments and _uploading duplicate some logic
+            var idx = _editorAttachments.FindIndex(x => x.Id == id);
+            if (idx >= 0) {
+                _editorAttachments[idx] = _editorAttachments[idx].WithMediaId(mediaId);
+                // TODO: optimize - update only single item
+                InvalidateEditorAttachments();
+            }
+        }
+    }
+
     [ComputeMethod]
     public virtual Task<ImmutableArray<Attachment>> GetEditorAttachments(CancellationToken cancellationToken = default)
     {
+        // todo:
         lock (_lock)
             return Task.FromResult(_editorAttachments.ToImmutableArray());
     }
@@ -87,8 +108,9 @@ public class ChatAttachmentsUI : IComputeService
     {
         lock (_lock) {
             _editorAttachments.RemoveAll(x => x.Id == attachment.Id);
-            _uploading.Remove(attachment.Id);
+            _uploading.Remove(new (attachment.ChatId, attachment.Id));
         }
+        InvalidateEditorAttachments();
     }
 
     private void InvalidateEditorAttachments()
@@ -96,4 +118,6 @@ public class ChatAttachmentsUI : IComputeService
         using (Computed.Invalidate())
             _ = GetEditorAttachments(default);
     }
+
+    private record Key(ChatId ChatId, int Lid);
 }

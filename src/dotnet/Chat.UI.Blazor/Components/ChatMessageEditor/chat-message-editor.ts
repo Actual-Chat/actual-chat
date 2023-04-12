@@ -36,7 +36,7 @@ export class ChatMessageEditor {
     private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
     private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
     private isNotifyPanelOpen: boolean = false;
-    private attachmentsIdSeed: number = 0;
+    private attachmentsIdSeed: number = 0; // TODO: must be save/restored with draft
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
     private chatId: string;
 
@@ -366,6 +366,7 @@ export class ChatMessageEditor {
     }
 
     private async addAttachment(file: File): Promise<boolean> {
+        const chatId = this.chatId;
         const attachment: Attachment = {
             Id: this.attachmentsIdSeed,
             File: file,
@@ -375,7 +376,7 @@ export class ChatMessageEditor {
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
         const isAdded: boolean = await this.blazorRef.invokeMethodAsync(
-            'AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
+            'AddAttachment', chatId, attachment.Id, attachment.Url, file.name, file.type, file.size);
         if (!isAdded) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
@@ -388,11 +389,13 @@ export class ChatMessageEditor {
             const upload = this.uploadFile(
                 file,
                 async (progressPercent) => {
-                    await this.blazorRef.invokeMethodAsync('UpdateProgress', attachment.Id, Math.trunc(progressPercent));
+                    await this.blazorRef.invokeMethodAsync('UpdateProgress', chatId, attachment.Id, Math.trunc(progressPercent));
                 }
             );
-            upload.then(x => {
+            upload.then(async x => {
+                // TODO: probably client-side attachment list is redundant.
                 attachment.MediaId = x.mediaId;
+                await this.blazorRef.invokeMethodAsync('CompleteUpload', chatId, attachment.Id, x.mediaId);
             });
         }
         return isAdded;
