@@ -10,7 +10,9 @@
 
 <NavbarButton
     Tooltip="Create"
-    data-bubble="@(BubbleRef.New<CreateChatBubble>("chats", 1))"
+    data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+    data-bubble-group="chats"
+    data-bubble-order="1"
     data-bubble-placement="@(FloatingPosition.Right.ToPositionString())"
     Click="OnCreateChatClick">
     <i class="icon-plus text-2xl font-medium"></i>

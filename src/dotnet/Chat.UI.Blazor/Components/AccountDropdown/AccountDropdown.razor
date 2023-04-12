@@ -11,7 +11,9 @@
     if (!account.IsGuestOrNone) {
         <button
             class="account-btn btn-square"
-            data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>("chats", 3))"
+            data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>())"
+            data-bubble-group="chats"
+            data-bubble-order="3"
             data-bubble-placement="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@OnSettingsClick">
             <AccountView/>
