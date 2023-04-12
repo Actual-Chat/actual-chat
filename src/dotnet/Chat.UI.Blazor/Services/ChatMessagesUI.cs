@@ -1,6 +1,8 @@
-﻿namespace ActualChat.Chat.UI.Blazor.Services;
+﻿using Stl.Interception;
 
-public class ChatMessagesUI : WorkerBase, IComputeService
+namespace ActualChat.Chat.UI.Blazor.Services;
+
+public class ChatMessagesUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly ConcurrentQueue<EntryChange> _queue = new ();
     private readonly SemaphoreSlim _semaphore = new (0, 1);
@@ -17,6 +19,9 @@ public class ChatMessagesUI : WorkerBase, IComputeService
         UICommander = services.UICommander();
         Log = services.LogFor<ChatMessagesUI>();
     }
+
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
     public async Task EnqueueForPosting(ChatId chatId, string text)
     {
