@@ -100,7 +100,9 @@ namespace ActualChat.UI.Blazor.App
             // Fusion services
             var fusion = services.AddFusion();
             var fusionClient = fusion.AddRestEaseClient();
-            if (appKind == AppKind.WasmApp)
+            const string cookieHeaderName = "cookie";
+            var isWasm = appKind == AppKind.WasmApp;
+            if (isWasm)
                 fusionClient.ConfigureHttpClient((c, name, o) => {
                     var urlMapper = c.GetRequiredService<UrlMapper>();
                     var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
@@ -120,7 +122,7 @@ namespace ActualChat.UI.Blazor.App
                         client.BaseAddress = clientBaseUrl.ToUri();
                         client.DefaultRequestVersion = HttpVersion.Version30;
                         client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-                        client.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{SessionAffinityKey}\"");
+                        client.DefaultRequestHeaders.Add(cookieHeaderName, GetCookieHeader());
                     });
                     o.HttpMessageHandlerBuilderActions.Add(b => {
                         if (b.PrimaryHandler is HttpClientHandler h)
@@ -134,6 +136,12 @@ namespace ActualChat.UI.Blazor.App
                     BaseUri = urlMapper.BaseUri,
                     LogLevel = LogLevel.Information,
                     MessageLogLevel = LogLevel.None,
+                    ClientWebSocketFactory = c1 => {
+                        var client = WebSocketChannelProvider.Options.DefaultClientWebSocketFactory(c1);
+                        if (!isWasm)
+                            client.Options.SetRequestHeader(cookieHeaderName, GetCookieHeader());
+                        return client;
+                    },
                 };
             });
 
@@ -142,6 +150,9 @@ namespace ActualChat.UI.Blazor.App
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
             step.Close();
         }
+
+        private static string GetCookieHeader()
+            => $"GCLB=\"{SessionAffinityKey}\"";
 
         private static string GenerateSessionAffinityKey()
             => RandomStringGenerator.Default.Next(16, RandomStringGenerator.Base16Alphabet);
