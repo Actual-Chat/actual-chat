@@ -1,27 +1,32 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using Stl.Generators
 @implements IAsyncDisposable
 
 <div class="ac-bubble-host">
     <CascadingValue Value="@this" IsFixed="true">
         @if (_bubble != null) {
-            <DynamicComponent Type="@_bubble.Ref.BubbleType" />
+            <div id="@_bubble.Id"
+                 @key="_bubble.Id"
+                 class="ac-bubble">
+                <DynamicComponent Type="@_bubble.Ref.BubbleType" Parameters="@_bubble.Parameters"/>
+            </div>
         }
     </CascadingValue>
 </div>
 
 @code {
+    private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
+
     private BubbleModel? _bubble;
-    private string? _jsBubbleId;
+    private List<BubbleModel>? _bubbles;
+    private string? _bubbleGroup;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
-    [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private BubbleUI BubbleUI { get; set; } = null!;
-
-    [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
@@ -30,79 +35,39 @@
         _blazorRef = null!;
     }
 
-    protected override void OnInitialized()
-    {
-        History.Register(new OwnHistoryState(this, false));
+    protected override void OnInitialized() {
         ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
     }
 
-    public ValueTask Show(string group) {
+    public async ValueTask ShowBubbleGroup(string group) {
+        if (string.Equals(_bubbleGroup, group, StringComparison.Ordinal))
+            return;
 
-    }
-
-    public ValueTask Show(
-        BubbleRef bubbleRef,
-        string triggerElementId,
-        string? placement = null)
-        => _jsRef.InvokeVoidAsync("showOrPosition", bubbleRef, triggerElementId, placement);
-
-    public ValueTask Show(
-        BubbleRef bubbleRef,
-        ElementReference triggerElement,
-        string? placement = null)
-        => _jsRef.InvokeVoidAsync("showOrPosition", bubbleRef, triggerElement, placement);
-
-    public async ValueTask Hide() {
-        var bubble = _bubble;
-        if (bubble != null) {
-            _bubble = null;
-            StateHasChanged();
-            History.Save<OwnHistoryState>();
-        }
-
-        if (_jsBubbleId != null) {
-            _jsBubbleId = null;
-            await _jsRef.InvokeVoidAsync("hideById", _jsBubbleId);
-        }
-    }
-
-    public ValueTask Position(IBubble bubble)
-        => Position(bubble.Id);
-    public ValueTask Position(string bubbleId) {
-        if (_jsBubbleId != bubbleId)
-            return ValueTask.CompletedTask;
-
-        return _jsRef.InvokeVoidAsync("positionById", bubbleId);
-    }
-
-    // JS interface
-
-    [JSInvokable]
-    public Task OnShowRequest(string id, string bubbleRefValue) {
-        if (_bubble?.Id == id)
-            return Task.CompletedTask;
-
-        _jsBubbleId = id;
-        var bubbleRef = BubbleRef.Parse(bubbleRefValue);
-        var bubble = new BubbleModel(id, bubbleRef);
-
-        _bubble = bubble;
-        History.Save<OwnHistoryState>();
+        _bubbleGroup = group;
+        var bubbles = await _jsRef.InvokeAsync<BubbleInfo[]>("getBubblesByGroup", CancellationToken.None, group);
+        _bubbles = bubbles
+            .Select(x => {
+                var id = IdGenerator.Next();
+                return new BubbleModel(
+                    id,
+                    BubbleRef.Parse(x.BubbleRef),
+                    x.Order,
+                    new Dictionary<string, object> {
+                        { nameof(IBubble.Id), id },
+                    });
+            })
+            .OrderBy(x => x.Order)
+            .ToList();
+        _bubble = _bubbles.FirstOrDefault();
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
-    [JSInvokable]
-    public Task OnHideRequest(string id) {
-        var bubble = _bubble;
-        if (bubble?.Id != id)
-            return Task.CompletedTask;
+    public async ValueTask ShowBubble(IBubble bubble) {
+        var model = _bubbles?.Find(x => x.Id == bubble.Id);
+        if (model == null)
+            return;
 
-        _jsBubbleId = null;
-        _bubble = null;
-        History.Save<OwnHistoryState>();
-        StateHasChanged();
-        return Task.CompletedTask;
+        await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, model.Id, model.Ref);
     }
 
     // Protected & private methods
@@ -115,36 +80,15 @@
         }
     }
 
-    protected override Task OnParametersSetAsync() {
-        return Task.CompletedTask;
-    }
-
     // Nested types
 
-    private sealed record OwnHistoryState(BubbleHost Host, bool IsBubbleShown) : HistoryState
-    {
-        public override int BackStepCount => IsBubbleShown ? 1 : 0;
+    private sealed record BubbleModel(
+        string Id,
+        BubbleRef Ref,
+        int Order,
+        Dictionary<string, object> Parameters);
 
-        public override string Format()
-            => IsBubbleShown.ToString();
-
-        public override HistoryState Save() {
-            return With(Host._bubble != null);
-        }
-
-        public override void Apply(HistoryTransition transition) {
-            if (!IsBubbleShown && Host._bubble != null)
-                _ = Host.Hide();
-        }
-
-        public override HistoryState? Back()
-            => BackStepCount == 0 ? null : With(false);
-
-        // "With" helpers
-
-        public OwnHistoryState With(bool isBubbleShown)
-            => IsBubbleShown == isBubbleShown ? this : this with { IsBubbleShown = isBubbleShown };
-    }
-
-    private sealed record BubbleModel(string Id, BubbleRef Ref);
+    private sealed record BubbleInfo(
+        string BubbleRef,
+        int Order);
 }

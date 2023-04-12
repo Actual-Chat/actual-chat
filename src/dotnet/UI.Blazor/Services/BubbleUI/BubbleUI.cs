@@ -9,10 +9,9 @@ public sealed class BubbleUI : IHasAcceptor<BubbleHost>
     public Task WhenReady => HostAcceptor.WhenAccepted();
     public BubbleHost Host => HostAcceptor.Value;
 
-    public async ValueTask Show(string group, CancellationToken cancellationToken = default)
+    public async ValueTask Show(string group)
     {
         await WhenReady;
-
-        return Host.Show(group);
+        await Host.ShowBubbleGroup(group);
     }
 }

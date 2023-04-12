@@ -7,5 +7,5 @@
     [CascadingParameter] public BubbleHost Host { get; set; } = null!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
-        => await Host.Position(this);
+        => await Host.ShowBubble(this);
 }

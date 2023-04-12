@@ -67,6 +67,7 @@
     TabPanel _tabPanel = null!;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
         await ChatListUI.WhenLoaded;
@@ -74,6 +75,14 @@
 
     protected override void OnAfterRender(bool firstRender)
         => _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
+    protected override void OnAfterRender(bool firstRender) {
+        LoadingUI.MarkLoaded();
+        if (State.Value != Model.Loading) {
+            LoadingUI.ReportChatListLoaded();
+            _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
+            _ = BubbleUI.Show("chats");
+        }
+    }
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";
