@@ -241,7 +241,8 @@
     }
 
     private ValueTask ClearAttachments() {
-        AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
+        ChatAttachmentsUI.ClearEditorAttachments();
+    // TODO: probably move to chat-attachments-ui.ts or attachment-list.ts
         return JSRef.InvokeVoidAsync("clearAttachments");
     }
 

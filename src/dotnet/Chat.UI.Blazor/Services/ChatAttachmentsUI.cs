@@ -59,12 +59,10 @@ public class ChatAttachmentsUI : IComputeService
     public ImmutableArray<Attachment> PopAll()
     {
         ImmutableArray<Attachment> result;
-
         lock (_lock) {
             result = _editorAttachments.ToImmutableArray();
             _editorAttachments.Clear();
         }
-
         InvalidateEditorAttachments();
         return result;
     }
@@ -77,6 +75,13 @@ public class ChatAttachmentsUI : IComputeService
     }
 
     // TODO: consider chatId
+    public void ClearEditorAttachments()
+    {
+        lock (_lock)
+            _editorAttachments.Clear();
+        InvalidateEditorAttachments();
+    }
+
     public void Remove(Attachment attachment)
     {
         lock (_lock) {
