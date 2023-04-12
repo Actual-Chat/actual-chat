@@ -4,7 +4,7 @@ namespace ActualChat.Chat;
 
 [DataContract]
 public sealed record MentionMarkup(
-    [property: DataMember] string Id,
+    [property: DataMember] MentionId Id,
     [property: DataMember] string Name = ""
     ) : Markup
 {
@@ -20,7 +20,7 @@ public sealed record MentionMarkup(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string NameOrId => Name.NullIfEmpty() ?? Id;
 
-    public MentionMarkup() : this("") { }
+    public MentionMarkup() : this(MentionId.None) { }
 
     public override string Format()
         => Name.IsNullOrEmpty()

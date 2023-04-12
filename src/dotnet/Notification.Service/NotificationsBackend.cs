@@ -335,7 +335,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
         };
 
-    private async ValueTask<(string Content, HashSet<Symbol> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
+    private async ValueTask<(string Content, HashSet<MentionId> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
     {
         var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
         var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);

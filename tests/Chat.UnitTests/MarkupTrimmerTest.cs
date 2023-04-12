@@ -8,7 +8,7 @@ public class MarkupTrimmerTest
         // arrange
         var markup = Markup.Join(new Markup[] {
             new PlainTextMarkup("Hi, "),
-            new MentionMarkup("h123", "Jack"),
+            TestAuthors.Jack.ToMentionMarkup(),
             new PlainTextMarkup("!"),
             new PlainTextMarkup(" How are you?"),
         });

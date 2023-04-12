@@ -115,6 +115,6 @@
             return null;
         var firstMention = mentions[0];
         selection ??= firstMention;
-        return mentions.FirstOrDefault(o => o.Id == selection.Id) ?? firstMention;
+        return mentions.FirstOrDefault(o => o.MentionId == selection.MentionId) ?? firstMention;
     }
 }

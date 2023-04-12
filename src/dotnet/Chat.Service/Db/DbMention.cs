@@ -17,18 +17,18 @@ public class DbMention : IHasId<string>, IRequirementTarget
     public DbMention() { }
     public DbMention(Mention model) => UpdateFrom(model);
 
-    public static string ComposeId(ChatEntryId entryId, string authorId)
+    public static string ComposeId(ChatEntryId entryId, MentionId mentionId)
     {
         if (entryId.Kind != ChatEntryKind.Text)
             throw new ArgumentOutOfRangeException(nameof(entryId), "Only text entries support mentions.");
 
-        return $"{entryId}:{authorId}";
+        return $"{entryId}:{mentionId}";
     }
 
     public Mention ToModel()
         => new() {
             Id = Id,
-            MentionId = MentionId,
+            MentionId = new MentionId(MentionId),
             EntryId = new ChatEntryId(new ChatId(ChatId), ChatEntryKind.Text, EntryId, AssumeValid.Option),
         };
 

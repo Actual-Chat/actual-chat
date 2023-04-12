@@ -60,18 +60,18 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var changedMentionIds = new HashSet<Symbol>();
+        var changedMentionIds = new HashSet<MentionId>();
         if (changeKind is ChangeKind.Remove) {
             dbContext.Mentions.RemoveRange(existingMentions);
-            changedMentionIds.AddRange(existingMentions.Select(m => (Symbol)m.MentionId));
+            changedMentionIds.AddRange(existingMentions.Select(m => new MentionId(m.MentionId)));
         }
         else {
             var mentionIds = await GetMentionIds(entry, cancellationToken).ConfigureAwait(false);
-            var toRemove = existingMentions.ExceptBy(mentionIds, x => (Symbol)x.Id).ToList();
+            var toRemove = existingMentions.ExceptBy(mentionIds, x => new MentionId(x.MentionId)).ToList();
             dbContext.Mentions.RemoveRange(toRemove);
 
             var toAdd = mentionIds
-                .Except(existingMentions.Select(x => (Symbol)x.MentionId))
+                .Except(existingMentions.Select(x => new MentionId(x.MentionId)))
                 .Select(mentionId => new DbMention {
                     Id = DbMention.ComposeId(entry.Id, mentionId),
                     MentionId = mentionId,
@@ -80,8 +80,8 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
                 }).ToList();
             dbContext.Mentions.AddRange(toAdd);
 
-            changedMentionIds.AddRange(toRemove.Select(m => (Symbol)m.MentionId));
-            changedMentionIds.AddRange(toAdd.Select(m => (Symbol)m.MentionId));
+            changedMentionIds.AddRange(toRemove.Select(m => new MentionId(m.MentionId)));
+            changedMentionIds.AddRange(toAdd.Select(m => new MentionId(m.MentionId)));
         }
 
         if (changedMentionIds.Count == 0)
@@ -91,27 +91,26 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         context.Operation().Items.Set(changedMentionIds);
     }
 
-    private async Task<HashSet<Symbol>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<HashSet<MentionId>> GetMentionIds(ChatEntry entry, CancellationToken cancellationToken)
     {
         var markup = MarkupParser.Parse(entry.Content);
         var mentionIds = new MentionExtractor().GetMentionIds(markup);
 
         var mentionIdFromReply = await GetMentionIdFromReply(entry, cancellationToken).ConfigureAwait(false);
-        if (!mentionIdFromReply.IsEmpty)
+        if (!mentionIdFromReply.IsNone)
             mentionIds.Add(mentionIdFromReply);
 
         return mentionIds;
     }
 
-    private async Task<Symbol> GetMentionIdFromReply(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<MentionId> GetMentionIdFromReply(ChatEntry entry, CancellationToken cancellationToken)
     {
         if (entry.GetRepliedChatEntryId() is not { } replyId)
-            return Symbol.Empty;
+            return MentionId.None;
 
         if (await ChatsBackend.GetEntry(replyId, cancellationToken).ConfigureAwait(false) is not { } reply)
-            return Symbol.Empty;
+            return MentionId.None;
 
-        // TODO: extract a:{authorId} logic
-        return $"a:{reply.AuthorId}";
+        return new MentionId(reply.AuthorId, AssumeValid.Option);
     }
 }

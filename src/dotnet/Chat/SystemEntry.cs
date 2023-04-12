@@ -1,5 +1,3 @@
-using Cysharp.Text;
-
 namespace ActualChat.Chat;
 
 [DataContract]
@@ -35,7 +33,7 @@ public record MembersChangedOption(
 
     public override Markup ToMarkup()
     {
-        var authorMentionId = ZString.Concat("a:", AuthorId);
+        var authorMentionId = new MentionId(AuthorId, AssumeValid.Option);
         var authorName = AuthorName.NullIfEmpty() ?? "Someone";
         var verb = HasLeft ? "left" : "joined";
         return new MarkupSeq(
