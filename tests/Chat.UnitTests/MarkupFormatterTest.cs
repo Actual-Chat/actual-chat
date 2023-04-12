@@ -8,7 +8,7 @@ public class MarkupFormatterTest
         // arrange
         var markup = Markup.Join(new Markup[] {
             new PlainTextMarkup("Hello, "),
-            new MentionMarkup("h123", "Jack"),
+            TestAuthors.Jack.ToMentionMarkup(),
             new PlainTextMarkup("!"),
         });
 

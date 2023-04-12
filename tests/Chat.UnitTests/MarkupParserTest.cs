@@ -85,31 +85,30 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void MentionTest()
     {
-        var m = Parse<MentionMarkup>("@alex", out var text);
-        m.Id.Should().Be(text[1..]);
-
-        m = Parse<MentionMarkup>("@a:chatId:1", out text);
-        m.Id.Should().Be(text[1..]);
+        var m = Parse<MentionMarkup>("@a:abcdef:1", out var text);
+        m.Id.Value.Should().Be(text[1..]);
 
         m = Parse<MentionMarkup>("@u:userId", out text);
-        m.Id.Should().Be(text[1..]);
+        m.Id.Value.Should().Be(text[1..]);
 
+        Parse<MarkupSeq>("@alex", out text);
         Parse<MarkupSeq>("@ something", out text);
     }
 
     [Fact]
     public void NamedMentionTest()
     {
-        var m = Parse<MentionMarkup>("@`a`b", out var text);
+        var m = Parse<MentionMarkup>("@`a`a:chatid:1", out var text);
         m.Name.Should().Be("a");
-        m.Id.Should().Be("b");
+        m.Id.Value.Should().Be("a:chatid:1");
 
-        m = Parse<MentionMarkup>("@`a x`id:1", out text);
+        m = Parse<MentionMarkup>("@`a x`a:chatid:1", out text);
         m.Name.Should().Be("a x");
-        m.Id.Should().Be("id:1");
+        m.Id.Value.Should().Be("a:chatid:1");
 
         // Empty id case
         Parse<MarkupSeq>("@`Alex Yakunin`", out text);
+        Parse<MarkupSeq>("@`a`b", out text);
     }
 
     [Fact]

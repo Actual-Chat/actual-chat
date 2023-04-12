@@ -1,11 +1,8 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat.UI.Blazor.Services.Internal;
 
 internal class ChatMentionResolver : IChatMentionResolver
 {
     private Session Session { get; }
-    private IAccounts Accounts { get; }
     private IAuthors Authors { get; }
 
     public ChatId ChatId { get; }
@@ -13,7 +10,6 @@ internal class ChatMentionResolver : IChatMentionResolver
     public ChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
         Session = services.GetRequiredService<Session>();
-        Accounts = services.GetRequiredService<IAccounts>();
         Authors = services.GetRequiredService<IAuthors>();
         ChatId = chatId;
     }
@@ -22,11 +18,7 @@ internal class ChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
-            return null;
-
-        var authorId = new AuthorId(sAuthorId, ParseOrNone.Option);
-        if (authorId.IsNone)
+        if (!mention.Id.IsAuthor(out var authorId) || authorId.IsNone)
             return null;
 
         return await Authors.Get(Session, ChatId, authorId, cancellationToken).ConfigureAwait(false);

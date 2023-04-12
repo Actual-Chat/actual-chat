@@ -30,9 +30,12 @@ public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
     public bool IsNone => Id.IsEmpty;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public PrincipalId(Symbol id) => this = Parse(id);
-    public PrincipalId(string? id) => this = Parse(id);
-    public PrincipalId(string? id, ParseOrNone _) => ParseOrNone(id);
+    public PrincipalId(Symbol id)
+        => this = Parse(id);
+    public PrincipalId(string? id)
+        => this = Parse(id);
+    public PrincipalId(string? id, ParseOrNone _)
+        => this = ParseOrNone(id);
 
     public PrincipalId(AuthorId authorId, AssumeValid _)
     {

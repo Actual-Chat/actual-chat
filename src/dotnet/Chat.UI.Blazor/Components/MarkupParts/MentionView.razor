@@ -25,9 +25,6 @@
 
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
 
-    protected override void OnParametersSet() {
-        var id = Markup.Id;
-        if (id.OrdinalHasPrefix("a:", out var authorId))
-            AuthorId.TryParse(authorId, out _authorId);
-    }
+    protected override void OnParametersSet()
+        => Markup.Id.IsAuthor(out _authorId);
 }

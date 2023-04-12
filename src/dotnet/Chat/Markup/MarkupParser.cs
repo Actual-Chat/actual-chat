@@ -84,18 +84,17 @@ public partial class MarkupParser : IMarkupParser
         Whitespace.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, true);
 
     // Mentions
+    private static Parser<char, Markup> MentionParserFactory(string name = "") =>
+        from sid in Id
+        let id = new MentionId(sid, ParseOrNone.Option)
+        where !id.IsNone
+        select (Markup)new MentionMarkup(id, name);
     private static readonly Parser<char, Markup> NamedMention =
         // @`User Name`userId
-        AtToken.Then(
-            from name in QuotedName
-            from id in Id
-            select (Markup) new MentionMarkup(id, name)
-            ).Debug("@`name`");
+        AtToken.Then(QuotedName).Then(MentionParserFactory).Debug("@`name`");
     private static readonly Parser<char, Markup> UnnamedMention =
-        // @`User Name`userId
-        AtToken.Then(Id)
-            .Select(id => (Markup) new MentionMarkup(id))
-            .Debug("@");
+        // @userId
+        AtToken.Then(MentionParserFactory()).Debug("@");
     private static readonly Parser<char, Markup> Mention =
         SafeTryOneOf(NamedMention, UnnamedMention);
 

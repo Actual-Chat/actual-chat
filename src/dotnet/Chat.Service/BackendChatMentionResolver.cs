@@ -1,17 +1,13 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat;
 
 public class BackendChatMentionResolver : IChatMentionResolver
 {
-    private IAccountsBackend AccountsBackend { get; }
     private IAuthorsBackend AuthorsBackend { get; }
 
     public ChatId ChatId { get; }
 
     public BackendChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         ChatId = chatId;
     }
@@ -20,11 +16,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
         => ResolveAuthor(mention, cancellationToken);
     public async ValueTask<Author?> ResolveAuthor(MentionMarkup mention, CancellationToken cancellationToken)
     {
-        if (!mention.Id.OrdinalHasPrefix("a:", out var sAuthorId))
-            return null;
-
-        var authorId = new AuthorId(sAuthorId, ParseOrNone.Option);
-        if (authorId.IsNone)
+        if (!mention.Id.IsAuthor(out var authorId) || authorId.IsNone)
             return null;
 
         return await AuthorsBackend.Get(ChatId, authorId, cancellationToken).ConfigureAwait(false);

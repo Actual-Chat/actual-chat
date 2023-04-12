@@ -236,7 +236,7 @@
         if (repliedEntry?.AuthorId == authorId)
             return true;
 
-        return hasAnyMentions && MarkupValidator.ContainsMention($"a:{authorId}").IsValid(markup);
+        return hasAnyMentions && MarkupValidator.ContainsMention(new MentionId(authorId, AssumeValid.Option)).IsValid(markup);
     }
 
     // Nested types

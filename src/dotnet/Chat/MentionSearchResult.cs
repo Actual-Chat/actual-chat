@@ -6,8 +6,8 @@ namespace ActualChat.Chat;
 public class MentionSearchResult : SearchResult
 {
     [DataMember] public string Picture { get; }
-
-    public MentionSearchResult(string id, SearchMatch searchMatch, string picture = "")
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore] public MentionId MentionId => new (Id);
+    public MentionSearchResult(MentionId id, SearchMatch searchMatch, string picture = "")
         : base(id, searchMatch)
         => Picture = picture;
 }

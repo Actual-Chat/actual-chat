@@ -118,7 +118,7 @@
         if (mention == null)
             return;
 
-        var html = HtmlConverter.Format(new MentionMarkup(mention.Id, mention.Text)) + " ";
+        var html = HtmlConverter.Format(new MentionMarkup(mention.MentionId, mention.Text)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
     }
 
