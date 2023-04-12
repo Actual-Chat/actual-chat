@@ -73,7 +73,7 @@ public class ChatAttachmentsUI : IComputeService
     [ComputeMethod]
     public virtual Task<ImmutableArray<Attachment>> GetEditorAttachments(CancellationToken cancellationToken = default)
     {
-        // todo:
+        // todo: only chat specific attachments
         lock (_lock)
             return Task.FromResult(_editorAttachments.ToImmutableArray());
     }
