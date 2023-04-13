@@ -60,6 +60,7 @@ export type LogScope =
     | 'WarmUpAudioWorkletProcessor'
     | 'ChromiumEchoCancellation' // Unused
     // Isolated components
+    | 'Attachments'
     | 'ChatMessageEditor'
     | 'CodeBlockMarkupView'
     | 'CopyTrigger'

@@ -11,6 +11,7 @@ import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { LocalSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
+import { Attachments } from './attachments';
 
 const { debugLog } = Log.get('MessageEditor');
 
@@ -18,6 +19,7 @@ export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
     private readonly backupRequired$ = new Subject<void>();
+    private readonly attachments: Attachments;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
@@ -36,8 +38,6 @@ export class ChatMessageEditor {
     private panelModel: PanelMode = null; // Intended: updateLayout needs this on the first run
     private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
     private isNotifyPanelOpen: boolean = false;
-    private attachmentsIdSeed: number = 0;
-    private attachments: Map<number, Attachment> = new Map<number, Attachment>();
     private chatId: string;
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
@@ -52,6 +52,7 @@ export class ChatMessageEditor {
         this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
         this.filePicker = this.editorDiv.querySelector(':scope .post-panel input.file-picker');
         this.notifyPanel = this.editorDiv.querySelector(':scope .notify-call-panel');
+        this.attachments = new Attachments(blazorRef);
 
         this.updateLayout();
         this.updateHasContent();
@@ -138,12 +139,7 @@ export class ChatMessageEditor {
 
     /** Called by Blazor */
     public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
-        const attachments = [];
-        this.attachments.forEach(attachment => {
-            if (!attachment.MediaId)
-                return;
-            attachments.push(attachment.MediaId);
-        });
+        const attachments = this.attachments.getMediaIds();
         const payload = {
             'text': text,
             'attachments': attachments,
@@ -178,24 +174,13 @@ export class ChatMessageEditor {
 
     /** Called by Blazor */
     public removeAttachment(id: number) {
-        TuneUI.play('change-attachments');
-        const attachment = this.attachments.get(id);
-        this.attachments.delete(id);
-        if (attachment?.Url)
-            URL.revokeObjectURL(attachment.Url);
+        this.attachments.remove(id);
         this.updateHasContent();
     }
 
     /** Called by Blazor */
     public clearAttachments() {
-        if (this.attachments.size != 0)
-            TuneUI.play('change-attachments');
-        for (const attachment of this.attachments.values()) {
-            if (attachment?.Url)
-                URL.revokeObjectURL(attachment.Url);
-        }
         this.attachments.clear();
-        this.attachmentsIdSeed = 0;
         this.updateHasContent();
     }
 
@@ -243,16 +228,19 @@ export class ChatMessageEditor {
                     preventDefaultForEvent(event); // We can do it only in the sync part of async handler
                 isAdding = true;
                 const file = item.getAsFile();
-                await this.addAttachment(file);
+                if (await this.attachments.add(this.chatId, file))
+                    this.updateHasContent();
             }
         }
     };
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
         for (const file of this.filePicker.files) {
-            const isAdded = await this.addAttachment(file);
+            const isAdded = await this.attachments.add(this.chatId, file);
             if (!isAdded)
                 break;
+
+            this.updateHasContent();
         }
         this.filePicker.value = '';
     });
@@ -312,7 +300,7 @@ export class ChatMessageEditor {
 
     private updateHasContent() {
         const text = this.markupEditor?.getText() ?? '';
-        const isTextMode = text != '' || this.attachments.size > 0;
+        const isTextMode = text != '' || this.attachments.any();
         if (this.hasContent === isTextMode)
             return;
 
@@ -360,39 +348,6 @@ export class ChatMessageEditor {
         playbackWrapper.classList.replace('listen-off-to-on', 'listen-on');
     }
 
-    private async addAttachment(file: File): Promise<boolean> {
-        const attachment: Attachment = {
-            Id: this.attachmentsIdSeed,
-            File: file,
-            Url: '',
-            MediaId: '',
-        };
-        if (file.type.startsWith('image'))
-            attachment.Url = URL.createObjectURL(file);
-        const isAdded: boolean = await this.blazorRef.invokeMethodAsync(
-            'AddAttachment', attachment.Id, attachment.Url, file.name, file.type, file.size);
-        if (!isAdded) {
-            if (attachment.Url)
-                URL.revokeObjectURL(attachment.Url);
-        }
-        else {
-            this.attachmentsIdSeed++;
-            this.attachments.set(attachment.Id, attachment);
-            this.updateHasContent();
-            TuneUI.play('change-attachments');
-            const upload = this.uploadFile(
-                file,
-                async (progressPercent) => {
-                    await this.blazorRef.invokeMethodAsync('UpdateProgress', attachment.Id, Math.trunc(progressPercent));
-                }
-            );
-            upload.then(x => {
-                attachment.MediaId = x.mediaId;
-            });
-        }
-        return isAdded;
-    }
-
     private saveDraft() {
         if (!this.chatId)
             return;
@@ -409,48 +364,10 @@ export class ChatMessageEditor {
         this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
     }
 
-    private async uploadFile(
-        file: File,
-        progressReporter: (progressPercent: number) => void,
-    ): Promise<MediaContent> {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append('file', file, file.name);
-            const xhr = new XMLHttpRequest();
-            xhr.upload.onprogress = function(e) {
-                const progress = Math.floor(e.loaded / e.total * 1000) / 10;
-                progressReporter(progress);
-            };
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE) {
-                    if (xhr.status === 200) {
-                        resolve(JSON.parse(xhr.response));
-                    } else {
-                        reject(xhr.statusText);
-                    }
-                }
-            };
-            const url = this.getUrl(`api/chats/${this.chatId}/upload-picture`)
-            xhr.open('post', url, true);
-            xhr.send(formData);
-        })
-    }
-
+    // TODO: remove
     private getUrl(url: string) {
         // @ts-ignore
         const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
         return baseUri ? new URL(url, baseUri).toString() : url;
     }
-}
-
-interface Attachment {
-    File: File;
-    Url: string;
-    Id: number;
-    MediaId: string;
-}
-
-interface MediaContent {
-    mediaId: string;
-    contentId: string;
 }
