@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Services
 @inherits ComputedStateComponent<PlaybackToggle.Model>
 @{
     var rendered = _rendered;
@@ -35,7 +36,7 @@
 
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
+    [Inject] private IAudioDeviceController AudioDeviceController { get; init; } = null!;
 
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsLoading && State.Value.AudioState.IsListening;
@@ -51,7 +52,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var audioState = await ChatAudioUI.GetState(Chat.Id);
-        var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
+        var isSpeakerphoneOn = await AudioDeviceController.IsSpeakerphoneOn.Use(cancellationToken);
         return new Model(Chat, audioState, isSpeakerphoneOn);
     }
 
@@ -63,7 +64,7 @@
     }
 
     private void OnToggleAudioOutputClick()
-        => AudioOutputController.SetSpeakerphoneEnabled(!AudioOutputController.IsSpeakerphoneOn.Value);
+        => AudioDeviceController.SetSpeakerphoneEnabled(!AudioDeviceController.IsSpeakerphoneOn.Value);
 
 
     public sealed record Model(

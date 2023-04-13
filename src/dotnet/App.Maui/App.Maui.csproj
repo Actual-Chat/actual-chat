@@ -115,6 +115,11 @@
     <CodesignKey>iPhone Developer</CodesignKey>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
+    <CodesignKey>Apple Development: Frol Chizhov (6824A38F9V)</CodesignKey>
+    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+  </PropertyGroup>
+
   <!-- Platform-specific references -->
 
   <ItemGroup>

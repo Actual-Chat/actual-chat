@@ -1,3 +1,4 @@
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
 
@@ -14,7 +15,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     private ChatAudioUI? _audioUI;
 
     private IServiceProvider Services { get; }
-    private IAudioOutputController AudioOutputController { get;}
+    private IAudioDeviceController AudioDeviceController { get;}
     private ChatAudioUI ChatAudioUI => _audioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private TuneUI TuneUI { get; }
     private MomentClockSet Clocks { get; }
@@ -24,7 +25,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     public ChatPlayers(IServiceProvider services)
     {
         Services = services;
-        AudioOutputController = services.GetRequiredService<IAudioOutputController>();
+        AudioDeviceController = services.GetRequiredService<IAudioDeviceController>();
         Clocks = services.Clocks();
         TuneUI = services.GetRequiredService<TuneUI>();
 
@@ -128,7 +129,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
 
         async Task EnterState(PlaybackState? state, CancellationToken ct)
         {
-            await AudioOutputController.SetAudioEnabled(state != null).ConfigureAwait(false);
+            await AudioDeviceController.SetPlaybackEnabled(state != null).ConfigureAwait(false);
             if (state is HistoricalPlaybackState historical) {
                 _ = TuneUI.Play("start-historical-playback", CancellationToken.None);
                 var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);

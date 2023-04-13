@@ -25,6 +25,7 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
         services.AddScoped(c => new MicrophonePermissionHandler(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+        services.AddScoped<IAudioDeviceController>(c => new AudioDeviceController(c));
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map

@@ -1,4 +1,5 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Audio.UI.Blazor.Services;
 using Stl.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
@@ -20,9 +21,9 @@ public class AudioRecorder : IAsyncDisposable
     private IJSRuntime JS { get; }
 
     public MicrophonePermissionHandler MicrophonePermission { get; }
+    public IAudioDeviceController AudioDeviceController { get; }
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
-
 
     public AudioRecorder(IServiceProvider services)
     {
@@ -30,6 +31,7 @@ public class AudioRecorder : IAsyncDisposable
         Session = services.GetRequiredService<Session>();
         JS = services.GetRequiredService<IJSRuntime>();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
+        AudioDeviceController = services.GetRequiredService<IAudioDeviceController>();
 
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,

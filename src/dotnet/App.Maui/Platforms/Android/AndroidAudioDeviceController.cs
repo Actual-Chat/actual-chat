@@ -1,4 +1,4 @@
-using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
@@ -11,23 +11,25 @@ using static Android.Media.AudioManager;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AndroidAudioOutputController : IAudioOutputController
+public sealed class AndroidAudioDeviceController : IAudioDeviceController
 {
     private const string AndroidAudioOutput = nameof(AndroidAudioOutput);
     private readonly AudioSwitch _audioSwitch;
     private readonly AudioManager _audioManager;
-    private readonly IMutableState<bool> _isAudioOn;
+    private readonly IMutableState<bool> _isPlaybackOn;
+    private readonly IMutableState<bool> _isRecordingOn;
     private readonly IStoredState<bool> _isSpeakerphoneOnStored;
     private readonly object _lock = new();
 
-    public IState<bool> IsAudioOn => _isAudioOn;
+    public IState<bool> IsPlaybackOn => _isPlaybackOn;
+    public IState<bool> IsRecordingOn => _isRecordingOn;
     public IState<bool> IsSpeakerphoneOn { get; }
     private ILogger Log { get; }
 
-    public AndroidAudioOutputController(IServiceProvider services)
+    public AndroidAudioDeviceController(IServiceProvider services)
     {
         _audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
-        Log = services.LogFor<AndroidAudioOutputController>();
+        Log = services.LogFor<AndroidAudioDeviceController>();
 
         if (Build.VERSION.SdkInt >= BuildVersionCodes.S) {
             try {
@@ -43,9 +45,12 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
         var stateFactory = services.StateFactory();
         var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(AndroidAudioOutput));
         var type = GetType();
-        _isAudioOn = stateFactory.NewMutable(
+        _isPlaybackOn = stateFactory.NewMutable(
             false,
-            StateCategories.Get(type, nameof(IsAudioOn)));
+            StateCategories.Get(type, nameof(IsPlaybackOn)));
+        _isRecordingOn = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(IsRecordingOn)));
         _isSpeakerphoneOnStored = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsSpeakerphoneOn)) {
                 InitialValue = false,
@@ -74,21 +79,21 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
     // TODO(DF):
     // May be I can get rid of AudioSwitch. But I need to test how _audioManager.SetCommunicationDevice works.
     // This is API 31 level. Which is available since Android 12.
-    public async ValueTask SetAudioEnabled(bool mustEnable)
+    public async ValueTask SetPlaybackEnabled(bool mustEnable)
     {
         lock (_lock) {
-            if (_isAudioOn.Value == mustEnable)
+            if (_isPlaybackOn.Value == mustEnable)
                 return;
 
             Log.LogDebug("ToggleAudio({MustEnable})", mustEnable);
             if (mustEnable) {
                 _audioSwitch.Activate();
-                _isAudioOn.Value = true;
+                _isPlaybackOn.Value = true;
                 TryEnterCommunicationMode();
             }
             else {
                 _audioSwitch.Deactivate();
-                _isAudioOn.Value = false;
+                _isPlaybackOn.Value = false;
             }
         }
         if (mustEnable) {
@@ -96,6 +101,9 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
             _ = SetSpeakerphoneEnabled(IsSpeakerphoneOn.Value);
         }
     }
+
+    public ValueTask SetRecordingEnabled(bool mustEnable)
+        => ValueTask.CompletedTask;
 
     public ValueTask SetSpeakerphoneEnabled(bool mustEnable)
     {
@@ -138,7 +146,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
 
     private void TryEnterCommunicationMode()
     {
-        if (!IsAudioOn.Value)
+        if (!IsPlaybackOn.Value)
             return;
 
         var mode = _audioManager.Mode;
