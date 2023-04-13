@@ -150,6 +150,7 @@ module.exports = {
         'hover': 'var(--hover)',
         'place': 'var(--place)',
         'badge': 'var(--badge)',
+        'bubble': 'var(--bubble)',
         'new-separator': 'var(--new-separator)',
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'gradient-stop-01': 'var(--gradient-stop-01)',
