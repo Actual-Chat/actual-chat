@@ -17,6 +17,8 @@ using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Stl.Fusion.Client;
 using Stl.Generators;
+// ReSharper disable once RedundantUsingDirective
+using Stl.Interception.Interceptors; // Required for InterceptorBase configuration at Release
 
 namespace ActualChat.UI.Blazor.App
 {
