@@ -35,7 +35,11 @@ public sealed class StaticMatchingTypeFinder : IMatchingTypeFinder
 
                 if (!match.IsGenericTypeDefinition)
                     throw Stl.Internal.Errors.ConcreteMatchForGenericType(gType, match);
+
+                #pragma warning disable IL2055
                 match = match.MakeGenericType(gTypeArgs);
+                #pragma warning restore IL2055
+
                 return match;
             }
             return null;
