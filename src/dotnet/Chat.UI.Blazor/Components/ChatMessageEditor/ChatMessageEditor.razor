@@ -161,11 +161,11 @@
         => NotifyCallPanelRef.Close();
 
     [JSInvokable]
-    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
+    public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length)
         => AttachmentListRef.Add(id, url, fileName, fileType, length);
 
     [JSInvokable]
-    public void UpdateProgress(int id, int progress)
+    public void OnUploadProgress(int id, int progress)
         => AttachmentListRef.UpdateProgress(id, progress);
 
     // Private methods
