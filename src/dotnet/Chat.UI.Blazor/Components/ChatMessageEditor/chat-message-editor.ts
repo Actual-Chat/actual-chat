@@ -138,34 +138,9 @@ export class ChatMessageEditor {
     }
 
     /** Called by Blazor */
-    public post = async (chatId: string, text: string, repliedChatEntryId?: number): Promise<number> => {
-        const attachments = this.attachments.getMediaIds();
-        const payload = {
-            'text': text,
-            'attachments': attachments,
-            'repliedChatEntryId': repliedChatEntryId
-        };
-
-        debugLog?.log(`post: sending request with ${attachments.length} attachment(s)`);
-        let url = this.getUrl(`api/chats/${chatId}/message`);
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-            credentials: 'include' // required to include third-party cookies in cross origin request when running in MAUI
-        });
-
-        if (!response.ok) {
-            let reason = response.statusText;
-            if (!reason)
-                reason = 'unknown';
-            throw new Error('Failed to send message. Reason: ' + reason);
-        }
-        const entryId = await response.text();
-        return Number(entryId);
-    };
+    public getMediaIds() {
+        return this.attachments.getMediaIds()
+    }
 
     public showFilePicker = () => {
         TuneUI.play('change-attachments');
