@@ -34,25 +34,9 @@
         Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
     </div>
     <div class="flex-y md:flex-x gap-y-4 md:gap-x-8 justify-center p-4 md:p-0">
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new AndroidChromeModal.Model()))">
-            Mobile/Android/Chrome
+        <Button Class="btn-error" Click="@(() => ModalUI.Show(new GuideModal.Model()))">
+            Guide
         </Button>
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new IosSafariModal.Model()))">
-            Mobile/iOs/Safari
-        </Button>
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new AndroidEdgeModal.Model()))">
-            Mobile/Android/Edge
-        </Button>
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new WebSafariModal.Model()))">
-            Web/Safari
-        </Button>
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new WebChromeModal.Model()))">
-            Web/Chrome
-        </Button>
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new WebEdgeModal.Model()))">
-            Web/Edge
-        </Button>
-
     </div>
 </div>
 

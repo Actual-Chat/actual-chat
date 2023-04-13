@@ -1,11 +1,14 @@
-.guide-modal .guide-header-wrapper {
+body.wide .guide-modal .guide-header-wrapper {
+    @apply hidden;
+}
+body.narrow .guide-modal .guide-header-wrapper {
     @apply absolute top-0 left-0 right-0;
 }
-.guide-modal .guide-header {
+body.narrow .guide-modal .guide-header {
     @apply flex-x items-center;
     @apply min-h-footer;
 }
-body.narrow .guide-modal .guide-header {
+.guide-modal .guide-header {
     @apply bg-bubble;
 }
 .guide-header-btn.btn .btn-content {
@@ -24,6 +27,6 @@ body.narrow .modal-frame.guide-modal .dialog-body {
 .guide-modal .c-text {
     @apply text-02;
 }
-.guide-modal .dialog-buttons {
+body.narrow .guide-modal .dialog-buttons {
     @apply hidden;
 }
