@@ -3,20 +3,18 @@ using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
-using Stl.Plugins;
 
 namespace ActualChat.Audio.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class AudioBlazorUIModule: HostModule, IBlazorUIModule
+public partial class AudioBlazorUIModule: HostModule, IBlazorUIModule
 {
     public static string ImportName => "audio";
 
-    public AudioBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public AudioBlazorUIModule(IPluginHost plugins) : base(plugins) { }
+    public AudioBlazorUIModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
@@ -28,5 +26,8 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
         services.AddScoped(c => new MicrophonePermissionHandler(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+
+        // Matching type finder
+        services.AddSingleton<IMatchingTypeRegistry>(c => new AudioBlazorUIMatchingTypeRegistry());
     }
 }

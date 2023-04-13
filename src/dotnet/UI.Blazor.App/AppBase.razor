@@ -41,7 +41,7 @@
     private Task _whenReadyToRender = null!;
     private Tracer _tracer = null!;
 
-    [Inject] private IPluginHost Plugins { get; init; } = null!;
+    [Inject] private ModuleHost Host { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
@@ -66,7 +66,7 @@
         _tracer = Services.Tracer(GetType());
         _tracer.Point("OnInitialized");
         UIAssembly ??= typeof(AppBase).Assembly;
-        UIModuleAssemblies ??= Plugins.GetPlugins<IBlazorUIModule>()
+        UIModuleAssemblies ??= Host.GetModules<IBlazorUIModule>()
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
             .ToArray();

@@ -6,7 +6,6 @@ using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.FileProviders;
@@ -21,28 +20,27 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
-using Stl.Fusion.Server.Authentication;
 using Stl.Generators;
-using Stl.Plugins;
 
 namespace ActualChat.App.Server.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class AppHostModule : HostModule<HostSettings>, IWebModule
+public sealed class AppHostModule : HostModule<HostSettings>, IWebModule
 {
     public static string AppVersion { get; } =
         typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
-    public IWebHostEnvironment Env { get; } = null!;
-    public IConfiguration Cfg { get; } = null!;
+    private ILogger Log { get; }
 
-    public AppHostModule(IPluginInfoProvider.Query _) : base(_) { }
+    public IWebHostEnvironment Env { get; }
+    public IConfiguration Cfg { get; }
 
     [ServiceConstructor]
-    public AppHostModule(IPluginHost plugins) : base(plugins)
+    public AppHostModule(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        Env = Plugins.GetRequiredService<IWebHostEnvironment>();
-        Cfg = Plugins.GetRequiredService<IConfiguration>();
+        Env = serviceProvider.GetRequiredService<IWebHostEnvironment>();
+        Cfg = serviceProvider.GetRequiredService<IConfiguration>();
+        Log = serviceProvider.LogFor<AppHostModule>();
     }
 
     public void ConfigureApp(IApplicationBuilder app)
@@ -122,7 +120,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         app.UseOpenTelemetryPrometheusScrapingEndpoint();
     }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
@@ -134,9 +132,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 ? TimeSpan.FromSeconds(1)
                 : TimeSpan.FromSeconds(30);
         });
-
-        // Plugins (IPluginHost)
-        services.AddSingleton(Plugins);
 
         // Queues
         services.AddLocalCommandQueues();

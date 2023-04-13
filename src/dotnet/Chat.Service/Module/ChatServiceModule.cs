@@ -8,30 +8,27 @@ using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
 
 namespace ActualChat.Chat.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ChatServiceModule : HostModule<ChatSettings>
+public sealed class ChatServiceModule : HostModule<ChatSettings>
 {
-    public ChatServiceModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public ChatServiceModule(IPluginHost plugins) : base(plugins) { }
+    public ChatServiceModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<ChatDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
             // DbChat

@@ -3,19 +3,16 @@ using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using Stl.Fusion.Client;
-using Stl.Interception;
-using Stl.Plugins;
 
 namespace ActualChat.Users.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class UsersClientModule : HostModule
+public sealed class UsersClientModule : HostModule
 {
-    public UsersClientModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public UsersClientModule(IPluginHost plugins) : base(plugins) { }
+    public UsersClientModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module

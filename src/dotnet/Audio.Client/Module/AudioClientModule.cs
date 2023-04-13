@@ -3,19 +3,16 @@ using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Transcription;
 using Stl.Fusion.Client;
-using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class AudioClientModule : HostModule
+public sealed class AudioClientModule : HostModule
 {
-    public AudioClientModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public AudioClientModule(IPluginHost plugins) : base(plugins) { }
+    public AudioClientModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module

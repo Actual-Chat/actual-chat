@@ -4,32 +4,28 @@ using ActualChat.Feedback.Db;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
 
 namespace ActualChat.Feedback.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class FeedbackModule : HostModule<FeedbackSettings>
+public sealed class FeedbackModule : HostModule<FeedbackSettings>
 {
-    public FeedbackModule(IPluginInfoProvider.Query _) : base(_)
-    { }
-
     [ServiceConstructor]
-    public FeedbackModule(IPluginHost plugins) : base(plugins)
+    public FeedbackModule(IServiceProvider services) : base(services)
     { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<FeedbackDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, FeedbackDbInitializer>();
         dbModule.AddDbContextServices<FeedbackDbContext>(services, Settings.Db);
 

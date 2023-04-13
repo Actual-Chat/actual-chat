@@ -3,31 +3,28 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Redis.Module;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
 
 namespace ActualChat.Media.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class MediaServiceModule : HostModule<MediaSettings>
+public sealed class MediaServiceModule : HostModule<MediaSettings>
 {
-    public MediaServiceModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public MediaServiceModule(IPluginHost plugins) : base(plugins) { }
+    public MediaServiceModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<MediaDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, MediaDbInitializer>();
         dbModule.AddDbContextServices<MediaDbContext>(services, Settings.Db, db => {
             db.AddEntityResolver<string, DbMedia>();

@@ -15,7 +15,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
         public TimeSpan TranscriptDebouncePeriod { get; set; } = TimeSpan.FromSeconds(0.2);
         public bool IsEnabled { get; init; } = true;
     }
-    
+
     [GeneratedRegex("^\\s*$")]
     private static partial Regex EmptyRegexFactory();
 

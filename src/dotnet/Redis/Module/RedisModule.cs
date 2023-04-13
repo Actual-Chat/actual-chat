@@ -3,17 +3,18 @@ using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using StackExchange.Redis;
-using Stl.Plugins;
 using Stl.Redis;
 
 namespace ActualChat.Redis.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class RedisModule : HostModule<RedisSettings>
+public sealed class RedisModule : HostModule<RedisSettings>
 {
-    public RedisModule(IPluginInfoProvider.Query _) : base(_) { }
+    private ILogger Log { get; }
+
     [ServiceConstructor]
-    public RedisModule(IPluginHost plugins) : base(plugins) { }
+    public RedisModule(IServiceProvider services) : base(services)
+        => Log = services.LogFor<RedisModule>();
 
     public void AddRedisDb<TContext>(
         IServiceCollection services,
@@ -25,7 +26,7 @@ public class RedisModule : HostModule<RedisSettings>
             connectionString = Settings.OverrideRedis;
 
         // Replacing variables
-        var instance = Plugins.GetPlugins<CoreModule>().Single().Settings.Instance;
+        var instance = Host.GetModule<CoreModule>().Settings.Instance;
         connectionString = Variables.Inject(connectionString,
             ("instance", instance),
             ("instance_", instance.IsNullOrEmpty() ? "" : $"{instance}_"),

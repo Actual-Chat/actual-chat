@@ -2,8 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
+// ReSharper disable once RedundantUsingDirective
 using ActualChat.UI.Blazor.App; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+// ReSharper disable once RedundantUsingDirective
 using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sentry;
@@ -45,7 +47,7 @@ public static class Program
             var baseUrl = builder.HostEnvironment.BaseAddress;
             builder.Services.AddSingleton(tracer);
             var step = tracer.Region("ConfigureServices");
-            await ConfigureServices(builder.Services, builder.Configuration, baseUrl).ConfigureAwait(false);
+            ConfigureServices(builder.Services, builder.Configuration, baseUrl);
             step.Close();
 
             step = tracer.Region("Building wasm host");
@@ -74,7 +76,7 @@ public static class Program
         }
     }
 
-    public static async Task ConfigureServices(
+    public static void ConfigureServices(
         IServiceCollection services,
         IConfiguration configuration,
         string baseUrl)
@@ -103,6 +105,6 @@ public static class Program
             BaseUrl = baseUrl,
         });
 
-        await AppStartup.ConfigureServices(services, AppKind.WasmApp).ConfigureAwait(false);
+        AppStartup.ConfigureServices(services, AppKind.WasmApp);
     }
 }

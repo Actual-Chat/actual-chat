@@ -6,22 +6,18 @@ using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ChatBlazorUIModule : HostModule, IBlazorUIModule
+public partial class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "chat";
 
-    public ChatBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public ChatBlazorUIModule(IPluginHost plugins) : base(plugins) { }
+    public ChatBlazorUIModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
@@ -54,6 +50,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddSingleton<AudioSettings>(_ => new AudioSettings());
         services.AddScoped<LanguageUI>(c => new LanguageUI(c));
         services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
+
+        // Matching type finder
+        services.AddSingleton<IMatchingTypeRegistry>(c => new ChatBlazorUIMatchingTypeRegistry());
 
         services.ConfigureUILifetimeEvents(events
             => events.OnCircuitContextCreated += RegisterShowSettingsHandler);

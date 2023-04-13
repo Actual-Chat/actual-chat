@@ -1,18 +1,16 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.MediaPlayback.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class PlaybackModule : HostModule
+public sealed class PlaybackModule : HostModule
 {
-    public PlaybackModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public PlaybackModule(IPluginHost plugins) : base(plugins) { }
+    public PlaybackModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module

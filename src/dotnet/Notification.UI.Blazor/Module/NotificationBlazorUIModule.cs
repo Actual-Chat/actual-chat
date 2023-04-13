@@ -1,20 +1,18 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.Notification.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
+public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 {
     public static string ImportName => "notification";
 
-    public NotificationBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public NotificationBlazorUIModule(IPluginHost plugins) : base(plugins) { }
+    public NotificationBlazorUIModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module

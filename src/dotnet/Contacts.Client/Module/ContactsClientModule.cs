@@ -2,18 +2,16 @@
 using System.Net;
 using ActualChat.Hosting;
 using Stl.Fusion.Client;
-using Stl.Plugins;
 
 namespace ActualChat.Contacts.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ContactsClientModule : HostModule
+public sealed class ContactsClientModule : HostModule
 {
-    public ContactsClientModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public ContactsClientModule(IPluginHost plugins) : base(plugins) { }
+    public ContactsClientModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module

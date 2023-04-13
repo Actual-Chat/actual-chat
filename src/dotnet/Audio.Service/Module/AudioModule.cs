@@ -6,18 +6,14 @@ using ActualChat.Redis.Module;
 using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class AudioModule : HostModule<AudioSettings>, IWebModule
+public sealed class AudioModule : HostModule<AudioSettings>, IWebModule
 {
-    public AudioModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public AudioModule(IPluginHost plugins) : base(plugins) { }
+    public AudioModule(IServiceProvider services) : base(services) { }
 
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {
@@ -25,7 +21,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             endpoints.MapHub<AudioHubBackend>("/backend/hub/audio");
         });
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
@@ -34,7 +30,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddResponseCaching();
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<AudioContext>(services, Settings.Redis);
 
         // SignalR hub & related services

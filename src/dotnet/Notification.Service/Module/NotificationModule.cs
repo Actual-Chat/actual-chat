@@ -4,38 +4,31 @@ using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
 using ActualChat.Redis.Module;
-using ActualChat.Commands;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
 
 namespace ActualChat.Notification.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class NotificationModule : HostModule<NotificationSettings>
+public sealed class NotificationModule : HostModule<NotificationSettings>
 {
-    public NotificationModule(IPluginInfoProvider.Query _) : base(_)
-    {
-    }
-
     [ServiceConstructor]
-    public NotificationModule(IPluginHost plugins) : base(plugins)
-    {
-    }
+    public NotificationModule(IServiceProvider services) : base(services)
+    { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<NotificationDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, NotificationDbInitializer>();
         dbModule.AddDbContextServices<NotificationDbContext>(services, Settings.Db,
             db => db.AddEntityResolver<string, DbNotification>());

@@ -13,20 +13,18 @@ using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
-using Stl.Plugins;
 
 namespace ActualChat.Users.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class UsersServiceModule : HostModule<UsersSettings>
+public sealed class UsersServiceModule : HostModule<UsersSettings>
 {
-    public UsersServiceModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public UsersServiceModule(IPluginHost plugins) : base(plugins) { }
+    public UsersServiceModule(IServiceProvider services) : base(services) { }
 
     public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
@@ -68,11 +66,11 @@ public class UsersServiceModule : HostModule<UsersSettings>
         */
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<UsersDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services

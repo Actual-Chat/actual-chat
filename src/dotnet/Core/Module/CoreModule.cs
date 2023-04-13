@@ -11,28 +11,18 @@ using Microsoft.Extensions.Options;
 using Stl.Extensibility;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class CoreModule : HostModule<CoreSettings>
+public sealed partial class CoreModule : HostModule<CoreSettings>
 {
-    public CoreModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public CoreModule(IPluginHost plugins) : base(plugins) { }
+    public CoreModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected internal override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-
-        var pluginAssemblies = Plugins.FoundPlugins.InfoByType
-            .Select(c => c.Value.Type.TryResolve())
-            .Where(c => c != null)
-            .Select(c => c!.Assembly)
-            .Distinct()
-            .ToList();
 
         // Common services
         services.AddTracer();
@@ -42,11 +32,8 @@ public class CoreModule : HostModule<CoreSettings>
             c.GetRequiredService<HostInfo>()));
 
         // Matching type finder
-        services.AddSingleton(new MatchingTypeFinder.Options {
-            ScannedAssemblies = pluginAssemblies,
-        });
-        services.AddSingleton<IMatchingTypeFinder>(c => new MatchingTypeFinder(
-            c.GetRequiredService<MatchingTypeFinder.Options>()));
+        services.AddSingleton<IMatchingTypeRegistry>(c => new FusionMatchingTypeRegistry());
+        services.AddSingleton<IMatchingTypeRegistry>(c => new CoreMatchingTypeRegistry());
 
         // DiffEngine
         services.AddSingleton<DiffEngine>(c => new DiffEngine(c));

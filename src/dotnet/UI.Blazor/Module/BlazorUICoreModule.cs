@@ -9,20 +9,18 @@ using Microsoft.Extensions.Hosting;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Bridge.Interception;
 using Stl.Fusion.Diagnostics;
-using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
+public partial class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {
     public static string ImportName => "ui";
 
-    public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public BlazorUICoreModule(IPluginHost plugins) : base(plugins) { }
+    public BlazorUICoreModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         var appKind = HostInfo.AppKind;
@@ -140,6 +138,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Force app replica cache store flushing just after updating value for Users.IAccounts.GetOwn
         services.ConfigureAppReplicaCache(c =>
             c.ForceFlush(typeof(Users.IAccounts), nameof(Users.IAccounts.GetOwn)));
+
+        // Matching type finder
+        services.AddSingleton<IMatchingTypeRegistry>(c => new BlazorUICoreMatchingTypeRegistry());
 
         // Temporarily disabled for WASM due to bad performance
         if (false && appKind.IsWasmApp()) {

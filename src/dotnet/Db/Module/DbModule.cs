@@ -8,17 +8,17 @@ using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Redis;
 using Stl.Fusion.Operations.Internal;
-using Stl.Plugins;
 
 namespace ActualChat.Db.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class DbModule : HostModule<DbSettings>
+public sealed class DbModule : HostModule<DbSettings>
 {
-    public DbModule(IPluginInfoProvider.Query _) : base(_) { }
+    private ILogger Log { get; }
 
     [ServiceConstructor]
-    public DbModule(IPluginHost plugins) : base(plugins) { }
+    public DbModule(IServiceProvider services) : base(services)
+        => Log = services.LogFor<DbModule>();
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
@@ -32,7 +32,7 @@ public class DbModule : HostModule<DbSettings>
             connectionString = Settings.OverrideDb;
 
         // Replacing variables
-        var instance = Plugins.GetPlugins<CoreModule>().Single().Settings.Instance;
+        var instance = Host.GetModule<CoreModule>().Settings.Instance;
         var contextName = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant();
         connectionString = Variables.Inject(connectionString,
             ("instance", instance),
@@ -107,7 +107,7 @@ public class DbModule : HostModule<DbSettings>
         });
     }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module

@@ -2,18 +2,16 @@
 using ActualChat.Hosting;
 using ActualChat.Web.Internal;
 using Microsoft.AspNetCore.Builder;
-using Stl.Plugins;
 
 namespace ActualChat.Web.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class WebModule : HostModule, IWebModule
+public sealed class WebModule : HostModule, IWebModule
 {
-    public WebModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public WebModule(IPluginHost plugins) : base(plugins) { }
+    public WebModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module

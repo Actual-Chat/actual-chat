@@ -1,12 +1,30 @@
 using ActualChat.App.Server.Module;
+using ActualChat.Audio.Module;
+using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Chat.Module;
+using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Contacts.Module;
+using ActualChat.Db.Module;
+using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
+using ActualChat.Invite.Module;
+using ActualChat.Kubernetes.Module;
+using ActualChat.Media.Module;
+using ActualChat.MediaPlayback.Module;
+using ActualChat.Module;
+using ActualChat.Notification.Module;
+using ActualChat.Notification.UI.Blazor.Module;
+using ActualChat.Redis.Module;
+using ActualChat.Transcription.Module;
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Module;
+using ActualChat.Users.Module;
+using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Console;
-using Stl.Plugins;
 
 namespace ActualChat.App.Server;
 
@@ -14,9 +32,7 @@ public class Startup
 {
     private IConfiguration Cfg { get; }
     private IWebHostEnvironment Env { get; }
-    private IPluginHost Plugins { get; set; } = null!;
     private ImmutableArray<HostModule> HostModules { get; set; } = ImmutableArray<HostModule>.Empty;
-    private ILogger Log => Plugins?.GetService<ILogger<Startup>>() ?? NullLogger<Startup>.Instance;
 
     public Startup(IConfiguration cfg, IWebHostEnvironment environment)
     {
@@ -94,50 +110,39 @@ public class Startup
         });
 
         // Commander - it must be added first to make sure its options are set
-        var commander = services.AddCommander().Configure(new CommanderOptions() {
+        var commander = services.AddCommander().Configure(new CommanderOptions {
             AllowDirectCommandHandlerCalls = false,
         });
 
-        // Creating plugins & host modules
-        var pluginServices = new ServiceCollection()
-            .Add(services)
-            .AddSingleton(Cfg)
-            .AddSingleton(Env)
-            .AddSingleton(new FileSystemPluginFinder.Options {
-                AssemblyNamePattern = "ActualChat.*.dll",
-            });
-
-        // FileSystemPluginFinder cache fails on .NET 6 some times, so...
-        /*
-        var pluginHostBuilder = new PluginHostBuilder(pluginServices);
-        pluginHostBuilder.UsePlugins(
-            // Core modules
-            typeof(CoreModule),
-            typeof(PlaybackModule),
-            typeof(DbModule),
-            typeof(WebModule),
-            typeof(BlazorUICoreModule),
-            // Services
-            typeof(AudioModule),
-            typeof(AudioBlazorUIModule),
-            typeof(TranscriptionModule),
-            typeof(ChatModule),
-            typeof(ChatBlazorUIModule),
-            typeof(UsersModule),
-            typeof(UsersBlazorUIModule),
-            // "The rest of Startup.cs" module
-            typeof(AppHostModule)
-        );
-        Plugins = pluginHostBuilder.Build();
-        */
-        Plugins = new PluginHostBuilder(pluginServices).Build();
-        HostModules = Plugins
-            .GetPlugins<HostModule>()
-            .OrderBy(m => m is not AppHostModule) // MainHostModule should be the first one
-            .ToImmutableArray();
-
-        // Using host modules to inject the remaining services
-        HostModules.Apply(m => m.InjectServices(services));
+        var serviceProvider = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+        var host = new ModuleHostBuilder()
+            .AddModule(
+                new CoreModule(serviceProvider),
+                new AppHostModule(serviceProvider),
+                new BlazorUIAppModule(serviceProvider),
+                new BlazorUICoreModule(serviceProvider),
+                new AudioBlazorUIModule(serviceProvider),
+                new ChatBlazorUIModule(serviceProvider),
+                new NotificationBlazorUIModule(serviceProvider),
+                new UsersBlazorUIModule(serviceProvider),
+                new ChatModule(serviceProvider),
+                new TranscriptionModule(serviceProvider),
+                new UsersContractsModule(serviceProvider),
+                new PlaybackModule(serviceProvider),
+                new WebModule(serviceProvider),
+                new AudioModule(serviceProvider),
+                new ChatServiceModule(serviceProvider),
+                new ContactsServiceModule(serviceProvider),
+                new FeedbackModule(serviceProvider),
+                new InviteServiceModule(serviceProvider),
+                new MediaServiceModule(serviceProvider),
+                new NotificationModule(serviceProvider),
+                new UsersServiceModule(serviceProvider),
+                new KubernetesModule(serviceProvider),
+                new RedisModule(serviceProvider),
+                new DbModule(serviceProvider))
+            .Build(services);
+        HostModules = host.GetModules();
     }
 
     public void Configure(IApplicationBuilder app)

@@ -2,19 +2,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using ActualChat.Hosting;
 using Stl.Fusion.Client;
-using Stl.Plugins;
 
 namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class InviteClientModule : HostModule
+public sealed class InviteClientModule : HostModule
 {
-    public InviteClientModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public InviteClientModule(IPluginHost plugins) : base(plugins) { }
+    public InviteClientModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module

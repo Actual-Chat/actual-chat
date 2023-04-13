@@ -1,17 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using Stl.Plugins;
 
 namespace ActualChat.Chat.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ChatModule : HostModule
+public sealed class ChatModule : HostModule
 {
-    public ChatModule(IPluginInfoProvider.Query _) : base(_) { }
-
     [ServiceConstructor]
-    public ChatModule(IPluginHost plugins) : base(plugins) { }
-    public override void InjectServices(IServiceCollection services)
+    public ChatModule(IServiceProvider services) : base(services) { }
+
+    protected override void InjectServices(IServiceCollection services)
     {
         var rawParser = new MarkupParser();
         if (HostInfo.AppKind.IsServer()) {
