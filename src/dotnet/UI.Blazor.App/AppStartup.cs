@@ -34,7 +34,7 @@ namespace ActualChat.UI.Blazor.App
             }
         }
 
-        public static void ConfigureServices(IServiceCollection services, AppKind appKind, params Type[] platformPluginTypes)
+        public static void ConfigureServices(IServiceCollection services, AppKind appKind, Func<IServiceProvider,HostModule[]>? extraHostsFactory = null)
         {
 #if !DEBUG
             InterceptorBase.Options.Defaults.IsValidationEnabled = false;
@@ -97,25 +97,29 @@ namespace ActualChat.UI.Blazor.App
             // Creating modules
             var step = tracer.Region("Building and injecting module services");
             var serviceProvider = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+            var hostModules = new List<HostModule>() {
+                new CoreModule(serviceProvider),
+                new BlazorUIAppModule(serviceProvider),
+                new BlazorUICoreModule(serviceProvider),
+                new AudioBlazorUIModule(serviceProvider),
+                new ChatBlazorUIModule(serviceProvider),
+                new NotificationBlazorUIModule(serviceProvider),
+                new UsersBlazorUIModule(serviceProvider),
+                new ChatModule(serviceProvider),
+                new PlaybackModule(serviceProvider),
+                new UsersContractsModule(serviceProvider),
+                new UsersClientModule(serviceProvider),
+                new AudioClientModule(serviceProvider),
+                new ChatClientModule(serviceProvider),
+                new ContactsClientModule(serviceProvider),
+                new InviteClientModule(serviceProvider),
+                new FeedbackClientModule(serviceProvider),
+                new NotificationClientModule(serviceProvider)
+            };
+            if (extraHostsFactory != null)
+                hostModules.AddRange(extraHostsFactory.Invoke(serviceProvider));
             new ModuleHostBuilder()
-                .AddModule(
-                    new CoreModule(serviceProvider),
-                    new BlazorUIAppModule(serviceProvider),
-                    new BlazorUICoreModule(serviceProvider),
-                    new AudioBlazorUIModule(serviceProvider),
-                    new ChatBlazorUIModule(serviceProvider),
-                    new NotificationBlazorUIModule(serviceProvider),
-                    new UsersBlazorUIModule(serviceProvider),
-                    new ChatModule(serviceProvider),
-                    new PlaybackModule(serviceProvider),
-                    new UsersContractsModule(serviceProvider),
-                    new UsersClientModule(serviceProvider),
-                    new AudioClientModule(serviceProvider),
-                    new ChatClientModule(serviceProvider),
-                    new ContactsClientModule(serviceProvider),
-                    new InviteClientModule(serviceProvider),
-                    new FeedbackClientModule(serviceProvider),
-                    new NotificationClientModule(serviceProvider))
+                .AddModule(hostModules.ToArray())
                 .Build(services);
             step.Close();
         }

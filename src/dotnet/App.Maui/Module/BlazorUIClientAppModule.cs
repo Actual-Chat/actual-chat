@@ -12,7 +12,7 @@ namespace ActualChat.App.Maui.Module;
 public sealed class BlazorUIClientAppModule : HostModule, IBlazorUIModule
 {
     [ServiceConstructor]
-    public BlazorUIClientAppModule(IServiceProvider servies) : base(servies) { }
+    public BlazorUIClientAppModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
