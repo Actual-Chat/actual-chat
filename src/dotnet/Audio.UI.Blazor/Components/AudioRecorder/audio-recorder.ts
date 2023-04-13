@@ -49,10 +49,6 @@ export class AudioRecorder {
             try {
                 debugLog?.log(`requestPermission: detecting active tracks to stop`);
                 stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                const audioTracks = stream.getAudioTracks();
-                const videoTracks = stream.getVideoTracks();
-                debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
-
                 this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
             }
             catch (error) {
@@ -63,6 +59,7 @@ export class AudioRecorder {
                 if (stream) {
                     const audioTracks = stream.getAudioTracks();
                     const videoTracks = stream.getVideoTracks();
+                    debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
                     audioTracks.forEach(t => t.stop());
                     videoTracks.forEach(t => t.stop());
                 }
