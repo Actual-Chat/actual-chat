@@ -1,0 +1,78 @@
+@using Stl.Extensibility
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Notification
+@namespace ActualChat.UI.Blazor.Components
+@implements IModalView<GuideModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+@{
+    var device = GuideType.WebChrome;
+    if (ScreenSize.IsNarrow()) {
+        if (BrowserInfo.IsAndroid)
+            device = GuideType.MobileChromeAndroid;
+        else if (BrowserInfo.IsIos)
+            device = GuideType.MobileSafariIos;
+    } else {
+        if (BrowserInfo.IsIos)
+            device = GuideType.WebSafari;
+    }
+}
+
+<DialogFrame Class="guide-modal" Title="Guide" HasCloseButton="true" NoNarrowHeader="true">
+    <Body>
+
+    <GuideHeader OnCloseClick="OnCancel" OnOkClick="OnCancel"/>
+
+    @switch (device)
+    {
+        case GuideType.MobileSafariIos:
+            <MobileSafariIosGuideContent/>
+            break;
+        case GuideType.WebEdge:
+            <MobileEdgeAndroidGuideContent/>
+            break;
+        case GuideType.WebSafari:
+            <WebSafariGuideContent/>
+            break;
+        case GuideType.MobileChromeAndroid:
+            <MobileChromeAndroidGuideContent/>
+            break;
+        case GuideType.MobileEdgeAndroid:
+            <MobileEdgeAndroidGuideContent/>
+            break;
+        default:
+            <WebChromeGuideContent/>
+            break;
+    }
+
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal mobile" Click="OnCancel">
+            OK
+        </Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    enum GuideType {
+        MobileChromeAndroid,
+        MobileEdgeAndroid,
+        MobileSafariIos,
+        WebChrome,
+        WebEdge,
+        WebSafari,
+    }
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnCancel()
+        => Modal.Close();
+
+    public sealed record Model;
+}
