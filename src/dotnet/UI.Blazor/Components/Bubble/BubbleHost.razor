@@ -67,7 +67,7 @@
         if (model == null)
             return;
 
-        await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, model.Id, model.Ref);
+        await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, model.Id, model.Ref.ToString());
     }
 
     // Protected & private methods
