@@ -1,0 +1,26 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits BubbleBase
+
+<div class="ac-bubble-content">
+    <div class="ac-bubble-title">
+        @Title
+    </div>
+    <div class="ac-bubble-body">
+        @Body
+    </div>
+    <div class="flex-x items-center">
+        <div class="bubble-counter flex-1 text-xs">
+            @Counter
+        </div>
+        <div class="bubble-buttons flex justify-end">
+            @Buttons
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Title { get; set; }
+    [Parameter] public RenderFragment? Body { get; set; }
+    [Parameter] public RenderFragment? Buttons { get; set; }
+    [Parameter] public RenderFragment? Counter { get; set; }
+}

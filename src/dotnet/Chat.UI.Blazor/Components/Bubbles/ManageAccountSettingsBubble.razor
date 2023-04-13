@@ -1,10 +1,19 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits BubbleBase
 
-Manage Account Settings
+<BubbleContent>
+    <Title>Manage Account Settings</Title>
+    <Body>
+    <ul style="list-style-type:disc">
+        <li>New group chat</li>
+    </ul>
+    </Body>
+    <Counter>@Current of @Count</Counter>
+    <Buttons>
+        <Button Class="btn-bubble">Skip</Button>
+        <Button Class="btn-bubble">Next</Button>
+    </Buttons>
+</BubbleContent>
 
 @code {
-    protected override async Task OnParametersSetAsync() {
-
-    }
 }

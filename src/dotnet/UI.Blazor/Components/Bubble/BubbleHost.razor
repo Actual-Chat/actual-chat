@@ -11,6 +11,7 @@
                  @key="_bubble.Id"
                  class="ac-bubble">
                 <DynamicComponent Type="@_bubble.Ref.BubbleType" Parameters="@_bubble.Parameters"/>
+                <div class="ac-bubble-arrow"></div>
             </div>
         }
     </CascadingValue>
@@ -46,17 +47,19 @@
         _bubbleGroup = group;
         var bubbles = await _jsRef.InvokeAsync<BubbleInfo[]>("getBubblesByGroup", CancellationToken.None, group);
         _bubbles = bubbles
-            .Select(x => {
+            .OrderBy(x => x.Order)
+            .Select((x, index) => {
                 var id = IdGenerator.Next();
                 return new BubbleModel(
                     id,
                     BubbleRef.Parse(x.BubbleRef),
-                    x.Order,
+                    index,
                     new Dictionary<string, object> {
                         { nameof(IBubble.Id), id },
+                        { nameof(IBubble.Count), bubbles.Length },
+                        { nameof(IBubble.Current), index + 1 },
                     });
             })
-            .OrderBy(x => x.Order)
             .ToList();
         _bubble = _bubbles.FirstOrDefault();
         StateHasChanged();

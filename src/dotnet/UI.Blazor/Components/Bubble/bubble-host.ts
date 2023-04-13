@@ -37,6 +37,7 @@ export class BubbleHost {
         const triggerElement: HTMLElement = document.querySelector(`[data-bubble="${bubbleRef}"]`);
         const position = triggerElement.dataset['bubblePosition'] as Placement;
         const bubbleElement = document.getElementById(id);
+        const arrowElement = document.getElementsByClassName('ac-bubble-arrow')[0] as HTMLElement;
 
         if (bubbleElement.style.display != 'block')
             bubbleElement.style.display = 'block'

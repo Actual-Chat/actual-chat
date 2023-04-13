@@ -155,6 +155,9 @@ module.exports = {
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'gradient-stop-01': 'var(--gradient-stop-01)',
         'gradient-stop-02': 'var(--gradient-stop-02)',
+
+        'bubble': 'var(--bubble)',
+        'bubble-btn-hover': 'var(--bubble-btn-hover)',
       },
       textColor: {
         '01': 'var(--text-01)',
@@ -1585,6 +1588,7 @@ module.exports = {
       'menu-hover': '202',
       'menu': '203',
       'button': '100',
+      'bubble': '900',
       'tooltip': '999',
     },
   },
