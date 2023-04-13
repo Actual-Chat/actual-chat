@@ -99,7 +99,7 @@
                 _ = History.NavigateTo(Links.Chat(chatId), true);
         }
 
-        await ChatUI.SelectChat(chatId);
+        ChatUI.SelectChat(chatId);
         // No need to call base.OnParametersSetAsync() here, coz
         // FixChatId calls ChatUI.SelectChat(...), which triggers
         // UICommander.RunNothing() anyway
