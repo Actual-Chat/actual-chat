@@ -82,6 +82,4 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     }
 }
 
-// @ts-expect-error - registerProcessor exists
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('audio-vad-worklet-processor', AudioVadWorkletProcessor);

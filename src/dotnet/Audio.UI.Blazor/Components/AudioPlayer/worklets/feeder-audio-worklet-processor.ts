@@ -207,6 +207,4 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 }
 
-// @ts-expect-error - registerProcessor exists
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('feederWorklet', FeederAudioWorkletProcessor);
