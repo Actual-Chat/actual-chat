@@ -1,4 +1,11 @@
-import { computePosition, flip, Middleware, offset, Placement, shift } from '@floating-ui/dom';
+import {
+    Placement,
+    computePosition,
+    flip,
+    shift,
+    offset,
+    arrow,
+} from '@floating-ui/dom';
 import { Log } from 'logging';
 
 interface BubbleInfo {
@@ -35,27 +42,45 @@ export class BubbleHost {
         debugLog?.log(`showBubble:`, id, bubbleRef);
 
         const triggerElement: HTMLElement = document.querySelector(`[data-bubble="${bubbleRef}"]`);
-        const position = triggerElement.dataset['bubblePosition'] as Placement;
+        const position = triggerElement.dataset['bubblePlacement'] as Placement;
         const bubbleElement = document.getElementById(id);
         const arrowElement = document.getElementsByClassName('ac-bubble-arrow')[0] as HTMLElement;
 
         if (bubbleElement.style.display != 'block')
             bubbleElement.style.display = 'block'
 
-        const middleware: Middleware[] = [];
-        middleware.push(offset(6));
-        middleware.push(flip());
-        middleware.push(shift({ padding: 5 }));
-        const { x, y } = await computePosition(
+        const { x, y, placement, middlewareData } = await computePosition(
             triggerElement,
             bubbleElement,
             {
                 placement: position,
-                middleware: middleware,
+                middleware: [
+                    offset(6),
+                    flip(),
+                    shift({ padding: 5 }),
+                    arrow({ element: arrowElement }),
+                ],
             });
         Object.assign(bubbleElement.style, {
             left: `${x}px`,
             top: `${y}px`,
+        });
+
+        const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+        const staticSide = {
+            top: 'bottom',
+            right: 'left',
+            bottom: 'top',
+            left: 'right',
+        }[placement.split('-')[0]];
+
+        Object.assign(arrowElement.style, {
+            left: arrowX != null ? `${arrowX}px` : '',
+            top: arrowY != null ? `${arrowY}px` : '',
+            right: '',
+            bottom: '',
+            [staticSide]: '-5px',
         });
     }
 }
