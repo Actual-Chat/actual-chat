@@ -82,4 +82,5 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     }
 }
 
-registerProcessor('audio-vad-worklet-processor', AudioVadWorkletProcessor);
+// TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! uncomment before PR
+// registerProcessor('audio-vad-worklet-processor', AudioVadWorkletProcessor);

@@ -1,4 +1,4 @@
-import { VoiceActivityChange } from './audio-vad';
+// import { VoiceActivityChange } from './audio-vad';
 import { RpcNoWait, RpcTimeout } from 'rpc';
 
 export interface OpusEncoderWorker {
@@ -8,5 +8,5 @@ export interface OpusEncoderWorker {
     stop(): Promise<void>;
 
     onEncoderWorkletSamples(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
-    onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;
+    // onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;
 }

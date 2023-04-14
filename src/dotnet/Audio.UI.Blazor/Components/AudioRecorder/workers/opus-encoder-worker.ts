@@ -14,11 +14,11 @@ import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Versioning } from 'versioning';
 
-import { AudioVadWorker } from './audio-vad-worker-contract';
+// import { AudioVadWorker } from './audio-vad-worker-contract';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
-import { VoiceActivityChange } from './audio-vad';
+// import { VoiceActivityChange } from './audio-vad';
 import { Log } from 'logging';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
@@ -42,9 +42,9 @@ const worker = self as unknown as Worker;
 let hubConnection: signalR.HubConnection;
 let recordingSubject: signalR.Subject<Uint8Array> = null;
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
-let vadState: 'voice' | 'silence' = 'silence';
+let vadState: 'voice' | 'silence' = 'voice';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
-let vadWorker: AudioVadWorker & Disposable = null;
+// let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
 let lastInitArguments: { sessionId: string, chatId: string, repliedChatEntryId: string } | null = null;
 let isEncoding = false;
@@ -101,9 +101,9 @@ const serverImpl: OpusEncoderWorker = {
         state = 'created';
     },
 
-    init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
+    init: async (workletPort: MessagePort/*, vadPort: MessagePort*/): Promise<void> => {
         encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, workletPort, serverImpl);
-        vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
+        // vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
 
         // Ensure audio transport is up and running
         debugLog?.log(`init: -> hub.ping()`);
@@ -148,42 +148,42 @@ const serverImpl: OpusEncoderWorker = {
         }
     },
 
-    onVoiceActivityChange: async (change: VoiceActivityChange, _noWait?: RpcNoWait) => {
-        debugLog?.log(`onVoiceActivityChange:`, change);
-
-        const newVadState = change.kind === 'end' ? 'silence' : 'voice';
-        if (vadState === newVadState)
-            return;
-        if (state !== 'encoding') {
-            // set state, then leave since we are not recording
-            vadState = newVadState;
-            return;
-        }
-
-        if (newVadState === 'silence') {
-            // set state, then complete the stream
-            vadState = newVadState;
-            processQueue('out');
-            recordingSubject?.complete();
-            recordingSubject = null;
-            encoder?.delete();
-            encoder = null;
-            chunkTimeOffset = 0;
-        }
-        else {
-            // set state, then start new stream - several audio chunks can be buffered at the recordingSubject
-            // while hubConnection.send is being processed
-            vadState = newVadState;
-
-            if (!lastInitArguments)
-                throw new Error('Unable to resume streaming lastNewStreamMessage is null');
-
-            // start new stream and then set state
-            lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
-
-            await startRecording();
-        }
-    }
+    // onVoiceActivityChange: async (change: VoiceActivityChange, _noWait?: RpcNoWait) => {
+    //     debugLog?.log(`onVoiceActivityChange:`, change);
+    //
+    //     const newVadState = change.kind === 'end' ? 'silence' : 'voice';
+    //     if (vadState === newVadState)
+    //         return;
+    //     if (state !== 'encoding') {
+    //         // set state, then leave since we are not recording
+    //         vadState = newVadState;
+    //         return;
+    //     }
+    //
+    //     if (newVadState === 'silence') {
+    //         // set state, then complete the stream
+    //         vadState = newVadState;
+    //         processQueue('out');
+    //         recordingSubject?.complete();
+    //         recordingSubject = null;
+    //         encoder?.delete();
+    //         encoder = null;
+    //         chunkTimeOffset = 0;
+    //     }
+    //     else {
+    //         // set state, then start new stream - several audio chunks can be buffered at the recordingSubject
+    //         // while hubConnection.send is being processed
+    //         vadState = newVadState;
+    //
+    //         if (!lastInitArguments)
+    //             throw new Error('Unable to resume streaming lastNewStreamMessage is null');
+    //
+    //         // start new stream and then set state
+    //         lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
+    //
+    //         await startRecording();
+    //     }
+    // }
 }
 const server = rpcServer(`${logScope}.server`, worker, serverImpl);
 

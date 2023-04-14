@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { audioContextSource } from '../../Services/audio-context-source';
-import { AudioVadWorker } from './workers/audio-vad-worker-contract';
-import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
+// import { AudioVadWorker } from './workers/audio-vad-worker-contract';
+// import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
@@ -53,12 +53,12 @@ export class OpusMediaRecorder {
 
     private encoderWorkerInstance: Worker = null;
     private encoderWorker: OpusEncoderWorker & Disposable = null;
-    private vadWorkerInstance: Worker = null;
-    private vadWorker: AudioVadWorker & Disposable = null;
+    // private vadWorkerInstance: Worker = null;
+    // private vadWorker: AudioVadWorker & Disposable = null;
     private encoderWorkletInstance: AudioWorkletNode = null;
     private encoderWorklet: OpusEncoderWorklet & Disposable = null;
-    private vadWorkletInstance: AudioWorkletNode = null;
-    private vadWorklet: AudioVadWorklet & Disposable = null;
+    // private vadWorkletInstance: AudioWorkletNode = null;
+    // private vadWorklet: AudioVadWorklet & Disposable = null;
     private state: RecorderState = null;
     private contextRef: AudioContextRef = null;
 
@@ -80,11 +80,11 @@ export class OpusMediaRecorder {
             this.encoderWorker = rpcClient<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance);
         }
 
-        if (!this.vadWorker) {
-            const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
-            this.vadWorkerInstance = new Worker(vadWorkerPath);
-            this.vadWorker = rpcClient<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance);
-        }
+        // if (!this.vadWorker) {
+        //     const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
+        //     this.vadWorkerInstance = new Worker(vadWorkerPath);
+        //     this.vadWorker = rpcClient<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance);
+        // }
 
         if (this.origin.includes('0.0.0.0')) {
             // use server address if the app is MAUI
@@ -96,9 +96,9 @@ export class OpusMediaRecorder {
                 Versioning.artifactVersions,
                 audioHubUrl,
                { type: 'rpc-timeout', timeoutMs: 20_000 }),
-            this.vadWorker.create(
-                Versioning.artifactVersions,
-                { type: 'rpc-timeout', timeoutMs: 20_000 }),
+            // this.vadWorker.create(
+            //     Versioning.artifactVersions,
+            //     { type: 'rpc-timeout', timeoutMs: 20_000 }),
         ]);
         this.whenInitialized.resolve(undefined);
     }
@@ -126,19 +126,19 @@ export class OpusMediaRecorder {
                 e => warnLog?.log('start.detach encoderWorklet.dispose error:', e));
             this.encoderWorklet = null;
 
-            await catchErrors(
-                () => this.vadWorkletInstance?.disconnect(),
-                e => warnLog?.log('start.detach vadWorkletInstance.disconnect error:', e));
-            this.vadWorkletInstance = null;
-            await catchErrors(
-                () => {
-                    if (this.vadWorklet) {
-                        void this.vadWorklet.stop(rpcNoWait);
-                        this.vadWorklet.dispose();
-                    }
-                },
-                e => warnLog?.log('start.detach vadWorklet.dispose error:', e));
-            this.vadWorklet = null;
+            // await catchErrors(
+            //     () => this.vadWorkletInstance?.disconnect(),
+            //     e => warnLog?.log('start.detach vadWorkletInstance.disconnect error:', e));
+            // this.vadWorkletInstance = null;
+            // await catchErrors(
+            //     () => {
+            //         if (this.vadWorklet) {
+            //             void this.vadWorklet.stop(rpcNoWait);
+            //             this.vadWorklet.dispose();
+            //         }
+            //     },
+            //     e => warnLog?.log('start.detach vadWorklet.dispose error:', e));
+            // this.vadWorklet = null;
 
             await this.stopMicrophoneStream();
 
@@ -155,12 +155,12 @@ export class OpusMediaRecorder {
 
         const attach = async (context: AudioContext) => {
             if (!this.encoderWorkletInstance
-                || !this.vadWorkletInstance
+                // || !this.vadWorkletInstance
                 || this.encoderWorkletInstance.context !== context
-                || this.vadWorkletInstance.context !== context) {
+                /*|| this.vadWorkletInstance.context !== context*/) {
 
                 if (this.encoderWorkletInstance) {
-                    void this.vadWorklet?.stop(rpcNoWait);
+                    // void this.vadWorklet?.stop(rpcNoWait);
                     void this.encoderWorklet?.stop(rpcNoWait);
                     await detach();
                 }
@@ -191,25 +191,26 @@ export class OpusMediaRecorder {
                     this.encoderWorkletInstance.port);
                 await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
 
-                const vadWorkerChannel = new MessageChannel();
-                const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
+                // const vadWorkerChannel = new MessageChannel();
+                // const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
 
                 // VAD worklet init
-                const vadWorkletOptions: AudioWorkletNodeOptions = {
-                    numberOfInputs: 1,
-                    numberOfOutputs: 1,
-                    channelCount: 1,
-                    channelInterpretation: 'speakers',
-                    channelCountMode: 'explicit',
-                };
-                this.vadWorkletInstance = new AudioWorkletNode(
-                    context,
-                    'audio-vad-worklet-processor',
-                    vadWorkletOptions);
-                this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
-                void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
+                // const vadWorkletOptions: AudioWorkletNodeOptions = {
+                //     numberOfInputs: 1,
+                //     numberOfOutputs: 1,
+                //     channelCount: 1,
+                //     channelInterpretation: 'speakers',
+                //     channelCountMode: 'explicit',
+                // };
+                // this.vadWorkletInstance = new AudioWorkletNode(
+                //     context,
+                //     'audio-vad-worklet-processor',
+                //     vadWorkletOptions);
+                // this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
+                // void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
 
-                await Promise.all([t1, t2]);
+                // await Promise.all([t1, t2]);
+                await Promise.all([t1]);
             }
 
             // stop active microphone stream if exists
@@ -220,7 +221,7 @@ export class OpusMediaRecorder {
                 if (!this.stream) {
                     this.stream = stream;
                     this.source = context.createMediaStreamSource(this.stream);
-                    this.source.connect(this.vadWorkletInstance);
+                    // this.source.connect(this.vadWorkletInstance);
                     this.source.connect(this.encoderWorkletInstance);
                 }
                 else {
@@ -245,7 +246,7 @@ export class OpusMediaRecorder {
 
             await Promise.all([
                 this.encoderWorker.start(sessionId, chatId, repliedChatEntryId),
-                this.vadWorker.reset(),
+                // this.vadWorker.reset(),
             ]);
         }
         catch (e) {
@@ -259,7 +260,7 @@ export class OpusMediaRecorder {
         debugLog?.log(`stop`);
         await this.whenInitialized;
         await this.stopMicrophoneStream();
-        void this.vadWorklet?.stop(rpcNoWait);
+        // void this.vadWorklet?.stop(rpcNoWait);
         void this.encoderWorklet?.stop(rpcNoWait);
         if (!this.contextRef)
             return;
