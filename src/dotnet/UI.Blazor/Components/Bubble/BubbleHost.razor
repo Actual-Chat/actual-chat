@@ -73,6 +73,16 @@
         await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, model.Id, model.Ref.ToString());
     }
 
+    public void SkipBubble() {
+        _bubble = null;
+        StateHasChanged();
+    }
+
+    public void ShowNextBubble(IBubble bubble) {
+        _bubble = _bubbles!.ElementAtOrDefault(bubble.Current);
+        StateHasChanged();
+    }
+
     // Protected & private methods
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

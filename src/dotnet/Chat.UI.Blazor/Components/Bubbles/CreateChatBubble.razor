@@ -1,19 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits BubbleBase
 
-<BubbleContent>
+<BubbleContent Bubble="@(this)">
     <Title>Create</Title>
     <Body>
     <ul class="list-disc pl-4">
         <li>New group chat</li>
     </ul>
     </Body>
-    <Counter>@Current of @Count</Counter>
-    <Buttons>
-        <Button Class="btn-bubble">Skip</Button>
-        <Button Class="btn-bubble btn-next">Next</Button>
-    </Buttons>
 </BubbleContent>
-
-@code {
-}

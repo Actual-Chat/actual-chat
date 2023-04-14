@@ -1,26 +1,35 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits BubbleBase
 
 <div class="ac-bubble-content">
-    <div class="ac-bubble-title">
-        @Title
-    </div>
+    @if (Title != null) {
+        <div class="ac-bubble-title">
+            @Title
+        </div>
+    }
     <div class="ac-bubble-body">
         @Body
     </div>
     <div class="flex-x items-center">
         <div class="bubble-counter flex-1 text-xs">
-            @Counter
+            @Bubble.Current of @Bubble.Count
         </div>
         <div class="bubble-buttons flex justify-end">
-            @Buttons
+            <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
+            <Button Class="btn-bubble btn-next" Click="OnNextClick">Next</Button>
         </div>
     </div>
 </div>
 
 @code {
+    [Parameter, EditorRequired] public IBubble Bubble { get; set; } = null!;
     [Parameter] public RenderFragment? Title { get; set; }
-    [Parameter] public RenderFragment? Body { get; set; }
-    [Parameter] public RenderFragment? Buttons { get; set; }
-    [Parameter] public RenderFragment? Counter { get; set; }
+    [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
+
+    private void OnNextClick() {
+        Bubble.Host.ShowNextBubble(Bubble);
+    }
+
+    private void OnSkipClick() {
+        Bubble.Host.SkipBubble();
+    }
 }
