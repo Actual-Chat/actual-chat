@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:7.0.4-bullseye-slim-amd64 as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:7.0.5-bullseye-slim-amd64 as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -11,7 +11,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0.202-bullseye-slim-amd64 as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:7.0.203-bullseye-slim-amd64 as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
