@@ -9,7 +9,6 @@ public interface IRoles : IComputeService
     Task<ImmutableArray<Role>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<ImmutableArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
