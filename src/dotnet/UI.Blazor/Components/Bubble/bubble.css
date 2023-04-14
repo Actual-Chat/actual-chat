@@ -1,9 +1,9 @@
 /* Bubbles */
 .ac-bubble {
     @apply hidden absolute top-0 left-0;
+    @apply p-4;
     @apply bg-bubble;
-    @apply text-base text-04;
-    @apply px-[12px] py-[7px];
+    @apply min-w-64;
     @apply rounded-lg whitespace-nowrap z-bubble;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }
@@ -12,6 +12,24 @@
     @apply bg-bubble;
     @apply w-[12px] h-[12px];
     @apply rotate-45;
+}
+
+/* Content */
+.bubble-content {
+    @apply text-04;
+}
+.bubble-body {
+    @apply pt-2 pb-4;
+    @apply text-caption-4;
+}
+.bubble-title {
+    @apply text-headline-1;
+}
+.bubble-counter {
+    @apply text-caption-2;
+}
+.bubble-buttons {
+    @apply gap-x-1;
 }
 
 /* Buttons */
