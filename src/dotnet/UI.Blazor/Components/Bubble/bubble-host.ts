@@ -80,7 +80,7 @@ export class BubbleHost {
             top: arrowY != null ? `${arrowY}px` : '',
             right: '',
             bottom: '',
-            [staticSide]: '-5px',
+            [staticSide]: '-4px',
         });
     }
 }
