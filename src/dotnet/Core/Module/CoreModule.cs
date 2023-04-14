@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using ActualChat.Blobs.Internal;
+using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Internal;
 using Microsoft.AspNetCore.Builder;
@@ -11,13 +12,13 @@ using Microsoft.Extensions.Options;
 using Stl.Extensibility;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
+using Stl.Mathematics.Internal;
 
 namespace ActualChat.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed partial class CoreModule : HostModule<CoreSettings>
 {
-    [ServiceConstructor]
     public CoreModule(IServiceProvider services) : base(services) { }
 
     protected internal override void InjectServices(IServiceCollection services)
@@ -31,9 +32,17 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         services.AddSingleton<UrlMapper>(c => new UrlMapper(
             c.GetRequiredService<HostInfo>()));
 
-        // Matching type finder
-        services.AddSingleton<IMatchingTypeRegistry>(c => new FusionMatchingTypeRegistry());
-        services.AddSingleton<IMatchingTypeRegistry>(c => new CoreMatchingTypeRegistry());
+        // IArithmetics
+        services.AddTypeMapper<IArithmetics>(map => map
+            .Add<double, DoubleArithmetics>()
+            .Add<int, IntArithmetics>()
+            .Add<long, LongArithmetics>()
+            .Add<Moment, MomentArithmetics>()
+            .Add<TimeSpan, TimeSpanArithmetics>()
+        );
+
+        // IDiffHandlers
+        services.AddTypeMapper<IDiffHandler>(DiffEngine.DefaultTypeMapBuilder);
 
         // DiffEngine
         services.AddSingleton<DiffEngine>(c => new DiffEngine(c));

@@ -1,10 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
-@using Stl.Extensibility
 @implements IFeatureBackend
 @implements IAsyncDisposable
 @implements IModalView<FeatureRequestModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <DialogFrame Title="Sorry, this feature is not implemented yet">
     <Body>

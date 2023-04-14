@@ -5,10 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace ActualChat.MediaPlayback.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class PlaybackModule : HostModule
+public sealed class MediaPlaybackModule : HostModule
 {
-    [ServiceConstructor]
-    public PlaybackModule(IServiceProvider services) : base(services) { }
+    public MediaPlaybackModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

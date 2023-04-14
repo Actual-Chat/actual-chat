@@ -1,9 +1,7 @@
-@using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Contacts
 @using ActualChat.Search
 @implements IModalView<NewChatModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <DialogFrame Class="new-chat-modal" Title="New group" HasCloseButton="true">
     <Body>

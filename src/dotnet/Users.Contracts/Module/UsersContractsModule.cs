@@ -6,7 +6,6 @@ namespace ActualChat.Users.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class UsersContractsModule : HostModule
 {
-    [ServiceConstructor]
     public UsersContractsModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

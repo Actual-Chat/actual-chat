@@ -1,10 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using Stl.Extensibility
 @using ActualChat.Contacts
 @using ActualChat.Search
-@implements IModalView<InviteAuthor.Model>
+@implements IModalView<InviteAuthorModal.Model>
 @implements IDisposable
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <DialogFrame Class="invite-author-modal" Title="Invite users" HasCloseButton="true">
     <Body>
@@ -77,7 +75,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public InviteAuthor()
+    public InviteAuthorModal()
     {
         DisposeTokenSource = new();
         DisposeToken = DisposeTokenSource.Token;

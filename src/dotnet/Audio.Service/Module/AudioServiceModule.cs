@@ -10,10 +10,9 @@ using Microsoft.AspNetCore.Builder;
 namespace ActualChat.Audio.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class AudioModule : HostModule<AudioSettings>, IWebModule
+public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
 {
-    [ServiceConstructor]
-    public AudioModule(IServiceProvider services) : base(services) { }
+    public AudioServiceModule(IServiceProvider services) : base(services) { }
 
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {

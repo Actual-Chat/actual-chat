@@ -154,7 +154,6 @@
     <TrimmerRootAssembly Include="Stl.Fusion.Client" />
     <TrimmerRootAssembly Include="Stl.Interception" />
     <TrimmerRootAssembly Include="Stl.Net" />
-    <!-- <TrimmerRootAssembly Include="Stl.Plugins" /> -->
 
     <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />

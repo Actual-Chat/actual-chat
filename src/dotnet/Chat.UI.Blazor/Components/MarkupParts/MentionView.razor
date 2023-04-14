@@ -1,6 +1,4 @@
-@using Stl.Extensibility
 @inherits MarkupViewBase<MentionMarkup>
-@attribute [MatchFor(typeof(MentionMarkup), typeof(IMarkupView))]
 
 <AuthorBadgeTemplate AuthorSid="@_authorId">
     @if (context.Author.Id.IsNone) {

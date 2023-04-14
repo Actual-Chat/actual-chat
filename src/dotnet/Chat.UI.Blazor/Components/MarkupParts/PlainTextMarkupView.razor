@@ -1,6 +1,3 @@
-@using Stl.Extensibility
 @inherits MarkupViewBase<TextMarkup>
-@attribute [MatchFor(typeof(PlainTextMarkup), typeof(IMarkupView))]
-@attribute [MatchFor(typeof(UnparsedTextMarkup), typeof(IMarkupView))]
 
 <span class="plain-text-markup">@Markup.Text</span>

@@ -243,7 +243,7 @@ public static partial class MauiProgram
         services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
         AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {
-            new Module.BlazorUIClientAppModule(c)
+            new Module.BlazorUIClientAppModule(c),
         });
 
         // Auth

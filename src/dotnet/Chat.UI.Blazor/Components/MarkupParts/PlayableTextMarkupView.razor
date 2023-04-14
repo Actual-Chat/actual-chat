@@ -1,7 +1,5 @@
-@using Stl.Extensibility
 @using ActualChat.MediaPlayback
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
-@attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
     var m = _rendered = State.Value;
     var colorCls = m.Color switch {

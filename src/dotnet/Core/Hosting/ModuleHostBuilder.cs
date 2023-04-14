@@ -1,31 +1,32 @@
-using Stl.Extensibility;
-
 namespace ActualChat.Hosting;
 
-public sealed class ModuleHostBuilder
+public readonly record struct ModuleHostBuilder(ImmutableList<HostModule> Modules)
 {
-    private readonly ImmutableStack<HostModule> _modules;
+    public ModuleHostBuilder() : this(ImmutableList<HostModule>.Empty) { }
 
-    public ModuleHostBuilder()
-        => _modules = ImmutableStack<HostModule>.Empty;
+    public ModuleHostBuilder AddModule(HostModule module)
+        => new(Modules.Add(module));
 
-    private ModuleHostBuilder(ModuleHostBuilder builder, params HostModule[] modules)
+    public ModuleHostBuilder AddModules(params HostModule[] modules)
     {
-        _modules = builder._modules;
+        var newModules = Modules;
         foreach (var module in modules)
-            _modules = _modules.Push(module);
+            newModules = newModules.Add(module);
+        return new(newModules);
     }
-
-    public ModuleHostBuilder AddModule(params HostModule[] modules) => new (this, modules);
 
     public ModuleHost Build(IServiceCollection services)
     {
-        var host = new ModuleHost(_modules.Reverse().ToArray());
+        var host = new ModuleHost(Modules.ToArray());
         services.AddSingleton(host);
 
-        foreach (var module in host.GetModules())
+        // 1. Initialize / bind modules to ModuleHost
+        foreach (var module in host.Modules)
+            module.Initialize(host);
+
+        // 2. Let modules to inject their services
+        foreach (var module in host.Modules)
             module.InjectServices(services);
-        services.AddSingleton<IMatchingTypeFinder>(c => new StaticMatchingTypeFinder(c));
 
         return host;
     }

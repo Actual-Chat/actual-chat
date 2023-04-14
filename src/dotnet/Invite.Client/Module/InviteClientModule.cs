@@ -8,7 +8,6 @@ namespace ActualChat.Invite.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class InviteClientModule : HostModule
 {
-    [ServiceConstructor]
     public InviteClientModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

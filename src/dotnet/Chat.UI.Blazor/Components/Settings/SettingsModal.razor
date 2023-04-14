@@ -1,7 +1,5 @@
-@using Stl.Extensibility
 @using LanguageSettings = ActualChat.Chat.UI.Blazor.Components.LanguageSettings
 @implements IModalView<SettingsModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;

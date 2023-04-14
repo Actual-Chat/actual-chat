@@ -11,10 +11,10 @@ public abstract class HostModule
     protected HostModule(IServiceProvider services)
         => HostInfo = services.GetRequiredService<HostInfo>();
 
-    protected internal abstract void InjectServices(IServiceCollection services);
-
-    internal void SetHost(ModuleHost host)
+    protected internal void Initialize(ModuleHost host)
         => Host = host;
+
+    protected internal abstract void InjectServices(IServiceCollection services);
 }
 
 public abstract class HostModule<TSettings> : HostModule

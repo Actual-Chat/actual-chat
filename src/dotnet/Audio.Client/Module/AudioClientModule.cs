@@ -9,7 +9,6 @@ namespace ActualChat.Audio.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AudioClientModule : HostModule
 {
-    [ServiceConstructor]
     public AudioClientModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

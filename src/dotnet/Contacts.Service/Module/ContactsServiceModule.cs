@@ -10,7 +10,6 @@ namespace ActualChat.Contacts.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ContactsServiceModule : HostModule<ContactsSettings>
 {
-    [ServiceConstructor]
     public ContactsServiceModule(IServiceProvider services) : base(services) { }
 
     public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }

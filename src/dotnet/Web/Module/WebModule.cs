@@ -8,7 +8,6 @@ namespace ActualChat.Web.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class WebModule : HostModule, IWebModule
 {
-    [ServiceConstructor]
     public WebModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

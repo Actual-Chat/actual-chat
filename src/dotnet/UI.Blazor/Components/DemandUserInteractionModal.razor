@@ -1,8 +1,6 @@
-@using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<string>
 @implements IModalView<DemandUserInteractionModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
     var operations = State.Value;
     var isUpdating = operations.IsNullOrEmpty();

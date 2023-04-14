@@ -6,7 +6,6 @@ using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Module;
@@ -14,7 +13,6 @@ namespace ActualChat.Chat.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ChatServiceModule : HostModule<ChatSettings>
 {
-    [ServiceConstructor]
     public ChatServiceModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

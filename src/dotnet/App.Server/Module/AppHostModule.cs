@@ -21,6 +21,7 @@ using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
 using Stl.Generators;
+using Stl.IO;
 
 namespace ActualChat.App.Server.Module;
 
@@ -35,7 +36,6 @@ public sealed class AppHostModule : HostModule<HostSettings>, IWebModule
     public IWebHostEnvironment Env { get; }
     public IConfiguration Cfg { get; }
 
-    [ServiceConstructor]
     public AppHostModule(IServiceProvider serviceProvider) : base(serviceProvider)
     {
         Env = serviceProvider.GetRequiredService<IWebHostEnvironment>();
@@ -154,8 +154,8 @@ public sealed class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
-        var dataProtection = Settings.DataProtection.NullIfEmpty()
-            ?? Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!), "data-protection-keys");
+        var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
+        var dataProtection = Settings.DataProtection.NullIfEmpty() ?? binPath & "data-protection-keys";
         Log.LogInformation("DataProtection path: {DataProtection}", dataProtection);
         if (dataProtection.OrdinalStartsWith("gs://")) {
             var bucket = dataProtection[5..dataProtection.IndexOf('/', 5)];

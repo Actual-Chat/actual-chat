@@ -116,7 +116,6 @@
     <PackageVersion Include="Stl" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.CommandR" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Interception" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Plugins" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Redis" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.Server" Version="$(StlFusionVersion)" />

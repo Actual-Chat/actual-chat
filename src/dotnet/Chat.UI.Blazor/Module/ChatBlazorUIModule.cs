@@ -1,5 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Chat.UI.Blazor.Components.MarkupParts;
+using ActualChat.Chat.UI.Blazor.Components.MarkupParts.CodeBlockMarkupView;
+using ActualChat.Chat.UI.Blazor.Components.NewChat;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
@@ -10,11 +14,10 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.Chat.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public partial class ChatBlazorUIModule : HostModule, IBlazorUIModule
+public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "chat";
 
-    [ServiceConstructor]
     public ChatBlazorUIModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
@@ -51,8 +54,37 @@ public partial class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<LanguageUI>(c => new LanguageUI(c));
         services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
 
-        // Matching type finder
-        services.AddSingleton<IMatchingTypeRegistry>(c => new ChatBlazorUIMatchingTypeRegistry());
+        // IMarkupViews
+        services.AddTypeMapper<IMarkupView>(map => map
+            .Add<NewLineMarkup, NewLineMarkupView>()
+            .Add<UrlMarkup, UrlMarkupView>()
+            .Add<MentionMarkup, MentionView>()
+            .Add<PreformattedTextMarkup, PreformattedTextMarkupView>()
+            .Add<PlayableTextMarkup, PlayableTextMarkupView>()
+            .Add<CodeBlockMarkup, CodeBlockMarkupView>()
+            .Add<StylizedMarkup, StylizedMarkupView>()
+            .Add<PlainTextMarkup, PlainTextMarkupView>()
+            .Add<UnparsedTextMarkup, PlainTextMarkupView>()
+            .Add<MarkupSeq, MarkupSeqView>()
+            .Add<Markup, MarkupView>()
+        );
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<AvatarSelectModal.Model, AvatarSelectModal>()
+            .Add<NoSecondaryLanguageModal.Model, NoSecondaryLanguageModal>()
+            .Add<ChatSettingsModal.Model, ChatSettingsModal>()
+            .Add<InviteAuthorModal.Model, InviteAuthorModal>()
+            .Add<NewChatModal.Model, NewChatModal>()
+            .Add<OnboardingModal.Model, OnboardingModal>()
+            .Add<SettingsModal.Model, SettingsModal>()
+            .Add<AuthorModal.Model, AuthorModal>()
+            .Add<DeleteMessageModal.Model, DeleteMessageModal>()
+            .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
+        );
+        // IBannerViews
+        services.AddTypeMap<IBannerView>(map => map
+            .Add<SwitchToWasmBanner.Model, SwitchToWasmBanner>()
+        );
 
         services.ConfigureUILifetimeEvents(events
             => events.OnCircuitContextCreated += RegisterShowSettingsHandler);

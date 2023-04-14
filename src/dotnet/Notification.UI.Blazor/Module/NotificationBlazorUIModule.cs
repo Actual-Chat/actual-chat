@@ -9,7 +9,6 @@ public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 {
     public static string ImportName => "notification";
 
-    [ServiceConstructor]
     public NotificationBlazorUIModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

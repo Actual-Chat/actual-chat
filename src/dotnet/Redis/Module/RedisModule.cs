@@ -12,7 +12,6 @@ public sealed class RedisModule : HostModule<RedisSettings>
 {
     private ILogger Log { get; }
 
-    [ServiceConstructor]
     public RedisModule(IServiceProvider services) : base(services)
         => Log = services.LogFor<RedisModule>();
 

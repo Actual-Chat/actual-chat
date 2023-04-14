@@ -5,9 +5,9 @@ using ActualChat.Transcription.Google;
 namespace ActualChat.Transcription.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class TranscriptionModule: HostModule
+public class TranscriptionServiceModule: HostModule
 {
-    public TranscriptionModule(IServiceProvider services) : base(services) { }
+    public TranscriptionServiceModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

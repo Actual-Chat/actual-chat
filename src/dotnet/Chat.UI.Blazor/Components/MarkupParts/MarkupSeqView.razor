@@ -1,6 +1,4 @@
-@using Stl.Extensibility
 @inherits MarkupViewBase<MarkupSeq>
-@attribute [MatchFor(typeof(MarkupSeq), typeof(IMarkupView))]
 
 @foreach (var item in Markup.Items) {
     <MarkupView Markup="item"/>

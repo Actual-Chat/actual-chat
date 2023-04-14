@@ -1,7 +1,4 @@
-@using Stl.Extensibility
-@using ActualChat.Contacts
 @implements IModalView<AuthorModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
 @{
     var m = State.Value;

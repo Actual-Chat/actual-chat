@@ -179,7 +179,7 @@
         });
 
     private Task OnInviteClick()
-        => ModalUI.Show(new InviteAuthor.Model(Chat));
+        => ModalUI.Show(new InviteAuthorModal.Model(Chat));
 
     public sealed record Model {
         public static Model None { get; } = new();

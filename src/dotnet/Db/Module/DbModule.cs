@@ -16,7 +16,6 @@ public sealed class DbModule : HostModule<DbSettings>
 {
     private ILogger Log { get; }
 
-    [ServiceConstructor]
     public DbModule(IServiceProvider services) : base(services)
         => Log = services.LogFor<DbModule>();
 

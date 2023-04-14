@@ -1,7 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using Stl.Extensibility
 @implements IModalView<AvatarSelectModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @inherits ComputedStateComponent<AvatarSelectModal.ViewModel>
 @{
     var m = State.Value;

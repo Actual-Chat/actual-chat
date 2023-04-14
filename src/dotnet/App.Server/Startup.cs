@@ -32,7 +32,7 @@ public class Startup
 {
     private IConfiguration Cfg { get; }
     private IWebHostEnvironment Env { get; }
-    private ImmutableArray<HostModule> HostModules { get; set; } = ImmutableArray<HostModule>.Empty;
+    private ModuleHost ModuleHost { get; set; } = null!;
 
     public Startup(IConfiguration cfg, IWebHostEnvironment environment)
     {
@@ -114,37 +114,50 @@ public class Startup
             AllowDirectCommandHandlerCalls = false,
         });
 
-        var serviceProvider = new DefaultServiceProviderFactory().CreateServiceProvider(services);
-        var host = new ModuleHostBuilder()
-            .AddModule(
-                new CoreModule(serviceProvider),
-                new AppHostModule(serviceProvider),
-                new BlazorUIAppModule(serviceProvider),
-                new BlazorUICoreModule(serviceProvider),
-                new AudioBlazorUIModule(serviceProvider),
-                new ChatBlazorUIModule(serviceProvider),
-                new NotificationBlazorUIModule(serviceProvider),
-                new UsersBlazorUIModule(serviceProvider),
-                new ChatModule(serviceProvider),
-                new TranscriptionModule(serviceProvider),
-                new UsersContractsModule(serviceProvider),
-                new PlaybackModule(serviceProvider),
-                new WebModule(serviceProvider),
-                new AudioModule(serviceProvider),
-                new ChatServiceModule(serviceProvider),
-                new ContactsServiceModule(serviceProvider),
-                new FeedbackModule(serviceProvider),
-                new InviteServiceModule(serviceProvider),
-                new MediaServiceModule(serviceProvider),
-                new NotificationModule(serviceProvider),
-                new UsersServiceModule(serviceProvider),
-                new KubernetesModule(serviceProvider),
-                new RedisModule(serviceProvider),
-                new DbModule(serviceProvider))
-            .Build(services);
-        HostModules = host.GetModules();
+        var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+        ModuleHost = new ModuleHostBuilder()
+            // From less dependent to more dependent!
+            .AddModules(
+                // Core modules
+                new CoreModule(moduleServices),
+                new KubernetesModule(moduleServices),
+                new RedisModule(moduleServices),
+                new DbModule(moduleServices),
+                new WebModule(moduleServices),
+                // Generic modules
+                new MediaPlaybackModule(moduleServices),
+                // Service-specific & service modules
+                new AudioServiceModule(moduleServices),
+                new FeedbackServiceModule(moduleServices),
+                new MediaServiceModule(moduleServices),
+                new ContactsServiceModule(moduleServices),
+                new InviteServiceModule(moduleServices),
+                new UsersContractsModule(moduleServices),
+                new UsersServiceModule(moduleServices),
+                new ChatModule(moduleServices),
+                new ChatServiceModule(moduleServices),
+                new TranscriptionServiceModule(moduleServices),
+                new NotificationServiceModule(moduleServices),
+                // UI modules
+                new BlazorUICoreModule(moduleServices),
+                new AudioBlazorUIModule(moduleServices),
+                new UsersBlazorUIModule(moduleServices),
+                new ChatBlazorUIModule(moduleServices),
+                new NotificationBlazorUIModule(moduleServices),
+                new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
+                // This module should be the last one
+                new AppHostModule(moduleServices)
+            ).Build(services);
     }
 
     public void Configure(IApplicationBuilder app)
-        => HostModules.OfType<IWebModule>().Apply(m => m.ConfigureApp(app));
+    {
+        var appHostModule = ModuleHost.GetModule<AppHostModule>();
+        appHostModule.ConfigureApp(app); // This module must be the first one in ConfigureApp call sequence
+
+        ModuleHost.Modules
+            .OfType<IWebModule>()
+            .Where(m => !ReferenceEquals(m, appHostModule))
+            .Apply(m => m.ConfigureApp(app));
+    }
 }

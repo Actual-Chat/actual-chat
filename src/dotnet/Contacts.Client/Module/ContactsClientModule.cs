@@ -8,7 +8,6 @@ namespace ActualChat.Contacts.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ContactsClientModule : HostModule
 {
-    [ServiceConstructor]
     public ContactsClientModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

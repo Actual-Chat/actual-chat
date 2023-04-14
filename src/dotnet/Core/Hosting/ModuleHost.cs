@@ -2,23 +2,16 @@ namespace ActualChat.Hosting;
 
 public sealed class ModuleHost
 {
-    private readonly ImmutableArray<HostModule> _sortedModules;
-    private readonly Dictionary<Type, HostModule> _moduleMap;
+    public IReadOnlyList<HostModule> Modules { get; }
+    public IReadOnlyDictionary<Type, HostModule> ModuleByType { get; }
 
-    internal ModuleHost(params HostModule[] modules)
+    internal ModuleHost(IReadOnlyList<HostModule> modules)
     {
-        _sortedModules = modules.ToImmutableArray();
-        _moduleMap = modules.ToDictionary(m => m.GetType());
-        foreach (var module in _sortedModules)
-            module.SetHost(this);
+        Modules = modules;
+        ModuleByType = modules.ToDictionary(m => m.GetType());
     }
 
-    public T GetModule<T>() where T : HostModule
-        => (T)_moduleMap[typeof(T)];
-
-    public ImmutableArray<HostModule> GetModules()
-        => _sortedModules;
-
-    public ImmutableArray<T> GetModules<T>()
-        => _sortedModules.OfType<T>().ToImmutableArray();
+    public T GetModule<T>()
+        where T : HostModule
+        => (T)ModuleByType[typeof(T)];
 }

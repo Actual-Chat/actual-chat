@@ -34,7 +34,10 @@ namespace ActualChat.UI.Blazor.App
             }
         }
 
-        public static void ConfigureServices(IServiceCollection services, AppKind appKind, Func<IServiceProvider,HostModule[]>? extraHostsFactory = null)
+        public static void ConfigureServices(
+            IServiceCollection services,
+            AppKind appKind,
+            Func<IServiceProvider, HostModule[]>? platformModuleFactory = null)
         {
 #if !DEBUG
             InterceptorBase.Options.Defaults.IsValidationEnabled = false;
@@ -95,33 +98,37 @@ namespace ActualChat.UI.Blazor.App
             });
 
             // Creating modules
-            var step = tracer.Region("Building and injecting module services");
-            var serviceProvider = new DefaultServiceProviderFactory().CreateServiceProvider(services);
-            var hostModules = new List<HostModule>() {
-                new CoreModule(serviceProvider),
-                new BlazorUIAppModule(serviceProvider),
-                new BlazorUICoreModule(serviceProvider),
-                new AudioBlazorUIModule(serviceProvider),
-                new ChatBlazorUIModule(serviceProvider),
-                new NotificationBlazorUIModule(serviceProvider),
-                new UsersBlazorUIModule(serviceProvider),
-                new ChatModule(serviceProvider),
-                new PlaybackModule(serviceProvider),
-                new UsersContractsModule(serviceProvider),
-                new UsersClientModule(serviceProvider),
-                new AudioClientModule(serviceProvider),
-                new ChatClientModule(serviceProvider),
-                new ContactsClientModule(serviceProvider),
-                new InviteClientModule(serviceProvider),
-                new FeedbackClientModule(serviceProvider),
-                new NotificationClientModule(serviceProvider)
-            };
-            if (extraHostsFactory != null)
-                hostModules.AddRange(extraHostsFactory.Invoke(serviceProvider));
-            new ModuleHostBuilder()
-                .AddModule(hostModules.ToArray())
-                .Build(services);
-            step.Close();
+            using var step = tracer.Region("Building and injecting module services");
+            var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+            var moduleHostBuilder = new ModuleHostBuilder()
+                // From less dependent to more dependent!
+                .AddModules(
+                    // Core modules
+                    new CoreModule(moduleServices),
+                    // Generic modules
+                    new MediaPlaybackModule(moduleServices),
+                    // Service-specific & service client modules
+                    new AudioClientModule(moduleServices),
+                    new FeedbackClientModule(moduleServices),
+                    new UsersContractsModule(moduleServices),
+                    new UsersClientModule(moduleServices),
+                    new ContactsClientModule(moduleServices),
+                    new ChatModule(moduleServices),
+                    new ChatClientModule(moduleServices),
+                    new InviteClientModule(moduleServices),
+                    new NotificationClientModule(moduleServices),
+                    // UI modules
+                    new BlazorUICoreModule(moduleServices),
+                    new AudioBlazorUIModule(moduleServices),
+                    new UsersBlazorUIModule(moduleServices),
+                    new ChatBlazorUIModule(moduleServices),
+                    new NotificationBlazorUIModule(moduleServices),
+                    // This module should be the last one
+                    new BlazorUIAppModule(moduleServices)
+                );
+            if (platformModuleFactory != null)
+                moduleHostBuilder.AddModules(platformModuleFactory.Invoke(moduleServices));
+            moduleHostBuilder.Build(services);
         }
 
         private static string GetCookieHeader()

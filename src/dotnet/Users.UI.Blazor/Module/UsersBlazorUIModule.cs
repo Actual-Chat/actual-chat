@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.Users.UI.Blazor.Components;
 
 namespace ActualChat.Users.UI.Blazor.Module;
 
@@ -8,7 +9,6 @@ public partial class UsersBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "users";
 
-    [ServiceConstructor]
     public UsersBlazorUIModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
@@ -18,7 +18,10 @@ public partial class UsersBlazorUIModule : HostModule, IBlazorUIModule
 
         var fusion = services.AddFusion();
 
-        // Matching type finder
-        services.AddSingleton<IMatchingTypeRegistry>(c => new UsersBlazorUIMatchingTypeRegistry());
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<OwnAccountEditorModal.Model, OwnAccountEditorModal>()
+            .Add<OwnAvatarEditorModal.Model, OwnAvatarEditorModal>()
+        );
     }
 }

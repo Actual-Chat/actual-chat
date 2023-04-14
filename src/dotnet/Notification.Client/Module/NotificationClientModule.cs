@@ -8,7 +8,6 @@ namespace ActualChat.Notification.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class NotificationClientModule : HostModule
 {
-    [ServiceConstructor]
     public NotificationClientModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

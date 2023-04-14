@@ -1,7 +1,5 @@
-@using Stl.Extensibility
 @using ActualChat.Chat.UI.Blazor.Module
 @inherits MarkupViewBase<CodeBlockMarkup>
-@attribute [MatchFor(typeof(CodeBlockMarkup), typeof(IMarkupView))]
 @{
     var cls = $"code-block-markup code-block-language-{Markup.Language}";
     var title = Markup.Language.IsNullOrEmpty() ? "" : $"Language: {Markup.Language}";

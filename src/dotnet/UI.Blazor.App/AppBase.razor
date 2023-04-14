@@ -1,4 +1,3 @@
-@using Stl.Plugins
 @using ActualChat.Hosting
 @using ActualChat.Audio.UI.Blazor.Services
 @implements IDisposable
@@ -66,7 +65,8 @@
         _tracer = Services.Tracer(GetType());
         _tracer.Point("OnInitialized");
         UIAssembly ??= typeof(AppBase).Assembly;
-        UIModuleAssemblies ??= Host.GetModules<IBlazorUIModule>()
+        UIModuleAssemblies ??= Host.Modules
+            .OfType<IBlazorUIModule>()
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
             .ToArray();

@@ -7,11 +7,10 @@ using ActualChat.MediaPlayback;
 namespace ActualChat.Audio.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public partial class AudioBlazorUIModule: HostModule, IBlazorUIModule
+public class AudioBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "audio";
 
-    [ServiceConstructor]
     public AudioBlazorUIModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
@@ -27,7 +26,9 @@ public partial class AudioBlazorUIModule: HostModule, IBlazorUIModule
         services.AddScoped(c => new MicrophonePermissionHandler(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
 
-        // Matching type finder
-        services.AddSingleton<IMatchingTypeRegistry>(c => new AudioBlazorUIMatchingTypeRegistry());
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<RecordingPermissionModal.Model, RecordingPermissionModal>()
+        );
     }
 }

@@ -1,9 +1,7 @@
 @namespace ActualChat.Audio.UI.Blazor.Components
-@using Stl.Extensibility
 @using ActualChat.Hosting
 @using ActualChat.Audio.UI.Blazor.Services
 @implements IModalView<RecordingPermissionModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
     var isMauiApp = HostInfo.AppKind == AppKind.MauiApp;
 }

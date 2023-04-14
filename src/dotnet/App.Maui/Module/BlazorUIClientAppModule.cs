@@ -11,7 +11,6 @@ namespace ActualChat.App.Maui.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class BlazorUIClientAppModule : HostModule, IBlazorUIModule
 {
-    [ServiceConstructor]
     public BlazorUIClientAppModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)

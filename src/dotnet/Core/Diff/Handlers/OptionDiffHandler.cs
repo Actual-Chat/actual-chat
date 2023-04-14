@@ -1,8 +1,5 @@
-using Stl.Extensibility;
-
 namespace ActualChat.Diff.Handlers;
 
-[MatchFor(typeof(Option<>), typeof(IDiffHandler))]
 public class OptionDiffHandler<T> : DiffHandlerBase<T, Option<T>>
 {
     public OptionDiffHandler(DiffEngine engine) : base(engine) { }

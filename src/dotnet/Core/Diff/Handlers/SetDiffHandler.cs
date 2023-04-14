@@ -1,8 +1,5 @@
-using Stl.Extensibility;
-
 namespace ActualChat.Diff.Handlers;
 
-[MatchFor(typeof(SetDiff<,>), typeof(IDiffHandler))]
 public class SetDiffHandler<TCollection, TItem> : DiffHandlerBase<TCollection, SetDiff<TCollection, TItem>>
     where TCollection : IReadOnlyCollection<TItem>
 {

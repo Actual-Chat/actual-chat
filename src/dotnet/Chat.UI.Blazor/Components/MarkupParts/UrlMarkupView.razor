@@ -1,7 +1,5 @@
-@using Stl.Extensibility
 @using System.Diagnostics.CodeAnalysis
 @inherits MarkupViewBase<UrlMarkup>
-@attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
 @{
     var cls = "url-markup url-markup-" + _urlKind.ToString().ToLower();
 }

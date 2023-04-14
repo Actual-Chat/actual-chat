@@ -19,7 +19,6 @@ namespace ActualChat.Users.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class UsersServiceModule : HostModule<UsersSettings>
 {
-    [ServiceConstructor]
     public UsersServiceModule(IServiceProvider services) : base(services) { }
 
     public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }

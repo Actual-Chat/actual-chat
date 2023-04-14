@@ -13,11 +13,10 @@ using Stl.Fusion.Diagnostics;
 namespace ActualChat.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public partial class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
+public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {
     public static string ImportName => "ui";
 
-    [ServiceConstructor]
     public BlazorUICoreModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
@@ -139,8 +138,14 @@ public partial class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorU
         services.ConfigureAppReplicaCache(c =>
             c.ForceFlush(typeof(Users.IAccounts), nameof(Users.IAccounts.GetOwn)));
 
-        // Matching type finder
-        services.AddSingleton<IMatchingTypeRegistry>(c => new BlazorUICoreMatchingTypeRegistry());
+        // IModalViews
+        services.AddTypeMapper<IModalView>(map => map
+            .Add<FeatureRequestModal.Model, FeatureRequestModal>()
+            .Add<ImageViewerModal.Model, ImageViewerModal>()
+            .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
+        );
+        // IBannerViews
+        services.AddTypeMapper<IBannerView>();
 
         // Temporarily disabled for WASM due to bad performance
         if (false && appKind.IsWasmApp()) {

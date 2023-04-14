@@ -10,7 +10,6 @@ namespace ActualChat.Media.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class MediaServiceModule : HostModule<MediaSettings>
 {
-    [ServiceConstructor]
     public MediaServiceModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
