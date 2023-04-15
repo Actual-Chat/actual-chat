@@ -1,14 +1,15 @@
 import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { OperationCancelledError, PromiseSource } from 'promises';
 import { Log } from 'logging';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 const { errorLog } = Log.get('Attachments');
 
 interface Attachment {
-    File: File;
-    Url: string;
-    Id: number;
-    MediaId: string;
+    file: File;
+    url: string;
+    id: number;
+    mediaId: string;
 }
 
 interface MediaContent {
@@ -18,51 +19,67 @@ interface MediaContent {
 
 type ProgressReporter = (progressPercent: number) => void;
 
-export class Attachments {
+export class AttachmentList {
+    private readonly disposed$: Subject<void> = new Subject<void>();
     private attachments: Map<number, Attachment> = new Map<number, Attachment>();
     private uploads: Map<number, FileUpload> = new Map<number, FileUpload>();
     private attachmentsIdSeed: number = 0;
+    private chatId: string;
+    public changed: () => void = () => { };
 
-    // TODO: maybe attachments-ui.ts and singleton and initialize with own blazorRef
-    public constructor(private readonly blazorRef: DotNet.DotNetObject) {
+    public static create(blazorRef: DotNet.DotNetObject, inputElement: HTMLInputElement) {
+        return new AttachmentList(blazorRef, inputElement);
+    }
+
+    public constructor(private readonly blazorRef: DotNet.DotNetObject, private readonly filePickerElement: HTMLInputElement) {
+        fromEvent(this.filePickerElement, 'change').pipe(takeUntil(this.disposed$)).subscribe(this.onFilePickerChange);
+    }
+
+    public dispose() {
+        if (this.disposed$.closed)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
     }
 
     public async add(chatId: string, file: File): Promise<boolean> {
         const attachment: Attachment = {
-            Id: this.attachmentsIdSeed,
-            File: file,
-            Url: '',
-            MediaId: '',
+            id: this.attachmentsIdSeed,
+            file: file,
+            url: '',
+            mediaId: '',
         };
         if (file.type.startsWith('image'))
-            attachment.Url = URL.createObjectURL(file);
+            attachment.url = URL.createObjectURL(file);
         const isAdded = await this.invokeAttachmentAdded(attachment, file);
         if (!isAdded) {
-            if (attachment.Url)
-                URL.revokeObjectURL(attachment.Url);
+            if (attachment.url)
+                URL.revokeObjectURL(attachment.url);
         }
         else {
             this.attachmentsIdSeed++;
-            this.attachments.set(attachment.Id, attachment);
+            this.attachments.set(attachment.id, attachment);
             TuneUI.play('change-attachments');
-            const upload = new FileUpload(chatId, file, pct => this.invokeUploadProgress(attachment.Id, pct))
+            const upload = new FileUpload(chatId, file, pct => this.invokeUploadProgress(attachment.id, pct))
             upload.whenCompleted.then(x => {
-                attachment.MediaId = x.mediaId;
+                attachment.mediaId = x.mediaId;
+                this.invokeUploadSucceed(attachment.id, x.mediaId);
             }).catch(e => {
                 if (!(e instanceof OperationCancelledError))
-                    // TODO: handle failed upload
                     errorLog?.log('Failed to upload file', e);
             });
             upload.start();
-            this.uploads.set(attachment.Id, upload);
+            this.uploads.set(attachment.id, upload);
         }
         return isAdded;
     }
 
-    public getMediaIds() {
-        return [...this.attachments.values()].filter(x => !!x.MediaId).map(x => x.MediaId);
+    public setChatId(chatId: string) {
+        this.chatId = chatId;
     }
 
+    /** Called by Blazor */
     public remove(id: number) {
         TuneUI.play('change-attachments');
         const upload = this.uploads.get(id);
@@ -73,34 +90,59 @@ export class Attachments {
 
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
-        if (attachment?.Url)
-            URL.revokeObjectURL(attachment.Url);
+        if (attachment?.url)
+            URL.revokeObjectURL(attachment.url);
+
+        this.changed();
     }
 
+    /** Called by Blazor */
+    public showFilePicker = () => {
+        TuneUI.play('change-attachments');
+        this.filePickerElement.click();
+    };
+
+    /** Called by Blazor */
     public clear() {
         if (this.attachments.size != 0)
             TuneUI.play('change-attachments');
         for (const attachment of this.attachments.values()) {
-            if (attachment?.Url)
-                URL.revokeObjectURL(attachment.Url);
+            if (attachment?.url)
+                URL.revokeObjectURL(attachment.url);
         }
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
         this.uploads.forEach((upload, key) => upload.cancel());
         this.uploads.clear();
+        this.changed();
     }
 
-    public any() {
+    public some() {
         return this.attachments.size > 0
     }
 
+    private onFilePickerChange = (async (event: Event & { target: Element; }) => {
+        for (const file of this.filePickerElement.files) {
+            const isAdded = await this.add(this.chatId, file);
+            if (!isAdded)
+                break;
+
+            this.changed();
+        }
+        this.filePickerElement.value = '';
+    });
+
     private async invokeAttachmentAdded(attachment: Attachment, file: File) {
         return this.blazorRef.invokeMethodAsync<boolean>(
-            'OnAttachmentAdded', attachment.Id, attachment.Url, file.name, file.type, file.size);
+            'OnAttachmentAdded', attachment.id, attachment.url, file.name, file.type, file.size);
     }
 
     private async invokeUploadProgress(id: number, progressPercent: number) {
         return  this.blazorRef.invokeMethodAsync('OnUploadProgress', id, Math.trunc(progressPercent));
+    }
+
+    private async invokeUploadSucceed(id: number, mediaId: string) {
+        return  this.blazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId);
     }
 }
 
