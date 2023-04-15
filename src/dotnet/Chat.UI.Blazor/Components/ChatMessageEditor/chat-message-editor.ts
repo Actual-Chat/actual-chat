@@ -9,9 +9,8 @@ import { throttle } from 'promises';
 import { Log } from 'logging';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
-import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { LocalSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
-import { Attachments } from './attachments';
+import { AttachmentList } from './attachment-list';
 
 const { debugLog } = Log.get('MessageEditor');
 
@@ -19,16 +18,15 @@ export type PanelMode = 'Normal' | 'Narrow';
 
 export class ChatMessageEditor {
     private readonly backupRequired$ = new Subject<void>();
-    private readonly attachments: Attachments;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private markupEditor: MarkupEditor;
     private readonly input: HTMLDivElement;
-    private readonly filePicker: HTMLInputElement;
     private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
-    private attachmentList: HTMLDivElement;
+    private attachmentList: AttachmentList;
+    private attachmentListElement: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver: MutationObserver;
@@ -50,9 +48,7 @@ export class ChatMessageEditor {
         this.input = this.editorDiv.querySelector(':scope .post-panel .message-input');
         this.postButton = this.editorDiv.querySelector(':scope .post-panel .post-message');
         this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
-        this.filePicker = this.editorDiv.querySelector(':scope .post-panel input.file-picker');
         this.notifyPanel = this.editorDiv.querySelector(':scope .notify-call-panel');
-        this.attachments = new Attachments(blazorRef);
 
         this.updateLayout();
         this.updateHasContent();
@@ -62,7 +58,6 @@ export class ChatMessageEditor {
             .pipe(takeUntil(this.disposed$))
             .subscribe(this.updateLayoutThrottled);
         this.input.addEventListener('paste', this.onInputPaste);
-        this.filePicker.addEventListener('change', this.onFilePickerChange);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
@@ -87,33 +82,32 @@ export class ChatMessageEditor {
         this.disposed$.next();
         this.disposed$.complete();
         this.input.removeEventListener('paste', this.onInputPaste);
-        this.filePicker.removeEventListener('change', this.onFilePickerChange);
         this.attachButton.removeEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.removeEventListener('click', this.onNotifyPanelClick);
-        if (this.attachmentList != null) {
-            this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
+        if (this.attachmentListElement != null) {
+            this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
         }
         this.notifyPanelObserver.disconnect();
     }
 
     // Public methods
 
-    private updateAttachmentListState = (mutationsList, observer) => {
-        mutationsList.forEach(m => {
+    private updateAttachmentListState = (mutationList, observer) => {
+        mutationList.forEach(m => {
             m.addedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
                     if (!this.editorDiv.classList.contains('attachment-mode')) {
                         this.editorDiv.classList.add('attachment-mode');
                     }
-                    this.attachmentList = this.editorDiv.querySelector('.attachment-list')
-                    this.attachmentList.addEventListener('wheel', this.onHorizontalScroll);
+                    this.attachmentListElement = this.editorDiv.querySelector('.attachment-list')
+                    this.attachmentListElement.addEventListener('wheel', this.onHorizontalScroll);
                 }
             });
             m.removedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
                     this.editorDiv.classList.remove('attachment-mode');
-                    if (this.attachmentList != null) {
-                        this.attachmentList.removeEventListener('wheel', this.onHorizontalScroll);
+                    if (this.attachmentListElement != null) {
+                        this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
                     }
                 }
             });
@@ -122,14 +116,19 @@ export class ChatMessageEditor {
 
     private onHorizontalScroll = ((event: WheelEvent & { target: Element; }) => {
         preventDefaultForEvent(event);
-        this.attachmentList.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
+        this.attachmentListElement.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
     });
 
-    public onMarkupEditorReady(markupEditor: MarkupEditor)
+    /** Called by Blazor */
+    public onNestedControlsReady(markupEditor: MarkupEditor, attachmentList: AttachmentList)
     {
         this.markupEditor = markupEditor;
-        markupEditor.changed = () => {
+        this.markupEditor.changed = () => {
             this.backupRequired$.next();
+            this.updateHasContent();
+        }
+        this.attachmentList = attachmentList;
+        this.attachmentList.changed = () => {
             this.updateHasContent();
         }
         this.updateHasContent();
@@ -138,37 +137,16 @@ export class ChatMessageEditor {
     }
 
     /** Called by Blazor */
-    public getMediaIds() {
-        return this.attachments.getMediaIds()
-    }
-
-    public showFilePicker = () => {
-        TuneUI.play('change-attachments');
-        this.filePicker.click();
-    };
-
-    /** Called by Blazor */
-    public removeAttachment(id: number) {
-        this.attachments.remove(id);
-        this.updateHasContent();
-    }
-
-    /** Called by Blazor */
-    public clearAttachments() {
-        this.attachments.clear();
-        this.updateHasContent();
-    }
-
-    /** Called by Blazor */
     public setChatId(chatId: string) {
         this.chatId = chatId;
+        this.attachmentList.setChatId(chatId)
         this.restoreDraft();
     }
 
     // Event handlers
 
     private onAttachButtonClick = ((event: Event & { target: Element; }) => {
-        this.showFilePicker();
+        this.attachmentList.showFilePicker();
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
             this.updateHasContent();
@@ -203,22 +181,11 @@ export class ChatMessageEditor {
                     preventDefaultForEvent(event); // We can do it only in the sync part of async handler
                 isAdding = true;
                 const file = item.getAsFile();
-                if (await this.attachments.add(this.chatId, file))
+                if (await this.attachmentList.add(this.chatId, file))
                     this.updateHasContent();
             }
         }
     };
-
-    private onFilePickerChange = (async (event: Event & { target: Element; }) => {
-        for (const file of this.filePicker.files) {
-            const isAdded = await this.attachments.add(this.chatId, file);
-            if (!isAdded)
-                break;
-
-            this.updateHasContent();
-        }
-        this.filePicker.value = '';
-    });
 
     // Private methods
 
@@ -275,7 +242,7 @@ export class ChatMessageEditor {
 
     private updateHasContent() {
         const text = this.markupEditor?.getText() ?? '';
-        const isTextMode = text != '' || this.attachments.any();
+        const isTextMode = text != '' || this.attachmentList?.some();
         if (this.hasContent === isTextMode)
             return;
 
@@ -337,12 +304,5 @@ export class ChatMessageEditor {
     private restoreDraft() {
         const [html] = this.chatId && LocalSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
         this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
-    }
-
-    // TODO: remove
-    private getUrl(url: string) {
-        // @ts-ignore
-        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
-        return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }

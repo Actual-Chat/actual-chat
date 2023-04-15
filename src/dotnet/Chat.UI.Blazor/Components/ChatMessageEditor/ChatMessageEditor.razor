@@ -26,11 +26,7 @@
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
-            @ref="AttachmentListRef"
-            JSRef="JSRef"
-            RemoveClick="@(a => RemoveAttachment(a))"
-            ClearClick="@(_ => ClearAttachments())"
-            PostClick="@(_ => Post())"/>
+            @ref="AttachmentListRef"/>
         @if (ScreenSize.IsWide()) {
             <RelatedChatEntryPanel/>
         }
@@ -42,7 +38,6 @@
                             <ButtonRound Class="attach-btn">
                                 <i class="icon-attach-2 text-2xl"></i>
                             </ButtonRound>
-                            <input class="file-picker" type="file" hidden multiple/>
                         </div>
                         <label for="message-input" class="flex-auto flex-x justify-items-stretch items-center">
                             <MarkupEditor
@@ -85,6 +80,7 @@
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
 
+    private readonly AsyncLock _postLock = new (ReentryMode.CheckedPass);
     private bool Autofocus => ScreenSize.IsWide();
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -135,8 +131,7 @@
 
         if (JSRef != null!) {
             // Only when rendered
-            // TODO: attachments must be saved/restored with draft
-            await ClearAttachments();
+            await AttachmentListRef.Clear();
             await UpdateChatId();
         }
     }
@@ -147,8 +142,8 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
                 Ref, BlazorRef);
-            await MarkupEditorRef.WhenReady;
-            await JSRef.InvokeVoidAsync("onMarkupEditorReady", MarkupEditorRef.JSRef);
+            await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
+            await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
         }
@@ -160,32 +155,23 @@
     public void CloseNotifyPanel()
         => NotifyCallPanelRef.Close();
 
-    [JSInvokable]
-    public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length)
-        => AttachmentListRef.Add(id, url, fileName, fileType, length);
-
-    [JSInvokable]
-    public void OnUploadProgress(int id, int progress)
-        => AttachmentListRef.UpdateProgress(id, progress);
-
     // Private methods
     [Inject] private BannerUI BannerUI { get; set; } = null!;
 
     private async Task Post(string? text = null) {
+        using var __ = await _postLock.Lock();
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
-        var attachments = AttachmentListRef.Attachments;
-        if (attachments.Any() && !attachments.All(x => x.Uploaded)) {
+        if (AttachmentListRef.IsUploading) {
             return;
         }
 
-        if (text.IsNullOrEmpty() && !attachments.Any())
+        await using var attachmentListSnapshot = AttachmentListRef.PopSnapshot();
+        if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Length == 0)
             return;
 
         _ = TuneUI.Play("send-message");
         try {
-            var attachmentMediaIds = await GetAttachmentMediaIds();
-            AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
             _ = MarkupEditorRef.Clear();
 
             var relatedChatEntry = ChatEditorUI.RelatedChatEntry.Value;
@@ -201,7 +187,7 @@
                 var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
                 cmd = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {
                     RepliedChatEntryId = repliedEntryLid,
-                    Attachments = attachmentMediaIds,
+                    Attachments = attachmentListSnapshot.Attachments,
                 };
             }
 
@@ -211,11 +197,12 @@
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
                 ReadPositionState.Value = new ChatPosition(readEntryLid);
             _ = ActiveChatsUI.AddActiveChat(Chat.Id);
-            await ClearAttachments();
+            await AttachmentListRef.Clear();
         }
         catch (Exception e) {
-            AttachmentListRef.Attachments = attachments;
             ErrorUI.ShowError(e);
+            attachmentListSnapshot.Rollback();
+            await MarkupEditorRef.SetText(text);
         }
     }
 
@@ -225,24 +212,8 @@
         await MarkupEditorRef.SetText(chatEntry.Content, mustFocus: false);
     }
 
-    private ValueTask ShowFilePicker()
-        => JSRef.InvokeVoidAsync("showFilePicker");
-
-    private ValueTask RemoveAttachment(Attachment attachment) {
-        AttachmentListRef.Attachments = AttachmentListRef.Attachments.Remove(attachment);
-        return JSRef.InvokeVoidAsync("removeAttachment", attachment.Id);
-    }
-
-    private ValueTask ClearAttachments() {
-        AttachmentListRef.Attachments = ImmutableArray<Attachment>.Empty;
-        return JSRef.InvokeVoidAsync("clearAttachments");
-    }
-
     private ValueTask UpdateChatId()
         => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
-
-    private ValueTask<ImmutableArray<MediaId>> GetAttachmentMediaIds()
-        => JSRef.InvokeAsync<ImmutableArray<MediaId>>("getMediaIds");
 
     // Event handlers
 
