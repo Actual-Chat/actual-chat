@@ -1,4 +1,3 @@
-/* Bubbles */
 .ac-bubble {
     @apply hidden absolute top-0 left-0;
     @apply p-4;
@@ -12,42 +11,4 @@
     @apply bg-bubble;
     @apply w-[12px] h-[12px];
     @apply rotate-45;
-}
-
-/* Content */
-.bubble-content {
-    @apply text-04;
-}
-.bubble-body {
-    @apply pt-2 pb-4;
-    @apply text-caption-4;
-}
-.bubble-title {
-    @apply text-headline-1;
-}
-.bubble-counter {
-    @apply text-caption-2;
-}
-.bubble-buttons {
-    @apply gap-x-1;
-}
-
-/* Buttons */
-.btn-next {
-    @apply bg-bubble-btn-hover;
-}
-.btn.btn-bubble {
-    @apply min-w-20;
-    @apply px-2;
-    @apply border-0;
-    @apply text-04 text-headline-1;
-}
-.btn.btn-bubble .btn-content {
-    @apply bg-transparent;
-}
-.btn.btn-bubble:active {
-    @apply bg-bubble-btn-hover;
-}
-body.hoverable .btn.btn-bubble:hover {
-    @apply bg-bubble-btn-hover;
 }
