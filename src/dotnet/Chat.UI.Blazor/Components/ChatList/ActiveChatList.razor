@@ -66,6 +66,12 @@
         };
     }
 
+    protected override void OnAfterRender(bool firstRender) {
+        if (State.Value.Chats.Any()) {
+            _ = BubbleUI.Show(BubbleGroup.Chat);
+        }
+    }
+
     public sealed record Model {
         public static Model None { get; } = new();
 

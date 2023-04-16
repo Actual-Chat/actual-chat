@@ -69,7 +69,13 @@
         </Caption>
     </TileItem>
 
-    <LinkTileItem Link="@Links.User(account.Id)" Caption="Link to your account"/>
+    <LinkTileItem Link="@Links.User(account.Id)"
+                  Caption="Link to your account"
+                  data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
+                  data-bubble-group="@(BubbleGroup.AccountSettings)"
+                  data-bubble-order="1"
+                  data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
+    </LinkTileItem>
 </Tile>
 
 <TileTopic Topic="My avatars"/>
@@ -81,6 +87,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
@@ -94,4 +101,12 @@
 
     private Task OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);
+
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _ = BubbleUI.Show(BubbleGroup.AccountSettings);
+        }
+
+        return Task.CompletedTask;
+    }
 }

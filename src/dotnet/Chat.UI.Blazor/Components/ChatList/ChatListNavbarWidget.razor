@@ -80,6 +80,9 @@
         if (State.Value != Model.Loading) {
             LoadingUI.ReportChatListLoaded();
             _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
+        }
+
+        if (firstRender) {
             _ = BubbleUI.Show(BubbleGroup.ChatList);
         }
     }
