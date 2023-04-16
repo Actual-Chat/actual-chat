@@ -6,6 +6,9 @@
     @apply pt-2 pb-4;
     @apply text-caption-4;
 }
+.bubble-body > ul {
+    @apply whitespace-normal list-disc pl-4;
+}
 .bubble-title {
     @apply text-headline-1;
 }

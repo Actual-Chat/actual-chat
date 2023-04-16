@@ -22,7 +22,7 @@
 
     private BubbleModel? _bubble;
     private List<BubbleModel>? _bubbles;
-    private string? _bubbleGroup;
+    private BubbleGroup? _bubbleGroup;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
@@ -40,12 +40,12 @@
         ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
     }
 
-    public async ValueTask ShowBubbleGroup(string group) {
-        if (string.Equals(_bubbleGroup, group, StringComparison.Ordinal))
+    public async ValueTask ShowBubbleGroup(BubbleGroup group) {
+        if (_bubbleGroup == group)
             return;
 
         _bubbleGroup = group;
-        var bubbles = await _jsRef.InvokeAsync<BubbleInfo[]>("getBubblesByGroup", CancellationToken.None, group);
+        var bubbles = await _jsRef.InvokeAsync<BubbleInfo[]>("getBubblesByGroup", CancellationToken.None, group.ToString());
         _bubbles = bubbles
             .OrderBy(x => x.Order)
             .Select((x, index) => {

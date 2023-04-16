@@ -2,7 +2,7 @@
     @apply hidden absolute top-0 left-0;
     @apply p-4;
     @apply bg-bubble;
-    @apply min-w-64;
+    @apply min-w-64 max-w-64;
     @apply rounded-lg whitespace-nowrap z-bubble;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }

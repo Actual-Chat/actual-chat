@@ -9,7 +9,11 @@
 }
 
 @if (m.HasMicrophonePermission != false) {
-    <div class="recorder-wrapper @animatorClass @applyingChangesClass">
+    <div class="recorder-wrapper @animatorClass @applyingChangesClass"
+         data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
+         data-bubble-group="@(BubbleGroup.Chat)"
+         data-bubble-order="2"
+         data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
         <ButtonRound
             Class="record-off-btn"
             Click="OnClick"
@@ -29,7 +33,11 @@
         </ButtonRound>
     </div>
 } else {
-    <div class="recorder-wrapper">
+    <div class="recorder-wrapper"
+         data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
+         data-bubble-group="@(BubbleGroup.Chat)"
+         data-bubble-order="2"
+         data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
         <ButtonRound
             Class="mic-disabled w-14 h-14"
             Click="OnClick">
