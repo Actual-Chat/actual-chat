@@ -6,18 +6,22 @@ namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
+    private readonly BlazorWebView _blazorWebView;
+
     private NavigationInterceptor NavigationInterceptor { get; }
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
-
-    public BlazorWebView BlazorWebView
-        => _blazorWebView;
 
     public MainPage(NavigationInterceptor navigationInterceptor)
     {
         Tracer.Point(".ctor");
         NavigationInterceptor = navigationInterceptor;
 
-        InitializeComponent();
+        BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
+        _blazorWebView = new BlazorWebView {
+            HostPage = "wwwroot/index.html"
+        };
+        Content = _blazorWebView;
+
         _blazorWebView.BlazorWebViewInitializing += OnBlazorWebViewInitializing;
         _blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
         _blazorWebView.UrlLoading += OnUrlLoading;
