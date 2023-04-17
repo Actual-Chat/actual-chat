@@ -18,6 +18,9 @@ public static partial class MauiProgram
         services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<PushNotifications>());
     }
 
+    private static partial void AddPlatformServicesToLookupSkipper(ISet<Type> servicesToSkip)
+    { }
+
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddiOS(ios => ios.FinishedLaunching((app, options) => {
             PushNotifications.Initialize(app, options);

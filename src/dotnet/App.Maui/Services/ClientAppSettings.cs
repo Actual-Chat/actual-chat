@@ -4,6 +4,13 @@ public record ClientAppSettings
 {
     private readonly Task<string> _sessionIdTask = TaskSource.New<string>(true).Task;
 
+    public ClientAppSettings(string baseUrl)
+    {
+        baseUrl = baseUrl.EnsureSuffix("/");
+        BaseUrl = baseUrl;
+        BaseUri = baseUrl.ToUri();
+    }
+
     public string SessionId {
         get {
             var task = GetSessionId();
@@ -15,6 +22,9 @@ public record ClientAppSettings
  #pragma warning restore VSTHRD002
         }
     }
+
+    public Uri BaseUri { get; }
+    public string BaseUrl { get; }
 
     public Task<string> GetSessionId()
         => _sessionIdTask;

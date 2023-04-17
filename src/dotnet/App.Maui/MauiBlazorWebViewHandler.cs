@@ -7,8 +7,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
     private static readonly Tracer _trace = Tracer.Default["MauiBlazorWebViewHandler"];
 
-    public ClientAppSettings AppSettings { get; private set; } = null!;
-    public UrlMapper UrlMapper { get; private set; } = null!;
+    public ClientAppSettings AppSettings { get; set; } = null!;
     private ILogger Log { get; set; } = NullLogger.Instance;
 
     public MauiBlazorWebViewHandler()
@@ -27,7 +26,6 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         _trace.Point("SetMauiContext");
         base.SetMauiContext(mauiContext);
         AppSettings = mauiContext.Services.GetRequiredService<ClientAppSettings>();
-        UrlMapper = mauiContext.Services.UrlMapper();
-        Log = mauiContext.Services.LogFor(GetType());
+        Log = mauiContext.Services.LogFor<MauiBlazorWebViewHandler>();
     }
 }

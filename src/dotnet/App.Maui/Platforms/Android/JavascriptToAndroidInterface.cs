@@ -27,7 +27,7 @@ internal class JavascriptToAndroidInterface : Java.Lang.Object
             try {
                 _tracer.Point("window.App.initPage");
                 var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
-                var script = $"window.App.initPage('{_handler.UrlMapper.BaseUrl}', '{sessionHash}')";
+                var script = $"window.App.initPage('{_handler.AppSettings.BaseUrl}', '{sessionHash}')";
                 _webView.EvaluateJavascript(script, null);
             }
             catch (Exception ex) {

@@ -6,20 +6,16 @@ namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
-    private ClientAppSettings AppSettings { get; }
-    private NavigationInterceptor NavInterceptor { get; }
-    private ILogger Log { get; }
+    private NavigationInterceptor NavigationInterceptor { get; }
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
 
     public BlazorWebView BlazorWebView
         => _blazorWebView;
 
-    public MainPage(ClientAppSettings appSettings, NavigationInterceptor navInterceptor, ILogger<MainPage> log)
+    public MainPage(NavigationInterceptor navigationInterceptor)
     {
-        Log = log;
         Tracer.Point(".ctor");
-        AppSettings = appSettings;
-        NavInterceptor = navInterceptor;
+        NavigationInterceptor = navigationInterceptor;
 
         InitializeComponent();
         _blazorWebView.BlazorWebViewInitializing += OnBlazorWebViewInitializing;
@@ -31,9 +27,6 @@ public partial class MainPage : ContentPage
             new RootComponent {
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
-                Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
-                    { nameof(MauiBlazorApp.SessionId), appSettings.SessionId },
-                },
             });
     }
 
@@ -43,7 +36,7 @@ public partial class MainPage : ContentPage
     {
         var uri = eventArgs.Url;
         Tracer.Point($"OnUrlLoading: Url: '{uri}'");
-        if (NavInterceptor.TryIntercept(uri))
+        if (NavigationInterceptor.TryIntercept(uri))
             // Load cancellation seems not working On Windows platform,
             // even though the issues were closed a while ago, and  Uri gets opened in WebView.
             // See:

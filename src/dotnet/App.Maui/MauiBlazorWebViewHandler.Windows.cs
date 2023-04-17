@@ -24,7 +24,7 @@ public partial class MauiBlazorWebViewHandler
     private void CoreWebView2Initialized(WebView2Control sender, Microsoft.UI.Xaml.Controls.CoreWebView2InitializedEventArgs args)
     {
         var ctrl = sender.CoreWebView2;
-        var baseUri = UrlMapper.BaseUri;
+        var baseUri = AppSettings.BaseUri;
 
         var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", AppSettings.SessionId, "0.0.0.0", "/");
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
@@ -43,7 +43,7 @@ public partial class MauiBlazorWebViewHandler
     {
         try {
             var sessionHash = new Session(AppSettings.SessionId).Hash;
-            var script = $"window.App.initPage('{UrlMapper.BaseUrl}', '{sessionHash}')";
+            var script = $"window.App.initPage('{AppSettings.BaseUrl}', '{sessionHash}')";
             await sender.ExecuteScriptAsync(script);
         }
         catch (Exception ex) {

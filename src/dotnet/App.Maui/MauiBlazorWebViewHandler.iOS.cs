@@ -14,7 +14,7 @@ public partial class MauiBlazorWebViewHandler
 
         PlatformView.ScrollView.Bounces = false;
         PlatformView.AllowsBackForwardNavigationGestures = false;
-        SetSessionIdCookie(UrlMapper.BaseUri.Host, true);
+        SetSessionIdCookie(AppSettings.BaseUri.Host, true);
         SetSessionIdCookie("0.0.0.0", false);
         InjectInitPageScript();
     }
@@ -34,7 +34,7 @@ public partial class MauiBlazorWebViewHandler
 
     private void InjectInitPageScript()
     {
-        var baseUri = UrlMapper.BaseUri;
+        var baseUri = AppSettings.BaseUri;
         var sessionId = AppSettings.SessionId;
         var initScript = $"window.App.initPage('{baseUri}', '{sessionId}')";
         var addLoadHandlerScript = $"document.addEventListener('DOMContentLoaded', e => {{ {initScript} }});";
