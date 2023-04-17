@@ -112,6 +112,7 @@ export class OpusMediaRecorder {
         await this.stop();
 
         const detach = async () => {
+            debugLog?.log('-> start.detach()')
             await catchErrors(
                 () => this.encoderWorkletInstance?.disconnect(),
                 e => warnLog?.log('start.detach encoderWorkletInstance.disconnect error:', e));
@@ -151,6 +152,7 @@ export class OpusMediaRecorder {
             this.source = null;
 
             this.state = null;
+            debugLog?.log('<- start.detach()')
         }
 
         const attach = async (context: AudioContext) => {

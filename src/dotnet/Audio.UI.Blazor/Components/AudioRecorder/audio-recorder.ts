@@ -38,37 +38,37 @@ export class AudioRecorder {
         debugLog?.log(`-> requestPermission()`);
         await this.whenInitialized;
 
-        const hasMicrophone = DetectRTC.isAudioContextSupported
-            && DetectRTC.hasMicrophone
-            && DetectRTC.isGetUserMediaSupported
-            && DetectRTC.isWebsiteHasMicrophonePermissions;
+        // const hasMicrophone = DetectRTC.isAudioContextSupported
+        //     && DetectRTC.hasMicrophone
+        //     && DetectRTC.isGetUserMediaSupported
+        //     && DetectRTC.isWebsiteHasMicrophonePermissions;
+        //
+        // if (!hasMicrophone) {
+        //     // Requests microphone permission
+        //     let stream: MediaStream = null;
+        //     try {
+        //         debugLog?.log(`requestPermission: detecting active tracks to stop`);
+        //         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        //         this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
+        //     }
+        //     catch (error) {
+        //         errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
+        //         return false;
+        //     }
+        //     finally {
+        //         if (stream) {
+        //             const audioTracks = stream.getAudioTracks();
+        //             const videoTracks = stream.getVideoTracks();
+        //             debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
+        //             audioTracks.forEach(t => t.stop());
+        //             videoTracks.forEach(t => t.stop());
+        //         }
+        //     }
+        //
+        //     return true;
+        // }
 
-        if (!hasMicrophone) {
-            // Requests microphone permission
-            let stream: MediaStream = null;
-            try {
-                debugLog?.log(`requestPermission: detecting active tracks to stop`);
-                stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
-            }
-            catch (error) {
-                errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
-                return false;
-            }
-            finally {
-                if (stream) {
-                    const audioTracks = stream.getAudioTracks();
-                    const videoTracks = stream.getVideoTracks();
-                    debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
-                    audioTracks.forEach(t => t.stop());
-                    videoTracks.forEach(t => t.stop());
-                }
-            }
-
-            return true;
-        }
-
-        return hasMicrophone;
+        return true;
     }
 
     /** Called by Blazor  */
@@ -84,36 +84,36 @@ export class AudioRecorder {
 
             this.state = 'starting';
             const isMaui = BrowserInfo.appKind == 'MauiApp';
-            if (!DetectRTC.hasMicrophone) {
-                errorLog?.log(`startRecording: microphone is unavailable`);
-                return false;
-            }
+            // if (!DetectRTC.hasMicrophone) {
+            //     errorLog?.log(`startRecording: microphone is unavailable`);
+            //     return false;
+            // }
 
-            if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
-                if (navigator.userAgent.toLowerCase().includes('firefox')) {
-                    // Firefox doesn't support microphone permissions query
-                    const hasMicrophonePromise = new PromiseSource<boolean>();
-                    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-                        .then(
-                            stream => {
-                                stream.getAudioTracks().forEach(t => t.stop());
-                                stream.getVideoTracks().forEach(t => t.stop());
-                                hasMicrophonePromise.resolve(true);
-                            },
-                            () => {
-                                hasMicrophonePromise.resolve(false);
-                            });
-                    const hasMicrophone = await hasMicrophonePromise;
-                    if (!hasMicrophone) {
-                        errorLog?.log(`startRecording: microphone permission is required`);
-                        return false;
-                    }
-                }
-                else {
-                    errorLog?.log(`startRecording: microphone permission is required`);
-                    return false;
-                }
-            }
+            // if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
+            //     if (navigator.userAgent.toLowerCase().includes('firefox')) {
+            //         // Firefox doesn't support microphone permissions query
+            //         const hasMicrophonePromise = new PromiseSource<boolean>();
+            //         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            //             .then(
+            //                 stream => {
+            //                     stream.getAudioTracks().forEach(t => t.stop());
+            //                     stream.getVideoTracks().forEach(t => t.stop());
+            //                     hasMicrophonePromise.resolve(true);
+            //                 },
+            //                 () => {
+            //                     hasMicrophonePromise.resolve(false);
+            //                 });
+            //         const hasMicrophone = await hasMicrophonePromise;
+            //         if (!hasMicrophone) {
+            //             errorLog?.log(`startRecording: microphone permission is required`);
+            //             return false;
+            //         }
+            //     }
+            //     else {
+            //         errorLog?.log(`startRecording: microphone permission is required`);
+            //         return false;
+            //     }
+            // }
 
             await opusMediaRecorder.start(this.sessionId, chatId, repliedChatEntryId);
             if (this.state !== 'starting')
