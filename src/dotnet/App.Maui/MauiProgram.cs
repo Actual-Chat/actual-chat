@@ -45,8 +45,8 @@ public static partial class MauiProgram
             var configuration = coreApp.Configuration;
             var loggerFactory = coreApp.Services.GetRequiredService<ILoggerFactory>();
             var appServicesTask = Task.Run(() => CreateBlazorAppServices(configuration, loggerFactory, settings));
-            var skipper = CreateBlazorServicesLookupSkipper();
-            var svpWrapper = new CompositeBlazorHybridServiceProvider(coreApp, appServicesTask, skipper);
+            var filter = CreateBlazorServicesLookupFilter();
+            var svpWrapper = new CompositeBlazorHybridServiceProvider(coreApp, appServicesTask, filter);
             AppServices = svpWrapper;
 
             appServicesTask.ContinueWith(_ => {
@@ -373,7 +373,7 @@ public static partial class MauiProgram
             return sessionId;
         });
 
-    private static Func<Type, bool> CreateBlazorServicesLookupSkipper()
+    private static Func<Type, bool> CreateBlazorServicesLookupFilter()
     {
         // To prevent lookup in blazor app service provider
         // Otherwise we can start awaiting too earlier that service provider is ready

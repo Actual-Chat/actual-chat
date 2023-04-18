@@ -11,7 +11,7 @@ public sealed class LazyServiceProviderEngineScope :
     private readonly bool _isRootScope;
     private bool _isDisposed;
     private readonly object _lock = new ();
-    private IServiceProvider? _resolvedServiceProvider;
+    private IServiceProvider? _resolvedServices;
 
     public IServiceProvider ServiceProvider => this;
 
@@ -27,7 +27,7 @@ public sealed class LazyServiceProviderEngineScope :
             return this;
         if (serviceType == typeof(IServiceProvider))
             return this;
-        var serviceProvider = GetServiceProviderInternal(serviceType);
+        var serviceProvider = GetServiceProviderInternal();
         var result = serviceProvider.GetService(serviceType);
         return result;
     }
@@ -52,39 +52,36 @@ public sealed class LazyServiceProviderEngineScope :
             if (_isDisposed)
                 return;
             _isDisposed = true;
-            serviceProvider = _resolvedServiceProvider;
+            serviceProvider = _resolvedServices;
         }
         (serviceProvider as IDisposable)?.Dispose();
     }
 
     public async ValueTask DisposeAsync()
     {
-        IServiceProvider? serviceProvider;
+        IServiceProvider? services;
         lock (_lock) {
             if (_isDisposed)
                 return;
             _isDisposed = true;
-            serviceProvider = _resolvedServiceProvider;
+            services = _resolvedServices;
         }
-        if (serviceProvider is IAsyncDisposable asyncDisposable)
-            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
-        else if (serviceProvider is IDisposable disposable)
-            disposable.Dispose();
+        if (services == null)
+            return;
+        await DisposeServicesHelper.DisposeAsync(services).ConfigureAwait(false);
     }
 
-    private IServiceProvider GetServiceProviderInternal(Type serviceType)
+    private IServiceProvider GetServiceProviderInternal()
     {
         lock (_lock) {
             if (_isDisposed)
                 throw new ObjectDisposedException(nameof(IServiceProvider));
-            if (_resolvedServiceProvider != null)
-                return _resolvedServiceProvider;
-            if (!_serviceProviderTask.IsCompleted)
-                Tracer.Default.Point($"About to await service provider building. Requested service '{serviceType}'"  + Environment.NewLine + Environment.StackTrace);
+            if (_resolvedServices != null)
+                return _resolvedServices;
+            // block here on purpose until we get result
             var serviceProvider = _serviceProviderTask.GetAwaiter().GetResult();
-            Tracer.Default.Point($"LazyServiceProviderEngineScope.ServiceProvider Resolved. Requested service '{serviceType}'" + Environment.NewLine + Environment.StackTrace);
-            _resolvedServiceProvider = serviceProvider;
-            return _resolvedServiceProvider;
+            _resolvedServices = serviceProvider;
+            return _resolvedServices;
         }
     }
 

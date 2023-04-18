@@ -8,13 +8,13 @@ public sealed class CompositeBlazorHybridServiceProvider : IServiceProvider, IAs
     public CompositeBlazorHybridServiceProvider(
         MauiApp mauiApp,
         Task<IServiceProvider> blazorServicesTask,
-        Func<Type,bool> blazorServicesLookupSkipper)
+        Func<Type,bool> blazorServicesLookupFilter)
     {
         _mauiApp = mauiApp;
         _rootScope = new CompositeBlazorHybridServiceProviderEngineScope(
             mauiApp.Services,
             new LazyServiceProviderEngineScope(blazorServicesTask, true),
-            blazorServicesLookupSkipper,
+            blazorServicesLookupFilter,
             true);
     }
 
