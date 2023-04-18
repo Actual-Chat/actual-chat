@@ -28,6 +28,8 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
         if (activity == VadActivity.Error)
             throw new Error(`Error calling WebRtc VAD`);
 
+        // our base class logic has been developed for float speech probability about 0.75 and higher,
+        // so let's adjust 1|0 to tested range to reuse existing heuristics
         return Promise.resolve(Number(0.8 * activity));
     }
 

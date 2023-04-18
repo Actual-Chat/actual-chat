@@ -225,7 +225,7 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     }
 
     protected async appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
-        const {  h0, c0 } = this;
+        const { h0, c0} = this;
         if (this.session == null) {
             // skip processing until initialized
             return null;
