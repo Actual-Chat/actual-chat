@@ -198,6 +198,9 @@ body.wide .author-modal {
     @apply max-h-8;
     @apply text-title-1 text-02;
 }
+.author-modal .header-tile-item {
+    @apply h-12 md:h-10;
+}
 .author-modal .tile-item-body-content {
     @apply text-01;
     @apply max-h-6;
@@ -219,6 +222,9 @@ body.narrow .author-modal {
     @apply p-0;
     @apply rounded-lg;
 }
+body.narrow .author-modal .dialog-body {
+    @apply pl-6;
+}
 .author-modal .tile {
     @apply px-0;
     @apply shadow-none;
@@ -235,7 +241,7 @@ body.narrow .author-modal .dialog-buttons {
     @apply max-w-none;
 }
 .author-modal .anonymous-bio * {
-    @apply text-banner-warning;
+    @apply text-icons-04;
 }
 .author-modal .anonymous-bio .tile-item-body-content {
     @apply max-h-max;

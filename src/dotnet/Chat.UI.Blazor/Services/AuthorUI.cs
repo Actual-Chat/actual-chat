@@ -28,7 +28,7 @@ public sealed class AuthorUI
         await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
     }
 
-    public async Task<bool> CanPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
+    public async Task<bool> CanStartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
     {
         if (authorId.IsNone)
             return false;
@@ -37,11 +37,11 @@ public sealed class AuthorUI
         var accountTask = Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken);
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
-        var canPeerChat = account != null
+        var canStartPeerChat = account != null
             && !account.IsGuestOrNone
             && !ownAccount.IsGuestOrNone
             && account.Id != ownAccount.Id;
-        return canPeerChat;
+        return canStartPeerChat;
     }
 
     public async Task StartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
