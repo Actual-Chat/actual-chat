@@ -18,7 +18,7 @@ import { AudioVadWorker } from './audio-vad-worker-contract';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
-import { VoiceActivityChange } from './audio-vad';
+import { VoiceActivityChange } from './audio-vad-contract';
 import { Log } from 'logging';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
@@ -31,8 +31,8 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 
 let codecModule: Codec | null = null;
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 5; // 20ms * 5 = 100ms
-const FADE_CHUNKS = 2;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
+const FADE_CHUNKS = 3;
 const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 
 /** buffer or callbackId: number of `end` message */
