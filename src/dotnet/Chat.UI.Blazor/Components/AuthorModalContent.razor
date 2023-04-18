@@ -1,8 +1,10 @@
 @{
     string headerTitle;
-    if (Author.IsAnonymous)
+    var name = "Name";
+    if (Author.IsAnonymous) {
         headerTitle = "Anonymous author";
-    else if (IsOwn)
+        name = "";
+    } else if (IsOwn)
         headerTitle = "Your profile";
     else
         headerTitle = Author.Avatar.Name;
@@ -13,6 +15,9 @@
         <Content>
             @headerTitle
         </Content>
+        <Right>
+            <ButtonX Class="btn-sm btn-transparent" Click="@(_ => Modal.Close())"/>
+        </Right>
     </TileItem>
 
     <TileItem IsHoverable="false" Class="first-tile-item my-2">
@@ -35,36 +40,53 @@
             }
         </Content>
         <Caption>
-            Name
+            @name
         </Caption>
     </TileItem>
 
-    <TileItem>
-        <Icon>
-            <i class="icon-at text-xl"></i>
-        </Icon>
-        <Content>
-            @Author.Avatar.Name
-        </Content>
-        <Caption>
-            Username
-        </Caption>
-    </TileItem>
+    @if (Author.IsAnonymous) {
+        <TileItem>
+            <Icon>
+                <i class="icon-at text-xl"></i>
+            </Icon>
+            <Content>
+                @Author.Avatar.Name
+            </Content>
+            <Caption>
+                Username
+            </Caption>
+        </TileItem>
+    }
 
-    <TileItem>
-        <Icon>
-            <i class="icon-person text-xl"></i>
-        </Icon>
-        <Content>
-            @Author.Avatar.Bio
-        </Content>
-        <Caption>
-            Bio
-        </Caption>
-    </TileItem>
+    @if (Author.IsAnonymous) {
+        <TileItem Class="anonymous-bio">
+            <Icon>
+                <i class="icon-alert-triangle text-xl"></i>
+            </Icon>
+            <Content>
+                This author is anonymous,
+                so you can't message them directly.
+            </Content>
+            <Caption>
+            </Caption>
+        </TileItem>
+    } else if (!Author.Avatar.Bio.IsNullOrEmpty()) {
+        <TileItem>
+            <Icon>
+                <i class="icon-person text-xl"></i>
+            </Icon>
+            <Content>
+                @Author.Avatar.Bio
+            </Content>
+            <Caption>
+                Bio
+            </Caption>
+        </TileItem>
+    }
 </Tile>
 
 @code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
 }

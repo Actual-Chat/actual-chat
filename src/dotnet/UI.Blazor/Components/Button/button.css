@@ -133,6 +133,12 @@ body.hoverable .btn.btn-text:focus:hover {
     @apply border-0;
     @apply text-badge text-headline-1;
 }
+.btn.btn-modal {
+    @apply bg-hover;
+}
+body.narrow .btn.btn-modal {
+    @apply bg-03;
+}
 .btn.btn-modal .btn-content {
     @apply bg-transparent;
 }
