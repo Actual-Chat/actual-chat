@@ -3,7 +3,7 @@
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    will-change: scroll-position, contents;
+    will-change: scroll-position;
 }
 
 .virtual-list::-webkit-scrollbar {
