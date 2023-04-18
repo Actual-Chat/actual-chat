@@ -1,5 +1,4 @@
 using ActualChat.Diff.Handlers;
-using Stl.Extensibility;
 
 namespace ActualChat.Diff;
 

@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components.Rendering;
-using Stl.Extensibility;
 
 namespace ActualChat.UI.Blazor.Services;
 

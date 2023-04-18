@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Stl.Extensibility;
 
 namespace ActualChat.UI.Blazor.Services;
 
