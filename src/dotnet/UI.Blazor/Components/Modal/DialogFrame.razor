@@ -11,9 +11,11 @@
     <div class="dialog-body">
         @Body
     </div>
-    <div class="dialog-buttons @ButtonsClass">
-        @Buttons
-    </div>
+    @if (Buttons != null) {
+        <div class="dialog-buttons @ButtonsClass">
+            @Buttons
+        </div>
+    }
 </ModalFrame>
 
 @code {

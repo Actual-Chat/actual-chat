@@ -1,9 +1,9 @@
 @{
     string headerTitle;
-    var name = "Name";
+    var nameTitle = "Name";
     if (Author.IsAnonymous) {
         headerTitle = "Anonymous author";
-        name = "";
+        nameTitle = "";
     } else if (IsOwn)
         headerTitle = "Your profile";
     else
@@ -16,7 +16,7 @@
             @headerTitle
         </Content>
         <Right>
-            <ButtonX Class="btn-sm btn-transparent" Click="@(_ => Modal.Close())"/>
+            <ButtonX Class="btn-sm" Click="@(_ => Modal.Close())"/>
         </Right>
     </TileItem>
 
@@ -40,7 +40,7 @@
             }
         </Content>
         <Caption>
-            @name
+            @nameTitle
         </Caption>
     </TileItem>
 
