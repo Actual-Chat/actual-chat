@@ -25,17 +25,35 @@ public sealed class AuthorUI
         if (authorId.IsNone)
             return; // Likely the caller haven't read authorId yet, so we can't do much here
 
+        await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
+    }
+
+    public async Task<bool> CanPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
+    {
+        if (authorId.IsNone)
+            return false;
+
         var ownAccountTask = Accounts.GetOwn(Session, cancellationToken);
         var accountTask = Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken);
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
+        var canPeerChat = account != null
+            && !account.IsGuestOrNone
+            && !ownAccount.IsGuestOrNone
+            && account.Id != ownAccount.Id;
+        return canPeerChat;
+    }
 
-        var mustShowModal = account == null || account.IsGuestOrNone || ownAccount.IsGuestOrNone || account.Id == ownAccount.Id;
-        if (mustShowModal)
-            await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
-        else {
-            var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
-            _ = History.NavigateTo(Links.Chat(peerChatId));
-        }
+    public async Task StartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
+    {
+        if (authorId.IsNone)
+            return;
+
+        var ownAccountTask = Accounts.GetOwn(Session, cancellationToken);
+        var accountTask = Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken);
+        var ownAccount = await ownAccountTask.ConfigureAwait(false);
+        var account = await accountTask.ConfigureAwait(false);
+        var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
+        _ = History.NavigateTo(Links.Chat(peerChatId));
     }
 }

@@ -11,10 +11,15 @@
     </Body>
     <Buttons>
         @if (m.IsOwn) {
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
             <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnAuthorClicked">Edit Profile</Button>
+        } else if (m.Author.IsAnonymous) {
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">OK</Button>
         } else {
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Close</Button>
+            @if (m.CanPeerChat) {
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnStartPeerChat">Chat with @m.Author.Avatar.Name</Button>
+            } else {
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Close</Button>
+            }
         }
     </Buttons>
 </DialogFrame>
@@ -23,6 +28,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
@@ -49,10 +55,12 @@
 
         var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
         var account = await Authors.GetAccount(Session, ChatId, AuthorId, cancellationToken);
+        var canPeerChat = await AuthorUI.CanPeerChat(AuthorId, cancellationToken);
         return new ComputedModel() {
             Author = author,
             Account = account,
             OwnAccount = ownAccount,
+            CanPeerChat = canPeerChat,
         };
     }
 
@@ -64,6 +72,7 @@
         public Account? Account { get; init; }
         public Account OwnAccount { get; init; } = null!;
         public bool IsOwn => Account?.Id == OwnAccount.Id;
+        public bool CanPeerChat { get; init; }
     }
 
     public sealed record Model(AuthorId AuthorId);
@@ -73,6 +82,9 @@
 
     private async Task OnAuthorClicked()
         => await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, OnAvatarSelected));
+
+    private async Task OnStartPeerChat()
+        => await AuthorUI.StartPeerChat(AuthorId);
 
     private async Task OnAvatarSelected(AvatarFull avatar) {
         var command = new IAuthors.SetAvatarCommand(Session, AuthorId.ChatId, avatar.Id);

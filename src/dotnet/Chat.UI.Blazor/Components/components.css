@@ -191,12 +191,16 @@ body.hoverable .people-tab .avatar-badge:hover {
     @apply group-hover:hidden;
 }
 
+body.wide .author-modal {
+    @apply w-80;
+}
 .author-modal .header-tile-item .tile-item-body-content {
     @apply max-h-8;
     @apply text-title-1 text-02;
 }
 .author-modal .tile-item-body-content {
     @apply text-01;
+    @apply max-h-6;
 }
 .author-modal .first-tile-item {
     @apply gap-x-4;
@@ -210,12 +214,30 @@ body.hoverable .author-modal .tile:hover {
     @apply shadow-none;
 }
 body.narrow .author-modal {
-    @apply absolute bottom-6 left-6 right-6;
+    @apply absolute bottom-4 left-4 right-4;
     @apply w-auto h-auto;
     @apply p-0;
     @apply rounded-lg;
 }
 .author-modal .tile {
+    @apply px-0;
     @apply shadow-none;
 }
-
+.author-modal .dialog-buttons {
+    @apply flex-x gap-x-2;
+}
+body.narrow .author-modal .dialog-buttons {
+    @apply -flex-y gap-y-2;
+    @apply p-4;
+}
+.author-modal .dialog-buttons .btn {
+    @apply flex-1;
+    @apply max-w-none;
+}
+.author-modal .anonymous-bio * {
+    @apply text-banner-warning;
+}
+.author-modal .anonymous-bio .tile-item-body-content {
+    @apply max-h-max;
+    @apply whitespace-normal;
+}
