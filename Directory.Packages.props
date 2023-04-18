@@ -5,7 +5,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.4</AspNetCoreVersion>
+    <AspNetCoreVersion>7.0.5</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>7.0.4</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>7.0.3</EntityFrameworkCoreNpgsqlVersion>
@@ -16,7 +16,7 @@
     <NpgsqlVersion>7.0.1</NpgsqlVersion>
     <RedisVersion>2.6.104</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>5.1.25</StlFusionVersion>
+    <StlFusionVersion>5.2.2</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
@@ -98,7 +98,7 @@
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
-    <PackageVersion Include="RestEase" Version="1.6.2" />
+    <PackageVersion Include="RestEase" Version="1.6.3" />
     <PackageVersion Include="Pidgin" Version="3.2.1" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.2" />
     <PackageVersion Include="Polly" Version="7.2.3" />
@@ -124,6 +124,7 @@
     <PackageVersion Include="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Rpc" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageVersion Include="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
@@ -175,7 +176,7 @@
     <PackageVersion Include="Roslynator.Analyzers" Version="4.2.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit.analyzers" Version="1.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
-    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Stl.Generators" Version="$(StlFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Android -->
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
