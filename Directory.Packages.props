@@ -124,6 +124,7 @@
     <PackageVersion Include="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Interception" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Rpc" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
