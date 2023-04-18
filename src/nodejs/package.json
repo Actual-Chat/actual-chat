@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@actual-chat/codec": "0.3.0",
+    "@actual-chat/webrtc-vad": "^0.1.19",
     "@floating-ui/dom": "^1.1.0",
     "@microsoft/signalr": "^7.0.0",
     "@microsoft/signalr-protocol-msgpack": "^7.0.0",

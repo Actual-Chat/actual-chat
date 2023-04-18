@@ -1,4 +1,4 @@
-import { VoiceActivityChange } from './audio-vad';
+import { VoiceActivityChange } from './audio-vad-contract';
 import { RpcNoWait, RpcTimeout } from 'rpc';
 
 export interface OpusEncoderWorker {

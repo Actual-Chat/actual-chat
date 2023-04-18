@@ -9,25 +9,34 @@ import { Log } from 'logging';
 
 const { logScope, warnLog } = Log.get('AudioVadWorkletProcessor');
 
-const SAMPLES_PER_WINDOW = 768;
+const SAMPLES_PER_WINDOW_32 = 1536;
+const SAMPLES_PER_WINDOW_30 = 1440;
 
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
     private readonly buffer: AudioRingBuffer;
-    private readonly bufferPool: ObjectPool<ArrayBuffer>;
 
-    private state: 'running' | 'stopped' = 'running';
+    private state: 'running' | 'stopped' = 'stopped';
+    private samplesPerWindow: number = SAMPLES_PER_WINDOW_32;
+    private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
         this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<AudioVadWorker>(`${logScope}.worker`, workerPort, this);
+    }
+
+    public async start(windowSizeMs: 30 | 32, noWait?: RpcNoWait): Promise<void> {
+        this.samplesPerWindow = windowSizeMs == 30
+           ? SAMPLES_PER_WINDOW_30
+           : SAMPLES_PER_WINDOW_32;
+        this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
+        this.state = 'running';
     }
 
     public async stop(_noWait?: RpcNoWait): Promise<void> {
@@ -61,12 +70,14 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
             outputChannel.set(inputChannel);
         }
 
+        const { samplesPerWindow } = this;
+
         this.buffer.push(input);
-        if (this.buffer.framesAvailable >= SAMPLES_PER_WINDOW) {
+        if (this.buffer.framesAvailable >= samplesPerWindow) {
             const vadBuffer = new Array<Float32Array>();
             const vadArrayBuffer = this.bufferPool.get();
 
-            vadBuffer.push(new Float32Array(vadArrayBuffer, 0, SAMPLES_PER_WINDOW));
+            vadBuffer.push(new Float32Array(vadArrayBuffer, 0, samplesPerWindow));
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.worker)
