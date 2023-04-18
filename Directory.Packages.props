@@ -115,8 +115,6 @@
     <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)" />
     <PackageVersion Include="Stl" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.CommandR" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Interception" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Redis" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.Server" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.Client" Version="$(StlFusionVersion)" />
@@ -125,6 +123,7 @@
     <PackageVersion Include="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Interception" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="Stl.Redis" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Rpc" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
