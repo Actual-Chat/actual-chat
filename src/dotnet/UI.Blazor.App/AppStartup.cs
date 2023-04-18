@@ -34,6 +34,9 @@ namespace ActualChat.UI.Blazor.App
             }
         }
 
+        public static string GetCookieHeader()
+            => $"GCLB=\"{SessionAffinityKey}\"";
+
         public static void ConfigureServices(
             IServiceCollection services,
             AppKind appKind,
@@ -130,9 +133,6 @@ namespace ActualChat.UI.Blazor.App
                 moduleHostBuilder.AddModules(platformModuleFactory.Invoke(moduleServices));
             moduleHostBuilder.Build(services);
         }
-
-        private static string GetCookieHeader()
-            => $"GCLB=\"{SessionAffinityKey}\"";
 
         private static string GenerateSessionAffinityKey()
             => RandomStringGenerator.Default.Next(16, RandomStringGenerator.Base16Alphabet);

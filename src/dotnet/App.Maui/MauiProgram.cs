@@ -39,10 +39,26 @@ public static partial class MauiProgram
 
         try {
             using var step = _tracer.Region("Building MAUI app");
-            var app = CreateMauiAppInternal();
-            step.Close();
+            const string baseUrl = "https://" + MauiConstants.Host + "/";
+            var settings = CreateClientAppSettings(baseUrl);
+            var coreApp = CreateCoreMauiApp(settings);
+            var configuration = coreApp.Configuration;
+            var loggerFactory = coreApp.Services.GetRequiredService<ILoggerFactory>();
+            var appServicesTask = Task.Run(() => CreateBlazorAppServices(configuration, loggerFactory, settings));
+            var filter = CreateBlazorServicesLookupFilter();
+            var svpWrapper = new CompositeBlazorHybridServiceProvider(coreApp, appServicesTask, filter);
+            AppServices = svpWrapper;
+
+            appServicesTask.ContinueWith(_ => {
+                // MAUI does not start HostedServices, so we do this manually.
+                // https://github.com/dotnet/maui/issues/2244
+                var step1 = _tracer.Region("Starting host services");
+                StartHostedServices(svpWrapper);
+                step1.Close();
+            }, TaskScheduler.Default);
+
             LoadingUI.ReportMauiAppBuildTime(_tracer.Elapsed);
-            return app;
+            return CreateMauiApp(svpWrapper);
         }
         catch (Exception ex) {
             Log.Fatal(ex, "Failed to build actual.chat maui app");
@@ -91,8 +107,10 @@ public static partial class MauiProgram
             e.IsTerminating,
             e.ExceptionObject);
 
-    private static MauiApp CreateMauiAppInternal()
+    private static MauiApp CreateCoreMauiApp(ClientAppSettings settings)
     {
+        var stepOverall = _tracer.Region("Building maui app service provider");
+
         var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
             builder = builder.UseSentry(options => options.ConfigureForApp());
@@ -119,19 +137,37 @@ public static partial class MauiProgram
             ConfigureLogging(logging, true);
         });
 
-        services.TryAddSingleton(builder.Configuration);
-        services.AddPlatformServices();
+        services.AddSingleton(settings);
 
-        services.AddSingleton(new TracerProvider(_tracer));
+        services.AddTransient(_ => new MainPage(new NavigationInterceptor(settings)));
+
         if (_tracer.IsEnabled) {
             // Use AddDispatcherProxy only to research purpose
             // MauiProgramOptimizations.AddDispatcherProxy(services, false);
         }
+        builder.ConfigureMauiHandlers(handlers => {
+            handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
+        });
+        var mauiApp = builder.Build();
+        stepOverall.Close();
+        return mauiApp;
+    }
 
-        var settings = new ClientAppSettings();
-        _ = GetSessionId()
-            .ContinueWith(t => settings.SetSessionId(t.Result), TaskScheduler.Default);
-        services.TryAddSingleton(settings);
+    private static IServiceProvider CreateBlazorAppServices(
+        IConfiguration configuration,
+        ILoggerFactory loggerFactory,
+        ClientAppSettings settings)
+    {
+        var stepOverall = _tracer.Region("Building blazor app service provider");
+        var services = new ServiceCollection();
+        services.AddSingleton(new TracerProvider(_tracer));
+        services.AddSingleton(configuration);
+        // Register ILoggerFactory and ILogger
+        services.AddSingleton(loggerFactory);
+        services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
+        services.AddSingleton(settings);
+
+        RegisterExternalBlazorWebViewServices(services);
 
 #if IS_FIXED_ENVIRONMENT_PRODUCTION || !(DEBUG || DEBUG_MAUI)
         var environment = Environments.Production;
@@ -139,45 +175,71 @@ public static partial class MauiProgram
         var environment = Environments.Development;
 #endif
 
-        const string baseUrl = "https://" + MauiConstants.Host + "/";
-        var initSessionInfoTask = InitSessionInfo(settings, new BaseUrlProvider(baseUrl));
-        services.AddSingleton(c => new HostInfo {
+        var initSessionInfoTask = InitSessionInfo(settings, loggerFactory);
+        var hostInfo = new HostInfo {
             AppKind = AppKind.MauiApp,
             Environment = environment,
-            Configuration = c.GetRequiredService<IConfiguration>(),
-            BaseUrl = baseUrl,
+            Configuration = configuration,
+            BaseUrl = settings.BaseUrl,
             Platform = PlatformInfoProvider.GetPlatform(),
-        });
+        };
+        Constants.HostInfo = hostInfo;
+        services.AddSingleton(_ => hostInfo);
 
-        builder.ConfigureMauiHandlers(handlers => {
-            handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
-        });
+        services.AddPlatformServices();
 
         var step = _tracer.Region("ConfigureServices");
         ConfigureServices(services);
         step.Close();
 
-        step = _tracer.Region("Building maui app");
-        var mauiApp = builder.Build();
-        step.Close();
-
-        AppServices = mauiApp.Services;
+        var appServices = services.BuildServiceProvider();
 
         //_ = MauiProgramOptimizations.WarmupFusionServices(AppServices, _tracer);
 
-        Constants.HostInfo = AppServices.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = AppServices.LogFor(typeof(WebMReader));
+            WebMReader.DebugLog = loggerFactory.CreateLogger(typeof(WebMReader));
 
+        step = _tracer.Region("AwaitInitSessionInfoTask");
         AwaitInitSessionInfoTask(initSessionInfoTask);
-
-        // MAUI does not start HostedServices, so we do this manually.
-        // https://github.com/dotnet/maui/issues/2244
-        step = _tracer.Region("Starting host services");
-        StartHostedServices(mauiApp);
         step.Close();
 
-        return mauiApp;
+        stepOverall.Close();
+
+        return appServices;
+    }
+
+    private static void RegisterExternalBlazorWebViewServices(IServiceCollection services)
+    {
+        // we have to resolve below services from maui app services provider
+        var externalResolveTypes = new [] {
+            typeof(Microsoft.JSInterop.IJSRuntime),
+            typeof(Microsoft.AspNetCore.Components.Routing.INavigationInterception),
+            typeof(Microsoft.AspNetCore.Components.NavigationManager),
+            typeof(Microsoft.AspNetCore.Components.Web.IErrorBoundaryLogger),
+        };
+
+        services.AddScoped<DelegateServiceResolver>();
+
+        foreach (var serviceType in externalResolveTypes) {
+            var serviceDescriptor = ServiceDescriptor.Scoped(serviceType, ImplementationFactory);
+            services.Add(serviceDescriptor);
+
+            object ImplementationFactory(IServiceProvider c) {
+                var resolver = c.GetRequiredService<DelegateServiceResolver>();
+                var result = resolver.GetService(serviceType);
+                if (result == null)
+                    throw StandardError.Constraint($"Can't resolve blazor web view service: '{serviceType}'");
+                return result;
+            }
+        }
+    }
+
+    private static ClientAppSettings CreateClientAppSettings(string baseUrl)
+    {
+        var settings = new ClientAppSettings(baseUrl);
+        _ = GetSessionId()
+            .ContinueWith(t => settings.SetSessionId(t.Result), TaskScheduler.Default);
+        return settings;
     }
 
     private static void AwaitInitSessionInfoTask(Task initSessionInfoTask)
@@ -191,13 +253,10 @@ public static partial class MauiProgram
             .SetMinimumLevel(minLevel);
     }
 
-    private static Task InitSessionInfo(ClientAppSettings appSettings, BaseUrlProvider baseUrlProvider)
+    private static Task InitSessionInfo(ClientAppSettings appSettings, ILoggerFactory loggerFactory)
         => BackgroundTask.Run(async () => {
             var step = _tracer.Region("Init session info");
-            var services = new ServiceCollection()
-                .AddLogging(logging => ConfigureLogging(logging, false))
-                .BuildServiceProvider();
-            var log = services.GetRequiredService<ILogger<MauiApp>>();
+            var log = loggerFactory.CreateLogger<MauiApp>();
             try {
                 // Manually configure HTTP client as we don't have it configured globally at DI level
                 using var httpClient = new HttpClient(new HttpClientHandler {
@@ -207,10 +266,10 @@ public static partial class MauiProgram
                     DefaultRequestVersion = HttpVersion.Version30,
                     DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
                 };
-                httpClient.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{AppStartup.SessionAffinityKey}\"");
+                httpClient.DefaultRequestHeaders.Add("cookie", AppStartup.GetCookieHeader());
 
-                var log2 = services.GetRequiredService<ILogger<MobileAuthClient>>();
-                var mobileAuthClient = new MobileAuthClient(appSettings, baseUrlProvider, httpClient, log2);
+                var log2 = loggerFactory.CreateLogger<MobileAuthClient>();
+                var mobileAuthClient = new MobileAuthClient(appSettings, httpClient, log2);
                 log.LogInformation("Creating session...");
                 if (!await mobileAuthClient.SetupSession().ConfigureAwait(false))
                     throw StandardError.StateTransition(nameof(MauiProgram), "Can not setup session");
@@ -220,18 +279,11 @@ public static partial class MauiProgram
             catch (Exception e) {
                 log.LogError(e, "Failed to create session");
             }
-            finally {
-                await services.DisposeAsync().ConfigureAwait(false);
-            }
             step.Close();
         });
 
-    private static void StartHostedServices(MauiApp mauiApp)
-    {
-        var startTask = mauiApp.Services.HostedServices().Start();
-        // Sync wait is on purpose - CreateMauiApp is synchronous!
-        startTask.GetAwaiter().GetResult();
-    }
+    private static void StartHostedServices(IServiceProvider services)
+        => _ = services.HostedServices().Start();
 
     private static void ConfigureServices(IServiceCollection services)
     {
@@ -252,13 +304,10 @@ public static partial class MauiProgram
             c.GetRequiredService<UrlMapper>().BaseUrl));
         services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(
             c.GetRequiredService<ClientAppSettings>(),
-            c.GetRequiredService<BaseUrlProvider>(),
             c.GetRequiredService<HttpClient>(),
             c.GetRequiredService<ILogger<MobileAuthClient>>()));
 
         // UI
-        services.AddSingleton<NavigationInterceptor>(c => new NavigationInterceptor(c));
-        services.AddTransient<MainPage>();
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
 
         JSObjectReferenceExt.TestIfDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
@@ -324,7 +373,33 @@ public static partial class MauiProgram
             return sessionId;
         });
 
+    private static Func<Type, bool> CreateBlazorServicesLookupFilter()
+    {
+        // To prevent lookup in blazor app service provider
+        // Otherwise we can start awaiting too earlier that service provider is ready
+        var servicesToSkip = new HashSet<Type> {
+            typeof(Microsoft.AspNetCore.Components.IComponentActivator),
+        };
+        AddPlatformServicesToLookupSkipper(servicesToSkip);
+
+        bool SkipBlazorServiceLookup(Type c)
+            => servicesToSkip.Contains(c);
+
+        return SkipBlazorServiceLookup;
+    }
+
+    private static MauiApp CreateMauiApp(IServiceProvider services)
+    {
+        var constructors = typeof(MauiApp).GetConstructors(
+            BindingFlags.Instance
+            | BindingFlags.Static
+            | BindingFlags.NonPublic
+            | BindingFlags.Public);
+        return (MauiApp)constructors.First().Invoke(new object[] { services });
+    }
+
     private static partial void AddPlatformServices(this IServiceCollection services);
+    private static partial void AddPlatformServicesToLookupSkipper(ISet<Type> servicesToSkip);
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events);
     private static partial LoggerConfiguration ConfigurePlatformLogger(this LoggerConfiguration loggerConfiguration);
 }

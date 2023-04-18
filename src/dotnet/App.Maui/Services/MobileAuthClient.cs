@@ -4,18 +4,15 @@ public class MobileAuthClient
 {
     private ClientAppSettings AppSettings { get; }
     private HttpClient HttpClient { get; }
-    private BaseUrlProvider BaseUrlProvider { get; }
     private ILogger<MobileAuthClient> Log { get; }
 
     public MobileAuthClient(
         ClientAppSettings clientAppSettings,
-        BaseUrlProvider baseUrlProvider,
         HttpClient httpClient,
         ILogger<MobileAuthClient> log)
     {
         AppSettings = clientAppSettings;
         HttpClient = httpClient;
-        BaseUrlProvider = baseUrlProvider;
         Log = log;
     }
 
@@ -23,7 +20,7 @@ public class MobileAuthClient
     {
         try {
             var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
-            var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
+            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
@@ -39,7 +36,7 @@ public class MobileAuthClient
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
 
         var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
-        var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
+        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
@@ -53,7 +50,7 @@ public class MobileAuthClient
     public async Task<bool> SignOut()
     {
         var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
-        var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
+        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;

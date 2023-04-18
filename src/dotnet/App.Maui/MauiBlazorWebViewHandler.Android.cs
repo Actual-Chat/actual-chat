@@ -11,7 +11,7 @@ public partial class MauiBlazorWebViewHandler
         Log.LogDebug("ConnectHandler");
 
         base.ConnectHandler(platformView);
-        var baseUri = UrlMapper.BaseUri;
+        var baseUri = AppSettings.BaseUri;
         var sessionId = AppSettings.SessionId;
 
         platformView.Settings.JavaScriptEnabled = true;

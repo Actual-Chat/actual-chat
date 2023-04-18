@@ -27,6 +27,12 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
     }
 
+    private static partial void AddPlatformServicesToLookupSkipper(ISet<Type> servicesToSkip)
+    {
+        servicesToSkip.Add(typeof(Android.Views.LayoutInflater));
+        servicesToSkip.Add(typeof(AndroidX.Fragment.App.FragmentManager));
+    }
+
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
             android.OnBackPressed(activity => {

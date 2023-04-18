@@ -4,18 +4,21 @@ namespace ActualChat.App.Maui.Services;
 
 public class NavigationInterceptor
 {
-    private UrlMapper UrlMapper { get; }
+    private ClientAppSettings AppSettings { get; }
 
-    public NavigationInterceptor(IServiceProvider services)
-        => UrlMapper = services.GetRequiredService<UrlMapper>();
+    public NavigationInterceptor(ClientAppSettings clientAppSettings)
+        => AppSettings = clientAppSettings;
 
     internal bool TryIntercept(Uri uri)
     {
+        const string webViewAppHostAddress = "0.0.0.0";
+        if (OrdinalEquals(uri.Host, webViewAppHostAddress))
+            return false;
         if (!AreScopedServicesReady)
             return false;
 
         var nav = ScopedServices.GetRequiredService<NavigationManager>();
-        var baseUri = UrlMapper.BaseUri;
+        var baseUri = AppSettings.BaseUri;
         if (baseUri.IsBaseOf(uri)) {
             var relativeUri = baseUri.MakeRelativeUri(uri);
             nav.NavigateTo(relativeUri.ToString());
