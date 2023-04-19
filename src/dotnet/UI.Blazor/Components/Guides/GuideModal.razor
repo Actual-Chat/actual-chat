@@ -1,6 +1,5 @@
 @using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.Notification
 @namespace ActualChat.UI.Blazor.Components
 @implements IModalView<GuideModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
@@ -63,12 +62,11 @@
         WebSafari,
     }
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
+
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnCancel()
