@@ -196,7 +196,7 @@
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <PackageReference Include="Sentry.Serilog" />
-    <PackageReference Include="Sentry.Maui" />
+    <PackageReference Include="Sentry.Extensions.Logging" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
