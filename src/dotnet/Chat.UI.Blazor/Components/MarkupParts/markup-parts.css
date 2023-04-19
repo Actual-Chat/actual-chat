@@ -86,6 +86,7 @@ body.hoverable .playable-text-markup > span:hover {
 .preformatted-text-markup {
     @apply bg-02;
     @apply whitespace-pre-wrap;
+    @apply text-sm;
 }
 
 .code-block-markup {
