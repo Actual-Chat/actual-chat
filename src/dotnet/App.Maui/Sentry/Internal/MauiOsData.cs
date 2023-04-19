@@ -3,9 +3,9 @@ using OperatingSystem = Sentry.Protocol.OperatingSystem;
 
 namespace Sentry.Maui.Internal;
 
-internal static class MauiOsData
+internal static class MauiOSData
 {
-    public static void ApplyMauiOsData(this OperatingSystem os, IDiagnosticLogger? logger)
+    public static void ApplyMauiOSData(this OperatingSystem os, IDiagnosticLogger? logger)
     {
         try {
             // https://docs.microsoft.com/dotnet/maui/platform-integration/device/information

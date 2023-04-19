@@ -14,7 +14,7 @@ internal class SentryMauiEventProcessor : ISentryEventProcessor
         @event.Sdk.Name = Constants.SdkName;
         @event.Sdk.Version = Constants.SdkVersion;
         @event.Contexts.Device.ApplyMauiDeviceData(_options.DiagnosticLogger);
-        @event.Contexts.OperatingSystem.ApplyMauiOsData(_options.DiagnosticLogger);
+        @event.Contexts.OperatingSystem.ApplyMauiOSData(_options.DiagnosticLogger);
 
         return @event;
     }
