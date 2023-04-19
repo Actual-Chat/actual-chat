@@ -5,7 +5,7 @@
     @apply backdrop-blur-sm;
     background: rgba(255, 255, 255, 0.2);
 }
-.until-content-ready .background {
+.until-ui-is-ready .background {
     background: rgba(255, 255, 255, 0.1);
 }
 body.narrow .background {
@@ -40,12 +40,12 @@ body.narrow .background {
 .c-circle img {
     @apply animate-pulse-70;
 }
-.until-content-ready .gradient-circle {
+.until-ui-is-ready .gradient-circle {
     @apply absolute z-minus;
     @apply w-48 h-48 md:w-96 md:h-96;
     @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
 }
-.until-content-ready .after-circle {
+.until-ui-is-ready .after-circle {
     @apply w-36 h-36 md:w-72 md:h-72;
     @apply rounded-5xl;
     @apply bg-transparent;
@@ -53,20 +53,20 @@ body.narrow .background {
     @apply blur-none;
     animation: rotate 5s infinite;
 }
-.until-content-ready .c-circle {
+.until-ui-is-ready .c-circle {
     @apply w-36 h-36 md:w-64 md:h-64;
     @apply rounded-5xl;
     @apply bg-transparent;
     @apply backdrop-blur-none;
 }
-.until-content-ready .c-circle .c-text {
+.until-ui-is-ready .c-circle .c-text {
     @apply animate-none;
 }
-.until-content-ready .c-circle img {
+.until-ui-is-ready .c-circle img {
     @apply animate-none;
 }
 
-.until-content-ready .c-circle:before {
+.until-ui-is-ready .c-circle:before {
     @apply absolute top-0 left-0;
     @apply w-full;
     @apply opacity-50;
