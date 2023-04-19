@@ -18,6 +18,7 @@ public interface IBrowserInfoBackend
         bool IsIos,
         bool IsChrome,
         bool IsEdge,
+        bool IsSafari,
         bool IsTouchCapable,
         string WindowId);
 }

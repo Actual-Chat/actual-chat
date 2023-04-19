@@ -1,19 +1,23 @@
-@using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @implements IModalView<GuideModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 @{
-    var device = GuideType.WebChrome;
+    GuideType device;
     if (ScreenSize.IsNarrow()) {
-        if (BrowserInfo.IsAndroid)
-            device = GuideType.MobileChromeAndroid;
-        else if (BrowserInfo.IsIos)
+        if (BrowserInfo.IsEdge)
+            device = GuideType.MobileEdgeAndroid;
+        else if (BrowserInfo.IsSafari)
             device = GuideType.MobileSafariIos;
+        else
+            device = GuideType.MobileChromeAndroid;
     } else {
-        if (BrowserInfo.IsIos)
+        if (BrowserInfo.IsEdge)
+            device = GuideType.WebEdge;
+        else if (BrowserInfo.IsSafari)
             device = GuideType.WebSafari;
+        else
+            device = GuideType.WebChrome;
     }
 }
 
@@ -22,8 +26,7 @@
 
     <GuideHeader OnCloseClick="OnCancel" OnOkClick="OnCancel"/>
 
-    @switch (device)
-    {
+    @switch (device) {
         case GuideType.MobileSafariIos:
             <MobileSafariIosGuideContent/>
             break;
