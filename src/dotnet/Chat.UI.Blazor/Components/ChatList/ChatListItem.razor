@@ -14,7 +14,7 @@
     data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <ChildContent>
-        <div class="flex-1 flex-x items-center gap-x-2" @onclick="@OnClick">
+        <div class="flex-1 flex-x items-center gap-x-2" @onclick="()=>OnClick(chat.Id)">
             <ChatIcon Chat="m.Chat"/>
             <div class="grid justify-start items-start gap-y-1">
                 <span class="text-headline-1 text-02 truncate">
@@ -98,23 +98,29 @@
         return chatState ?? ChatState.None;
     }
 
-    private async Task OnClick() {
+    private async Task OnClick(ChatId chatId) {
         var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
         _ = tuneUI.Play("select-chat");
 
-        if (ScreenSize.IsWide())
-            return;
+        ChatUI.SelectChat(chatId);
+        try {
+            if (ScreenSize.IsWide())
+                return;
 
-        // This part hides LeftPanel when you select the chat
-        var chatUrl = Links.Chat(ChatInfo.Id);
-        var history = ChatUI.Services.GetRequiredService<History>();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
-        await history
-            .When(_ => history.LocalUrl.Value.OrdinalStartsWith(chatUrl), cts.Token)
-            .SuppressCancellation();
-        await history.WhenNavigationCompleted;
+            // This part hides LeftPanel when you select the chat
+            var chatUrl = Links.Chat(ChatInfo.Id);
+            var history = ChatUI.Services.GetRequiredService<History>();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+            await history
+                .When(_ => history.LocalUrl.Value.OrdinalStartsWith(chatUrl), cts.Token)
+                .SuppressCancellation();
+            await history.WhenNavigationCompleted;
 
-        var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
-        panelsUI.Left.SetIsVisible(false);
+            var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
+            panelsUI.Left.SetIsVisible(false);
+        }
+        finally {
+            StateHasChanged();
+        }
     }
 }

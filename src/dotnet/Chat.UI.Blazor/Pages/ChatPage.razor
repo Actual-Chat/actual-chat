@@ -14,7 +14,7 @@
 
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="@chatOrLoading">
-        <ChatHeader/>
+        <ChatHeader />
     </CascadingValue>
 </RenderIntoSlot>
 
@@ -49,7 +49,7 @@
     } else if (chat == null) {
         <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
     } else {
-        <CascadingValue Value="chat" @key="chat.Id.Value">
+        <CascadingValue Value="chat" @key="ChatSid">
             <ChatView @ref="_chatViewRef" />
         </CascadingValue>
     }
