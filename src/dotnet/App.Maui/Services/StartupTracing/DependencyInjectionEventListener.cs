@@ -14,6 +14,7 @@ internal class DependencyInjectionEventListener : EventListener
 
     protected override void OnEventSourceCreated(EventSource eventSource)
     {
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         Log.Information("OnEventSourceCreated: " + eventSource.Name);
         // https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.DependencyInjection/src/DependencyInjectionEventSource.cs
         if(OrdinalEquals(eventSource.Name, "Microsoft-Extensions-DependencyInjection"))

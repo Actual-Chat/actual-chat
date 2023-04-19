@@ -61,18 +61,19 @@ public static class MauiProgramOptimizations
 
     public static void AddDispatcherProxy(IServiceCollection services, bool logAllOperations)
     {
-        var dispatcherRegistration =
-            services.FirstOrDefault(c => c.ServiceType == typeof(IDispatcher));
-        if (dispatcherRegistration == null || dispatcherRegistration.ImplementationFactory == null)
+        var dispatcherDescriptor = services.FirstOrDefault(c => c.ServiceType == typeof(IDispatcher));
+        if (dispatcherDescriptor?.ImplementationFactory == null)
             return;
 
-        services.Remove(dispatcherRegistration);
-        Func<IServiceProvider, object> implementationFactory = svp =>
-            new Services.StartupTracing.DispatcherProxy((IDispatcher) dispatcherRegistration.ImplementationFactory(svp), logAllOperations);
-        var serviceDescriptor = new ServiceDescriptor(
-            dispatcherRegistration.ServiceType,
-            implementationFactory,
-            dispatcherRegistration.Lifetime);
-        services.Add(serviceDescriptor);
+        object ImplementationFactory(IServiceProvider svp)
+            => new Services.StartupTracing.DispatcherProxy(
+                (IDispatcher)dispatcherDescriptor.ImplementationFactory(svp),
+                logAllOperations);
+
+        services.Remove(dispatcherDescriptor);
+        services.Add(new ServiceDescriptor(
+            dispatcherDescriptor.ServiceType,
+            ImplementationFactory,
+            dispatcherDescriptor.Lifetime));
     }
 }

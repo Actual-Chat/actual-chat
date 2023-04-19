@@ -247,17 +247,11 @@
 
   <!-- Versions -->
   <!-- Use approach described on https://github.com/dotnet/Nerdbank.GitVersioning/issues/828 -->
-  <Target Name="FixVersionForAndroid" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'"
-          BeforeTargets="_GetAndroidPackageName"
-          DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForAndroid" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" BeforeTargets="_GetAndroidPackageName" DependsOnTargets="SetApplicationVersion" />
 
-  <Target Name="FixVersionForIOS" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'"
-          BeforeTargets="_CompileAppManifest"
-          DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForIOS" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" BeforeTargets="_CompileAppManifest" DependsOnTargets="SetApplicationVersion" />
 
-  <Target Name="FixVersionForWindows" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"
-          BeforeTargets="MauiGeneratePackageAppxManifest"
-          DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForWindows" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" BeforeTargets="MauiGeneratePackageAppxManifest" DependsOnTargets="SetApplicationVersion" />
 
   <Target Name="SetApplicationVersion" DependsOnTargets="GetBuildVersion">
 
