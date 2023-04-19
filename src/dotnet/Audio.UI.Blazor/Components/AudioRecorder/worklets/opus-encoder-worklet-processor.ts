@@ -20,7 +20,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
-    private state: 'running' | 'stopped' = 'running';
+    private state: 'running' | 'stopped' | 'inactive' = 'inactive';
     private server: Disposable;
     private worker: OpusEncoderWorker & Disposable;
 
@@ -42,6 +42,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
     public async init(workerPort: MessagePort): Promise<void> {
         this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
+        this.state = 'running';
     }
 
     public async stop(_noWait?: RpcNoWait): Promise<void> {
@@ -64,6 +65,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
             if (this.state === 'stopped')
                 return false;
+            if (this.state === 'inactive')
+                return true;
             if (!hasInput || !hasOutput)
                 return true;
 

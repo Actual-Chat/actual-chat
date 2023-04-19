@@ -15,7 +15,7 @@ const SAMPLES_PER_WINDOW_30 = 1440;
 export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements AudioVadWorklet {
     private readonly buffer: AudioRingBuffer;
 
-    private state: 'running' | 'stopped' = 'stopped';
+    private state: 'running' | 'stopped' | 'inactive' = 'inactive';
     private samplesPerWindow: number = SAMPLES_PER_WINDOW_32;
     private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
@@ -58,6 +58,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
         if (this.state === 'stopped')
             return false;
+        if (this.state === 'inactive')
+            return true;
         if (!hasInput || !hasOutput)
             return true;
 
