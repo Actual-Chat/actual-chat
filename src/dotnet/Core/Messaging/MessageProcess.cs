@@ -20,8 +20,10 @@ public interface IMessageProcess<out TMessage> : IMessageProcess
 
 public abstract class MessageProcess : IMessageProcess
 {
-    private static readonly ConcurrentDictionary<Type,
-        Func<object, CancellationToken, Task<Unit>?, Task<object?>?, object>> MessageProcessorCtorCache = new();
+    private static readonly ConcurrentDictionary<
+        Type,
+        Func<object, CancellationToken, TaskCompletionSource<Unit>?, TaskCompletionSource<object?>?, object>>
+        MessageProcessorCtorCache = new();
 
     protected TaskCompletionSource<Unit> WhenStartedSource { get; init; } = null!;
     protected TaskCompletionSource<object?> WhenCompletedSource { get; init; } = null!;
@@ -39,17 +41,22 @@ public abstract class MessageProcess : IMessageProcess
     public static IMessageProcess New(
         object message,
         CancellationToken cancellationToken,
-        Task<Unit>? whenStarted = null,
-        Task<object?>? whenCompleted = null)
+        TaskCompletionSource<Unit>? whenStarted = null,
+        TaskCompletionSource<object?>? whenCompleted = null)
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));
+
         var ctor = MessageProcessorCtorCache.GetOrAdd(
             message.GetType(),
-            t => (Func<object, CancellationToken, Task<Unit>?, Task<object?>?, object>)
+            t => (Func<object, CancellationToken, TaskCompletionSource<Unit>?, TaskCompletionSource<object?>?, object>)
                 typeof(MessageProcess<>)
                     .MakeGenericType(t)
-                    .GetConstructorDelegate(typeof(object), typeof(CancellationToken), typeof(Task<Unit>), typeof(Task<object>))!);
+                    .GetConstructorDelegate(
+                        typeof(object),
+                        typeof(CancellationToken),
+                        typeof(TaskCompletionSource<Unit>),
+                        typeof(TaskCompletionSource<object>))!);
         return (IMessageProcess)ctor.Invoke(message, cancellationToken, whenStarted, whenCompleted);
     }
 }
