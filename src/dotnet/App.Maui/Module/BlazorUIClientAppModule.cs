@@ -20,17 +20,17 @@ public sealed class BlazorUIClientAppModule : HostModule, IBlazorUIModule
 
         // Replica cache
         // Temporarily disabled for MAUI due to cache is stale after computed is updated from replica.
-        if (false) {
-            services.AddSingleton<AppReplicaCacheConfigurator>();
-            services.AddSingleton<ReplicaCache>(c => {
-                var dbPath = new FilePath(FileSystem.AppDataDirectory) & "ReplicaCache.db3";
-                var store = new SQLiteKeyValueStore(dbPath, c).Start();
-                var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
-                var options = new AppReplicaCache.Options(store) {
-                    ShouldForceFlushAfterSet = configurator.ShouldForceFlushAfterSet,
-                };
-                return new AppReplicaCache(options, c);
-            });
-        }
+#if false
+        services.AddSingleton<AppReplicaCacheConfigurator>();
+        services.AddSingleton<ReplicaCache>(c => {
+            var dbPath = new FilePath(FileSystem.AppDataDirectory) & "ReplicaCache.db3";
+            var store = new SQLiteKeyValueStore(dbPath, c).Start();
+            var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
+            var options = new AppReplicaCache.Options(store) {
+                ShouldForceFlushAfterSet = configurator.ShouldForceFlushAfterSet,
+            };
+            return new AppReplicaCache(options, c);
+        });
+#endif
     }
 }
