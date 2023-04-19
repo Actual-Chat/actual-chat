@@ -37,6 +37,7 @@ export class BrowserInfo {
             isAndroid: DeviceInfo.isAndroid,
             isIos: DeviceInfo.isIos,
             isChrome: DeviceInfo.isChrome,
+            isEdge: DeviceInfo.isEdge,
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
@@ -90,6 +91,8 @@ export class BrowserInfo {
             classList.add('device-ios');
         if (DeviceInfo.isChrome)
             classList.add('device-chrome');
+        if (DeviceInfo.isEdge)
+            classList.add('device-edge');
 
         if (DeviceInfo.isTouchCapable)
             classList.add('touch-capable');
@@ -107,6 +110,7 @@ export interface InitResult {
     isAndroid: boolean;
     isIos: boolean;
     isChrome: boolean;
+    isEdge: boolean;
     isTouchCapable: boolean;
     windowId: string;
 }

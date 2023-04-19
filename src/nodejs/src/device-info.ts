@@ -10,6 +10,7 @@ export const DeviceInfo = {
     isIos: isMobile && /iphone|ipad|ipod/.test(userAgentLowerCase),
     isChrome: userAgentLowerCase.indexOf('chrome') >= 0,
     isSafari: userAgentLowerCase.indexOf('safari') >= 0,
+    isEdge: userAgentLowerCase.indexOf('edg/') >= 0,
     isTouchCapable: (('ontouchstart' in window)
         || (navigator['MaxTouchPoints'] as number > 0)
         || (navigator['msMaxTouchPoints'] as number > 0)),
