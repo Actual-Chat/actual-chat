@@ -1,4 +1,5 @@
 using ActualChat.Search;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -13,7 +14,7 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(@t => t.searchMatch.Rank)
             .ThenBy(x => x.author.Name, StringComparer.Ordinal)
-            .Select(x => new MentionSearchResult(new MentionId(x.author.AuthorId, AssumeValid.Option), x.searchMatch))
+            .Select(x => new MentionSearchResult(new MentionId(x.author.AuthorId, AssumeValid.Option), x.searchMatch, new (null, DefaultUserPicture.GetBoringAvatar(x.author.AuthorId))))
             .Take(limit)
             .ToArray();
         return Task.FromResult(mentions);
