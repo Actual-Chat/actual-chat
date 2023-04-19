@@ -1,8 +1,11 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using Android.Content;
 using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
 using Serilog;
+using Activity = Android.App.Activity;
+using Result = Android.App.Result;
 
 namespace ActualChat.App.Maui;
 
@@ -25,6 +28,7 @@ public static partial class MauiProgram
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationPermissions>(_ => new AndroidNotificationPermissions());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
+        services.AddSingleton<AndroidGoogleSignIn>();
     }
 
     private static partial void AddPlatformServicesToLookupSkipper(ISet<Type> servicesToSkip)
@@ -35,11 +39,15 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
+            android.OnActivityResult(OnActivityResult);
             android.OnBackPressed(activity => {
                 _ = HandleBackPressed(activity);
                 return true;
             });
         });
+
+    private static void OnActivityResult(Activity activity, int requestCode, Result resultCode, Intent? data)
+        => ActivityResultCallbackRegistry.InvokeCallback(activity, requestCode, resultCode, data);
 
     private static async Task HandleBackPressed(Android.App.Activity activity)
     {

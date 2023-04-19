@@ -2,11 +2,7 @@ using Android;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
-using AndroidX.Core.App;
-using Android.Gms.Auth.Api.SignIn;
 using Android.Content;
-using Result = Android.App.Result;
-using ActualChat.App.Maui.Services;
 using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
@@ -39,19 +35,10 @@ namespace ActualChat.App.Maui;
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public class MainActivity : MauiAppCompatActivity
 {
-    private const int GoogleSignInRequestCode = 800;
-    // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
-#if ISDEVMAUI
-    private const string ServerGoogleClientId = "367046672456-75p2d55jama2mtivjbcgp0hkaa6jsihq.apps.googleusercontent.com";
-#else
-    private const string ServerGoogleClientId = "936885469539-89riml3ri3rsu35tdh9gtdvrtj4c08fs.apps.googleusercontent.com";
-#endif
-
     internal static readonly int NotificationID = 101;
     internal static readonly int NotificationPermissionID = 832;
     private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
 
-    private GoogleSignInClient _googleSignInClient = null!;
     private ActivityResultLauncher _requestPermissionLauncher = null!;
 
     private ILogger Log { get; set; } = NullLogger.Instance;
@@ -74,7 +61,7 @@ public class MainActivity : MauiAppCompatActivity
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log = AppServices.LogFor(GetType());
+        Log = AppServices.LogFor<MainActivity>();
         Log.LogDebug("OnCreate, is loaded: {IsLoaded}", isLoaded);
         using var _ = _tracer.Region("OnCreate");
 
@@ -87,17 +74,6 @@ public class MainActivity : MauiAppCompatActivity
         // seems it does not help
         var componentName = new ComponentName(this, Java.Lang.Class.FromType(typeof(FirebaseMessagingService)));
         PackageManager?.SetComponentEnabledSetting(componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
-
-        // Configure sign-in to request the user's ID, email address, and basic
-        // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DefaultSignIn)
-            .RequestEmail()
-            .RequestIdToken(ServerGoogleClientId)
-            .RequestServerAuthCode(ServerGoogleClientId)
-            .Build();
-
-        // Build a GoogleSignInClient with the options specified by gso.
-        _googleSignInClient = GoogleSignIn.GetClient(this, gso);
 
         // Create launcher to request permissions
         _requestPermissionLauncher = RegisterForActivityResult(
@@ -174,56 +150,6 @@ public class MainActivity : MauiAppCompatActivity
             var notificationUI = AppServices.GetRequiredService<NotificationUI>();
             notificationUI.UpdateNotificationStatus(notificationState);
         }
-    }
-
-    public Task SignInWithGoogle()
-    {
-        StartActivityForResult(_googleSignInClient.SignInIntent, GoogleSignInRequestCode);
-        return Task.CompletedTask;
-    }
-
-    public bool IsSignedInWithGoogle()
-    {
-        // Check for existing Google Sign In account, if the user is already signed in
-        // the GoogleSignInAccount will be non-null.
-        var account = GoogleSignIn.GetLastSignedInAccount(this);
-        return account != null;
-    }
-
-    public Task SignOutWithGoogle()
-        => _googleSignInClient.SignOutAsync();
-
-    protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
-    {
-        base.OnActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == GoogleSignInRequestCode) {
-            async Task CheckResult(Intent data1)
-            {
-                try {
-                    var account = await GoogleSignIn.GetSignedInAccountFromIntentAsync(data1).ConfigureAwait(true);
-                    if (account != null)
-                        _ = OnSignInWithGoogle(account);
-                }
-                catch (Android.Gms.Common.Apis.ApiException e) {
-                    Log.LogDebug(e, "Could not get an account from intent");
-                }
-            }
-            if (resultCode == Result.Ok)
-                _ = CheckResult(data!);
-            else
-                Log.LogDebug("Google SignIn. SignInIntent result is NOK. Actual result: {ResultCode}", resultCode);
-        }
-    }
-
-    private async Task OnSignInWithGoogle(GoogleSignInAccount account)
-    {
-        var code = account.ServerAuthCode;
-        if (code.IsNullOrEmpty())
-            return;
-
-        var mobileAuthClient = AppServices.GetRequiredService<MobileAuthClient>();
-        await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
     }
 
     private void CreateNotificationChannel()
