@@ -1,6 +1,5 @@
 @page "/test/guides"
 @using ActualChat.UI.Blazor.Services
-@using System.Text
 @layout NoLayout
 
 <RequireAccount MustBeAdmin="true"/>
@@ -34,7 +33,7 @@
         Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
     </div>
     <div class="flex-y md:flex-x gap-y-4 md:gap-x-8 justify-center p-4 md:p-0">
-        <Button Class="btn-error" Click="@(() => ModalUI.Show(new GuideModal.Model()))">
+        <Button Class="btn-error" Click="@OnClick">
             Guide
         </Button>
     </div>
@@ -42,10 +41,7 @@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
 
-    private void OnClick(int count) {
-        var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
-        ErrorUI.ShowError(result);
-    }
+    private Task OnClick()
+        => ModalUI.Show(new GuideModal.Model());
 }
