@@ -228,7 +228,8 @@ public partial class GoogleTranscriber : ITranscriber
                 yield return transcript;
         }
 
-        var finalTranscript = state.Stabilize().WithSuffix("", state.ProcessedAudioDuration);
+        state.MakeStable();
+        var finalTranscript = state.Stable.WithSuffix("", state.ProcessedAudioDuration);
         yield return finalTranscript;
     }
 
@@ -236,54 +237,54 @@ public partial class GoogleTranscriber : ITranscriber
         GoogleTranscribeState state,
         StreamingRecognizeResponse response)
     {
-        DebugLog?.LogDebug("Response={Response}", response);
-
         var results = response.Results;
-        var isStable = results.Any(r => r.IsFinal);
-        var fragments = isStable
-            ? results.Where(r => r.IsFinal)
-            : results;
-        // google transcriber can return final result without transcript (alternatives)
-        var text = fragments
-            .Select(r => r.Alternatives.Count > 0
-                ? r.Alternatives.First().Transcript
-                : "")
-            .ToDelimitedString("");
-        var endTime = TryGetOriginalAudioTime(results.Last().ResultEndOffset) ?? state.ProcessedAudioDuration;
-        Transcript? transcript = null;
-        if (string.IsNullOrWhiteSpace(text)) {
-            if (!isStable)
-                return null;
+        DebugLog?.LogDebug("Got response with {ResultCount} results", results.Count);
 
-            transcript = state.Stabilize();
+        var mustAppendToUnstable = false;
+        for (var i = 0; i < results.Count; i++) {
+            var result = results[i];
+            DebugLog?.LogDebug("Result {Index}: {Result}", i, result);
+            ProcessResult(state, result, mustAppendToUnstable);
+            mustAppendToUnstable |= !result.IsFinal;
+            DebugLog?.LogDebug("Transcript {Index}: {Transcript}", i, state.Unstable);
         }
-        else {
-            text = FixSuffix(state.Stable.Text, text);
 
-            // Google Transcribe issue: sometimes it omits the final transcript,
-            // so we use a heuristic to automatically mark it stable
-            if (state.Unstable != state.Stable && !isStable) {
-                var lastEndTime = state.Unstable.TimeMap.YRange.End;
-                if (endTime - lastEndTime > 0.25f) {
-                    // AND there is > .25s delay between the new unstable piece and the old one
-                    var legitLengthRatio = (endTime - lastEndTime) switch {
-                        > 1f => 0.9f, // Longer delay => smaller trim allowed
-                        > 0.5f => 0.75f,
-                        _ => 0.6f, // Shorter delay => bigger trim allowed
-                    };
-                    var lastLength = state.Unstable.Length - state.Stable.Length;
-                    var legitLength = Math.Min(
-                        Math.Max(0, lastLength - 4), // Trimming by 4 is always legit
-                        (int)(lastLength * legitLengthRatio));
-                    if (text.Length < legitLength)
-                        state.Stabilize();
+        return state.Unstable;
+    }
+
+    private void ProcessResult(GoogleTranscribeState state, StreamingRecognitionResult result, bool appendToUnstable)
+    {
+        var isFinal = result.IsFinal;
+        var suffix = result.Alternatives.FirstOrDefault()?.Transcript ?? "";
+        var endTime = TryGetOriginalAudioTime(result.ResultEndOffset) ?? state.ProcessedAudioDuration;
+        suffix = FixSuffix(state[appendToUnstable].Text, suffix);
+
+        // Google transcriber sometimes returns empty final transcript -
+        // we assume that the last unstable one becomes stable in this case.
+        if (isFinal && string.IsNullOrWhiteSpace(suffix)) {
+            state.MakeStable();
+            return;
+        }
+
+#if false
+        // Google Transcribe issue: sometimes it omits the final transcript,
+        // so we use a heuristic to automatically identify it
+        var transcript = state.Unstable;
+        if (!ReferenceEquals(transcript, state.Stable)) {
+            var lastEndTime = transcript.TimeMap.YRange.End;
+            if (endTime - lastEndTime >= 0.5f) {
+                // AND there is > .5s delay between the new unstable piece and the old one
+                var lastSuffixLength = transcript.Length - state.Stable.Length;
+                var minValidSuffixLength = Math.Max(0, lastSuffixLength - 4);
+                if (suffix.Length < minValidSuffixLength) {
+                    // AND the suffix is shorter than the (lastSuffix.Length - 4)
+                    state.MakeStable();
                 }
             }
-            transcript = state.Append(isStable, text, endTime);
         }
+#endif
 
-        DebugLog?.LogDebug("Transcript={Transcript}, EndTime={EndTime}", transcript, endTime);
-        return transcript;
+        state.Append(suffix, endTime, appendToUnstable).MakeStable(isFinal);
     }
 
     // This method is unused for now, since we rely on our own time offset computation logic
@@ -396,6 +397,12 @@ public partial class GoogleTranscriber : ITranscriber
 
     private static string FixSuffix(string prefix, string suffix)
     {
+        /*
+        // Trim trailing whitespace
+        var lastLetterIndex = suffix.Length - Transcript.ContentStartRegex.Match(suffix).Length;
+        suffix = suffix[..lastLetterIndex];
+        */
+
         var firstLetterIndex = Transcript.ContentStartRegex.Match(suffix).Length;
         if (firstLetterIndex == suffix.Length)
             return suffix; // Suffix is all whitespace or empty

@@ -33,56 +33,52 @@ public class TranscriptUpdateTests : TestBase
     public void TranscriberStateTest1()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        var t = state.Append(false, "раз-два-три-четыре-пять,", 4.68f);
-        t = state.Append(true, "раз-два-три-четыре-пять, 67", 4.98f);
-        t = state.Append(false, " вот", 8.14f);
-        Dump(t);
-        t = state.Append(false, " Вот это", 8.56f);
-        Dump(t);
-        t.TimeMap.Data.Should().Equal(0, 0, 24, 4.68f, 27, 4.98f, 31, 8.14f, 35, 8.56f);
+        state.Append("раз-два-три-четыре-пять,", 4.68f);
+        state.Append("раз-два-три-четыре-пять, 67", 4.98f).MakeStable();
+        state.Append(" вот", 8.14f);
+        Dump(state.Stable);
+        state.Append(" Вот это", 8.56f).MakeStable();
+        Dump(state.Stable);
+        state.Stable.TimeMap.Data.Should().Equal(0, 0, 24, 4.68f, 27, 4.98f, 31, 8.14f, 35, 8.56f);
     }
 
     [Fact]
     public void TranscriberStateTest2()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        _ = state.Append(true, "1", 1);
+        state.Append("1", 1).MakeStable();
+        state.Append(" 2", 2).MakeStable();
+        state.Append(" 3", new LinearMap(3, 2, 5, 3)).MakeStable();
+        state.Append("", state.Stable.TimeRange.End + 1f).MakeStable();
         Dump(state.Stable);
-        _ = state.Append(true, " 2", 2);
-        Dump(state.Stable);
-        _ = state.Append(true, " 3", new LinearMap(3, 2, 5, 3));
-        var t = state.Append(true, "", state.Stable.TimeRange.End);
-        Dump(t);
-        t.TimeMap.Length.Should().Be(4);
+        state.Stable.TimeMap.Length.Should().Be(4);
+        state.Stable.TimeRange.End.Should().BeApproximately(3f, 0.01f);
     }
 
     [Fact]
     public void TranscriberUnstableTest()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        _ = state.Append(false, "1", 1);
-        Dump(state.Stable);
-        var t = state.Append(false, " 2", 2);
-        Dump(state.Stable);
-        t = state.Stabilize();
-        t.TimeMap.Length.Should().Be(3);
+        state.Append("1", 1);
+        state.Append(" 2", 2).MakeStable();
+        state.Stable.TimeMap.Length.Should().Be(3);
     }
 
     [Fact]
     public void RandomTranscriberStateTest()
     {
         var state = new GoogleTranscribeState(null!, null!, null!);
-        state.Append(true, "X");
+        state.Append("X", null).MakeStable();
         var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString("-");
         var rnd = new Random(0);
         var lastOffset = 1;
         for (var offset = 1; offset <= text.Length; offset += 1 + rnd.Next(3)) {
             var isStable = rnd.Next(3) == 0;
             var suffix = " " + text[lastOffset..offset];
-            var t = state.Append(isStable, suffix, offset);
+            state.Append(suffix, offset).MakeStable(isStable);
 
             state.Unstable.Text.Should().EndWith(suffix);
-            t.TimeMap.IsValid().Should().BeTrue();
+            state.Unstable.TimeMap.IsValid().Should().BeTrue();
             lastOffset = offset;
         }
     }

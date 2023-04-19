@@ -17,6 +17,8 @@ public class GoogleTranscribeState
         get => _stable;
         set => Unstable = _stable = value;
     }
+    public Transcript this[bool isUnstable]
+        => isUnstable ? Unstable : Stable;
 
     public float ProcessedAudioDuration {
         get => Volatile.Read(ref _processedAudioDuration);
@@ -33,24 +35,22 @@ public class GoogleTranscribeState
         Output = output;
     }
 
-    public Transcript Stabilize()
-        => Stable = Unstable;
+    public GoogleTranscribeState MakeStable(bool isStable = true)
+    {
+        if (isStable)
+            Stable = Unstable;
+        return this;
+    }
 
-    public Transcript Append(bool isStable, string suffix, float? suffixEndTime = null)
-        => isStable
-            ? Stable = Append(suffix, suffixEndTime)
-            : Unstable = Append(suffix, suffixEndTime);
+    public GoogleTranscribeState Append(string suffix, float? suffixEndTime, bool appendToUnstable = false)
+    {
+        Unstable = this[appendToUnstable].WithSuffix(suffix, Unstable.TimeMap, suffixEndTime);
+        return this;
+    }
 
-    public Transcript Append(bool isStable, string suffix, LinearMap suffixTextToTimeMap)
-        => isStable
-            ? Stable = Append(suffix, suffixTextToTimeMap)
-            : Unstable = Append(suffix, suffixTextToTimeMap);
-
-    // Private methods
-
-    private Transcript Append(string suffix, float? suffixEndTime = null)
-        => Stable.WithSuffix(suffix, Unstable.TimeMap, suffixEndTime);
-
-    private Transcript Append(string suffix, LinearMap suffixTextToTimeMap)
-        => Stable.WithSuffix(suffix, suffixTextToTimeMap);
+    public GoogleTranscribeState Append(string suffix, LinearMap suffixTextToTimeMap, bool appendToUnstable = false)
+    {
+        Unstable = this[appendToUnstable].WithSuffix(suffix, suffixTextToTimeMap);
+        return this;
+    }
 }
