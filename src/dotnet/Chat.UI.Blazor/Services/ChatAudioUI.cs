@@ -9,7 +9,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private readonly IMutableState<Moment?> _audioStoppedAt;
-    private readonly TaskSource<Unit> _whenEnabledSource;
+    private readonly TaskCompletionSource<Unit> _whenEnabledSource = TaskCompletionSourceExt.New<Unit>();
 
     private Session Session { get; }
     private AudioSettings AudioSettings { get; }
@@ -48,7 +48,6 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
         UICommander = services.UICommander();
         Log = services.LogFor(GetType());
 
-        _whenEnabledSource = TaskSource.New<Unit>(true);
         // Read entry states from other windows / devices are delayed by 1s
         var stateFactory = services.StateFactory();
         _stopRecordingAt = stateFactory.NewMutable<Moment?>();

@@ -185,7 +185,7 @@ public static class AsyncEnumerableExt
         this IAsyncEnumerable<TSource> source,
         CancellationToken cancellationToken)
     {
-        var headTaskSource = TaskSource.New<TSource>(true);
+        var headSource = TaskCompletionSourceExt.New<TSource>();
         var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
             SingleWriter = true,
             SingleReader = true,
@@ -198,7 +198,7 @@ public static class AsyncEnumerableExt
                 await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
                     if (isHead) {
                         isHead = false;
-                        headTaskSource.SetResult(item);
+                        headSource.SetResult(item);
                     }
                     else
                         await notMatched.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
@@ -208,14 +208,14 @@ public static class AsyncEnumerableExt
             }
             finally {
                 if (error != null)
-                    headTaskSource.TrySetException(error);
+                    headSource.TrySetException(error);
                 else
-                    headTaskSource.TrySetCanceled();
+                    headSource.TrySetCanceled();
                 notMatched.Writer.TryComplete(error);
             }
         }, cancellationToken);
 
-        return (headTaskSource.Task, notMatched.Reader.ReadAllAsync(cancellationToken));
+        return (headSource.Task, notMatched.Reader.ReadAllAsync(cancellationToken));
     }
 
     public static async IAsyncEnumerable<List<TSource>> Chunk<TSource>(

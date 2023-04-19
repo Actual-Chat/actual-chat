@@ -9,7 +9,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private readonly object _lock = new();
     private readonly IMutableState<PermissionState> _state;
     private readonly IMutableState<string?> _deviceId;
-    private readonly TaskSource<Unit> _whenReady;
+    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private History History { get; }
@@ -36,7 +36,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         var stateFactory = services.StateFactory();
         _state = stateFactory.NewMutable(default(PermissionState), nameof(State));
         _deviceId = stateFactory.NewMutable(default(string?), nameof(DeviceId));
-        _whenReady = TaskSource.New<Unit>(true);
 
         WhenInitialized = Initialize();
 
@@ -56,7 +55,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
                 UpdateNotificationStatus(permissionState);
             }
 
-            await _whenReady.Task.ConfigureAwait(false);
+            await _whenReadySource.Task.ConfigureAwait(false);
         }
     }
 
@@ -121,7 +120,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState == PermissionState.Granted)
             _ = EnsureDeviceRegistered(CancellationToken.None);
 
-        _whenReady.SetResult(Unit.Default);
+        _whenReadySource.SetResult(Unit.Default);
     }
 
     [JSInvokable]
@@ -137,7 +136,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState == PermissionState.Granted)
             await EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
 
-        _whenReady.SetResult(Unit.Default);
+        _whenReadySource.SetResult(Unit.Default);
     }
 
     public bool IsAlreadyThere(ChatId chatId)

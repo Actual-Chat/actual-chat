@@ -23,8 +23,9 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken = default)
     {
-        var formatTask = TaskSource.New<AudioFormat>(true).Task;
-        var formatTaskSource = TaskSource.For(formatTask);
+        var formatSource = TaskCompletionSourceExt.New<AudioFormat>();
+        var formatTask = formatSource.Task;
+
         var clusterOffsetMs = 0;
         EBML? ebml = null;
         Segment? segment = null;
@@ -51,7 +52,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                     frameBuffer.Clear();
                     state = FillFrameBuffer(
                         WebMReader.FromState(state).WithNewSource(readBuffer.Span),
-                        formatTaskSource,
+                        formatSource,
                         formatBlocks,
                         frameBuffer,
                         ref ebml,
@@ -65,21 +66,21 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
             catch (OperationCanceledException e) {
                 target.Writer.TryComplete(e);
                 if (cancellationToken.IsCancellationRequested)
-                    formatTaskSource.TrySetCanceled(cancellationToken);
+                    formatSource.TrySetCanceled(cancellationToken);
                 else
-                    formatTaskSource.TrySetCanceled();
+                    formatSource.TrySetCanceled();
                 throw;
             }
             catch (Exception e) {
                 Log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
-                formatTaskSource.TrySetException(e);
+                formatSource.TrySetException(e);
                 throw;
             }
             finally {
                 target.Writer.TryComplete();
                 if (!formatTask.IsCompleted)
-                    formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
+                    formatSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
             }
         }, CancellationToken.None);
 
@@ -213,7 +214,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
 
     private WebMReader.State FillFrameBuffer(
         WebMReader webMReader,
-        TaskSource<AudioFormat> formatTaskSource,
+        TaskCompletionSource<AudioFormat> formatTaskSource,
         List<byte[]> formatBlocks,
         List<AudioFrame> frames,
         ref EBML? ebml,

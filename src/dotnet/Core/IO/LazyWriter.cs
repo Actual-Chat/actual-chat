@@ -37,7 +37,7 @@ public class LazyWriter<T> : WorkerBase
         if (!_commands.Writer.TryWrite(command))
             throw Errors.AlreadyDisposed();
 
-        return command.WhenFlushed.WaitAsync(cancellationToken);
+        return command.WhenFlushedSource.Task.WaitAsync(cancellationToken);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -77,7 +77,7 @@ public class LazyWriter<T> : WorkerBase
                     break;
                 case FlushCommand flushCommand:
                     var flushTask = FlushInternal();
-                    _ = TaskSource.For(flushCommand.WhenFlushed).TrySetFromTaskAsync(flushTask, cancellationToken);
+                    _ = flushCommand.WhenFlushedSource.TrySetFromTaskAsync(flushTask, cancellationToken);
                     await flushTask.ConfigureAwait(false);
                     break;
                 }
@@ -119,7 +119,7 @@ public class LazyWriter<T> : WorkerBase
 
     private abstract record Command;
     private record ItemCommand(T Item) : Command;
-    private record FlushCommand(Task<Unit> WhenFlushed) : Command {
-        public FlushCommand() : this(TaskSource.New<Unit>(true).Task) { }
+    private record FlushCommand(TaskCompletionSource<Unit> WhenFlushedSource) : Command {
+        public FlushCommand() : this(TaskCompletionSourceExt.New<Unit>()) { }
     }
 }

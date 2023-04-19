@@ -32,7 +32,7 @@ public class PooledValueTaskSourceFactory<T> : IValueTaskSourceFactory<T>
     public ValueTaskSource<T> Create()
     {
         var vts = _pool.Get();
-        vts._factory = this;
+        vts.Factory = this;
         vts.Reset();
         return vts;
     }

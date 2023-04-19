@@ -238,7 +238,7 @@ public static partial class MauiProgram
     {
         var settings = new ClientAppSettings(baseUrl);
         _ = GetSessionId()
-            .ContinueWith(t => settings.SetSessionId(t.Result), TaskScheduler.Default);
+            .ContinueWith(t => settings.SessionId = t.Result, TaskScheduler.Default);
         return settings;
     }
 

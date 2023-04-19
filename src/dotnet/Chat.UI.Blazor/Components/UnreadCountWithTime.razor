@@ -67,7 +67,7 @@
             if (cancelDelayToken.IsCancellationRequested)
                 return;
 
-            this.StateHasChangedAsync();
+            this.NotifyStateHasChanged();
         }, TaskScheduler.Current);
         return false;
     }

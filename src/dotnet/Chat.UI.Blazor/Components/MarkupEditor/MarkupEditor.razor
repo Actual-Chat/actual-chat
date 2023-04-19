@@ -10,7 +10,7 @@
 </div>
 
 @code {
-    private TaskSource<Unit> _whenReadySource;
+    private TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
     private MentionListManager? _lastMentionListManager;
     private Action<MentionSearchResult> _onMentionSelected;
 
@@ -37,7 +37,6 @@
     public Task WhenReady => _whenReadySource.Task;
 
     public MarkupEditor() {
-        _whenReadySource = TaskSource.New<Unit>(true);
         _onMentionSelected = mention => _ = InsertMention(mention);
     }
 

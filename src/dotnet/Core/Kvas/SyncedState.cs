@@ -13,6 +13,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     where T: IHasOrigin
 {
     private readonly CancellationTokenSource _disposeTokenSource;
+    private readonly TaskCompletionSource<Unit> _whenFirstTimeReadSource = TaskCompletionSourceExt.New<Unit>();
     private bool _mustKeepOriginOnSet;
 
     private MomentClockSet Clocks { get; }
@@ -21,7 +22,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     public CancellationToken DisposeToken { get; }
     private string LocalOrigin { get; }
-    public Task WhenFirstTimeRead { get; }
+    public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;
     public Task WhenDisposed { get; private set; } = null!;
     public IComputedState<T> ReadState { get; }
 
@@ -40,7 +41,6 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         var stateFactory = services.StateFactory();
         LocalOrigin = RandomStringGenerator.Default.Next(8);
-        WhenFirstTimeRead = TaskSource.New<Unit>(true).Task;
         ReadState = stateFactory.NewComputed(
             new ComputedState<T>.Options() {
                 ComputedOptions = options.ComputedOptions,
@@ -78,7 +78,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         _disposeTokenSource.CancelAndDisposeSilently();
         if (!WhenFirstTimeRead.IsCompleted)
-            TaskSource.For((Task<Unit>)WhenFirstTimeRead).TrySetCanceled(DisposeToken);
+            _whenFirstTimeReadSource.TrySetCanceled(DisposeToken);
     }
 
     // Private & protected methods
@@ -179,7 +179,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
             }
             finally {
                 if (!WhenFirstTimeRead.IsCompleted)
-                    TaskSource.For((Task<Unit>)WhenFirstTimeRead).TrySetResult(default);
+                    _whenFirstTimeReadSource.TrySetResult(default);
             }
         }
 

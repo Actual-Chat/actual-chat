@@ -15,7 +15,7 @@ public class AndroidRecordingPermissionRequester : IRecordingPermissionRequester
         intent.AddFlags(ActivityFlags.NewTask);
         intent.AddFlags(ActivityFlags.NoHistory);
         intent.AddFlags(ActivityFlags.ExcludeFromRecents);
-        var resultSource = TaskSource.New<bool>(true);
+        var resultSource = TaskCompletionSourceExt.New<bool>();
 
         void ActivityStateChanged(object? sender, ActivityStateChangedEventArgs args) {
             if (args is { Activity: MainActivity, State: ActivityState.Resumed }) {

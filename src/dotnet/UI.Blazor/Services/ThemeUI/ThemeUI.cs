@@ -7,6 +7,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class ThemeUI : WorkerBase
 {
     private readonly ISyncedState<ThemeSettings> _settings;
+    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
     private Theme _appliedTheme = Theme.Light;
 
     private ILogger Log { get; }
@@ -20,7 +21,7 @@ public class ThemeUI : WorkerBase
         get => _settings.Value.Theme;
         set => _settings.Value = new ThemeSettings(value);
     }
-    public Task WhenReady { get; }
+    public Task WhenReady => _whenReadySource.Task;
 
     public ThemeUI(IServiceProvider services)
     {
@@ -38,7 +39,6 @@ public class ThemeUI : WorkerBase
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-        WhenReady = TaskSource.New<Unit>(true).Task;
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -55,9 +55,7 @@ public class ThemeUI : WorkerBase
         Tracer.Point("ApplyTheme");
         return Dispatcher.InvokeAsync(async () => {
             Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");
-            if (!WhenReady.IsCompleted)
-                TaskSource.For((Task<Unit>)WhenReady).TrySetResult(default);
-
+            _whenReadySource.TrySetResult(default);
             if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
                 return;
             if (_appliedTheme == theme)

@@ -5,12 +5,13 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     where TFrame : MediaFrame
 {
     protected AsyncMemoizer<TFrame> MemoizedFrames { get; }
-    protected Task<TimeSpan> DurationTask { get; }
+    protected TaskCompletionSource<TimeSpan> DurationTaskSource { get; }
     protected ILogger Log { get; }
 
     public bool IsCancelled => DurationTask.IsCanceled;
     MediaFormat IMediaSource.Format => Format;
     public TFormat Format { get; }
+    protected Task<TimeSpan> DurationTask => DurationTaskSource.Task;
 #pragma warning disable VSTHRD002
     public TimeSpan Duration => DurationTask.IsCompleted
         ? DurationTask.Result
@@ -28,7 +29,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     {
         CreatedAt = createdAt;
         Format = format;
-        DurationTask = TaskSource.New<TimeSpan>(true).Task;
+        DurationTaskSource = TaskCompletionSourceExt.New<TimeSpan>();
         MemoizedFrames = new AsyncMemoizer<TFrame>(IterateThrough(frameStream, cancellationToken), cancellationToken);
         Log = log;
     }
@@ -48,24 +49,23 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     {
         var isEmpty = true;
         var duration = TimeSpan.Zero;
-        var durationTaskSource = TaskSource.For(DurationTask);
         try {
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 isEmpty = false;
                 duration = frame.Offset + frame.Duration;
                 yield return frame;
             }
-            durationTaskSource.SetResult(duration);
+            DurationTaskSource.SetResult(duration);
         }
         finally {
             if (cancellationToken.IsCancellationRequested)
-                durationTaskSource.TrySetCanceled(cancellationToken);
+                DurationTaskSource.TrySetCanceled(cancellationToken);
             else {
                 if (!DurationTask.IsCompleted) {
                     if (isEmpty)
-                        durationTaskSource.TrySetCanceled(cancellationToken);
+                        DurationTaskSource.TrySetCanceled(cancellationToken);
                     else
-                        durationTaskSource.TrySetException(
+                        DurationTaskSource.TrySetException(
                             new InvalidOperationException("MediaSource.IterateThrough: Duration wasn't parsed."));
                 }
             }

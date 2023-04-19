@@ -70,9 +70,8 @@
         => Modal.Close();
 
     private void OnContinueClick() {
-        var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmed;
-        if (whenConfirmed?.IsCompleted is false)
-            TaskSource.For(whenConfirmed).TrySetResult(default);
+        var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmedSource;
+        whenConfirmed?.TrySetResult(default);
 
         Modal.Close();
     }

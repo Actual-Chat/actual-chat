@@ -6,7 +6,7 @@ public class SwitchableDelayer
 
     private readonly object _lock = new ();
     private bool _shouldDelay;
-    private Task<bool>? _delayTask;
+    private TaskCompletionSource<bool>? _delaySource;
 
     public SwitchableDelayer(bool shouldDelay = false)
         => _shouldDelay = shouldDelay;
@@ -17,11 +17,11 @@ public class SwitchableDelayer
             if (!_shouldDelay)
                 return _successTask;
 
-            // let's abort if there is a awaiting call to wait in the call with the latest arguments
-            var delayTask = _delayTask;
-            if (delayTask != null)
-                TaskSource.For(delayTask).TrySetResult(false);
-            return _delayTask = TaskSource.New<bool>(false).Task;
+            var oldDelaySource = _delaySource;
+            _delaySource = TaskCompletionSourceExt.New<bool>();
+            oldDelaySource?.TrySetResult(false);
+
+            return _delaySource.Task;
         }
     }
 
@@ -29,11 +29,9 @@ public class SwitchableDelayer
     {
         lock (_lock) {
             if (!shouldDelay) {
-                var delayTask = _delayTask;
-                if (delayTask != null) {
-                    TaskSource.For(delayTask).TrySetResult(true);
-                    _delayTask = null;
-                }
+                var oldDelaySource = _delaySource;
+                _delaySource = null;
+                oldDelaySource?.TrySetResult(true);
             }
             _shouldDelay = shouldDelay;
         }

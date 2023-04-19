@@ -1,5 +1,4 @@
 ﻿using ActualChat.UI.Blazor.Components.Internal;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -7,8 +6,8 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 {
     private static long _lastId;
-    private readonly TaskSource<Unit> _whenShownSource = TaskSource.New<Unit>(true);
-    private readonly TaskSource<Unit> _whenClosedSource = TaskSource.New<Unit>(true);
+    private readonly TaskCompletionSource<Unit> _whenShownSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource<Unit> _whenClosedSource = TaskCompletionSourceExt.New<Unit>();
     private RenderFragment _view = null!;
 
     public Symbol Id { get; }

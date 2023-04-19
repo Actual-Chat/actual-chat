@@ -20,8 +20,8 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
         IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken = default)
     {
-        var headerTask = TaskSource.New<ActualOpusStreamHeader>(true).Task;
-        var formatTaskSource = TaskSource.For(headerTask);
+        var headerSource = TaskCompletionSourceExt.New<ActualOpusStreamHeader>();
+        var headerTask = headerSource.Task;
 
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
@@ -46,7 +46,7 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
                         if (sequence.Length < ActualOpusStreamHeader.Prefix.Length + 1)
                             continue;
 
-                        ReadHeader(ref sequence, ref formatTaskSource);
+                        ReadHeader(ref sequence, ref headerSource);
                     }
 
                     ReadFrames(ref sequence, audioFrames, ref offsetMs);
@@ -54,10 +54,10 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
                         await target.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                     audioFrames.Clear();
 
-                    static void ReadHeader(ref ReadOnlySequence<byte> sequence, ref TaskSource<ActualOpusStreamHeader> formatTaskSource)
+                    static void ReadHeader(ref ReadOnlySequence<byte> sequence, ref TaskCompletionSource<ActualOpusStreamHeader> headerSource)
                     {
                         var header = ActualOpusStreamHeader.Parse(ref sequence);
-                        formatTaskSource.SetResult(header);
+                        headerSource.SetResult(header);
                     }
 
                     static void ReadFrames(ref ReadOnlySequence<byte> sequence, List<AudioFrame> frames1, ref int offsetMs)
@@ -96,21 +96,21 @@ public class ActualOpusStreamConverter : IAudioStreamConverter
             catch (OperationCanceledException e) {
                 target.Writer.TryComplete(e);
                 if (cancellationToken.IsCancellationRequested)
-                    formatTaskSource.TrySetCanceled(cancellationToken);
+                    headerSource.TrySetCanceled(cancellationToken);
                 else
-                    formatTaskSource.TrySetCanceled();
+                    headerSource.TrySetCanceled();
                 throw;
             }
             catch (Exception e) {
                 Log.LogError(e, "Actual Opus stream Parse failed");
                 target.Writer.TryComplete(e);
-                formatTaskSource.TrySetException(e);
+                headerSource.TrySetException(e);
                 throw;
             }
             finally {
                 target.Writer.TryComplete();
                 if (!headerTask.IsCompleted)
-                    formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
+                    headerSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
             }
         }, CancellationToken.None);
 

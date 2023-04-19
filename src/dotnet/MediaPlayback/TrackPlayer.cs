@@ -7,7 +7,7 @@ public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, Play
 
 public abstract class TrackPlayer : ProcessorBase
 {
-    private readonly TaskSource<Unit> _whenCompletedSource;
+    private readonly TaskCompletionSource<Unit> _whenCompletedSource = TaskCompletionSourceExt.New<Unit>();
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly object _stateUpdateLock = new();
@@ -28,7 +28,6 @@ public abstract class TrackPlayer : ProcessorBase
     {
         Log = log;
         Source = source;
-        _whenCompletedSource = TaskSource.New<Unit>(true);
         _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
             new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
                 FullMode = BoundedChannelFullMode.DropOldest,

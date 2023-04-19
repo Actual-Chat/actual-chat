@@ -78,8 +78,11 @@ public sealed class LazyServiceProviderEngineScope :
                 throw new ObjectDisposedException(nameof(IServiceProvider));
             if (_resolvedServices != null)
                 return _resolvedServices;
-            // block here on purpose until we get result
+
+            // Block here on purpose until we get the result
+ #pragma warning disable VSTHRD002
             var serviceProvider = _serviceProviderTask.GetAwaiter().GetResult();
+ #pragma warning restore VSTHRD002
             _resolvedServices = serviceProvider;
             return _resolvedServices;
         }

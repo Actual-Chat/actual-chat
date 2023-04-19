@@ -63,9 +63,7 @@ public partial class History : IHasServices, IDisposable
         _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
-        var whenNavigationCompletedSource = TaskSource.New<Unit>(true);
-        _whenNavigationCompleted = whenNavigationCompletedSource.Task;
-        whenNavigationCompletedSource.TrySetResult(default);
+        _whenNavigationCompletedSource = TaskCompletionSourceExt.New<Unit>().WithResult(default);
         _processNextNavigationActionUnsafeCached = () => ProcessNextNavigationUnsafe();
 
         if (!HostInfo.AppKind.IsTestServer())

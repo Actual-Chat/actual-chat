@@ -126,7 +126,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
             // close open audio segment when the duration become available
             openSegment.Close(openSegment.Audio.Duration);
-            var closedSegment = await openSegment.ClosedSegmentTask.ConfigureAwait(false);
+            var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
             // we don't use cancellationToken there because we should finalize audio entry
             // if it has been created successfully no matter of method cancellation
             var audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None)
@@ -215,7 +215,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
         string? audioBlobId,
         CancellationToken cancellationToken)
     {
-        var closedSegment = await audioSegment.ClosedSegmentTask.ConfigureAwait(false);
+        var closedSegment = await audioSegment.ClosedSegment.ConfigureAwait(false);
         var endsAt = audioEntry.BeginsAt + closedSegment.Duration;
         var contentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration;
         contentEndsAt = Moment.Min(endsAt, contentEndsAt);

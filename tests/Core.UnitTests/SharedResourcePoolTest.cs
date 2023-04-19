@@ -121,7 +121,7 @@ public class SharedResourcePoolTest : TestBase
 
     private sealed class Resource : IDisposable
     {
-        private readonly TaskSource<Unit> _whenDisposed = TaskSource.New<Unit>(false);
+        private readonly TaskCompletionSource<Unit> _whenDisposed = TaskCompletionSourceExt.NewSynchronous<Unit>();
 
         public Task WhenDisposed => _whenDisposed.Task;
 

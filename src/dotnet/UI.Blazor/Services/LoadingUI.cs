@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class LoadingUI
 {
-    private readonly TaskSource<Unit> _whenLoadedSource;
+    private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
 
     private ILogger Log { get; }
     private Tracer Tracer { get; }
@@ -22,7 +22,6 @@ public sealed class LoadingUI
     {
         Log = services.LogFor(GetType());
         Tracer = services.Tracer(GetType());
-        _whenLoadedSource = TaskSource.New<Unit>(true);
     }
 
     public static void ReportMauiAppBuildTime(TimeSpan mauiAppBuildTime)

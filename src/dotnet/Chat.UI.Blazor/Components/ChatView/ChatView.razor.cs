@@ -13,7 +13,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
-    private readonly TaskSource<Unit> _whenInitializedSource = TaskSource.New<Unit>(true);
+    private readonly TaskCompletionSource<Unit> _whenInitializedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly SwitchableDelayer _invisibleDelayer = new ();
 
     private long? _lastNavigateToEntryId;

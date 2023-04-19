@@ -70,7 +70,7 @@ public abstract class ChatPlayer : ProcessorBase
         CancellationTokenSource playTokenSource;
         CancellationToken playToken;
 
-        var whenPlayingSource = TaskSource.New<Unit>(true);
+        var whenPlayingSource = TaskCompletionSourceExt.New<Unit>();
         Task stopTask = Stop();
         while (true) {
             await stopTask.ConfigureAwait(false);

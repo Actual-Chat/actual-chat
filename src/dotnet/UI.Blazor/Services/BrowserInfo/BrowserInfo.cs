@@ -9,7 +9,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isHidden;
-    private readonly TaskSource<Unit> _whenReadySource;
+    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
     private readonly object _lock = new();
 
     private IServiceProvider Services { get; }
@@ -47,7 +47,6 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
         _isHidden = stateFactory.NewMutable(false);
-        _whenReadySource = TaskSource.New<Unit>(true);
     }
 
     public void Dispose()

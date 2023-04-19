@@ -7,30 +7,30 @@ public partial class History
 
     public Task When(Func<HistoryItem, bool> predicate, CancellationToken cancellationToken = default)
     {
-        var ts = TaskSource.New<Unit>(true);
+        var tcs = TaskCompletionSourceExt.New<Unit>();
         if (cancellationToken.IsCancellationRequested) {
-            ts.TrySetCanceled(cancellationToken);
-            return ts.Task;
+            tcs.TrySetCanceled(cancellationToken);
+            return tcs.Task;
         }
         if (predicate.Invoke(CurrentItem)) {
-            ts.TrySetResult(default);
-            return ts.Task;
+            tcs.TrySetResult(default);
+            return tcs.Task;
         }
 
         var cts = cancellationToken.CreateLinkedTokenSource();
         var tracker = new HistoryChangeTracker(this,
             item => {
                 if (predicate.Invoke(item)) {
-                    ts.TrySetResult(default);
+                    tcs.TrySetResult(default);
                     cts.CancelAndDisposeSilently();
                 }
             });
         cts.Token.Register(() => {
-            ts.TrySetCanceled();
+            tcs.TrySetCanceled();
             tracker.Dispose();
         });
         tracker.Start();
-        return ts.Task;
+        return tcs.Task;
     }
 
     public void CancelWhen(CancellationTokenSource cancellationTokenSource, Func<HistoryItem, bool> predicate)

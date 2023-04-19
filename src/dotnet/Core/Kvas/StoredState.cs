@@ -9,17 +9,17 @@ public interface IStoredState<T> : IMutableState<T>
 
 public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 {
+    private readonly TaskCompletionSource<Unit> _whenReadSource = TaskCompletionSourceExt.New<Unit>();
+
     private Options Settings { get; }
-    private TaskSource<Unit> WhenReadSource { get; }
     private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
 
-    public Task WhenRead => WhenReadSource.Task;
+    public Task WhenRead => _whenReadSource.Task;
 
     public StoredState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
     {
         Settings = options;
-        WhenReadSource = TaskSource.New<Unit>(true);
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize) Initialize(options);
@@ -59,7 +59,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
                         DebugLog?.LogDebug("{State}: Read: skipping (no value stored or read error)", this);
                 }
                 finally {
-                    WhenReadSource.TrySetResult(default);
+                    _whenReadSource.TrySetResult(default);
                 }
             });
         }

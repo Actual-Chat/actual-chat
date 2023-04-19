@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 {
-    private readonly TaskSource<Unit> _whenLoadedSource;
+    private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly IMutableState<AccountFull> _ownAccount;
 
     private IServiceProvider Services { get; }
@@ -29,7 +29,6 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
 
-        _whenLoadedSource = TaskSource.New<Unit>(true);
         var ownAccountTask = Accounts.GetOwn(Session, default);
  #pragma warning disable VSTHRD002
         AccountFull ownAccount;

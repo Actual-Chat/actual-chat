@@ -9,10 +9,10 @@ public static class AppServicesAccessor
     private static readonly object _lock = new();
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
-    private static volatile Task<Unit> _whenScopedServicesReady = TaskSource.New<Unit>(true).Task;
+    private static volatile TaskCompletionSource<Unit> _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>();
 
     public static bool AreScopedServicesReady => _scopedServices != null;
-    public static Task WhenScopedServicesReady => _whenScopedServicesReady;
+    public static Task WhenScopedServicesReady => _whenScopedServicesReadySource.Task;
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));
@@ -43,7 +43,7 @@ public static class AppServicesAccessor
                     throw Errors.AlreadyInitialized(nameof(ScopedServices));
 
                 _scopedServices = value;
-                TaskSource.For(_whenScopedServicesReady).TrySetResult(default);
+                _whenScopedServicesReadySource.TrySetResult(default);
                 AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices ready");
             }
         }
@@ -58,7 +58,7 @@ public static class AppServicesAccessor
             var js = _scopedServices.GetRequiredService<IJSRuntime>();
             JSObjectReferenceDisconnectHelper.MarkAsDisconnected(js);
             _scopedServices = null;
-            _whenScopedServicesReady = TaskSource.New<Unit>(true).Task;
+            _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>();
             AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
         }
     }

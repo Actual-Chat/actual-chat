@@ -23,10 +23,13 @@ public abstract class MessageProcess : IMessageProcess
     private static readonly ConcurrentDictionary<Type,
         Func<object, CancellationToken, Task<Unit>?, Task<object?>?, object>> MessageProcessorCtorCache = new();
 
+    protected TaskCompletionSource<Unit> WhenStartedSource { get; init; } = null!;
+    protected TaskCompletionSource<object?> WhenCompletedSource { get; init; } = null!;
+
     public abstract object UntypedMessage { get; }
     public CancellationToken CancellationToken { get; protected init; }
-    public Task<Unit> WhenStarted { get; protected init; } = null!;
-    public Task<object?> WhenCompleted { get; protected init; } = null!;
+    public Task<Unit> WhenStarted => WhenStartedSource.Task;
+    public Task<object?> WhenCompleted => WhenCompletedSource.Task;
 
     public abstract void MarkStarted();
     public abstract void MarkCompleted(Result<object?> result);
@@ -60,43 +63,40 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
     public MessageProcess(
         object message,
         CancellationToken cancellationToken,
-        Task<Unit>? whenStarted = null,
-        Task<object?>? whenCompleted = null)
+        TaskCompletionSource<Unit>? whenStartedSource = null,
+        TaskCompletionSource<object?>? whenCompletedSource = null)
     {
         Message = (TMessage)message;
         CancellationToken = cancellationToken;
-        WhenStarted = whenStarted ?? TaskSource.New<Unit>(true).Task;
-        WhenCompleted = whenCompleted ?? TaskSource.New<object?>(true).Task;
+        WhenStartedSource = whenStartedSource ?? TaskCompletionSourceExt.New<Unit>();
+        WhenCompletedSource = whenCompletedSource ?? TaskCompletionSourceExt.New<object?>();
     }
 
     public MessageProcess(
         TMessage message,
         CancellationToken cancellationToken,
-        Task<Unit>? whenStarted = null,
-        Task<object?>? whenCompleted = null)
+        TaskCompletionSource<Unit>? whenStartedSource = null,
+        TaskCompletionSource<object?>? whenCompletedSource = null)
     {
         Message = message;
         CancellationToken = cancellationToken;
-        WhenStarted = whenStarted ?? TaskSource.New<Unit>(true).Task;
-        WhenCompleted = whenCompleted ?? TaskSource.New<object?>(true).Task;
+        WhenStartedSource = whenStartedSource ?? TaskCompletionSourceExt.New<Unit>();
+        WhenCompletedSource = whenCompletedSource ?? TaskCompletionSourceExt.New<object?>();
     }
 
     public override void MarkStarted()
     {
         DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkStarted));
 
-        var whenStarted = TaskSource.For(WhenStarted);
-        whenStarted.TrySetResult(default);
+        WhenStartedSource.TrySetResult(default);
     }
 
     public override void MarkCompleted(Result<object?> result)
     {
         DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkCompleted) + " {Result}", result.ValueOrDefault);
 
-        var whenStarted = TaskSource.For(WhenStarted);
-        var whenCompleted = TaskSource.For(WhenCompleted);
-        whenStarted.TrySetResult(default);
-        whenCompleted.TrySetFromResult(result, CancellationToken);
+        WhenStartedSource.TrySetResult(default);
+        WhenCompletedSource.TrySetFromResult(result, CancellationToken);
     }
 
     public override void MarkCompletedAfter(Task<object?> resultTask)
@@ -114,15 +114,13 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
     {
         DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkFailed));
 
-        var whenStarted = TaskSource.For(WhenStarted);
-        var whenCompleted = TaskSource.For(WhenCompleted);
         if (error is OperationCanceledException && CancellationToken.IsCancellationRequested) {
-            whenStarted.TrySetCanceled(CancellationToken);
-            whenCompleted.TrySetCanceled(CancellationToken);
+            WhenStartedSource.TrySetCanceled(CancellationToken);
+            WhenCompletedSource.TrySetCanceled(CancellationToken);
         }
         else {
-            whenStarted.TrySetException(error);
-            whenCompleted.TrySetException(error);
+            WhenStartedSource.TrySetException(error);
+            WhenCompletedSource.TrySetException(error);
         }
     }
 }

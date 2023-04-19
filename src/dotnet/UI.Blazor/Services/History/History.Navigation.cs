@@ -6,11 +6,11 @@ public partial class History
 {
     private readonly Action _processNextNavigationActionUnsafeCached;
     private readonly Queue<Action> _navigationQueue = new();
-    private volatile Task<Unit> _whenNavigationCompleted;
+    private volatile TaskCompletionSource<Unit> _whenNavigationCompletedSource;
     private CancellationTokenSource? _whenNavigationCompletedTimeoutCts;
 
     // ReSharper disable once InconsistentlySynchronizedField
-    public Task WhenNavigationCompleted => _whenNavigationCompleted;
+    public Task WhenNavigationCompleted => _whenNavigationCompletedSource.Task;
 
     [JSInvokable]
     public Task NavigateTo(string uri, bool mustReplace = false, bool force = false)
@@ -124,20 +124,20 @@ public partial class History
                 () => Dispatcher.InvokeAsync(action),
                 Log, "Queued navigation failed", CancellationToken.None);
         }
-        else if (!_whenNavigationCompleted.IsCompleted) {
+        else if (!_whenNavigationCompletedSource.Task.IsCompleted) {
             DebugLog?.LogDebug("WhenNavigationCompleted: completed");
             _whenNavigationCompletedTimeoutCts.CancelAndDisposeSilently();
             _whenNavigationCompletedTimeoutCts = null;
-            TaskSource.For(_whenNavigationCompleted).TrySetResult(default);
+            _whenNavigationCompletedSource.TrySetResult(default);
         }
-        return _whenNavigationCompleted;
+        return _whenNavigationCompletedSource.Task;
     }
 
     private void RestartWhenNavigationCompletedTimeoutUnsafe()
     {
-        if (_whenNavigationCompleted.IsCompleted) {
+        if (_whenNavigationCompletedSource.Task.IsCompleted) {
             DebugLog?.LogDebug("WhenNavigationCompleted: renewed");
-            _whenNavigationCompleted = TaskSource.New<Unit>(true).Task;
+            _whenNavigationCompletedSource = TaskCompletionSourceExt.New<Unit>();
         }
 
         _whenNavigationCompletedTimeoutCts.CancelAndDisposeSilently();
@@ -153,7 +153,7 @@ public partial class History
                     Log.LogWarning("WhenNavigationCompleted: timed out");
                     _whenNavigationCompletedTimeoutCts.CancelAndDisposeSilently();
                     _whenNavigationCompletedTimeoutCts = null;
-                    TaskSource.For(_whenNavigationCompleted).TrySetResult(default);
+                    _whenNavigationCompletedSource.TrySetResult(default);
                 }
             }, TaskScheduler.Default);
     }

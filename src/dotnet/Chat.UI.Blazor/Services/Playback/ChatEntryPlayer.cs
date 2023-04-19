@@ -58,7 +58,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
 
     public void EnqueueEntry(ChatEntry entry, TimeSpan skipTo, Moment? playAt = null)
     {
-        var resultSource = TaskSource.New<Unit>(true);
+        var resultSource = TaskCompletionSourceExt.New<Unit>();
         lock (Lock) {
             if (StopToken.IsCancellationRequested)
                 return; // This entry starting after Dispose or Abort

@@ -11,7 +11,7 @@ namespace ActualChat;
 /// </summary>
 public sealed class ValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource
 {
-    internal IValueTaskSourceFactory<T>? _factory;
+    internal IValueTaskSourceFactory<T>? Factory;
     private ManualResetValueTaskSourceCore<T> _core; // mutable struct; do not make this readonly
 
     public bool RunContinuationsAsynchronously { get => _core.RunContinuationsAsynchronously; set => _core.RunContinuationsAsynchronously = value; }
@@ -28,9 +28,9 @@ public sealed class ValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource
         }
         finally {
             // shouldn't be null here, if so it's better to fail fast with NRE
-            _factory!.Return(this);
+            Factory!.Return(this);
             // just in case if someone stores the ValueTask with our source (shouldn't do this anyway)
-            _factory = null;
+            Factory = null;
         }
     }
     void IValueTaskSource.GetResult(short token) => _core.GetResult(token);

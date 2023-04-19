@@ -63,7 +63,7 @@ public class AppHost : IDisposable
     {
         var log = Host.Services.LogFor(GetType());
 
-        async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
+        async Task InitializeOne(IDbInitializer dbInitializer, TaskCompletionSource<bool> initializedSource)
         {
             DbInitializer.Current = dbInitializer;
             var dbInitializerName = dbInitializer.GetType().GetName();
@@ -71,15 +71,15 @@ public class AppHost : IDisposable
                 log.LogInformation("{DbInitializer} started", dbInitializerName);
                 await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
                 log.LogInformation("{DbInitializer} completed", dbInitializerName);
-                taskSource.TrySetResult(default);
+                initializedSource.TrySetResult(default);
             }
             catch (OperationCanceledException) {
-                taskSource.TrySetCanceled(cancellationToken);
+                initializedSource.TrySetCanceled(cancellationToken);
                 throw;
             }
             catch (Exception e) {
                 log.LogError(e, "{DbInitializer} failed", dbInitializerName);
-                taskSource.TrySetException(e);
+                initializedSource.TrySetException(e);
                 throw;
             }
             finally {
@@ -88,7 +88,7 @@ public class AppHost : IDisposable
         }
 
         var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
-            .ToDictionary(i => i, _ => TaskSource.New<bool>(true));
+            .ToDictionary(i => i, _ => TaskCompletionSourceExt.New<bool>());
         var initializeTasks = initializeTaskSources
             .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
         foreach (var (dbInitializer, _) in initializeTasks)

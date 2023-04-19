@@ -56,7 +56,7 @@
 
 @code {
     private readonly object _lock = new();
-    private readonly TaskSource<Unit> _whenReadySource = TaskSource.New<Unit>(true);
+    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }

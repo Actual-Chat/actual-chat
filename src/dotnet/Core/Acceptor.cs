@@ -7,7 +7,7 @@ public interface IHasAcceptor<TValue>
 
 public readonly struct Acceptor<TValue>
 {
-    private readonly TaskSource<TValue> _whenAcceptedSource;
+    private readonly TaskCompletionSource<TValue> _whenAcceptedSource;
 
     public TValue Value {
 #pragma warning disable VSTHRD002
@@ -21,7 +21,7 @@ public readonly struct Acceptor<TValue>
     }
 
     public Acceptor(bool runContinuationsConcurrently)
-        => _whenAcceptedSource = TaskSource.New<TValue>(runContinuationsConcurrently);
+        => _whenAcceptedSource = TaskCompletionSourceExt.New<TValue>(runContinuationsConcurrently);
 
     public void Accept(TValue value)
     {

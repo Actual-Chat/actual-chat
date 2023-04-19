@@ -34,7 +34,7 @@ public class ComponentAnimator : IDisposable
                 return;
 
             AnimationEndsAt = default;
-            Component.StateHasChangedAsync();
+            Component.NotifyStateHasChanged();
         }, TaskScheduler.Current);
         return this;
     }
@@ -44,7 +44,7 @@ public class ComponentAnimator : IDisposable
         _lastAnimateCts?.CancelAndDisposeSilently();
         _lastAnimateCts = null;
         AnimationEndsAt = default;
-        Component.StateHasChangedAsync();
+        Component.NotifyStateHasChanged();
         return this;
     }
 }

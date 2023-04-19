@@ -84,7 +84,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
                 activeDemand = new ActiveDemandModel(
                     ImmutableList.Create(operation),
                     modalRefTask,
-                    TaskSource.New<Unit>(true).Task);
+                    TaskCompletionSourceExt.New<Unit>());
                 _activeDemand.Value = activeDemand;
             }
             else {
@@ -103,11 +103,10 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
         var modalRef = await activeDemand.WhenModalRef.WaitAsync(cancellationToken).ConfigureAwait(false);
         await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var whenConfirmed = activeDemand.WhenConfirmed;
-        var isConfirmed = whenConfirmed.IsCompletedSuccessfully;
-
+        var isConfirmed = activeDemand.WhenConfirmed.IsCompletedSuccessfully;
         if (isConfirmed) // If confirmed, let's wait for interactivity as well
             await IsInteractive.When(x => x, cancellationToken).ConfigureAwait(false);
+
         return isConfirmed;
     }
 
@@ -122,9 +121,8 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
             }
             lock (_lock) {
                 var activeDemand = _activeDemand.Value;
-                var whenConfirmed = activeDemand?.WhenConfirmed;
-                if (whenConfirmed?.IsCompleted is false)
-                    TaskSource.For(whenConfirmed).TrySetCanceled();
+                var whenConfirmed = activeDemand?.WhenConfirmedSource;
+                whenConfirmed?.TrySetCanceled();
             }
         }, TaskScheduler.Default);
         return modalRefTask;
@@ -135,5 +133,8 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     public sealed record ActiveDemandModel(
         ImmutableList<string> Operations,
         Task<ModalRef> WhenModalRef,
-        Task<Unit> WhenConfirmed);
+        TaskCompletionSource<Unit> WhenConfirmedSource)
+    {
+        public Task WhenConfirmed => WhenConfirmedSource.Task;
+    }
 }
