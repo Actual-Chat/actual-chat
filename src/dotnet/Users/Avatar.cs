@@ -23,6 +23,7 @@ public record Avatar(
     [DataMember] public string Name { get; init; } = "";
     [DataMember] public string Picture { get; init; } = "";
     [DataMember] public MediaId MediaId { get; init; }
+    [IgnoreDataMember] public UserPicture UserPicture => new (Media?.ContentId, Picture);
     [DataMember] public string Bio { get; init; } = "";
 
     // Populated only on reads
