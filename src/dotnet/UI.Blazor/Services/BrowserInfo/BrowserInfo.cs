@@ -30,6 +30,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     public bool IsIos { get; private set; }
     public bool IsChrome { get; private set; }
     public bool IsEdge { get; private set; }
+    public bool IsSafari { get; private set; }
     public bool IsTouchCapable { get; private set; }
     public string WindowId { get; private set; } = "";
     public Task WhenReady => _whenReadySource.Task;
@@ -76,6 +77,7 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         IsIos = initResult.IsIos;
         IsChrome = initResult.IsChrome;
         IsEdge = initResult.IsEdge;
+        IsSafari = initResult.IsSafari;
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
         _whenReadySource.SetResult(default);
