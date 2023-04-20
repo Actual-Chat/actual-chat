@@ -38,6 +38,8 @@ export class BrowserInfo {
             isIos: DeviceInfo.isIos,
             isChrome: DeviceInfo.isChrome,
             isEdge: DeviceInfo.isEdge,
+            isFirefox: DeviceInfo.isFirefox,
+            isSafari: DeviceInfo.isSafari,
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
@@ -111,6 +113,8 @@ export interface InitResult {
     isIos: boolean;
     isChrome: boolean;
     isEdge: boolean;
+    isFirefox: boolean;
+    isSafari: boolean;
     isTouchCapable: boolean;
     windowId: string;
 }
