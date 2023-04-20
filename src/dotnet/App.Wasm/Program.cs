@@ -19,7 +19,7 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
-    private static Tracer Tracer = null!;
+    private static Tracer Tracer { get; set; } = Tracer.None;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceProxy))]
@@ -29,11 +29,8 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReplicaServiceInterceptor))]
     public static async Task Main(string[] args)
     {
-        Tracer = Tracer.Default =
 #if DEBUG || DEBUG_MAUI
-            new Tracer("WasmApp", x => Console.WriteLine("@ " + x.Format()));
-#else
-            Tracer.None;
+        Tracer = Tracer.Default = new Tracer("WasmApp", x => Console.WriteLine("@ " + x.Format()));
 #endif
         Tracer.Point($"{nameof(Main)} started");
 
