@@ -31,7 +31,7 @@
 
         if (!_stack.Value.Remove(this)) {
             var log = Services.LogFor(GetType());
-            log.LogWarning("Something is off: couldn't remove RenderIntoStack with Name = '{Name}'", Name);
+            log.LogWarning("Couldn't remove RenderIntoStack with Name = '{Name}'", Name);
             return;
         }
 
