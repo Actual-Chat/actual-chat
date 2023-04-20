@@ -14,7 +14,7 @@
 }
 
 @foreach (var item in orderedItems) {
-    if (false && !item.Key.IsNullOrEmpty()) {
+    if (!item.Key.IsNullOrEmpty()) {
         if (!knownKeys.Add(item.Key))
             continue;  // It seems sometimes Blazor disposes the component way too late
 
