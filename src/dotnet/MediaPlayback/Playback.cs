@@ -45,9 +45,9 @@ public sealed class Playback : ProcessorBase
     protected override async Task DisposeAsyncCore()
     {
         var process = Abort();
-        await process.WhenCompleted.SuppressExceptions().ConfigureAwait(false);
+        await process.WhenCompleted.SilentAwait(false);
         await _messageProcessor.Complete().ConfigureAwait(false);
-        await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SuppressExceptions().ConfigureAwait(false);
+        await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SilentAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
     }
 

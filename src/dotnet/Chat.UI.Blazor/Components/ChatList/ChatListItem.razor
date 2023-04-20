@@ -113,7 +113,7 @@
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
             await history
                 .When(_ => history.LocalUrl.Value.OrdinalStartsWith(chatUrl), cts.Token)
-                .SuppressCancellation();
+                .SuppressCancellationAwait();
             await history.WhenNavigationCompleted;
 
             var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();

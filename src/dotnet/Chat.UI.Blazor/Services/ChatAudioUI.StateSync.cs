@@ -93,7 +93,7 @@ public partial class ChatAudioUI
                 () => RecordChat(cRecordingState, cancellationToken),
                 Log, $"{nameof(RecordChat)} failed",
                 cancellationToken
-                ).SuppressExceptions().ConfigureAwait(false);
+                ).SilentAwait(false);
         }
     }
 

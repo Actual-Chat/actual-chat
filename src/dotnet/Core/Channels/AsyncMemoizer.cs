@@ -75,7 +75,7 @@ public sealed class AsyncMemoizer<T>
         while (_newTargets.Writer.TryWrite((channel, skipCount)))
             return;
         if (!WriteTask.IsCompleted)
-            await WriteTask.SuppressCancellation().ConfigureAwait(false);
+            await WriteTask.SuppressCancellationAwait(false);
         await _buffer.TryCopyTo(channel, skipCount, cancellationToken).ConfigureAwait(false);
     }
 
