@@ -16,6 +16,7 @@
 @code {
     private RenderVar<List<RenderIntoStack>>? _stack = null!;
 
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
@@ -28,8 +29,11 @@
         if (_stack == null)
             return;
 
-        if (!_stack.Value.Remove(this))
-            throw StandardError.Internal($"Something is off: couldn't remove <{nameof(RenderIntoStack)}> with Name = '{Name}'.");
+        if (!_stack.Value.Remove(this)) {
+            var log = Services.LogFor(GetType());
+            log.LogWarning("Something is off: couldn't remove RenderIntoStack with Name = '{Name}'", Name);
+            return;
+        }
 
         _stack.NotifyChanged();
     }

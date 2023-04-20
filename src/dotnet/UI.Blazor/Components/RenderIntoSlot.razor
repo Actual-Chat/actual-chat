@@ -13,6 +13,7 @@
 @code {
     private RenderVar<List<RenderIntoSlot>>? _slot;
 
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
@@ -22,8 +23,11 @@
         if (_slot == null)
             return;
 
-        if (!_slot.Value.Remove(this))
-            throw StandardError.Internal($"Something is off: couldn't remove <{nameof(RenderIntoSlot)}> with Name = '{Name}'.");
+        if (!_slot.Value.Remove(this)) {
+            var log = Services.LogFor(GetType());
+            log.LogWarning("Something is off: couldn't remove RenderIntoSlot with Name = '{Name}'", Name);
+            return;
+        }
 
         _slot.NotifyChanged();
     }
