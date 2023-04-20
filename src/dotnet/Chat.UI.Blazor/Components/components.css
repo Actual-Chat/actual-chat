@@ -14,7 +14,7 @@ body.narrow .delete-message-modal {
     @apply flex-initial flex-y;
     @apply overflow-hidden;
     @apply rounded-lg;
-    @apply bg-selected;
+    @apply bg-round-hover;
 }
 .delete-message-modal .chat-message {
     @apply md:max-h-48;
