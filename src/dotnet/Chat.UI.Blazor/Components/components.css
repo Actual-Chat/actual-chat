@@ -1,6 +1,10 @@
-
 /* DeleteMessageModal */
 
+body.narrow .delete-message-modal {
+    @apply absolute left-4 right-4 bottom-10;
+    @apply w-auto h-auto;
+    max-height: calc(100% - 5rem);
+}
 .delete-message-modal .c-question {
     @apply flex-none;
     @apply mb-4;
@@ -10,8 +14,7 @@
     @apply flex-initial flex-y;
     @apply overflow-hidden;
     @apply rounded-lg;
-    @apply border border-bg-04;
-    @apply bg-01;
+    @apply bg-selected;
 }
 .delete-message-modal .chat-message {
     @apply md:max-h-48;
@@ -19,6 +22,7 @@
 }
 .delete-message-modal .message-content {
     @apply min-h-fit;
+    @apply font-normal text-base;
     overflow: visible; /* This cancels overflow-hidden @ .chat-message */
 }
 .delete-message-modal .message-content * {
@@ -199,7 +203,7 @@ body.wide .author-modal {
     @apply text-title-1 text-02;
 }
 .author-modal .header-tile-item {
-    @apply h-12 md:h-10;
+    @apply h-8 md:h-10;
 }
 .author-modal .tile-item-body-content {
     @apply text-01;
@@ -217,28 +221,12 @@ body.hoverable .author-modal .tile:hover {
     @apply shadow-none;
 }
 body.narrow .author-modal {
-    @apply absolute bottom-4 left-4 right-4;
+    @apply absolute bottom-10 left-4 right-4;
     @apply w-auto h-auto;
-    @apply p-0;
-    @apply rounded-lg;
-}
-body.narrow .author-modal .dialog-body {
-    @apply pl-6;
 }
 .author-modal .tile {
-    @apply px-0;
+    @apply p-0;
     @apply shadow-none;
-}
-.author-modal .dialog-buttons {
-    @apply flex-x gap-x-2;
-}
-body.narrow .author-modal .dialog-buttons {
-    @apply -flex-y gap-y-2;
-    @apply p-4;
-}
-.author-modal .dialog-buttons .btn {
-    @apply flex-1;
-    @apply max-w-none;
 }
 .author-modal .anonymous-bio * {
     @apply text-icons-04;

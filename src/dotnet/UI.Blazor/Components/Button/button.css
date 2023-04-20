@@ -133,10 +133,10 @@ body.hoverable .btn.btn-text:focus:hover {
     @apply border-0;
     @apply text-badge text-headline-1;
 }
-.btn.btn-modal {
-    @apply bg-hover;
+.btn.btn-modal.danger {
+    @apply text-icons-04;
 }
-body.narrow .btn.btn-modal {
+.btn.btn-modal {
     @apply bg-03;
 }
 .btn.btn-modal .btn-content {
@@ -148,6 +148,13 @@ body.narrow .btn.btn-modal {
 body.hoverable .btn.btn-modal:hover {
     @apply bg-secondary;
 }
+body.hoverable .btn.btn-modal.danger:hover {
+    @apply bg-error-hover;
+}
+.btn.btn-modal.danger:active {
+    @apply bg-error-hover;
+}
+
 .btn.btn-modal.btn-narrow {
     @apply min-w-12;
 }

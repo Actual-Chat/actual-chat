@@ -318,8 +318,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .modal-frame.menu-styled-modal {
     @apply absolute bottom-4;
     @apply h-auto;
-    @apply py-4;
-    @apply rounded-lg;
     max-width: calc(100% - 2rem);
 }
 .narrow .modal-frame.menu-styled-modal .dialog-body {

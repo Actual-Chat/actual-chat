@@ -5,14 +5,16 @@
     var m = State.Value;
 }
 
-<DialogFrame HasCloseButton="true" Title="Change your avatar" Class="avatar-select-modal">
+<DialogFrame
+    Title="Change your avatar"
+    Class="avatar-select-modal">
     <Body>
     @if (m == ViewModel.None) {
         return;
     }
 
     <div class="avatar-select">
-        <div class="flex-x gap-x-1 justify-center text-sm font-normal">
+        <div class="flex-x gap-x-1 text-sm font-normal">
             You can change your avatar in the current chat here.
         </div>
         @foreach (var avatar in m.Avatars) {
@@ -34,6 +36,9 @@
         }
     </div>
     </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@OnCancel">Close</Button>
+    </Buttons>
 </DialogFrame>
 
 @code {
@@ -77,6 +82,9 @@
         await ModalModel.OnAvatarSelected(avatar);
         Modal.Close();
     }
+
+    private void OnCancel()
+        => Modal.Close();
 
     public record Model(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected);
 

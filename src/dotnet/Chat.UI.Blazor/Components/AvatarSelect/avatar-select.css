@@ -1,15 +1,6 @@
 .avatar-select-modal {
     @apply bg-02 w-auto;
 }
-.avatar-select-modal .dialog-body {
-    @apply p-1;
-}
-body.narrow .avatar-select-modal .dialog-body {
-    @apply px-6 py-2;
-}
-.avatar-select-modal .dialog-buttons {
-    @apply hidden;
-}
 .avatar-select {
     @apply flex-y gap-y-2 w-full md:w-80;
 }
@@ -17,7 +8,6 @@ body.narrow .avatar-select-modal .dialog-body {
     @apply cursor-pointer;
 }
 body.narrow .avatar-select-modal {
-    @apply absolute bottom-6 left-6 right-6;
+    @apply absolute bottom-10 left-4 right-4;
     @apply h-auto;
-    @apply rounded-lg;
 }

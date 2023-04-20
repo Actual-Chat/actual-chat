@@ -12,15 +12,15 @@
     </Body>
     <Buttons>
         @if (m.IsOwn) {
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnAuthorClicked">Change avatar</Button>
+            <Button Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
+            <Button Class="btn-modal" Click="OnAuthorClicked">Change avatar</Button>
         } else if (m.Author.IsAnonymous) {
-            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">OK</Button>
+            <Button Class="btn-modal" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnStartPeerChat">Chat with @m.Author.Avatar.Name</Button>
+                <Button Class="btn-modal" Click="OnStartPeerChat">Chat with @m.Author.Avatar.Name</Button>
             } else {
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Close</Button>
+                <Button Class="btn-modal" Click="OnCancel">Close</Button>
             }
         }
     </Buttons>

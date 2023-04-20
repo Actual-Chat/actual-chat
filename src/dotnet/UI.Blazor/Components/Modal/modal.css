@@ -6,7 +6,7 @@
     @apply top-0 left-0 h-full w-full;
     @apply overflow-x-hidden overflow-y-hidden;
     @apply outline-0;
-    background-color: rgba(0,0,0,0.8);
+    background-color: rgba(0,0,0,0.5);
 }
 
 .modal-focus-trap {
@@ -18,7 +18,6 @@
     @apply h-full w-full md:h-auto md:w-auto;
     @apply border-0 rounded-none;
     @apply p-0 m-0 bg-transparent;
-    /* @apply bg-white; */
     box-shadow: none;
 }
 
@@ -50,15 +49,16 @@
     @apply z-10;
 }
 .modal-frame {
-    @apply flex-y items-stretch gap-y-4 overflow-hidden;
-    @apply p-0 md:p-4 pb-4;
+    @apply flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply p-2;
     @apply h-full w-full md:h-auto md:w-modal;
-    @apply md:rounded-2xl rounded-none;
+    @apply rounded-lg;
     @apply font-medium;
 }
+
 .modal-frame .dialog-body,
 .modal-frame .dialog-buttons {
-    @apply px-4 md:px-1 overflow-hidden;
+    @apply p-2 overflow-hidden;
 }
 .modal-frame .dialog-buttons {
     @apply flex-none;
@@ -80,6 +80,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .modal-header {
     @apply flex-none flex-x justify-between items-center gap-x-2;
     @apply min-h-10 max-h-10;
+    @apply p-2;
     @apply overflow-visible;
 }
 .modal-header .modal-title {
@@ -95,8 +96,8 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-mobile-header {
     @apply flex-x justify-start items-center gap-x-2;
-    @apply min-h-14 px-2;
-    @apply border-b border-bg-04;
+    @apply p-2;
+    /*@apply border-b border-bg-04;*/
     @apply bg-02;
 }
 
@@ -119,22 +120,15 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .dialog-buttons {
-    @apply flex-x justify-end;
-    @apply py-2;
-    @apply overflow-hidden;
+    @apply flex-x gap-x-2;
 }
-.dialog-buttons.full-width {
-    @apply min-w-full;
+body.narrow .dialog-buttons {
+    @apply -flex-y gap-y-2;
+    @apply p-2;
 }
-.dialog-buttons.full-width .form-buttons {
-    @apply gap-x-4 justify-center;
-}
-.dialog-buttons.full-width .btn {
-    @apply max-w-full grow;
-}
-
-div.modal-content > form {
-    @apply h-full;
+.dialog-buttons .btn {
+    @apply flex-1;
+    @apply max-w-none;
 }
 
 /* Fullscreen Modal */
