@@ -16,7 +16,7 @@ const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
 
 const SampleFrequency = 48000;
 const SampleDuration = 1.0 / SampleFrequency;
-const PlayableBufferSize = 0.1; // In seconds = 5 * 20ms OPUS frames
+const PlayableBufferSize = 0.15; // In seconds, 1s = 5 * 20ms OPUS frames
 const OkBufferSize = 10.0; // In seconds
 const StateUpdatePeriod = 0.2;
 
