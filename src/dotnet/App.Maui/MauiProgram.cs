@@ -45,13 +45,7 @@ public static partial class MauiProgram
             var appServicesTask = Task.Run(() => CreateBlazorAppServices(configuration, loggerFactory, settings));
             var appServices = new CompositeMauiBlazorServiceProvider(miniApp, appServicesTask, GetBlazorServiceFilter());
             AppServices = appServices;
-
-            appServicesTask.ContinueWith(_ => {
-                // MAUI does not start HostedServices, so we do this manually.
-                // https://github.com/dotnet/maui/issues/2244
-                StartHostedServices(appServices);
-            }, TaskScheduler.Default);
-
+            appServicesTask.ContinueWith(_ => StartHostedServices(appServices), TaskScheduler.Default);
             LoadingUI.ReportMauiAppBuildTime(_tracer.Elapsed);
             return (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
@@ -275,11 +269,11 @@ public static partial class MauiProgram
         whenSessionReady.GetAwaiter().GetResult();
     }
 
-    private static void StartHostedServices(IServiceProvider services)
-    {
-        using var _ = _tracer.Region(nameof(StartHostedServices));
-        services.HostedServices().Start();
-    }
+    private static Task StartHostedServices(IServiceProvider services)
+        => Task.Run(async () => {
+            using var _ = _tracer.Region(nameof(StartHostedServices));
+            await services.HostedServices().Start().ConfigureAwait(false);
+        });
 
     private static void ConfigureBlazorAppServices(IServiceCollection services)
     {

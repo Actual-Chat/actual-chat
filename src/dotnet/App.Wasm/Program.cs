@@ -56,10 +56,7 @@ public static class Program
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
-            step = Tracer.Region("Starting hosted services");
-            _ = host.Services.HostedServices().Start();
-            step.Close();
-
+            _ = StartHostedServices(host.Services);
             await host.RunAsync().ConfigureAwait(false);
         }
         catch (Exception exc) {
@@ -107,4 +104,10 @@ public static class Program
 
         AppStartup.ConfigureServices(services, AppKind.WasmApp);
     }
+
+    private static Task StartHostedServices(IServiceProvider services)
+        => Task.Run(async () => {
+            using var _ = Tracer.Region(nameof(StartHostedServices));
+            await services.HostedServices().Start().ConfigureAwait(false);
+        });
 }
