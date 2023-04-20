@@ -48,9 +48,9 @@ public static class Program
             builder.Services.AddSingleton(Tracer);
             ConfigureServices(builder.Services, builder.Configuration, baseUrl);
 
-            var step = Tracer.Region($"{nameof(WebAssemblyHostBuilder)}.Build");
+            var region = Tracer.Region($"{nameof(WebAssemblyHostBuilder)}.Build");
             var host = builder.Build();
-            step.Close();
+            region.Close();
 
             Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
             if (Constants.DebugMode.WebMReader)
