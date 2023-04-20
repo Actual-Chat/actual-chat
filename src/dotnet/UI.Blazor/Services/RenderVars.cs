@@ -2,36 +2,15 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class RenderVars
 {
-    private readonly ConcurrentDictionary<string, IMutableState> _vars = new(StringComparer.Ordinal);
+    private readonly Dictionary<Symbol, RenderVar> _vars = new();
 
-    private IStateFactory StateFactory { get; }
-
-    public RenderVars(IStateFactory stateFactory)
-        => StateFactory = stateFactory;
-
-    public IMutableState<T> Get<T>(string name)
+    public RenderVar<T> Get<T>(Symbol name, T @default = default!)
     {
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-        if (name.Length == 0)
-            throw new ArgumentOutOfRangeException(nameof(name));
-        return (IMutableState<T>)_vars.GetOrAdd(
-            name,
-            static (name, self) => self.StateFactory.NewMutable(
-                default(T),
-                StateCategories.Get(typeof(RenderVars), name)
-            ), this);
-    }
+        if (_vars.TryGetValue(name, out var renderVar))
+            return (RenderVar<T>)renderVar;
 
-    public IMutableState<T> Get<T>(string name, T @default)
-    {
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-        if (name.Length == 0)
-            throw new ArgumentOutOfRangeException(nameof(name));
-
-        return (IMutableState<T>)_vars.GetOrAdd(name,
-            static (_, arg) => arg.Self.StateFactory.NewMutable(arg.Default),
-            (Self: this, Default: @default));
+        var newRenderVar = new RenderVar<T>(name, @default);
+        _vars[name] = newRenderVar;
+        return newRenderVar;
     }
 }

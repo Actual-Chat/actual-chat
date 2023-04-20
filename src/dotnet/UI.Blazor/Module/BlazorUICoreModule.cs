@@ -85,8 +85,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             services.AddHostedService<ServerTimeSync>();
         }
         services.AddScoped<ComponentIdGenerator>(_ => new ComponentIdGenerator());
-        services.AddScoped<RenderVars>(c => new RenderVars(
-            c.GetRequiredService<IStateFactory>()));
+        services.AddScoped<RenderVars>(_ => new RenderVars());
 
         // UI events
         services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
