@@ -31,7 +31,7 @@ public static partial class MauiProgram
         services.AddSingleton<AndroidGoogleSignIn>();
     }
 
-    private static partial void AddPlatformServicesToLookupSkipper(ISet<Type> servicesToSkip)
+    private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
     {
         servicesToSkip.Add(typeof(Android.Views.LayoutInflater));
         servicesToSkip.Add(typeof(AndroidX.Fragment.App.FragmentManager));

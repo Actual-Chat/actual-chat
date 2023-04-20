@@ -4,8 +4,7 @@ public sealed class LazyServiceProviderEngineScope :
     IServiceScope,
     IServiceProvider,
     IServiceScopeFactory,
-    IAsyncDisposable,
-    IDisposable
+    IAsyncDisposable
 {
     private Task<IServiceProvider> _serviceProviderTask;
     private readonly bool _isRootScope;
@@ -63,12 +62,14 @@ public sealed class LazyServiceProviderEngineScope :
         lock (_lock) {
             if (_isDisposed)
                 return;
+
             _isDisposed = true;
             services = _resolvedServices;
         }
         if (services == null)
             return;
-        await DisposeServicesHelper.DisposeAsync(services).ConfigureAwait(false);
+
+        await services.SafelyDisposeAsync().ConfigureAwait(false);
     }
 
     private IServiceProvider GetServiceProviderInternal()

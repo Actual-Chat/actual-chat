@@ -6,20 +6,14 @@ namespace ActualChat.App.Maui;
 
 public class MauiBlazorApp : ComponentBase, IDisposable
 {
+    private static readonly Tracer _tracer = Tracer.Default[nameof(MauiBlazorApp)];
+
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
     protected override void OnInitialized()
     {
-        Tracer.Default.Point("MauiBlazorApp.OnInitialized");
+        _tracer.Point(nameof(OnInitialized));
         ScopedServices = Services;
-    }
-
-    protected override void BuildRenderTree(RenderTreeBuilder builder)
-    {
-        builder.OpenComponent<UI.Blazor.App.AppBase>(0);
-        var clientAppSettings = Services.GetRequiredService<ClientAppSettings>();
-        builder.AddAttribute(1, nameof(UI.Blazor.App.AppBase.SessionId), clientAppSettings.SessionId);
-        builder.CloseComponent();
     }
 
     public void Dispose()
@@ -29,6 +23,11 @@ public class MauiBlazorApp : ComponentBase, IDisposable
         // So we forget previous scoped services container in advance.
         => DiscardScopedServices();
 
-    public MauiBlazorApp()
-        => Tracer.Default.Point("MauiBlazorApp.ctor");
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        builder.OpenComponent<UI.Blazor.App.AppBase>(0);
+        var clientAppSettings = Services.GetRequiredService<ClientAppSettings>();
+        builder.AddAttribute(1, nameof(UI.Blazor.App.AppBase.SessionId), clientAppSettings.SessionId);
+        builder.CloseComponent();
+    }
 }

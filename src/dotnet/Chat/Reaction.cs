@@ -4,7 +4,7 @@ namespace ActualChat.Chat;
 
 // TODO(FC): remove this model since it should not be used from client side
 [DataContract]
-public record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
+public sealed record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     [DataMember] public Symbol Id { get; init; }
     [DataMember] public long Version { get; init; }

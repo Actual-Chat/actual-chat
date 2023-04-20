@@ -47,6 +47,8 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        using var _ = _tracer.Region(nameof(OnCreate));
+
         var isLoaded = false;
         CurrentActivity = this;
         if (AreScopedServicesReady) {
@@ -63,10 +65,8 @@ public class MainActivity : MauiAppCompatActivity
         }
         Log = AppServices.LogFor<MainActivity>();
         Log.LogDebug("OnCreate, is loaded: {IsLoaded}", isLoaded);
-        using var _ = _tracer.Region("OnCreate");
 
         base.OnCreate(savedInstanceState);
-
         Log.LogDebug("base.OnCreate completed");
 
         // Attempt to have notification reception even after app is swiped out.
@@ -98,29 +98,29 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnStart()
     {
-        _tracer.Point("OnStart");
-        Log.LogDebug("OnStart");
+        _tracer.Point(nameof(OnStart));
+        Log.LogDebug(nameof(OnStart));
         base.OnStart();
     }
 
     protected override void OnResume()
     {
-        _tracer.Point("OnResume");
-        Log.LogDebug("OnResume");
+        _tracer.Point(nameof(OnResume));
+        Log.LogDebug(nameof(OnResume));
         base.OnResume();
     }
 
     protected override void OnStop()
     {
-        _tracer.Point("OnStop");
-        Log.LogDebug("OnStop");
+        _tracer.Point(nameof(OnStop));
+        Log.LogDebug(nameof(OnStop));
         base.OnStop();
     }
 
     protected override void OnDestroy()
     {
-        _tracer.Point("OnDestroy");
-        Log.LogDebug("OnDestroy");
+        _tracer.Point(nameof(OnDestroy));
+        Log.LogDebug(nameof(OnDestroy));
         base.OnDestroy();
     }
 

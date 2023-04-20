@@ -7,8 +7,8 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(Android.Webkit.WebView platformView)
     {
-        _trace.Point("ConnectHandler");
-        Log.LogDebug("ConnectHandler");
+        _trace.Point(nameof(ConnectHandler));
+        Log.LogDebug(nameof(ConnectHandler));
 
         base.ConnectHandler(platformView);
         var baseUri = AppSettings.BaseUri;

@@ -1,32 +1,30 @@
 ﻿namespace ActualChat.App.Maui;
 
-public sealed class CompositeBlazorHybridServiceProviderEngineScope :
+public sealed class CompositeMauiBlazorServiceProviderEngineScope :
     IServiceScope,
     IServiceProvider,
     IServiceScopeFactory,
-    IAsyncDisposable,
-    IDisposable
+    IAsyncDisposable
 {
     private readonly IServiceProvider _mauiAppServices;
     private readonly LazyServiceProviderEngineScope _blazorServices;
-    private readonly Func<Type, bool> _blazorServicesLookupFilter;
+    private readonly Func<Type, bool> _blazorServiceFilter;
     private readonly bool _isRootScope;
 
     public IServiceProvider ServiceProvider => this;
 
-    public CompositeBlazorHybridServiceProviderEngineScope(
+    public CompositeMauiBlazorServiceProviderEngineScope(
         IServiceProvider mauiAppServices,
         LazyServiceProviderEngineScope blazorServices,
-        Func<Type, bool> blazorServicesLookupFilter,
+        Func<Type, bool> blazorServiceFilter,
         bool isRootScope)
     {
         _mauiAppServices = mauiAppServices;
         _blazorServices = blazorServices;
-        _blazorServicesLookupFilter = blazorServicesLookupFilter;
+        _blazorServiceFilter = blazorServiceFilter;
         _blazorServices.SetupOnResolved(c => {
-            var delegatedServiceResolver = c.GetService<DelegateServiceResolver>();
-            delegatedServiceResolver?.SetResolver(
-                serviceType => _mauiAppServices.GetService(serviceType));
+            var serviceResolver = c.GetService<DelegateServiceResolver>();
+            serviceResolver?.SetResolver(serviceType => _mauiAppServices.GetService(serviceType));
         });
         _isRootScope = isRootScope;
     }
@@ -37,19 +35,19 @@ public sealed class CompositeBlazorHybridServiceProviderEngineScope :
             return this;
         if (serviceType == typeof(IServiceProvider))
             return this;
+
         var result = _mauiAppServices.GetService(serviceType);
         if (result != null)
             return result;
-        if (_blazorServicesLookupFilter(serviceType))
-            return null;
-        return _blazorServices.GetService(serviceType);
+
+        return _blazorServiceFilter.Invoke(serviceType) ? _blazorServices.GetService(serviceType) : null;
     }
 
     public IServiceScope CreateScope()
-        => new CompositeBlazorHybridServiceProviderEngineScope(
+        => new CompositeMauiBlazorServiceProviderEngineScope(
             _mauiAppServices.CreateScope().ServiceProvider,
             (LazyServiceProviderEngineScope)_blazorServices.CreateScope().ServiceProvider,
-            _blazorServicesLookupFilter,
+            _blazorServiceFilter,
             false);
 
     public void Dispose()
@@ -60,7 +58,7 @@ public sealed class CompositeBlazorHybridServiceProviderEngineScope :
 
     public async ValueTask DisposeAsync()
     {
-        await _blazorServices.DisposeAsync().ConfigureAwait(false);
-        await DisposeServicesHelper.DisposeAsync(_mauiAppServices).ConfigureAwait(false);
+        await _blazorServices.SafelyDisposeAsync().ConfigureAwait(false);
+        await _mauiAppServices.SafelyDisposeAsync().ConfigureAwait(false);
     }
 }

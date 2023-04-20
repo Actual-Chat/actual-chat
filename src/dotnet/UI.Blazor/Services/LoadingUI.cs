@@ -56,8 +56,8 @@ public sealed class LoadingUI
     {
         if (!_whenLoadedSource.TrySetResult(default)) return;
 
-        Log.LogDebug("MarkLoaded");
-        Tracer.Point("MarkLoaded");
+        Log.LogDebug(nameof(MarkLoaded));
+        Tracer.Point(nameof(MarkLoaded));
         LoadingTime = Tracer.Elapsed;
     }
 }

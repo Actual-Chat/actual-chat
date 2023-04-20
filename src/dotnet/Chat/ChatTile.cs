@@ -1,14 +1,17 @@
 namespace ActualChat.Chat;
 
-public class ChatTile
+[DataContract]
+public sealed class ChatTile
 {
-    public Range<long> IdTileRange { get; init; }
-    public bool IncludesRemoved { get; init; }
-    public Range<Moment> BeginsAtRange { get; init; }
-    public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty; // Always sorted by Id!
+    [DataMember] public Range<long> IdTileRange { get; init; }
+    [DataMember] public bool IncludesRemoved { get; init; }
+    [DataMember] public Range<Moment> BeginsAtRange { get; init; }
+    [DataMember] public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty; // Always sorted by Id!
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsEmpty => Entries.Length == 0;
 
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public ChatTile() { }
 
     public ChatTile(Range<long> idTileRange, bool includesRemoved, ImmutableArray<ChatEntry> entries)

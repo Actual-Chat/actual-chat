@@ -65,8 +65,9 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     [JSInvokable]
     public void OnInitialized(IBrowserInfoBackend.InitResult initResult)
     {
+        using var _ = Services.Tracer(GetType()).Region(nameof(OnInitialized));
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
-        using var _ = Services.Tracer().Region("BrowserInfo.OnInitialized");
+
         SetScreenSize(initResult.ScreenSizeText, initResult.IsHoverable);
         _isHidden.Value = initResult.IsHidden;
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);

@@ -5,19 +5,19 @@ namespace ActualChat.App.Maui.Services.StartupTracing;
 
 // Unfortunately it does not work in Mono and therefor in Android.
 // https://learn.microsoft.com/en-us/dotnet/core/diagnostics/eventsource-collect-and-view-traces#eventlistener
-internal class DependencyInjectionEventListener : EventListener
+internal sealed class DependencyInjectionEventListener : EventListener
 {
     private Serilog.ILogger? _log;
 
-    protected Serilog.ILogger Log
+    private Serilog.ILogger Log
         => _log ??= Serilog.Log.Logger.ForContext<DependencyInjectionEventListener>();
 
     protected override void OnEventSourceCreated(EventSource eventSource)
     {
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        Log.Information("OnEventSourceCreated: " + eventSource.Name);
+        Log.Information($"{nameof(OnEventSourceCreated)}: {eventSource.Name}");
         // https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.DependencyInjection/src/DependencyInjectionEventSource.cs
-        if(OrdinalEquals(eventSource.Name, "Microsoft-Extensions-DependencyInjection"))
+        if (OrdinalEquals(eventSource.Name, "Microsoft-Extensions-DependencyInjection"))
             EnableEvents(eventSource, EventLevel.Verbose);
     }
 
@@ -25,6 +25,7 @@ internal class DependencyInjectionEventListener : EventListener
     {
         if (eventData.EventId != 1)
             return;
+
         var message = ZString.Concat(
             eventData.EventName, " ",
             eventData.PayloadNames!.Zip(eventData.Payload!, (s, o) => $"{s}: '${o}'").ToCommaPhrase());

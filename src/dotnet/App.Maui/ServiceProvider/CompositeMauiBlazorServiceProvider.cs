@@ -1,20 +1,20 @@
 ﻿namespace ActualChat.App.Maui;
 
-public sealed class CompositeBlazorHybridServiceProvider : IServiceProvider, IAsyncDisposable, IDisposable
+public sealed class CompositeMauiBlazorServiceProvider : IServiceProvider, IAsyncDisposable, IDisposable
 {
-    private readonly CompositeBlazorHybridServiceProviderEngineScope _rootScope;
+    private readonly CompositeMauiBlazorServiceProviderEngineScope _rootScope;
     private readonly MauiApp _mauiApp;
 
-    public CompositeBlazorHybridServiceProvider(
+    public CompositeMauiBlazorServiceProvider(
         MauiApp mauiApp,
         Task<IServiceProvider> blazorServicesTask,
-        Func<Type,bool> blazorServicesLookupFilter)
+        Func<Type, bool> blazorServiceFilter)
     {
         _mauiApp = mauiApp;
-        _rootScope = new CompositeBlazorHybridServiceProviderEngineScope(
+        _rootScope = new CompositeMauiBlazorServiceProviderEngineScope(
             mauiApp.Services,
             new LazyServiceProviderEngineScope(blazorServicesTask, true),
-            blazorServicesLookupFilter,
+            blazorServiceFilter,
             true);
     }
 

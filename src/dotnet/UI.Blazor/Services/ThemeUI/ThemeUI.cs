@@ -43,18 +43,16 @@ public class ThemeUI : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Tracer.Point("OnRun");
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        Tracer.Point("WhenFirstTimeRead");
+
+        Tracer.Point(nameof(OnRun));
         await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
             await ApplyTheme(cTheme.Value.Theme);
     }
 
     private Task ApplyTheme(Theme theme)
-    {
-        Tracer.Point("ApplyTheme");
-        return Dispatcher.InvokeAsync(async () => {
-            Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");
+        => Dispatcher.InvokeAsync(async () => {
+            using var _1 = Tracer.Region(nameof(ApplyTheme));
             _whenReadySource.TrySetResult(default);
             if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
                 return;
@@ -63,12 +61,11 @@ public class ThemeUI : WorkerBase
 
             _appliedTheme = theme;
             try {
-                using var _ = Tracer.Region("ThemeUI.ApplyTheme - JS call");
+                using var _ = Tracer.Region($"{nameof(ApplyTheme)} - JS call");
                 await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Failed to apply the new theme");
             }
         });
-    }
 }

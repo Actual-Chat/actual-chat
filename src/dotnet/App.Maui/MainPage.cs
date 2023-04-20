@@ -39,7 +39,7 @@ public partial class MainPage : ContentPage
     private void OnUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
         var uri = eventArgs.Url;
-        Tracer.Point($"OnUrlLoading: Url: '{uri}'");
+        Tracer.Point($"{nameof(OnUrlLoading)}: Url: '{uri}'");
         if (NavigationInterceptor.TryIntercept(uri))
             // Load cancellation seems not working On Windows platform,
             // even though the issues were closed a while ago, and  Uri gets opened in WebView.

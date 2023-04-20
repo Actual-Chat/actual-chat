@@ -63,14 +63,15 @@
     protected override void OnInitialized() {
         LoadingUI.ReportAppInitialized();
         _tracer = Services.Tracer(GetType());
-        _tracer.Point("OnInitialized");
+        using var _1 = _tracer.Region(nameof(OnInitialized));
+
         UIAssembly ??= typeof(AppBase).Assembly;
         UIModuleAssemblies ??= Host.Modules
             .OfType<IBlazorUIModule>()
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
             .ToArray();
-        _tracer.Point("UIModuleAssemblies evaluated");
+        _tracer.Point("IBlazorUIModule assemblies evaluated");
 
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
@@ -88,7 +89,7 @@
         CircuitContext.RootComponent = this;
         _whenReadyToRender = PrepareForTheFirstRender();
         _whenReadyToRender.ContinueWith(_ => InvokeAsync(() => {
-            _tracer.Point("ReadyToRender");
+            _tracer.Point("Ready to render");
             StateHasChanged();
             UILifetimeEvents.RaiseOnAppInitialized(Services);
         }), TaskScheduler.Current);
@@ -115,37 +116,35 @@
         var cancellationToken = _disposeToken;
 
         // Starting BrowserInfo
-        var initRegion = _tracer.Region("BrowserInfo.Init");
+        _tracer.Point("BrowserInfo.Initialize");
         _ = BrowserInfo.Initialize();
 
         // Starting Audio pipeline, load Workers and connect to Audio channel
+        _tracer.Point("AudioInfo.Initialize");
         _ = AudioInfo.Initialize();
 
         // Starting ThemeUI
-        _tracer.Point("Resolving ThemeUI");
+        _tracer.Point("ThemeUI.Start");
         var themeUI = Services.GetRequiredService<ThemeUI>();
-        var themeUIStartRegion = _tracer.Region("ThemeUI.Start");
         themeUI.Start();
 
         await BrowserInfo.WhenReady.WaitAsync(cancellationToken);
-        initRegion.Close();
-
         if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
+        _tracer.Point("BrowserInfo is ready");
 
         // Finishing w/ theme
         await themeUI.WhenReady.WaitAsync(cancellationToken);
-        themeUIStartRegion.Close();
+        _tracer.Point("ThemeUI is ready");
 
         // Initialize History
         await History.Initialize();
+        _tracer.Point("History is ready");
     }
 
     private async Task Loaded()
     {
-        _tracer.Point("Loaded");
         await _whenReadyToRender;
-        _tracer.Point("Loaded._whenReadyToRender");
 
         var hostInfo = Services.GetRequiredService<HostInfo>();
         if (hostInfo.AppKind.IsMauiApp()) {

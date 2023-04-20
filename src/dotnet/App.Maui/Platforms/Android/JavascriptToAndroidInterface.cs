@@ -6,7 +6,7 @@ namespace ActualChat.App.Maui;
 
 internal class JavascriptToAndroidInterface : Java.Lang.Object
 {
-    private static readonly Tracer _tracer = Tracer.Default;
+    private static readonly Tracer _tracer = Tracer.Default[nameof(JavascriptToAndroidInterface)];
     private readonly MauiBlazorWebViewHandler _handler;
     private readonly Android.Webkit.WebView _webView;
 
@@ -22,10 +22,10 @@ internal class JavascriptToAndroidInterface : Java.Lang.Object
     [Export("DOMContentLoaded")]
     public void OnDOMContentLoaded()
     {
-        _tracer.Point("OnDOMContentLoaded");
+        _tracer.Point(nameof(OnDOMContentLoaded));
         _webView.Post(() => {
             try {
-                _tracer.Point("window.App.initPage");
+                _tracer.Point($"{nameof(OnDOMContentLoaded)} - window.App.initPage JS call");
                 var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
                 var script = $"window.App.initPage('{_handler.AppSettings.BaseUrl}', '{sessionHash}')";
                 _webView.EvaluateJavascript(script, null);

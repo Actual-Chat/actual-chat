@@ -95,11 +95,11 @@
             ? Tracer[$"{nameof(ChatListNavbarWidget)}.{nameof(ComputeState)}"]
             : Tracer.None;
 
-        var region = tracer.Region("Call ChatUI.List");
+        var region = tracer.Region("ChatUI.List");
         var chats = await ChatUI.List(cancellationToken);
         region.Close();
 
-        region = tracer.Region("Call ChatUI.GetUnreadCount");
+        region = tracer.Region("ChatUI.GetUnreadCount");
         var unreadChatCounts = (await ChatListFilter.All
             .Select(async x => {
                 var unreadChatCount = await ChatUI.GetUnreadChatCount(x, cancellationToken).ConfigureAwait(false);

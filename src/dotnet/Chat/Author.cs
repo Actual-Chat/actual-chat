@@ -12,7 +12,7 @@ public record Author(
 {
     public static IdAndVersionEqualityComparer<Author, AuthorId> EqualityComparer { get; } = new();
 
-    public static Author None { get; } = new(default, 0) { Avatar = Avatar.None };
+    public static Author None { get; } = new() { Avatar = Avatar.None };
     public static Author Loading { get; } = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     public static Requirement<Author> MustExist { get; } = Requirement.New(
@@ -31,6 +31,8 @@ public record Author(
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public long LocalId => Id.LocalId;
+
+    public Author() : this(default, 0) { }
 
     // This record relies on version-based equality
     public virtual bool Equals(Author? other) => EqualityComparer.Equals(this, other);

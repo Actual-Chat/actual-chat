@@ -5,7 +5,7 @@ namespace ActualChat.App.Maui;
 
 public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
-    private static readonly Tracer _trace = Tracer.Default["MauiBlazorWebViewHandler"];
+    private static readonly Tracer _trace = Tracer.Default[nameof(MauiBlazorWebViewHandler)];
 
     public ClientAppSettings AppSettings { get; set; } = null!;
     private ILogger Log { get; set; } = NullLogger.Instance;
@@ -23,7 +23,7 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 
     public override void SetMauiContext(IMauiContext mauiContext)
     {
-        _trace.Point("SetMauiContext");
+        _trace.Point(nameof(SetMauiContext));
         base.SetMauiContext(mauiContext);
         AppSettings = mauiContext.Services.GetRequiredService<ClientAppSettings>();
         Log = mauiContext.Services.LogFor<MauiBlazorWebViewHandler>();

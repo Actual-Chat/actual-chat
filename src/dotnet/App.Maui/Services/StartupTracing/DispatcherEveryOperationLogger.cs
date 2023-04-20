@@ -4,10 +4,7 @@ internal class DispatcherEveryOperationLogger : IDispatcherOperationLogger
 {
     private static readonly TimeSpan _longWorkItemThreshold = TimeSpan.FromMilliseconds(10);
     private Stopwatch _sw = new ();
-    private readonly Tracer _tracer;
-
-    public DispatcherEveryOperationLogger()
-        => _tracer = Tracer.Default["Dispatcher"];
+    private readonly Tracer _tracer = Tracer.Default[nameof(DispatcherProxy)];
 
     public void OnBeforeOperation()
     {

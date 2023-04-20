@@ -19,6 +19,8 @@ namespace ActualChat.App.Wasm;
 
 public static class Program
 {
+    private static Tracer Tracer = null!;
+
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceProxy))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
@@ -27,15 +29,13 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReplicaServiceInterceptor))]
     public static async Task Main(string[] args)
     {
-        var tracer = Tracer.Default =
+        Tracer = Tracer.Default =
 #if DEBUG || DEBUG_MAUI
             new Tracer("WasmApp", x => Console.WriteLine("@ " + x.Format()));
 #else
             Tracer.None;
 #endif
-
-        tracer.Point("Wasm.Program.Main");
-        // Capture blazor bootstrapping errors
+        Tracer.Point($"{nameof(Main)} started");
 
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp);
@@ -45,12 +45,10 @@ public static class Program
         try {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             var baseUrl = builder.HostEnvironment.BaseAddress;
-            builder.Services.AddSingleton(tracer);
-            var step = tracer.Region("ConfigureServices");
+            builder.Services.AddSingleton(Tracer);
             ConfigureServices(builder.Services, builder.Configuration, baseUrl);
-            step.Close();
 
-            step = tracer.Region("Building wasm host");
+            var step = Tracer.Region($"{nameof(WebAssemblyHostBuilder)}.Build");
             var host = builder.Build();
             step.Close();
 
@@ -58,9 +56,10 @@ public static class Program
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
-            step = tracer.Region("Starting host services");
-            await host.Services.HostedServices().Start().ConfigureAwait(false);
+            step = Tracer.Region("Starting hosted services");
+            _ = host.Services.HostedServices().Start();
             step.Close();
+
             await host.RunAsync().ConfigureAwait(false);
         }
         catch (Exception exc) {
@@ -81,6 +80,7 @@ public static class Program
         IConfiguration configuration,
         string baseUrl)
     {
+        using var _ = Tracer.Region(nameof(ConfigureServices));
         // Logging
         services.AddLogging(logging => logging
             .SetMinimumLevel(LogLevel.Debug)

@@ -28,10 +28,9 @@ internal static class Extensions
         BreadcrumbLevel level = default,
         Action<Dictionary<string, string>>? addExtraData = null)
     {
-        var data = new Dictionary<string, string>();
-        if (sender is Element element) {
+        var data = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (sender is Element element)
             data.AddElementInfo(options, element, null);
-        }
 
         addExtraData?.Invoke(data);
 
@@ -82,6 +81,6 @@ internal static class Extensions
     {
         var t = o.GetType();
         var s = o.ToString();
-        return s == null || s == t.FullName ? t.Name : s;
+        return s == null || OrdinalEquals(s, t.FullName) ? t.Name : s;
     }
 }

@@ -7,10 +7,7 @@ internal class DispatcherLongOperationLogger : IDispatcherOperationLogger
     private Stopwatch _sw = new ();
     private long _shortWorkItemNumber;
     private TimeSpan _showWorkItemTotalDuration;
-    private readonly Tracer _tracer;
-
-    public DispatcherLongOperationLogger()
-        => _tracer = Tracer.Default["Dispatcher"];
+    private readonly Tracer _tracer = Tracer.Default[nameof(DispatcherProxy)];
 
     public void OnBeforeOperation()
         => _sw = Stopwatch.StartNew();
