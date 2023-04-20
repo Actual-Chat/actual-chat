@@ -3,6 +3,7 @@ import { opusMediaRecorder } from './opus-media-recorder';
 import { Log } from 'logging';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { PromiseSource } from 'promises';
+import { DeviceInfo } from 'device-info';
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
@@ -90,7 +91,7 @@ export class AudioRecorder {
             }
 
             if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
-                if (navigator.userAgent.toLowerCase().includes('firefox')) {
+                if (DeviceInfo.isFirefox) {
                     // Firefox doesn't support microphone permissions query
                     const hasMicrophonePromise = new PromiseSource<boolean>();
                     navigator.mediaDevices.getUserMedia({ audio: true, video: false })
