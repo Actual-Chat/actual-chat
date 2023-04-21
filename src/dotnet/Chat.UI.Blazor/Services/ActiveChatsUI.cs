@@ -73,20 +73,21 @@ public class ActiveChatsUI
         ImmutableHashSet<ActiveChat> activeChats,
         CancellationToken cancellationToken = default)
     {
-        if (_isActiveChatsFirstLoad) {
-            // Turn off stored recording on restoring state during app start
-            _isActiveChatsFirstLoad = false;
-            activeChats = activeChats
-                .Select(c => {
-                    if (c.IsRecording)
-                        c = c with { IsRecording = false };
-                    var listeningRecency = Moment.Max(c.Recency, c.ListeningRecency);
-                    if (c.IsListening && Now - listeningRecency > MaxContinueListeningRecency)
-                        c = c with { IsListening = false };
-                    return c;
-                })
-                .ToImmutableHashSet();
-        }
+        if (!_isActiveChatsFirstLoad)
+            return FixActiveChats(activeChats, cancellationToken);
+
+        // Turn off stored recording on restoring state during app start
+        _isActiveChatsFirstLoad = false;
+        activeChats = activeChats
+            .Select(c => {
+                if (c.IsRecording)
+                    c = c with { IsRecording = false };
+                var listeningRecency = Moment.Max(c.Recency, c.ListeningRecency);
+                if (c.IsListening && Now - listeningRecency > MaxContinueListeningRecency)
+                    c = c with { IsListening = false };
+                return c;
+            })
+            .ToImmutableHashSet();
         return FixActiveChats(activeChats, cancellationToken);
     }
 
@@ -100,10 +101,9 @@ public class ActiveChatsUI
         // Removing chats that violate access rules + enforce "just 1 recording chat" rule
         var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
         var chatRules = await activeChats
-            .Select(async chat => {
-                var rules = await Chats.GetRules(Session, chat.ChatId, default).ConfigureAwait(false);
-                return (Chat: chat, Rules: rules);
-            })
+            .Select(async chat => (
+                Chat: chat,
+                Rules: await Chats.GetRules(Session, chat.ChatId, cancellationToken).ConfigureAwait(false)))
             .Collect()
             .ConfigureAwait(false);
         foreach (var (c, rules) in chatRules) {
@@ -124,30 +124,26 @@ public class ActiveChatsUI
             return activeChats;
 
         var activeChatsWithEffectiveRecency = await activeChats
-            .Select(async chat => {
-                var effectiveRecency = await GetEffectiveRecency(chat, cancellationToken);
-                return (Chat: chat, EffectiveRecency: effectiveRecency);
-            })
+            .Select(async chat => (Chat: chat, EffectiveRecency: await GetEffectiveRecency(chat, cancellationToken)))
             .Collect()
             .ConfigureAwait(false);
-        var remainingChats = (
-            from x in activeChatsWithEffectiveRecency
-            orderby x.Chat.IsRecording descending, x.EffectiveRecency descending
-            select x.Chat
-            ).Take(MaxActiveChatCount)
+        var remainingChats = activeChatsWithEffectiveRecency
+            .OrderByDescending(x => x.Chat.IsRecording)
+            .ThenByDescending(x => x.EffectiveRecency)
+            .Select(x => x.Chat)
+            .Take(MaxActiveChatCount)
             .ToImmutableHashSet();
         return remainingChats;
 
-        async ValueTask<Moment> GetEffectiveRecency(ActiveChat chat, CancellationToken ct)
+        async ValueTask<Moment> GetEffectiveRecency(ActiveChat chat, CancellationToken cancellationToken1)
         {
             if (chat.IsRecording)
                 return Clocks.CpuClock.Now;
             if (!chat.IsListening)
                 return chat.Recency;
 
-            var chatIdRange = await Chats.GetIdRange(Session, chat.ChatId, ChatEntryKind.Audio, ct);
-            var chatEntryReader = Chats.NewEntryReader(Session, chat.ChatId, ChatEntryKind.Audio);
-            var lastEntry = await chatEntryReader.GetLast(chatIdRange, ct);
+            var chatNews = await Chats.GetNews(Session, chat.ChatId, cancellationToken1).ConfigureAwait(false);
+            var lastEntry = chatNews.LastTextEntry;
             if (lastEntry == null)
                 return chat.Recency;
             return lastEntry.IsStreaming
