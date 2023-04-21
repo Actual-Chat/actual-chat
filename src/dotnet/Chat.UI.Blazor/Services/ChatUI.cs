@@ -17,6 +17,9 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
+    private readonly object _chatPositionLock = new();
+
+    private List<ChatId> _chatPositionMap = new ();
 
     private IStateFactory StateFactory { get; }
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
@@ -37,6 +40,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private History History { get; }
     private UICommander UICommander { get; }
     private UIEventHub UIEventHub { get; }
+    private SearchUI SearchUI { get; }
     private ICommander Commander { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
@@ -71,6 +75,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         History = services.GetRequiredService<History>();
         UICommander = services.UICommander();
         UIEventHub = services.UIEventHub();
+        SearchUI = services.GetRequiredService<SearchUI>();
         Commander = services.Commander();
 
         var type = GetType();
@@ -96,40 +101,46 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         => this.Start();
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlyList<ChatInfo>> List(CancellationToken cancellationToken = default)
+    public virtual async Task<int> GetChatCount(CancellationToken cancellationToken = default)
     {
         var settings = await ListSettings.Use(cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("-> List: {Settings}", settings);
-        var filterId = settings.Filter.Id;
-        var filteredChats = await ListFiltered(filterId, cancellationToken).ConfigureAwait(false);
-        var preOrderedChats = filteredChats
-            .OrderByDescending(c => c.Contact.IsPinned)
-            .ThenByDescending(c => c.HasUnreadMentions);
-        var orderedChats = settings.Order switch {
-            ChatListOrder.ByLastEventTime => preOrderedChats
-                .ThenByDescending(c => c.News.LastTextEntry?.Version ?? 0),
-            ChatListOrder.ByOwnUpdateTime => preOrderedChats
-                .ThenByDescending(c => c.Contact.TouchedAt),
-            ChatListOrder.ByUnreadCount => preOrderedChats
-                .ThenByDescending(c => c.UnreadCount.Value)
-                .ThenByDescending(c => c.News.LastTextEntry?.Version),
-            ChatListOrder.ByAlphabet => filteredChats
-                .OrderByDescending(c => c.Contact.IsPinned)
-                .ThenBy(c => c.Chat.Title, StringComparer.Ordinal),
-            _ => throw new ArgumentOutOfRangeException(nameof(settings)),
-        };
-        var result = orderedChats.ToList();
-        DebugLog?.LogDebug("<- List: {Settings}", settings);
-        return result;
+        var filteredChats = await ListFiltered(settings.Filter.Id, cancellationToken).ConfigureAwait(false);
+        return filteredChats.Count;
     }
 
     [ComputeMethod]
-    protected virtual async Task<IReadOnlyList<ChatInfo>> ListFiltered(Symbol filterId, CancellationToken cancellationToken)
+    public virtual Task<ChatId?> GetChatId(int position, CancellationToken cancellationToken = default)
+    {
+        ChatId? chatId;
+        lock (_chatPositionLock) {
+            if (position >= _chatPositionMap.Count)
+                return Task.FromResult<ChatId?>(null);
+
+            chatId = _chatPositionMap[position];
+        }
+
+        return Task.FromResult(chatId);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<IReadOnlyList<(ChatInfo ChatInfo, double Rank)>> ListFiltered(Symbol filterId, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("-> ListFiltered: '{FilterId}'", filterId);
         var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
         var filter = ChatListFilter.Parse(filterId);
-        var result = chats.Values.Where(filter.Filter ?? (_ => true)).ToList();
+        var result = chats.Values
+            .Where(filter.Filter ?? (_ => true))
+            .Select(c => (ChatInfo:c, Rank: 0d))
+            .ToList();
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        if (!searchPhrase.IsEmpty) {
+            var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            selectedChatId = await FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
+            result = result
+                .Select(p => p with { Rank = searchPhrase.GetMatchRank(p.ChatInfo.Chat.Title) })
+                .Where(p => p.ChatInfo.Chat.Id == selectedChatId || p.Rank > 0)
+                .ToList();
+        }
         DebugLog?.LogDebug("<- ListFiltered: '{FilterId}'", filterId);
         return result;
     }
@@ -151,7 +162,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         return result;
     }
 
-    [ComputeMethod(MinCacheDuration = 60, InvalidationDelay = 0.6)]
+    [ComputeMethod(MinCacheDuration = 300, InvalidationDelay = 0.6)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("Get: {ChatId}", chatId.Value);
@@ -259,10 +270,15 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
 
     [ComputeMethod]
-    public virtual async Task<Trimmed<int>> GetUnreadChatCount(ChatListFilter filter, CancellationToken cancellationToken)
+    public virtual async Task<(Trimmed<int> Count, ChatInfo? FirstUnread)> GetUnreadChatInfo(
+        ChatListFilter filter,
+        ChatListOrder order,
+        CancellationToken cancellationToken)
     {
-        var chats = await ListFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
-        return chats.UnreadChatCount();
+        var rankedChats = await ListFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
+        var firstUnreadChat = SortChats(rankedChats, order)
+            .FirstOrDefault(c => c.UnreadCount > 0);
+        return (rankedChats.Select(c => c.ChatInfo).UnreadChatCount(), firstUnreadChat);
     }
 
     [ComputeMethod]
@@ -350,6 +366,30 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     }
 
     // Private methods
+
+    private IReadOnlyList<ChatInfo> SortChats(IReadOnlyCollection<(ChatInfo ChatInfo, double Rank)> rankedChats, ChatListOrder order)
+    {
+        var preOrderedChats = rankedChats
+            .OrderByDescending(c => c.ChatInfo.Contact.IsPinned)
+            .ThenByDescending(c => c.ChatInfo.HasUnreadMentions)
+            .ThenByDescending(c => c.Rank);
+        var orderedChats = order switch {
+            ChatListOrder.ByLastEventTime => preOrderedChats
+                .ThenByDescending(c => c.ChatInfo.News.LastTextEntry?.Version ?? 0),
+            ChatListOrder.ByOwnUpdateTime => preOrderedChats
+                .ThenByDescending(c => c.ChatInfo.Contact.TouchedAt),
+            ChatListOrder.ByUnreadCount => preOrderedChats
+                .ThenByDescending(c => c.ChatInfo.UnreadCount.Value)
+                .ThenByDescending(c => c.ChatInfo.News.LastTextEntry?.Version),
+            ChatListOrder.ByAlphabet => rankedChats
+                .OrderByDescending(c => c.ChatInfo.Contact.IsPinned)
+                .ThenBy(c => c.ChatInfo.Chat.Title, StringComparer.Ordinal),
+            _ => throw new ArgumentOutOfRangeException(nameof(order)),
+        };
+        return orderedChats
+            .Select(c => c.ChatInfo)
+            .ToList();
+    }
 
     // Not compute method!
     private Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)

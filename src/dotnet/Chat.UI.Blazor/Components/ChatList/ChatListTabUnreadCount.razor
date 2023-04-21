@@ -1,0 +1,53 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatListTabUnreadCount.Model>
+
+@{
+    var m = State.Value;
+    var count = m.Count;
+    var firstUnread = m.FirstUnread;
+    if (m == Model.Loading || count <= 0)
+        return;
+}
+
+<div class="c-badge">
+    <UnreadCount Value="@count" Click="() => OnUnreadBadgeClick(firstUnread?.Id)"/>
+</div>
+
+@code {
+
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+
+    [Parameter] public ChatListFilter ChatListFilter { get; init; } = ChatListFilter.None;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await ChatUI.ListSettings.Use(cancellationToken).ConfigureAwait(false);
+        var (count, firstUnread) = await ChatUI.GetUnreadChatInfo(ChatListFilter, settings.Order, cancellationToken).ConfigureAwait(false);
+
+        return new Model() {
+            Count = count,
+            FirstUnread = firstUnread,
+        };
+    }
+
+    private void OnUnreadBadgeClick(ChatId? unreadChatId) {
+        if (!unreadChatId.HasValue || unreadChatId == ChatUI.SelectedChatId.Value)
+            return;
+
+        History.NavigateTo(Links.Chat(unreadChatId.Value));
+    }
+
+    public sealed record Model {
+        public static Model Loading { get; } = new();
+
+        public Trimmed<int> Count { get; init; }
+        public ChatInfo? FirstUnread { get; init; }
+    }
+
+}

@@ -1,28 +1,67 @@
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatList.Model>
 @{
-    if (Chats == null || Chats.Count == 0)
-        return;
+    var m = State.Value;
+    var chatCount = m.ChatCount ?? 20;
+    var isLoaded = m != Model.Loading;
+    _lastRendered = m;
 }
 
-<div class="@GetCss(Kind) chat-list">
-    @foreach (var chat in Chats) {
-        <ChatListItem @key="@chat" ChatInfo="@chat" ListKind="@Kind"/>
-    }
-</div>
-@if (Kind == ChatListKind.Pinned) {
-    <div class="mx-4 mb-2 border-b border-bg-04"></div>
+@if (isLoaded) {
+    <div class="chat-list chat-list-all">
+        @for (var i = 0; i < chatCount; i++) {
+            var position = i;
+
+            <ChatListItem @key="@position" Position="@position" ListKind="@ChatListKind.All" />
+        }
+    </div>
+} else {
+    <ChatListSkeleton />
 }
+
 
 @code {
-    [Parameter, EditorRequired] public ChatListKind Kind { get; set; } = ChatListKind.Active;
-    [Parameter, EditorRequired] public List<ChatInfo>? Chats { get; set; }
+    private Model? _lastRendered;
 
-    private string GetCss(ChatListKind kind)
-        => kind switch {
-            ChatListKind.Pinned => "chat-list-pinned",
-            ChatListKind.Unpinned => "chat-list-unpinned",
-            ChatListKind.Active => "chat-list-active",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-            };
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+    [Inject] private Tracer Tracer { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var tracer = ReferenceEquals(State.Value, Model.Loading)
+            ? Tracer[$"{nameof(ChatListNavbarWidget)}.{nameof(ComputeState)}"]
+            : Tracer.None;
+
+        var region = tracer.Region("ChatUI.GetChatCount");
+        var chatCount = await ChatUI.GetChatCount(cancellationToken);
+        region.Close();
+
+        return new Model {
+            ChatCount = chatCount,
+        };
+    }
+
+    protected override bool ShouldRender()
+        => State.Value != _lastRendered;
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (State.Value != Model.Loading) {
+            LoadingUI.ReportChatListLoaded();
+        }
+    }
+
+    public sealed record Model {
+        public static Model Loading { get; } = new();
+
+        public int? ChatCount { get; init; }
+    }
 }
