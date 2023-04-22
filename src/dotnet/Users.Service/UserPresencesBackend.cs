@@ -36,14 +36,13 @@ public class UserPresencesBackend : IUserPresencesBackend, IDisposable
 
         var lastCheckInAt = Clocks.SystemClock.Now;
         CheckIns.Set(userId, lastCheckInAt);
-        var needsInvalidate = _presenceInvalidator.HandleCheckIn(userId, lastCheckInAt);
-        context.Operation().Items.Set(needsInvalidate);
+        var mustInvalidate = _presenceInvalidator.HandleCheckIn(userId, lastCheckInAt);
+        context.Operation().Items.Set(mustInvalidate);
 
         return Task.CompletedTask;
     }
 
-
-    // private
+    // Private methods
 
     private Presence GetPresence(UserId userId)
     {
