@@ -10,13 +10,9 @@ public class CheckIns
         => _items.GetValueOrDefault(userId);
 
     public void Set(UserId userId, Moment lastCheckInAt)
-    {
-        _items.AddOrUpdate(userId, Add, Update);
-
-        Moment Add(UserId _)
-            => lastCheckInAt;
-
-        Moment Update(UserId _, Moment current)
-            => Moment.Max(lastCheckInAt, current);
-    }
+        => _items.AddOrUpdate(
+            userId,
+            static (_, lastCheckInAt1) => lastCheckInAt1,
+            static (_, prevCheckInAt, lastCheckInAt1) => Moment.Max(prevCheckInAt, lastCheckInAt1),
+            lastCheckInAt);
 }
