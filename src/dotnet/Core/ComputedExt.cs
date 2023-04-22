@@ -46,33 +46,6 @@ public static class ComputedExt
         }
     }
 
-    public static async IAsyncEnumerable<Computed<T>> Until<T>(
-        this IAsyncEnumerable<Computed<T>> changes,
-        Task task,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        if (task.IsCompleted) {
-            await task.ConfigureAwait(false); // will throw exception in case of failed task
-            yield break;
-        }
-
-        var enumerator = changes.GetAsyncEnumerator(cancellationToken);
-        var hasNextChangeTask = enumerator.MoveNextAsync();
-        while (true) {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            await Task.WhenAny(task, hasNextChangeTask.AsTask()).ConfigureAwait(false);
-
-            if (task.IsCompleted) {
-                await task.ConfigureAwait(false); // will throw exception in case of failed task
-                yield break;
-            }
-
-            yield return enumerator.Current;
-            hasNextChangeTask = enumerator.MoveNextAsync();
-        }
-    }
-
     // Debug dump
 
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> _propertyCache = new();

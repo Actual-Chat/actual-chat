@@ -86,6 +86,30 @@ public static class AsyncEnumerableExt
         }
     }
 
+    public static async IAsyncEnumerable<T> TakeWhile<T>(
+        this IAsyncEnumerable<T> source,
+        Task whileTask,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (whileTask.IsCompleted)
+            yield break;
+
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
+
+        var hasNextTask = enumerator.MoveNextAsync();
+        while (true) {
+            if (!hasNextTask.IsCompleted)
+                await Task.WhenAny(whileTask, hasNextTask.AsTask()).ConfigureAwait(false);
+
+            if (whileTask.IsCompleted || !await hasNextTask.ConfigureAwait(false))
+                yield break;
+
+            yield return enumerator.Current;
+            hasNextTask = enumerator.MoveNextAsync();
+        }
+    }
+
     public static IAsyncEnumerable<T> WithUsedEnumerator<T>(
         this IAsyncEnumerable<T> source,
         IAsyncEnumerator<T> usedEnumerator,
@@ -179,7 +203,6 @@ public static class AsyncEnumerableExt
 
         return (matched.Reader.ReadAllAsync(cancellationToken), notMatched.Reader.ReadAllAsync(cancellationToken));
     }
-
 
     public static (Task<TSource> HeadTask, IAsyncEnumerable<TSource> Tail) SplitHead<TSource>(
         this IAsyncEnumerable<TSource> source,

@@ -51,9 +51,10 @@ public partial class ChatUI
                 .Capture(() => ListFiltered(filterId, cancellationToken))
                 .ConfigureAwait(false);
 
+            var whileSettingsConsistent = cSettingsChange.WhenInvalidated(cancellationToken);
             var cListFilteredChanges = cListFiltered
                 .Changes(cancellationToken)
-                .Until(cSettingsChange.WhenInvalidated(cancellationToken), cancellationToken);
+                .TakeWhile(whileSettingsConsistent, cancellationToken);
             await foreach (var cListFilteredChange in cListFilteredChanges.ConfigureAwait(false)) {
                 DebugLog?.LogDebug("MaintainChatPositions: {Settings}", settings);
                 var filteredChats = cListFilteredChange.Value;
