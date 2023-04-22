@@ -8,9 +8,8 @@
     var chat = m.Chat;
     var chatOrNone = m.Chat ?? Chat.None;
     var chatOrLoading = ReferenceEquals(m, Model.Loading) ? Chat.Loading : chatOrNone;
+    // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
-
-@* @key=...below ensures child components are recreated on navigation to another chat *@
 
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="@chatOrLoading">
@@ -43,17 +42,15 @@
 @if (ReferenceEquals(m, Model.Loading)) {
     return;
 }
-<ErrorBarrier>
-    @if (m.ChatId.IsNone) {
-        <NoChatSelected/>
-    } else if (chat == null) {
-        <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
-    } else {
-        <CascadingValue Value="chat" @key="ChatSid">
-            <ChatView @ref="_chatViewRef" />
-        </CascadingValue>
-    }
-</ErrorBarrier>
+@if (m.ChatId.IsNone) {
+    <NoChatSelected/>
+} else if (chat == null) {
+    <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+} else {
+    <CascadingValue Value="chat" @key="ChatSid">
+        <ChatView @ref="_chatViewRef" />
+    </CascadingValue>
+}
 
 @code {
     private Model? _rendered;
@@ -73,11 +70,6 @@
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
-
-    protected override bool ShouldRender()
-        => ReferenceEquals(_rendered, null)
-            || State.HasError
-            || !ReferenceEquals(_rendered, State.Value);
 
     protected override Task OnInitializedAsync() {
         AutoNavigationUI.MustNavigateToChatsOnSignIn = false;
@@ -99,10 +91,11 @@
                 _ = History.NavigateTo(Links.Chat(chatId), true);
         }
 
+        // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
+
         ChatUI.SelectChat(chatId);
         // No need to call base.OnParametersSetAsync() here, coz
-        // FixChatId calls ChatUI.SelectChat(...), which triggers
-        // UICommander.RunNothing() anyway
+        // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -112,36 +105,41 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var model = await ComputeStateInternal(cancellationToken);
-
-        // Ideally we want to return exactly the same model as it was last time,
-        // coz otherwise some of components depending on its internals (e.g. lots of them depend on Chat)
-        // re-render solely because the reference to it was changed.
-        return model.IsIdenticalTo(_rendered) ? _rendered : model;
-    }
-
-    private async Task<Model> ComputeStateInternal(CancellationToken cancellationToken)
-    {
         // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
         // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
         // and moreover, we want to make sure ComputeState gets invalidated
-        // specifically when SelectedChatId changes, not when ChatSid changes.
+        // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-        if (chatId.IsNone) // Kinda weird case: this should never happen due to code in OnParametersSetAsync
-            return Model.None(screenSize);
-
-        var account = await Accounts.GetOwn(Session, cancellationToken);
+        // var computed = Computed.GetCurrent()!;
+        // computed.Invalidated += c => {
+        //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
+        // };
         try {
-            var chat = await Chats.Get(Session, chatId, cancellationToken);
-            return new Model(chatId, chat, account, screenSize);
+            var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+            var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
+            if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
+                return Model.None(screenSize);
+
+            var account = await Accounts.GetOwn(Session, cancellationToken);
+            try {
+                var chat = await Chats.Get(Session, chatId, cancellationToken);
+                return new Model(chatId, chat, account, screenSize);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+                return new Model(chatId, null, account, screenSize);
+            }
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            return new Model(chatId, null, account, screenSize);
+        finally {
+            // Log.LogDebug("ComputeState() - exit: {Computed}", computed.DebugDump());
         }
     }
+
+    protected override bool ShouldRender()
+        => ReferenceEquals(_rendered, null)
+            || State.HasError
+            || !State.Value.IsIdenticalTo(_rendered);
 
     // Nested types
 
@@ -157,6 +155,7 @@
         public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
             if (other == null)
                 return false;
+
             return ChatId == other.ChatId
                    && ReferenceEquals(Chat, other.Chat)
                    && ReferenceEquals(Account, other.Account)
