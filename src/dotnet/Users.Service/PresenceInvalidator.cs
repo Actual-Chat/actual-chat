@@ -7,6 +7,7 @@ public class PresenceInvalidator : WorkerBase
     private Action<IReadOnlyList<UserId>> Callback { get; }
     private MomentClockSet Clocks { get; }
     private ILogger<PresenceInvalidator> Log { get; }
+
     private Moment Now => Clocks.SystemClock.Now;
 
     public PresenceInvalidator(
@@ -46,13 +47,16 @@ public class PresenceInvalidator : WorkerBase
     private Task InvalidateOnOffline(CancellationToken cancellationToken)
         => InvalidateOnTimeout(_offlineQueue, null, Constants.Presence.OfflineTimeout, cancellationToken);
 
-    private async Task InvalidateOnTimeout(SortedCheckIns queue, SortedCheckIns? nextQueue, TimeSpan timeout, CancellationToken cancellationToken)
+    private async Task InvalidateOnTimeout(
+        SortedCheckIns queue,
+        SortedCheckIns? nextQueue,
+        TimeSpan checkPeriod,
+        CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var toInvalidate = queue.PopRange(Now - timeout);
-            if (toInvalidate.Count == 0)
-            {
-                await Task.Delay(timeout, cancellationToken).ConfigureAwait(false);
+            var toInvalidate = queue.PopRange(Now - checkPeriod);
+            if (toInvalidate.Count == 0) {
+                await Task.Delay(checkPeriod, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
