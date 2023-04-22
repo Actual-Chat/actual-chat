@@ -23,7 +23,9 @@
                             @SubFooter
                         </div>
                         <div class="layout-body flex-1 custom-scrollbar">
-                            @Body
+                            <ErrorBarrier>
+                                @Body
+                            </ErrorBarrier>
                         </div>
                     </div>
                 </div>
