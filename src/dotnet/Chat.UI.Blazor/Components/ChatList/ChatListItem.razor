@@ -148,7 +148,6 @@ else {
         var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
         _ = tuneUI.Play("select-chat");
 
-        ChatUI.SelectChat(chatId);
         try {
             if (ScreenSize.IsWide())
                 return;
