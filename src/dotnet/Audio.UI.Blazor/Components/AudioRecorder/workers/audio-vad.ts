@@ -8,8 +8,8 @@ import { Versioning } from 'versioning';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 
 const MIN_SILENCE = 1; // 1s
-const MIN_SPEECH = 0.5; // 500ms
-const MAX_SPEECH = 60 * 2; // 2m
+const MIN_SPEECH = 0.5; // 500 ms
+const MAX_SPEECH = 60 * 2; // 2 min.
 
 function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate): VoiceActivityChange {
     return {
