@@ -20,6 +20,9 @@ public class UserPresences : IUserPresences
     // [CommandHandler]
     public virtual async Task CheckIn(IUserPresences.CheckInCommand command, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return;
+
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
             return;
