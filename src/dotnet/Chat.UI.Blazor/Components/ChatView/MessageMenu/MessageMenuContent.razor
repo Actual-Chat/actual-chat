@@ -23,7 +23,7 @@
             Click="@(() => Edit(entry))">
         </MenuEntry>
     }
-    @if (m.CanWrite) {
+    @if (m.CanWrite && !IsSystem) {
         <MenuEntry
             Icon="icon-reply"
             FocusOnEditor="true"
@@ -39,12 +39,14 @@
             </MenuEntry>
         </CopyTrigger>
     }
-    <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
-        <MenuEntry
-            Icon="icon-link-2"
-            Text="Copy message link">
-        </MenuEntry>
-    </CopyTrigger>
+    @if (!IsSystem) {
+        <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
+            <MenuEntry
+                Icon="icon-link-2"
+                Text="Copy message link">
+            </MenuEntry>
+        </CopyTrigger>
+    }
     @if (canEditOrDelete) {
         <MenuEntrySeparator />
         <MenuEntry
@@ -68,6 +70,7 @@
 
     [Parameter, EditorRequired] public ChatMessageModel ChatMessageModel { get; set; } = null!;
     [Parameter] public string? ClickedLinkUrl { get; set; }
+    [Parameter] public bool IsSystem { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
