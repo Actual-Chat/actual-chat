@@ -18,7 +18,7 @@
                 <ChatListTabUnreadCount ChatListFilter="filter" />
             </TitleExtras>
             <ChildContent>
-                <ChatList />
+                <ChatList Kind="ChatListKind.All" />
             </ChildContent>
         </Tab>;
     }
@@ -27,7 +27,7 @@
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y min-h-min">
-            <ActiveChatList/>
+            <ChatList Kind="ChatListKind.Active" />
             <div class="border-t-4 border-bg-04"></div>
             <TabPanel
                 @ref="@_tabPanel"
@@ -59,10 +59,8 @@
         await ChatUI.ListSettings.WhenRead;
     }
 
-    protected override void OnAfterRender(bool firstRender) {
-        LoadingUI.MarkLoaded();
-        _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
-    }
+    protected override void OnAfterRender(bool firstRender)
+        => _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";

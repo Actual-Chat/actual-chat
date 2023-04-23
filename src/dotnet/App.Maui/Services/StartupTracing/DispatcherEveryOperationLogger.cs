@@ -3,19 +3,18 @@ namespace ActualChat.App.Maui.Services.StartupTracing;
 internal class DispatcherEveryOperationLogger : IDispatcherOperationLogger
 {
     private static readonly TimeSpan _longWorkItemThreshold = TimeSpan.FromMilliseconds(10);
-    private Stopwatch _sw = new ();
+    private CpuTimestamp _lastOperationStartedAt;
     private readonly Tracer _tracer = Tracer.Default[nameof(DispatcherProxy)];
 
     public void OnBeforeOperation()
     {
-        _sw = Stopwatch.StartNew();
+        _lastOperationStartedAt = CpuTimestamp.Now;
         _tracer.Point("Operation is about to start");
     }
 
     public void OnAfterOperation()
     {
-        _sw.Stop();
-        var elapsed = _sw.Elapsed;
+        var elapsed = CpuTimestamp.Now - _lastOperationStartedAt;
         var isLongWorkItem = elapsed >= _longWorkItemThreshold;
         if (isLongWorkItem) {
             var startTime = DateTime.Now - elapsed;

@@ -38,9 +38,10 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
+        fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatEditorUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped<PlayableTextPaletteProvider>(_ => new PlayableTextPaletteProvider());
         services.AddScoped(c => new ActiveChatsUI(c));

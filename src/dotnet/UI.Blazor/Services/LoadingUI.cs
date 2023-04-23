@@ -12,11 +12,11 @@ public sealed class LoadingUI
 
     public Task WhenLoaded => _whenLoadedSource.Task;
 
-    public TimeSpan LoadingTime { get; private set; } = TimeSpan.Zero;
-    public static TimeSpan MauiAppBuildTime { get; private set; } = TimeSpan.Zero;
-    public TimeSpan AppInitTime { get; private set; } = TimeSpan.Zero;
-    public TimeSpan AppAboutRenderContentTime { get; private set; } = TimeSpan.Zero;
-    public TimeSpan ChatListLoaded { get; private set; } = TimeSpan.Zero;
+    public TimeSpan LoadingTime { get; private set; }
+    public static TimeSpan MauiAppBuildTime { get; private set; }
+    public TimeSpan AppInitTime { get; private set; }
+    public TimeSpan AppAboutRenderContentTime { get; private set; }
+    public TimeSpan ChatListLoaded { get; private set; }
 
     public LoadingUI(IServiceProvider services)
     {
@@ -26,35 +26,32 @@ public sealed class LoadingUI
 
     public static void ReportMauiAppBuildTime(TimeSpan mauiAppBuildTime)
     {
-        if (MauiAppBuildTime > TimeSpan.Zero)
-            return;
-        MauiAppBuildTime = mauiAppBuildTime;
+        if (MauiAppBuildTime == default)
+            MauiAppBuildTime = mauiAppBuildTime;
     }
 
     public void ReportAppInitialized()
     {
-        if (AppInitTime > TimeSpan.Zero)
-            return;
-        AppInitTime = Tracer.Elapsed;
+        if (AppInitTime == default)
+            AppInitTime = Tracer.Elapsed;
     }
 
     public void ReportAppAboutRenderContent()
     {
-        if (AppAboutRenderContentTime > TimeSpan.Zero)
-            return;
-        AppAboutRenderContentTime = Tracer.Elapsed;
+        if (AppAboutRenderContentTime == default)
+            AppAboutRenderContentTime = Tracer.Elapsed;
     }
 
     public void ReportChatListLoaded()
     {
-        if (ChatListLoaded > TimeSpan.Zero)
-            return;
-        ChatListLoaded = Tracer.Elapsed;
+        if (ChatListLoaded == default)
+            ChatListLoaded = Tracer.Elapsed;
     }
 
     public void MarkLoaded()
     {
-        if (!_whenLoadedSource.TrySetResult(default)) return;
+        if (!_whenLoadedSource.TrySetResult(default))
+            return;
 
         Log.LogDebug(nameof(MarkLoaded));
         Tracer.Point(nameof(MarkLoaded));

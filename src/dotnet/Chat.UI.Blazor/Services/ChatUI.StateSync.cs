@@ -11,7 +11,6 @@ public partial class ChatUI
             new(nameof(HardRedirectOnFixableChat), HardRedirectOnFixableChat),
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
-            new(nameof(MaintainChatPositions), MaintainChatPositions),
         };
         var retryDelays = new RetryDelaySeq(0.1, 1);
         return (
@@ -39,57 +38,6 @@ public partial class ChatUI
 
             oldChatId = newChatId;
         }
-    }
-
-    private async Task MaintainChatPositions(CancellationToken cancellationToken)
-    {
-        var settingsChanges = ListSettings.Changes(cancellationToken).ConfigureAwait(false);
-        await foreach (var cSettingsChange in settingsChanges.ConfigureAwait(false)) {
-            var settings = cSettingsChange.Value;
-            var filterId = settings.Filter.Id;
-            var cListFiltered = await Computed
-                .Capture(() => ListFiltered(filterId, cancellationToken))
-                .ConfigureAwait(false);
-
-            var whileSettingsConsistent = cSettingsChange.WhenInvalidated(cancellationToken);
-            var cListFilteredChanges = cListFiltered
-                .Changes(cancellationToken)
-                .TakeWhile(whileSettingsConsistent, cancellationToken);
-            await foreach (var cListFilteredChange in cListFilteredChanges.ConfigureAwait(false)) {
-                DebugLog?.LogDebug("MaintainChatPositions: {Settings}", settings);
-                var filteredChats = cListFilteredChange.Value;
-                var orderedChats = SortChats(filteredChats, settings.Order);
-                var result = orderedChats
-                    .Select(c => c.Id)
-                    .ToList();
-
-                var positionsToInvalidate = new List<int>();
-                lock (_chatPositionLock) {
-                    var commonLength = Math.Min(_chatPositionMap.Count, result.Count);
-                    var maxLength = Math.Max(_chatPositionMap.Count, result.Count);
-                    for (int i = 0; i < commonLength; i++) {
-                        var origChatId = _chatPositionMap[i];
-                        var newChatId = result[i];
-                        if (origChatId == newChatId)
-                            continue;
-
-                        positionsToInvalidate.Add(i);
-                    }
-                    for (int i = commonLength; i < maxLength; i++)
-                        positionsToInvalidate.Add(i);
-
-                    _chatPositionMap = result;
-                }
-                if (positionsToInvalidate.Count <= 0)
-                    continue;
-
-                Log.LogDebug("MaintainChatPositions: invalidate {Count} items", positionsToInvalidate.Count);
-                using (Computed.Invalidate())
-                    foreach (var i in positionsToInvalidate)
-                        _ = GetChatId(i, default);
-            }
-        }
-
     }
 
     [ComputeMethod]

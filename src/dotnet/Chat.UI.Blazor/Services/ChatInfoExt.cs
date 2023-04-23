@@ -2,7 +2,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public static class ChatInfoExt
 {
-    public const int MaxUnreadMessageCount = 1000;
     public const int MaxUnreadChatCount = 100;
 
     public static Trimmed<int> UnreadMessageCount(this IEnumerable<ChatInfo> chats)

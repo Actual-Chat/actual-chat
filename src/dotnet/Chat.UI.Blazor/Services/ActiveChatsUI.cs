@@ -12,11 +12,17 @@ public class ActiveChatsUI
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
 
     private bool _isActiveChatsFirstLoad = true;
+    private ChatUI? _chatUI;
 
-    private IStateFactory StateFactory { get; }
+    private IServiceProvider Services { get; }
+    private ILogger Log { get; }
+
     private Session Session { get; }
     private IChats Chats { get; }
+    private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
+    private SearchUI SearchUI { get; }
     private LocalSettings LocalSettings { get; }
+    private IStateFactory StateFactory { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
@@ -24,12 +30,15 @@ public class ActiveChatsUI
 
     public ActiveChatsUI(IServiceProvider services)
     {
-        Clocks = services.Clocks();
-        StateFactory = services.StateFactory();
+        Services = services;
+        Log = services.LogFor(GetType());
 
         Session = services.GetRequiredService<Session>();
         Chats = services.GetRequiredService<IChats>();
+        SearchUI = services.GetRequiredService<SearchUI>();
         LocalSettings = services.LocalSettings();
+        StateFactory = services.StateFactory();
+        Clocks = services.Clocks();
 
         ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {

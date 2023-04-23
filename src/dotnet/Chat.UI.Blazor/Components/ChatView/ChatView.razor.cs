@@ -12,9 +12,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private const int PageSize = 40;
 
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-    private readonly CancellationTokenSource _disposeToken = new ();
+    private readonly CancellationTokenSource _disposeTokenSource = new();
     private readonly TaskCompletionSource<Unit> _whenInitializedSource = TaskCompletionSourceExt.New<Unit>();
-    private readonly SwitchableDelayer _invisibleDelayer = new ();
+    private readonly Suspender _getDataSuspender = new();
 
     private long? _lastNavigateToEntryId;
     private long? _initialReadEntryLid;
@@ -38,6 +38,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
+    private CancellationToken DisposeToken => _disposeTokenSource.Token;
 
     public IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
@@ -57,7 +58,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(GetType(), nameof(ItemVisibility)));
-            ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, _disposeToken.Token);
+            ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
             IsViewportAboveUnreadEntry = StateFactory.NewComputed(
                 new ComputedState<bool>.Options {
                     UpdateDelayer = FixedDelayer.Instant,
@@ -78,8 +79,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         RegionVisibility.IsOverallVisible.Updated -= OnRegionVisibilityChanged;
         Nav.LocationChanged -= OnLocationChanged;
-        _disposeToken.Cancel();
-        _invisibleDelayer.Enable(false);
+        _disposeTokenSource.Cancel();
+        _getDataSuspender.IsSuspended = false;
         ReadPositionState?.Dispose();
         ReadPositionState = null;
     }
@@ -98,7 +99,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             navigateToEntryLid = readEntryLid;
         }
         else {
-            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, _disposeToken.Token);
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, DisposeToken);
             navigateToEntryLid = chatIdRange.ToInclusive().End;
         }
 
@@ -118,7 +119,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public void TryNavigateToEntry()
     {
         // ignore location changed events if already disposed
-        if (_disposeToken.IsCancellationRequested)
+        if (DisposeToken.IsCancellationRequested)
             return;
 
         var uri = History.Uri;
@@ -148,17 +149,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListData<ChatMessageModel> oldData,
         CancellationToken cancellationToken)
     {
-        await WhenInitialized;
+        if (!WhenInitialized.IsCompleted)
+            await WhenInitialized;
 
-        var canContinue = await _invisibleDelayer.CanContinueExecution();
-        if (!canContinue)
-            return oldData;
+        // NOTE(AY): The old logic relying on _getDataSuspender was returning oldData,
+        // which should never happen, coz it doesn't create any dependencies.
+        var whenResumedTask = _getDataSuspender.WhenResumed();
+        if (!whenResumedTask.IsCompleted)
+            await whenResumedTask;
 
         var chat = Chat;
         var chatId = chat.Id;
-        var author = await Authors.GetOwn(Session, chatId, cancellationToken);
+
+        var authorTask = Authors.GetOwn(Session, chatId, cancellationToken);
+        var chatIdRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
+        var author = await authorTask;
         var authorId = author?.Id ?? Symbol.Empty;
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
+        var chatIdRange = await chatIdRangeTask;
         var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
 
         // NOTE(AY): Commented this out:
@@ -397,6 +404,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void UpdateInvisibleDelayer()
     {
         var isVisible = RegionVisibility.IsOverallVisible.Value;
-        _invisibleDelayer.Enable(!isVisible);
+        if (!DisposeToken.IsCancellationRequested)
+            _getDataSuspender.IsSuspended = !isVisible;
     }
 }

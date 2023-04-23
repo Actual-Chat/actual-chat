@@ -16,5 +16,15 @@
 <div class="ui-is-rendered"></div>
 
 @code {
+    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender) {
+            Task.Delay(TimeSpan.FromMilliseconds(50)).ContinueWith(_ => {
+                LoadingUI.MarkLoaded();
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+    }
 }

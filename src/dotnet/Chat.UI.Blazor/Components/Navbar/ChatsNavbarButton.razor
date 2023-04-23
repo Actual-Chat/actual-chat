@@ -19,7 +19,7 @@
 </NavbarGroupSelectionButton>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -30,8 +30,8 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await ChatUI.ListUnordered(cancellationToken);
-        var count = chats.Values.Select(c => c.UnmutedUnreadCount).Count(x => x.Value > 0);
+        var chatById = await ChatListUI.ListAllUnordered(cancellationToken);
+        var count = chatById.Values.Where(c => c.UnmutedUnreadCount > 0).UnreadChatCount();
         return new(count);
     }
 

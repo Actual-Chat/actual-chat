@@ -54,6 +54,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var idPrefix = ownerId.Value + ' ';
         var contactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .OrderByDescending(a => a.TouchedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

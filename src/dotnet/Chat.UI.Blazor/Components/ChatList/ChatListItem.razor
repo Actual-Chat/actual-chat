@@ -7,10 +7,10 @@
 
     var chatState = m.ChatState;
     var chat = chatState.Chat;
-    var info = chatState.Info;
-    var lastTextEntry = info.LastTextEntry;
+    var chatInfo = chatState.Info;
+    var lastTextEntry = chatInfo.LastTextEntry;
     var audioState = chatState.AudioState;
-    var isLastPinned = m.IsLastPinned;
+    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
 }
 
 @if (m == Model.Loading) {
@@ -36,7 +36,7 @@ else {
                                     <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
                                 </span>
                             }
-                            @info.LastTextEntryText
+                            @chatInfo.LastTextEntryText
                         </div>
                     }
                 </div>
@@ -81,24 +81,22 @@ else {
             </div>
         </Ending>
     </NavbarItem>
-    @if (isLastPinned) {
-        <div class="mx-2 my-1.5 border-b border-bg-04"></div>
-    }
+}
+@if (m.IsLastItemInBlock) {
+    <div class="mx-2 my-1.5 border-b border-bg-04"></div>
 }
 
 @code {
     private Model? _rendered;
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; init; }
 
-    // Provide Position for ChatListKind.All or ChatInfo for ChatListKind.Active
-    [Parameter] public int Position { get; init; }
-    [Parameter] public ChatInfo ChatInfo { get; init; } = null!;
-
-    [Parameter] public ChatListKind ListKind { get; init; } = ChatListKind.All;
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
+    [Parameter, EditorRequired] public int Index { get; init; }
 
     protected override bool ShouldRender()
         => State.HasError || !ReferenceEquals(_rendered, State.Value);
@@ -110,63 +108,50 @@ else {
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        ChatInfo? chatInfo;
-        if (ListKind == ChatListKind.Active)
-            chatInfo = ChatInfo;
-        else {
-            var chatId = await ChatUI.GetChatId(Position, cancellationToken).ConfigureAwait(false);
-            if (!chatId.HasValue)
-                return Model.None;
-            chatInfo = await ChatUI.Get(chatId.Value, cancellationToken).ConfigureAwait(false);
-        }
+        var chatId = await ChatListUI.GetItem(ListKind, Index);
+        if (chatId.IsNone)
+            return Model.None;
+
+        var chatInfo = await ChatUI.Get(chatId, cancellationToken);
         if (chatInfo == null)
             return Model.None;
 
-        var fixedChatId = await ChatUI.FixChatId(chatInfo.Id, cancellationToken).ConfigureAwait(false);
-        var chatState = await ChatUI.GetState(fixedChatId, false, cancellationToken).ConfigureAwait(false);
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken);
         if (chatState == null)
             return Model.None;
 
-        var isLastPinned = false;
+        var isLastItemInBlock = false;
         if (chatState.Contact.IsPinned && ListKind == ChatListKind.All) {
-            var nextChatId = await ChatUI.GetChatId(Position + 1, cancellationToken).ConfigureAwait(false);
-            if (nextChatId.HasValue) {
-                var nextChatInfo = await ChatUI.Get(nextChatId.Value, cancellationToken).ConfigureAwait(false);
-                if (nextChatInfo != null) {
-                    isLastPinned = !nextChatInfo.Contact.IsPinned;
-                }
-            }
+            var nextChatId = await ChatListUI.GetItem(ListKind, Index + 1);
+            var nextChatInfo = nextChatId.IsNone ? null
+                : await ChatUI.Get(nextChatId, cancellationToken);
+            if (nextChatInfo != null)
+                isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
         }
 
         return new Model {
             ChatState = chatState,
-            IsLastPinned = isLastPinned,
+            IsLastItemInBlock = isLastItemInBlock,
         };
     }
 
     private async Task OnClick(ChatId chatId) {
         var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
         _ = tuneUI.Play("select-chat");
+        if (ScreenSize.IsWide())
+            return;
 
-        try {
-            if (ScreenSize.IsWide())
-                return;
+        // This part hides LeftPanel when you select the chat
+        var chatUrl = Links.Chat(chatId);
+        var history = ChatUI.Services.GetRequiredService<History>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+        await history
+            .When(_ => history.LocalUrl.Value.OrdinalStartsWith(chatUrl), cts.Token)
+            .SuppressCancellationAwait();
+        await history.WhenNavigationCompleted;
 
-            // This part hides LeftPanel when you select the chat
-            var chatUrl = Links.Chat(chatId);
-            var history = ChatUI.Services.GetRequiredService<History>();
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
-            await history
-                .When(_ => history.LocalUrl.Value.OrdinalStartsWith(chatUrl), cts.Token)
-                .SuppressCancellationAwait();
-            await history.WhenNavigationCompleted;
-
-            var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
-            panelsUI.Left.SetIsVisible(false);
-        }
-        finally {
-            StateHasChanged();
-        }
+        var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
+        panelsUI.Left.SetIsVisible(false);
     }
 
     public sealed record Model {
@@ -174,6 +159,6 @@ else {
         public static Model None { get; } = new() { ChatState = ChatState.None };
 
         public ChatState ChatState { get; init; } = ChatState.None;
-        public bool IsLastPinned { get; init; }
+        public bool IsLastItemInBlock { get; init; }
     }
 }
