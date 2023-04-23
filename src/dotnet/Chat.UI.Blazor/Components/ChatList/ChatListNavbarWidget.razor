@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
-    RenderFragment RenderTabContent(ChatListFilter filter, double order) {
+    RenderFragment RenderTab(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
         var title = filter.Title;
         var contentVersion = (id, title);
@@ -17,9 +17,6 @@
             <TitleExtras>
                 <ChatListTabUnreadCount ChatListFilter="filter" />
             </TitleExtras>
-            <ChildContent>
-                <ChatList Kind="ChatListKind.All" />
-            </ChildContent>
         </Tab>;
     }
 }
@@ -41,9 +38,12 @@
                 <ChildContent>
                     @for (var i = 0; i < ChatListFilter.All.Length; i++) {
                         var filter = ChatListFilter.All[i];
-                        @RenderTabContent(filter, i)
+                        @RenderTab(filter, i)
                     }
                 </ChildContent>
+                <TabContent>
+                    <ChatList Kind="ChatListKind.All" />
+                </TabContent>
             </TabPanel>
         </div>
     </ChildContent>

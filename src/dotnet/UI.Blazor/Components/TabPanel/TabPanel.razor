@@ -45,6 +45,9 @@
             </div>
         </div>
         @ChildContent
+        @if (TabContent != null) {
+            @TabContent.Invoke(SelectedTabId)
+        }
     </div>
 </CascadingValue>
 
@@ -60,6 +63,7 @@
     [Parameter] public bool BottomBorder { get; set; }
     [Parameter] public RenderFragment? AdditionalButton { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment<string?>? TabContent { get; set; }
     [Parameter] public EventCallback<string?> SelectedTabIdChanged { get; set; }
 
     public string? SelectedTabId {
