@@ -44,7 +44,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IServiceProvider Services { get; }
-    public IStoredState<ChatListSettings> ListSettings { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
@@ -83,12 +82,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
-
-        ListSettings = StateFactory.NewKvasStored<ChatListSettings>(
-            new (AccountSettings, nameof(ListSettings)) {
-                InitialValue = new(),
-                Category = StateCategories.Get(type, nameof(ListSettings)),
-            });
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);

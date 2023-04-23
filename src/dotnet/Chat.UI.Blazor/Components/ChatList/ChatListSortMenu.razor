@@ -28,13 +28,14 @@
 </div>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     private void OnClick(ChatListOrder order) {
-        var settings = ChatUI.ListSettings.Value;
-        if (settings.Order == order)
-            return;
-
-        ChatUI.ListSettings.Value = settings with { Order = order };
+        ChatListUI.Settings.Set(order, static (order1, r) => {
+            var settings = r.Value;
+            if (settings.Order != order1)
+                settings = settings with { Order = order1 };
+            return settings;
+        });
     }
 }

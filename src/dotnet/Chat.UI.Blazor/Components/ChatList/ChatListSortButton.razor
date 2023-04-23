@@ -15,7 +15,7 @@
 </ButtonRound>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -24,7 +24,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await ChatUI.ListSettings.Use(cancellationToken).ConfigureAwait(false);
+        var settings = await ChatListUI.Settings.Use(cancellationToken).ConfigureAwait(false);
         return new Model {
             SortOrder = settings.Order,
         };

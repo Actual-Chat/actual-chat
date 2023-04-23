@@ -10,6 +10,9 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 {
     private readonly List<ChatId> _activeItems = new();
     private readonly List<ChatId> _allItems = new();
+    private readonly IMutableState<int> _loadLimit;
+    private readonly IMutableState<bool> _isSelectedChatUnlisted;
+    private readonly IStoredState<ChatListSettings> _settings;
     private volatile bool _isLoaded;
 
     private ChatUI? _chatUI;
@@ -27,11 +30,9 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
-    private IMutableState<bool> _isSelectedChatUnlisted;
-    private IMutableState<int> _loadLimit;
-
     public IServiceProvider Services { get; }
-    public IStoredState<ChatListSettings> Settings { get; }
+    public IMutableState<ChatListSettings> Settings => _settings;
+    public Task WhenLoaded => _settings.WhenRead;
 
     public ChatListUI(IServiceProvider services)
     {
@@ -50,7 +51,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
-        Settings = StateFactory.NewKvasStored<ChatListSettings>(
+        _settings = StateFactory.NewKvasStored<ChatListSettings>(
             new (AccountSettings, nameof(ChatListSettings)) {
                 InitialValue = new(),
                 Category = StateCategories.Get(type, nameof(Settings)),

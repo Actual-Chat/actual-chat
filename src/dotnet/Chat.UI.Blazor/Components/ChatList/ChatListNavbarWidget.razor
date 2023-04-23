@@ -52,22 +52,23 @@
 @code {
     TabPanel _tabPanel = null!;
 
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        await ChatUI.ListSettings.WhenRead;
+        await ChatListUI.WhenLoaded;
     }
 
     protected override void OnAfterRender(bool firstRender)
-        => _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
+        => _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";
-        var settings = ChatUI.ListSettings.Value;
-        if (settings.FilterId == filterId)
-            return;
-
-        ChatUI.ListSettings.Value = settings with { FilterId = filterId };
+        ChatListUI.Settings.Set(filterId, static (filterId1, r) => {
+            var settings = r.Value;
+            if (settings.FilterId != filterId1)
+                settings = settings with { FilterId = filterId1 };
+            return settings;
+        });
     }
 }
