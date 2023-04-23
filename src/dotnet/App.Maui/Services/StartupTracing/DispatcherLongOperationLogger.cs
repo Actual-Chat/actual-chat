@@ -4,18 +4,17 @@ internal class DispatcherLongOperationLogger : IDispatcherOperationLogger
 {
     private const int ShortTasksBatchSize = 30;
     private static readonly TimeSpan _longWorkItemThreshold = TimeSpan.FromMilliseconds(10);
-    private Stopwatch _sw = new ();
+    private CpuTimestamp _operationStartedAt = CpuTimestamp.Now;
     private long _shortWorkItemNumber;
     private TimeSpan _showWorkItemTotalDuration;
     private readonly Tracer _tracer = Tracer.Default[nameof(DispatcherProxy)];
 
     public void OnBeforeOperation()
-        => _sw = Stopwatch.StartNew();
+        => _operationStartedAt = CpuTimestamp.Now;
 
     public void OnAfterOperation()
     {
-        _sw.Stop();
-        var elapsed = _sw.Elapsed;
+        var elapsed = _operationStartedAt.Elapsed;
         var isLongOperation = elapsed >= _longWorkItemThreshold;
         if (!isLongOperation) {
             _shortWorkItemNumber++;

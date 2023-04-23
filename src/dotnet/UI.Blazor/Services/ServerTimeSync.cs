@@ -59,12 +59,11 @@ public class ServerTimeSync : WorkerBase
     private async Task Sync(CancellationToken cancellationToken)
     {
         var now = CpuClock.Now.EpochOffset.TotalSeconds;
-        var sw = Stopwatch.StartNew();
+        var startedAt = CpuTimestamp.Now;
         var serverNow = await SystemProperties.GetTime(cancellationToken).ConfigureAwait(false);
-        sw.Stop();
-        SyncAttemptCount++;
+        var callDuration = startedAt.Elapsed.TotalSeconds;
 
-        var callDuration = sw.Elapsed.TotalSeconds;
+        SyncAttemptCount++;
         if (callDuration > 2) // This took too long
             return;
 

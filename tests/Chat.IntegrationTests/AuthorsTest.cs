@@ -10,15 +10,15 @@ public class AuthorsTest : AppHostTestBase
     [Fact]
     public async Task NullAuthorResult()
     {
-        var sw = Stopwatch.StartNew();
+        var startedAt = CpuTimestamp.Now;
         using var appHost = await NewAppHost();
         using var tester = appHost.NewWebClientTester();
-        Out.WriteLine($"{sw.Elapsed}: app host init");
+        Out.WriteLine($"{startedAt}: app host init");
         var session = tester.Session;
 
         var authors = tester.ClientServices.GetRequiredService<IAuthors>();
         var author = await authors.GetOwn(session, Constants.Chat.DefaultChatId, default);
-        Out.WriteLine($"{sw.Elapsed}: get author");
+        Out.WriteLine($"{startedAt}: get author");
         author.Should().BeNull();
     }
 }
