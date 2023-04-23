@@ -7,7 +7,7 @@ import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 import { Versioning } from 'versioning';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 
-const MIN_SILENCE = 1; // 1s
+const MIN_SILENCE = 2; // 1s
 const MIN_SPEECH = 0.5; // 500 ms
 const MAX_SPEECH = 60 * 2; // 2 min.
 
