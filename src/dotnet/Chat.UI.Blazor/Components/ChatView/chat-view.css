@@ -10,6 +10,9 @@ body.hoverable .message-wrapper:hover {
 body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
 }
+body.hoverable .system-entry.message-wrapper:hover {
+    @apply bg-transparent border-transparent;
+}
 
 .chat-message {
     @apply relative;
@@ -120,9 +123,13 @@ body.hoverable .chat-header-title:hover {
 .system-entry {
     @apply self-center;
     @apply w-fit;
+    @apply px-6;
+    @apply mt-0.5;
 }
 .system-entry .chat-message-markup {
     @apply flex items-center gap-x-0.5;
+    @apply h-6 md:h-5;
+    @apply mt-0.5;
 }
 .system-entry * {
     @apply text-xs font-medium;
