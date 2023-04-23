@@ -37,6 +37,8 @@ public partial class ChatListUI
 
     private async Task PushItems(ChatListKind listKind, CancellationToken cancellationToken)
     {
+        await WhenReadyToLoad(listKind).ConfigureAwait(false);
+
         var cListBase = await Computed
             .Capture(() => List(listKind, cancellationToken))
             .ConfigureAwait(false);

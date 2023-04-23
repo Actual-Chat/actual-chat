@@ -40,7 +40,7 @@ public class ServerTimeSync : WorkerBase
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
             .Log(Log)
-            .PrependDelay(TimeSpan.FromSeconds(1))
+            .PrependDelay(TimeSpan.FromSeconds(3))
             .RunIsolated(cancellationToken);
     }
 

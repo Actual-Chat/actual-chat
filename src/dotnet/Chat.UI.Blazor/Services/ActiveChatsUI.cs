@@ -10,23 +10,21 @@ public class ActiveChatsUI
     public static TimeSpan MaxContinueListeningRecency { get; } = TimeSpan.FromMinutes(5);
 
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
-
-    private bool _isActiveChatsFirstLoad = true;
-    private ChatUI? _chatUI;
+    private readonly IStoredState<ImmutableHashSet<ActiveChat>> _activeChats;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
 
     private Session Session { get; }
     private IChats Chats { get; }
-    private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private SearchUI SearchUI { get; }
     private LocalSettings LocalSettings { get; }
     private IStateFactory StateFactory { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
-    public IStoredState<ImmutableHashSet<ActiveChat>> ActiveChats { get; }
+    public IMutableState<ImmutableHashSet<ActiveChat>> ActiveChats => _activeChats;
+    public Task WhenLoaded => _activeChats.WhenRead;
 
     public ActiveChatsUI(IServiceProvider services)
     {
@@ -40,7 +38,7 @@ public class ActiveChatsUI
         StateFactory = services.StateFactory();
         Clocks = services.Clocks();
 
-        ActiveChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
+        _activeChats = StateFactory.NewKvasStored<ImmutableHashSet<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
                 InitialValue = ImmutableHashSet<ActiveChat>.Empty,
                 Corrector = FixStoredActiveChats,
@@ -82,11 +80,10 @@ public class ActiveChatsUI
         ImmutableHashSet<ActiveChat> activeChats,
         CancellationToken cancellationToken = default)
     {
-        if (!_isActiveChatsFirstLoad)
+        if (!WhenLoaded.IsCompleted)
             return FixActiveChats(activeChats, cancellationToken);
 
         // Turn off stored recording on restoring state during app start
-        _isActiveChatsFirstLoad = false;
         activeChats = activeChats
             .Select(c => {
                 if (c.IsRecording)

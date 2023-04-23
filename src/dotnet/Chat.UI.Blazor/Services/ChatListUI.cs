@@ -8,12 +8,17 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
-    private readonly List<ChatId> _activeItems = new();
-    private readonly List<ChatId> _allItems = new();
-    private readonly IMutableState<int> _loadLimit;
+    public static readonly int ActiveItemCountWhenLoading = 2;
+    public static readonly int AllItemCountWhenLoading = 16;
+
+    private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
+    private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
     private readonly IMutableState<bool> _isSelectedChatUnlisted;
     private readonly IStoredState<ChatListSettings> _settings;
-    private volatile bool _isLoaded;
+    // Delayed load-related
+    private readonly IMutableState<int> _loadLimit;
+    private readonly Task _whenReadyToLoadActive = Task.CompletedTask;
+    private readonly Task _whenReadyToLoadAll = Task.CompletedTask;
 
     private ChatUI? _chatUI;
     private ActiveChatsUI? _activeChatsUI;
@@ -47,7 +52,17 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         HostInfo = services.GetRequiredService<HostInfo>();
 
         var type = GetType();
-        _loadLimit = StateFactory.NewMutable(HostInfo.AppKind.IsClient() ? 16 : int.MaxValue,
+        var isClient = HostInfo.AppKind.IsClient();
+        if (isClient) {
+            // Initial chat list load can be delayed if left panel is invisible
+            var panelsUI = Services.GetRequiredService<PanelsUI>();
+            // ~ Middle.IsVisible, but instantly vs when it gets computed
+            if (panelsUI.IsWide() || !panelsUI.Left.IsVisible.Value) {
+                _whenReadyToLoadAll = Task.Delay(TimeSpan.FromSeconds(1.75));
+                _whenReadyToLoadActive = Task.Delay(TimeSpan.FromSeconds(1.5));
+            }
+        }
+        _loadLimit = StateFactory.NewMutable(isClient ? AllItemCountWhenLoading : int.MaxValue,
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
@@ -61,12 +76,23 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     void INotifyInitialized.Initialized()
         => this.Start();
 
+    public int GetCountWhenLoading(ChatListKind listKind)
+        => listKind switch {
+            ChatListKind.All => AllItemCountWhenLoading,
+            ChatListKind.Active => ActiveItemCountWhenLoading,
+            _ => throw new ArgumentOutOfRangeException(nameof(listKind), listKind, null)
+        };
+
     [ComputeMethod]
-    public virtual Task<int> GetCount(ChatListKind listKind)
+    public virtual async Task<int> GetCount(ChatListKind listKind)
     {
+        var whenReadyToLoad = WhenReadyToLoad(listKind);
+        if (!whenReadyToLoad.IsCompleted)
+            await whenReadyToLoad.ConfigureAwait(false);
+
         var items = GetItems(listKind);
         lock (items)
-            return Task.FromResult(items.Count);
+            return items.Count;
     }
 
     [ComputeMethod]
@@ -95,14 +121,17 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
-        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken);
+        if (!ActiveChatsUI.WhenLoaded.IsCompleted)
+            await ActiveChatsUI.WhenLoaded.ConfigureAwait(false);
+
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
                 .OrderByDescending(c => c.Recency)
                 .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
                 .Collect())
             .SkipNullItems();
 
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
         chats = chats.FilterBySearchPhrase(searchPhrase);
         return chats.ToList();
     }
@@ -122,7 +151,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         var chatById = await ListAllUnordered(settings.Filter, cancellationToken).ConfigureAwait(false);
         var chats = chatById.Values.OrderBy(settings.Order);
 
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
         chats = chats.FilterAndOrderBySearchPhrase(searchPhrase);
         return chats.ToList();
     }
@@ -132,11 +161,11 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         CancellationToken cancellationToken = default)
     {
         var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
-        if (await _isSelectedChatUnlisted.Use(cancellationToken)) {
+        if (await _isSelectedChatUnlisted.Use(cancellationToken).ConfigureAwait(false)) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken);
+            selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
             var selectedChat = selectedChatId.IsNone ? null
-                : await ChatUI.Get(selectedChatId, cancellationToken);
+                : await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
             if (selectedChat != null)
                 chatById = new Dictionary<ChatId, ChatInfo>(chatById) {
                     [selectedChat.Id] = selectedChat,
@@ -161,15 +190,9 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnorderedRaw(CancellationToken cancellationToken)
     {
-        if (!_isLoaded) {
-            _isLoaded = true;
-            if (HostInfo.AppKind.IsClient()) {
-                // First chat list load can be delayed if left panel is invisible
-                var panelsUI = Services.GetRequiredService<PanelsUI>();
-                if (panelsUI.IsWide() || !panelsUI.Left.IsVisible.Value)
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-            }
-        }
+        if (!_whenReadyToLoadAll.IsCompleted)
+            await _whenReadyToLoadAll.ConfigureAwait(false);
+
         var startedAt = CpuTimestamp.Now;
         DebugLog?.LogDebug("-> ListAllUnorderedRaw");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
@@ -191,8 +214,8 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     protected virtual async Task<bool> IsSelectedChatUnlistedInternal(CancellationToken cancellationToken)
     {
-        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken);
+        var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
 
         var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
         return !chatById.ContainsKey(selectedChatId);
@@ -207,9 +230,16 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
             _ => throw new ArgumentOutOfRangeException(nameof(listKind)),
         };
 
+    private Task WhenReadyToLoad(ChatListKind listKind)
+        => listKind switch {
+            ChatListKind.Active => _whenReadyToLoadActive,
+            ChatListKind.All => _whenReadyToLoadAll,
+            _ => throw new ArgumentOutOfRangeException(nameof(listKind)),
+        };
+
     private async Task IncreaseLoadLimit()
     {
-        await Task.Delay(TimeSpan.FromSeconds(0.5)).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(0.25)).ConfigureAwait(false);
         _ = Services.UICommander().RunNothing(); // No UI update delays in near term
         _loadLimit.Value = int.MaxValue;
         using (Computed.Invalidate())

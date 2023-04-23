@@ -1,7 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
-    var m = _rendered = State.Value;
+    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
+    var m = State.Value;
     if (m == Model.None)
         return;
 
@@ -10,7 +11,6 @@
     var chatInfo = chatState.Info;
     var lastTextEntry = chatInfo.LastTextEntry;
     var audioState = chatState.AudioState;
-    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
 }
 
 @if (m == Model.Loading) {
@@ -87,8 +87,6 @@ else {
 }
 
 @code {
-    private Model? _rendered;
-
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
@@ -97,9 +95,6 @@ else {
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
     [Parameter, EditorRequired] public int Index { get; init; }
-
-    protected override bool ShouldRender()
-        => State.HasError || !ReferenceEquals(_rendered, State.Value);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -110,7 +105,7 @@ else {
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = await ChatListUI.GetItem(ListKind, Index);
         if (chatId.IsNone)
-            return Model.None;
+            return Model.Loading;
 
         var chatInfo = await ChatUI.Get(chatId, cancellationToken);
         if (chatInfo == null)
