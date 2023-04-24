@@ -36,13 +36,14 @@ public static class AppLinks
         async Task Handle()
         {
             await WhenScopedServicesReady.ConfigureAwait(true);
-            var loadingUI = ScopedServices.GetRequiredService<LoadingUI>();
-            await loadingUI.WhenLoaded.ConfigureAwait(true);
-
             var log = ScopedServices.LogFor(typeof(AppLinks));
             log.LogDebug("AppLink navigates to '{Url}'", localUrl);
-            var history = ScopedServices.GetRequiredService<History>();
-            _ = history.NavigateTo(localUrl);
+            var navigationCoordinatorUI = ScopedServices.GetRequiredService<NavigationCoordinatorUI>();
+            var dispatcher = ScopedServices.GetRequiredService<Microsoft.AspNetCore.Components.Dispatcher>();
+            _ = dispatcher.CheckAccess()
+                ? navigationCoordinatorUI.HandleNavigationRequest(localUrl)
+                : dispatcher.InvokeAsync(async ()
+                    => await navigationCoordinatorUI.HandleNavigationRequest(localUrl).ConfigureAwait(false));
         }
     }
 }

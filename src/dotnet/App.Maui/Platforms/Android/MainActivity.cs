@@ -198,8 +198,6 @@ public class MainActivity : MauiAppCompatActivity
         async Task Handle()
         {
             await WhenScopedServicesReady.ConfigureAwait(true);
-            var loadingUI = ScopedServices.GetRequiredService<LoadingUI>();
-            await loadingUI.WhenLoaded.ConfigureAwait(true);
             var handler = ScopedServices.GetRequiredService<NotificationUI>();
             Log.LogDebug("NotificationTap navigates to '{Url}'", url);
             handler.DispatchNotificationNavigation(url);

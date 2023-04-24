@@ -13,6 +13,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private History History { get; }
+    private NavigationCoordinatorUI NavigationCoordinatorUI { get; }
     private Session Session => History.Session;
     private HostInfo HostInfo => History.HostInfo;
     private UrlMapper UrlMapper => History.UrlMapper;
@@ -29,6 +30,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     public NotificationUI(IServiceProvider services)
     {
         History = services.GetRequiredService<History>();
+        NavigationCoordinatorUI = services.GetRequiredService<NavigationCoordinatorUI>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
         Log = services.LogFor(GetType());
@@ -94,23 +96,17 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     public void DispatchNotificationNavigation(string url)
         // Called from MainActivity, i.e. unclear if it's running in Blazor Dispatcher
-        => _ = Dispatcher.InvokeAsync(async () => {
-            try {
-                await HandleNotificationNavigation(url);
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to dispatch notification navigation");
-            }
-        });
+        => _ = Dispatcher.CheckAccess()
+            ? HandleNotificationNavigation(url)
+            : Dispatcher.InvokeAsync(async () => await HandleNotificationNavigation(url));
 
     [JSInvokable]
     public async Task HandleNotificationNavigation(string url)
     {
         var relativeUrl = LocalUrl.FromAbsolute(url, UrlMapper);
-        if (relativeUrl?.IsChatId() == true) {
-            await History.NavigateTo(relativeUrl);
-            PanelsUI.Middle.EnsureVisible();
-        }
+        if (relativeUrl?.IsChatId() != true)
+            return;
+        await NavigationCoordinatorUI.HandleNavigationRequest(relativeUrl);
     }
 
     public void UpdateNotificationStatus(PermissionState newState)

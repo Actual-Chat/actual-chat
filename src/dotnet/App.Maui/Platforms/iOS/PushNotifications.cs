@@ -91,18 +91,13 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
             Log.LogWarning("No message link received within notification");
             return;
         }
-        _ = Handle();
 
-        async Task Handle()
-        {
-            try {
-                await LoadingUI.WhenLoaded.ConfigureAwait(false);
-                Log.LogDebug("NotificationTap navigates to '{Url}'", url);
-                NotificationUI.DispatchNotificationNavigation(url);
-            }
-            catch (Exception ex) {
-                Log.LogError(ex, "Failed to handle notification tap");
-            }
+        try {
+            Log.LogDebug("NotificationTap navigates to '{Url}'", url);
+            NotificationUI.DispatchNotificationNavigation(url);
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "Failed to handle notification tap");
         }
     }
 }
