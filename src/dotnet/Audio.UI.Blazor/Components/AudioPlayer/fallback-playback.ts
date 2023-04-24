@@ -2,7 +2,7 @@ import { Log } from 'logging';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { DeviceInfo } from 'device-info';
 import { audioContextSource } from '../../Services/audio-context-source';
-import { Interactive } from 'interactive';
+import { PromiseSource } from 'promises';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
@@ -10,6 +10,7 @@ export class FallbackPlayback {
     private readonly audio: HTMLAudioElement;
     private dest: MediaStreamAudioDestinationNode = null;
     private attachedCount = 0;
+    private whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public get isRequired() { return DeviceInfo.isIos && DeviceInfo.isSafari; }
 
@@ -25,6 +26,11 @@ export class FallbackPlayback {
         document.body.append(this.audio);
         audioContextSource.contextCreated$.subscribe(x => this.onContextCreated(x));
         audioContextSource.contextClosing$.subscribe(() => this.onContextClosing());
+
+        document.body.addEventListener(
+            'click',
+            () => this.warmup(),
+            { capture: true, passive: true, once: true });
     }
 
     public async attach(feederNode: FeederAudioWorkletNode, context: AudioContext) {
@@ -69,7 +75,7 @@ export class FallbackPlayback {
     private async play(){
         try {
             if (this.audio.paused) {
-                await Interactive.whenInteractive();
+                await this.whenReady;
                 await this.audio.play();
                 debugLog?.log('play: successfully resumed');
             } else
@@ -110,6 +116,18 @@ export class FallbackPlayback {
             errorLog?.log('onContextClosing: failed to cleanup', e)
         }
         debugLog?.log('<- onContextClosing()');
+    }
+
+    private async warmup() {
+        debugLog?.log('-> warmup()');
+        try {
+            const warmupTask = this.audio.play().then(() => this.audio.pause());
+            await warmupTask;
+            this.whenReady.resolve(undefined);
+        } catch (e) {
+            errorLog?.log('warmup: failed', e)
+        }
+        debugLog?.log('<- warmup()');
     }
 }
 
