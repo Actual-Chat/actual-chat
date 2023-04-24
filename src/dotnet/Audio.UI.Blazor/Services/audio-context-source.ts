@@ -12,6 +12,7 @@ import { OnDeviceAwake } from 'on-device-awake';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
+import { fallbackPlayback } from '../Components/AudioPlayer/fallback-playback';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -202,6 +203,7 @@ export class AudioContextSource {
             latencyHint: 'interactive',
             sampleRate: 48000,
         });
+        fallbackPlayback.onContextCreate(context);
         try {
             await this.interactiveResume(context);
 
@@ -432,6 +434,7 @@ export class AudioContextSource {
             return;
 
         try {
+            fallbackPlayback.onContextClose();
             await context.close();
         }
         catch (e) {

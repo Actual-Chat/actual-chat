@@ -46,6 +46,7 @@ export type LogScope =
     | 'AudioInfo'
     // Audio playback
     | 'AudioPlayer'
+    | 'FallbackPlayback'
     | 'OpusDecoder'
     | 'OpusDecoderWorker'
     | 'FeederNode'
@@ -172,6 +173,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('AudioContextRef', LogLevel.Debug);
     // minLevels.set('AudioContextSource', LogLevel.Debug);
     // minLevels.set('AudioPlayer', LogLevel.Debug);
+    minLevels.set('FallbackPlayback', LogLevel.Debug);
     // minLevels.set('OpusDecoder', LogLevel.Debug);
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
