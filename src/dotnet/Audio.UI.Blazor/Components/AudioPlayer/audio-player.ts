@@ -8,6 +8,7 @@ import { catchErrors, PromiseSource, retry } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
+import { fallbackPlayback } from './fallback-playback';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
@@ -80,7 +81,10 @@ export class AudioPlayer {
             // Create decoder worker
             await decoderWorker.init(this.id, this.decoderToFeederWorkletChannel.port1);
 
-            feederNode.connect(context.destination);
+            if(fallbackPlayback.isRequired)
+                await fallbackPlayback.attach(feederNode, context);
+            else
+                feederNode.connect(context.destination);
 
             this.isAttached = true;
         };
@@ -107,6 +111,7 @@ export class AudioPlayer {
 
             const feederNode = this.feederNode;
             if (feederNode) {
+                fallbackPlayback.detach();
                 this.feederNode = null;
                 await catchErrors(
                     () => feederNode.disconnect(),
