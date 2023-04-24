@@ -1,14 +1,16 @@
 import { Log } from 'logging';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { DeviceInfo } from 'device-info';
+import { audioContextSource } from '../../Services/audio-context-source';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
 export class FallbackPlayback {
     private readonly audio: HTMLAudioElement;
     private dest: MediaStreamAudioDestinationNode = null;
-    public get isRequired() { return DeviceInfo.isIos && DeviceInfo.isSafari; }
     private attachedCount = 0;
+
+    public get isRequired() { return DeviceInfo.isIos && DeviceInfo.isSafari; }
 
     constructor() {
         if (!this.isRequired)
@@ -20,6 +22,8 @@ export class FallbackPlayback {
         this.audio.hidden = true;
         this.audio.muted = true;
         document.body.append(this.audio);
+        audioContextSource.contextCreated$.subscribe(x => this.onContextCreated(x));
+        audioContextSource.contextClosing$.subscribe(() => this.onContextClosing());
     }
 
     public async attach(feederNode: FeederAudioWorkletNode, context: AudioContext) {
@@ -66,25 +70,25 @@ export class FallbackPlayback {
         debugLog?.log('<- detach()');
     }
 
-    public onContextCreate(context: AudioContext) {
+    private onContextCreated(context: AudioContext) {
         if (!this.isRequired)
             return;
 
-        debugLog?.log('-> onContextCreate()');
+        debugLog?.log('-> onContextCreated()');
         try {
             this.dest = context.createMediaStreamDestination();
             this.audio.srcObject = this.dest.stream;
         } catch (e) {
-            errorLog.log('onContextCreate: failed to create destination node', e)
+            errorLog.log('onContextCreated: failed to create destination node', e)
         }
-        debugLog?.log('<- onContextCreate()');
+        debugLog?.log('<- onContextCreated()');
     }
 
-    public onContextClose() {
+    private onContextClosing() {
         if (!this.isRequired)
             return;
 
-        debugLog?.log('-> onContextClose()');
+        debugLog?.log('-> onContextClosing()');
         try {
             this.audio.muted = true;
             this.audio.pause();
@@ -93,9 +97,9 @@ export class FallbackPlayback {
             this.dest.stream.getVideoTracks().forEach(x => x.stop());
             this.dest = null;
         } catch (e) {
-            errorLog?.log('onContextClose: failed to cleanup', e)
+            errorLog?.log('onContextClosing: failed to cleanup', e)
         }
-        debugLog?.log('<- onContextClose()');
+        debugLog?.log('<- onContextClosing()');
     }
 }
 
