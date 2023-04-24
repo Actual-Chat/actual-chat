@@ -12,7 +12,7 @@ import { OnDeviceAwake } from 'on-device-awake';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
-import { fallbackPlayback } from '../Components/AudioPlayer/fallback-playback';
+import { Subject } from 'rxjs';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -44,6 +44,12 @@ export class AudioContextSource {
     private readonly _refCounts: Map<string, number> = new Map<string, number>();
     private _whenReady = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
+
+    private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
+    private readonly _contextClosing$: Subject<AudioContext> = new Subject<AudioContext>();
+
+    public readonly contextCreated$ = this._contextCreated$.asObservable();
+    public readonly contextClosing$ = this._contextClosing$.asObservable();
 
     // Key properties
     public get context() { return this._context; }
@@ -203,7 +209,7 @@ export class AudioContextSource {
             latencyHint: 'interactive',
             sampleRate: 48000,
         });
-        fallbackPlayback.onContextCreate(context);
+        this._contextCreated$.next(context);
         try {
             await this.interactiveResume(context);
 
@@ -434,7 +440,7 @@ export class AudioContextSource {
             return;
 
         try {
-            fallbackPlayback.onContextClose();
+            this._contextClosing$.next(context);
             await context.close();
         }
         catch (e) {
