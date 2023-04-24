@@ -81,19 +81,17 @@
     </div>
     </Body>
     <Buttons>
-        <div class="btn-group">
-            <Button
-                Click="@(() => Modal.Close())"
-                Class="btn-cancel">
-                Cancel
-            </Button>
-            <Button
-                Click="@OnCreate"
-                Type="@ButtonType.Submit"
-                Class="btn-primary">
-                Create
-            </Button>
-        </div>
+        <Button
+            Click="@(() => Modal.Close())"
+            Class="btn-modal">
+            Cancel
+        </Button>
+        <Button
+            Click="@OnCreate"
+            Type="@ButtonType.Submit"
+            Class="btn-modal">
+            Create
+        </Button>
     </Buttons>
 </DialogFrame>
 
