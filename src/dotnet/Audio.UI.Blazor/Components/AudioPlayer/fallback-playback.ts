@@ -2,6 +2,7 @@ import { Log } from 'logging';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { DeviceInfo } from 'device-info';
 import { audioContextSource } from '../../Services/audio-context-source';
+import { Interactive } from 'interactive';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
@@ -36,11 +37,7 @@ export class FallbackPlayback {
             if (this.attachedCount++ <= 0) {
                 this.audio.srcObject = this.dest.stream;
                 this.audio.muted = false;
-                if (this.audio.paused) {
-                    await this.audio.play();
-                    debugLog?.log('attach: successfully resumed');
-                } else
-                    debugLog?.log('attach: already playing');
+                await this.play();
                 debugLog?.log('attach: success, newCount=', this.attachedCount)
             }
 
@@ -67,6 +64,19 @@ export class FallbackPlayback {
             errorLog?.log('detach: failed to disconnect feeder node from fallback output', e);
         }
         debugLog?.log('<- detach()');
+    }
+
+    private async play(){
+        try {
+            if (this.audio.paused) {
+                await Interactive.whenInteractive();
+                await this.audio.play();
+                debugLog?.log('play: successfully resumed');
+            } else
+                debugLog?.log('play: already playing');
+        } catch (e) {
+            errorLog?.log('play: failed to resume:')
+        }
     }
 
     private onContextCreated(context: AudioContext) {
