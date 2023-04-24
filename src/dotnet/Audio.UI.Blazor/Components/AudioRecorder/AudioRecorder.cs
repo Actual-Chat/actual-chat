@@ -1,5 +1,6 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Logging;
 using Stl.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
@@ -60,6 +61,7 @@ public class AudioRecorder : IAsyncDisposable
         ChatEntryId repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
+        var log = Log.Prefixed();
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
@@ -85,7 +87,7 @@ public class AudioRecorder : IAsyncDisposable
                 .ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.Reset();
-                Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
+                log.LogWarning("chat #{ChatId} - can't access the microphone", chatId);
                 // Cancel recording
                 MarkStopped();
                 throw new AudioRecorderException(
@@ -99,7 +101,7 @@ public class AudioRecorder : IAsyncDisposable
                 DebugLog?.LogDebug(nameof(StartRecording) + " is cancelled");
             else
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                Log.LogError(e, nameof(StartRecording) + " failed");
+                log.LogError(e, "failed");
 
             await StopRecordingUnsafe().ConfigureAwait(false);
 

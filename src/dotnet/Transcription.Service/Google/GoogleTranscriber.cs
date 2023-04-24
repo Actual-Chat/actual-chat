@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
+using ActualChat.Logging;
 using ActualChat.Module;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
@@ -161,6 +162,7 @@ public partial class GoogleTranscriber : ITranscriber
         GoogleTranscribeState state,
         CancellationToken cancellationToken)
     {
+        var log = Log.Prefixed();
         var audioSource = state.AudioSource;
         var recognizeStream = state.RecognizeStream;
         try {
@@ -192,7 +194,7 @@ public partial class GoogleTranscriber : ITranscriber
             }
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(PushAudio)} failed");
+            log.LogError(e, "failed");
             throw;
         }
         finally {

@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Kvas;
+using ActualChat.Logging;
 using ActualChat.Transcription;
 using ActualChat.Users;
 
@@ -62,7 +63,8 @@ public sealed partial class AudioProcessor : IAudioProcessor
         IAsyncEnumerable<AudioFrame> recordingStream,
         CancellationToken cancellationToken)
     {
-        Log.LogTrace(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
+        var log = Log.Prefixed();
+        log.LogTrace("record #{RecordId} = {Record}", record.Id, record);
 
         string? streamId = null;
         try {
