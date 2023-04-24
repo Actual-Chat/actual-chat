@@ -62,14 +62,15 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             var enqueueDelay = (entry.BeginsAt - playbackNow - EnqueueAheadDuration).Positive();
             Log.LogInformation("+ ChatEntry #{EntryId}, Delay: {EnqueueDelay}", entry.Id.Value, enqueueDelay);
 
-            var enqueuedAt = CpuTimestamp.Now;
+            var sw = Stopwatch.StartNew();
             var oldSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
             await EnqueueDelay(enqueueDelay, cancellationToken);
             if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
                 return;
 
             var dSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value - oldSleepDuration;
-            realStartAt += (enqueuedAt.Elapsed - enqueueDelay - dSleepDuration).Positive();
+            sw.Stop();
+            realStartAt += (sw.Elapsed - enqueueDelay - dSleepDuration).Positive();
 
             playbackNow = PlaybackNow();
             if (entryEndsAt < playbackNow)
@@ -209,7 +210,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 return;
             }
 
-            var enqueuedAt = CpuTimestamp.Now;
+            var sw = Stopwatch.StartNew();
             var cts = cancellationToken.CreateLinkedTokenSource();
             try {
                 var delayTask = Clocks.CpuClock.Delay(delay, cts.Token);
@@ -220,7 +221,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             finally {
                 cts.CancelAndDisposeSilently();
             }
-            var elapsed = enqueuedAt.Elapsed;
+            sw.Stop();
+            var elapsed = sw.Elapsed;
             delay -= elapsed;
         }
     }

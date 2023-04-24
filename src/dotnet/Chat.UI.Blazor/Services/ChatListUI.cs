@@ -193,7 +193,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         if (!_whenReadyToLoadAll.IsCompleted)
             await _whenReadyToLoadAll.ConfigureAwait(false);
 
-        var startedAt = CpuTimestamp.Now;
+        var sw = Stopwatch.StartNew();
         DebugLog?.LogDebug("-> ListAllUnorderedRaw");
         var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
         var loadLimit = _loadLimit.Value; // It is explicitly invalidated in BumpUpLoadLimit
@@ -207,7 +207,8 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
             .Collect()
             .ConfigureAwait(false);
         var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
-        DebugLog?.LogDebug("<- ListAllUnorderedRaw ({IdsLength} contacts, {Duration})", contacts.Length, startedAt.Elapsed.ToShortString());
+        sw.Stop();
+        DebugLog?.LogDebug("<- ListAllUnorderedRaw ({IdsLength} contacts, {Duration})", contacts.Length, sw.Elapsed.ToShortString());
         return result;
     }
 
