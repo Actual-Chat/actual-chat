@@ -89,6 +89,8 @@ export class FallbackPlayback {
             this.audio.muted = true;
             this.audio.pause();
             this.audio.srcObject = null;
+            this.dest.stream.getAudioTracks().forEach(x => x.stop());
+            this.dest.stream.getVideoTracks().forEach(x => x.stop());
             this.dest = null;
         } catch (e) {
             errorLog?.log('onContextClose: failed to cleanup', e)
