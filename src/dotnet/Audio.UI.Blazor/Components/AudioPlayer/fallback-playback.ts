@@ -46,7 +46,6 @@ export class FallbackPlayback {
 
             feederNode.connect(this.dest);
         } catch (e) {
-            this.attachedCount--;
             errorLog?.log('attach: failed to connect feeder node to fallback output', e);
         }
         debugLog?.log('<- attach()');
@@ -77,6 +76,7 @@ export class FallbackPlayback {
         debugLog?.log('-> onContextCreated()');
         try {
             this.dest = context.createMediaStreamDestination();
+            this.dest.channelInterpretation = 'speakers';
             this.audio.srcObject = this.dest.stream;
         } catch (e) {
             errorLog.log('onContextCreated: failed to create destination node', e)
