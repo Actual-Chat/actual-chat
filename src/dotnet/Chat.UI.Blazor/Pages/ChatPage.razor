@@ -64,8 +64,8 @@
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private NavigationCoordinatorUI NavigationCoordinatorUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
@@ -80,6 +80,7 @@
     protected override async Task OnParametersSetAsync() {
         var chatSid = ChatSid ?? "";
         var chatId = new ChatId(chatSid, ParseOrNone.Option);
+        var skipChatSelection = false;
         if (chatSid == "") {
             await ChatUI.WhenLoaded;
             chatId = ChatUI.SelectedChatId.Value;
@@ -87,13 +88,19 @@
                 _canRedirectToAnnouncementsChat = false;
                 chatId = Constants.Chat.AnnouncementsChatId;
             }
-            if (!chatId.IsNone)
-                _ = History.NavigateTo(Links.Chat(chatId), true);
+            if (!chatId.IsNone) {
+                if (!NavigationCoordinatorUI.HasOutstandingRequests()) {
+                    _ = History.NavigateTo(Links.Chat(chatId), true);
+                } else {
+                    skipChatSelection = true;
+                }
+            }
         }
 
         // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
 
-        ChatUI.SelectChat(chatId);
+        if (!skipChatSelection)
+            ChatUI.SelectChat(chatId);
         // No need to call base.OnParametersSetAsync() here, coz
         // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
     }

@@ -23,6 +23,8 @@ public class MiddlePanel
 
     public void EnsureVisible()
     {
+        if (Owner.IsWide())
+            return;
         Owner.Left.SetIsVisible(false);
         Owner.Right.SetIsVisible(false);
     }
