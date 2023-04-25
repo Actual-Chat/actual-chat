@@ -30,23 +30,21 @@ public abstract class FlushingKeyValueStore : WorkerBase
     {
         using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         var itemCount = 0;
-        var sw = new Stopwatch();
+        var startedAt = CpuTimestamp.Now;
         while (true) {
             // Likely it's faster to enumerate concurrent dictionary this way
             var batch = WriteCache.Take(32).ToList();
             if (batch.Count == 0)
                 break;
 
-            sw.Start();
             foreach (var (key, value) in batch) {
                 await StorageSet(key, value, cancellationToken).ConfigureAwait(false);
                 WriteCache.TryRemove(new KeyValuePair<HashedString, string?>(key, value));
             }
-            sw.Stop();
             itemCount += batch.Count;
         }
         if (itemCount > 0)
-            Log?.LogInformation("Flushed {ItemCount} item(s) in {Duration}", itemCount, sw.Elapsed.ToShortString());
+            Log?.LogInformation("Flushed {ItemCount} item(s) in {Duration}", itemCount, startedAt.Elapsed.ToShortString());
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)

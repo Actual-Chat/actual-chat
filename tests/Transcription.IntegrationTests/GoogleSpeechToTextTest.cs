@@ -77,15 +77,13 @@ public class GoogleSpeechToTextTest : TestBase
         _ = BackgroundTask.Run(() => PushAudio(resultStream, recognizeRequests, streamingRecognitionConfig),
             Log,
             "Error");
-        var sw = new Stopwatch();
-        sw.Start();
+        var startedAt = CpuTimestamp.Now;
         // var firstResponse = await recognizeResponses.FirstAsync();
         var first = false;
         await foreach (var streamingRecognizeResponse in recognizeResponses) {
             if (!first) {
                 first = true;
-                sw.Stop();
-                Out.WriteLine("First transcription received in: {0} ms", sw.ElapsedMilliseconds);
+                Out.WriteLine($"First transcription received in: {startedAt}");
                 Out.WriteLine(streamingRecognizeResponse.ToString());
             }
 
