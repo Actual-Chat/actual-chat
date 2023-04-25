@@ -21,7 +21,7 @@
     <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
     <OpenTelemetryNpgsqlVersion>7.0.4</OpenTelemetryNpgsqlVersion>
-    <SentryVersion>3.30.0</SentryVersion>
+    <SentryVersion>3.29.1</SentryVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="6.0.2" />
