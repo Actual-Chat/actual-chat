@@ -30,12 +30,19 @@ public class DeviceAwakeUI : IDeviceAwakeUIBackend, IDisposable
     private async Task Initialize()
     {
         if (HostInfo.AppKind == AppKind.WebServer)
-            // we reload whole app for SSB on awake. See base-layout.ts
+            // We reload whole app for SSB on awake. See base-layout.ts
             return;
 
         try {
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.{nameof(DeviceAwakeUI)}.init", _backendRef)
                 .ConfigureAwait(false);
+            // Debug logic
+            // _ = Task.Run(async () => {
+            //     while (true) {
+            //         await Task.Delay(TimeSpan.FromSeconds(10));
+            //         _totalSleepDuration.Set(r => r.Value + TimeSpan.FromSeconds(5));
+            //     }
+            // });
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize DeviceAwakeUI");
