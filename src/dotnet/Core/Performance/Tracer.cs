@@ -4,7 +4,7 @@ namespace ActualChat.Performance;
 
 public sealed class Tracer
 {
-    private static readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
+    private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
 
     public static Tracer None { get; } = new("None", null);
     public static Tracer Default { get; set; } =

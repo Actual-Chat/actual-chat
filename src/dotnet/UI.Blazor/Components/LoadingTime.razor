@@ -1,6 +1,9 @@
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @{
+    if (!HostInfo.IsDevelopmentInstance)
+        return;
     var mauiAppBuildTime = (int)LoadingUI.MauiAppBuildTime.TotalMilliseconds;
     var appInitTime = (int)LoadingUI.AppInitializeTime.TotalMilliseconds;
     var appAboutRenderContentTime = (int)LoadingUI.AppReadyToRenderContentTime.TotalMilliseconds;
@@ -18,5 +21,6 @@
 }
 
 @code {
+    [Inject] HostInfo HostInfo { get; init; } = null!;
     [Inject] LoadingUI LoadingUI { get; init; } = null!;
 }
