@@ -1,68 +1,50 @@
+using ActualChat.Users.Db;
+using Stl.Fusion.EntityFramework;
+
 namespace ActualChat.Users;
 
-public class UserPresencesBackend : IUserPresencesBackend, IDisposable
+public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresencesBackend, IAsyncDisposable
 {
     private readonly PresenceInvalidator _presenceInvalidator;
-    private CheckIns CheckIns { get; }
-    private MomentClockSet Clocks { get; }
 
-    public UserPresencesBackend(CheckIns checkIns, MomentClockSet clocks, IServiceProvider services)
-    {
-        CheckIns = checkIns;
-        Clocks = clocks;
+    public UserPresencesBackend(IServiceProvider services) : base(services)
+        => _presenceInvalidator = new (Invalidate, services.GetRequiredService<MomentClockSet>());
 
-        _presenceInvalidator = new PresenceInvalidator(Invalidate, Clocks, services.LogFor<PresenceInvalidator>());
-        _presenceInvalidator.Start();
-    }
-
-    public void Dispose()
-        => _presenceInvalidator.Dispose();
+    public ValueTask DisposeAsync()
+        => _presenceInvalidator.DisposeAsync();
 
     // [ComputeMethod]
     public virtual Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
-        => Task.FromResult(GetPresence(userId));
+        => Task.FromResult(_presenceInvalidator.GetPresence(userId));
 
     // [CommandHandler]
-    public virtual Task CheckIn(IUserPresencesBackend.CheckInCommand command, CancellationToken cancellationToken)
+    public virtual async Task CheckIn(IUserPresencesBackend.CheckInCommand command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
+            // for replica sync
+            _presenceInvalidator.Set(userId, context.Operation().Items.GetOrDefault<Moment>());
             // invalidate only if new to become online
-            if (context.Operation().Items.GetOrDefault(false))
+            if (context.Operation().Items.GetOrDefault(false)) {
                 _ = Get(command.UserId, default);
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
+            }
+            return; // It just spawns other commands, so nothing to do here
         }
 
-        var lastCheckInAt = Clocks.SystemClock.Now;
-        CheckIns.Set(userId, lastCheckInAt);
-        var mustInvalidate = _presenceInvalidator.HandleCheckIn(userId, lastCheckInAt);
-        context.Operation().Items.Set(mustInvalidate);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
-        return Task.CompletedTask;
+        var (mustInvalidate, at) = _presenceInvalidator.HandleCheckIn(userId);
+        context.Operation().Items.Set(mustInvalidate);
+        context.Operation().Items.Set(at);
     }
 
     // Private methods
 
-    private Presence GetPresence(UserId userId)
-    {
-        var lastCheckIn = CheckIns.Get(userId);
-        if (lastCheckIn == null)
-            return Presence.Unknown;
-
-        if (Clocks.SystemClock.Now - lastCheckIn < Constants.Presence.AwayTimeout)
-            return Presence.Online;
-
-        if (Clocks.SystemClock.Now - lastCheckIn < Constants.Presence.OfflineTimeout)
-            return Presence.Away;
-
-        return Presence.Offline;
-    }
-
-    private void Invalidate(IReadOnlyList<UserId> userIds)
+    private void Invalidate(UserId userId)
     {
         using (Computed.Invalidate())
-            foreach (var userId in userIds)
-                _ = Get(userId, default);
+            _ = Get(userId, default);
     }
 }
