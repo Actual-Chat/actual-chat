@@ -4,33 +4,27 @@
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
     var previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
-    var wrapperStyle = DefaultWrapperStyle;
-    var imgStyle = DefaultImgStyle;
+    var wrapperCls = "";
+    var imageCls = "";
     if (attachment.Media.Height > 0 && attachment.Media.Width > 0) {
-        var (width, height) = (attachment.Media.Width, attachment.Media.Height)
-            .ToVector2()
-            .ScaleToFitInto(MaxSize)
-            .ToIntPair();
-        wrapperStyle += $"max-width: {width}px; width: 100%; aspect-ratio: {width} / {height};";
-        imgStyle = $"max-width: {width}px; max-height: {height}px; width:100%; display:block; aspect-ratio: {width} / {height};";
+        wrapperCls = "h-28 w-auto max-w-1/3 md:h-48";
+        imageCls = "h-28 w-auto md:h-48 object-cover";
     }
 }
 
-<div class="image-attachment" style="@wrapperStyle">
+<div class="image-attachment @wrapperCls">
     <a class="cursor-pointer"
        href="@url"
        role="button"
        @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry))"
        @onclick:preventDefault="true">
-        <img class="inline skeleton" style="@imgStyle" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
+        <img class="inline skeleton @imageCls" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
     </a>
 </div>
 
 @code {
     private const int MaxWidth = 400; // In pixels
     private const int MaxHeight = 300; // In pixels
-    private static readonly string DefaultImgStyle = $"max-width: {MaxWidth}px; max-height: {MaxHeight}px";
-    private static readonly string DefaultWrapperStyle = $"max-width: {MaxWidth}px; width: 100%;";
     private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
     private const int ActualResolutionMultiplier = 2;
 
