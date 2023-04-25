@@ -180,3 +180,15 @@ body.hoverable .chat-header-title:hover {
     @apply font-medium text-base text-03;
     @apply pointer-events-none;
 }
+
+.message-attachments {
+    @apply flex-y gap-y-1 md:gap-y-4;
+    @apply mt-2 md:mt-4;
+    @apply overflow-hidden;
+}
+.message-image-attachments {
+    @apply flex flex-wrap gap-1 md:gap-4;
+}
+.message-file-attachments {
+    @apply flex-y gap-y-1;
+}

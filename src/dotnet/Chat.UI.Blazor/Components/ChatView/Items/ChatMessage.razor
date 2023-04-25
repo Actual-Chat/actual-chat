@@ -99,14 +99,18 @@
                 }
             </div>
             @if (entry.Attachments.Length > 0) {
+                var (imageList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
-                    @foreach (var attachment in entry.Attachments) {
-                        @if (attachment.IsImage()) {
+                    <div class="message-image-attachments">
+                        @foreach (var attachment in imageList) {
                             <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
-                        } else {
+                        }
+                    </div>
+                    <div class="message-file-attachments">
+                        @foreach (var attachment in fileList) {
                             <FileAttachment Attachment="@attachment"/>
                         }
-                    }
+                    </div>
                 </div>
             }
             @if (entry.HasReactions) {
@@ -237,6 +241,18 @@
             return true;
 
         return hasAnyMentions && MarkupValidator.ContainsMention(new MentionId(authorId, AssumeValid.Option)).IsValid(markup);
+    }
+
+    private (List<TextEntryAttachment>, List<TextEntryAttachment>) GetOrderedAttachmentList(ChatEntry entry) {
+        var imageList = new List<TextEntryAttachment>();
+        var fileList = new List<TextEntryAttachment>();
+        foreach (var attachment in entry.Attachments) {
+            if (attachment.IsImage())
+                imageList.Add(attachment);
+            else
+                fileList.Add(attachment);
+        }
+        return (imageList, fileList);
     }
 
     // Nested types
