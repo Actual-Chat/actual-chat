@@ -71,9 +71,11 @@ public sealed class AsyncMemoizer<T>
         var success = await buffer.TryCopyTo(channel, 0, cancellationToken).ConfigureAwait(false);
         if (!success)
             return;
+
         while (await _newTargets.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
         while (_newTargets.Writer.TryWrite((channel, skipCount)))
             return;
+
         if (!WriteTask.IsCompleted)
             await WriteTask.SuppressCancellationAwait(false);
         await _buffer.TryCopyTo(channel, skipCount, cancellationToken).ConfigureAwait(false);
@@ -95,6 +97,7 @@ public sealed class AsyncMemoizer<T>
                 while (!result.HasError && _bufferWriter.FreeCapacity > 0) {
                     if (!readTask.IsCompleted)
                         break;
+
                     result = await readTask.ConfigureAwait(false); // Sync wait
                     memory.Span[index++] = result;
                     _bufferWriter.Advance(1);
@@ -184,9 +187,7 @@ public sealed class AsyncMemoizer<T>
         public bool IsCompleted => Items.Length > 0 && Items.Span[^1].HasError;
 
         public Buffer(ReadOnlyMemory<Result<T>> items)
-        {
-            Items = items;
-        }
+            => Items = items;
 
         public void MarkOutdated()
             => _whenOutdatedSource.TrySetResult(default);
