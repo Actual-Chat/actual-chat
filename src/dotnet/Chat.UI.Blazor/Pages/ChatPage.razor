@@ -79,7 +79,6 @@
     protected override async Task OnParametersSetAsync() {
         var chatSid = ChatSid ?? "";
         var chatId = new ChatId(chatSid, ParseOrNone.Option);
-        var skipChatSelection = false;
         if (chatSid == "") {
             await ChatUI.WhenLoaded;
             chatId = ChatUI.SelectedChatId.Value;
@@ -88,18 +87,16 @@
                 chatId = Constants.Chat.AnnouncementsChatId;
             }
             if (!chatId.IsNone) {
-                if (!NavigationCoordinatorUI.HasOutstandingRequests()) {
+                if (!NavigationCoordinatorUI.HasOutstandingRequests)
                     _ = History.NavigateTo(Links.Chat(chatId), true);
-                } else {
-                    skipChatSelection = true;
-                }
+                return;
             }
         }
 
         // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
 
-        if (!skipChatSelection)
-            ChatUI.SelectChat(chatId);
+        ChatUI.SelectChat(chatId);
+
         // No need to call base.OnParametersSetAsync() here, coz
         // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
     }

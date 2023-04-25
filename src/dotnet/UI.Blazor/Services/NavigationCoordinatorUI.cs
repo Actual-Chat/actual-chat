@@ -10,11 +10,14 @@ public class NavigationCoordinatorUI
     private History History { get; }
     private ILogger Log { get; }
 
+    public bool HasOutstandingRequests => _outstandingRequestsNumber > 0;
+
     public NavigationCoordinatorUI(IServiceProvider services)
     {
         Services = services;
-        History = Services.GetRequiredService<History>();
         Log = Services.GetRequiredService<ILogger<NavigationCoordinatorUI>>();
+
+        History = Services.GetRequiredService<History>();
         var loadingUI =  Services.GetRequiredService<LoadingUI>();
         loadingUI.WhenLoaded.ContinueWith(
             _ => MarkAsReady(),
@@ -26,29 +29,32 @@ public class NavigationCoordinatorUI
 
     public async Task HandleNavigationRequest(string relativeUrl)
     {
+        // Called from Blazor Dispatcher thread, so shouldn't use .ConfigureAwait(false)
         var localUrl = new LocalUrl(relativeUrl);
         Log.LogInformation("HandleNavigationRequest. LocalUrl: '{LocalUrl}'", localUrl);
+
         _outstandingRequestsNumber++;
+        try {
+            // Navigation is allowed only after initial loading:
+            // including account is loaded and initial redirect to '/chat/'
+            await WhenReady;
+            await History.NavigateTo(localUrl);
 
-        // Navigation is allowed only after initial loading:
-        // including account is loaded and initial redirect to '/chat/'
-        await WhenReady.ConfigureAwait(true);
-        await History.NavigateTo(localUrl).ConfigureAwait(true);
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await History
-            .When(_ => History.LocalUrl.Value.OrdinalStartsWith(localUrl), cts.Token)
-            .SuppressCancellation().ConfigureAwait(true);
-        await History.WhenNavigationCompleted.ConfigureAwait(true);
-        _outstandingRequestsNumber--;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await History
+                .When(_ => History.LocalUrl.Value.OrdinalStartsWith(localUrl), cts.Token)
+                .SuppressCancellation().ConfigureAwait(true);
+            await History.WhenNavigationCompleted;
+        }
+        finally {
+            _outstandingRequestsNumber--;
+        }
 
         if (!localUrl.IsChat())
             return;
+
         // If screen is narrow, ensure middle panel is visible after navigation to chat page
         var panelsUI = Services.GetRequiredService<PanelsUI>();
         panelsUI.Middle.EnsureVisible();
     }
-
-    public bool HasOutstandingRequests()
-        => _outstandingRequestsNumber > 0;
 }
