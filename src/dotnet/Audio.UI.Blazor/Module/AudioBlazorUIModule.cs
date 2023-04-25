@@ -28,7 +28,7 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
-            .Add<RecordingPermissionModal.Model, RecordingPermissionModal>()
+            .Add<GuideModal.Model, GuideModal>()
         );
     }
 }

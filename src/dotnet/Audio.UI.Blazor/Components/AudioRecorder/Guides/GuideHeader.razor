@@ -1,0 +1,25 @@
+@using ActualChat.Chat
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.Audio.UI.Blazor.Components
+
+<div class="guide-header-wrapper">
+    <div class="guide-header">
+        <ButtonRound Class="guide-header-btn mobile" Click="OnCloseClick">
+            <i class="icon-close text-xl text-04"></i>
+        </ButtonRound>
+        <div class="flex-1 text-headline-1 text-04">
+            @Title
+        </div>
+        @if (OnOkClick.HasDelegate) {
+            <ButtonRound Class="guide-header-btn mobile" Click="OnOkClick">
+                <span class="text-headline-1 text-04">OK</span>
+            </ButtonRound>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { set; get; } = "Guide";
+    [Parameter] public EventCallback OnCloseClick { set; get; }
+    [Parameter] public EventCallback OnOkClick { set; get; }
+}
