@@ -1,18 +1,7 @@
-using ActualChat.Hosting;
-
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
-    // Should be around 2.5x min. ping time, it makes real-time player to ~ skip the initial delay, which
-    // is composed of:
-    // - invalidation message
-    // - update request + update result
-    // - stream request + first stream result
-    private static readonly TimeSpan ClientSkipDuration = TimeSpan.FromMilliseconds(100);
-    private static readonly TimeSpan ServerSkipDuration = TimeSpan.Zero;
-    private static readonly TimeSpan MaxServerClockDrift = TimeSpan.FromMilliseconds(500);
-
     public RealtimeChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
         => PlayerKind = ChatPlayerKind.Realtime;
@@ -27,7 +16,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
         var serverClock = Clocks.ServerClock;
         await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-        minPlayAt = serverClock.Now + (HostInfo.AppKind.IsClient() ? ClientSkipDuration : ServerSkipDuration);
+        minPlayAt = serverClock.Now;
 
         Operation = $"listening in \"{chat.Title}\"";
         // We always override startAt here
@@ -60,7 +49,10 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
                 return;
 
-            minPlayAt = Moment.Max(minPlayAt, serverClock.Now - MaxServerClockDrift);
+            // We don't want to move minPlayAt forward here, coz otherwise if ServerClock
+            // somehow drifts forward, it's going to skip the beginning of every message
+            // rather than just of the initial one.
+            // minPlayAt = Moment.Max(minPlayAt, serverClock.Now - MaxServerClockDrift);
             var playAt = Moment.Max(minPlayAt, entry.BeginsAt);
             if (playAt >= entry.BeginsAt + Constants.Chat.MaxEntryDuration) // no EndsAt for streaming entries
                 continue;
