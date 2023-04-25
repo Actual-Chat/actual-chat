@@ -86,9 +86,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     public virtual async Task<int> GetCount(ChatListKind listKind)
     {
-        var whenReadyToLoad = WhenReadyToLoad(listKind);
-        if (!whenReadyToLoad.IsCompleted)
-            await whenReadyToLoad.ConfigureAwait(false);
+        await WhenReadyToLoad(listKind); // No need for .ConfigureAwait(false) here
 
         var items = GetItems(listKind);
         lock (items)
@@ -121,8 +119,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
-        if (!ActiveChatsUI.WhenLoaded.IsCompleted)
-            await ActiveChatsUI.WhenLoaded.ConfigureAwait(false);
+        await ActiveChatsUI.WhenLoaded; // No need for .ConfigureAwait(false) here
 
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
@@ -190,8 +187,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnorderedRaw(CancellationToken cancellationToken)
     {
-        if (!_whenReadyToLoadAll.IsCompleted)
-            await _whenReadyToLoadAll.ConfigureAwait(false);
+        await _whenReadyToLoadAll; // No need for .ConfigureAwait(false) here
 
         var startedAt = CpuTimestamp.Now;
         DebugLog?.LogDebug("-> ListAllUnorderedRaw");

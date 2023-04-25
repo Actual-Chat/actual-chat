@@ -149,14 +149,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListData<ChatMessageModel> oldData,
         CancellationToken cancellationToken)
     {
-        if (!WhenInitialized.IsCompleted)
-            await WhenInitialized;
+        await WhenInitialized; // No need for .ConfigureAwait(false) here
 
         // NOTE(AY): The old logic relying on _getDataSuspender was returning oldData,
         // which should never happen, coz it doesn't create any dependencies.
-        var whenResumedTask = _getDataSuspender.WhenResumed();
-        if (!whenResumedTask.IsCompleted)
-            await whenResumedTask;
+        await _getDataSuspender.WhenResumed();  // No need for .ConfigureAwait(false) here
 
         var chat = Chat;
         var chatId = chat.Id;
