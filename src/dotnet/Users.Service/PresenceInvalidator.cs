@@ -1,81 +1,59 @@
 namespace ActualChat.Users;
 
-public class PresenceInvalidator : WorkerBase
+public class PresenceInvalidator : IAsyncDisposable
 {
-    private readonly SortedCheckIns _awayQueue = new ();
-    private readonly SortedCheckIns _offlineQueue = new ();
-    private Action<IReadOnlyList<UserId>> Callback { get; }
+    private readonly CheckIns _checkIns = new ();
+    private readonly ConcurrentTimerSet<UserId> _awayTimers;
+    private readonly ConcurrentTimerSet<UserId> _offlineTimers;
     private MomentClockSet Clocks { get; }
-    private ILogger<PresenceInvalidator> Log { get; }
 
     private Moment Now => Clocks.SystemClock.Now;
 
     public PresenceInvalidator(
-        Action<IReadOnlyList<UserId>> callback,
-        MomentClockSet clocks,
-        ILogger<PresenceInvalidator> log)
+        Action<UserId> callback,
+        MomentClockSet clocks)
     {
-        Callback = callback;
         Clocks = clocks;
-        Log = log;
+        _awayTimers = new (ConcurrentTimerSetOptions.Default, callback);
+        _offlineTimers = new (ConcurrentTimerSetOptions.Default, callback);
     }
 
-    public bool HandleCheckIn(UserId userId, Moment lastCheckInAt)
+    public async ValueTask DisposeAsync()
     {
-        var previous = _awayQueue.Set(new (userId, lastCheckInAt));
-        return IsOutdated(previous);
+        var t1 = _awayTimers.DisposeAsync();
+        var t2 = _offlineTimers.DisposeAsync();
+        await t1.ConfigureAwait(false);
+        await t2.ConfigureAwait(false);
     }
 
-    protected override Task OnRun(CancellationToken cancellationToken)
+    public Presence GetPresence(UserId userId)
+        => ToPresence(_checkIns.Get(userId));
+
+    public (bool MustInvalidate, Moment At) HandleCheckIn(UserId userId)
     {
-        var baseChains = new AsyncChain[] {
-            new (nameof(InvalidateOnAway), InvalidateOnAway),
-            new (nameof(InvalidateOnOffline), InvalidateOnOffline),
-        };
-        var retryDelays = new RetryDelaySeq(1, 10);
-        return (
-            from chain in baseChains
-            select chain
-                .RetryForever(retryDelays, Log)
-                .Log(LogLevel.Debug, Log)
-            ).RunIsolated(cancellationToken);
+        var at = Now;
+        var prev = GetPresence(userId);
+        var mustInvalidate = prev != ToPresence(at);
+        _awayTimers.AddOrUpdateToLater(userId, at + Constants.Presence.AwayTimeout);
+        _offlineTimers.AddOrUpdateToLater(userId, at + Constants.Presence.OfflineTimeout);
+        return (mustInvalidate, at);
     }
 
-    private Task InvalidateOnAway(CancellationToken cancellationToken)
-        => InvalidateOnTimeout(_awayQueue, _offlineQueue, Constants.Presence.AwayTimeout, cancellationToken);
+    public void Set(UserId userId, Moment at)
+        => _checkIns.Set(userId, at);
 
-    private Task InvalidateOnOffline(CancellationToken cancellationToken)
-        => InvalidateOnTimeout(_offlineQueue, null, Constants.Presence.OfflineTimeout, cancellationToken);
-
-    private async Task InvalidateOnTimeout(
-        SortedCheckIns queue,
-        SortedCheckIns? nextQueue,
-        TimeSpan checkPeriod,
-        CancellationToken cancellationToken)
+    private Presence ToPresence(Moment? lastCheckInAt)
     {
-        while (!cancellationToken.IsCancellationRequested) {
-            var toInvalidate = queue.PopRange(Now - checkPeriod);
-            if (toInvalidate.Count == 0) {
-                await Task.Delay(checkPeriod, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
+        if (lastCheckInAt == null)
+            return Presence.Unknown;
 
-            // invalidate only if user has not checked in since then
-            Callback(toInvalidate.Select(x => x.UserId).ToList());
-        }
+        var now = Now;
+        if (now - lastCheckInAt < Constants.Presence.AwayTimeout)
+            return Presence.Online;
+
+        if (now - lastCheckInAt < Constants.Presence.OfflineTimeout)
+            return Presence.Away;
+
+        return Presence.Offline;
     }
-
-    private bool IsOutdated(UserCheckIn? checkIn)
-    {
-        if (checkIn == null)
-            return true;
-
-        var timeSinceLastCheckIn = TimeSince(checkIn);
-        // TODO: timeout from settings
-        return timeSinceLastCheckIn >= Constants.Presence.AwayTimeout
-            || timeSinceLastCheckIn >= Constants.Presence.OfflineTimeout;
-    }
-
-    private TimeSpan TimeSince(UserCheckIn checkIn)
-        => Now - checkIn.At;
 }

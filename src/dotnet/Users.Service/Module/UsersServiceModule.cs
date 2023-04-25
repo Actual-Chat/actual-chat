@@ -134,7 +134,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IUserPresencesBackend, UserPresencesBackend>();
-        services.AddSingleton<CheckIns>();
         fusion.AddComputeService<IAvatars, Avatars>();
         fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
         fusion.AddComputeService<IChatPositions, ChatPositions>();
