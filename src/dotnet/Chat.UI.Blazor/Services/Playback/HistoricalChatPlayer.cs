@@ -4,14 +4,9 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
 {
-    private DeviceAwakeUI DeviceAwakeUI { get; }
-
     public HistoricalChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
-    {
-        PlayerKind = ChatPlayerKind.Historical;
-        DeviceAwakeUI = services.GetRequiredService<DeviceAwakeUI>();
-    }
+        => PlayerKind = ChatPlayerKind.Historical;
 
     protected override async Task Play(
         ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
@@ -32,9 +27,10 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return;
         }
 
-        var cpuClock = Clocks.CpuClock;
-        var lastPlaybackBlockEnd = default(Moment);
+        var clock = Clocks.CpuClock;
+        var initialSleepDuration = SleepDuration.Value;
         var realStartAt = RealNow();
+        var lastPlaybackBlockEnd = realStartAt; // Any time in past, actually
 
         idRange = (startEntry.LocalId, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
@@ -47,42 +43,35 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             if (entryEndsAt < playbackNow)
                 continue;
 
-            if (lastPlaybackBlockEnd != default && lastPlaybackBlockEnd < entry.BeginsAt) {
+            if (lastPlaybackBlockEnd < entry.BeginsAt) {
                 // There is a gap between the last playing "block" and the entry,
-                // so we should offset PlaybackNow() time to skip it.
-                realStartAt -= entry.BeginsAt - lastPlaybackBlockEnd;
-                lastPlaybackBlockEnd = entryEndsAt;
-                playbackNow = PlaybackNow();
+                // so we should move forward minPlayAt to skip it.
+                minPlayAt += entry.BeginsAt - lastPlaybackBlockEnd; // We must re-sync playbackNow after this!
             }
-            else {
-                // There is no gap between the last playing "block" and the entry.
-                lastPlaybackBlockEnd = Moment.Max(entryEndsAt, lastPlaybackBlockEnd);
-            }
+            lastPlaybackBlockEnd = Moment.Max(entryEndsAt, lastPlaybackBlockEnd);
 
-            var enqueueDelay = (entry.BeginsAt - playbackNow - EnqueueAheadDuration).Positive();
-            Log.LogInformation("+ ChatEntry #{EntryId}, Delay: {EnqueueDelay}", entry.Id.Value, enqueueDelay);
-
-            var enqueuedAt = CpuTimestamp.Now;
-            var oldSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
-            await EnqueueDelay(enqueueDelay, cancellationToken);
             if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
                 return;
 
-            var dSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value - oldSleepDuration;
-            realStartAt += (enqueuedAt.Elapsed - enqueueDelay - dSleepDuration).Positive();
+            playbackNow = PlaybackNow(); // Re-sync to account for sleep during CanContinuePlayback & possible minPlayAt update above
+            var enqueueDelay = (entry.BeginsAt - playbackNow - EnqueueAheadDuration).Positive();
+            if (enqueueDelay > TimeSpan.Zero) {
+                Log.LogInformation("Play: delaying #{EntryId} for {EnqueueDelay}", entry.Id.Value, enqueueDelay);
+                await EnqueueDelay(enqueueDelay, cancellationToken);
+                playbackNow = PlaybackNow(); // Re-sync to account for sleep during EnqueueDelay
+            }
 
-            playbackNow = PlaybackNow();
             if (entryEndsAt < playbackNow)
                 continue;
 
             var skipOffset = playbackNow - entry.BeginsAt;
             var skipTo = skipOffset.Positive();
-            var playAt = cpuClock.Now + (-skipOffset).Positive();
-            DebugLog?.LogDebug("Play.EnqueueEntry: {EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
+            var playAt = clock.Now + (-skipOffset).Positive();
+            DebugLog?.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
             entryPlayer.EnqueueEntry(entry, skipTo, playAt);
         }
 
-        Moment RealNow() => Clocks.CpuClock.Now - DeviceAwakeUI.TotalSleepDuration.Value;
+        Moment RealNow() => Clocks.CpuClock.Now + initialSleepDuration - SleepDuration.Value;
         TimeSpan PlaybackDuration() => RealNow() - realStartAt;
         Moment PlaybackNow() => minPlayAt + PlaybackDuration();
     }
@@ -93,6 +82,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return Task.FromResult<Moment?>(playingAt);
         if (shift.Ticks < 0)
             return GetRewindMomentInPast(playingAt, shift.Negate(), cancellationToken);
+
         return GetRewindMomentInFuture(playingAt, shift, cancellationToken);
     }
 

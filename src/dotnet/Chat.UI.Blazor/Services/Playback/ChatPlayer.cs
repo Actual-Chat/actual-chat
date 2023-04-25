@@ -24,6 +24,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected IServiceProvider Services { get; }
     protected MomentClockSet Clocks { get; }
+    protected IState<TimeSpan> SleepDuration { get; }
     protected HostInfo HostInfo { get; }
 
     protected IAuthors Authors { get; }
@@ -42,6 +43,7 @@ public abstract class ChatPlayer : ProcessorBase
         Services = services;
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
+        SleepDuration = services.GetRequiredService<DeviceAwakeUI>().TotalSleepDuration;
         HostInfo = services.GetRequiredService<HostInfo>();
 
         ChatId = chatId;
