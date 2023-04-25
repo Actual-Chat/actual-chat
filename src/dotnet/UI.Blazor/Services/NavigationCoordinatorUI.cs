@@ -43,7 +43,7 @@ public class NavigationCoordinatorUI
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await History
                 .When(_ => History.LocalUrl.Value.OrdinalStartsWith(localUrl), cts.Token)
-                .SuppressCancellation().ConfigureAwait(true);
+                .SuppressCancellationAwait();
             await History.WhenNavigationCompleted;
         }
         finally {
