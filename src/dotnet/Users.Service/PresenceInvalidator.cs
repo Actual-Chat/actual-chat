@@ -29,18 +29,15 @@ public class PresenceInvalidator : IAsyncDisposable
     public Presence GetPresence(UserId userId)
         => ToPresence(_checkIns.Get(userId));
 
-    public (bool MustInvalidate, Moment At) HandleCheckIn(UserId userId)
+    public bool HandleCheckIn(UserId userId, Moment at)
     {
-        var at = Now;
         var prev = GetPresence(userId);
         var mustInvalidate = prev != ToPresence(at);
+        _checkIns.Set(userId, at);
         _awayTimers.AddOrUpdateToLater(userId, at + Constants.Presence.AwayTimeout);
         _offlineTimers.AddOrUpdateToLater(userId, at + Constants.Presence.OfflineTimeout);
-        return (mustInvalidate, at);
+        return mustInvalidate;
     }
-
-    public void Set(UserId userId, Moment at)
-        => _checkIns.Set(userId, at);
 
     private Presence ToPresence(Moment? lastCheckInAt)
     {
