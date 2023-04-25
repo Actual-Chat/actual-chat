@@ -4,7 +4,7 @@ namespace ActualChat.Performance;
 
 public sealed class Tracer
 {
-    private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
+    private readonly CpuTimestamp _startedAt;
 
     public static Tracer None { get; } = new("None", null);
     public static Tracer Default { get; set; } =
@@ -25,7 +25,7 @@ public sealed class Tracer
     public Tracer this[string name] {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => IsEnabled
-            ? new (ZString.Concat(Name, '.', name), Writer)
+            ? new (ZString.Concat(Name, '.', name), Writer, _startedAt)
             : None;
     }
 
@@ -36,12 +36,18 @@ public sealed class Tracer
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Tracer(string name, Action<TracePoint>? writer)
+        : this(name, writer, CpuTimestamp.Now)
+    { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Tracer(string name, Action<TracePoint>? writer, CpuTimestamp startedAt)
     {
         if (name.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(name));
 
         Name = name;
         Writer = writer;
+        _startedAt = startedAt;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
