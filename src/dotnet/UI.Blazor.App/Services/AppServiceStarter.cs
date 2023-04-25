@@ -58,6 +58,9 @@ public class AppServiceStarter
  #pragma warning disable MA0004
         using var _1 = _tracer.Region(nameof(ReadyToRender));
 
+        // Create history - this should be done as early as possible
+        var history = Services.GetRequiredService<History>();
+
         // Starting BrowserInfo
         _tracer.Point("BrowserInfo.Initialize");
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
@@ -85,21 +88,19 @@ public class AppServiceStarter
         _tracer.Point("ThemeUI is ready");
 
         // Initialize History
-        var history = Services.GetRequiredService<History>();
         await history.Initialize();
         _tracer.Point("History is ready");
-
-        var uiLifetimeEvents = Services.GetRequiredService<UILifetimeEvents>();
-        uiLifetimeEvents.RaiseOnAppInitialized(Services);
- #pragma warning restore MA0004
+#pragma warning restore MA0004
     }
 
     public Task AfterFirstRender(CancellationToken cancellationToken)
-    {
-        // Starting less important UI services
-        Services.GetRequiredService<AppPresenceReporter>().Start();
-        return Task.CompletedTask;
-    }
+        => Task.Run(() => {
+            // Starting less important UI services
+            Services.GetRequiredService<UIEventHub>();
+            Services.GetRequiredService<DebugUI>();
+            Services.GetRequiredService<SignOutReloader>().Start();
+            Services.GetRequiredService<AppPresenceReporter>().Start();
+        }, cancellationToken);
 
     // Private methods
 

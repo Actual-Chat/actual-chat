@@ -87,17 +87,11 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<SwitchToWasmBanner.Model, SwitchToWasmBanner>()
         );
 
-        services.ConfigureUILifetimeEvents(events
-            => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
-    }
-
-    private void RegisterShowSettingsHandler(IServiceProvider services)
-    {
-        var eventHub = services.UIEventHub();
-        eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
-            var modalUI = services.GetRequiredService<ModalUI>();
-            modalUI.Show(SettingsModal.Model.Instance, true);
-            return Task.CompletedTask;
-        });
+        services.ConfigureUIEvents(
+            eventHub => eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
+                var modalUI = eventHub.Services.GetRequiredService<ModalUI>();
+                modalUI.Show(SettingsModal.Model.Instance, true);
+                return Task.CompletedTask;
+            }));
     }
 }

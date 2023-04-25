@@ -18,12 +18,6 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 
         services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
-        services.ConfigureUILifetimeEvents(events => {
-            events.OnAppInitialized += c => {
-                var signOutReloader = c.GetRequiredService<SignOutReloader>();
-                signOutReloader.Start();
-            };
-        });
 
         var fusion = services.AddFusion();
         fusion.AddComputeService<AppPresenceReporterWorker>(ServiceLifetime.Transient);

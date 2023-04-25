@@ -88,8 +88,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<RenderVars>(_ => new RenderVars());
 
         // UI events
-        services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
-            c.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
         services.AddScoped<UIEventHub>(c => new UIEventHub(c));
 
         services.AddScoped<LoadingUI>(c => new LoadingUI(c));
@@ -127,10 +125,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
         services.AddScoped<IRestartService, WebpageReloadService>(c => new WebpageReloadService(
             c.GetRequiredService<NavigationManager>()));
-
-        // Initializes History
-        services.ConfigureUILifetimeEvents(
-            events => events.OnCircuitContextCreated += c => c.GetRequiredService<History>());
 
         InjectDiagnosticsServices(services);
 
@@ -171,8 +165,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         var isWasmApp = appKind.IsWasmApp();
 
         services.AddScoped(c => new DebugUI(c));
-        services.ConfigureUILifetimeEvents(
-            events => events.OnCircuitContextCreated += c => c.GetRequiredService<DebugUI>());
 
         if (isClient) {
             services.AddSingleton(c => new TaskMonitor(c));

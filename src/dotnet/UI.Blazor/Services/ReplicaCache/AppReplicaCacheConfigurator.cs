@@ -25,6 +25,7 @@ public class AppReplicaCacheConfigurator : IAppReplicaCacheConfigurator
             return false;
         if (!_forceFlush.TryGetValue(mi.DeclaringType, out var methods))
             return false;
+
         return methods.Contains(mi.Name);
     }
 

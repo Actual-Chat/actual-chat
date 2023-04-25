@@ -4,9 +4,9 @@ namespace ActualChat.UI.Blazor;
 
 public static class ServicesCollectionExt
 {
-    public static IServiceCollection ConfigureUILifetimeEvents(
+    public static IServiceCollection ConfigureUIEvents(
         this IServiceCollection services,
-        Action<UILifetimeEvents> configurator)
+        Action<UIEventHub> configurator)
         => services.AddScoped(_ => configurator);
 
     public static IServiceCollection ConfigureAppReplicaCache(
