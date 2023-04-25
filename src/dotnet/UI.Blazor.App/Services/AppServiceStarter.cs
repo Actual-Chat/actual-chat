@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppServiceStarter
 {
-    private static readonly Tracer _tracer = Tracer.Default[nameof(AppServiceStarter)];
+    private readonly Tracer _tracer = Tracer.Default[nameof(AppServiceStarter)];
 
     private IServiceProvider Services { get; }
 
