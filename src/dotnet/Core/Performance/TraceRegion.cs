@@ -19,6 +19,7 @@ public readonly struct TraceRegion : IDisposable
             Tracer.Point(ZString.Concat("-> ", label), StartedAt);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void IDisposable.Dispose()
         => Close();
 

@@ -4,7 +4,9 @@ namespace ActualChat.Performance;
 
 public sealed class Tracer
 {
-    public static Tracer None { get; } = new("None", null, /* None Tracer timer should not count */ new Stopwatch());
+    private static readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
+
+    public static Tracer None { get; } = new("None", null);
     public static Tracer Default { get; set; } =
 #if DEBUG || DEBUG_MAUI
         new("Default", static x => Console.WriteLine("@ " + x.Format()));
@@ -12,40 +14,49 @@ public sealed class Tracer
         None;
 #endif
 
-    private readonly Stopwatch _timer;
+    public readonly string Name;
+    public TimeSpan Elapsed => _startedAt.Elapsed;
+    public readonly Action<TracePoint>? Writer;
+    public bool IsEnabled {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Writer != null;
+    }
 
-    public string Name { get; }
-    public TimeSpan Elapsed => _timer.Elapsed;
-    public Action<TracePoint>? Writer { get; }
-    public bool IsEnabled => Writer != null;
-
-    public Tracer this[string name]
-        => IsEnabled
-            ? new (ZString.Concat(Name, '.', name), Writer, _timer)
+    public Tracer this[string name] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => IsEnabled
+            ? new (ZString.Concat(Name, '.', name), Writer)
             : None;
+    }
 
-    public Tracer this[Type type]
-        => this[type.GetName()];
+    public Tracer this[Type type] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this[type.GetName()];
+    }
 
-    public Tracer(string name, Action<TracePoint>? writer, Stopwatch? timer = null)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Tracer(string name, Action<TracePoint>? writer)
     {
         if (name.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(name));
 
         Name = name;
         Writer = writer;
-        _timer = timer ?? Stopwatch.StartNew();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Point(TracePoint point)
         => Writer?.Invoke(point);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Point(string label)
         => Writer?.Invoke(new TracePoint(this, label, Elapsed));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Point(string label, TimeSpan elapsed)
         => Writer?.Invoke(new TracePoint(this, label, elapsed));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TraceRegion Region(string label, bool logEnter = true)
         => new(this, label, logEnter);
 }
