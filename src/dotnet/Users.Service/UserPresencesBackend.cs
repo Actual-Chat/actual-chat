@@ -24,20 +24,18 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             // for replica sync
-            _presenceInvalidator.Set(userId, context.Operation().Items.GetOrDefault<Moment>());
-            // invalidate only if new to become online
-            if (context.Operation().Items.GetOrDefault(false)) {
+            var at = context.Operation().Items.GetOrDefault<Moment>();
+            var mustInvalidate = _presenceInvalidator.HandleCheckIn(userId, at);
+            if (mustInvalidate)
                 _ = Get(command.UserId, default);
-            }
-            return; // It just spawns other commands, so nothing to do here
+            return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var (mustInvalidate, at) = _presenceInvalidator.HandleCheckIn(userId);
-        context.Operation().Items.Set(mustInvalidate);
-        context.Operation().Items.Set(at);
+        // we handle check while invalidating so it is handled on every replica
+        context.Operation().Items.Set(Clocks.SystemClock.Now);
     }
 
     // Private methods
