@@ -9,7 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
     public static readonly int ActiveItemCountWhenLoading = 2;
-    public static readonly int AllItemCountWhenLoading = 16;
+    public static readonly int AllItemCountWhenLoading = 10;
 
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
@@ -17,8 +17,6 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private readonly IStoredState<ChatListSettings> _settings;
     // Delayed load-related
     private readonly IMutableState<int> _loadLimit;
-    private readonly Task _whenReadyToLoadActive = Task.CompletedTask;
-    private readonly Task _whenReadyToLoadAll = Task.CompletedTask;
 
     private ChatUI? _chatUI;
     private ActiveChatsUI? _activeChatsUI;
@@ -28,6 +26,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
     private SearchUI SearchUI { get; }
+    private LoadingUI LoadingUI { get; }
     private AccountSettings AccountSettings { get; }
     private IStateFactory StateFactory { get; }
     private HostInfo HostInfo { get; }
@@ -47,21 +46,13 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         Session = services.GetRequiredService<Session>();
         Contacts = services.GetRequiredService<IContacts>();
         SearchUI = services.GetRequiredService<SearchUI>();
+        LoadingUI = services.GetRequiredService<LoadingUI>();
         AccountSettings = services.AccountSettings();
         StateFactory = services.StateFactory();
         HostInfo = services.GetRequiredService<HostInfo>();
 
         var type = GetType();
         var isClient = HostInfo.AppKind.IsClient();
-        if (isClient) {
-            // Initial chat list load can be delayed if left panel is invisible
-            var panelsUI = Services.GetRequiredService<PanelsUI>();
-            // ~ Middle.IsVisible, but instantly vs when it gets computed
-            if (panelsUI.IsWide() || !panelsUI.Left.IsVisible.Value) {
-                _whenReadyToLoadAll = Task.Delay(TimeSpan.FromSeconds(1.75));
-                _whenReadyToLoadActive = Task.Delay(TimeSpan.FromSeconds(1.5));
-            }
-        }
         _loadLimit = StateFactory.NewMutable(isClient ? AllItemCountWhenLoading : int.MaxValue,
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
@@ -84,13 +75,11 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         };
 
     [ComputeMethod]
-    public virtual async Task<int> GetCount(ChatListKind listKind)
+    public virtual Task<int> GetCount(ChatListKind listKind)
     {
-        await WhenReadyToLoad(listKind); // No need for .ConfigureAwait(false) here
-
         var items = GetItems(listKind);
         lock (items)
-            return items.Count;
+            return Task.FromResult(items.Count);
     }
 
     [ComputeMethod]
@@ -187,24 +176,27 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnorderedRaw(CancellationToken cancellationToken)
     {
-        await _whenReadyToLoadAll; // No need for .ConfigureAwait(false) here
+        try {
+            DebugLog?.LogDebug("-> ListAllUnorderedRaw");
+            var startedAt = CpuTimestamp.Now;
+            var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+            var loadLimit = _loadLimit.Value; // It is explicitly invalidated in BumpUpLoadLimit
+            if (contactIds.Length > loadLimit) {
+                contactIds = contactIds[..loadLimit];
+                _ = IncreaseLoadLimit();
+            }
 
-        var startedAt = CpuTimestamp.Now;
-        DebugLog?.LogDebug("-> ListAllUnorderedRaw");
-        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        var loadLimit = _loadLimit.Value; // It is explicitly invalidated in BumpUpLoadLimit
-        if (contactIds.Length > loadLimit) {
-            contactIds = contactIds[..loadLimit];
-            _ = IncreaseLoadLimit();
+            var contacts = await contactIds
+                .Select(contactId => ChatUI.Get(contactId.ChatId, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+            var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
+            DebugLog?.LogDebug("<- ListAllUnorderedRaw ({IdsLength} contacts, {Duration})", contacts.Length, startedAt.Elapsed.ToShortString());
+            return result;
         }
-
-        var contacts = await contactIds
-            .Select(contactId => ChatUI.Get(contactId.ChatId, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
-        var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
-        DebugLog?.LogDebug("<- ListAllUnorderedRaw ({IdsLength} contacts, {Duration})", contacts.Length, startedAt.Elapsed.ToShortString());
-        return result;
+        finally {
+            LoadingUI.MarkChatListLoaded();
+        }
     }
 
     [ComputeMethod]
@@ -223,13 +215,6 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         => listKind switch {
             ChatListKind.Active => _activeItems,
             ChatListKind.All => _allItems,
-            _ => throw new ArgumentOutOfRangeException(nameof(listKind)),
-        };
-
-    private Task WhenReadyToLoad(ChatListKind listKind)
-        => listKind switch {
-            ChatListKind.Active => _whenReadyToLoadActive,
-            ChatListKind.All => _whenReadyToLoadAll,
             _ => throw new ArgumentOutOfRangeException(nameof(listKind)),
         };
 

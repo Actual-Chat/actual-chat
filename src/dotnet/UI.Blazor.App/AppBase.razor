@@ -1,5 +1,4 @@
 @using ActualChat.Hosting
-@using ActualChat.Audio.UI.Blazor.Services
 @implements IDisposable
 @{
     // We can't render anything till the moment a few key components completed the initialization
@@ -7,7 +6,7 @@
         return;
 
     _tracer.Point("Rendered");
-    LoadingUI.ReportAppAboutRenderContent();
+    LoadingUI.MarkAppReadyToRenderContent();
 }
 
 <ScreenSizeProvider>
@@ -40,17 +39,12 @@
     private Task _whenReadyToRender = null!;
     private Tracer _tracer = null!;
 
-    [Inject] private ModuleHost Host { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private AudioInfo AudioInfo { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private UILifetimeEvents UILifetimeEvents { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private ILogger<AppBase> Log { get; init; } = null!;
+
+    [Inject] private ModuleHost Host { get; init; } = null!;
+    [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private AppServiceStarter AppServiceStarter { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     [Parameter] public string SessionId { get; set; } = Symbol.Empty;
@@ -60,8 +54,8 @@
         _disposeToken = _disposeTokenSource.Token;
     }
 
-    protected override void OnInitialized() {
-        LoadingUI.ReportAppInitialized();
+    protected override async Task OnInitializedAsync() {
+        LoadingUI.MarkAppInitialized();
         _tracer = Services.Tracer(GetType());
         using var _1 = _tracer.Region(nameof(OnInitialized));
 
@@ -75,33 +69,33 @@
 
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
-            if (SessionProvider.HasSession) {
-                if (SessionProvider.Session != session) {
+            var sessionProvider = Services.GetRequiredService<ISessionProvider>();
+            if (sessionProvider.HasSession) {
+                if (sessionProvider.Session != session) {
                     // No way to change Session other than page reload
-                    Nav.NavigateTo(Nav.Uri, true);
+                    var nav = Services.GetRequiredService<NavigationManager>();
+                    nav.NavigateTo(nav.Uri, true);
                 }
             }
             else {
-                SessionProvider.Session = session;
+                sessionProvider.Session = session;
             }
         }
-
         CircuitContext.RootComponent = this;
-        _whenReadyToRender = PrepareForTheFirstRender();
-        _whenReadyToRender.ContinueWith(_ => InvokeAsync(() => {
-            _tracer.Point("Ready to render");
-            StateHasChanged();
-            UILifetimeEvents.RaiseOnAppInitialized(Services);
-        }), TaskScheduler.Current);
 
-        // Starting less important UI services
-        var startRegion = _tracer.Region("AppPresenceReporter.Start");
-        Services.GetRequiredService<AppPresenceReporter>().Start();
-        // Prefetch OwnAccount
-        _ = Services.GetRequiredService<AccountUI>();
-        startRegion.Close();
+        _ = AppServiceStarter.PostSessionSetupWarmup(_disposeToken);
+        _whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);
+        await _whenReadyToRender;
+        StateHasChanged();
 
-        _ = EnsureLoaded();
+        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
+        try {
+            await LoadingUI.WhenLoaded.WaitAsync(TimeSpan.FromSeconds(3), _disposeToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            // Make sure MarkLoaded() is called no matter what after certain time
+            LoadingUI.MarkLoaded();
+        }
     }
 
     public virtual void Dispose() {
@@ -110,49 +104,5 @@
 
         _disposeTokenSource.CancelAndDisposeSilently();
         CircuitContext.Dispose();
-    }
-
-    private async Task PrepareForTheFirstRender() {
-        var cancellationToken = _disposeToken;
-
-        // Starting BrowserInfo
-        _tracer.Point("BrowserInfo.Initialize");
-        _ = BrowserInfo.Initialize();
-
-        // Starting Audio pipeline, load Workers and connect to Audio channel
-        _tracer.Point("AudioInfo.Initialize");
-        _ = AudioInfo.Initialize();
-
-        // Starting ThemeUI
-        _tracer.Point("ThemeUI.Start");
-        var themeUI = Services.GetRequiredService<ThemeUI>();
-        themeUI.Start();
-
-        await BrowserInfo.WhenReady.WaitAsync(cancellationToken);
-        if (TimeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
-            serverSideTimeZoneConverter.Initialize(BrowserInfo.UtcOffset);
-        _tracer.Point("BrowserInfo is ready");
-
-        // Finishing w/ theme
-        await themeUI.WhenReady.WaitAsync(cancellationToken);
-        _tracer.Point("ThemeUI is ready");
-
-        // Initialize History
-        await History.Initialize();
-        _tracer.Point("History is ready");
-    }
-
-    private async Task EnsureLoaded()
-    {
-        await _whenReadyToRender.ConfigureAwait(false);
-
-        _tracer.Point("Waiting for LoadingUI.WhenLoaded");
-        try {
-            await LoadingUI.WhenLoaded.WaitAsync(TimeSpan.FromSeconds(3), CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            // Make sure MarkLoaded() is called no matter what after certain time
-            LoadingUI.MarkLoaded();
-        }
     }
 }

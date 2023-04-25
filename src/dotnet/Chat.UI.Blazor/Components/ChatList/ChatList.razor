@@ -57,11 +57,6 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (Kind == ChatListKind.All && State is { HasValue: true, Value.IsLoading: false })
-            LoadingUI.ReportChatListLoaded();
-    }
-
     public record struct Model(
         int ChatCount,
         bool IsSearchModeOn = false,

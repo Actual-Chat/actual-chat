@@ -16,6 +16,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
+        services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
         services.ConfigureUILifetimeEvents(events => {
             events.OnAppInitialized += c => {

@@ -31,7 +31,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        services.AddScoped<NavbarUI>(c => new NavbarUI());
+        services.AddScoped<NavbarUI>(_ => new NavbarUI());
         services.AddScoped<PanelsUI>(c => new PanelsUI(c));
         services.AddScoped<AuthorUI>(c => new AuthorUI(c));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c));

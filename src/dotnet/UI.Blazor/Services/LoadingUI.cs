@@ -6,17 +6,19 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed class LoadingUI
 {
     private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
 
     private ILogger Log { get; }
     private Tracer Tracer { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
+    public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
     public TimeSpan LoadingTime { get; private set; }
     public static TimeSpan MauiAppBuildTime { get; private set; }
-    public TimeSpan AppInitTime { get; private set; }
-    public TimeSpan AppAboutRenderContentTime { get; private set; }
-    public TimeSpan ChatListLoaded { get; private set; }
+    public TimeSpan AppInitializeTime { get; private set; }
+    public TimeSpan AppReadyToRenderContentTime { get; private set; }
+    public TimeSpan ChatListLoadTime { get; private set; }
 
     public LoadingUI(IServiceProvider services)
     {
@@ -24,28 +26,32 @@ public sealed class LoadingUI
         Tracer = services.Tracer(GetType());
     }
 
-    public static void ReportMauiAppBuildTime(TimeSpan mauiAppBuildTime)
+    public static void MarkMauiAppBuilt(TimeSpan mauiAppBuildTime)
     {
         if (MauiAppBuildTime == default)
             MauiAppBuildTime = mauiAppBuildTime;
     }
 
-    public void ReportAppInitialized()
+    public void MarkAppInitialized()
     {
-        if (AppInitTime == default)
-            AppInitTime = Tracer.Elapsed;
+        if (AppInitializeTime == default)
+            AppInitializeTime = Tracer.Elapsed;
     }
 
-    public void ReportAppAboutRenderContent()
+    public void MarkAppReadyToRenderContent()
     {
-        if (AppAboutRenderContentTime == default)
-            AppAboutRenderContentTime = Tracer.Elapsed;
+        if (AppReadyToRenderContentTime == default)
+            AppReadyToRenderContentTime = Tracer.Elapsed;
     }
 
-    public void ReportChatListLoaded()
+    public void MarkChatListLoaded()
     {
-        if (ChatListLoaded == default)
-            ChatListLoaded = Tracer.Elapsed;
+        if (!_whenChatListLoadedSource.TrySetResult(default))
+            return;
+
+        ChatListLoadTime = Tracer.Elapsed;
+        Log.LogDebug(nameof(MarkChatListLoaded));
+        Tracer.Point(nameof(MarkChatListLoaded));
     }
 
     public void MarkLoaded()
@@ -53,8 +59,8 @@ public sealed class LoadingUI
         if (!_whenLoadedSource.TrySetResult(default))
             return;
 
+        LoadingTime = Tracer.Elapsed;
         Log.LogDebug(nameof(MarkLoaded));
         Tracer.Point(nameof(MarkLoaded));
-        LoadingTime = Tracer.Elapsed;
     }
 }

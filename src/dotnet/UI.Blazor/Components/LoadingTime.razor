@@ -2,10 +2,10 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var mauiAppBuildTime = (int)LoadingUI.MauiAppBuildTime.TotalMilliseconds;
-    var appInitTime = (int)LoadingUI.AppInitTime.TotalMilliseconds;
-    var appAboutRenderContentTime = (int)LoadingUI.AppAboutRenderContentTime.TotalMilliseconds;
+    var appInitTime = (int)LoadingUI.AppInitializeTime.TotalMilliseconds;
+    var appAboutRenderContentTime = (int)LoadingUI.AppReadyToRenderContentTime.TotalMilliseconds;
     var appStartTime = (int)LoadingUI.LoadingTime.TotalMilliseconds;
-    var chatListLoaded = (int)LoadingUI.ChatListLoaded.TotalMilliseconds;
+    var chatListLoaded = (int)LoadingUI.ChatListLoadTime.TotalMilliseconds;
 }
 
 @if (appStartTime > 0) {

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Services;
 using Serilog;
 using Serilog.Events;
 
@@ -46,7 +47,7 @@ public static partial class MauiProgram
             var appServices = new CompositeMauiBlazorServiceProvider(miniApp, appServicesTask, GetBlazorServiceFilter());
             AppServices = appServices;
             appServicesTask.ContinueWith(_ => StartHostedServices(appServices), TaskScheduler.Default);
-            LoadingUI.ReportMauiAppBuildTime(_tracer.Elapsed);
+            LoadingUI.MarkMauiAppBuilt(_tracer.Elapsed);
             return (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
                 .First()
@@ -199,10 +200,8 @@ public static partial class MauiProgram
 
         // Build IServiceProvider
         var appServices = BuildBlazorAppServices(services);
-
-        // Warmup
-        var appOptimizer = new MauiBlazorOptimizer(AppServices);
-        _ = appOptimizer.WarmupServices();
+        var appServiceStarter = appServices.GetRequiredService<AppServiceStarter>();
+        _ = appServiceStarter.PreWebViewWarmup(CancellationToken.None);
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = loggerFactory.CreateLogger(typeof(WebMReader));

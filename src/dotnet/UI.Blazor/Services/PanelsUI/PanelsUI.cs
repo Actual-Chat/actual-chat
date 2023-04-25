@@ -14,7 +14,12 @@ public class PanelsUI : WorkerBase, IHasServices
     {
         Services = services;
         History = services.GetRequiredService<History>();
-        ScreenSize = services.GetRequiredService<BrowserInfo>().ScreenSize;
+        var browserInfo = services.GetRequiredService<BrowserInfo>();
+        if (!browserInfo.WhenReady.IsCompleted)
+            throw StandardError.Internal(
+                $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
+
+        ScreenSize = browserInfo.ScreenSize;
         Left = new LeftPanel(this);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);
