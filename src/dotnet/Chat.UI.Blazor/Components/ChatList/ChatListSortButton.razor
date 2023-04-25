@@ -8,6 +8,10 @@
 
 <ButtonRound
     Class="chat-list-sort-btn btn-sm"
+    data-bubble="@(BubbleRef.New<ChatListTabsBubble>())"
+    data-bubble-group="@(BubbleGroup.ChatList)"
+    data-bubble-order="2"
+    data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())"
     data-menu="@(MenuRef.New<ChatListSortMenu>())"
     data-menu-trigger="@MenuTrigger.Primary"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">

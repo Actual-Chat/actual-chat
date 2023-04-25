@@ -37,17 +37,6 @@
                 SelectedTabIdChanged="@OnSelectedTabIdChanged">
                 <AdditionalButton>
                     <ChatListSortButton />
-                    <ButtonRound
-                        Class="chat-list-sort-btn btn-sm"
-                        data-bubble="@(BubbleRef.New<ChatListTabsBubble>())"
-                        data-bubble-group="@(BubbleGroup.ChatList)"
-                        data-bubble-order="2"
-                        data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())"
-                        data-menu="@(MenuRef.New<ChatListSortMenu>())"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-                        <i class="@settings.Order.GetIcon() text-2xl"></i>
-                    </ButtonRound>
                 </AdditionalButton>
                 <ChildContent>
                     @for (var i = 0; i < ChatListFilter.All.Length; i++) {
@@ -73,14 +62,8 @@
         await ChatListUI.WhenLoaded;
     }
 
-    protected override void OnAfterRender(bool firstRender)
-        => _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
     protected override void OnAfterRender(bool firstRender) {
-        LoadingUI.MarkLoaded();
-        if (State.Value != Model.Loading) {
-            LoadingUI.ReportChatListLoaded();
-            _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
-        }
+        _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
 
         if (firstRender) {
             _ = BubbleUI.Show(BubbleGroup.ChatList);
