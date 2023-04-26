@@ -1,0 +1,172 @@
+@page "/embedded/{ChatSid}"
+@using System.Diagnostics.CodeAnalysis
+@inherits ComputedStateComponent<EmbeddedChatPage.Model>
+@layout BaseLayout
+@{
+    var m = _rendered = State.Value;
+    var chat = m.Chat;
+    var chatOrNone = m.Chat ?? Chat.None;
+    var chatOrLoading = ReferenceEquals(m, Model.Loading) ? Chat.Loading : chatOrNone;
+    // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
+}
+
+<div class="page-with-header-and-footer h-full w-full flex-x">
+    <ErrorBarrier>
+        <RegionVisibilityProvider IsPanelVisible="@PanelsUI.Middle.IsVisible">
+            <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
+                <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
+                   <CascadingValue Value="@chatOrLoading">
+                       <ChatHeader />
+                   </CascadingValue>
+                </div>
+                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
+                    @if (chat != null) {
+                        <CascadingValue Value="@chat">
+                            <Banners/>
+                        </CascadingValue>
+                    }
+                </div>
+                <div class="flex-1 flex-x h-full overflow-hidden">
+                    <div class="flex-1 -flex-y h-full overflow-hidden relative">
+                        <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
+                            <CascadingValue Value="@chatOrLoading">
+                                <ChatFooter/>
+                            </CascadingValue>
+                        </div>
+                        <div class="layout-body flex-1 custom-scrollbar">
+                            @if (m.ChatId.IsNone) {
+                                <NoChatSelected/>
+                            } else if (chat == null) {
+                                <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+                            } else {
+                                <CascadingValue Value="chat" @key="ChatSid">
+                                    <ChatView @ref="_chatViewRef" />
+                                </CascadingValue>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </RegionVisibilityProvider>
+    </ErrorBarrier>
+</div>
+
+@* @if (ReferenceEquals(m, Model.Loading)) { *@
+@*     return; *@
+@* } *@
+
+@code {
+    private Model? _rendered;
+    private ChatView _chatViewRef = null!;
+    private bool _canRedirectToAnnouncementsChat = true;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private NavigationCoordinatorUI NavigationCoordinatorUI { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
+
+    [Parameter] public string? ChatSid { get; set; }
+
+    protected override Task OnInitializedAsync() {
+        AutoNavigationUI.MustNavigateToChatsOnSignIn = false;
+        ChatAudioUI.Enable();
+        return ChatUI.WhenLoaded; // Nothing happens until we load everything
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        var chatSid = ChatSid ?? "";
+        var chatId = new ChatId(chatSid, ParseOrNone.Option);
+        if (chatSid == "") {
+            await ChatUI.WhenLoaded;
+            chatId = ChatUI.SelectedChatId.Value;
+            if (chatId.IsNone && _canRedirectToAnnouncementsChat) {
+                _canRedirectToAnnouncementsChat = false;
+                chatId = Constants.Chat.AnnouncementsChatId;
+            }
+            if (!chatId.IsNone) {
+                if (!NavigationCoordinatorUI.HasOutstandingRequests)
+                    _ = History.NavigateTo(Links.Chat(chatId), true);
+                return;
+            }
+        }
+
+        // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
+
+        ChatUI.SelectChat(chatId);
+
+        // No need to call base.OnParametersSetAsync() here, coz
+        // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
+        // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
+        // and moreover, we want to make sure ComputeState gets invalidated
+        // specifically when SelectedChatId changes (vs when ChatSid changes).
+
+        // var computed = Computed.GetCurrent()!;
+        // computed.Invalidated += c => {
+        //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
+        // };
+        try {
+            var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+            var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
+            if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
+                return Model.None(screenSize);
+
+            var account = await Accounts.GetOwn(Session, cancellationToken);
+            try {
+                var chat = await Chats.Get(Session, chatId, cancellationToken);
+                return new Model(chatId, chat, account, screenSize);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+                return new Model(chatId, null, account, screenSize);
+            }
+        }
+        finally {
+            // Log.LogDebug("ComputeState() - exit: {Computed}", computed.DebugDump());
+        }
+    }
+
+    protected override bool ShouldRender()
+        => ReferenceEquals(_rendered, null)
+            || State.HasError
+            || !State.Value.IsIdenticalTo(_rendered);
+
+    // Nested types
+
+    public sealed record Model(
+        ChatId ChatId,
+        Chat? Chat,
+        AccountFull Account,
+        ScreenSize ScreenSize = ScreenSize.Unknown
+    ) {
+        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
+        public static Model None(ScreenSize screenSize) => new(default, null, AccountFull.None, screenSize);
+
+        public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
+            if (other == null)
+                return false;
+
+            return ChatId == other.ChatId
+                   && ReferenceEquals(Chat, other.Chat)
+                   && ReferenceEquals(Account, other.Account)
+                   && ScreenSize == other.ScreenSize;
+        }
+    }
+}
