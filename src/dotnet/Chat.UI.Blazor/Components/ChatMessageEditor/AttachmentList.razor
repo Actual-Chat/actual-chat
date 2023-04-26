@@ -30,6 +30,10 @@
                             </ButtonSquare>
                             @if (attachment.IsImage) {
                                 <img src="@attachment.Url" alt="image"/>
+                            } else if (attachment.IsVideo) {
+                                <video preload="metadata">
+                                    <source src="@attachment.Url#t=0.5" />
+                                </video>
                             } else {
                                 <div class="flex items-center justify-center p-3">
                                     <img src="/dist/images/attachment.svg" alt="attachment" class="h-12">
@@ -203,6 +207,7 @@
     private record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default)
     {
         public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
+        public bool IsVideo => FileType?.OrdinalIgnoreCaseStartsWith("video") ?? false;
         public bool Uploaded => Progress == 100 && !MediaId.IsNone;
     }
 }

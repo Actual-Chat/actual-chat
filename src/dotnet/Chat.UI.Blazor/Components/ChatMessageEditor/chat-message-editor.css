@@ -229,7 +229,7 @@ body.hoverable .clear-attachments-btn.btn:hover {
     @apply rounded-t-lg;
     @apply overflow-hidden;
 }
-.attachment-item > img {
+.attachment-item > img, .attachment-item > video {
     @apply min-h-34;
     @apply object-contain;
 }

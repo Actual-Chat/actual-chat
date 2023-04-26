@@ -3,7 +3,7 @@
 @{
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
-    var previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
+    var previewUrl = !attachment.IsVideo() ? UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier) : null;
     var wrapperCls = "";
     var imageCls = "";
     if (attachment.Media.Height > 0 && attachment.Media.Width > 0) {
@@ -20,9 +20,15 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry))"
+       @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry, attachment.IsVideo()))"
        @onclick:preventDefault="true">
-        <img class="inline skeleton @imageCls" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')" />
+        @if (attachment.IsVideo()) {
+            <video class="@imageCls" preload="auto" autoplay oncanplay="this.muted = true; this.play()" loop>
+                <source src="@url" />
+            </video>
+        } else {
+            <img class="inline skeleton @imageCls" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')"/>
+        }
     </a>
 </div>
 

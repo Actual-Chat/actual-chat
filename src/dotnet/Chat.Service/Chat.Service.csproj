@@ -16,6 +16,7 @@
     <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FFMpegCore" />
     <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 
