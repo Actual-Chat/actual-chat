@@ -99,10 +99,11 @@
                 }
             </div>
             @if (entry.Attachments.Length > 0) {
-                var (imageList, fileList) = GetOrderedAttachmentList(entry);
+                var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
                     <div class="message-image-attachments">
-                        @foreach (var attachment in imageList) {
+                        @foreach (var attachment in mediaList) {
+                            // TODO: rename to MediaAttachment
                             <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
                         }
                     </div>
@@ -244,15 +245,15 @@
     }
 
     private (List<TextEntryAttachment>, List<TextEntryAttachment>) GetOrderedAttachmentList(ChatEntry entry) {
-        var imageList = new List<TextEntryAttachment>();
+        var mediaList = new List<TextEntryAttachment>();
         var fileList = new List<TextEntryAttachment>();
         foreach (var attachment in entry.Attachments) {
-            if (attachment.IsImage())
-                imageList.Add(attachment);
+            if (attachment.IsImage() || attachment.IsVideo())
+                mediaList.Add(attachment);
             else
                 fileList.Add(attachment);
         }
-        return (imageList, fileList);
+        return (mediaList, fileList);
     }
 
     // Nested types

@@ -94,6 +94,8 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         // ContentSaver
         services.AddResponseCaching();
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+        services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
+        services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
 
         // ChatMarkupHub
         services.AddSingleton(c =>

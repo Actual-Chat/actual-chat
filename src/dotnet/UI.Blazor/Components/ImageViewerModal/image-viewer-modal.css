@@ -54,7 +54,7 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
     @apply justify-center items-center backdrop-blur-md;
 }
 
-.image-viewer-modal .image-viewer-content img {
+.image-viewer-modal .image-viewer-content img, .image-viewer-modal .image-viewer-content video {
     @apply flex-auto w-fit max-w-full;
     @apply object-contain;
     max-height: calc(100vh - 7rem); /* screen height - close button height */

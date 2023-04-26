@@ -50,7 +50,7 @@ export class AttachmentList {
             url: '',
             mediaId: '',
         };
-        if (file.type.startsWith('image'))
+        if (file.type.startsWith('image') || file.type.startsWith('video'))
             attachment.url = URL.createObjectURL(file);
         const isAdded = await this.invokeAttachmentAdded(attachment, file);
         if (!isAdded) {
