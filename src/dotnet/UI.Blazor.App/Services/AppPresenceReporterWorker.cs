@@ -13,7 +13,7 @@ public class AppPresenceReporterWorker : IComputeService
     protected MomentClockSet Clocks { get; }
     protected UserActivityUI UserActivityUI { get; }
     protected ChatAudioUI ChatAudioUI { get; }
-    protected UICommander UICommander { get; }
+    protected ICommander Commander { get; }
 
     public AppPresenceReporterWorker(AppPresenceReporter.Options settings, IServiceProvider services)
     {
@@ -24,7 +24,7 @@ public class AppPresenceReporterWorker : IComputeService
         Clocks = services.Clocks();
         UserActivityUI = services.GetRequiredService<UserActivityUI>();
         ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
-        UICommander = services.GetRequiredService<UICommander>();
+        Commander = services.Commander();
     }
 
     public async Task Run(CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ public class AppPresenceReporterWorker : IComputeService
     private async Task UpdatePresence(Session session, CancellationToken cancellationToken)
     {
         try {
-            await UICommander.Run(new IUserPresences.CheckInCommand(session), cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new IUserPresences.CheckInCommand(session), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "UpdatePresence failed");
