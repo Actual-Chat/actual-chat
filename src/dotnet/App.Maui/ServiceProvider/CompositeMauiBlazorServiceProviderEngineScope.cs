@@ -37,6 +37,17 @@ public sealed class CompositeMauiBlazorServiceProviderEngineScope :
             return this;
 
         var result = _mauiAppServices.GetService(serviceType);
+        if (serviceType.IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>)) {
+            var itemType = serviceType.GetGenericArguments()[0];
+            var typedResult = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
+            var enumerableResult = (IEnumerable)result!;
+            var blazorEnumerableResult = (IEnumerable)_blazorServices.GetService(serviceType)!;
+            foreach (var item in enumerableResult)
+                typedResult.Add(item);
+            foreach (var item in blazorEnumerableResult)
+                typedResult.Add(item);
+            return typedResult;
+        }
         if (result != null)
             return result;
 
