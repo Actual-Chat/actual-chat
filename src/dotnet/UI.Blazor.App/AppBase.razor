@@ -83,6 +83,7 @@
             }
         }
         CircuitContext.RootComponent = this;
+        ((AppBlazorCircuitContext)CircuitContext).MarkRootComponentReady();
 
         _ = AppServiceStarter.PostSessionSetupWarmup(_disposeToken);
         await (_whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken));

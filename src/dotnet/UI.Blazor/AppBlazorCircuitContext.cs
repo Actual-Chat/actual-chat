@@ -4,6 +4,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
 {
     private static long _lastId;
     private readonly CancellationTokenSource _stopToken = new();
+    private readonly TaskCompletionSource _whenRootComponentReady = new();
 
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
@@ -12,6 +13,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
     public long Id { get; }
     public string Origin { get; }
     public CancellationToken StopToken { get; }
+    public Task WhenRootComponentReady { get; }
 
     public AppBlazorCircuitContext(IServiceProvider services)
     {
@@ -22,8 +24,12 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         Id = Interlocked.Increment(ref _lastId);
         Origin = Alphabet.AlphaNumeric.Generator8.Next();
         StopToken = _stopToken.Token;
+        WhenRootComponentReady = _whenRootComponentReady.Task;
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
     }
+
+    public void MarkRootComponentReady()
+        => _whenRootComponentReady.TrySetResult();
 
     protected override void Dispose(bool disposing)
     {
