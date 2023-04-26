@@ -39,6 +39,7 @@ public readonly struct LocalUrl : IEquatable<LocalUrl>
         var relativeUrl = url[origin.Length..];
         return relativeUrl;
     }
+
     public string ToAbsolute(UrlMapper urlMapper)
         => urlMapper.ToAbsolute(this);
     public string ToAbsolute(NavigationManager nav)

@@ -14,13 +14,17 @@ public class PanelsUI : WorkerBase, IHasServices
     {
         Services = services;
         History = services.GetRequiredService<History>();
+
         var browserInfo = services.GetRequiredService<BrowserInfo>();
         if (!browserInfo.WhenReady.IsCompleted)
             throw StandardError.Internal(
                 $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
 
+        var autoNavigationUI = services.GetRequiredService<AutoNavigationUI>();
+        var initialLeftPanelIsVisible = autoNavigationUI.InitialLeftPanelIsVisible;
+
         ScreenSize = browserInfo.ScreenSize;
-        Left = new LeftPanel(this);
+        Left = new LeftPanel(this, initialLeftPanelIsVisible);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);
         this.Start();

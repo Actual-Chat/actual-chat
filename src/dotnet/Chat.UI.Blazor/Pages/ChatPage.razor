@@ -11,6 +11,8 @@
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
+<AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" />
+
 <RenderIntoSlot Name="MainHeader">
     <CascadingValue Value="@chatOrLoading">
         <ChatHeader />
@@ -55,7 +57,7 @@
 @code {
     private Model? _rendered;
     private ChatView _chatViewRef = null!;
-    private bool _canRedirectToAnnouncementsChat = true;
+    private bool _isLoaded;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -64,41 +66,23 @@
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
-    [Inject] private NavigationCoordinatorUI NavigationCoordinatorUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
 
     protected override Task OnInitializedAsync() {
-        AutoNavigationUI.MustNavigateToChatsOnSignIn = false;
         ChatAudioUI.Enable();
         return ChatUI.WhenLoaded; // Nothing happens until we load everything
     }
 
-    protected override async Task OnParametersSetAsync() {
-        var chatSid = ChatSid ?? "";
-        var chatId = new ChatId(chatSid, ParseOrNone.Option);
-        if (chatSid == "") {
-            await ChatUI.WhenLoaded;
-            chatId = ChatUI.SelectedChatId.Value;
-            if (chatId.IsNone && _canRedirectToAnnouncementsChat) {
-                _canRedirectToAnnouncementsChat = false;
-                chatId = Constants.Chat.AnnouncementsChatId;
-            }
-            if (!chatId.IsNone) {
-                if (!NavigationCoordinatorUI.HasOutstandingRequests)
-                    _ = History.NavigateTo(Links.Chat(chatId), true);
-                return;
-            }
-        }
-
-        // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
-
+    protected override Task OnParametersSetAsync() {
+        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
         ChatUI.SelectChat(chatId);
 
         // No need to call base.OnParametersSetAsync() here, coz
         // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
+        return Task.CompletedTask;
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -123,6 +107,16 @@
             var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
             if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
                 return Model.None(screenSize);
+
+            // Let's delay chat loading when it it is invisible and it happens for the first time
+            if (!_isLoaded && screenSize.IsNarrow()) {
+                var panelsUI = Services.GetRequiredService<PanelsUI>();
+                if (panelsUI.Left.IsVisible.Value) {
+                    Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
+                    await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken);
+                }
+            }
+            _isLoaded = true;
 
             var account = await Accounts.GetOwn(Session, cancellationToken);
             try {

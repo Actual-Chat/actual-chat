@@ -19,8 +19,8 @@ public partial class ChatAudioUI
         return (
             from chain in baseChains
             select chain
-                .RetryForever(retryDelays, Log)
-                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, DebugLog)
+                .Log(LogLevel.Debug, DebugLog)
             ).RunIsolated(cancellationToken);
     }
 
@@ -36,7 +36,7 @@ public partial class ChatAudioUI
             var newRecordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
             var newListeningChats = activeChats.Where(c => c.IsListening).ToHashSet();
 
-            Log.LogDebug("InvalidateActiveChatDependencies: *");
+            DebugLog?.LogDebug("InvalidateActiveChatDependencies: *");
             var added = newListeningChats.Except(oldListeningChats);
             var removed = oldListeningChats.Except(newListeningChats);
             var changed = added.Concat(removed).ToList();
@@ -69,7 +69,7 @@ public partial class ChatAudioUI
             if (newChatId == oldChatId)
                 continue;
 
-            Log.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
+            DebugLog?.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
             using (Computed.Invalidate()) {
                 _ = GetState(oldChatId);
                 _ = GetState(newChatId);
@@ -195,16 +195,16 @@ public partial class ChatAudioUI
 
             syncedPlaybackState = expectedPlaybackState;
             if (expectedPlaybackState != null) {
-                Log.LogDebug(nameof(PushRealtimePlaybackState) + ": starting playback");
+                DebugLog?.LogDebug(nameof(PushRealtimePlaybackState) + ": starting playback");
                 ChatPlayers.StartRealtimePlayback(expectedPlaybackState);
             }
             else {
-                Log.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
+                DebugLog?.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
                 ChatPlayers.StopPlayback();
             }
 
             skip:
-            Log.LogDebug("PushRealtimePlaybackState: waiting for changes");
+            DebugLog?.LogDebug("PushRealtimePlaybackState: waiting for changes");
             await Task.WhenAny(
                 cActualPlaybackState.WhenInvalidated(cancellationToken),
                 cExpectedPlaybackState.WhenInvalidated(cancellationToken),

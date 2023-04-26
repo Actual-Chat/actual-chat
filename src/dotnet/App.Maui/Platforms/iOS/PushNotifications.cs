@@ -93,8 +93,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         }
 
         try {
-            Log.LogDebug("NotificationTap navigates to '{Url}'", url);
-            NotificationUI.DispatchNotificationNavigation(url);
+            NotificationUI.HandleNotificationNavigation(url);
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to handle notification tap");

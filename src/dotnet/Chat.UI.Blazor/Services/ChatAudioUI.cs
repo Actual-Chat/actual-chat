@@ -25,6 +25,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private UICommander UICommander { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;

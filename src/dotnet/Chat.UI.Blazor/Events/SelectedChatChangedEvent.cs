@@ -1,3 +1,3 @@
 namespace ActualChat.Chat.UI.Blazor.Events;
 
-public record SelectedChatChangedEvent : IUIEvent;
+public sealed record SelectedChatChangedEvent : IUIEvent;

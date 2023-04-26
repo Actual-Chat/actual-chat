@@ -14,6 +14,7 @@ public class ActiveChatsUI
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     private Session Session { get; }
     private IChats Chats { get; }

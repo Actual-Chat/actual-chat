@@ -13,7 +13,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private History History { get; }
-    private NavigationCoordinatorUI NavigationCoordinatorUI { get; }
+    private AutoNavigationUI AutoNavigationUI { get; }
     private Session Session => History.Session;
     private HostInfo HostInfo => History.HostInfo;
     private UrlMapper UrlMapper => History.UrlMapper;
@@ -30,7 +30,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     public NotificationUI(IServiceProvider services)
     {
         History = services.GetRequiredService<History>();
-        NavigationCoordinatorUI = services.GetRequiredService<NavigationCoordinatorUI>();
+        AutoNavigationUI = services.GetRequiredService<AutoNavigationUI>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
         Log = services.LogFor(GetType());
@@ -94,19 +94,16 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         // Web browser notification permission requests are handled at notification-ui.ts
         => Task.CompletedTask;
 
-    public void DispatchNotificationNavigation(string url)
-        // Called from MainActivity, i.e. unclear if it's running in Blazor Dispatcher
-        => _ = Dispatcher.CheckAccess()
-            ? HandleNotificationNavigation(url)
-            : Dispatcher.InvokeAsync(async () => await HandleNotificationNavigation(url));
-
     [JSInvokable]
-    public async Task HandleNotificationNavigation(string url)
+    public void HandleNotificationNavigation(string absoluteUrl)
     {
-        var relativeUrl = LocalUrl.FromAbsolute(url, UrlMapper);
-        if (relativeUrl?.IsChatId() != true)
+        // This method can be invoked from any synchronization context
+        if (LocalUrl.FromAbsolute(absoluteUrl, UrlMapper) is not { } localUrl)
             return;
-        await NavigationCoordinatorUI.HandleNavigationRequest(relativeUrl);
+        if (!localUrl.IsChat())
+            return;
+
+        AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
     public void UpdateNotificationStatus(PermissionState newState)

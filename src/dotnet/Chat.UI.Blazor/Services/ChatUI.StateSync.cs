@@ -16,8 +16,8 @@ public partial class ChatUI
         return (
             from chain in baseChains
             select chain
-                .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log)
+                .Log(LogLevel.Debug, DebugLog)
+                .RetryForever(retryDelays, DebugLog)
             ).RunIsolated(cancellationToken);
     }
 
@@ -30,7 +30,7 @@ public partial class ChatUI
             if (newChatId == oldChatId)
                 continue;
 
-            Log.LogDebug("InvalidateSelectedChatDependencies: *");
+            DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
             using (Computed.Invalidate()) {
                 _ = IsSelected(oldChatId);
                 _ = IsSelected(newChatId);
@@ -81,7 +81,7 @@ public partial class ChatUI
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
-                Log.LogDebug("PushKeepAwakeState: *");
+                DebugLog?.LogDebug("PushKeepAwakeState: *");
                 await KeepAwakeUI.SetKeepAwake(mustKeepAwake).ConfigureAwait(false);
                 lastMustKeepAwake = mustKeepAwake;
             }

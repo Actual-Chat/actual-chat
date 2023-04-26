@@ -25,6 +25,7 @@ public class MiddlePanel
     {
         if (Owner.IsWide())
             return;
+
         Owner.Left.SetIsVisible(false);
         Owner.Right.SetIsVisible(false);
     }

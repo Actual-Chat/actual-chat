@@ -2,6 +2,6 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @layout NoLayout
 
-<AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true">
-    <Landing/>
-</AutoNavigateToChatsOnSignIn>
+<AutoNavigateOnSignIn TargetUrl="@Links.Chats" />
+
+<Landing/>

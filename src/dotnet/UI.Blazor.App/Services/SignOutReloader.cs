@@ -60,8 +60,6 @@ public class SignOutReloader : WorkerBase
                 // MAUI scenario:
                 // - Reset MustNavigateToChatsOnSignIn
                 // - Go to home page
-                var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
-                autoNavigationUI.MustNavigateToChatsOnSignIn = true;
                 History.NavigateTo(Links.Home);
                 return ValueTask.CompletedTask;
             }

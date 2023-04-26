@@ -98,8 +98,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             c.GetRequiredService<UIActionTracker>()));
         services.AddScoped<History>(c => new History(c));
         services.AddScoped<HistoryItemIdFormatter>(_ => new HistoryItemIdFormatter());
-        services.AddScoped<AutoNavigationUI>(c => new AutoNavigationUI(c));
-        services.AddScoped<NavigationCoordinatorUI>(c => new NavigationCoordinatorUI(c));
         services.AddScoped<ModalUI>(c => new ModalUI(c));
         services.AddScoped<BannerUI>(c => new BannerUI(c));
         services.AddScoped<FocusUI>(c => new FocusUI(

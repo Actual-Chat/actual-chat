@@ -42,8 +42,6 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddScoped<TracerProvider>(_ => new CircuitTracerProvider());
-
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();

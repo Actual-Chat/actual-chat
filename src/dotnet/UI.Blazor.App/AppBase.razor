@@ -2,10 +2,10 @@
 @implements IDisposable
 @{
     // We can't render anything till the moment a few key components completed the initialization
-    if (!_whenReadyToRender.IsCompletedSuccessfully)
+    if (_whenReadyToRender is not { IsCompletedSuccessfully: true })
         return;
 
-    _tracer.Point("Rendered");
+    Tracer.Point("Rendered");
     LoadingUI.MarkAppReadyToRenderContent();
 }
 
@@ -36,8 +36,8 @@
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
-    private Task _whenReadyToRender = null!;
-    private Tracer _tracer = null!;
+    private Task? _whenReadyToRender;
+    private Task? _whenAfterFirstRender;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private ILogger<AppBase> Log { get; init; } = null!;
@@ -46,6 +46,7 @@
     [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private AppServiceStarter AppServiceStarter { get; init; } = null!;
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+    private Tracer Tracer { get; set; } = null!; // Set in OnInitializedAsync
 
     [Parameter] public string SessionId { get; set; } = Symbol.Empty;
 
@@ -56,8 +57,8 @@
 
     protected override async Task OnInitializedAsync() {
         LoadingUI.MarkAppInitialized();
-        _tracer = Services.Tracer(GetType());
-        using var _1 = _tracer.Region(nameof(OnInitialized));
+        Tracer = Services.Tracer(GetType());
+        using var _1 = Tracer.Region(nameof(OnInitialized));
 
         UIAssembly ??= typeof(AppBase).Assembly;
         UIModuleAssemblies ??= Host.Modules
@@ -65,7 +66,7 @@
             .Select(p => p.GetType().Assembly)
             .Where(a => a != UIAssembly)
             .ToArray();
-        _tracer.Point("IBlazorUIModule assemblies evaluated");
+        Tracer.Point("IBlazorUIModule assemblies evaluated");
 
         if (!SessionId.IsNullOrEmpty()) {
             var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
@@ -84,18 +85,7 @@
         CircuitContext.RootComponent = this;
 
         _ = AppServiceStarter.PostSessionSetupWarmup(_disposeToken);
-        _whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);
-        await _whenReadyToRender;
-        StateHasChanged();
-
-        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
-        try {
-            await LoadingUI.WhenLoaded.WaitAsync(TimeSpan.FromSeconds(3), _disposeToken).ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            // Make sure MarkLoaded() is called no matter what after certain time
-            LoadingUI.MarkLoaded();
-        }
+        await (_whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken));
     }
 
     public virtual void Dispose() {
@@ -104,5 +94,13 @@
 
         _disposeTokenSource.CancelAndDisposeSilently();
         CircuitContext.Dispose();
+    }
+
+    protected override bool ShouldRender()
+        => _whenReadyToRender is { IsCompletedSuccessfully: true };
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (_whenReadyToRender is { IsCompletedSuccessfully: true })
+            _whenAfterFirstRender ??= AppServiceStarter.AfterFirstRender(_disposeToken);
     }
 }

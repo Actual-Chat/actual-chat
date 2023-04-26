@@ -30,20 +30,10 @@ public static class AppLinks
         if (!OrdinalIgnoreCaseEquals(uri.Host, MauiConstants.Host))
             return;
 
-        var localUrl = uri.PathAndQuery + uri.Fragment;
-        _ = Handle();
-
-        async Task Handle()
-        {
-            await WhenScopedServicesReady.ConfigureAwait(true);
-            var log = ScopedServices.LogFor(typeof(AppLinks));
-            log.LogDebug("AppLink navigates to '{Url}'", localUrl);
-            var navigationCoordinatorUI = ScopedServices.GetRequiredService<NavigationCoordinatorUI>();
-            var dispatcher = ScopedServices.GetRequiredService<Microsoft.AspNetCore.Components.Dispatcher>();
-            _ = dispatcher.CheckAccess()
-                ? navigationCoordinatorUI.HandleNavigationRequest(localUrl)
-                : dispatcher.InvokeAsync(async ()
-                    => await navigationCoordinatorUI.HandleNavigationRequest(localUrl).ConfigureAwait(false));
-        }
+        WhenScopedServicesReady.ContinueWith(_ => {
+            var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
+            var autoNavigationUI = ScopedServices.GetRequiredService<AutoNavigationUI>();
+            autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
+        }, TaskScheduler.Default);
     }
 }

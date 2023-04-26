@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
@@ -18,6 +19,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 
         services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
+        services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 
         var fusion = services.AddFusion();
         fusion.AddComputeService<AppPresenceReporterWorker>(ServiceLifetime.Transient);

@@ -75,6 +75,8 @@ public static class Program
         string baseUrl)
     {
         using var _ = Tracer.Region(nameof(ConfigureServices));
+        services.AddSingleton(new ScopedTracerProvider(Tracer)); // We don't want to have scoped tracers in WASM app
+
         // Logging
         services.AddLogging(logging => logging
             .SetMinimumLevel(LogLevel.Debug)

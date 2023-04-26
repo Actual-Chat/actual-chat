@@ -88,7 +88,7 @@ public class MainActivity : MauiAppCompatActivity
             }));
         CreateNotificationChannel();
 
-        TryProcessNotificationTap(Intent);
+        TryHandleNotificationTap(Intent);
 
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
@@ -129,7 +129,7 @@ public class MainActivity : MauiAppCompatActivity
         Log.LogDebug("OnNewIntent");
         base.OnNewIntent(intent);
 
-        TryProcessNotificationTap(intent);
+        TryHandleNotificationTap(intent);
     }
 
     public void RequestPermissions(string permission)
@@ -165,7 +165,7 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-    private void TryProcessNotificationTap(Intent? intent)
+    private void TryHandleNotificationTap(Intent? intent)
     {
         var extras = intent?.Extras;
         if (extras == null)
@@ -193,15 +193,10 @@ public class MainActivity : MauiAppCompatActivity
         if (url.IsNullOrEmpty())
             return;
 
-        _ = Handle();
-
-        async Task Handle()
-        {
-            await WhenScopedServicesReady.ConfigureAwait(true);
-            var handler = ScopedServices.GetRequiredService<NotificationUI>();
-            Log.LogDebug("NotificationTap navigates to '{Url}'", url);
-            handler.DispatchNotificationNavigation(url);
-        }
+        WhenScopedServicesReady.ContinueWith(_ => {
+            var notificationUI = ScopedServices.GetRequiredService<NotificationUI>();
+            notificationUI.HandleNotificationNavigation(url);
+        }, TaskScheduler.Default);
     }
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener

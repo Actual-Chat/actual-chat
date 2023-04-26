@@ -13,6 +13,7 @@ public partial class History : IHasServices, IDisposable
     private Session? _session;
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<History>? _backendRef;
+    private TaskCompletionSource<Unit> _whenReadySource;
 
     private object Lock { get; } = new();
     private ILogger Log { get; }
@@ -29,6 +30,8 @@ public partial class History : IHasServices, IDisposable
     public MomentClockSet Clocks { get; }
     public NavigationManager Nav { get; }
     public IJSRuntime JS { get; }
+
+    public Task WhenReady => _whenReadySource.Task;
 
     public HistoryItem? this[long itemId] {
         get { lock (Lock) return GetItemByIdUnsafe(itemId); }
@@ -63,7 +66,8 @@ public partial class History : IHasServices, IDisposable
         _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
-        _whenNavigationCompletedSource = TaskCompletionSourceExt.New<Unit>().WithResult(default);
+        _whenNavigationCompletedSource = TaskCompletionSourceExt.New<Unit>();
+        _whenReadySource = TaskCompletionSourceExt.New<Unit>();
         _processNextNavigationActionUnsafeCached = () => ProcessNextNavigationUnsafe();
 
         if (!HostInfo.AppKind.IsTestServer())
@@ -75,12 +79,20 @@ public partial class History : IHasServices, IDisposable
 
     public async Task Initialize()
     {
-        LocationChange(new LocationChangedEventArgs(Nav.Uri, true));
+        try {
+            LocationChange(new LocationChangedEventArgs(Nav.Uri, true));
 
-        _backendRef = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.History.init",
-            _backendRef);
+            _backendRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync(
+                $"{BlazorUICoreModule.ImportName}.History.init",
+                _backendRef);
+
+            _whenReadySource.TrySetResult(default);
+        }
+        catch (Exception e) {
+            _whenReadySource.TrySetException(e);
+            throw;
+        }
     }
 
     public void Register<TState>(TState defaultState, bool ignoreIfAlreadyRegistered = false)

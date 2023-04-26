@@ -1,4 +1,4 @@
-using ActualChat.Users;
+using ActualChat.UI.Blazor.Events;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -13,11 +13,11 @@ public partial class AccountUI
 
     private async Task SyncOwnAccount(CancellationToken cancellationToken)
     {
-        Tracer.Point("SyncOwnAccount");
+        var uiEventHub = (UIEventHub?)null;
         var cOwnAccount0 = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
-        var changes = cOwnAccount0.Changes(cancellationToken);
+        var changes = cOwnAccount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cOwnAccount in changes.ConfigureAwait(false)) {
             if (cOwnAccount.HasError)
                 continue;
@@ -26,14 +26,18 @@ public partial class AccountUI
             if (ownAccount is not { Id.IsNone: false })
                 continue;
 
-            var hasLoaded = _ownAccount.Value == AccountFull.Loading;
+            var oldAccount = _ownAccount.Value;
+            if (oldAccount == ownAccount)
+                continue;
 
-            // avoid excessive own account updates
-            if (_ownAccount.Value != ownAccount)
-                _ownAccount.Value = ownAccount;
-            _whenLoadedSource.TrySetResult(default);
-            if (hasLoaded)
-                Tracer.Point("SyncOwnAccount: OwnAccount is loaded");
+            Log.LogDebug("SyncOwnAccount: new OwnAccount: {Account}", ownAccount);
+            _ownAccount.Value = ownAccount;
+            if (!_whenLoadedSource.TrySetResult(default)) {
+                // We don't publish this event for the initial account change
+                uiEventHub ??= Services.GetRequiredService<UIEventHub>();
+                var @event = new OwnAccountChangedEvent(ownAccount, oldAccount);
+                await uiEventHub.Publish(@event, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 }

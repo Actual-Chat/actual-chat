@@ -40,7 +40,7 @@ public sealed class Tracer
     { }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private Tracer(string name, Action<TracePoint>? writer, CpuTimestamp startedAt)
+    public Tracer(string name, Action<TracePoint>? writer, CpuTimestamp startedAt)
     {
         if (name.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(name));

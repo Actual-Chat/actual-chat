@@ -163,7 +163,7 @@ public static partial class MauiProgram
         using var _1 = _tracer.Region(nameof(CreateBlazorAppServices));
 
         var services = new ServiceCollection();
-        services.AddSingleton(new TracerProvider(_tracer));
+        services.AddSingleton(new ScopedTracerProvider(_tracer)); // We don't want to have scoped tracers in MAUI app
         services.AddSingleton(configuration);
         // Register ILoggerFactory and ILogger
         services.AddSingleton(loggerFactory);
