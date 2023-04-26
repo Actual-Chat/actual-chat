@@ -12,7 +12,7 @@
     HasHeader="false"
     Title="@(ModalModel.AltText.NullIfEmpty() ?? "Image")">
     <Body>
-        <ImageViewerHeader OnCloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
+        <ImageViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
 
         <div @ref="@Ref" class="image-viewer-content">
             <img class="hidden"

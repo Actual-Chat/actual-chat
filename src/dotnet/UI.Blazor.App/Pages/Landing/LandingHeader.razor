@@ -13,7 +13,7 @@
 @* Header *@
 <div class="landing-header blur-bg">
     @if (isNarrow) {
-        <ButtonRound Class="menu-button flex-none" Click="@OnClick">
+        <ButtonRound Class="menu-button flex-none" Click="@Click">
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
         <div class="flex-x flex-1">
@@ -111,7 +111,7 @@
     [Inject] private History History { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override async Task OnInitializedAsync()
         => AuthSchemas = await ClientAuth.GetSchemas();

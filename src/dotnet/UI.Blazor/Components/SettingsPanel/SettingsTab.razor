@@ -9,7 +9,7 @@
 <div class="@Class settings-tab">
     <div class="tab-inner">
         <div class="settings-tab-header">
-            <SettingsHeader Title="@Title" OnArrowClick="@OnChangeView"/>
+            <SettingsHeader Title="@Title" ArrowClick="@OnChangeView"/>
         </div>
         <div class="settings-tab-content">
             @ChildContent
@@ -30,7 +30,7 @@
     [Parameter] public int? TabIndex { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? TitleContent { get; set; }
-    [Parameter] public EventCallback OnTabArrowClick { get; set; }
+    [Parameter] public EventCallback TabArrowClick { get; set; }
 
     protected override void OnInitialized() {
         if (Panel == null)

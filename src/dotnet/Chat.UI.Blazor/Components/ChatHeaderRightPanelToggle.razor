@@ -5,7 +5,7 @@
 
 @if (isVisible) {
     <ButtonRound
-        Click="OnClick"
+        Click="Click"
         Class="transparent btn-md"
         Tooltip="Chat properties"
         TooltipPosition="FloatingPosition.Bottom">
@@ -16,7 +16,7 @@
 @code {
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {

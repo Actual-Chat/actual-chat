@@ -5,7 +5,7 @@
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
-        <ButtonRound Class="image-header-btn mobile" Click="OnCloseClick">
+        <ButtonRound Class="image-header-btn mobile" Click="CloseClick">
             <i class="icon-close text-xl"></i>
         </ButtonRound>
         <div class="flex-x w-full mx-4 items-center gap-x-2">
@@ -25,7 +25,7 @@
                 <i class="icon-download"></i>
             </ButtonRound>
         }
-        <ButtonRound Class="image-header-btn desktop" Click="OnCloseClick">
+        <ButtonRound Class="image-header-btn desktop" Click="CloseClick">
             <i class="icon-close"></i>
         </ButtonRound>
     </div>
@@ -41,7 +41,7 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
-    [Parameter] public EventCallback OnCloseClick { set; get; }
+    [Parameter] public EventCallback CloseClick { set; get; }
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
