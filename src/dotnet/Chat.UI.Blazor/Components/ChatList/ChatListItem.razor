@@ -136,7 +136,9 @@ else {
         if (ScreenSize.IsWide())
             return;
 
-        // This part hides LeftPanel when you select the chat
+        ChatUI.SelectChat(chatId);
+
+        // This part hides LeftPanel when you select this chat
         var chatUrl = Links.Chat(chatId);
         var history = ChatUI.Services.GetRequiredService<History>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
