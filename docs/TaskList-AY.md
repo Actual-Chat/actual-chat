@@ -1,10 +1,14 @@
 Near-term:
-- ChatView - check why it "stucks" sometimes & updates only after a few messages are posted
+- Fix white screen in MAUI
+- Fix left panel appearing-disappearing
+- Select chat ID on click
+- Check why there are 2 error badges for errors + make sure only unique errors appear
 
 Mid-term:
 - Real-time playback: don't render it as historical
 - AuthorModal - fix view (for you & anonymous authors)
 - Anonymous user names: come up w/ nicer naming scheme
+- Check if it's ok to run ComputeState not in Dispatcher - it is already like this on MAUI
 
 Backlog:
 - ChatInfo & ChatState: get rid of one of these. ChatInfo = ChatState + ChatAudioState, i.e. doesn't change frequently enough to have a dedicated entity

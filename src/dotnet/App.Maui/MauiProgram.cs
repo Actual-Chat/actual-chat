@@ -43,10 +43,14 @@ public static partial class MauiProgram
             var miniApp = CreateMauiMiniApp(settings);
             var configuration = miniApp.Configuration;
             var loggerFactory = miniApp.Services.GetRequiredService<ILoggerFactory>();
-            var appServicesTask = Task.Run(() => CreateBlazorAppServices(configuration, loggerFactory, settings));
-            var appServices = new CompositeMauiBlazorServiceProvider(miniApp, appServicesTask, GetBlazorServiceFilter());
+            var whenAppServicesReady = Task.Run(() => CreateBlazorAppServices(configuration, loggerFactory, settings));
+            var appServices = new CompositeServiceProvider(
+                miniApp.Services,
+                whenAppServicesReady,
+                CreateLazyServiceFilter(),
+                miniApp);
             AppServices = appServices;
-            appServicesTask.ContinueWith(_ => StartHostedServices(appServices), TaskScheduler.Default);
+            whenAppServicesReady.ContinueWith(_ => StartHostedServices(appServices), TaskScheduler.Default);
             LoadingUI.MarkMauiAppBuilt(_tracer.Elapsed);
             return (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
@@ -170,7 +174,7 @@ public static partial class MauiProgram
         services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
         services.AddSingleton(settings);
 
-        RegisterExternalBlazorWebViewServices(services);
+        RegisterNonLazyServicesVisibleFromLazyServices(services);
 
 #if IS_FIXED_ENVIRONMENT_PRODUCTION || !(DEBUG || DEBUG_MAUI)
         var environment = Environments.Production;
@@ -211,27 +215,30 @@ public static partial class MauiProgram
         return appServices;
     }
 
-    private static void RegisterExternalBlazorWebViewServices(IServiceCollection services)
+    private static void RegisterNonLazyServicesVisibleFromLazyServices(IServiceCollection services)
     {
-        // we have to resolve below services from maui app services provider
-        var externalResolveTypes = new [] {
+        // The services listed below are resolved by other services from lazy service provider,
+        // and since it doesn't have them registered (inside the actual service provider
+        // backing the lazy one), they won't be resolved unless we re-register them somehow.
+        var externallyResolvedTypes = new [] {
             typeof(Microsoft.JSInterop.IJSRuntime),
             typeof(Microsoft.AspNetCore.Components.Routing.INavigationInterception),
             typeof(Microsoft.AspNetCore.Components.NavigationManager),
             typeof(Microsoft.AspNetCore.Components.Web.IErrorBoundaryLogger),
         };
 
-        services.AddScoped<DelegateServiceResolver>();
+        services.AddScoped(_ => new NonLazyServiceAccessor());
 
-        foreach (var serviceType in externalResolveTypes) {
+        foreach (var serviceType in externallyResolvedTypes) {
             var serviceDescriptor = ServiceDescriptor.Scoped(serviceType, ImplementationFactory);
             services.Add(serviceDescriptor);
 
             object ImplementationFactory(IServiceProvider c) {
-                var resolver = c.GetRequiredService<DelegateServiceResolver>();
-                var result = resolver.GetService(serviceType);
+                var accessor = c.GetRequiredService<NonLazyServiceAccessor>();
+                var result = accessor.GetService(serviceType);
                 if (result == null)
-                    throw StandardError.Constraint($"Can't resolve blazor web view service: '{serviceType}'");
+                    throw StandardError.Internal($"Couldn't resolve non-lazy service: '{serviceType.GetName()}'.");
+
                 return result;
             }
         }
@@ -370,15 +377,16 @@ public static partial class MauiProgram
         return services.BuildServiceProvider();
     }
 
-    private static Func<Type, bool> GetBlazorServiceFilter()
+    private static Func<Type, bool> CreateLazyServiceFilter()
     {
-        // Prevents lookup in blazor app service provider
-        // Otherwise we can start awaiting too early that service provider is ready.
+        // The services listed here will always resolve to null if they're requested
+        // via composite service provider. In fact, these services are optional
+        // and aren't supposed to be used, but an attempt to resolve them triggers
+        // the build of lazy service provider, so we must explicitly filter them out.
         var servicesToSkip = new HashSet<Type> {
             typeof(Microsoft.AspNetCore.Components.IComponentActivator),
         };
         AddPlatformServicesToSkip(servicesToSkip);
-
         return serviceType => !servicesToSkip.Contains(serviceType);
     }
 
