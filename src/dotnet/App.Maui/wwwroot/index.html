@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Actual Chat</title>
     <base href="/" />
-    <script>
-        console.log('script in head');
-    </script>
     <link rel="preload" href="/dist/fonts/forkawesome-webfont.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/icon.woff2?t=1675797561189" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
@@ -24,9 +21,8 @@
     <link rel="prefetch" href="/dist/wasm/ort-wasm-simd.wasm" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/wasm/vad.bin" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
-
     <script>
-        console.log('about to define window.App');
+        console.log('About to define window.App');
         window.App = {
             environment: 'unknown',
             baseUri: null,
@@ -146,23 +142,33 @@
     </div>
 
     <div id="components-reconnect-modal">
-        <div class="loading">
-            <div class="loading-caption">Unable to connect to server. Reconnecting...</div>
-            <div class="loading-progress-ring"></div>
+        <div class="background"></div>
+        <div class="image-background">
+            <div class="after-circle"></div>
+            <div class="c-circle">
+                <img src="/dist/images/loading-cat.svg" alt="loading">
+                <span class="c-text">Connecting...</span>
+            </div>
         </div>
     </div>
 
-    <div id="app" class="flex flex-col h-full">
-        <div class="maui-splash-screen">
-            <img class="logo" src="loading_icon.svg" alt="logo"/>
-            <span class="label">Loading...</span>
+    <div class="until-ui-is-ready">
+        <div class="background"></div>
+        <div class="image-background">
+            <div class="gradient-circle"></div>
+            <div class="after-circle"></div>
+            <div class="c-circle">
+                <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
+            </div>
         </div>
     </div>
 
-    <script>console.log('about to load bundle.js');</script>
+    <div id="app" class="flex flex-col h-full"></div>
+
+    <script>console.log('About to load bundle.js and blazor.webview.js');</script>
     <script src="/dist/bundle.js"></script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
-    <script>console.log('after loading blazor.webview.js');</script>
+    <script>console.log('JS loaded');</script>
 </body>
 
 </html>
