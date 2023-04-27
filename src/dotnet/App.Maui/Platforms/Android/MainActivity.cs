@@ -93,8 +93,7 @@ public class MainActivity : MauiAppCompatActivity
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var content = FindViewById(Android.Resource.Id.Content);
-        // Disabled for now, since it seems it's better to show something than just keep the splash open
-        // content!.ViewTreeObserver!.AddOnPreDrawListener(new SplashScreenDelayer());
+        content!.ViewTreeObserver!.AddOnPreDrawListener(new SplashScreenDelayer());
     }
 
     protected override void OnStart()

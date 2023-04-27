@@ -57,7 +57,7 @@
 @code {
     private Model? _rendered;
     private ChatView _chatViewRef = null!;
-    private bool _isLoaded;
+    private bool _isFirstLoad = true;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -109,14 +109,16 @@
                 return Model.None(screenSize);
 
             // Let's delay chat loading when it it is invisible and it happens for the first time
-            if (!_isLoaded && screenSize.IsNarrow()) {
-                var panelsUI = Services.GetRequiredService<PanelsUI>();
-                if (panelsUI.Left.IsVisible.Value) {
-                    Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
-                    await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken);
+            if (_isFirstLoad) {
+                _isFirstLoad = false;
+                if (screenSize.IsNarrow()) {
+                    var panelsUI = Services.GetRequiredService<PanelsUI>();
+                    if (panelsUI.Left.IsVisible.Value) {
+                        Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
+                        await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken);
+                    }
                 }
             }
-            _isLoaded = true;
 
             var account = await Accounts.GetOwn(Session, cancellationToken);
             try {

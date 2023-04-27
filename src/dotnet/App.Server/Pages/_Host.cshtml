@@ -97,7 +97,7 @@
         });
     </script>
 </head>
-<body>
+<body class="app-web @(isServerSideBlazor ? "app-server" : "app-wasm")">
 <div id="blazor-error-ui" class="hidden fixed inset-x-0 md:inset-x-1/4 mt-16 mx-2" style="z-index: 100000;">
     <div class="flex w-full justify-center">
         <div class="flex flex-1 max-w-3xl bg-error rounded-md shadow-lg">
@@ -135,9 +135,9 @@
 </div>
 
 <div id="components-reconnect-modal">
-    <div class="background"></div>
-    <div class="image-background">
-        <div class="after-circle"></div>
+    <div class="loading-bg"></div>
+    <div class="loading-image-bg">
+        <div class="c-before-circle"></div>
         <div class="c-circle">
             <img src="/dist/images/loading-cat.svg" alt="loading">
             <span class="c-text">Connecting...</span>
@@ -147,10 +147,10 @@
 
 @if (!isServerSideBlazor) {
     <div class="until-ui-is-ready">
-        <div class="background"></div>
-        <div class="image-background">
-            <div class="gradient-circle"></div>
-            <div class="after-circle"></div>
+        <div class="loading-bg"></div>
+        <div class="loading-image-bg">
+            <div class="c-gradient"></div>
+            <div class="c-before-circle"></div>
             <div class="c-circle">
                 <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
             </div>

@@ -20,6 +20,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     private ChatUI? _chatUI;
     private ActiveChatsUI? _activeChatsUI;
+    private bool _isFirstLoad = true;
 
     private Session Session { get; }
     private IContacts Contacts { get; }
@@ -176,6 +177,14 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnorderedRaw(CancellationToken cancellationToken)
     {
+        if (_isFirstLoad) {
+            _isFirstLoad = false;
+            if (HostInfo.AppKind.IsClient()) {
+                // The operations we do here are somehow CPU-intensive,
+                // so we allow other tasks to run on the first load
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
+            }
+        }
         try {
             DebugLog?.LogDebug("-> ListAllUnorderedRaw");
             var startedAt = CpuTimestamp.Now;

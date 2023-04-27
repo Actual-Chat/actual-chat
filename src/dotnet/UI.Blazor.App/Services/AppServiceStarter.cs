@@ -21,13 +21,9 @@ public class AppServiceStarter
     {
         using var _1 = Tracer.Region(nameof(PreWebViewWarmup));
         try {
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 WarmupSerializer(new Chat.Chat());
                 WarmupSerializer(new ChatTile());
-                await Task.Yield();
-                WarmupSerializer(new Mention());
-                WarmupSerializer(new Reaction());
-                WarmupSerializer(new Author());
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
@@ -35,13 +31,14 @@ public class AppServiceStarter
         }
     }
 
-    public async Task PostSessionSetupWarmup(CancellationToken cancellationToken)
+    public Task PostSessionSetupWarmup(CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Region(nameof(PostSessionSetupWarmup));
+        return Task.CompletedTask;
+        /*
         try {
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 var chatListUI = Services.GetRequiredService<ChatListUI>();
-                await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
                 _ = chatListUI.ListActive(cancellationToken);
                 _ = chatListUI.ListAllUnordered(cancellationToken);
             }, cancellationToken).ConfigureAwait(false);
@@ -49,6 +46,7 @@ public class AppServiceStarter
         catch (Exception e) {
             Tracer.Point($"{nameof(PostSessionSetupWarmup)} failed, error: " + e);
         }
+        */
     }
 
     public async Task ReadyToRender(CancellationToken cancellationToken)
@@ -108,7 +106,7 @@ public class AppServiceStarter
         => Task.Run(async () => {
             // Starting less important UI services
             Services.GetRequiredService<UIEventHub>();
-            await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<SignOutReloader>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<DebugUI>();

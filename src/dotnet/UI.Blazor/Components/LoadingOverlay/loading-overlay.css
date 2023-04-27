@@ -1,22 +1,22 @@
 /* Gradient circle */
 
-.background {
+.loading-bg {
     @apply absolute top-0;
     @apply flex;
     @apply h-full w-full;
-    @apply backdrop-blur-sm;
+    @apply backdrop-blur;
     background: rgba(255, 255, 255, 0.2);
 }
-body.narrow .background {
+body.narrow .loading-bg {
     background: rgba(255, 255, 255, 0.3);
 }
-.image-background {
+.loading-image-bg {
     @apply absolute top-0 z-10;
     @apply flex items-center justify-center;
     @apply h-full w-full;
     @apply overflow-hidden;
 }
-.image-background .c-circle {
+.loading-image-bg > .c-circle {
     @apply flex-y items-center justify-center gap-y-2;
     @apply w-88 h-88 md:w-96 md:h-96;
     @apply rounded-full;
@@ -24,7 +24,7 @@ body.narrow .background {
     @apply bg-01;
     @apply text-2xl font-semibold text-03;
 }
-.image-background .after-circle {
+.loading-image-bg > .c-before-circle {
     @apply absolute z-minus;
     @apply w-88 h-88 md:w-96 md:h-96;
     @apply rounded-full;
@@ -32,50 +32,63 @@ body.narrow .background {
     background: rgba(255, 255, 255, 1);
     box-shadow: 0 0 50px 50px rgba(255, 255, 255, 1);
 }
-.c-circle .c-text {
+.loading-image-bg > .c-circle .c-text {
     @apply text-03;
     @apply animate-pulse-70;
 }
-.c-circle img {
+.loading-image-bg > .c-circle img {
     @apply animate-pulse-70;
 }
 
 /* Loading screen (until-ui-is-ready) */
 
-.until-ui-is-ready .background {
-    background: rgba(255, 255, 255, 0.1);
+.until-ui-is-ready {
+    @apply absolute top-0;
+    @apply flex;
+    @apply h-full w-full;
+    z-index: 2000;
 }
-body.app-maui .until-ui-is-ready .background {
-    background: #0036a3;
+body:has(.ui-is-rendered) .until-ui-is-ready {
+    @apply hidden;
 }
 
-.until-ui-is-ready .gradient-circle {
+.until-ui-is-ready > .loading-bg {
+    background: rgba(255, 255, 255, 0.1); /* NOTE(AY): Doesn't work! */
+}
+body.app-maui .until-ui-is-ready > .loading-bg {
+    background: #0036a3; /* NOTE(AY): Doesn't work! */
+}
+body.app-wasm .until-ui-is-ready > .loading-bg {
+    background: #0036a3; /* NOTE(AY): Doesn't work! */
+}
+
+.until-ui-is-ready .loading-image-bg > .c-gradient {
     @apply absolute z-minus;
     @apply w-48 h-48 md:w-96 md:h-96;
     @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
 }
-.until-ui-is-ready .after-circle {
+.until-ui-is-ready .loading-image-bg > .c-before-circle {
     @apply w-36 h-36 md:w-72 md:h-72;
     @apply rounded-5xl;
     @apply bg-transparent;
     box-shadow: 0 0 0 100vw #fff;
     @apply blur-none;
-    animation: rotate 5s infinite;
+    animation: rotate-4 8s infinite;
 }
-.until-ui-is-ready .c-circle {
+.until-ui-is-ready .loading-image-bg > .c-circle {
     @apply w-36 h-36 md:w-64 md:h-64;
     @apply rounded-5xl;
     @apply bg-transparent;
     @apply backdrop-blur-none;
 }
-.until-ui-is-ready .c-circle .c-text {
+.until-ui-is-ready .loading-image-bg > .c-circle .c-text {
     @apply animate-none;
 }
-.until-ui-is-ready .c-circle img {
+.until-ui-is-ready .loading-image-bg > .c-circle img {
     @apply animate-none;
 }
 
-.until-ui-is-ready .c-circle:before {
+.until-ui-is-ready .loading-image-bg > .c-circle:before {
     @apply absolute top-0 left-0;
     @apply w-full;
     @apply opacity-50;
@@ -87,7 +100,7 @@ body.app-maui .until-ui-is-ready .background {
     transform: translate(-100%, -25%) rotate(10deg);
 }
 
-@keyframes rotate {
+@keyframes rotate-4 {
     0% { transform: rotate(0deg); }
     20% { transform: rotate(90deg); }
     25% { transform: rotate(90deg); }
@@ -95,5 +108,6 @@ body.app-maui .until-ui-is-ready .background {
     50% { transform: rotate(180deg); }
     70% { transform: rotate(270deg); }
     75% { transform: rotate(270deg); }
+    95% { transform: rotate(360deg); }
     100% { transform: rotate(360deg); }
 }

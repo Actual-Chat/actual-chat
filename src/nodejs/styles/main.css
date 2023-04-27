@@ -123,7 +123,3 @@ input.input-underlined {
     @apply h-auto;
     @apply overflow-y-auto;
 }
-
-body:has(.ui-is-rendered) .until-ui-is-ready {
-    @apply hidden;
-}

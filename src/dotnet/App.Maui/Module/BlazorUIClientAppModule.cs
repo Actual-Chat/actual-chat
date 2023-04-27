@@ -19,7 +19,7 @@ public sealed class BlazorUIClientAppModule : HostModule, IBlazorUIModule
         services.AddScoped<IClientAuth, MauiClientAuth>();
 
         // Replica cache
-        // Temporarily disabled for MAUI due to cache is stale after computed is updated from replica.
+        // Temporarily disabled for MAUI due to issues there
 #if false
         services.AddSingleton<AppReplicaCacheConfigurator>();
         services.AddSingleton<ReplicaCache>(c => {
