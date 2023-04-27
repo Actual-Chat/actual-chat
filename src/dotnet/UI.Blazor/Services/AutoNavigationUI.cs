@@ -38,19 +38,19 @@ public abstract class AutoNavigationUI : IHasServices
 
     public void DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        async Task Execute() {
-            // When mobile app is started from notification tap,
-            // root component is not set at this moment yet
-            // and accessing Dispatcher causes an exception.
-            // So we need to await here till root component is initialized.
-            await BlazorCircuitContext.WhenRootComponentReady.ConfigureAwait(true);
+        if (BlazorCircuitContext.WhenReady.IsCompleted) {
             if (Dispatcher.CheckAccess())
                 NavigateTo(url, reason);
             else
-                _ = Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+                Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+            return;
         }
-
-        _ = Execute();
+        BlazorCircuitContext.WhenReady.ContinueWith(_ => {
+            if (Dispatcher.CheckAccess())
+                NavigateTo(url, reason);
+            else
+                Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+        }, TaskScheduler.Current);
     }
 
     public void NavigateTo(LocalUrl url, AutoNavigationReason reason)
