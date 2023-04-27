@@ -39,6 +39,7 @@ services:
     #  - ./.config/local.actual.chat/log/nginx/access.log:/var/log/nginx/access.log
     extra_hosts:
       - "local.actual.chat:host-gateway"
+      - "embedded.actual.chat:host-gateway"
   dns-forwarder:
     image: janeczku/go-dnsmasq
     network_mode: bridge

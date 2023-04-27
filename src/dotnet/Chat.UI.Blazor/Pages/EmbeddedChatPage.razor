@@ -13,40 +13,34 @@
 <div class="page-with-header-and-footer h-full w-full flex-x">
     <ErrorBarrier>
         <RegionVisibilityProvider IsPanelVisible="@PanelsUI.Middle.IsVisible">
-            <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
-                <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
-                   <CascadingValue Value="@chatOrLoading">
-                       <ChatHeader />
-                   </CascadingValue>
-                </div>
-                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
-                    @if (chat != null) {
-                        <CascadingValue Value="@chat">
-                            <Banners/>
-                        </CascadingValue>
-                    }
-                </div>
-                <div class="flex-1 flex-x h-full overflow-hidden">
-                    <div class="flex-1 -flex-y h-full overflow-hidden relative">
-                        <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
-                            <CascadingValue Value="@chatOrLoading">
+            <CascadingValue Value="@chatOrLoading">
+                <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
+                    <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
+                        <ChatHeader IsLeftNavigateButtonVisible="false" IsRightNavigateButtonVisible="false" />
+                    </div>
+                    <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
+                        <Banners/>
+                    </div>
+                    <div class="flex-1 flex-x h-full overflow-hidden">
+                        <div class="flex-1 -flex-y h-full overflow-hidden relative">
+                            <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
                                 <ChatFooter/>
-                            </CascadingValue>
-                        </div>
-                        <div class="layout-body flex-1 custom-scrollbar">
-                            @if (m.ChatId.IsNone) {
-                                <NoChatSelected/>
-                            } else if (chat == null) {
-                                <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
-                            } else {
-                                <CascadingValue Value="chat" @key="ChatSid">
-                                    <ChatView @ref="_chatViewRef" />
-                                </CascadingValue>
-                            }
+                            </div>
+                            <div class="layout-body flex-1 custom-scrollbar">
+                                @if (m.ChatId.IsNone) {
+                                    <NoChatSelected/>
+                                } else if (chat == null) {
+                                    <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+                                } else {
+                                    <CascadingValue Value="chat" @key="ChatSid">
+                                        <ChatView @ref="_chatViewRef" />
+                                    </CascadingValue>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </CascadingValue>
         </RegionVisibilityProvider>
     </ErrorBarrier>
 </div>

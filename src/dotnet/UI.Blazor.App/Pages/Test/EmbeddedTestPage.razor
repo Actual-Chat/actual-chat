@@ -1,0 +1,17 @@
+@page "/test/embedded"
+
+<RequireAccount MustBeAdmin="true"/>
+<h2>Embedded Test Page</h2>
+
+<p>
+    <iframe id="chatFrame"
+            style="width: 100%; height: 100%;
+               border: none;
+               box-shadow: 5px 5px 10px #CCC;"
+            src="https://embedded.actual.chat/embedded/the-actual-one"
+            referrerpolicy="origin-when-cross-origin"
+            loading="lazy"
+            sandbox="allow-downloads allow-scripts"
+            allow="microphone *; storage-access-api *; sync-xhr *; document-domain *">
+    </iframe>
+</p>
