@@ -19,11 +19,11 @@ public class NavigationInterceptor
 
         var nav = scopedServices.GetRequiredService<NavigationManager>();
         var baseUri = AppSettings.BaseUri;
-        if (baseUri.IsBaseOf(uri)) {
-            var relativeUri = baseUri.MakeRelativeUri(uri);
-            nav.NavigateTo(relativeUri.ToString());
-            return true;
-        }
-        return false;
+        if (!baseUri.IsBaseOf(uri))
+            return false;
+
+        var relativeUri = baseUri.MakeRelativeUri(uri);
+        nav.NavigateTo(relativeUri.ToString());
+        return true;
     }
 }
