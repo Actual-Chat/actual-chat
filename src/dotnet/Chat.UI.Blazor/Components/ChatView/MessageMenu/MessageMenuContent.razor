@@ -1,11 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Events
-@inherits ComputedStateComponent<MessageMenuContent.Model>
+
 @{
-    var m = State.Value;
-    var entry = ChatMessageModel.Entry;
+    var entry = ChatEntry;
     var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
-    var canEditOrDelete = m is { CanWrite: true, IsOwnEntry: true } && entry is { Kind: ChatEntryKind.Text, IsStreaming: false };
+    var canEditOrDelete = this is { CanWrite: true, IsOwnEntry: true }
+                          && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false };
     var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
 }
 
@@ -23,7 +23,7 @@
             Click="@(() => Edit(entry))">
         </MenuEntry>
     }
-    @if (m.CanWrite && !IsSystem) {
+    @if (CanWrite && !IsSystem) {
         <MenuEntry
             Icon="icon-reply"
             FocusOnEditor="true"
@@ -60,50 +60,21 @@
 
 @code{
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatMessageModel ChatMessageModel { get; set; } = null!;
-    [Parameter] public string? ClickedLinkUrl { get; set; }
-    [Parameter] public bool IsSystem { get; set; }
+    [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
+    [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
+    [Parameter, EditorRequired] public bool IsSystem { get; set; }
+    [Parameter, EditorRequired] public bool IsOwnEntry { get; set; }
+    [Parameter, EditorRequired] public bool CanWrite { get; set; }
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            Category = GetStateCategory(),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
-    {
-        var chatEntry = ChatMessageModel.Entry;
-        var chatId = chatEntry.ChatId;
-        var requestAuthor = await Authors.GetOwn(Session, chatId, CancellationToken.None);
-        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
-        // Default scheduler is used from here
-        var canWrite = rules.CanWrite();
-
-        return new Model {
-            CanWrite = canWrite,
-            IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
-        };
-    }
 
     private Task Reply(ChatEntry chatEntry)
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task Edit(ChatEntry chatEntry)
         => ChatEditorUI.Edit(chatEntry);
-
-    public sealed record Model {
-        public static readonly Model None = new();
-
-        public bool IsOwnEntry { get; init; }
-        public bool CanWrite { get; init; }
-    }
 }
