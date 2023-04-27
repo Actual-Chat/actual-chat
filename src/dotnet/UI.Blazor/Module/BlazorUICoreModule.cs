@@ -81,8 +81,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         }
         else {
             services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
-            services.AddSingleton<ServerTimeSync>();
-            services.AddHostedService<ServerTimeSync>();
+            services.AddHostedService(c => new ServerTimeSync(c));
         }
         services.AddScoped<ComponentIdGenerator>(_ => new ComponentIdGenerator());
         services.AddScoped<RenderVars>(_ => new RenderVars());

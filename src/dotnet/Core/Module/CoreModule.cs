@@ -24,9 +24,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Common services
         services.AddTracer();
-        services.AddSingleton<StaticImportsInitializer>();
-        services.AddHostedService<StaticImportsInitializer>();
-        services.AddSingleton<UrlMapper>(c => new UrlMapper(
+        services.AddHostedService(c => new StaticImportsInitializer(c));
+        services.AddSingleton(c => new UrlMapper(
             c.GetRequiredService<HostInfo>()));
 
         // IArithmetics
@@ -42,7 +41,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         services.AddTypeMapper<IDiffHandler>(DiffEngine.DefaultTypeMapBuilder);
 
         // DiffEngine
-        services.AddSingleton<DiffEngine>(c => new DiffEngine(c));
+        services.AddSingleton(c => new DiffEngine(c));
 
         // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
@@ -50,7 +49,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
  #pragma warning restore CS0618
             : new DefaultObjectPoolProvider());
-        services.AddSingleton(typeof(IValueTaskSourceFactory<>), typeof(PooledValueTaskSourceFactory<>));
 
         // Fusion
         var fusion = services.AddFusion();
@@ -58,7 +56,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         fusion.AddFusionTime();
 
         // Features
-        services.AddScoped<Features>(c => new Features(c));
+        services.AddScoped(c => new Features(c));
         fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
         if (HostInfo.AppKind.IsServer())
