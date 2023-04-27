@@ -10,7 +10,7 @@ case MarkupUrlKind.Local:
        href="@(_localUrl!.Value)"
        @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Local, _localUrl.Value))"
        @onclick:preventDefault="true"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url))">
         @Markup.Url
     </a>
     break;
@@ -25,7 +25,7 @@ case MarkupUrlKind.Image:
     break;
 default:
     <a class="@cls" href="@Markup.Url" target="_blank"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url))">
         @Markup.Url
     </a>
     break;

@@ -33,8 +33,8 @@
 }
 @if (isSystem) {
     <div class="@cls"
-         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, "true"))"
-         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "true", ""))"
+         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.TrueString))"
+         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.TrueString, ""))"
          data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
         <div class="chat-message group @cls">
             <div class="c-content">
@@ -55,8 +55,8 @@
 }
 
 <div class="@cls"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, "false"))"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "false", ""))"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, ""))"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="chat-message group">
         <div class="c-author-badge">
