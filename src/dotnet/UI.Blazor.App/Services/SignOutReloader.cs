@@ -28,45 +28,46 @@ public class SignOutReloader : WorkerBase
 
         var updateDelayer = FixedDelayer.Instant;
         while (true) {
-            try {
-                var cAuthInfo0 = await Computed
-                    .Capture(() => auth.GetAuthInfo(session, cancellationToken))
-                    .ConfigureAwait(false);
+            while (true) {
+                try {
+                    var cAuthInfo0 = await Computed
+                        .Capture(() => auth.GetAuthInfo(session, cancellationToken))
+                        .ConfigureAwait(false);
 
-                // Wait for sign-in unless already signed in
-                if (cAuthInfo0.ValueOrDefault?.IsAuthenticated() != true) {
-                    await cAuthInfo0.When(i => i?.IsAuthenticated() ?? false, updateDelayer, cancellationToken).ConfigureAwait(false);
-                    await UICommander.RunNothing().ConfigureAwait(false); // Reset all update delays
+                    // Wait for sign-in unless already signed in
+                    if (cAuthInfo0.ValueOrDefault?.IsAuthenticated() != true) {
+                        await cAuthInfo0.When(i => i?.IsAuthenticated() ?? false, updateDelayer, cancellationToken).ConfigureAwait(false);
+                        await UICommander.RunNothing().ConfigureAwait(false); // Reset all update delays
+                    }
+
+                    var onboardingUI = Services.GetRequiredService<OnboardingUI>();
+                    _ = History.Dispatcher.InvokeAsync(() => onboardingUI.TryShow());
+
+                    // Wait for sign-out
+                    await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch {
+                    // Intended
+                }
+            }
+
+            Log.LogInformation("Forcing reload on sign-out");
+            _ = History.Dispatcher.InvokeAsync(() => {
+                if (History.HostInfo.AppKind.IsMauiApp()) {
+                    // MAUI scenario:
+                    // - Go to home page
+                    History.NavigateTo(Links.Home);
+                    return ValueTask.CompletedTask;
                 }
 
-                var onboardingUI = Services.GetRequiredService<OnboardingUI>();
-                _ = History.Dispatcher.InvokeAsync(() => onboardingUI.TryShow());
-
-                // Wait for sign-out
-                await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);
-                break;
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch {
-                // Intended
-            }
+                // Blazor Server/WASM scenario:
+                // - Hard reload of home page
+                return History.HardNavigateTo(Links.Home);
+            });
         }
-
-        Log.LogInformation("Forcing reload on sign-out");
-        _ = History.Dispatcher.InvokeAsync(() => {
-            if (History.HostInfo.AppKind.IsMauiApp()) {
-                // MAUI scenario:
-                // - Reset MustNavigateToChatsOnSignIn
-                // - Go to home page
-                History.NavigateTo(Links.Home);
-                return ValueTask.CompletedTask;
-            }
-
-            // Blazor Server/WASM scenario:
-            // - Hard reload of home page
-            return History.HardNavigateTo(Links.Home);
-        });
     }
 }
