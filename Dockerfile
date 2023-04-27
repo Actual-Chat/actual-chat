@@ -9,6 +9,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+RUN apt update && apt install -y ffmpeg && apt clean
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0.202-bullseye-slim-amd64 as dotnet-restore
