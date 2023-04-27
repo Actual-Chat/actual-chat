@@ -93,7 +93,8 @@ public class MainActivity : MauiAppCompatActivity
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var content = FindViewById(Android.Resource.Id.Content);
-        content!.ViewTreeObserver!.AddOnPreDrawListener(new PreDrawListener());
+        // Disabled for now, since it seems it's better to show something than just keep the splash open
+        // content!.ViewTreeObserver!.AddOnPreDrawListener(new SplashScreenDelayer());
     }
 
     protected override void OnStart()
@@ -199,7 +200,7 @@ public class MainActivity : MauiAppCompatActivity
         }, TaskScheduler.Default);
     }
 
-    private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
+    private class SplashScreenDelayer : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
         private readonly object _lock = new();
         private IServiceProvider? _lastScopedServices;
@@ -221,7 +222,7 @@ public class MainActivity : MauiAppCompatActivity
                     _lastScopedServices = scopedServices;
                     _loadingUI = _lastScopedServices.GetRequiredService<LoadingUI>();
                 }
-                _isDrawn |= _loadingUI.WhenLoaded.IsCompleted;
+                _isDrawn |= _loadingUI?.WhenLoaded.IsCompleted ?? false;
                 return _isDrawn;
             }
         }
