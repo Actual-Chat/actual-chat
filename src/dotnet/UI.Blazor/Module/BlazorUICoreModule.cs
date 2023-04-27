@@ -27,16 +27,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             return; // Blazor UI only module
 
         // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
-        if (appKind.IsMauiApp()) {
-            // TODO(DF): Test if we can use these options for web app
+        if (appKind.IsClient())
             ComputedStateComponent.DefaultOptions =
                 ComputedStateComponentOptions.RecomputeOnParametersSet;
-        }
-        else {
+        else
             ComputedStateComponent.DefaultOptions =
                 ComputedStateComponentOptions.RecomputeOnParametersSet
                 | ComputedStateComponentOptions.SynchronizeComputeState;
-        }
 
         // Fusion
         var fusion = services.AddFusion();
