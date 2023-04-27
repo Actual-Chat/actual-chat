@@ -103,8 +103,7 @@
                 <div class="message-attachments">
                     <div class="message-image-attachments">
                         @foreach (var attachment in mediaList) {
-                            // TODO: rename to MediaAttachment
-                            <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
+                            <VisualMediaAttachment Attachment="@attachment" ChatEntry="@entry"/>
                         }
                     </div>
                     <div class="message-file-attachments">
@@ -248,7 +247,7 @@
         var mediaList = new List<TextEntryAttachment>();
         var fileList = new List<TextEntryAttachment>();
         foreach (var attachment in entry.Attachments) {
-            if (attachment.IsImage() || attachment.IsVideo())
+            if (attachment.IsVisualMedia())
                 mediaList.Add(attachment);
             else
                 fileList.Add(attachment);

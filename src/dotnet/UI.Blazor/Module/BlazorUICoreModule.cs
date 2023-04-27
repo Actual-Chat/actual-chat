@@ -110,7 +110,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Actual Chat-specific UI services
         services.AddScoped<ThemeUI>(c => new ThemeUI(c));
         services.AddScoped<FeedbackUI>(c => new FeedbackUI(c));
-        services.AddScoped<ImageViewerUI>(c => new ImageViewerUI(
+        services.AddScoped<VisualMediaViewerUI>(c => new VisualMediaViewerUI(
             c.GetRequiredService<ModalUI>()));
         fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
@@ -129,7 +129,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // IModalViews
         services.AddTypeMapper<IModalView>(map => map
             .Add<FeatureRequestModal.Model, FeatureRequestModal>()
-            .Add<ImageViewerModal.Model, ImageViewerModal>()
+            .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
         );
         // IBannerViews

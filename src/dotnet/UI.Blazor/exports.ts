@@ -21,7 +21,7 @@ export * from './Services/ReplicaCache/replica-cache';
 export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/Feedback/feedback';
-export * from './Components/ImageViewerModal/image-viewer';
+export * from './Components/VisualMediaViewerModal/visual-media-viewer';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
 export * from './Components/SideNav/side-nav';
