@@ -36,8 +36,7 @@ public static partial class MauiProgram
         }
 #endif
 
-        var defaultLog = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@default");
-        DefaultLog = new SerilogLoggerProvider(defaultLog).CreateLogger("MauiApp");
+        DefaultLog = new SerilogLoggerProvider(Log.Logger).CreateLogger("@default");
         AdjustThreadPool();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         try {

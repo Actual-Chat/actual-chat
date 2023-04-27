@@ -6,4 +6,4 @@ export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';
 export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
 export * from './Services/audio-context-ref';
 export * from './Services/audio-context-source';
-export * from './Services/audio-info';
+export * from './Services/audio-initializer';

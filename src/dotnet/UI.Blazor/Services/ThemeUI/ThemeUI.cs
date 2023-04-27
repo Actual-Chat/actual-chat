@@ -14,7 +14,6 @@ public class ThemeUI : WorkerBase
     private HostInfo HostInfo { get; }
     private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
-    private Tracer Tracer { get; }
 
     public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
@@ -26,7 +25,6 @@ public class ThemeUI : WorkerBase
     public ThemeUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        Tracer = services.Tracer(GetType());
         HostInfo = services.GetRequiredService<HostInfo>();
         Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
@@ -45,14 +43,12 @@ public class ThemeUI : WorkerBase
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
 
-        Tracer.Point(nameof(OnRun));
         await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
             await ApplyTheme(cTheme.Value.Theme);
     }
 
     private Task ApplyTheme(Theme theme)
         => Dispatcher.InvokeAsync(async () => {
-            using var _1 = Tracer.Region(nameof(ApplyTheme));
             _whenReadySource.TrySetResult(default);
             if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
                 return;
@@ -61,7 +57,6 @@ public class ThemeUI : WorkerBase
 
             _appliedTheme = theme;
             try {
-                using var _ = Tracer.Region($"{nameof(ApplyTheme)} - JS call");
                 await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
             }
             catch (Exception e) when (e is not OperationCanceledException) {

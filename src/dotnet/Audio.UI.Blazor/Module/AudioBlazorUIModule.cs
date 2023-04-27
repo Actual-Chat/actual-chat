@@ -21,7 +21,7 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
         services.AddFusion();
 
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
-        services.AddScoped<AudioInfo>(c => new AudioInfo(c));
+        services.AddScoped<AudioInitializer>(c => new AudioInitializer(c));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
         services.AddScoped(c => new MicrophonePermissionHandler(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());

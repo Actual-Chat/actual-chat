@@ -145,7 +145,7 @@
     </div>
 </div>
 
-@if (!isServerSideBlazor) {
+@if (!isServerSideBlazor && !isCloseWindowRequest) {
     <div class="until-ui-is-ready">
         <div class="loading-bg"></div>
         <div class="loading-image-bg">

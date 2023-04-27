@@ -78,11 +78,6 @@ public class AppServiceStarter
         var themeUI = Services.GetRequiredService<ThemeUI>();
         themeUI.Start();
 
-        // Starting Audio pipeline, load Workers and connect to Audio channel
-        Tracer.Point("AudioInfo.Initialize");
-        var audioInfo = Services.GetRequiredService<AudioInfo>();
-        _ = audioInfo.Initialize();
-
         // Awaiting for completion of initialization tasks
 
         // Finishing w/ BrowserInfo
@@ -113,10 +108,11 @@ public class AppServiceStarter
         => Task.Run(async () => {
             // Starting less important UI services
             Services.GetRequiredService<UIEventHub>();
-            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
 
-            await StartHostedServices(cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+            Services.GetRequiredService<AudioInitializer>();
             Services.GetRequiredService<SignOutReloader>().Start();
+            await StartHostedServices(cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<DebugUI>();
         }, cancellationToken);

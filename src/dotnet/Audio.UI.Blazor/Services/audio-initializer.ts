@@ -1,46 +1,43 @@
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
-import {delayAsync, PromiseSource} from 'promises';
 import { Log } from 'logging';
 
 const { infoLog, warnLog } = Log.get('AudioInfo');
 
-export class AudioInfo {
+export class AudioInitializer {
     private static backendRef: DotNet.DotNetObject = null;
 
-    public static whenReady: PromiseSource<void> = new PromiseSource<void>();
     public static isRecorderInitialized = false;
     public static isPlayerInitialized = false;
 
     public static async init(backendRef1: DotNet.DotNetObject, baseUri: string): Promise<void> {
         this.backendRef = backendRef1;
-        infoLog?.log(`init`);
+        infoLog?.log(`-> init`);
 
-        try {
-            if (!this.isPlayerInitialized) {
+        if (!this.isPlayerInitialized) {
+            try {
                 await AudioPlayer.init();
                 this.isPlayerInitialized = true;
             }
+            catch (e) {
+                warnLog?.log(`init: AudioPlayer.init failed:`, e);
+                throw e;
+            }
+        }
 
-            if (!this.isRecorderInitialized) {
+        if (!this.isRecorderInitialized) {
+            try {
                 await opusMediaRecorder.init(baseUri);
                 this.isRecorderInitialized = true;
             }
-        }
-        catch (e) {
-            warnLog?.log(
-                `failed: `,
-                e,
-                'isRecorderInitialized:',
-                this.isRecorderInitialized,
-                'isPlayerInitialized:',
-                this.isPlayerInitialized);
-            throw e;
+            catch (e) {
+                warnLog?.log(`init: opusMediaRecorder.init failed:`, e);
+                throw e;
+            }
         }
 
-        this.whenReady.resolve(undefined);
-        globalThis["audioInfo"] = this;
-        infoLog?.log(`ready`);
+        globalThis["audioInitializer"] = this;
+        infoLog?.log(`<- init`);
     }
 }
 
