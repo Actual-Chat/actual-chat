@@ -4,11 +4,13 @@
     var chat = Chat;
 }
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
-    <div>
-        <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
-            <i class="icon-arrow-left text-2xl"></i>
-        </ButtonRound>
-    </div>
+    @if (IsLeftNavigateButtonVisible) {
+        <div>
+            <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
+                <i class="icon-arrow-left text-2xl"></i>
+            </ButtonRound>
+        </div>
+    }
     <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 md:pl-2 overflow-hidden">
         @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
             <ChatIcon Chat="@chat"/>
@@ -29,7 +31,9 @@
             <div class="flex-x gap-x-1">
                 <ChatSearch @key="@chat" Chat="@chat"/>
             </div>
-            <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
+            @if (IsRightNavigateButtonVisible) {
+                <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
+            }
         </div>
     }
 </div>
@@ -42,6 +46,8 @@
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
+    [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 
     private void OnSwitchRightPanelClick()
         => PanelsUI.Right.Toggle();
