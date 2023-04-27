@@ -27,7 +27,7 @@ public class MauiBlazorApp : ComponentBase, IDisposable
     {
         builder.OpenComponent<UI.Blazor.App.AppBase>(0);
         var clientAppSettings = Services.GetRequiredService<ClientAppSettings>();
-        builder.AddAttribute(1, nameof(UI.Blazor.App.AppBase.SessionId), clientAppSettings.SessionId);
+        builder.AddAttribute(1, nameof(UI.Blazor.App.AppBase.SessionId), clientAppSettings.Session.Id.Value);
         builder.CloseComponent();
     }
 }

@@ -23,7 +23,7 @@ public partial class MauiBlazorWebViewHandler
     {
         var properties = new NSDictionary(
             NSHttpCookie.KeyName, "FusionAuth.SessionId",
-            NSHttpCookie.KeyValue, AppSettings.SessionId,
+            NSHttpCookie.KeyValue, AppSettings.Session.Id.Value,
             NSHttpCookie.KeyPath, "/",
             NSHttpCookie.KeyDomain, domain,
             NSHttpCookie.KeySameSitePolicy, "none");
@@ -35,7 +35,7 @@ public partial class MauiBlazorWebViewHandler
     private void InjectInitPageScript()
     {
         var baseUri = AppSettings.BaseUri;
-        var sessionId = AppSettings.SessionId;
+        var sessionId = AppSettings.Session.Id.Value;
         var initScript = $"window.App.initPage('{baseUri}', '{sessionId}')";
         var addLoadHandlerScript = $"document.addEventListener('DOMContentLoaded', e => {{ {initScript} }});";
         // PlatformView.EvaluateJavaScript(addLoadHandlerScript, (result, error) => { });

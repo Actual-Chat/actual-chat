@@ -24,7 +24,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Common services
         services.AddTracer();
-        services.AddHostedService(c => new StaticImportsInitializer(c));
+        services.AddSingleton(c => new StaticImportsInitializer(c));
+        services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
         services.AddSingleton(c => new UrlMapper(
             c.GetRequiredService<HostInfo>()));
 

@@ -2,23 +2,24 @@ namespace ActualChat.App.Maui.Services;
 
 public record ClientAppSettings
 {
-    private readonly TaskCompletionSource<string> _sessionIdSource = TaskCompletionSourceExt.New<string>();
+    private readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
 
     public Uri BaseUri { get; }
     public string BaseUrl { get; }
+    public Task<Session> WhenSessionReady => _sessionSource.Task;
 
-    public string SessionId {
+    public Session Session {
         get {
-            var sessionIdTask = _sessionIdSource.Task;
+            var sessionIdTask = _sessionSource.Task;
             if (!sessionIdTask.IsCompleted)
                 throw StandardError.Internal("SessionId wasn't set yet.");
 
  #pragma warning disable VSTHRD002
-            return sessionIdTask.GetAwaiter().GetResult();
+            return sessionIdTask.Result;
  #pragma warning restore VSTHRD002
         }
         set {
-            if (!_sessionIdSource.TrySetResult(value))
+            if (!_sessionSource.TrySetResult(value))
                 throw StandardError.Internal("SessionId is already set.");
         }
     }
@@ -29,7 +30,4 @@ public record ClientAppSettings
         BaseUrl = baseUrl;
         BaseUri = baseUrl.ToUri();
     }
-
-    public Task<string> GetSessionId(CancellationToken cancellationToken = default)
-        => _sessionIdSource.Task.WaitAsync(cancellationToken);
 }

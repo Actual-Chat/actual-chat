@@ -19,7 +19,8 @@ public class MobileAuthClient
     public async Task<bool> SetupSession()
     {
         try {
-            var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+            var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
+            var sessionId = session.Id.Value;
             var requestUri = $"{AppSettings.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
@@ -35,7 +36,8 @@ public class MobileAuthClient
         if (code.IsNullOrEmpty())
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
 
-        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+        var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
+        var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
@@ -49,7 +51,8 @@ public class MobileAuthClient
 
     public async Task<bool> SignOut()
     {
-        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
+        var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
+        var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);

@@ -69,7 +69,7 @@ public sealed class LazyServiceProvider :
         if (LazyServiceFilter != null && !LazyServiceFilter.Invoke(serviceType))
             return null;
 
-        return GetLazyServices().GetService(serviceType);
+        return GetLazyServices(serviceType).GetService(serviceType);
     }
 
     public IServiceScope CreateScope()
@@ -81,12 +81,12 @@ public sealed class LazyServiceProvider :
         // It's important to call GetLazyServices here,
         // otherwise OnLazyServicesReady won't be invoked,
         // and root service provider won't be augmented
-        return GetLazyServices().CreateScope().ServiceProvider;
+        return GetLazyServices(null).CreateScope().ServiceProvider;
     }
 
     // Private methods
 
-    private IServiceProvider GetLazyServices()
+    private IServiceProvider GetLazyServices(Type? requestedType)
     {
         // Double-check locking
         // ReSharper disable once InconsistentlySynchronizedField
@@ -98,6 +98,11 @@ public sealed class LazyServiceProvider :
                 throw new ObjectDisposedException(nameof(IServiceProvider));
             if (_lazyServices != null)
                 return _lazyServices;
+
+            if (requestedType != null)
+                DefaultLog.LogInformation(
+                    nameof(LazyServiceProvider) + ": becoming non-lazy to resolve {RequestedType}",
+                    requestedType);
 
  #pragma warning disable VSTHRD002
             // Block here on purpose until we get the result

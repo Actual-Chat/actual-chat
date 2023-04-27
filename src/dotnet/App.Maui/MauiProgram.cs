@@ -14,6 +14,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using Serilog;
 using Serilog.Events;
+using Serilog.Extensions.Logging;
 
 namespace ActualChat.App.Maui;
 
@@ -27,8 +28,7 @@ public static partial class MauiProgram
     {
         Log.Logger = CreateLoggerConfiguration().CreateLogger();
         Tracer.Default = _tracer = CreateTracer();
-        using var _ = _tracer.Region(nameof(CreateMauiApp));
-
+        using var _1 = _tracer.Region(nameof(CreateMauiApp));
 #if WINDOWS
         if (_tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
@@ -36,6 +36,9 @@ public static partial class MauiProgram
         }
 #endif
 
+        var defaultLog = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@default");
+        DefaultLog = new SerilogLoggerProvider(defaultLog).CreateLogger("MauiApp");
+        AdjustThreadPool();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         try {
             const string baseUrl = "https://" + MauiConstants.Host + "/";
@@ -43,14 +46,13 @@ public static partial class MauiProgram
             var miniApp = CreateMauiMiniApp(settings);
             var configuration = miniApp.Configuration;
             var loggerFactory = miniApp.Services.GetRequiredService<ILoggerFactory>();
-            var whenAppServicesReady = Task.Run(() => CreateBlazorAppServices(configuration, loggerFactory, settings));
+            var whenAppServicesReady = Task.Run(() => CreateAppServices(configuration, loggerFactory, settings));
             var appServices = new CompositeServiceProvider(
                 miniApp.Services,
                 whenAppServicesReady,
                 CreateLazyServiceFilter(),
                 miniApp);
             AppServices = appServices;
-            whenAppServicesReady.ContinueWith(_ => StartHostedServices(appServices), TaskScheduler.Default);
             LoadingUI.MarkMauiAppBuilt(_tracer.Elapsed);
             return (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
@@ -65,7 +67,7 @@ public static partial class MauiProgram
 
     private static Tracer CreateTracer()
     {
-#if DEBUG || DEBUG_MAUI
+#if DEBUG
         var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         return new Tracer("MauiApp", x => logger.Information(x.Format()));
@@ -102,8 +104,7 @@ public static partial class MauiProgram
     private static ClientAppSettings CreateClientAppSettings(string baseUrl)
     {
         var settings = new ClientAppSettings(baseUrl);
-        _ = GetSessionId()
-            .ContinueWith(t => settings.SessionId = t.Result, TaskScheduler.Default);
+        _ = GetSession().ContinueWith(t => settings.Session = t.Result, TaskScheduler.Default);
         return settings;
     }
 
@@ -126,7 +127,7 @@ public static partial class MauiProgram
         services.AddMauiBlazorWebView();
 
 // Temporarily allow developer tools for all configurations
-// #if DEBUG || DEBUG_MAUI
+// #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 // #endif
 
@@ -159,12 +160,12 @@ public static partial class MauiProgram
             .SetMinimumLevel(minLevel);
     }
 
-    private static IServiceProvider CreateBlazorAppServices(
+    private static IServiceProvider CreateAppServices(
         IConfiguration configuration,
         ILoggerFactory loggerFactory,
         ClientAppSettings settings)
     {
-        using var _1 = _tracer.Region(nameof(CreateBlazorAppServices));
+        using var _1 = _tracer.Region(nameof(CreateAppServices));
 
         var services = new ServiceCollection();
         services.AddSingleton(new ScopedTracerProvider(_tracer)); // We don't want to have scoped tracers in MAUI app
@@ -176,7 +177,7 @@ public static partial class MauiProgram
 
         RegisterNonLazyServicesVisibleFromLazyServices(services);
 
-#if IS_FIXED_ENVIRONMENT_PRODUCTION || !(DEBUG || DEBUG_MAUI)
+#if IS_FIXED_ENVIRONMENT_PRODUCTION || !DEBUG
         var environment = Environments.Production;
 #else
         var environment = Environments.Development;
@@ -200,10 +201,10 @@ public static partial class MauiProgram
         services.AddPlatformServices();
 
         // Configure the rest
-        ConfigureBlazorAppServices(services);
+        ConfigureAppServices(services);
 
         // Build IServiceProvider
-        var appServices = BuildBlazorAppServices(services);
+        var appServices = services.BuildServiceProvider();
         var appServiceStarter = appServices.GetRequiredService<AppServiceStarter>();
         _ = appServiceStarter.PreWebViewWarmup(CancellationToken.None);
 
@@ -211,7 +212,6 @@ public static partial class MauiProgram
             WebMReader.DebugLog = loggerFactory.CreateLogger(typeof(WebMReader));
 
         CompleteSetupSession(whenSessionReady);
-
         return appServices;
     }
 
@@ -272,18 +272,12 @@ public static partial class MauiProgram
     private static void CompleteSetupSession(Task whenSessionReady)
     {
         using var _ = _tracer.Region(nameof(CompleteSetupSession));
-        whenSessionReady.GetAwaiter().GetResult();
+        whenSessionReady.Wait();
     }
 
-    private static Task StartHostedServices(IServiceProvider services)
-        => Task.Run(async () => {
-            using var _ = _tracer.Region(nameof(StartHostedServices));
-            await services.HostedServices().Start().ConfigureAwait(false);
-        });
-
-    private static void ConfigureBlazorAppServices(IServiceCollection services)
+    private static void ConfigureAppServices(IServiceCollection services)
     {
-        using var _ = _tracer.Region(nameof(ConfigureBlazorAppServices));
+        using var _ = _tracer.Region(nameof(ConfigureAppServices));
 
         // HttpClient
 #if !WINDOWS
@@ -313,18 +307,18 @@ public static partial class MauiProgram
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
     }
 
-    private static Task<Symbol> GetSessionId()
+    private static Task<Session> GetSession()
         => BackgroundTask.Run(async () => {
-            using var _ = _tracer.Region(nameof(GetSessionId));
+            using var _ = _tracer.Region(nameof(GetSession));
 
             const string sessionIdStorageKey = "Fusion.SessionId";
-            Symbol sessionId = Symbol.Empty;
+            var session = (Session?)null;
 
             var storage = SecureStorage.Default;
             try {
                 var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
                 if (!storedSessionId.IsNullOrEmpty()) {
-                    sessionId = storedSessionId;
+                    session = new Session(storedSessionId);
                     Log.Information("Successfully read stored Session ID");
                 }
                 else
@@ -338,13 +332,13 @@ public static partial class MauiProgram
                 // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
             }
 
-            if (sessionId.IsEmpty) {
-                sessionId = new SessionFactory().CreateSession().Id;
+            if (session == null) {
+                session = new SessionFactory().CreateSession();
                 bool isSaved;
                 try {
                     if (storage.Remove(sessionIdStorageKey))
                         Log.Information("Removed stored Session ID");
-                    await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                    await storage.SetAsync(sessionIdStorageKey, session.Id.Value).ConfigureAwait(false);
                     isSaved = true;
                 }
                 catch (Exception e) {
@@ -358,7 +352,7 @@ public static partial class MauiProgram
                     Log.Information("Second attempt to store Session ID");
                     try {
                         storage.RemoveAll();
-                        await storage.SetAsync(sessionIdStorageKey, sessionId.Value).ConfigureAwait(false);
+                        await storage.SetAsync(sessionIdStorageKey, session.Id.Value).ConfigureAwait(false);
                     }
                     catch (Exception e) {
                         Log.Warning(e, "Failed to store Session ID (second attempt)");
@@ -368,14 +362,8 @@ public static partial class MauiProgram
                 }
             }
 
-            return sessionId;
+            return session;
         });
-
-    private static ServiceProvider BuildBlazorAppServices(ServiceCollection services)
-    {
-        using var _ = _tracer.Region(nameof(BuildBlazorAppServices));
-        return services.BuildServiceProvider();
-    }
 
     private static Func<Type, bool> CreateLazyServiceFilter()
     {
@@ -385,6 +373,7 @@ public static partial class MauiProgram
         // the build of lazy service provider, so we must explicitly filter them out.
         var servicesToSkip = new HashSet<Type> {
             typeof(Microsoft.AspNetCore.Components.IComponentActivator),
+            typeof(IEnumerable<IMauiInitializeScopedService>),
         };
         AddPlatformServicesToSkip(servicesToSkip);
         return serviceType => !servicesToSkip.Contains(serviceType);
@@ -399,4 +388,18 @@ public static partial class MauiProgram
         => Log.Information("Unhandled exception, isTerminating={IsTerminating}. \n{Exception}",
             e.IsTerminating,
             e.ExceptionObject);
+
+    private static void AdjustThreadPool()
+    {
+        ThreadPool.GetMinThreads(out var min, out var minIO);
+        ThreadPool.GetMaxThreads(out var max, out var maxIO);
+        var cpuCount = HardwareInfo.ProcessorCount;
+        _tracer.Point($"{nameof(AdjustThreadPool)} - original settings: ({min}, {minIO}) .. ({max}, {maxIO}), CPU count: {cpuCount}");
+
+        min = cpuCount * 4;
+        minIO = cpuCount * 4;
+        ThreadPool.SetMinThreads(min, minIO);
+        ThreadPool.GetMinThreads(out min, out minIO);
+        _tracer.Point($"{nameof(AdjustThreadPool)} - new settings: ({min}, {minIO}) .. ({max}, {maxIO})");
+    }
 }

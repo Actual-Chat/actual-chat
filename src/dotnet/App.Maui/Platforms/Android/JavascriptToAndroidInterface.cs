@@ -26,7 +26,7 @@ internal class JavascriptToAndroidInterface : Java.Lang.Object
         _webView.Post(() => {
             try {
                 _tracer.Point($"{nameof(OnDOMContentLoaded)} - window.App.initPage JS call");
-                var sessionHash = new Session(_handler.AppSettings.SessionId).Hash;
+                var sessionHash = _handler.AppSettings.Session.Hash;
                 var script = $"window.App.initPage('{_handler.AppSettings.BaseUrl}', '{sessionHash}')";
                 _webView.EvaluateJavascript(script, null);
             }

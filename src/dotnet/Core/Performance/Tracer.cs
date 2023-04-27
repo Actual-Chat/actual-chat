@@ -8,7 +8,7 @@ public sealed class Tracer
 
     public static Tracer None { get; } = new("None", null);
     public static Tracer Default { get; set; } =
-#if DEBUG || DEBUG_MAUI
+#if DEBUG
         new("Default", static x => Console.WriteLine("@ " + x.Format()));
 #else
         None;

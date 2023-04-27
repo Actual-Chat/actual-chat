@@ -1,6 +1,6 @@
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
-import { PromiseSource } from 'promises';
+import {delayAsync, PromiseSource} from 'promises';
 import { Log } from 'logging';
 
 const { infoLog, warnLog } = Log.get('AudioInfo');

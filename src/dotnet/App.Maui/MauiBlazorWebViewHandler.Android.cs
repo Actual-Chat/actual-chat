@@ -12,7 +12,7 @@ public partial class MauiBlazorWebViewHandler
 
         base.ConnectHandler(platformView);
         var baseUri = AppSettings.BaseUri;
-        var sessionId = AppSettings.SessionId;
+        var sessionId = AppSettings.Session.Id.Value;
 
         platformView.Settings.JavaScriptEnabled = true;
         var cookieManager = CookieManager.Instance!;

@@ -11,7 +11,7 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         Tracer.Default =
-#if DEBUG || DEBUG_MAUI
+#if DEBUG
             new Tracer("Server", x => Console.WriteLine("@ " + x.Format()));
 #else
             Tracer.None;
@@ -42,7 +42,7 @@ internal static class Program
         await appHost.Initialize().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
 
-        // we preserve default thread pool settings only if they are bigger of our minimals
+        // We preserve default thread pool settings only if they are bigger of our minimals
         static void AdjustThreadPool()
         {
             var (maxWorker, maxIO) = (16384, 16384);

@@ -1,6 +1,7 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
@@ -8,8 +9,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppServiceStarter
 {
+    private HostInfo? _hostInfo;
+
     private IServiceProvider Services { get; }
     private Tracer Tracer { get; }
+    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
 
     public AppServiceStarter(IServiceProvider services)
     {
@@ -22,8 +26,11 @@ public class AppServiceStarter
         using var _1 = Tracer.Region(nameof(PreWebViewWarmup));
         try {
             await Task.Run(() => {
+                WarmupSerializer(new Account());
+                WarmupSerializer(new AccountFull());
                 WarmupSerializer(new Chat.Chat());
                 WarmupSerializer(new ChatTile());
+                WarmupSerializer(new Author());
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
@@ -107,12 +114,26 @@ public class AppServiceStarter
             // Starting less important UI services
             Services.GetRequiredService<UIEventHub>();
             await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+
+            await StartHostedServices(cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<SignOutReloader>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<DebugUI>();
         }, cancellationToken);
 
     // Private methods
+
+    private async Task StartHostedServices(CancellationToken cancellationToken)
+    {
+        if (!HostInfo.AppKind.IsClient())
+            return;
+
+        using var _ = Tracer.Region(nameof(StartHostedServices));
+        foreach (var hostedService in Services.HostedServices()) {
+            Tracer.Point($"{nameof(StartHostedServices)}: starting {hostedService.GetType().Name}");
+            await hostedService.StartAsync(default).ConfigureAwait(false);
+        }
+    }
 
     private void WarmupSerializer<T>(T value)
     {

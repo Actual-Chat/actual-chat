@@ -25,10 +25,11 @@ public partial class MauiBlazorWebViewHandler
     {
         var ctrl = sender.CoreWebView2;
         var baseUri = AppSettings.BaseUri;
+        var sessionId = AppSettings.Session.Id.Value;
 
-        var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", AppSettings.SessionId, "0.0.0.0", "/");
+        var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", sessionId, "0.0.0.0", "/");
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
-        cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", AppSettings.SessionId, baseUri.Host, "/");
+        cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", sessionId, baseUri.Host, "/");
         cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
         cookie.IsSecure = true;
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
@@ -42,7 +43,7 @@ public partial class MauiBlazorWebViewHandler
     private async void OnDOMContentLoaded(CoreWebView2 sender, CoreWebView2DOMContentLoadedEventArgs args)
     {
         try {
-            var sessionHash = new Session(AppSettings.SessionId).Hash;
+            var sessionHash = AppSettings.Session.Hash;
             var script = $"window.App.initPage('{AppSettings.BaseUrl}', '{sessionHash}')";
             await sender.ExecuteScriptAsync(script);
         }
