@@ -1,6 +1,6 @@
 import { preventDefaultForEvent } from 'event-handling';
 
-export class ImageViewer {
+export class VisualMediaViewer {
     private readonly overlay: HTMLElement;
     private readonly image: HTMLElement;
     private readonly multiplier: number = 1.4;
@@ -13,8 +13,8 @@ export class ImageViewer {
     private headerBottom: number = 0;
     private footerTop: number = 0;
 
-    static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): ImageViewer {
-        return new ImageViewer(imageViewer, blazorRef);
+    static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
+        return new VisualMediaViewer(imageViewer, blazorRef);
     }
 
     constructor(

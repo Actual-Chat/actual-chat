@@ -1,7 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
-@implements IModalView<ImageViewerModal.Model>
+@implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 
 <DialogFrame
@@ -12,8 +12,7 @@
     HasHeader="false"
     Title="@(ModalModel.AltText.NullIfEmpty() ?? "Image")">
     <Body>
-        <ImageViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
-
+        <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
         <div @ref="@Ref" class="image-viewer-content">
             @if (ModalModel.IsVideo) {
                 <video width="@ModalModel.Width" height="@ModalModel.Height" preload="auto" autoplay controls onclick="this.play()">
@@ -39,7 +38,7 @@
 
 @code {
     private string _cachedImgElementId = "";
-    private DotNetObjectReference<ImageViewerModal> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
@@ -56,7 +55,7 @@
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.ImageViewer.create",
+                $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create",
                 Ref, BlazorRef
                 );
         }

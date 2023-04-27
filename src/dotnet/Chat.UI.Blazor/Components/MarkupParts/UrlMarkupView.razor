@@ -36,7 +36,7 @@ default:
     private LocalUrl? _localUrl;
     private ChatMessageModel _message = null!;
 
-    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
     protected override void OnParametersSet() {
@@ -65,7 +65,7 @@ default:
     private async Task OnSpecialUrlClick(MarkupUrlKind urlKind, string url) {
         switch (urlKind) {
         case MarkupUrlKind.Image:
-            await ImageViewerUI.Show(url);
+            await VisualMediaViewerUI.Show(url);
             break;
         case MarkupUrlKind.Local:
             _ = History.NavigateTo(url);

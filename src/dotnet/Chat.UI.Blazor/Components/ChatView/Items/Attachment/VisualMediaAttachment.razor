@@ -4,15 +4,11 @@
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
     var previewUrl = !attachment.IsVideo() ? UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier) : null;
-    var wrapperCls = "";
-    var imageCls = "";
-    if (attachment.Media.Height > 0 && attachment.Media.Width > 0) {
-        wrapperCls = "h-28 md:h-48";
-        imageCls = "h-28 md:h-48 object-cover";
-        if ((!ScreenSize.IsNarrow() && attachment.Media.Width >= attachment.Media.Height * 2)
-            || (ScreenSize.IsNarrow() && (float)attachment.Media.Width >= (float)attachment.Media.Height * 1.5)) {
-            wrapperCls += " w-[30%]";
-        }
+    var wrapperCls = "h-28 md:h-48";
+    var imageCls = "h-28 md:h-48 object-cover";
+    if ((!ScreenSize.IsNarrow() && attachment.Media.Width >= attachment.Media.Height * 2)
+        || (ScreenSize.IsNarrow() && (float)attachment.Media.Width >= (float)attachment.Media.Height * 1.5)) {
+        wrapperCls += " w-[30%]";
     }
 }
 
@@ -20,7 +16,7 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(_ => ImageViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry, attachment.IsVideo()))"
+       @onclick="@(_ => VisualMediaViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry, attachment.IsVideo()))"
        @onclick:preventDefault="true">
         @if (attachment.IsVideo()) {
             <video class="@imageCls" preload="auto" autoplay oncanplay="this.muted = true; this.play()" loop>
@@ -38,7 +34,7 @@
     private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
     private const int ActualResolutionMultiplier = 2;
 
-    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
