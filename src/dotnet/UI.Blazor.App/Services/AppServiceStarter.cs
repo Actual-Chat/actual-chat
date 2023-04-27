@@ -88,6 +88,8 @@ public class AppServiceStarter
         if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
 
+        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
+
         // Finishing w/ ThemeUI
         await themeUI.WhenReady.WaitAsync(cancellationToken);
         Tracer.Point("ThemeUI is ready");
@@ -98,8 +100,8 @@ public class AppServiceStarter
 
         // Awaiting for account to be resolved
         await accountUI.WhenLoaded;
+        Tracer.Point("AccountUI is ready");
 
-        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         await autoNavigationUI.AutoNavigate(cancellationToken);
 #pragma warning restore MA0004
     }
