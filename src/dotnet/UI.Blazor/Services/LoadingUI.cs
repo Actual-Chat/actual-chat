@@ -14,10 +14,9 @@ public sealed class LoadingUI
     public Task WhenLoaded => _whenLoadedSource.Task;
     public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
-    public TimeSpan LoadingTime { get; private set; }
     public static TimeSpan MauiAppBuildTime { get; private set; }
-    public TimeSpan AppInitializeTime { get; private set; }
-    public TimeSpan AppReadyToRenderContentTime { get; private set; }
+    public TimeSpan AppCreatedTime { get; private set; }
+    public TimeSpan LoadingTime { get; private set; }
     public TimeSpan ChatListLoadTime { get; private set; }
 
     public LoadingUI(IServiceProvider services)
@@ -32,16 +31,10 @@ public sealed class LoadingUI
             MauiAppBuildTime = mauiAppBuildTime;
     }
 
-    public void MarkAppInitialized()
+    public void MarkAppCreated()
     {
-        if (AppInitializeTime == default)
-            AppInitializeTime = Tracer.Elapsed;
-    }
-
-    public void MarkAppReadyToRenderContent()
-    {
-        if (AppReadyToRenderContentTime == default)
-            AppReadyToRenderContentTime = Tracer.Elapsed;
+        if (AppCreatedTime == default)
+            AppCreatedTime = Tracer.Elapsed;
     }
 
     public void MarkChatListLoaded()

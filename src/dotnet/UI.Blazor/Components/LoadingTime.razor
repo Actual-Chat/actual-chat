@@ -5,18 +5,17 @@
     if (!HostInfo.IsDevelopmentInstance)
         return;
     var mauiAppBuildTime = (int)LoadingUI.MauiAppBuildTime.TotalMilliseconds;
-    var appInitTime = (int)LoadingUI.AppInitializeTime.TotalMilliseconds;
-    var appAboutRenderContentTime = (int)LoadingUI.AppReadyToRenderContentTime.TotalMilliseconds;
-    var appStartTime = (int)LoadingUI.LoadingTime.TotalMilliseconds;
-    var chatListLoaded = (int)LoadingUI.ChatListLoadTime.TotalMilliseconds;
+    var appCreatedTime = (int)LoadingUI.AppCreatedTime.TotalMilliseconds;
+    var loadingTime = (int)LoadingUI.LoadingTime.TotalMilliseconds;
+    var chatListLoadedTime = (int)LoadingUI.ChatListLoadTime.TotalMilliseconds;
 }
 
-@if (appStartTime > 0) {
+@if (loadingTime > 0) {
     <div class="blazor-mode-toggle px-1">
         @if (mauiAppBuildTime > 0) {
             @(mauiAppBuildTime + "/")
         }
-        @($"{appInitTime}/{appAboutRenderContentTime}/{appStartTime}/{chatListLoaded}ms")
+        @($"{appCreatedTime}/{loadingTime}/{chatListLoadedTime}ms")
     </div>
 }
 

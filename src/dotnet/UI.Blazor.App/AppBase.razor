@@ -5,8 +5,7 @@
     if (_whenReadyToRender is not { IsCompletedSuccessfully: true })
         return;
 
-    Tracer.Point("Rendered");
-    LoadingUI.MarkAppReadyToRenderContent();
+    LoadingUI.MarkLoaded();
 }
 
 <ScreenSizeProvider>
@@ -56,7 +55,7 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        LoadingUI.MarkAppInitialized();
+        LoadingUI.MarkAppCreated();
         Tracer = Services.Tracer(GetType());
         using var _1 = Tracer.Region(nameof(OnInitialized));
 
