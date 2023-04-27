@@ -19,4 +19,9 @@
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+            LoadingUI.MarkLoaded();
+    }
 }

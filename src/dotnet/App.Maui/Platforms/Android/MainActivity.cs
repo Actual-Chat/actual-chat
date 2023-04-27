@@ -51,8 +51,8 @@ public class MainActivity : MauiAppCompatActivity
 
         var isLoaded = false;
         CurrentActivity = this;
-        if (AreScopedServicesReady) {
-            var loadingUI = ScopedServices.GetRequiredService<LoadingUI>();
+        if (TryGetScopedServices(out var scopedServices)) {
+            var loadingUI = scopedServices.GetRequiredService<LoadingUI>();
             isLoaded = loadingUI.WhenLoaded.IsCompleted;
             // If app is put to background with back button
             // and user brings app to foreground by launching app icon or picking app from recents,
@@ -201,25 +201,28 @@ public class MainActivity : MauiAppCompatActivity
 
     private class PreDrawListener : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
-        private readonly object _syncObject = new ();
+        private readonly object _lock = new();
         private IServiceProvider? _lastScopedServices;
         private LoadingUI? _loadingUI;
+        private bool _isDrawn;
 
         public bool OnPreDraw()
         {
-            lock (_syncObject) {
-                if (!AreScopedServicesReady)
+            if (_isDrawn)
+                return true;
+
+            lock (_lock) {
+                if (_isDrawn)
+                    return true;
+                if (!TryGetScopedServices(out var scopedServices))
                     return false;
 
-                var scopedServicesChanged = false;
-                var scopedServices = ScopedServices;
-                if (_lastScopedServices == null || !ReferenceEquals(scopedServices, _lastScopedServices)) {
-                    scopedServicesChanged = true;
+                if (!ReferenceEquals(scopedServices, _lastScopedServices)) {
                     _lastScopedServices = scopedServices;
-                }
-                if (_loadingUI == null || scopedServicesChanged)
                     _loadingUI = _lastScopedServices.GetRequiredService<LoadingUI>();
-                return _loadingUI.WhenLoaded.IsCompleted;
+                }
+                _isDrawn |= _loadingUI.WhenLoaded.IsCompleted;
+                return _isDrawn;
             }
         }
     }

@@ -148,6 +148,7 @@
 
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
+    <MauiImage Remove="Resources\Images\**" />
   </ItemGroup>
 
   <!-- Platform-specific files to compile -->
@@ -159,6 +160,8 @@
     <Compile Remove="**\Android\**\*.cs" />
     <None Include="**\Android\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <None Remove="GoogleService-Info.plist" />
+    <Compile Remove="Resources\Images\**" />
+    <None Remove="Resources\Images\**" />
   </ItemGroup>
 
   <!-- Both iOS and Mac Catalyst -->
@@ -221,6 +224,7 @@
     <Content Remove="appsettings.json" />
     <Content Remove="Platforms\Android\Resources\google-services.json.dev" />
     <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
+    <Content Remove="Resources\Images\**" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-android'">
@@ -238,11 +242,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Resources\Images\" />
+    <ProguardConfiguration Include="proguard.cfg" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProguardConfiguration Include="proguard.cfg" />
+    <EmbeddedResource Remove="Resources\Images\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiXaml Remove="Resources\Images\**" />
   </ItemGroup>
 
   <!-- Versions -->

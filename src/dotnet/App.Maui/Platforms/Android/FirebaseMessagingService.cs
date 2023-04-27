@@ -65,8 +65,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         if (_utils!.IsAppForeground()) {
             data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
             var chatId = new ChatId(sChatId, ParseOrNone.Option);
-            if (!chatId.IsNone && AreScopedServicesReady) {
-                var handler = ScopedServices.GetRequiredService<NotificationUI>();
+            if (!chatId.IsNone && TryGetScopedServices(out var scopedServices)) {
+                var handler = scopedServices.GetRequiredService<NotificationUI>();
                 if (handler.IsAlreadyThere(chatId)) {
                     // Do nothing if notification leads to the active chat.
                     Log.LogDebug(

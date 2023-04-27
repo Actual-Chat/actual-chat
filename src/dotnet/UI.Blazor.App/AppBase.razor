@@ -4,8 +4,6 @@
     // We can't render anything till the moment a few key components completed the initialization
     if (_whenReadyToRender is not { IsCompletedSuccessfully: true })
         return;
-
-    LoadingUI.MarkLoaded();
 }
 
 <ScreenSizeProvider>

@@ -73,14 +73,12 @@ public static partial class MauiProgram
         // https://github.com/flutter/flutter/issues/59185
         // But we can use web api to navigate back.
         var list = webView.CopyBackForwardList();
-        var canGoBack2 = list.Size > 1 && list.CurrentIndex > 0;
-        if (canGoBack2) {
-            if (AreScopedServicesReady) {
-                var js = ScopedServices.GetRequiredService<IJSRuntime>();
-                await js.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
-                return true;
-            }
-        }
-        return false;
+        var canGoBack2 = list is { Size: > 1, CurrentIndex: > 0 };
+        if (!canGoBack2 || !TryGetScopedServices(out var scopedServices))
+            return false;
+
+        var js = scopedServices.GetRequiredService<IJSRuntime>();
+        await js.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
+        return true;
     }
 }

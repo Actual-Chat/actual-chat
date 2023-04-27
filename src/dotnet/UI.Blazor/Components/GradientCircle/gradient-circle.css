@@ -1,12 +1,11 @@
+/* Gradient circle */
+
 .background {
     @apply absolute top-0;
     @apply flex;
     @apply h-full w-full;
     @apply backdrop-blur-sm;
     background: rgba(255, 255, 255, 0.2);
-}
-.until-ui-is-ready .background {
-    background: rgba(255, 255, 255, 0.1);
 }
 body.narrow .background {
     background: rgba(255, 255, 255, 0.3);
@@ -40,6 +39,16 @@ body.narrow .background {
 .c-circle img {
     @apply animate-pulse-70;
 }
+
+/* Loading screen (until-ui-is-ready) */
+
+.until-ui-is-ready .background {
+    background: rgba(255, 255, 255, 0.1);
+}
+body.app-maui .until-ui-is-ready .background {
+    background: #0036a3;
+}
+
 .until-ui-is-ready .gradient-circle {
     @apply absolute z-minus;
     @apply w-48 h-48 md:w-96 md:h-96;

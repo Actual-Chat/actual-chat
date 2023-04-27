@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using Microsoft.JSInterop;
 using Stl.Internal;
@@ -11,7 +12,6 @@ public static class AppServicesAccessor
     private static volatile IServiceProvider? _scopedServices;
     private static volatile TaskCompletionSource<Unit> _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>();
 
-    public static bool AreScopedServicesReady => _scopedServices != null;
     public static Task WhenScopedServicesReady => _whenScopedServicesReadySource.Task;
 
     public static IServiceProvider AppServices {
@@ -49,6 +49,12 @@ public static class AppServicesAccessor
         }
     }
 
+    public static bool TryGetScopedServices([NotNullWhen(true)] out IServiceProvider? scopedServices)
+    {
+        scopedServices = _scopedServices;
+        return scopedServices != null;
+    }
+
     public static void DiscardScopedServices()
     {
         lock (_lock) {
@@ -56,9 +62,9 @@ public static class AppServicesAccessor
                 return;
 
             var js = _scopedServices.GetRequiredService<IJSRuntime>();
-            JSObjectReferenceDisconnectHelper.MarkAsDisconnected(js);
+            _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>(); // Must go first
             _scopedServices = null;
-            _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>();
+            JSObjectReferenceDisconnectHelper.MarkAsDisconnected(js);
             AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
         }
     }

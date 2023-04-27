@@ -14,10 +14,10 @@ public class NavigationInterceptor
         const string webViewAppHostAddress = "0.0.0.0";
         if (OrdinalEquals(uri.Host, webViewAppHostAddress))
             return false;
-        if (!AreScopedServicesReady)
+        if (!TryGetScopedServices(out var scopedServices))
             return false;
 
-        var nav = ScopedServices.GetRequiredService<NavigationManager>();
+        var nav = scopedServices.GetRequiredService<NavigationManager>();
         var baseUri = AppSettings.BaseUri;
         if (baseUri.IsBaseOf(uri)) {
             var relativeUri = baseUri.MakeRelativeUri(uri);
