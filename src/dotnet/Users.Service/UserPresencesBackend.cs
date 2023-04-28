@@ -5,17 +5,17 @@ namespace ActualChat.Users;
 
 public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresencesBackend, IAsyncDisposable
 {
-    private readonly PresenceInvalidator _presenceInvalidator;
+    private readonly PresenceTracker _presences;
 
     public UserPresencesBackend(IServiceProvider services) : base(services)
-        => _presenceInvalidator = new (Invalidate, services.GetRequiredService<MomentClockSet>());
+        => _presences = new(PresenceChanged, services.GetRequiredService<MomentClockSet>());
 
     public ValueTask DisposeAsync()
-        => _presenceInvalidator.DisposeAsync();
+        => _presences.DisposeAsync();
 
     // [ComputeMethod]
     public virtual Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
-        => Task.FromResult(_presenceInvalidator.GetPresence(userId));
+        => Task.FromResult(_presences.GetPresence(userId));
 
     // [CommandHandler]
     public virtual async Task CheckIn(IUserPresencesBackend.CheckInCommand command, CancellationToken cancellationToken)
@@ -23,26 +23,26 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
         var userId = command.UserId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            // for replica sync
             var at = context.Operation().Items.GetOrDefault<Moment>();
-            var mustInvalidate = _presenceInvalidator.HandleCheckIn(userId, at);
-            if (mustInvalidate)
-                _ = Get(command.UserId, default);
+            _presences.CheckIn(userId, at);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        // we handle check while invalidating so it is handled on every replica
+        // We handle check-in while invalidating to make sure they're in sync on every replica
         context.Operation().Items.Set(Clocks.SystemClock.Now);
     }
 
     // Private methods
 
-    private void Invalidate(UserId userId)
+    private void PresenceChanged(UserId userId)
     {
-        using (Computed.Invalidate())
+        if (Computed.IsInvalidating())
             _ = Get(userId, default);
+        else
+            using (Computed.Invalidate())
+                _ = Get(userId, default);
     }
 }
