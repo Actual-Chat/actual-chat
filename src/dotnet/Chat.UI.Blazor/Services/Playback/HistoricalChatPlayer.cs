@@ -30,7 +30,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var clock = Clocks.CpuClock;
         var initialSleepDuration = SleepDuration.Value;
         var realStartAt = RealNow();
-        var lastPlaybackBlockEnd = realStartAt; // Any time in past, actually
+        var lastPlaybackBlockEnd = PlaybackNow(); // Any time in past, actually
 
         idRange = (startEntry.LocalId, idRange.End);
         var entries = audioEntryReader.Read(idRange, cancellationToken);
