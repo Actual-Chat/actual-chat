@@ -147,8 +147,8 @@ public static partial class MauiProgram
         builder.ConfigureMauiHandlers(handlers => {
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
-        var mauiApp = builder.Build();
-        return mauiApp;
+        var mauiMiniApp = builder.Build();
+        return mauiMiniApp;
     }
 
     private static void ConfigureLogging(ILoggingBuilder logging, bool disposeSerilog)
