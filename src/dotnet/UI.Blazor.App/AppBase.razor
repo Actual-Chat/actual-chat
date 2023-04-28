@@ -3,7 +3,7 @@
 @implements IDisposable
 @{
     // We can't render anything till the moment a few key components completed the initialization
-    if (_whenReadyToRender is not { IsCompletedSuccessfully: true })
+    if (!LoadingUI.WhenLoaded.IsCompleted)
         return;
 }
 
@@ -34,7 +34,6 @@
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
-    private Task? _whenReadyToRender;
     private Task? _whenAfterFirstRender;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
@@ -87,8 +86,8 @@
         ((AppBlazorCircuitContext)CircuitContext).MarkReady();
 
         _ = AppServiceStarter.PostSessionSetupWarmup(_disposeToken);
-        await (_whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken));
-        LoadingUI.MarkLoaded();
+        await AppServiceStarter.ReadyToRender(_disposeToken);
+        StateHasChanged();
     }
 
     public virtual void Dispose() {
@@ -100,10 +99,10 @@
     }
 
     protected override bool ShouldRender()
-        => _whenReadyToRender is { IsCompletedSuccessfully: true };
+        => LoadingUI.WhenLoaded.IsCompleted;
 
     protected override void OnAfterRender(bool firstRender) {
-        if (_whenReadyToRender is { IsCompletedSuccessfully: true })
+        if (LoadingUI.WhenLoaded.IsCompleted)
             _whenAfterFirstRender ??= AppServiceStarter.AfterFirstRender(_disposeToken);
     }
 }
