@@ -1,7 +1,5 @@
 Near-term:
-- Fix white screen in MAUI
 - Fix left panel appearing-disappearing
-- Select chat ID on click
 - Check why there are 2 error badges for errors + make sure only unique errors appear
 
 Mid-term:
