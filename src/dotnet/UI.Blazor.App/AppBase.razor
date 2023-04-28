@@ -87,7 +87,7 @@
 
         _ = AppServiceStarter.PostSessionSetupWarmup(_disposeToken);
         await AppServiceStarter.ReadyToRender(_disposeToken);
-        StateHasChanged();
+        LoadingUI.MarkLoaded();
     }
 
     public virtual void Dispose() {
