@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// Delays splash screen removal in MAUI app.
+/// Keeps splash screen / splash UI open in WASM & MAUI.
 /// </summary>
 public sealed class LoadingUI
 {
@@ -43,8 +43,9 @@ public sealed class LoadingUI
             return;
 
         ChatListLoadTime = Tracer.Elapsed;
-        Log.LogDebug(nameof(MarkChatListLoaded));
         Tracer.Point(nameof(MarkChatListLoaded));
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        Log.LogInformation($"{nameof(MarkChatListLoaded)}: {ChatListLoadTime.ToShortString()}");
     }
 
     public void MarkLoaded()
@@ -53,7 +54,8 @@ public sealed class LoadingUI
             return;
 
         LoadingTime = Tracer.Elapsed;
-        Log.LogDebug(nameof(MarkLoaded));
         Tracer.Point(nameof(MarkLoaded));
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        Log.LogInformation($"{nameof(MarkLoaded)}: {LoadingTime.ToShortString()}");
     }
 }
