@@ -395,8 +395,8 @@ public static partial class MauiProgram
         var cpuCount = HardwareInfo.ProcessorCount;
         _tracer.Point($"{nameof(AdjustThreadPool)} - original settings: ({minW}, {minIO}) .. ({maxW}, {maxIO}), CPU count: {cpuCount}");
 
-        minW = Math.Max(Math.Max(4, minW), cpuCount * 4);
-        minIO = Math.Max(Math.Max(4, minIO), cpuCount * 4);
+        minW = Math.Max(minW, cpuCount * 4);
+        minIO = Math.Max(minIO, cpuCount * 4);
         ThreadPool.SetMinThreads(minW, minIO);
         ThreadPool.GetMinThreads(out minW, out minIO);
         _tracer.Point($"{nameof(AdjustThreadPool)} - new settings: ({minW}, {minIO}) .. ({maxW}, {maxIO})");
