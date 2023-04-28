@@ -141,17 +141,6 @@
         </div>
     </div>
 
-    <div id="components-reconnect-modal">
-        <div class="loading-bg"></div>
-        <div class="loading-image-bg">
-            <div class="c-before-circle"></div>
-            <div class="c-circle">
-                <img src="/dist/images/loading-cat.svg" alt="loading">
-                <span class="c-text">Connecting...</span>
-            </div>
-        </div>
-    </div>
-
     <div class="until-ui-is-ready">
         <div class="loading-bg"></div>
         <div class="loading-image-bg">
@@ -164,6 +153,18 @@
     </div>
 
     <div id="app" class="flex flex-col h-full"></div>
+
+    <!-- This block must go after app, otherwise page content won't be blurred -->
+    <div id="components-reconnect-modal">
+        <div class="loading-bg"></div>
+        <div class="loading-image-bg">
+            <div class="c-before-circle"></div>
+            <div class="c-circle">
+                <img src="/dist/images/loading-cat.svg" alt="loading">
+                <span class="c-text">Connecting...</span>
+            </div>
+        </div>
+    </div>
 
     <script>console.log('About to load bundle.js and blazor.webview.js');</script>
     <script src="/dist/bundle.js"></script>

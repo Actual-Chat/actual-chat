@@ -134,17 +134,6 @@
     </div>
 </div>
 
-<div id="components-reconnect-modal">
-    <div class="loading-bg"></div>
-    <div class="loading-image-bg">
-        <div class="c-before-circle"></div>
-        <div class="c-circle">
-            <img src="/dist/images/loading-cat.svg" alt="loading">
-            <span class="c-text">Connecting...</span>
-        </div>
-    </div>
-</div>
-
 @if (!isServerSideBlazor && !isCloseWindowRequest) {
     <div class="until-ui-is-ready">
         <div class="loading-bg"></div>
@@ -213,5 +202,17 @@
         <script src="_framework/blazor.webassembly@(blazorUtilsVersion).js"></script>
     }
 }
+
+<!-- This block must go after app, otherwise page content won't be blurred -->
+<div id="components-reconnect-modal">
+    <div class="loading-bg"></div>
+    <div class="loading-image-bg">
+        <div class="c-before-circle"></div>
+        <div class="c-circle">
+            <img src="/dist/images/loading-cat.svg" alt="loading">
+            <span class="c-text">Connecting...</span>
+        </div>
+    </div>
+</div>
 </body>
 </html>
