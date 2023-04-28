@@ -239,6 +239,7 @@ body.hoverable .clear-attachments-btn.btn:hover {
     @apply min-w-9 max-w-9 min-h-9 max-h-9;
     @apply top-0 right-0;
     @apply text-04;
+    @apply z-10;
 }
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
