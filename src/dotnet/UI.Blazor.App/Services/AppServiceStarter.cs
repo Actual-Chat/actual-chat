@@ -58,7 +58,6 @@ public class AppServiceStarter
 
     public async Task ReadyToRender(CancellationToken cancellationToken)
     {
- #pragma warning disable MA0004
         using var _1 = Tracer.Region(nameof(ReadyToRender));
 
         // Create history - this should be done as early as possible
@@ -78,10 +77,12 @@ public class AppServiceStarter
         var themeUI = Services.GetRequiredService<ThemeUI>();
         themeUI.Start();
 
-        // Awaiting for completion of initialization tasks
+        // Awaiting for completion of initialization tasks.
+        // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
+        //           coz tasks were started on Dispatcher thread already.
 
         // Finishing w/ BrowserInfo
-        await browserInfo.WhenReady.WaitAsync(cancellationToken);
+        await browserInfo.WhenReady.ConfigureAwait(false);
         Tracer.Point("BrowserInfo is ready");
 
         var timeZoneConverter = Services.GetRequiredService<TimeZoneConverter>();
@@ -91,19 +92,18 @@ public class AppServiceStarter
         var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
 
         // Finishing w/ ThemeUI
-        await themeUI.WhenReady.WaitAsync(cancellationToken);
+        await themeUI.WhenReady.ConfigureAwait(false);
         Tracer.Point("ThemeUI is ready");
 
         // Completing History initialization
-        await history.WhenReady;
+        await history.WhenReady.ConfigureAwait(false);
         Tracer.Point("History is ready");
 
         // Awaiting for account to be resolved
-        await accountUI.WhenLoaded;
+        await accountUI.WhenLoaded.ConfigureAwait(true); // This .ConfigureAwait(true) is needed to run AutoNavigate
         Tracer.Point("AccountUI is ready");
 
-        await autoNavigationUI.AutoNavigate(cancellationToken);
-#pragma warning restore MA0004
+        await autoNavigationUI.AutoNavigate(cancellationToken).ConfigureAwait(false);
     }
 
     public Task AfterFirstRender(CancellationToken cancellationToken)
