@@ -15,17 +15,20 @@ public class VideoUploadProcessor : IUploadProcessor
 
     public async Task<ProcessedFileInfo> Process(FileInfo file, CancellationToken cancellationToken)
     {
-        var size = await GetVideoDimensions(file).ConfigureAwait(false);
+        var size = await GetVideoDimensions(file, cancellationToken).ConfigureAwait(false);
         return size != null
             ? new ProcessedFileInfo(file, size)
             : new ProcessedFileInfo(file with { ContentType = MediaTypeNames.Application.Octet, }, null);
     }
 
-    private async Task<Size?> GetVideoDimensions(FileInfo file)
+    private async Task<Size?> GetVideoDimensions(FileInfo file, CancellationToken cancellationToken)
     {
         try {
+            // TODO: analyse video without dumping to FS. This workaround for unix cause ffprobe fails with moov atom not found.
+            using var tmp = Disposable.New(Path.GetTempFileName(), File.Delete);
+            await File.WriteAllBytesAsync(tmp.Resource, file.Content, cancellationToken).ConfigureAwait(false);
             using var stream = new MemoryStream(file.Content);
-            var media = await FFProbe.AnalyseAsync(stream).ConfigureAwait(false);
+            var media = await FFProbe.AnalyseAsync(tmp.Resource, cancellationToken: cancellationToken).ConfigureAwait(false);
             var video = media.PrimaryVideoStream;
             return video is null ? null : new Size(video.Width, video.Height);
 
