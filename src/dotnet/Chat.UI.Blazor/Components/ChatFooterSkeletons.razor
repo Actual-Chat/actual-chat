@@ -1,0 +1,74 @@
+﻿<div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
+    <div class="-flex-y w-full overflow-x-hidden">
+        <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
+            <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
+            </div>
+        </div>
+        @* Mobile panel *@
+        @if (ScreenSize.IsNarrow()) {
+            <div class="chat-audio-panel flex-x gap-x-6">
+                <div class="language-button !shadow-none">
+                    <div class="btn btn-round">
+                        <div class=" btn-content" tabindex="-1">
+                            <div class="btn-content-inner">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="recorder-button">
+                    <div class="rounded-full h-20 w-20">
+                        <div class="btn btn-round recorder-skeleton">
+                            <div class="btn-content" tabindex="-1">
+                                <div class="btn-content-inner">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="playback-button">
+                    <div class="listen-off playback-wrapper !shadow-none">
+                        <div class="btn btn-round">
+                            <div class=" btn-content" tabindex="-1">
+                                <div class="btn-content-inner">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    @* Desktop panel *@
+    @if (ScreenSize.IsWide()) {
+        <div class="chat-audio-panel">
+            <div class="playback-button">
+                <div class="btn btn-round">
+                    <div class=" btn-content" tabindex="-1">
+                    </div>
+                </div>
+            </div>
+            <div class="recorder-button flex">
+                <div class="rounded-full mx-1">
+                    <div class="btn btn-round">
+                        <div class=" btn-content" tabindex="-1">
+                            <div class="btn-content-inner">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="language-button">
+                <div class="btn btn-round">
+                    <div class="btn-content" tabindex="-1">
+                        <div class="btn-content-inner">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+}
