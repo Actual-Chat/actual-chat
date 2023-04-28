@@ -1,6 +1,6 @@
-namespace ActualChat.Users;
+namespace ActualChat.Users.Internal;
 
-public class CheckInTracker
+internal class CheckInTracker
 {
     private readonly ConcurrentDictionary<UserId, Moment> _items = new();
 

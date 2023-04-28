@@ -10,6 +10,7 @@ public interface IUserPresencesBackend : IComputeService
 
     [DataContract]
     public sealed record CheckInCommand(
-        [property: DataMember] UserId UserId
+        [property: DataMember] UserId UserId,
+        [property: DataMember] Moment At
     ) : ICommand<Unit>, IBackendCommand;
 }

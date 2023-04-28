@@ -1,6 +1,6 @@
-namespace ActualChat.Users;
+namespace ActualChat.Users.Internal;
 
-public class PresenceTracker : IAsyncDisposable
+internal class UserPresenceTracker : IAsyncDisposable
 {
     private readonly CheckInTracker _checkIns = new();
     private readonly ConcurrentTimerSet<UserId> _awayTimers;
@@ -10,7 +10,7 @@ public class PresenceTracker : IAsyncDisposable
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
-    public PresenceTracker(Action<UserId> onPresenceChanged, MomentClockSet clocks)
+    public UserPresenceTracker(Action<UserId> onPresenceChanged, MomentClockSet clocks)
     {
         _onPresenceChanged = onPresenceChanged;
         Clocks = clocks;

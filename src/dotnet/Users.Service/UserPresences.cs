@@ -5,12 +5,15 @@ public class UserPresences : IUserPresences
     private IUserPresencesBackend Backend { get; }
     private IAccounts Accounts { get; }
     private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
+    private Moment Now => Clocks.SystemClock.Now;
 
-    public UserPresences(IUserPresencesBackend backend, IAccounts accounts, ICommander commander, ILogger<UserPresences> log)
+    public UserPresences(IServiceProvider services)
     {
-        Backend = backend;
-        Accounts = accounts;
-        Commander = commander;
+        Backend = services.GetRequiredService<IUserPresencesBackend>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        Commander = services.Commander();
+        Clocks = services.Clocks();
     }
 
     // [ComputeMethod]
@@ -27,6 +30,7 @@ public class UserPresences : IUserPresences
         if (!account.IsActive())
             return;
 
-        await Commander.Call(new IUserPresencesBackend.CheckInCommand(account.Id), cancellationToken).ConfigureAwait(false);
+        var backendCommand = new IUserPresencesBackend.CheckInCommand(account.Id, Now);
+        await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }
