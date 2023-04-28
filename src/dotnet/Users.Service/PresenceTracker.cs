@@ -27,15 +27,24 @@ public class PresenceTracker : IAsyncDisposable
     }
 
     public Presence GetPresence(UserId userId)
-        => ToPresence(_checkIns.Get(userId));
+        => ToPresence(_checkIns.Get(userId), Now);
 
     public void CheckIn(UserId userId, Moment at)
     {
+        var now = Now;
         var oldPresence = GetPresence(userId);
-        var newPresence = ToPresence(at);
-        _checkIns.Set(userId, at);
-        _awayTimers.AddOrUpdateToLater(userId, at + Constants.Presence.AwayTimeout);
-        _offlineTimers.AddOrUpdateToLater(userId, at + Constants.Presence.OfflineTimeout);
+        var newPresence = ToPresence(at, now);
+        if (newPresence is Presence.Online or Presence.Away) {
+            _checkIns.Set(userId, at);
+            if (newPresence is Presence.Online)
+                _awayTimers.AddOrUpdateToLater(userId, at + Constants.Presence.AwayTimeout);
+            _offlineTimers.AddOrUpdateToLater(userId, at + Constants.Presence.OfflineTimeout);
+        }
+        else {
+            _checkIns.Remove(userId);
+            _awayTimers.Remove(userId);
+            _offlineTimers.Remove(userId);
+        }
         if (oldPresence != newPresence)
             _onPresenceChanged.Invoke(userId);
     }
@@ -49,12 +58,11 @@ public class PresenceTracker : IAsyncDisposable
         _onPresenceChanged.Invoke(userId);
     }
 
-    private Presence ToPresence(Moment? lastCheckInAt)
+    private Presence ToPresence(Moment? lastCheckInAt, Moment now)
     {
         if (lastCheckInAt == null)
             return Presence.Offline;
 
-        var now = Now;
         var checkInRecency = now - lastCheckInAt;
         if (checkInRecency < Constants.Presence.AwayTimeout)
             return Presence.Online;
