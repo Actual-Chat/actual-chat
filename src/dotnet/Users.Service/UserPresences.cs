@@ -31,6 +31,6 @@ public class UserPresences : IUserPresences
             return;
 
         var backendCommand = new IUserPresencesBackend.CheckInCommand(account.Id, Now);
-        await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
+        _ = Commander.Run(backendCommand, true, CancellationToken.None);
     }
 }
