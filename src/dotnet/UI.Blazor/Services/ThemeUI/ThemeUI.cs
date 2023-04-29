@@ -8,12 +8,20 @@ public class ThemeUI : WorkerBase
 {
     private readonly ISyncedState<ThemeSettings> _settings;
     private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
+    // Nearly every service here is requested only when the theme is applied,
+    // so it makes sense to postpone their resolution
+    private HostInfo? _hostInfo;
+    private Dispatcher? _dispatcher;
+    private IJSRuntime? _js;
+    private ILogger? _log;
+
     private Theme _appliedTheme = Theme.Light;
 
-    private ILogger Log { get; }
-    private HostInfo HostInfo { get; }
-    private Dispatcher Dispatcher { get; }
-    private IJSRuntime JS { get; }
+    private IServiceProvider Services { get; }
+    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
@@ -24,10 +32,7 @@ public class ThemeUI : WorkerBase
 
     public ThemeUI(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
-        HostInfo = services.GetRequiredService<HostInfo>();
-        Dispatcher = services.GetRequiredService<Dispatcher>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        Services = services;
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.AccountSettings().WithPrefix(nameof(ThemeUI));
@@ -37,6 +42,9 @@ public class ThemeUI : WorkerBase
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
+
+        // We don't have themes yet, so it's safe to indicate the theme is ready immediately
+        _whenReadySource.TrySetResult(default);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)

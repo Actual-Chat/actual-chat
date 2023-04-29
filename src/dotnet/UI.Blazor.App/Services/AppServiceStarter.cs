@@ -1,9 +1,6 @@
 using ActualChat.Audio.UI.Blazor.Services;
-using ActualChat.Chat;
-using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -21,39 +18,20 @@ public class AppServiceStarter
         Tracer = Services.Tracer(GetType());
     }
 
-    public async Task PreWebViewWarmup(CancellationToken cancellationToken)
-    {
-        using var _1 = Tracer.Region(nameof(PreWebViewWarmup));
-        try {
-            await Task.Run(() => {
-                WarmupSerializer(new Account());
-                WarmupSerializer(new AccountFull());
-                WarmupSerializer(new Chat.Chat());
-                WarmupSerializer(new ChatTile());
-                WarmupSerializer(new Author());
-            }, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Tracer.Point($"{nameof(PreWebViewWarmup)} failed, error: " + e);
-        }
-    }
+    public Task PreSessionSetupWarmup(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
-    public Task PostSessionSetupWarmup(CancellationToken cancellationToken)
+    public async Task PostSessionSetupWarmup(CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Region(nameof(PostSessionSetupWarmup));
-        return Task.CompletedTask;
-        /*
         try {
             await Task.Run(() => {
-                var chatListUI = Services.GetRequiredService<ChatListUI>();
-                _ = chatListUI.ListActive(cancellationToken);
-                _ = chatListUI.ListAllUnordered(cancellationToken);
+                Services.GetRequiredService<AccountUI>();
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             Tracer.Point($"{nameof(PostSessionSetupWarmup)} failed, error: " + e);
         }
-        */
     }
 
     public async Task ReadyToRender(CancellationToken cancellationToken)
@@ -62,10 +40,7 @@ public class AppServiceStarter
 
         // Create history - this should be done as early as possible
         var history = Services.GetRequiredService<History>();
-        _ = history.Initialize();
-
-        // Starting AccountUI state sync
-        var accountUI = Services.GetRequiredService<AccountUI>();
+        _ = history.Initialize(); // No need to await for this
 
         // Starting BrowserInfo
         Tracer.Point("BrowserInfo.Initialize");
@@ -75,7 +50,7 @@ public class AppServiceStarter
         // Starting ThemeUI
         Tracer.Point("ThemeUI.Start");
         var themeUI = Services.GetRequiredService<ThemeUI>();
-        themeUI.Start();
+        _ = Task.Run(() => themeUI.Start(), CancellationToken.None);
 
         // Awaiting for completion of initialization tasks.
         // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
@@ -95,11 +70,8 @@ public class AppServiceStarter
         await themeUI.WhenReady.ConfigureAwait(false);
         Tracer.Point("ThemeUI is ready");
 
-        // Completing History initialization
-        await history.WhenReady.ConfigureAwait(false);
-        Tracer.Point("History is ready");
-
         // Awaiting for account to be resolved
+        var accountUI = Services.GetRequiredService<AccountUI>();
         await accountUI.WhenLoaded.ConfigureAwait(true); // This .ConfigureAwait(true) is needed to run AutoNavigate
         Tracer.Point("AccountUI is ready");
 

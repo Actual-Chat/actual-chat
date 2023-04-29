@@ -95,6 +95,7 @@ public static class Program
         services.TryAddSingleton(configuration);
         services.AddSingleton(c => new HostInfo() {
             AppKind = AppKind.WasmApp,
+            ClientKind = ClientKind.Wasm,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = baseUrl,

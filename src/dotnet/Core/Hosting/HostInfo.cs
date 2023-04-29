@@ -16,6 +16,7 @@ public sealed record HostInfo
     public static Symbol DevelopmentEnvironment { get; } = Environments.Development;
 
     public AppKind AppKind { get; init; }
+    public ClientKind ClientKind { get; init; }
     public Symbol Environment { get; init; } = Environments.Development;
     public IConfiguration Configuration { get; init; } = null!;
     public ImmutableHashSet<Symbol> RequiredServiceScopes => _requiredServiceScopes ??= AppKind.GetRequiredServiceScopes();

@@ -100,6 +100,7 @@ public class Startup
 
             return new HostInfo() {
                 AppKind = hostSettings.AppKind ?? AppKind.WebServer,
+                ClientKind = ClientKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
                 BaseUrl = baseUrl ?? "",

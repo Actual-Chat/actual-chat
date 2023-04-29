@@ -186,8 +186,20 @@ public static partial class MauiProgram
         var whenSessionReady = SetupSession(settings, loggerFactory);
 
         // Add HostInfo
+        var platform = DeviceInfo.Current.Platform;
+        var clientKind = ClientKind.Unknown;
+        if (platform == DevicePlatform.Android)
+            clientKind = ClientKind.Android;
+        else if (platform == DevicePlatform.iOS)
+            clientKind = ClientKind.Ios;
+        else if (platform == DevicePlatform.WinUI)
+            clientKind = ClientKind.Windows;
+        else if (platform == DevicePlatform.macOS)
+            clientKind = ClientKind.MacOS;
+
         var hostInfo = new HostInfo {
             AppKind = AppKind.MauiApp,
+            ClientKind = clientKind,
             Environment = environment,
             Configuration = configuration,
             BaseUrl = settings.BaseUrl,
@@ -205,7 +217,7 @@ public static partial class MauiProgram
         // Build IServiceProvider
         var appServices = services.BuildServiceProvider();
         var appServiceStarter = appServices.GetRequiredService<AppServiceStarter>();
-        _ = appServiceStarter.PreWebViewWarmup(CancellationToken.None);
+        _ = appServiceStarter.PreSessionSetupWarmup(CancellationToken.None);
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = loggerFactory.CreateLogger(typeof(WebMReader));
@@ -299,6 +311,7 @@ public static partial class MauiProgram
             c.GetRequiredService<ILogger<MobileAuthClient>>()));
 
         // UI
+        services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
 
         JSObjectReferenceExt.TestIfDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;

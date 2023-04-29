@@ -13,7 +13,7 @@ public partial class History : IHasServices, IDisposable
     private Session? _session;
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<History>? _backendRef;
-    private TaskCompletionSource<Unit> _whenReadySource;
+    private readonly TaskCompletionSource<Unit> _whenReadySource;
 
     private object Lock { get; } = new();
     private ILogger Log { get; }

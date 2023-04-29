@@ -3,37 +3,37 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
+public class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
-    private DotNetObjectReference<IBrowserInfoBackend>? _backendRef;
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isHidden;
-    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
-    private readonly object _lock = new();
 
-    private IServiceProvider Services { get; }
-    private ILogger Log { get; }
+    protected readonly TaskCompletionSource<Unit> WhenReadySource = TaskCompletionSourceExt.New<Unit>();
+    protected DotNetObjectReference<IBrowserInfoBackend>? BackendRef;
+    protected readonly object Lock = new();
 
-    private HostInfo HostInfo { get; }
-    private IJSRuntime JS { get; }
-    private UICommander UICommander { get; }
+    protected IServiceProvider Services { get; }
+    protected HostInfo HostInfo { get; }
+    protected IJSRuntime JS { get; }
+    protected UICommander UICommander { get; }
+    protected ILogger Log { get; }
 
     public AppKind AppKind { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
     public IState<bool> IsHidden => _isHidden;
-    public TimeSpan UtcOffset { get; private set; }
-    public bool IsMobile { get; private set; }
-    public bool IsAndroid { get; private set; }
-    public bool IsIos { get; private set; }
-    public bool IsChrome { get; private set; }
-    public bool IsEdge { get; private set; }
-    public bool IsSafari { get; private set; }
-    public bool IsTouchCapable { get; private set; }
-    public string WindowId { get; private set; } = "";
-    public Task WhenReady => _whenReadySource.Task;
+    public TimeSpan UtcOffset { get; protected set; }
+    public bool IsMobile { get; protected set; }
+    public bool IsAndroid { get; protected set; }
+    public bool IsIos { get; protected set; }
+    public bool IsChrome { get; protected set; }
+    public bool IsEdge { get; protected set; }
+    public bool IsSafari { get; protected set; }
+    public bool IsTouchCapable { get; protected set; }
+    public string WindowId { get; protected set; } = "";
+    public Task WhenReady => WhenReadySource.Task;
 
     public BrowserInfo(IServiceProvider services)
     {
@@ -52,24 +52,26 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
     }
 
     public void Dispose()
-        => _backendRef.DisposeSilently();
+        => BackendRef.DisposeSilently();
 
-    public async Task Initialize()
+    public virtual async Task Initialize()
     {
-        _backendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
+        BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         await JS.InvokeVoidAsync(
             $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
-            _backendRef,
+            BackendRef,
             AppKind.ToString());
     }
 
     [JSInvokable]
-    public void OnInitialized(IBrowserInfoBackend.InitResult initResult)
+    public virtual void OnInitialized(IBrowserInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 
-        SetScreenSize(initResult.ScreenSizeText, initResult.IsHoverable);
-        _isHidden.Value = initResult.IsHidden;
+        if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
+            screenSize = Blazor.Services.ScreenSize.Unknown;
+
+        Update(screenSize, initResult.IsHoverable, initResult.IsHidden);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
@@ -79,41 +81,43 @@ public sealed class BrowserInfo : IBrowserInfoBackend, IDisposable
         IsSafari = initResult.IsSafari;
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
-        _whenReadySource.SetResult(default);
+        WhenReadySource.TrySetResult(default);
     }
 
     [JSInvokable]
     public void OnScreenSizeChanged(string screenSizeText, bool isHoverable)
-        => SetScreenSize(screenSizeText, isHoverable);
-
-    [JSInvokable]
-    public void OnIsHiddenChanged(bool isHidden)
-        => SetIsHidden(isHidden);
-
-    private void SetScreenSize(string screenSizeText, bool isHoverable)
     {
         if (!Enum.TryParse<ScreenSize>(screenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;
-        // Log.LogInformation("ScreenSize = {ScreenSize}", screenSize);
-
-        lock (_lock) {
-            if (_screenSize.Value == screenSize && _isHoverable.Value == isHoverable)
-                return;
-
-            _screenSize.Value = screenSize;
-            _isHoverable.Value = isHoverable;
-        }
-        UICommander.RunNothing(); // To instantly update everything
+        Update(screenSize, isHoverable);
     }
 
-    private void SetIsHidden(bool isHidden)
-    {
-        lock (_lock) {
-            if (_isHidden.Value == isHidden)
-                return;
+    [JSInvokable]
+    public void OnIsHiddenChanged(bool isHidden)
+        => Update(isHidden: isHidden);
 
-            _isHidden.Value = isHidden;
+    // Protected methods
+
+    protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isHidden = null)
+    {
+        var isUpdated = false;
+ #pragma warning disable MA0064
+        lock (Lock) {
+ #pragma warning restore MA0064
+            if (screenSize is { } vScreenSize && _screenSize.Value != vScreenSize) {
+                _screenSize.Value = vScreenSize;
+                isUpdated = true;
+            }
+            if (isHoverable is { } vIsHoverable && _isHoverable.Value != vIsHoverable) {
+                _isHoverable.Value = vIsHoverable;
+                isUpdated = true;
+            }
+            if (isHidden is { } vIsHidden && _isHidden.Value != vIsHidden) {
+                _isHidden.Value = vIsHidden;
+                isUpdated = true;
+            }
         }
-        UICommander.RunNothing(); // To instantly update everything
+        if (isUpdated)
+            UICommander.RunNothing(); // To instantly update everything
     }
 }

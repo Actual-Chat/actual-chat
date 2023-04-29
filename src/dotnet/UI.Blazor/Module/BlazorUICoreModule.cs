@@ -59,17 +59,17 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
-        services.AddScoped<DisposeMonitor>(_ => new DisposeMonitor());
-        services.AddScoped<BrowserInfo>(c => new BrowserInfo(c));
+        services.AddScoped(_ => new DisposeMonitor());
+        services.AddScoped(c => new BrowserInfo(c));
 
         // Settings
-        services.AddSingleton<LocalSettings.Options>(_ => new LocalSettings.Options());
-        services.AddScoped<LocalSettingsBackend>(c => new LocalSettingsBackend(c));
-        services.AddScoped<LocalSettings>(c => new LocalSettings(
+        services.AddSingleton(_ => new LocalSettings.Options());
+        services.AddScoped(c => new LocalSettingsBackend(c));
+        services.AddScoped(c => new LocalSettings(
             c.GetRequiredService<LocalSettings.Options>(),
             c.GetRequiredService<LocalSettingsBackend>(),
             c.GetRequiredService<ILogger<LocalSettings>>()));
-        services.AddScoped<AccountSettings>(c => new AccountSettings(
+        services.AddScoped(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
             c.GetRequiredService<Session>()));
         if (appKind.IsServer()) {
