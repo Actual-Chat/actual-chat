@@ -105,7 +105,7 @@ namespace ActualChat.UI.Blazor.App
 
             // Creating modules
             using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");
-            var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+            var moduleServices = services.BuildServiceProvider();
             var moduleHostBuilder = new ModuleHostBuilder()
                 // From less dependent to more dependent!
                 .AddModules(

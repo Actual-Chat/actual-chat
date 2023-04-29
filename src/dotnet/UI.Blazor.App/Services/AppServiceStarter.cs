@@ -1,5 +1,7 @@
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -21,29 +23,16 @@ public class AppServiceStarter
         Tracer = Services.Tracer(GetType());
     }
 
-    public Task PreSessionWarmup(CancellationToken cancellationToken)
+    public Task PostSessionWarmup(Session session, CancellationToken cancellationToken)
         => Task.Run(() => {
-            // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here
-            //           Besides that, this warm-up is optional - currently it runs only in MAUI apps
-            using var _1 = Tracer.Region(nameof(PreSessionWarmup));
-            try {
-                // Warmup RestEase & HTTP client types
-                var httpClientFactory = Services.GetRequiredService<IHttpClientFactory>();
-                var httpClient = httpClientFactory.CreateClient(typeof(IAccountsClientDef).FullName!);
-                FusionRestEaseClientBuilder.CreateRestClient(Services, httpClient);
-            }
-            catch (Exception e) {
-                Tracer.Point($"{nameof(PreSessionWarmup)} failed, error: " + e);
-            }
-        }, cancellationToken);
-
-    public Task PostSessionWarmup(CancellationToken cancellationToken)
-        => Task.Run(() => {
-            // NOTE(AY): This code runs in the Blazor app scope, so CAN access scoped services here
+            // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
             using var _1 = Tracer.Region(nameof(PostSessionWarmup));
             try {
-                Services.GetRequiredService<AccountUI>();
-                // Services.GetRequiredService<ChatListUI>();
+                var accounts = Services.GetRequiredService<IAccounts>();
+                var contacts = Services.GetRequiredService<IContacts>();
+                var chats = Services.GetRequiredService<IChats>();
+                accounts.GetOwn(session, CancellationToken.None);
+                // contacts.ListIds(session, CancellationToken.None);
             }
             catch (Exception e) {
                 Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
@@ -57,6 +46,9 @@ public class AppServiceStarter
         // Create history - this should be done as early as possible
         var history = Services.GetRequiredService<History>();
         _ = history.Initialize(); // No need to await for this
+
+        // Starting AccountUI
+        var accountUI = Services.GetRequiredService<AccountUI>();
 
         // Starting BrowserInfo
         Tracer.Point("BrowserInfo.Initialize");
@@ -87,7 +79,6 @@ public class AppServiceStarter
         Tracer.Point("ThemeUI is ready");
 
         // Awaiting for account to be resolved
-        var accountUI = Services.GetRequiredService<AccountUI>();
         await accountUI.WhenLoaded.ConfigureAwait(true); // This .ConfigureAwait(true) is needed to run AutoNavigate
         Tracer.Point("AccountUI is ready");
 

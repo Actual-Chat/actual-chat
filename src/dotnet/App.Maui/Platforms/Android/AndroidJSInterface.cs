@@ -26,7 +26,6 @@ internal class AndroidJSInterface : Java.Lang.Object
         _tracer.Point(nameof(OnDOMContentLoaded));
         _webView.Post(() => {
             try {
-                AppServices.GetRequiredService<LoadingUI>().MarkDisplayed();
                 _tracer.Point($"{nameof(OnDOMContentLoaded)} - window.App.initPage JS call");
                 var sessionHash = AppSettings.Session.Hash;
                 var script = $"window.App.initPage('{AppSettings.BaseUrl}', '{sessionHash}')";
@@ -35,6 +34,10 @@ internal class AndroidJSInterface : Java.Lang.Object
             catch (Exception ex) {
                 Debug.WriteLine(ex.ToString());
             }
+            Task.Delay(TimeSpan.FromSeconds(0.2)).ContinueWith(
+                // We need a delay here to get rid of white screen blinking, which somehow happens
+                _ => AppServices.GetRequiredService<LoadingUI>().MarkDisplayed(),
+                TaskScheduler.Default);
         });
     }
 

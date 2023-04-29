@@ -21,6 +21,7 @@ namespace ActualChat.App.Maui;
 public static partial class MauiProgram
 {
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
+    private static HostInfo HostInfo => Constants.HostInfo;
 
     public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration);
 
@@ -42,25 +43,26 @@ public static partial class MauiProgram
             const string baseUrl = "https://" + MauiConstants.Host + "/";
             AppSettings = new MauiAppSettings(baseUrl);
             MauiSession.RestoreOrCreate();
+
+            var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
+            Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
 #if false
             // Normal start
-            var appBuilder = CreateAppBuilder(false);
-            Settings.WhenSessionReady.Wait();
+            ConfigureApp(appBuilder, false);
+            AppSettings.WhenSessionReady.Wait();
             var app = appBuilder.Build();
-            AppServices = app.Services;
-            LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
+            AppServicesReady(app.Services);
             return app;
 #else
             // Lazy start
-            var earlyApp = CreateAppBuilder(true).Build();
+            var earlyApp = ConfigureApp(appBuilder, true).Build();
             var whenAppServicesReady = Task.Run(() => CreateLazyAppServices(earlyApp.Services));
             var appServices = new CompositeServiceProvider(
                 earlyApp.Services,
                 whenAppServicesReady,
                 CreateLazyServiceFilter(),
                 earlyApp);
-            AppServices = appServices;
-            LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
+            AppServicesReady(appServices);
             return (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
                 .First()
@@ -73,11 +75,10 @@ public static partial class MauiProgram
         }
     }
 
-    private static MauiAppBuilder CreateAppBuilder(bool isLazy)
+    private static MauiAppBuilder ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
     {
-        using var _ = Tracer.Region(nameof(CreateAppBuilder));
+        using var _ = Tracer.Region(nameof(ConfigureApp));
 
-        var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
             builder = builder.UseSentry(options => options.ConfigureForApp());
 
@@ -88,9 +89,12 @@ public static partial class MauiProgram
             .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents)
             .UseAppLinks();
 
-        // Core services
         var services = builder.Services;
+
+        // Core services
         services.AddSingleton(AppSettings);
+        services.AddSingleton(HostInfo);
+        services.AddSingleton(HostInfo.Configuration);
         services.AddSingleton(c => new LoadingUI(c)); // LoadingUI should be available early here, and as singleton
         services.AddMauiDiagnostics(true);
 
@@ -106,63 +110,43 @@ public static partial class MauiProgram
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
-        if (!isLazy)
-            ConfigureAppServices(services, builder.Configuration, null);
+        if (!isEarlyApp)
+            ConfigureAppServices(services, null);
 
         return builder;
     }
 
-    private static async Task<IServiceProvider> CreateLazyAppServices(IServiceProvider earlyServices)
+    private static Task<IServiceProvider> CreateLazyAppServices(IServiceProvider earlyServices)
     {
         using var _1 = Tracer.Region(nameof(CreateLazyAppServices));
-
         var services = new ServiceCollection();
-        var configuration = earlyServices.GetRequiredService<IConfiguration>();
-        ConfigureAppServices(services, configuration, earlyServices);
+        ConfigureAppServices(services, earlyServices);
         var appServices = services.BuildServiceProvider();
-
-        var appServiceStarter = appServices.GetRequiredService<AppServiceStarter>();
-        _ = appServiceStarter.PreSessionWarmup(CancellationToken.None);
-        await AppSettings.WhenSessionReady.ConfigureAwait(false);
-
-        return appServices;
+        return Task.FromResult((IServiceProvider)appServices);
     }
 
-    private static void ConfigureAppServices(IServiceCollection services, IConfiguration configuration, IServiceProvider? earlyServices)
+    private static void AppServicesReady(IServiceProvider services)
+    {
+        AppServices = services;
+        LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
+        Task.Run(async () => {
+            var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
+            var appServiceStarter = services.GetRequiredService<AppServiceStarter>();
+            _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);
+        });
+    }
+
+    // ConfigureXxx
+
+    private static void ConfigureAppServices(IServiceCollection services, IServiceProvider? earlyServices)
     {
         using var _ = Tracer.Region(nameof(ConfigureAppServices));
 
+        // Non-lazy services visible from lazy services
         services.AddSingleton(AppSettings);
-        services.AddSingleton(configuration);
-
-        // Add HostInfo
-        var platform = DeviceInfo.Current.Platform;
-        var clientKind = ClientKind.Unknown;
-        if (platform == DevicePlatform.Android)
-            clientKind = ClientKind.Android;
-        else if (platform == DevicePlatform.iOS)
-            clientKind = ClientKind.Ios;
-        else if (platform == DevicePlatform.WinUI)
-            clientKind = ClientKind.Windows;
-        else if (platform == DevicePlatform.macOS)
-            clientKind = ClientKind.MacOS;
-
-#if IS_FIXED_ENVIRONMENT_PRODUCTION || !DEBUG
-        var environment = Environments.Production;
-#else
-        var environment = Environments.Development;
-#endif
-
-        var hostInfo = new HostInfo {
-            AppKind = AppKind.MauiApp,
-            ClientKind = clientKind,
-            Environment = environment,
-            Configuration = configuration,
-            BaseUrl = AppSettings.BaseUrl,
-            Platform = PlatformInfoProvider.GetPlatform(),
-        };
-        Constants.HostInfo = hostInfo;
-        services.AddSingleton(_ => hostInfo);
+        services.AddSingleton(HostInfo);
+        services.AddSingleton(HostInfo.Configuration);
+        services.AddMauiDiagnostics(false);
 
         // HttpClient
 #if !WINDOWS
@@ -179,7 +163,6 @@ public static partial class MauiProgram
         if (earlyServices != null) {
             var loadingUI = earlyServices.GetRequiredService<LoadingUI>();
             services.AddSingleton(loadingUI);
-            services.AddMauiDiagnostics(false);
             ConfigureNonLazyServicesVisibleFromLazyServices(services);
         }
 
@@ -229,6 +212,39 @@ public static partial class MauiProgram
                 return result;
             }
         }
+    }
+
+    // CreateXxx
+
+    public static HostInfo CreateHostInfo(IConfiguration configuration)
+    {
+        // Add HostInfo
+        var platform = DeviceInfo.Current.Platform;
+        var clientKind = ClientKind.Unknown;
+        if (platform == DevicePlatform.Android)
+            clientKind = ClientKind.Android;
+        else if (platform == DevicePlatform.iOS)
+            clientKind = ClientKind.Ios;
+        else if (platform == DevicePlatform.WinUI)
+            clientKind = ClientKind.Windows;
+        else if (platform == DevicePlatform.macOS)
+            clientKind = ClientKind.MacOS;
+
+#if IS_FIXED_ENVIRONMENT_PRODUCTION || !DEBUG
+        var environment = Environments.Production;
+#else
+        var environment = Environments.Development;
+#endif
+
+        var hostInfo = new HostInfo {
+            AppKind = AppKind.MauiApp,
+            ClientKind = clientKind,
+            Environment = environment,
+            Configuration = configuration,
+            BaseUrl = AppSettings.BaseUrl,
+            Platform = PlatformInfoProvider.GetPlatform(),
+        };
+        return hostInfo;
     }
 
     private static Func<Type, bool> CreateLazyServiceFilter()
