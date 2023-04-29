@@ -5,7 +5,7 @@ namespace ActualChat.App.Maui;
 
 public partial class MauiBlazorWebViewHandler
 {
-    protected override void ConnectHandler(Android.Webkit.WebView platformView)
+    protected override void ConnectHandler(WebView platformView)
     {
         _trace.Point(nameof(ConnectHandler));
         Log.LogDebug(nameof(ConnectHandler));
@@ -22,6 +22,7 @@ public partial class MauiBlazorWebViewHandler
         var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
+
         var jsInterface = new JavascriptToAndroidInterface(this, platformView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");

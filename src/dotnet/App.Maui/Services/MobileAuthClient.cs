@@ -1,6 +1,6 @@
 namespace ActualChat.App.Maui.Services;
 
-public class MobileAuthClient
+public sealed class MobileAuthClient
 {
     private ClientAppSettings AppSettings { get; }
     private HttpClient HttpClient { get; }
@@ -16,18 +16,17 @@ public class MobileAuthClient
         Log = log;
     }
 
-    public async Task<bool> SetupSession()
+    public async Task SetupSession(Session session)
     {
         try {
-            var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
             var sessionId = session.Id.Value;
             var requestUri = $"{AppSettings.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            response.EnsureSuccessStatusCode();
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to setup session");
-            return false;
+            Log.LogError(e, "Session setup failed - probably server is unreachable");
+            throw;
         }
     }
 
@@ -44,23 +43,23 @@ public class MobileAuthClient
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to sign in google");
+            Log.LogError(e, "Google sign-in failed");
             return false;
         }
     }
 
-    public async Task<bool> SignOut()
+    public async Task SignOut()
     {
         var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            response.EnsureSuccessStatusCode();
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to sign out");
-            return false;
+            Log.LogError(e, "Sign-out failed");
+            throw;
         }
     }
 }

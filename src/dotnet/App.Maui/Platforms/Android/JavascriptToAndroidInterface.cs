@@ -10,7 +10,7 @@ internal class JavascriptToAndroidInterface : Java.Lang.Object
     private readonly MauiBlazorWebViewHandler _handler;
     private readonly Android.Webkit.WebView _webView;
 
-    public event Action<string> MessageReceived = m => { };
+    public event Action<string> MessageReceived = _ => { };
 
     public JavascriptToAndroidInterface(MauiBlazorWebViewHandler handler, Android.Webkit.WebView webView)
     {

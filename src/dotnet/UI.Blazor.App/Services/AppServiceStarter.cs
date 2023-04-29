@@ -1,6 +1,9 @@
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
+using Stl.Fusion.Client;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -18,21 +21,34 @@ public class AppServiceStarter
         Tracer = Services.Tracer(GetType());
     }
 
-    public Task PreSessionSetupWarmup(CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    public Task PreSessionWarmup(CancellationToken cancellationToken)
+        => Task.Run(() => {
+            // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here
+            //           Besides that, this warm-up is optional - currently it runs only in MAUI apps
+            using var _1 = Tracer.Region(nameof(PostSessionWarmup));
+            try {
+                // Warmup RestEase & HTTP client types
+                var httpClientFactory = Services.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(typeof(IAccountsClientDef).FullName!);
+                FusionRestEaseClientBuilder.CreateRestClient(Services, httpClient);
+            }
+            catch (Exception e) {
+                Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
+            }
+        }, cancellationToken);
 
-    public async Task PostSessionSetupWarmup(CancellationToken cancellationToken)
-    {
-        using var _1 = Tracer.Region(nameof(PostSessionSetupWarmup));
-        try {
-            await Task.Run(() => {
+    public Task PostSessionWarmup(CancellationToken cancellationToken)
+        => Task.Run(() => {
+            // NOTE(AY): This code runs in the Blazor app scope, so CAN access scoped services here
+            using var _1 = Tracer.Region(nameof(PostSessionWarmup));
+            try {
                 Services.GetRequiredService<AccountUI>();
-            }, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Tracer.Point($"{nameof(PostSessionSetupWarmup)} failed, error: " + e);
-        }
-    }
+                // Services.GetRequiredService<ChatListUI>();
+            }
+            catch (Exception e) {
+                Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
+            }
+        }, cancellationToken);
 
     public async Task ReadyToRender(CancellationToken cancellationToken)
     {

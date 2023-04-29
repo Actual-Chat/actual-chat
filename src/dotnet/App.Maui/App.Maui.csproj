@@ -108,7 +108,18 @@
     <AndroidAotProfile Include="custom.aprof" />
   </ItemGroup>
 
-  <!--  -->
+  <!-- Uncomment to profile Android app -->
+
+  <!--
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <AndroidEnableProfiler>true</AndroidEnableProfiler>
+  </PropertyGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <AndroidEnvironment Include="diagnostics-env.txt" />
+  </ItemGroup>
+  -->
+
+  <!-- iOS runtime identifier & other fixes -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>

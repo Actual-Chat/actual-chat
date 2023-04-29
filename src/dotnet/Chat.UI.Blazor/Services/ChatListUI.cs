@@ -179,11 +179,13 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     {
         if (_isFirstLoad) {
             _isFirstLoad = false;
+#if false
             if (HostInfo.AppKind.IsClient()) {
                 // The operations we do here are somehow CPU-intensive,
                 // so we allow other tasks to run on the first load
                 await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
             }
+#endif
         }
         try {
             DebugLog?.LogDebug("-> ListAllUnorderedRaw");

@@ -55,10 +55,34 @@
     protected override async Task OnInitializedAsync() {
         LoadingUI.MarkAppCreated();
         Tracer = Services.Tracer(GetType());
-        using var _1 = Tracer.Region(nameof(OnInitialized));
+        using var _1 = Tracer.Region(nameof(OnInitializedAsync));
 
         // Hit StaticImportsInitializer to make sure DefaultLog is set
         Services.GetRequiredService<StaticImportsInitializer>();
+
+        // Configure CircuitContext
+        CircuitContext.RootComponent = this;
+        ((AppBlazorCircuitContext)CircuitContext).MarkReady();
+
+        // Set ISessionProvider.Session
+        if (!SessionId.IsNullOrEmpty()) {
+            var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
+            var sessionProvider = Services.GetRequiredService<ISessionProvider>();
+            if (sessionProvider.HasSession) {
+                if (sessionProvider.Session != session) {
+                    // No way to change Session other than page reload
+                    var nav = Services.GetRequiredService<NavigationManager>();
+                    nav.NavigateTo(nav.Uri, true);
+                    return;
+                }
+            }
+            else {
+                sessionProvider.Session = session;
+            }
+        }
+
+        _ = AppServiceStarter.PostSessionWarmup(CancellationToken.None);
+        var whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);
 
         UIAssembly ??= typeof(AppBase).Assembly;
         UIModuleAssemblies ??= Host.Modules
@@ -68,35 +92,20 @@
             .ToArray();
         Tracer.Point("IBlazorUIModule assemblies evaluated");
 
-        if (!SessionId.IsNullOrEmpty()) {
-            var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
-            var sessionProvider = Services.GetRequiredService<ISessionProvider>();
-            if (sessionProvider.HasSession) {
-                if (sessionProvider.Session != session) {
-                    // No way to change Session other than page reload
-                    var nav = Services.GetRequiredService<NavigationManager>();
-                    nav.NavigateTo(nav.Uri, true);
-                }
-            }
-            else {
-                sessionProvider.Session = session;
-            }
-        }
-        CircuitContext.RootComponent = this;
-        ((AppBlazorCircuitContext)CircuitContext).MarkReady();
-
-        _ = AppServiceStarter.PostSessionSetupWarmup(_disposeToken);
-        await AppServiceStarter.ReadyToRender(_disposeToken);
+        await whenReadyToRender;
         LoadingUI.MarkLoaded();
     }
 
-    public virtual void Dispose() {
+    public void Dispose() {
         if (_disposeToken.IsCancellationRequested)
             return;
 
         _disposeTokenSource.CancelAndDisposeSilently();
-        CircuitContext.Dispose();
+        Dispose(true);
     }
+
+    protected virtual void Dispose(bool disposing)
+        => CircuitContext.Dispose();
 
     protected override bool ShouldRender()
         => LoadingUI.WhenLoaded.IsCompleted;

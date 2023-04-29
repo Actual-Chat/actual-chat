@@ -1,6 +1,6 @@
 namespace ActualChat.App.Maui.Services;
 
-public record ClientAppSettings
+public sealed record ClientAppSettings
 {
     private readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
 
@@ -10,17 +10,17 @@ public record ClientAppSettings
 
     public Session Session {
         get {
-            var sessionIdTask = _sessionSource.Task;
-            if (!sessionIdTask.IsCompleted)
-                throw StandardError.Internal("SessionId wasn't set yet.");
+            var sessionTask = _sessionSource.Task;
+            if (!sessionTask.IsCompleted)
+                throw StandardError.Internal($"{nameof(Session)} wasn't set yet.");
 
  #pragma warning disable VSTHRD002
-            return sessionIdTask.Result;
+            return sessionTask.Result;
  #pragma warning restore VSTHRD002
         }
         set {
             if (!_sessionSource.TrySetResult(value))
-                throw StandardError.Internal("SessionId is already set.");
+                throw StandardError.Internal($"{nameof(Session)} is already set.");
         }
     }
 

@@ -11,7 +11,7 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static partial LoggerConfiguration ConfigurePlatformLogger(this LoggerConfiguration loggerConfiguration)
+    public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration)
         => loggerConfiguration
             .WriteTo.AndroidTaggedLog(
                 AndroidConstants.LogTag,
