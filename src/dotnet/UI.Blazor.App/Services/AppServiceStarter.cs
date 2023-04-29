@@ -25,7 +25,7 @@ public class AppServiceStarter
         => Task.Run(() => {
             // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here
             //           Besides that, this warm-up is optional - currently it runs only in MAUI apps
-            using var _1 = Tracer.Region(nameof(PostSessionWarmup));
+            using var _1 = Tracer.Region(nameof(PreSessionWarmup));
             try {
                 // Warmup RestEase & HTTP client types
                 var httpClientFactory = Services.GetRequiredService<IHttpClientFactory>();
@@ -33,7 +33,7 @@ public class AppServiceStarter
                 FusionRestEaseClientBuilder.CreateRestClient(Services, httpClient);
             }
             catch (Exception e) {
-                Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
+                Tracer.Point($"{nameof(PreSessionWarmup)} failed, error: " + e);
             }
         }, cancellationToken);
 
