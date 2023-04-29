@@ -44,6 +44,9 @@ namespace ActualChat.UI.Blazor.App
         {
 #if !DEBUG
             InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+#else
+            if (appKind.IsMauiApp())
+                InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #endif
             var tracer = Tracer.Default;
 
