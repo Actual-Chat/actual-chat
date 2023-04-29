@@ -56,6 +56,9 @@
 .until-ui-is-ready .loading-image-bg > .c-border {
     @apply p-0.5;
 }
+body:has(.ui-is-rendered) .until-ui-is-ready {
+    @apply hidden;
+}
 .until-ui-is-ready .loading-image-bg .c-before-circle {
     @apply w-full h-full;
     @apply rounded-5xl;
