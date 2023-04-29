@@ -8,10 +8,10 @@ public partial class MainPage : ContentPage
 {
     private readonly BlazorWebView _blazorWebView;
 
-    private NavigationInterceptor NavigationInterceptor { get; }
+    private MauiNavigationInterceptor NavigationInterceptor { get; }
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
 
-    public MainPage(NavigationInterceptor navigationInterceptor)
+    public MainPage(MauiNavigationInterceptor navigationInterceptor)
     {
         Tracer.Point(".ctor");
         NavigationInterceptor = navigationInterceptor;

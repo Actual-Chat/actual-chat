@@ -5,14 +5,30 @@ using Stl.Internal;
 
 namespace ActualChat.App.Maui;
 
-public static class AppServicesAccessor
+public class AppServicesAccessor
 {
     private static readonly object _lock = new();
+    private static ILogger? _log;
+    private static volatile MauiAppSettings? _appSettings;
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
     private static volatile TaskCompletionSource<Unit> _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>();
 
+    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
+
     public static Task WhenScopedServicesReady => _whenScopedServicesReadySource.Task;
+
+    public static MauiAppSettings AppSettings {
+        get => _appSettings ?? throw Errors.NotInitialized(nameof(AppSettings));
+        set {
+            lock (_lock) {
+                if (value == null!)
+                    throw new ArgumentNullException(nameof(value));
+
+                _appSettings = value;
+            }
+        }
+    }
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));
@@ -26,7 +42,7 @@ public static class AppServicesAccessor
                     throw Errors.AlreadyInitialized(nameof(AppServices));
 
                 _appServices = value;
-                AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("AppServices ready");
+                Log.LogDebug("AppServices ready");
             }
         }
     }
@@ -44,7 +60,7 @@ public static class AppServicesAccessor
 
                 _scopedServices = value;
                 _whenScopedServicesReadySource.TrySetResult(default);
-                AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices ready");
+                Log.LogDebug("ScopedServices ready");
             }
         }
     }

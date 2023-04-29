@@ -84,39 +84,34 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped<RenderVars>(_ => new RenderVars());
 
         // UI events
-        services.AddScoped<UIEventHub>(c => new UIEventHub(c));
+        services.AddScoped(c => new UIEventHub(c));
 
-        services.AddScoped<LoadingUI>(c => new LoadingUI(c));
-        services.AddScoped<ClipboardUI>(c => new ClipboardUI(
-            c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<InteractiveUI>(c => new InteractiveUI(c));
-        services.AddScoped<ErrorUI>(c => new ErrorUI(
-            c.GetRequiredService<UIActionTracker>()));
-        services.AddScoped<History>(c => new History(c));
-        services.AddScoped<HistoryItemIdFormatter>(_ => new HistoryItemIdFormatter());
-        services.AddScoped<ModalUI>(c => new ModalUI(c));
-        services.AddScoped<BannerUI>(c => new BannerUI(c));
-        services.AddScoped<FocusUI>(c => new FocusUI(
-            c.GetRequiredService<IJSRuntime>()));
-        services.TryAddScoped<KeepAwakeUI>(c => new KeepAwakeUI(c));
-        services.AddScoped<DeviceAwakeUI>(c => new DeviceAwakeUI(c));
-        services.AddScoped<UserActivityUI>(c => new UserActivityUI(c));
-        services.AddScoped<Escapist>(c => new Escapist(
-            c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<TuneUI>(c => new TuneUI(c));
-        services.AddScoped<VibrationUI>(c => new VibrationUI(c));
+        services.AddScoped(c => new LoadingUI(c));
+        services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new InteractiveUI(c));
+        services.AddScoped(c => new ErrorUI(c.GetRequiredService<UIActionTracker>()));
+        services.AddScoped(c => new History(c));
+        services.AddScoped(_ => new HistoryItemIdFormatter());
+        services.AddScoped(c => new ModalUI(c));
+        services.AddScoped(c => new BannerUI(c));
+        services.AddScoped(c => new FocusUI(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new KeepAwakeUI(c));
+        services.AddScoped(c => new DeviceAwakeUI(c));
+        services.AddScoped(c => new UserActivityUI(c));
+        services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new TuneUI(c));
+        services.AddScoped(c => new VibrationUI(c));
         fusion.AddComputeService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
-        services.AddScoped<ThemeUI>(c => new ThemeUI(c));
-        services.AddScoped<FeedbackUI>(c => new FeedbackUI(c));
-        services.AddScoped<VisualMediaViewerUI>(c => new VisualMediaViewerUI(
-            c.GetRequiredService<ModalUI>()));
+        services.AddScoped(c => new ThemeUI(c));
+        services.AddScoped(c => new FeedbackUI(c));
+        services.AddScoped(c => new VisualMediaViewerUI(c.GetRequiredService<ModalUI>()));
         fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
-        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
+        services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
         services.AddScoped<IRestartService, WebpageReloadService>(c => new WebpageReloadService(
             c.GetRequiredService<NavigationManager>()));
 

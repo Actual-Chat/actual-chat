@@ -1,6 +1,6 @@
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.App.Maui;
 
-public sealed record ClientAppSettings
+public sealed record MauiAppSettings
 {
     private readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
 
@@ -24,7 +24,7 @@ public sealed record ClientAppSettings
         }
     }
 
-    public ClientAppSettings(string baseUrl)
+    public MauiAppSettings(string baseUrl)
     {
         baseUrl = baseUrl.EnsureSuffix("/");
         BaseUrl = baseUrl;

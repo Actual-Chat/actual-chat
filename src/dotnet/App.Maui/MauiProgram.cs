@@ -20,21 +20,19 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    private static Tracer _tracer = null!;
-    private static ClientAppSettings _settings = null!;
+    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
 
     public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration);
 
     public static MauiApp CreateMauiApp()
     {
-        _tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
-        using var _1 = _tracer.Region(nameof(CreateMauiApp));
+        using var _1 = Tracer.Region(nameof(CreateMauiApp));
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 
 #if WINDOWS
-        if (_tracer.IsEnabled) {
+        if (Tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
             // MauiBlazorOptimizer.EnableDependencyInjectionEventListener();
         }
@@ -42,27 +40,27 @@ public static partial class MauiProgram
 
         try {
             const string baseUrl = "https://" + MauiConstants.Host + "/";
-            _settings = new ClientAppSettings(baseUrl);
-            MauiSession.RestoreOrCreate(_settings);
+            AppSettings = new MauiAppSettings(baseUrl);
+            MauiSession.RestoreOrCreate();
 #if false
             // Normal start
             var appBuilder = CreateAppBuilder(false);
-            _settings.WhenSessionReady.Wait();
+            Settings.WhenSessionReady.Wait();
             var app = appBuilder.Build();
             AppServices = app.Services;
-            LoadingUI.MarkMauiAppBuilt(_tracer.Elapsed);
+            LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
             return app;
 #else
             // Lazy start
-            var miniApp = CreateAppBuilder(true).Build();
-            var whenAppServicesReady = Task.Run(() => CreateLazyAppServices(miniApp.Configuration));
+            var earlyApp = CreateAppBuilder(true).Build();
+            var whenAppServicesReady = Task.Run(() => CreateLazyAppServices(earlyApp.Services));
             var appServices = new CompositeServiceProvider(
-                miniApp.Services,
+                earlyApp.Services,
                 whenAppServicesReady,
                 CreateLazyServiceFilter(),
-                miniApp);
+                earlyApp);
             AppServices = appServices;
-            LoadingUI.MarkMauiAppBuilt(_tracer.Elapsed);
+            LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
             return (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
                 .First()
@@ -77,7 +75,7 @@ public static partial class MauiProgram
 
     private static MauiAppBuilder CreateAppBuilder(bool isLazy)
     {
-        using var _ = _tracer.Region(nameof(CreateAppBuilder));
+        using var _ = Tracer.Region(nameof(CreateAppBuilder));
 
         var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
@@ -90,54 +88,52 @@ public static partial class MauiProgram
             .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents)
             .UseAppLinks();
 
+        // Core services
         var services = builder.Services;
-        services.AddSingleton(_settings);
+        services.AddSingleton(AppSettings);
+        services.AddSingleton(c => new LoadingUI(c)); // LoadingUI should be available early here, and as singleton
         services.AddMauiDiagnostics(true);
-        services.AddMauiBlazorWebView();
 
+        // Core MAUI services
+        services.AddMauiBlazorWebView();
 #if true || DEBUG
         // Temporarily allow developer tools for all configurations
-        builder.Services.AddBlazorWebViewDeveloperTools();
+        services.AddBlazorWebViewDeveloperTools();
 #endif
 
-        services.AddTransient(_ => new MainPage(new NavigationInterceptor(_settings)));
+        services.AddTransient(_ => new MainPage(new MauiNavigationInterceptor()));
         builder.ConfigureMauiHandlers(handlers => {
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
 
         if (!isLazy)
-            ConfigureAppServices(services, builder.Configuration, false);
+            ConfigureAppServices(services, builder.Configuration, null);
 
         return builder;
     }
 
-    private static async Task<IServiceProvider> CreateLazyAppServices(IConfiguration configuration)
+    private static async Task<IServiceProvider> CreateLazyAppServices(IServiceProvider earlyServices)
     {
-        using var _1 = _tracer.Region(nameof(CreateLazyAppServices));
+        using var _1 = Tracer.Region(nameof(CreateLazyAppServices));
 
         var services = new ServiceCollection();
-        ConfigureAppServices(services, configuration, true);
+        var configuration = earlyServices.GetRequiredService<IConfiguration>();
+        ConfigureAppServices(services, configuration, earlyServices);
         var appServices = services.BuildServiceProvider();
 
         var appServiceStarter = appServices.GetRequiredService<AppServiceStarter>();
         _ = appServiceStarter.PreSessionWarmup(CancellationToken.None);
-        await _settings.WhenSessionReady.ConfigureAwait(false);
+        await AppSettings.WhenSessionReady.ConfigureAwait(false);
 
         return appServices;
     }
 
-    private static void ConfigureAppServices(IServiceCollection services, IConfiguration configuration, bool isLazy)
+    private static void ConfigureAppServices(IServiceCollection services, IConfiguration configuration, IServiceProvider? earlyServices)
     {
-        using var _ = _tracer.Region(nameof(ConfigureAppServices));
+        using var _ = Tracer.Region(nameof(ConfigureAppServices));
 
-        if (isLazy) {
-            services.AddSingleton(_settings);
-            services.AddSingleton(configuration);
-            services.AddMauiDiagnostics(false);
-            ConfigureNonLazyServicesVisibleFromLazyServices(services);
-        }
-
-        services.AddSingleton(new ScopedTracerProvider(_tracer)); // We don't want to have scoped tracers in MAUI app
+        services.AddSingleton(AppSettings);
+        services.AddSingleton(configuration);
 
         // Add HostInfo
         var platform = DeviceInfo.Current.Platform;
@@ -162,7 +158,7 @@ public static partial class MauiProgram
             ClientKind = clientKind,
             Environment = environment,
             Configuration = configuration,
-            BaseUrl = _settings.BaseUrl,
+            BaseUrl = AppSettings.BaseUrl,
             Platform = PlatformInfoProvider.GetPlatform(),
         };
         Constants.HostInfo = hostInfo;
@@ -179,12 +175,18 @@ public static partial class MauiProgram
             new Module.BlazorUIClientAppModule(c),
         });
 
+        // Non-lazy services visible from lazy services
+        if (earlyServices != null) {
+            var loadingUI = earlyServices.GetRequiredService<LoadingUI>();
+            services.AddSingleton(loadingUI);
+            services.AddMauiDiagnostics(false);
+            ConfigureNonLazyServicesVisibleFromLazyServices(services);
+        }
+
         // Auth
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
-        services.AddSingleton<BaseUrlProvider>(c => new BaseUrlProvider(
-            c.GetRequiredService<UrlMapper>().BaseUrl));
-        services.AddTransient<MobileAuthClient>(c => new MobileAuthClient(
-            c.GetRequiredService<ClientAppSettings>(),
+        services.AddSingleton(c => new BaseUrlProvider(c.GetRequiredService<UrlMapper>().BaseUrl));
+        services.AddTransient(c => new MobileAuthClient(
             c.GetRequiredService<HttpClient>(),
             c.GetRequiredService<ILogger<MobileAuthClient>>()));
 

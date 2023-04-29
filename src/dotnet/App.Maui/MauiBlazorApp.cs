@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App;
 using Microsoft.AspNetCore.Components;
 
@@ -9,9 +8,8 @@ public class MauiBlazorApp : AppBase
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
     protected override Task OnInitializedAsync() {
-        var clientAppSettings = Services.GetRequiredService<ClientAppSettings>();
         var sessionProvider = Services.GetRequiredService<ISessionProvider>();
-        sessionProvider.Session = clientAppSettings.Session;
+        sessionProvider.Session = AppSettings.Session;
         ScopedServices = Services;
 
         return base.OnInitializedAsync();

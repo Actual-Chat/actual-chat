@@ -5,18 +5,21 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class LoadingUI
 {
+    private readonly TaskCompletionSource<Unit> _whenDisplayedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
 
     private ILogger Log { get; }
     private Tracer Tracer { get; }
 
+    public Task WhenDisplayed => _whenDisplayedSource.Task;
     public Task WhenLoaded => _whenLoadedSource.Task;
     public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
     public static TimeSpan MauiAppBuildTime { get; private set; }
-    public TimeSpan AppCreatedTime { get; private set; }
-    public TimeSpan LoadingTime { get; private set; }
+    public TimeSpan AppCreationTime { get; private set; }
+    public TimeSpan DisplayTime { get; private set; }
+    public TimeSpan LoadTime { get; private set; }
     public TimeSpan ChatListLoadTime { get; private set; }
 
     public LoadingUI(IServiceProvider services)
@@ -33,8 +36,26 @@ public sealed class LoadingUI
 
     public void MarkAppCreated()
     {
-        if (AppCreatedTime == default)
-            AppCreatedTime = Tracer.Elapsed;
+        if (AppCreationTime == default)
+            AppCreationTime = Tracer.Elapsed;
+    }
+
+    public void MarkDisplayed()
+    {
+        if (!_whenDisplayedSource.TrySetResult(default))
+            return;
+
+        DisplayTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkDisplayed));
+    }
+
+    public void MarkLoaded()
+    {
+        if (!_whenLoadedSource.TrySetResult(default))
+            return;
+
+        LoadTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkLoaded));
     }
 
     public void MarkChatListLoaded()
@@ -44,18 +65,5 @@ public sealed class LoadingUI
 
         ChatListLoadTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkChatListLoaded));
-        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        Log.LogInformation($"{nameof(MarkChatListLoaded)}: {ChatListLoadTime.ToShortString()}");
-    }
-
-    public void MarkLoaded()
-    {
-        if (!_whenLoadedSource.TrySetResult(default))
-            return;
-
-        LoadingTime = Tracer.Elapsed;
-        Tracer.Point(nameof(MarkLoaded));
-        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        Log.LogInformation($"{nameof(MarkLoaded)}: {LoadingTime.ToShortString()}");
     }
 }

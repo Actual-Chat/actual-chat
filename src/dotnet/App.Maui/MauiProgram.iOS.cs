@@ -14,7 +14,7 @@ public static partial class MauiProgram
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
         services.AddScoped<PushNotifications>(c => new PushNotifications(c));
-        services.AddScoped<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
+        services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
         services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<PushNotifications>());
     }
 

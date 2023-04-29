@@ -25,7 +25,7 @@ public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
             return;
 
         // Web application (or WASM) services
-        services.TryAddTransient<IDeviceTokenRetriever, WebDeviceTokenRetriever>();
-        services.TryAddScoped<INotificationPermissions>(s => s.GetRequiredService<NotificationUI>());
+        services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<NotificationUI>());
     }
 }

@@ -14,7 +14,7 @@ public sealed class MediaPlaybackModule : HostModule
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
-        services.TryAddScoped<IPlaybackFactory>(sp=> new PlaybackFactory(sp));
+        services.AddScoped<IPlaybackFactory>(c => new PlaybackFactory(c));
 
         var fusion = services.AddFusion();
         fusion.AddComputeService<ActivePlaybackInfo>(ServiceLifetime.Scoped);

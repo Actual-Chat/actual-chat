@@ -2,16 +2,11 @@ namespace ActualChat.App.Maui.Services;
 
 public sealed class MobileAuthClient
 {
-    private ClientAppSettings AppSettings { get; }
     private HttpClient HttpClient { get; }
     private ILogger<MobileAuthClient> Log { get; }
 
-    public MobileAuthClient(
-        ClientAppSettings clientAppSettings,
-        HttpClient httpClient,
-        ILogger<MobileAuthClient> log)
+    public MobileAuthClient(HttpClient httpClient, ILogger<MobileAuthClient> log)
     {
-        AppSettings = clientAppSettings;
         HttpClient = httpClient;
         Log = log;
     }

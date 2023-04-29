@@ -2,13 +2,8 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui.Services;
 
-public class NavigationInterceptor
+public class MauiNavigationInterceptor
 {
-    private ClientAppSettings AppSettings { get; }
-
-    public NavigationInterceptor(ClientAppSettings clientAppSettings)
-        => AppSettings = clientAppSettings;
-
     internal bool TryIntercept(Uri uri)
     {
         const string webViewAppHostAddress = "0.0.0.0";

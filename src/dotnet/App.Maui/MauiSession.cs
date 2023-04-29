@@ -10,7 +10,7 @@ public sealed class MauiSession
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSession)];
     private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSession>();
 
-    public static Task RestoreOrCreate(ClientAppSettings settings)
+    public static Task RestoreOrCreate()
         => Task.Run(async () => {
             using var _ = Tracer.Region(nameof(RestoreOrCreate));
 
@@ -37,7 +37,7 @@ public sealed class MauiSession
 
             if (session == null) {
                 session = new SessionFactory().CreateSession();
-                await Setup(settings, session, true).ConfigureAwait(false);
+                await Setup(session, true).ConfigureAwait(false);
                 bool isSaved;
                 try {
                     if (storage.Remove(sessionIdStorageKey))
@@ -66,13 +66,13 @@ public sealed class MauiSession
                 }
             }
             else
-                await Setup(settings, session, false).ConfigureAwait(false);
+                await Setup(session, false).ConfigureAwait(false);
 
-            settings.Session = session;
+            AppSettings.Session = session;
             return session;
         });
 
-    private static async Task Setup(ClientAppSettings appSettings, Session session, bool isNew)
+    private static async Task Setup(Session session, bool isNew)
     {
         var _ = Tracer.Region(nameof(Setup));
         try {
@@ -89,7 +89,7 @@ public sealed class MauiSession
                 return;
 
             var authClientLogger = MauiDiagnostics.LoggerFactory.CreateLogger<MobileAuthClient>();
-            var authClient = new MobileAuthClient(appSettings, httpClient, authClientLogger);
+            var authClient = new MobileAuthClient(httpClient, authClientLogger);
             await authClient.SetupSession(session).ConfigureAwait(false);
         }
         catch (Exception e) {

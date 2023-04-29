@@ -111,7 +111,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
 
         // Auth
         var fusionAuth = fusion.AddAuthentication();
-        services.TryAddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
+        services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
             signInControllerOptionsFactory: _ => new() {
                 DefaultScheme = GoogleDefaults.AuthenticationScheme,

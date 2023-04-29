@@ -1,18 +1,19 @@
+using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.Webkit;
 using Java.Interop;
 
 namespace ActualChat.App.Maui;
 
-internal class JavascriptToAndroidInterface : Java.Lang.Object
+internal class AndroidJSInterface : Java.Lang.Object
 {
-    private static readonly Tracer _tracer = Tracer.Default[nameof(JavascriptToAndroidInterface)];
+    private static readonly Tracer _tracer = Tracer.Default[nameof(AndroidJSInterface)];
     private readonly MauiBlazorWebViewHandler _handler;
     private readonly Android.Webkit.WebView _webView;
 
     public event Action<string> MessageReceived = _ => { };
 
-    public JavascriptToAndroidInterface(MauiBlazorWebViewHandler handler, Android.Webkit.WebView webView)
+    public AndroidJSInterface(MauiBlazorWebViewHandler handler, Android.Webkit.WebView webView)
     {
         _handler = handler;
         _webView = webView;
@@ -25,9 +26,10 @@ internal class JavascriptToAndroidInterface : Java.Lang.Object
         _tracer.Point(nameof(OnDOMContentLoaded));
         _webView.Post(() => {
             try {
+                AppServices.GetRequiredService<LoadingUI>().MarkDisplayed();
                 _tracer.Point($"{nameof(OnDOMContentLoaded)} - window.App.initPage JS call");
-                var sessionHash = _handler.AppSettings.Session.Hash;
-                var script = $"window.App.initPage('{_handler.AppSettings.BaseUrl}', '{sessionHash}')";
+                var sessionHash = AppSettings.Session.Hash;
+                var script = $"window.App.initPage('{AppSettings.BaseUrl}', '{sessionHash}')";
                 _webView.EvaluateJavascript(script, null);
             }
             catch (Exception ex) {

@@ -7,7 +7,7 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(WebView platformView)
     {
-        _trace.Point(nameof(ConnectHandler));
+        Tracer.Point(nameof(ConnectHandler));
         Log.LogDebug(nameof(ConnectHandler));
 
         base.ConnectHandler(platformView);
@@ -20,10 +20,10 @@ public partial class MauiBlazorWebViewHandler
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(platformView, true);
         var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
-        cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
+        cookieManager.SetCookie("https://0.0.0.0", sessionCookieValue);
         cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
 
-        var jsInterface = new JavascriptToAndroidInterface(this, platformView);
+        var jsInterface = new AndroidJSInterface(this, platformView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");
         platformView.SetWebViewClient(

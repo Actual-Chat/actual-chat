@@ -5,8 +5,8 @@
     if (!HostInfo.IsDevelopmentInstance)
         return;
     var mauiAppBuildTime = (int)LoadingUI.MauiAppBuildTime.TotalMilliseconds;
-    var appCreatedTime = (int)LoadingUI.AppCreatedTime.TotalMilliseconds;
-    var loadingTime = (int)LoadingUI.LoadingTime.TotalMilliseconds;
+    var appCreatedTime = (int)LoadingUI.AppCreationTime.TotalMilliseconds;
+    var loadingTime = (int)LoadingUI.LoadTime.TotalMilliseconds;
     var chatListLoadedTime = (int)LoadingUI.ChatListLoadTime.TotalMilliseconds;
 }
 

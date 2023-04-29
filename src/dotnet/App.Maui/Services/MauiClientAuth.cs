@@ -5,16 +5,14 @@ namespace ActualChat.App.Maui.Services;
 internal sealed class MauiClientAuth : IClientAuth
 {
     private IServiceProvider Services { get; }
-    private ClientAppSettings AppSettings { get; }
+    private MobileAuthClient AuthClient { get; }
     private ILogger<MauiClientAuth> Log { get; }
-    private MobileAuthClient MobileAuthClient { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
         Services = services;
-        AppSettings = services.GetRequiredService<ClientAppSettings>();
         Log = services.GetRequiredService<ILogger<MauiClientAuth>>();
-        MobileAuthClient = services.GetRequiredService<MobileAuthClient>();
+        AuthClient = services.GetRequiredService<MobileAuthClient>();
     }
 
     public async ValueTask SignIn(string scheme)
@@ -42,13 +40,13 @@ internal sealed class MauiClientAuth : IClientAuth
         if (androidGoogleSignIn.IsSignedIn())
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif
-        await MobileAuthClient.SignOut().ConfigureAwait(true);
+        await AuthClient.SignOut().ConfigureAwait(true);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
         => ValueTask.FromResult(new[] {
             (IClientAuth.GoogleSchemeName, "Google"),
-            (IClientAuth.FacebookSchemeName, "Facebook")
+            (IClientAuth.FacebookSchemeName, "Facebook"),
         });
 
     private async Task OpenSystemBrowserForSignIn(string url)

@@ -19,12 +19,12 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private UrlMapper UrlMapper => History.UrlMapper;
     private Dispatcher Dispatcher => History.Dispatcher;
     private IJSRuntime JS => History.JS;
-    private PanelsUI PanelsUI => History.Services.GetRequiredService<PanelsUI>();
     private UICommander UICommander { get; }
     private ILogger Log { get; }
 
     public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
+    // ReSharper disable once InconsistentlySynchronizedField
     public IState<string?> DeviceId => _deviceId;
 
     public NotificationUI(IServiceProvider services)
