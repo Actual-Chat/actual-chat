@@ -137,12 +137,14 @@
 
 @if (!isServerSideBlazor && !isCloseWindowRequest) {
     <div class="until-ui-is-ready">
-        <div class="loading-bg"></div>
-        <div class="loading-image-bg">
-            <div class="c-gradient"></div>
-            <div class="c-before-circle"></div>
-            <div class="c-circle">
-                <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
+        <div class="c-wrapper">
+            <div class="loading-image-bg">
+                <div class="c-border">
+                    <div class="c-before-circle"></div>
+                </div>
+                <div class="c-circle">
+                    <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
+                </div>
             </div>
         </div>
     </div>
@@ -206,7 +208,6 @@
 
 <!-- This block must go after app, otherwise page content won't be blurred -->
 <div id="components-reconnect-modal">
-    <div class="loading-bg"></div>
     <div class="loading-image-bg">
         <div class="c-before-circle"></div>
         <div class="c-circle">
