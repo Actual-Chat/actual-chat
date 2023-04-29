@@ -9,7 +9,6 @@ public sealed class LoadingUI
     private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
 
-    private ILogger Log { get; }
     private Tracer Tracer { get; }
 
     public Task WhenDisplayed => _whenDisplayedSource.Task;
@@ -23,10 +22,7 @@ public sealed class LoadingUI
     public TimeSpan ChatListLoadTime { get; private set; }
 
     public LoadingUI(IServiceProvider services)
-    {
-        Log = services.LogFor(GetType());
-        Tracer = services.Tracer(GetType());
-    }
+        => Tracer = services.Tracer(GetType());
 
     public static void MarkMauiAppBuilt(TimeSpan mauiAppBuildTime)
     {
