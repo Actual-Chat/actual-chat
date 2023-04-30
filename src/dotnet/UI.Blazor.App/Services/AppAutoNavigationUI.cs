@@ -9,9 +9,13 @@ public class AppAutoNavigationUI : AutoNavigationUI
 
     protected override async Task HandleAutoNavigate(CancellationToken cancellationToken)
     {
-        var (url, reason) = InitialNavigationTargets.Count > 0
-            ? InitialNavigationTargets.MaxBy(t => (int)t.Reason)
-            : default;
+        var (url, reason) = default((LocalUrl, AutoNavigationReason));
+        var hasInitialNavigationTargets = InitialNavigationTargets.Count > 0;
+        if (hasInitialNavigationTargets) {
+            foreach (var (url1, reason1) in InitialNavigationTargets)
+                if (reason1 > reason)
+                    (reason, url) = (reason1, url1);
+        }
         if (reason == AutoNavigationReason.Skip) {
             // No default auto-navigation
             var currentUrl = History.LocalUrl;
