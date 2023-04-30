@@ -4,8 +4,9 @@ public partial class ChatUI
 {
     // All state sync logic should be here
 
-    protected override Task OnRun(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
             new(nameof(HardRedirectOnFixableChat), HardRedirectOnFixableChat),
@@ -13,7 +14,7 @@ public partial class ChatUI
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
         var retryDelays = new RetryDelaySeq(0.1, 1);
-        return (
+        await (
             from chain in baseChains
             select chain
                 .Log(LogLevel.Debug, DebugLog)

@@ -18,27 +18,49 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
 
+    private IUserPresences? _userPresences;
+    private IAccounts? _accounts;
+    private IChats? _chats;
+    private IContacts? _contacts;
+    private IChatPositions? _chatPositions;
+    private IMentions? _mentions;
+    private AccountSettings? _accountSettings;
+    private History? _history;
+    private KeepAwakeUI? _keepAwakeUI;
+    private TuneUI? _tuneUI;
+    private ModalUI? _modalUI;
+    private ActiveChatsUI? _activeChatsUI;
+    private ChatListUI? _chatListUI;
+    private ChatAudioUI? _chatAudioUI;
+    private ChatEditorUI? _chatEditorUI;
+    private UICommander? _uiCommander;
+    private UIEventHub? _uiEventHub;
+    private ICommander? _commander;
+    private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
+
     private Session Session { get; }
-    private IUserPresences UserPresences { get; }
-    private IAccounts Accounts { get; }
-    private IChats Chats { get; }
-    private IContacts Contacts { get; }
-    private IChatPositions ChatPositions { get; }
-    private IMentions Mentions { get; }
-    private AccountSettings AccountSettings { get; }
-    private History History { get; }
-    private KeepAwakeUI KeepAwakeUI { get; }
-    private TuneUI TuneUI { get; }
-    private ModalUI ModalUI { get; }
-    private ActiveChatsUI ActiveChatsUI { get; }
-    private ChatListUI ChatListUI { get; }
-    private ChatAudioUI ChatAudioUI { get; }
-    private ChatEditorUI ChatEditorUI { get; }
-    private UICommander UICommander { get; }
-    private UIEventHub UIEventHub { get; }
-    private ICommander Commander { get; }
     private IStateFactory StateFactory { get; }
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
+        => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
+
+    private IUserPresences UserPresences => _userPresences ??= Services.GetRequiredService<IUserPresences>();
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
+    private IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
+    private IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
+    private AccountSettings AccountSettings => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
+    private History History => _history ??= Services.GetRequiredService<History>();
+    private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
+    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
+    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
+    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
+    private ChatListUI ChatListUI => _chatListUI ??= Services.GetRequiredService<ChatListUI>();
+    private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
+    private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
+    private UICommander UICommander => _uiCommander ??= Services.UICommander();
+    private UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
+    private ICommander Commander => _commander ??= Services.Commander();
 
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
@@ -54,26 +76,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         Log = services.LogFor(GetType());
 
         Session = services.GetRequiredService<Session>();
-        UserPresences = services.GetRequiredService<IUserPresences>();
-        Accounts = services.GetRequiredService<IAccounts>();
-        Chats = services.GetRequiredService<IChats>();
-        Contacts = services.GetRequiredService<IContacts>();
-        ChatPositions = services.GetRequiredService<IChatPositions>();
-        Mentions = services.GetRequiredService<IMentions>();
-        AccountSettings = services.AccountSettings();
-        History = services.GetRequiredService<History>();
-        KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        ModalUI = services.GetRequiredService<ModalUI>();
-        ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
-        ChatListUI = services.GetRequiredService<ChatListUI>();
-        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
-        ChatEditorUI = services.GetRequiredService<ChatEditorUI>();
-        UIEventHub = services.UIEventHub();
-        UICommander = services.UICommander();
-        Commander = services.Commander();
         StateFactory = services.StateFactory();
-        ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();
 
         var type = GetType();
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)) {
