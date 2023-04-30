@@ -5,19 +5,22 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class AuthorUI
 {
-    public Session Session { get; }
-    public IAccounts Accounts { get; }
-    public IAuthors Authors { get; }
-    public ModalUI ModalUI { get; }
-    public History History { get; }
+    private IAccounts? _accounts;
+    private IAuthors? _authors;
+    private ModalUI? _modalUI;
+    private History? _history;
+
+    private IServiceProvider Services { get; }
+    private Session Session { get; }
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
+    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
+    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
+    private History History => _history ??= Services.GetRequiredService<History>();
 
     public AuthorUI(IServiceProvider services)
     {
+        Services = services;
         Session = services.GetRequiredService<Session>();
-        Accounts = services.GetRequiredService<IAccounts>();
-        Authors = services.GetRequiredService<IAuthors>();
-        ModalUI = services.GetRequiredService<ModalUI>();
-        History = services.GetRequiredService<History>();
     }
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)

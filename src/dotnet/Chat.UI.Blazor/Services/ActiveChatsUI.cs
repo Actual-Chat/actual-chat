@@ -11,14 +11,14 @@ public class ActiveChatsUI
 
     private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
     private readonly IStoredState<ImmutableHashSet<ActiveChat>> _activeChats;
+    private IChats? _chats;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     private Session Session { get; }
-    private IChats Chats { get; }
-    private SearchUI SearchUI { get; }
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private LocalSettings LocalSettings { get; }
     private IStateFactory StateFactory { get; }
     private MomentClockSet Clocks { get; }
@@ -33,8 +33,6 @@ public class ActiveChatsUI
         Log = services.LogFor(GetType());
 
         Session = services.GetRequiredService<Session>();
-        Chats = services.GetRequiredService<IChats>();
-        SearchUI = services.GetRequiredService<SearchUI>();
         LocalSettings = services.LocalSettings();
         StateFactory = services.StateFactory();
         Clocks = services.Clocks();

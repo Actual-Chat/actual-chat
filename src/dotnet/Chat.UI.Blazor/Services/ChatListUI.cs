@@ -22,12 +22,17 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private ActiveChatsUI? _activeChatsUI;
     private bool _isFirstLoad = true;
 
+    private IContacts? _contacts;
+    private SearchUI? _searchUI;
+    private LoadingUI? _loadingUI;
+
     private Session Session { get; }
-    private IContacts Contacts { get; }
+    private IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
-    private SearchUI SearchUI { get; }
-    private LoadingUI LoadingUI { get; }
+
+    private SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();
+    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private AccountSettings AccountSettings { get; }
     private IStateFactory StateFactory { get; }
     private HostInfo HostInfo { get; }
@@ -45,9 +50,6 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         Log = services.LogFor(GetType());
 
         Session = services.GetRequiredService<Session>();
-        Contacts = services.GetRequiredService<IContacts>();
-        SearchUI = services.GetRequiredService<SearchUI>();
-        LoadingUI = services.GetRequiredService<LoadingUI>();
         AccountSettings = services.AccountSettings();
         StateFactory = services.StateFactory();
         HostInfo = services.GetRequiredService<HostInfo>();

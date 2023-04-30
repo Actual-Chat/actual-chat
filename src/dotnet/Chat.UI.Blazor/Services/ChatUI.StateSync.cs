@@ -19,7 +19,8 @@ public partial class ChatUI
             select chain
                 .Log(LogLevel.Debug, DebugLog)
                 .RetryForever(retryDelays, DebugLog)
-            ).RunIsolated(cancellationToken);
+            ).RunIsolated(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)

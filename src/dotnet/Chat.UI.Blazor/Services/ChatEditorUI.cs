@@ -8,26 +8,30 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly object _lock = new();
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
+    private IAuthors? _authors;
+    private IChats? _chats;
+    private LocalSettings? _localSettings;
+    private TuneUI? _tuneUI;
+    private UICommander? _uiCommander;
+    private UIEventHub? _uiEventHub;
 
+    private IServiceProvider Services { get; }
     private Session Session { get; }
-    private IAuthors Authors { get; }
-    private IChats Chats { get; }
-    private LocalSettings LocalSettings { get; }
-    private TuneUI TuneUI { get; }
-    private UICommander UICommander { get; }
-    private UIEventHub UIEventHub { get; }
+
+    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private LocalSettings LocalSettings => _localSettings ??= Services.GetRequiredService<LocalSettings>();
+    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
+    private UICommander UICommander => _uiCommander ??= Services.UICommander();
+    private UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
+
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
     public ChatEditorUI(IServiceProvider services)
     {
+        Services = services;
         Session = services.GetRequiredService<Session>();
-        Authors = services.GetRequiredService<IAuthors>();
-        Chats = services.GetRequiredService<IChats>();
-        LocalSettings = services.GetRequiredService<LocalSettings>();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        UICommander = services.UICommander();
-        UIEventHub = services.UIEventHub();
 
         var type = GetType();
         _relatedChatEntry = services.StateFactory().NewMutable(

@@ -10,22 +10,35 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private readonly IMutableState<Moment?> _audioStoppedAt;
     private readonly TaskCompletionSource<Unit> _whenEnabledSource = TaskCompletionSourceExt.New<Unit>();
+    private AudioSettings? _audioSettings;
+    private AudioRecorder? _audioRecorder;
+    private ChatPlayers? _chatPlayers;
+    private IChats? _chats;
+    private ActiveChatsUI? _activeChatsUI;
+    private TuneUI? _tuneUI;
+    private LanguageUI? _languageUI;
+    private InteractiveUI? _interactiveUI;
+    private DeviceAwakeUI? _deviceAwakeUI;
+    private ChatEditorUI? _chatEditorUI;
+    private UICommander? _uiCommander;
 
-    private Session Session { get; }
-    private AudioSettings AudioSettings { get; }
-    private AudioRecorder AudioRecorder { get; }
-    private ChatPlayers ChatPlayers { get; }
-    private IChats Chats { get; }
-    private ActiveChatsUI ActiveChatsUI { get; }
-    private TuneUI TuneUI { get; }
-    private LanguageUI LanguageUI { get; }
-    private InteractiveUI InteractiveUI { get; }
-    private DeviceAwakeUI DeviceAwakeUI { get; }
-    private ChatEditorUI ChatEditorUI { get; }
-    private UICommander UICommander { get; }
-    private MomentClockSet Clocks { get; }
+    private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
+
+    private Session Session { get; }
+    private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
+    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
+    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
+    private LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
+    private InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
+    private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
+    private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
+    private UICommander UICommander => _uiCommander ??= Services.UICommander();
+    private MomentClockSet Clocks { get; }
 
     private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
@@ -34,20 +47,11 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 
     public ChatAudioUI(IServiceProvider services)
     {
-        Session = services.GetRequiredService<Session>();
-        AudioSettings = services.GetRequiredService<AudioSettings>();
-        AudioRecorder = services.GetRequiredService<AudioRecorder>();
-        ChatPlayers = services.GetRequiredService<ChatPlayers>();
-        Clocks = services.Clocks();
-        Chats = services.GetRequiredService<IChats>();
-        ChatEditorUI = services.GetRequiredService<ChatEditorUI>();
-        LanguageUI = services.GetRequiredService<LanguageUI>();
-        InteractiveUI = services.GetRequiredService<InteractiveUI>();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
-        DeviceAwakeUI = services.GetRequiredService<DeviceAwakeUI>();
-        UICommander = services.UICommander();
+        Services = services;
         Log = services.LogFor(GetType());
+
+        Session = services.GetRequiredService<Session>();
+        Clocks = services.Clocks();
 
         // Read entry states from other windows / devices are delayed by 1s
         var stateFactory = services.StateFactory();
