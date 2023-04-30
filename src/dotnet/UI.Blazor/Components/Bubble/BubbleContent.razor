@@ -10,12 +10,11 @@
         @Body
     </div>
     <div class="flex-x items-center">
-        <div class="bubble-counter flex-1 text-xs">
-            @Bubble.Current of @Bubble.Count
+        <div class="flex-1">
         </div>
         <div class="bubble-buttons flex justify-end">
             <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
-            <Button Class="btn-bubble btn-next" Click="OnNextClick">Next</Button>
+            <Button Class="btn-bubble btn-next" Click="OnNextClick">Read</Button>
         </div>
     </div>
 </div>
@@ -25,11 +24,11 @@
     [Parameter] public RenderFragment? Title { get; set; }
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
 
-    private void OnNextClick() {
-        Bubble.Host.ShowNextBubble(Bubble);
+    private async Task OnNextClick() {
+        await Bubble.Host.ShowNextBubble(Bubble);
     }
 
-    private void OnSkipClick() {
-        Bubble.Host.SkipBubble();
+    private async Task OnSkipClick() {
+        await Bubble.Host.SkipBubbles();
     }
 }

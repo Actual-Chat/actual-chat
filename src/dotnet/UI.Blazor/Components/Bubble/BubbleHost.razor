@@ -21,13 +21,14 @@
     private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
 
     private BubbleModel? _bubble;
-    private List<BubbleModel>? _bubbles;
-    private BubbleGroup? _bubbleGroup;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private BubbleUI BubbleUI { get; set; } = null!;
+    [Inject]
+    private IJSRuntime JS { get; init; } = null!;
+
+    [Inject]
+    private BubbleUI BubbleUI { get; set; } = null!;
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
@@ -40,46 +41,38 @@
         ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
     }
 
-    public async ValueTask ShowBubbleGroup(BubbleGroup group) {
-        if (_bubbleGroup == group)
-            return;
-
-        _bubbleGroup = group;
-        var bubbles = await _jsRef.InvokeAsync<BubbleInfo[]>("getBubblesByGroup", CancellationToken.None, group.ToString());
-        _bubbles = bubbles
-            .OrderBy(x => x.Order)
-            .Select((x, index) => {
-                var id = IdGenerator.Next();
-                return new BubbleModel(
-                    id,
-                    BubbleRef.Parse(x.BubbleRef),
-                    index,
-                    new Dictionary<string, object> {
-                        { nameof(IBubble.Id), id },
-                        { nameof(IBubble.Count), bubbles.Length },
-                        { nameof(IBubble.Current), index + 1 },
-                    });
-            })
-            .ToList();
-        _bubble = _bubbles.FirstOrDefault();
+    [JSInvokable]
+    public Task OnShow(string bubbleRef) {
+        var id = IdGenerator.Next();
+        _bubble = new BubbleModel(
+            id,
+            BubbleRef.Parse(bubbleRef),
+            new Dictionary<string, object> {
+                { nameof(IBubble.Id), id },
+            });
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     public async ValueTask ShowBubble(IBubble bubble) {
-        var model = _bubbles?.Find(x => x.Id == bubble.Id);
-        if (model == null)
+        if (_bubble?.Id != bubble.Id)
             return;
 
-        await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, model.Id, model.Ref.ToString());
+        await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, _bubble.Id, _bubble.Ref.ToString());
     }
 
-    public void SkipBubble() {
+    public async Task SkipBubbles() {
         _bubble = null;
+        await _jsRef.InvokeVoidAsync("skipBubbles", CancellationToken.None);
         StateHasChanged();
     }
 
-    public void ShowNextBubble(IBubble bubble) {
-        _bubble = _bubbles!.ElementAtOrDefault(bubble.Current);
+    public async Task ShowNextBubble(IBubble bubble) {
+        if (_bubble?.Id != bubble.Id)
+            return;
+        var bubbleRef = _bubble.Ref;
+        _bubble = null;
+        await _jsRef.InvokeVoidAsync("readBubble", CancellationToken.None, bubbleRef.ToString());
         StateHasChanged();
     }
 
@@ -98,10 +91,5 @@
     private sealed record BubbleModel(
         string Id,
         BubbleRef Ref,
-        int Order,
         Dictionary<string, object> Parameters);
-
-    private sealed record BubbleInfo(
-        string BubbleRef,
-        int Order);
 }
