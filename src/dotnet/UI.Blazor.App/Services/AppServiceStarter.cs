@@ -22,15 +22,15 @@ public class AppServiceStarter
     }
 
     public Task PostSessionWarmup(Session session, CancellationToken cancellationToken)
-        => Task.Run(() => {
+        => Task.Run(async () => {
             // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
             using var _1 = Tracer.Region(nameof(PostSessionWarmup));
             try {
                 var accounts = Services.GetRequiredService<IAccounts>();
                 var contacts = Services.GetRequiredService<IContacts>();
                 var chats = Services.GetRequiredService<IChats>();
-                accounts.GetOwn(session, CancellationToken.None);
-                // contacts.ListIds(session, CancellationToken.None);
+                await accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
+                // await contacts.ListIds(session, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception e) {
                 Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
