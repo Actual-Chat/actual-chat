@@ -9,9 +9,9 @@ public class AppAutoNavigationUI : AutoNavigationUI
 
     protected override async Task HandleAutoNavigate(CancellationToken cancellationToken)
     {
-        var (url, reason) = InitialNavigationTargets
-            .OrderByDescending(t => (int)t.Reason)
-            .FirstOrDefault();
+        var (url, reason) = InitialNavigationTargets.Count > 0
+            ? InitialNavigationTargets.MaxBy(t => (int)t.Reason)
+            : default;
         if (reason == AutoNavigationReason.Skip) {
             // No default auto-navigation
             var currentUrl = History.LocalUrl;
@@ -29,8 +29,10 @@ public class AppAutoNavigationUI : AutoNavigationUI
         }
 
         var fixedUrl = await FixUrl(url, cancellationToken).ConfigureAwait(true);
-        if (History.LocalUrl == fixedUrl)
-            return; // We're already there
+        if (History.LocalUrl == fixedUrl) {
+            Log.LogInformation("HandleAutoNavigate: no navigation needed");
+            return;
+        }
 
         // The part below is tricky: we want to wait for actual NavigationManager.Location change
         var nav = History.Nav;
@@ -38,15 +40,15 @@ public class AppAutoNavigationUI : AutoNavigationUI
         var onLocationChanged = (EventHandler<LocationChangedEventArgs>)OnLocationChanged;
         nav.LocationChanged += onLocationChanged;
         try {
-            DebugLog?.LogDebug("AutoNavigate to {Url}", url);
+            Log.LogInformation("AutoNavigate to {Url}", url);
             await HandleNavigateTo(url, AutoNavigationReason.Initial).ConfigureAwait(false);
             await whenNavigatedSource.Task
                 .WaitAsync(TimeSpan.FromMilliseconds(250), cancellationToken)
                 .ConfigureAwait(true);
-            DebugLog?.LogDebug("AutoNavigate to {Url}: completed", url);
+            Log.LogInformation("AutoNavigate to {Url}: completed", url);
         }
         catch (TimeoutException) {
-            DebugLog?.LogDebug("AutoNavigate to {Url}: timed out", url);
+            Log.LogInformation("AutoNavigate to {Url}: timed out", url);
         }
         finally {
             nav.LocationChanged -= onLocationChanged;
