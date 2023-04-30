@@ -51,8 +51,16 @@
                 catch (e) {
                     console.log(e);
                 }
-            }
-        }
+            },
+            /* Bundle/bulk init */
+            bulkInit: async function() {
+                await window.App['whenBundleReady'];
+                window.ui.bulkInit(arguments);
+            },
+        };
+        window.App['whenBundleReady'] = new Promise((resolve, reject) => {
+            window.App.markBundleReady = resolve;
+        });
 
         if (window.Android) {
             // In Android WebView read text and write text operations fail with insufficient permissions
@@ -116,6 +124,7 @@
         // Clear history state in case page reload was invoked
         history.replaceState(null, /* ignored title */ '');
     </script>
+    <script async src="/dist/bundle.js"></script>
 </head>
 
 <body class="app-mobile app-maui">
@@ -172,10 +181,6 @@
         </div>
     </div>
 
-    <script>console.log('About to load bundle.js and blazor.webview.js');</script>
-    <script src="/dist/bundle.js"></script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
-    <script>console.log('JS loaded');</script>
 </body>
-
 </html>

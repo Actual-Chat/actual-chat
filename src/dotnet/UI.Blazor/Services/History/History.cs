@@ -77,15 +77,20 @@ public partial class History : IHasServices, IDisposable
     public void Dispose()
         => _backendRef.DisposeSilently();
 
-    public async Task Initialize()
+    public async Task Initialize(List<object?>? bulkInit = null)
     {
         try {
             LocationChange(new LocationChangedEventArgs(Nav.Uri, true));
 
+            var jsMethod = $"{BlazorUICoreModule.ImportName}.History.init";
             _backendRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync(
-                $"{BlazorUICoreModule.ImportName}.History.init",
-                _backendRef);
+            if (bulkInit != null) {
+                bulkInit.Add(jsMethod);
+                bulkInit.Add(1);
+                bulkInit.Add(_backendRef);
+            }
+            else
+                await JS.InvokeVoidAsync(jsMethod, _backendRef);
 
             _whenReadySource.TrySetResult(default);
         }

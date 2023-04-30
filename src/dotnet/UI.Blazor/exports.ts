@@ -1,3 +1,6 @@
+// A critical one - just so you know it exists
+export * from './Services/BulkInitUI/bulk-init';
+
 // Please sort the imports alphabetically!
 export * from './Services/BrowserInfo/browser-info';
 export * from './Services/ClipboardUI/clipboard';

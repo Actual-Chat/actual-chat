@@ -16,3 +16,4 @@ export * as chat from '../dotnet/Chat.UI.Blazor/exports';
 export * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 export * as notification from '../dotnet/Notification.UI.Blazor/exports';
 
+window['App']['markBundleReady'](undefined);

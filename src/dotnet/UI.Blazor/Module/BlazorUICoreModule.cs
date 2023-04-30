@@ -60,6 +60,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
         services.AddScoped(_ => new DisposeMonitor());
+        services.AddScoped(c => new BulkInitUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new BrowserInfo(c));
 
         // Settings

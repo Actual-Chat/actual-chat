@@ -76,8 +76,16 @@
             },
             postMessage: function (data) {
                 throw Error("Internal error: App.postMessage is available only in mobile apps.");
-            }
-        }
+            },
+            /* Bundle/bulk init */
+            bulkInit: async function() {
+                await window.App['whenBundleReady'];
+                window.ui.bulkInit(arguments);
+            },
+        };
+        window.App['whenBundleReady'] = new Promise((resolve, reject) => {
+            window.App.markBundleReady = resolve;
+        });
 
         // Set App.windowId
         window.addEventListener("beforeunload", function (e) {
@@ -97,7 +105,9 @@
             return null;
         });
     </script>
+    <script async src="/dist/bundle.js" asp-append-version="true"></script>
 </head>
+
 <body class="app-web @(isServerSideBlazor ? "app-server" : "app-wasm")">
 <div id="blazor-error-ui" class="hidden fixed inset-x-0 md:inset-x-1/4 mt-16 mx-2" style="z-index: 100000;">
     <div class="flex w-full justify-center">
@@ -165,24 +175,26 @@
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
-    <script src="/dist/bundle.js" asp-append-version="true"></script>
     @if (isServerSideBlazor) {
         <script src="_framework/blazor.server@(blazorUtilsVersion).js" autostart="false"></script>
         <script>
             (function () {
-                async function attemptReload() {
-                    try{
+                async function tryReload() {
+                    try {
+                        console.log('Trying to reload the page...');
                         await fetch('');
                         location.reload();
                     }
-                    catch{}
+                    catch {
+                        console.error('Failed to reach Actual Chat servers.');
+                    }
                 }
                 const observer = new MutationObserver((mutations, observer) => {
                     mutations.forEach(mutation => {
                         const classList = mutation.target.classList;
                         if (classList.contains('components-reconnect-rejected')) {
-                            attemptReload();
-                            window.setInterval(attemptReload, 2000);
+                            tryReload();
+                            window.setInterval(tryReload, 2000);
                             observer.disconnect();
                         }
                     });

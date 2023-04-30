@@ -54,13 +54,18 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public void Dispose()
         => BackendRef.DisposeSilently();
 
-    public virtual async Task Initialize()
+    public virtual ValueTask Initialize(List<object?>? bulkInit = null)
     {
+        var jsMethod = $"{BlazorUICoreModule.ImportName}.BrowserInfo.init";
         BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
-        await JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.BrowserInfo.init",
-            BackendRef,
-            AppKind.ToString());
+        if (bulkInit != null) {
+            bulkInit.Add(jsMethod);
+            bulkInit.Add(2);
+            bulkInit.Add(BackendRef);
+            bulkInit.Add(AppKind.ToString());
+            return ValueTask.CompletedTask;
+        }
+        return JS.InvokeVoidAsync(jsMethod, BackendRef, AppKind.ToString());
     }
 
     [JSInvokable]

@@ -1,11 +1,9 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat;
-using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using Stl.Fusion.Client;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -43,17 +41,19 @@ public class AppServiceStarter
     {
         using var _1 = Tracer.Region(nameof(ReadyToRender));
 
-        // Create history - this should be done as early as possible
-        var history = Services.GetRequiredService<History>();
-        _ = history.Initialize(); // No need to await for this
-
-        // Starting AccountUI
         var accountUI = Services.GetRequiredService<AccountUI>();
 
-        // Starting BrowserInfo
-        Tracer.Point("BrowserInfo.Initialize");
+        // Creating History and BrowserInfo - this should be done as early as possible
+        var history = Services.GetRequiredService<History>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
-        _ = browserInfo.Initialize();
+
+        // Initializing them both together
+        Tracer.Point("BulkInitUI.Invoke");
+        var bulkInitUI = Services.GetRequiredService<BulkInitUI>();
+        _ = bulkInitUI.Invoke(async bulkInit => {
+            await history.Initialize(bulkInit).ConfigureAwait(false);
+            await browserInfo.Initialize(bulkInit).ConfigureAwait(false);
+        });
 
         // Starting ThemeUI
         Tracer.Point("ThemeUI.Start");
