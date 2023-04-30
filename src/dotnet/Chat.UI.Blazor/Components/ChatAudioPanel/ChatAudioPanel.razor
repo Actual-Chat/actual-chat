@@ -6,7 +6,9 @@
     <div class="language-button">
         <LanguageToggle/>
     </div>
-    <div class="recorder-button">
+    <div class="recorder-button"
+         data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
+         data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
         <RecorderToggle Chat="@Chat"/>
     </div>
     <div class="playback-button">

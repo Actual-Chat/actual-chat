@@ -12,8 +12,6 @@
         <button
             class="account-btn btn-square"
             data-bubble="@(BubbleRef.New<ManageAccountSettingsBubble>())"
-            data-bubble-group="@(BubbleGroup.ChatList)"
-            data-bubble-order="3"
             data-bubble-placement="@(FloatingPosition.RightEnd.ToPositionString())"
             @onclick="@OnSettingsClick">
             <AccountView/>
