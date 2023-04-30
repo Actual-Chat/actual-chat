@@ -5,9 +5,8 @@ public partial class ChatAudioUI
     private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(50);
     private static readonly int MaxStopRecordingTryCount = 3;
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateActiveChatDependencies), InvalidateActiveChatDependencies),
             new(nameof(InvalidateHistoricalPlaybackDependencies), InvalidateHistoricalPlaybackDependencies),
@@ -17,13 +16,12 @@ public partial class ChatAudioUI
             new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
         };
         var retryDelays = new RetryDelaySeq(0.1, 1);
-        await (
+        return (
             from chain in baseChains
             select chain
                 .RetryForever(retryDelays, DebugLog)
                 .Log(LogLevel.Debug, DebugLog)
-            ).RunIsolated(cancellationToken)
-            .ConfigureAwait(false);
+            ).RunIsolated(cancellationToken);
     }
 
     // Private methods

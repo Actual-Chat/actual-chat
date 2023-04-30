@@ -4,22 +4,20 @@ public partial class ChatListUI
 {
     // All state sync logic should be here
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateIsSelectedChatUnlisted), InvalidateIsSelectedChatUnlisted),
             new($"{nameof(PushItems)}({ChatListKind.Active})", ct => PushItems(ChatListKind.Active, ct)),
             new($"{nameof(PushItems)}({ChatListKind.All})", ct => PushItems(ChatListKind.All, ct)),
         };
         var retryDelays = new RetryDelaySeq(0.1, 1);
-        await (
+        return (
             from chain in baseChains
             select chain
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
-            ).RunIsolated(cancellationToken)
-            .ConfigureAwait(false);
+            ).RunIsolated(cancellationToken);
     }
 
     private async Task InvalidateIsSelectedChatUnlisted(CancellationToken cancellationToken)

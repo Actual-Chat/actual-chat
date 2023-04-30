@@ -4,7 +4,6 @@ using ActualChat.Chat;
 using ActualChat.Kvas;
 using ActualChat.Transcription;
 using ActualChat.Users;
-using Cysharp.Text;
 
 namespace ActualChat.Audio;
 

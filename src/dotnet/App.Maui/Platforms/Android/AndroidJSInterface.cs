@@ -34,10 +34,7 @@ internal class AndroidJSInterface : Java.Lang.Object
             catch (Exception ex) {
                 Debug.WriteLine(ex.ToString());
             }
-            Task.Delay(TimeSpan.FromSeconds(0.2)).ContinueWith(
-                // We need a delay here to get rid of white screen blinking, which somehow happens
-                _ => AppServices.GetRequiredService<LoadingUI>().MarkDisplayed(),
-                TaskScheduler.Default);
+            AppServices.GetRequiredService<LoadingUI>().MarkDisplayed();
         });
     }
 
