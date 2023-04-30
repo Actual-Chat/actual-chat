@@ -1,0 +1,27 @@
+.thin-left-skeleton-panel {
+    @apply flex-y;
+    @apply w-30;
+    @apply bg-04;
+}
+.wide-left-skeleton-panel {
+    @apply flex-y;
+    @apply w-80;
+    @apply bg-03;
+}
+.chat-skeleton-panel {
+    @apply flex-1 flex-y;
+}
+.right-skeleton-panel {
+    @apply flex-y;
+    @apply w-80;
+    @apply bg-02;
+}
+.skeleton-panel-header {
+    @apply min-h-footer;
+}
+.skeleton-panel-body {
+    @apply flex-1 flex-y;
+}
+.skeleton-panel-footer {
+    @apply h-16;
+}
