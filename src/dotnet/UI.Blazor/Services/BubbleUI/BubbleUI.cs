@@ -8,10 +8,4 @@ public sealed class BubbleUI : IHasAcceptor<BubbleHost>
 
     public Task WhenReady => HostAcceptor.WhenAccepted();
     public BubbleHost Host => HostAcceptor.Value;
-
-    public async ValueTask Show(BubbleGroup group)
-    {
-        await WhenReady;
-        await Host.ShowBubbleGroup(group);
-    }
 }

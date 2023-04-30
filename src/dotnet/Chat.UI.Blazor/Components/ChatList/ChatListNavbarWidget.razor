@@ -62,13 +62,8 @@
         await ChatListUI.WhenLoaded;
     }
 
-    protected override void OnAfterRender(bool firstRender) {
-        _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
-
-        if (firstRender) {
-            _ = BubbleUI.Show(BubbleGroup.ChatList);
-        }
-    }
+    protected override void OnAfterRender(bool firstRender)
+        => _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";

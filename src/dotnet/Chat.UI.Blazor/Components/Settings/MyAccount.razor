@@ -99,12 +99,4 @@
 
     private Task OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);
-
-    protected override Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            _ = BubbleUI.Show(BubbleGroup.AccountSettings);
-        }
-
-        return Task.CompletedTask;
-    }
 }

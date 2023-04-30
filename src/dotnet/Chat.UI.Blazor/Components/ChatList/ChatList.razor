@@ -63,12 +63,6 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (State.Value.ChatCount > 0) {
-            _ = BubbleUI.Show(BubbleGroup.Chat);
-        }
-    }
-
     public record struct Model(
         int ChatCount,
         bool IsSearchModeOn = false,
