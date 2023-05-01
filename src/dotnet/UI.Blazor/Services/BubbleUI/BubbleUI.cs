@@ -1,11 +1,32 @@
+using ActualChat.Kvas;
+using ActualChat.Users;
+
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI : IHasAcceptor<BubbleHost>
+public sealed class BubbleUI
 {
-    private Acceptor<BubbleHost> HostAcceptor { get; } = new (true);
+    private readonly ISyncedState<UserBubblesSettings> _settings;
 
-    Acceptor<BubbleHost> IHasAcceptor<BubbleHost>.Acceptor => HostAcceptor;
+    public IState<UserBubblesSettings> Settings => _settings;
 
-    public Task WhenReady => HostAcceptor.WhenAccepted();
-    public BubbleHost Host => HostAcceptor.Value;
+    public BubbleUI(IServiceProvider services)
+    {
+        var stateFactory = services.StateFactory();
+        var accountSettings = services.GetRequiredService<AccountSettings>();
+        _settings = stateFactory.NewKvasSynced<UserBubblesSettings>(
+            new (accountSettings, UserBubblesSettings.KvasKey) {
+                InitialValue = new UserBubblesSettings(),
+                UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(Settings)),
+            });
+    }
+
+    public async ValueTask<bool> ShouldBeSkipped()
+    {
+        await _settings.WhenFirstTimeRead;
+        return _settings.Value.Skipped;
+    }
+
+    public void UpdateSettings(UserBubblesSettings value)
+        => _settings.Value = value;
 }

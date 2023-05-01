@@ -1,7 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
 @using Stl.Generators
+@using ActualChat.Kvas
 @implements IAsyncDisposable
 
 <div class="ac-bubble-host">
@@ -24,21 +26,14 @@
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
 
-    [Inject]
-    private IJSRuntime JS { get; init; } = null!;
-
-    [Inject]
-    private BubbleUI BubbleUI { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
         _blazorRef = null!;
-    }
-
-    protected override void OnInitialized() {
-        ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
     }
 
     [JSInvokable]
@@ -63,14 +58,16 @@
 
     public async Task SkipBubbles() {
         _bubble = null;
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value with { Skipped = true });
         await _jsRef.InvokeVoidAsync("skipBubbles", CancellationToken.None);
         StateHasChanged();
     }
 
-    public async Task ShowNextBubble(IBubble bubble) {
+    public async Task ReadBubble(IBubble bubble) {
         if (_bubble?.Id != bubble.Id)
             return;
         var bubbleRef = _bubble.Ref;
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubble(bubbleRef.ToString()));
         _bubble = null;
         await _jsRef.InvokeVoidAsync("readBubble", CancellationToken.None, bubbleRef.ToString());
         StateHasChanged();
@@ -79,10 +76,14 @@
     // Protected & private methods
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (await BubbleUI.ShouldBeSkipped())
+            return;
+
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef);
+            var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef, readBubbles);
         }
     }
 

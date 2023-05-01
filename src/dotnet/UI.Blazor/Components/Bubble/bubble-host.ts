@@ -1,5 +1,5 @@
 import { arrow, computePosition, flip, offset, Placement, shift } from '@floating-ui/dom';
-import { Subject, debounceTime, startWith } from 'rxjs';
+import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
 import { Log } from 'logging';
 
 interface BubbleModel {
@@ -16,33 +16,45 @@ const { debugLog } = Log.get('BubbleHost');
 
 export class BubbleHost {
     private readonly _bubbles: BubbleModel[] = [];
+    private readonly mutationObserver: MutationObserver;
+    private readonly skipped: Subject<void> = new Subject<void>();
 
-    public static create(blazorRef: DotNet.DotNetObject): BubbleHost {
-        return new BubbleHost(blazorRef);
+    public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
+        return new BubbleHost(blazorRef, readBubbles);
     }
 
-    constructor(private readonly blazorRef: DotNet.DotNetObject) {
+    constructor(
+        private readonly blazorRef: DotNet.DotNetObject,
+        private readonly readBubbles: string[]) {
         debugLog?.log('constructor');
 
         const domChanged$ = new Subject();
-        domChanged$
-            .pipe(
-                startWith(undefined),
-                debounceTime(1000),
-            )
-            .subscribe(() => {
-                this.updateBubbles();
-                this.showNextBubble();
-            });
-
-        const observer = new MutationObserver((mutations) => {
+        this.mutationObserver = new MutationObserver((mutations) => {
             mutations.forEach(mutation => {
                 if (mutation.addedNodes.length || mutation.removedNodes.length) {
                     domChanged$.next(undefined);
                 }
             });
         });
-        observer.observe(document.getElementById('app'), { subtree: true, childList: true });
+        domChanged$
+            .pipe(
+                startWith(undefined),
+                debounceTime(1000),
+                takeUntil(this.skipped),
+            )
+            .subscribe(() => {
+                this.updateBubbles();
+                this.showNextBubble();
+            });
+        this.mutationObserver.observe(document.getElementById('app'), { subtree: true, childList: true });
+    }
+
+    public async skipBubbles(): Promise<void> {
+        debugLog?.log(`skipBubbles`);
+
+        this.mutationObserver.disconnect();
+        this.skipped.next(undefined);
+        this.skipped.complete();
     }
 
     public async readBubble(bubbleRef: string): Promise<void> {
@@ -111,6 +123,10 @@ export class BubbleHost {
         const elements = this.getBubbleElements();
         elements.forEach(el => {
             const bubbleRef = el.dataset['bubble'];
+            if (this.readBubbles.includes(bubbleRef)) {
+                return;
+            }
+
             const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
             if (bubble) {
                 if (bubble.isRead)
@@ -139,7 +155,7 @@ export class BubbleHost {
 
         const notReadBubbles = this._bubbles.filter(x => !x.isRead);
         const shownBubble = notReadBubbles.find(x => x.isShown);
-        console.log('shown', shownBubble?.bubbleRef);
+
         if (shownBubble) {
             if (!shownBubble.isInViewport || !shownBubble.isTopElement) {
                 shownBubble.isShown = false;
