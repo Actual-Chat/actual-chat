@@ -5,6 +5,9 @@
     @apply w-full h-full;
     @apply overflow-hidden;
 }
+body.app-maui .loading-bg {
+    @apply bg-[#0036a3]; /* NOTE(AY): Doesn't work! */
+}
 
 .loading-image-bg {
     @apply flex items-center justify-center;
