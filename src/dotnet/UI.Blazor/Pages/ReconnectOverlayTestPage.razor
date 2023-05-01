@@ -1,4 +1,4 @@
-@page "/test/loading-modal"
+@page "/test/reconnect-overlay"
 @using ActualChat.UI.Blazor.Services
 @using System.Text
 @layout NoLayout
@@ -90,7 +90,7 @@
     </div>
 </div>
 
-<LoadingOverlay/>
+<ReconnectOverlay/>
 
 @code {
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
