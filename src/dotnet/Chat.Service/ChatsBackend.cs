@@ -448,18 +448,19 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         entry = dbEntry.ToModel();
         context.Operation().Items.Set(entry);
 
-        if (entry.Kind is not ChatEntryKind.Text || entry.IsStreaming)
+        if (entry.Kind != ChatEntryKind.Text)
+            return entry;
+        if (changeKind == ChangeKind.Remove || entry.IsStreaming)
             return entry;
 
-        Metrics.MessageCount.Add(1);
+        if (changeKind == ChangeKind.Create)
+            Metrics.MessageCount.Add(1);
 
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        var userId = author!.UserId;
-
         // Raise events
-        new TextEntryChangedEvent(entry, author, changeKind)
+        new TextEntryChangedEvent(entry, author!, changeKind)
             .EnqueueOnCompletion();
         return entry;
     }

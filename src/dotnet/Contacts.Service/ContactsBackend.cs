@@ -215,7 +215,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             return; // It just spawns other commands, so nothing to do here
 
         var (_, author, changeKind) = eventCommand;
-        if (changeKind != ChangeKind.Create)
+        if (changeKind == ChangeKind.Remove)
             return;
 
         var userId = author.UserId;
