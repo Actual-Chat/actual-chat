@@ -51,6 +51,8 @@ module.exports = {
     'max-w-17',
     'min-h-17',
     'min-w-17',
+    'min-w-88',
+    'min-h-120',
     'rounded-4xl',
     'rounded-5xl',
     '-r-46',

@@ -60,36 +60,22 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
-    [Inject] private NavigationCoordinatorUI NavigationCoordinatorUI { get; init; } = null!;
+    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
 
     protected override Task OnInitializedAsync() {
-        AutoNavigationUI.MustNavigateToChatsOnSignIn = false;
         ChatAudioUI.Enable();
         return ChatUI.WhenLoaded; // Nothing happens until we load everything
     }
 
-    protected override async Task OnParametersSetAsync() {
-        var chatSid = ChatSid ?? "";
-        var chatId = new ChatId(chatSid, ParseOrNone.Option);
-        if (chatSid == "") {
-            await ChatUI.WhenLoaded;
-            chatId = ChatUI.SelectedChatId.Value;
-            if (chatId.IsNone && _canRedirectToAnnouncementsChat) {
-                _canRedirectToAnnouncementsChat = false;
-                chatId = Constants.Chat.AnnouncementsChatId;
-            }
-            if (!chatId.IsNone) {
-                if (!NavigationCoordinatorUI.HasOutstandingRequests)
-                    _ = History.NavigateTo(Links.Chat(chatId), true);
-                return;
-            }
-        }
+    protected override Task OnParametersSetAsync() {
+        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
+        ChatUI.SelectChat(chatId);
+
 
         // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
 
@@ -97,6 +83,7 @@
 
         // No need to call base.OnParametersSetAsync() here, coz
         // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
+        return Task.CompletedTask;
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
