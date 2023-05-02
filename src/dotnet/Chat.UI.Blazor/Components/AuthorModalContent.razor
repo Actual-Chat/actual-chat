@@ -1,12 +1,18 @@
 @{
     string headerTitle;
     var nameTitle = "Name";
-    if (Author.IsAnonymous) {
+    if (IsOwn) {
+        if (Author.IsAnonymous) {
+            headerTitle = "Your profile (Anonymous)";
+            nameTitle = "";
+        } else {
+            headerTitle = "Your profile";
+        }
+    }
+    else if (Author.IsAnonymous) {
         headerTitle = "Anonymous author";
         nameTitle = "";
-    } else if (IsOwn)
-        headerTitle = "Your profile";
-    else
+    } else
         headerTitle = Author.Avatar.Name;
 }
 
@@ -58,7 +64,7 @@
         </TileItem>
     }
 
-    @if (Author.IsAnonymous) {
+    @if (!IsOwn && Author.IsAnonymous) {
         <TileItem Class="anonymous-bio">
             <Icon>
                 <i class="icon-alert-triangle text-xl"></i>
@@ -70,7 +76,9 @@
             <Caption>
             </Caption>
         </TileItem>
-    } else if (!Author.Avatar.Bio.IsNullOrEmpty()) {
+    }
+
+    @if (!Author.IsAnonymous && !Author.Avatar.Bio.IsNullOrEmpty()) {
         <TileItem>
             <Icon>
                 <i class="icon-person text-xl"></i>

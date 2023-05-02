@@ -14,6 +14,7 @@ public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Versio
     public static new AvatarFull Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
 
     [DataMember] public UserId UserId { get; init; }
+    [DataMember] public bool IsAnonymous { get; init; }
 
     public AvatarFull() : this(Symbol.Empty) { }
 

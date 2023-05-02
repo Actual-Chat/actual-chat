@@ -13,7 +13,11 @@
     <Buttons>
         @if (m.IsOwn) {
             <Button Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
-            <Button Class="btn-modal" Click="OnAuthorClicked">Change avatar</Button>
+            if (!m.Author.IsAnonymous) {
+                <Button Class="btn-modal" Click="OnAuthorClicked">Change avatar</Button>
+            } else if (m.EnableIncompleteUI) {
+                <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
+            }
         } else if (m.Author.IsAnonymous) {
             <Button Class="btn-modal" Click="OnCancel">OK</Button>
         } else {
@@ -31,6 +35,8 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -60,11 +66,14 @@
         var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
         var account = await Authors.GetAccount(Session, ChatId, AuthorId, cancellationToken);
         var canStartPeerChat = await AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
+        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
+
         return new ComputedModel() {
             Author = author,
             Account = account,
             OwnAccount = ownAccount,
             CanStartPeerChat = canStartPeerChat,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -77,6 +86,7 @@
         public Account OwnAccount { get; init; } = null!;
         public bool IsOwn => Account?.Id == OwnAccount.Id;
         public bool CanStartPeerChat { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed record Model(AuthorId AuthorId);
@@ -84,10 +94,13 @@
     private void OnCancel()
         => Modal.Close();
 
+    private Task OnRevealClicked()
+        => FeedbackUI.AskFeatureRequestFeedback("reveal-author", "Reveal yourself");
+
     private async Task OnAuthorClicked() {
         Modal.Close();
         await History.WhenNavigationCompleted;
-        await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, OnAvatarSelected));
+        await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
     }
 
     private async Task OnStartPeerChat()

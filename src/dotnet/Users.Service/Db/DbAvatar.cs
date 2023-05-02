@@ -20,6 +20,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
     public string Bio { get; set; } = "";
+    public bool IsAnonymous { get; set; }
 
     public DbAvatar() { }
     public DbAvatar(AvatarFull model) => UpdateFrom(model);
@@ -31,6 +32,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
             MediaId = new MediaId(MediaId),
             Bio = Bio,
             Picture = Picture,
+            IsAnonymous = IsAnonymous,
         };
 
     public void UpdateFrom(AvatarFull model)
@@ -38,6 +40,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var id = model.Id;
         this.RequireSameOrEmptyId(id);
         model.RequireSomeVersion();
+        var isNew = Id.IsNullOrEmpty();
 
         if (UserId.IsNullOrEmpty())
             UserId = model.UserId.Value.NullIfEmpty();
@@ -50,6 +53,10 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         MediaId = model.MediaId;
         Bio = model.Bio;
         Picture = model.Picture;
+        if (isNew)
+            IsAnonymous = model.IsAnonymous;
+        else if (IsAnonymous != model.IsAnonymous)
+            throw StandardError.Constraint("Can't change Avatar.IsAnonymous.");
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAvatar>
