@@ -1,0 +1,58 @@
+/* Blazor classes */
+#components-reconnect-modal {
+    display: none;
+}
+
+#components-reconnect-modal.components-reconnect-show,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-rejected {
+    display: flex;
+}
+#components-reconnect-modal .loading {
+    /* Unused - handled via LoadingOverlay */
+}
+
+/* Reconnect overlay */
+
+:root {
+    --reconnect-overlay-bg-color: white;
+    --reconnect-overlay-circle-size: 16rem;
+}
+@media (min-width: 1024px) {
+    :root {
+        --reconnect-overlay-circle-size: 20rem;
+    }
+}
+
+.reconnect-overlay {
+    @apply absolute inset-0 z-[1900];
+    @apply flex items-center justify-center overflow-hidden;
+    @apply backdrop-blur;
+}
+.reconnect-overlay > .c-bg {
+    @apply absolute inset-0;
+    @apply bg-01;
+    @apply opacity-[33.3%];
+}
+.reconnect-overlay > .c-circle-blur {
+    @apply absolute z-minus;
+    top: calc(50vh - var(--reconnect-overlay-circle-size)/2);
+    left: calc(50vw - var(--reconnect-overlay-circle-size)/2);
+    width: var(--reconnect-overlay-circle-size);
+    height: var(--reconnect-overlay-circle-size);
+    background: var(--reconnect-overlay-bg-color);
+    box-shadow: 0 0 50px 50px var(--reconnect-overlay-bg-color);
+    @apply rounded-full;
+    @apply blur;
+}
+.reconnect-overlay > .c-circle {
+    @apply flex-y items-center justify-center gap-y-2;
+    width: var(--reconnect-overlay-circle-size);
+    height: var(--reconnect-overlay-circle-size);
+    @apply bg-transparent;
+    @apply text-xl md:text-2xl font-semibold text-03;
+    @apply animate-pulse-70;
+}
+.reconnect-overlay > .c-circle > img {
+    @apply w-[55%];
+}

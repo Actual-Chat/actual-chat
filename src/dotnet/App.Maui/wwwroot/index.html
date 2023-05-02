@@ -155,29 +155,22 @@
         </div>
     </div>
 
-    <div class="until-ui-is-ready">
-        <div class="loading-bg">
-            <div class="loading-image-bg">
-                <div class="c-border">
-                    <div class="c-before-circle"></div>
-                </div>
-                <div class="c-circle">
-                    <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
-                </div>
-            </div>
+    <div class="loading-overlay until-ui-is-ready">
+        <div class="c-box">
+            <img src="/dist/images/landing/ac-icon-light.svg" alt="loading">
         </div>
+        <div class="c-rotating-bg"></div>
     </div>
 
     <div id="app" class="flex flex-col h-full"></div>
 
-    <!-- This block must go after app, otherwise page content won't be blurred -->
-    <div id="components-reconnect-modal">
-        <div class="reconnect-image-bg">
-            <div class="c-before-circle"></div>
-            <div class="c-circle">
-                <img src="/dist/images/loading-cat.svg" alt="loading">
-                <span class="c-text">Reconnecting...</span>
-            </div>
+    <!-- This block must go right after app, otherwise page content won't be blurred -->
+    <div id="components-reconnect-modal" class="reconnect-overlay">
+        <div class="c-bg"></div>
+        <div class="c-circle-blur"></div>
+        <div class="c-circle">
+            <img src="/dist/images/loading-cat.svg" alt="loading">
+            <span class="c-text">Reconnecting...</span>
         </div>
     </div>
 

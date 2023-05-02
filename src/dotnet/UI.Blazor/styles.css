@@ -11,11 +11,11 @@
 @import './Components/Feedback/feedback.css';
 @import './Components/Form/form.css';
 @import './Components/Form/toggle.css';
-@import './Components/VisualMediaViewerModal/visual-media-viewer-modal.css';
 @import './Components/Lines/lines.css';
-@import './Components/Overlays/overlays.css';
 @import './Components/Menu/menu.css';
 @import './Components/Modal/modal.css';
+@import './Components/Overlays/loading-overlay.css';
+@import './Components/Overlays/reconnect-overlay.css';
 @import './Components/Pic/pic.css';
 @import './Components/PicUpload/pic-upload.css';
 @import './Components/Radio/radio.css';
@@ -27,5 +27,6 @@
 @import './Components/TabPanel/tab-panel.css';
 @import './Components/Tooltip/tooltip.css';
 @import './Components/VirtualList/virtual-list.css';
+@import './Components/VisualMediaViewerModal/visual-media-viewer-modal.css';
 
 @import './Services/ScreenSize/screen-size.css';

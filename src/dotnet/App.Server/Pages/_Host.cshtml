@@ -146,17 +146,11 @@
 </div>
 
 @if (!isServerSideBlazor && !isCloseWindowRequest) {
-    <div class="until-ui-is-ready">
-        <div class="loading-bg">
-            <div class="loading-image-bg">
-                <div class="c-border">
-                    <div class="c-before-circle"></div>
-                </div>
-                <div class="c-circle">
-                    <img src="/dist/images/landing/ac-icon-light.svg" alt="loading" class="w-24 h-24 md:w-48 md:h-48">
-                </div>
-            </div>
+    <div class="loading-overlay until-ui-is-ready">
+        <div class="c-box">
+            <img src="/dist/images/landing/ac-icon-light.svg" alt="loading">
         </div>
+        <div class="c-rotating-bg"></div>
     </div>
 }
 
@@ -175,19 +169,28 @@
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
+    <!-- This block must go right after app, otherwise page content won't be blurred -->
+    <div id="components-reconnect-modal" class="reconnect-overlay">
+        <div class="c-bg"></div>
+        <div class="c-circle-blur"></div>
+        <div class="c-circle">
+            <img src="/dist/images/loading-cat.svg" alt="loading">
+            <span class="c-text">Reconnecting...</span>
+        </div>
+    </div>
+
     @if (isServerSideBlazor) {
         <script src="_framework/blazor.server@(blazorUtilsVersion).js" autostart="false"></script>
         <script>
             (function () {
                 async function tryReload() {
                     try {
-                        console.log('Trying to reload the page...');
-                        await fetch('');
-                        location.reload();
+                        console.log('Trying to reload the app...');
+                        let response = await fetch('');
+                        if (response.ok)
+                            window.location.reload();
                     }
-                    catch {
-                        console.error('Failed to reach Actual Chat servers.');
-                    }
+                    catch { }
                 }
                 const observer = new MutationObserver((mutations, observer) => {
                     mutations.forEach(mutation => {
@@ -199,9 +202,9 @@
                         }
                     });
                 });
-                const reconnectModal = document.getElementById('components-reconnect-modal');
-                if (reconnectModal !== null) {
-                    observer.observe(reconnectModal, { attributes: true, subtree: true });
+                const reconnectDiv = document.getElementById('components-reconnect-modal');
+                if (reconnectDiv !== null) {
+                    observer.observe(reconnectDiv, { attributes: true, subtree: false });
                 }
             }());
 
@@ -217,16 +220,5 @@
         <script src="_framework/blazor.webassembly@(blazorUtilsVersion).js"></script>
     }
 }
-
-<!-- This block must go after app, otherwise page content won't be blurred -->
-<div id="components-reconnect-modal">
-    <div class="reconnect-image-bg">
-        <div class="c-before-circle"></div>
-        <div class="c-circle">
-            <img src="/dist/images/loading-cat.svg" alt="loading">
-            <span class="c-text">Reconnecting...</span>
-        </div>
-    </div>
-</div>
 </body>
 </html>
