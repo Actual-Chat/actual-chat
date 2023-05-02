@@ -52,16 +52,15 @@
 @code {
     private Model? _rendered;
     private ChatView _chatViewRef = null!;
-    private bool _canRedirectToAnnouncementsChat = true;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
@@ -74,11 +73,6 @@
 
     protected override Task OnParametersSetAsync() {
         var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
-        ChatUI.SelectChat(chatId);
-
-
-        // Log.LogDebug("OnParametersSetAsync(), ChatId: #{ChatId}", chatId);
-
         ChatUI.SelectChat(chatId);
 
         // No need to call base.OnParametersSetAsync() here, coz
@@ -98,29 +92,44 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        // var computed = Computed.GetCurrent()!;
-        // computed.Invalidated += c => {
-        //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
-        // };
-        try {
-            var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
-            var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-            if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
-                return Model.None(screenSize);
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
+        if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
+            return Model.None(screenSize);
 
-            var account = await Accounts.GetOwn(Session, cancellationToken);
-            try {
-                var chat = await Chats.Get(Session, chatId, cancellationToken);
-                return new Model(chatId, chat, account, screenSize);
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        try {
+            var chat = await Chats.Get(Session, chatId, cancellationToken);
+            if (chat != null) {
+                var shouldJoin = !chat.Rules.CanWrite() && chat.Rules.CanJoin();
+                if (shouldJoin) {
+                    var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+                    var avatars = await avatarIds
+                        .Select(aId => Avatars.GetOwn(Session, aId, cancellationToken))
+                        .Collect();
+                    var guestAvatar = avatars
+                        .Where(a => a != null)
+                        .FirstOrDefault(a => a!.Name == "Guest");
+                    if (guestAvatar == null) {
+                        var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
+                            Create = new AvatarFull {
+                                UserId = account.Id,
+                                Name = "Guest",
+                            }.WithMissingPropertiesFrom(account.Avatar),
+                        });
+                        var (newAvatar, _) = await UICommander.Run(createAvatarCommand, cancellationToken);
+                        guestAvatar = newAvatar;
+                    }
+                    var command = new IAuthors.JoinCommand(Session, chat.Id, guestAvatar.Id);
+                    await UICommander.Run(command, cancellationToken);
+                }
             }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-                return new Model(chatId, null, account, screenSize);
-            }
+            return new Model(chatId, chat, account, screenSize);
         }
-        finally {
-            // Log.LogDebug("ComputeState() - exit: {Computed}", computed.DebugDump());
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+            return new Model(chatId, null, account, screenSize);
         }
     }
 
