@@ -62,8 +62,12 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task<ChatEntry> UpsertTextEntry(UpsertTextEntryCommand command, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task<Chat> CreateFromTemplate(CreateFromTemplateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record ChangeCommand(
@@ -92,4 +96,11 @@ public interface IChats : IComputeService
         [property: DataMember] ChatId ChatId,
         [property: DataMember] long LocalId
         ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public sealed record CreateFromTemplateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] ChatId TemplateChatId
+    ) : ISessionCommand<Chat>;
+
 }

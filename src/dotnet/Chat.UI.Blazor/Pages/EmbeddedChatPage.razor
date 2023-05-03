@@ -59,6 +59,8 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
@@ -102,8 +104,19 @@
         try {
             var chat = await Chats.Get(Session, chatId, cancellationToken);
             if (chat != null) {
+                if (chat.IsTemplate) {
+                    // create new chat based on a template and redirect to the new clone
+                    var command = new IChats.CreateFromTemplateCommand(Session, chatId);
+                    var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+                    if (createChatError != null)
+                        return Model.None(screenSize);
+
+                    _ = History.NavigateTo(Links.Chat(newChat.Id));
+                    return Model.Loading;
+                }
                 var shouldJoin = !chat.Rules.CanWrite() && chat.Rules.CanJoin();
                 if (shouldJoin) {
+                    // join as a guest
                     var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
                     var avatars = await avatarIds
                         .Select(aId => Avatars.GetOwn(Session, aId, cancellationToken))
