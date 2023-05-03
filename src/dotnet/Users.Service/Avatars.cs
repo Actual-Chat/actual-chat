@@ -20,11 +20,13 @@ public class Avatars : IAvatars
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken)
     {
-        var avatarIds = await ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
-        if (!avatarIds.Contains(avatarId))
+        var avatar = await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+        if (avatar == null)
             return null;
 
-        var avatar = await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (avatar.UserId != account.Id)
+            return null;
         return avatar;
     }
 
@@ -66,6 +68,9 @@ public class Avatars : IAvatars
 
         var changeCommand = new IAvatarsBackend.ChangeCommand(avatarId, expectedVersion, change);
         avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        if (avatar.IsAnonymous)
+            return avatar; // We don't account anonymous avatars in the list
 
         cancellationToken = default; // We don't cancel anything from here
         var kvas = ServerKvas.GetClient(session);

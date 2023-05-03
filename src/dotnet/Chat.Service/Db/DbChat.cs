@@ -23,6 +23,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
+    public ChatAuthorKind AllowedAuthorKind { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
@@ -34,6 +35,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
+            AllowedAuthorKind = AllowedAuthorKind,
             MediaId = new MediaId(MediaId),
         };
 
@@ -48,6 +50,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Title = model.Title;
         CreatedAt = model.CreatedAt;
         IsPublic = model.IsPublic;
+        AllowedAuthorKind = model.AllowedAuthorKind;
         Kind = model.Kind;
         MediaId = model.MediaId;
     }

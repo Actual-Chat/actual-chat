@@ -1,12 +1,15 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<AvatarSelectModal.Model>
+@using Stl.Generators
 @inherits ComputedStateComponent<AvatarSelectModal.ViewModel>
 @{
     var m = State.Value;
+    var mode = ModalModel.ChatId.IsNone ? Mode.Join : Mode.Change;
+    var title = mode == Mode.Join ? "Choose avatar" : "Change your avatar";
 }
 
 <DialogFrame
-    Title="Change your avatar"
+    Title="@title"
     Class="avatar-select-modal">
     <Body>
     @if (m == ViewModel.None) {
@@ -14,9 +17,11 @@
     }
 
     <div class="avatar-select">
-        <div class="flex-x gap-x-1 text-sm font-normal">
-            You can change your avatar in the current chat here.
-        </div>
+        @if (mode == Mode.Change) {
+            <div class="flex-x gap-x-1 text-sm font-normal">
+                You can change your avatar in the current chat here.
+            </div>
+        }
         @foreach (var avatar in m.Avatars) {
             <Tile Click="_ => OnAvatarSelected(avatar)" Class="avatar-select-item">
                 <TileItem>
@@ -34,6 +39,30 @@
                 </TileItem>
             </Tile>
         }
+        @if (m.Anonymous != null) {
+            var avatar = m.Anonymous;
+            <div class="flex-y">
+                <div class="flex-x text-sm font-normal border-t-2 py-1">
+                    You can use anonymous avatar:
+                </div>
+                <Tile Click="_ => OnAnonymousSelected(avatar)" Class="avatar-select-item">
+                    <TileItem>
+                        <Icon>
+                            <AvatarCard Avatar="@avatar"/>
+                        </Icon>
+                        <Content>
+                            @avatar.Name
+                        </Content>
+                        <Right>
+                            <AnonymousIcon Class="w-5 h-5"/>
+                        </Right>
+                    </TileItem>
+                </Tile>
+                <div class="flex-x text-sm font-normal">
+                    <button class="underline mt-2" @onclick="@RegenerateAnonymousAvatar">Regenerate anonymous avatar</button>
+                </div>
+            </div>
+        }
     </div>
     </Body>
     <Buttons>
@@ -42,10 +71,14 @@
 </DialogFrame>
 
 @code {
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+    private Avatar? _anonymous;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -63,7 +96,28 @@
             .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
             .Collect();
         var existingAvatars = avatars.SkipNullItems().ToImmutableArray();
-        return new ViewModel(existingAvatars, selectedAvatarId);
+        var anonymous = GetAnonymous();
+        return new ViewModel(existingAvatars, selectedAvatarId, anonymous);
+    }
+
+    private Avatar? GetAnonymous() {
+        if (!ModalModel.AllowAnonymous)
+            return null;
+        return _anonymous ??= GenerateAnonymous();
+    }
+
+    private Avatar GenerateAnonymous() {
+        var next = IdGenerator.Next();
+        return new Avatar {
+            Name = RandomNameGenerator.Default.Generate(),
+            Bio = "Someone anonymous",
+            Picture = DefaultUserPicture.GetBoringAvatar(next),
+        };
+    }
+
+    private void RegenerateAnonymousAvatar() {
+        _anonymous = GenerateAnonymous();
+        State.Recompute();
     }
 
     private async Task<Symbol> GetSelectedAvatarId(CancellationToken cancellationToken)
@@ -78,6 +132,20 @@
         }
     }
 
+    private async Task OnAnonymousSelected(Avatar anonymous) {
+        var account = await Accounts.GetOwn(Session, default);
+        var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
+            Create = new AvatarFull() {
+                UserId = account.Id,
+                IsAnonymous = true,
+            }.WithMissingPropertiesFrom(anonymous),
+        });
+        var (avatar, error) = await UICommander.Run(command);
+        if (error != null)
+            return;
+        await OnAvatarSelected(avatar);
+    }
+
     private async Task OnAvatarSelected(AvatarFull avatar) {
         await ModalModel.OnAvatarSelected(avatar);
         Modal.Close();
@@ -86,9 +154,11 @@
     private void OnCancel()
         => Modal.Close();
 
-    public record Model(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected);
+    private enum Mode { Join, Change }
 
-    public record ViewModel(ImmutableArray<AvatarFull> Avatars, Symbol SelectedAvatarId) {
-        public static readonly ViewModel None = new(ImmutableArray<AvatarFull>.Empty, Symbol.Empty);
+    public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
+
+    public record ViewModel(ImmutableArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
+        public static readonly ViewModel None = new(ImmutableArray<AvatarFull>.Empty, Symbol.Empty, null);
     }
 }

@@ -26,9 +26,11 @@
                         @if (!m.OtherUserId.IsNone) {
                             <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
                             <AccountName UserSid="@m.OtherUserId.Id"/>
-                        } else {
+                        } else if (m.CanUseAnonymousAvatar) {
                             <span class="inline-flex mx-2 items-center">or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                        } else {
+                            <span class="inline-flex ml-2 items-center">to join this chat</span>
                         }
                     </div>
                 }
@@ -69,13 +71,24 @@
             : default;
         var canPost = Chat.Rules.CanWrite();
         var canJoin = !canPost && Chat.Rules.CanJoin();
-        var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+        var hasMultipleAvatars = false;
+        var canUseAnonymousAvatar = false;
+        if (canJoin) {
+            canUseAnonymousAvatar = Chat.CanUseAnonymousAuthor();
+            if (!account.IsGuestOrNone) {
+                var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+                hasMultipleAvatars = avatars.Length > 1 || canUseAnonymousAvatar;
+            }
+        }
+
+
         return new () {
             OtherUserId = otherUserId,
             IsGuest = account.IsGuestOrNone,
             CanPost = canPost,
             CanJoin = canJoin,
-            HasMultipleAvatars = avatars.Length > 1,
+            HasMultipleAvatars = hasMultipleAvatars,
+            CanUseAnonymousAvatar = canUseAnonymousAvatar,
         };
     }
 
@@ -87,10 +100,10 @@
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, JoinWithAvatar));
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, m.CanUseAnonymousAvatar, JoinWithAvatar));
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new IAuthors.JoinCommand(Session, Chat.Id, avatar.Id);
+            var command = new IAuthors.JoinCommand(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
             await UICommander.Run(command);
         }
     }
@@ -104,5 +117,6 @@
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
         public bool HasMultipleAvatars { get; init; }
+        public bool CanUseAnonymousAvatar { get; init; }
     }
 }

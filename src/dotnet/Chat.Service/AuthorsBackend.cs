@@ -211,7 +211,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var id = new AuthorId(chatId, localId, AssumeValid.Option);
             var author = new AuthorFull(id, VersionGenerator.NextVersion()) {
                 UserId = userId,
-                IsAnonymous = account.IsGuestOrNone,
+                IsAnonymous = command.Diff.IsAnonymous ?? account.IsGuestOrNone
             };
             author = DiffEngine.Patch(author, diff);
 
@@ -226,6 +226,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                             UserId = userId,
                             Name = RandomNameGenerator.Default.Generate(),
                             Bio = "Someone anonymous",
+                            IsAnonymous = true
                         },
                     });
                     var avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);

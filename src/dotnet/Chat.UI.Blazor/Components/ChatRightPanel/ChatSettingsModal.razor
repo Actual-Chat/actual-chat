@@ -36,6 +36,10 @@
                     <FormSection For="() => _form.IsPublic" Class="flex h-12 md:h-8 justify-center">
                         <ToggleEdit Id="@_form.IsPublicFormId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
                     </FormSection>
+
+                    <FormSection For="() => _form.AllowsAnonymous" Class="flex h-12 md:h-8 justify-center">
+                        <ToggleEdit Id="@_form.AllowsAnonymousFormId" Label="Allows anonymous to join" @bind-Value="_form.AllowsAnonymous"/>
+                    </FormSection>
                 }
                 @if (_form.IsPublic) {
                     @if (m.Link is { } publicUrl) {
@@ -98,6 +102,7 @@
         _form.Title = chat.Title;
         _form.Picture = chat.Picture?.ContentId ?? "";
         _form.IsPublic = chat.IsPublic;
+        _form.AllowsAnonymous = chat.AllowedAuthorKind == ChatAuthorKind.Any;
         _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
     }
 
@@ -125,6 +130,7 @@
         var newChat = chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,
+            AllowedAuthorKind = _form.AllowsAnonymous ? ChatAuthorKind.Any : ChatAuthorKind.RegularOnly,
             MediaId = _form.PictureId,
         };
         var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
@@ -155,18 +161,21 @@
         public string Picture { get; set; } = "";
         public MediaId PictureId { get; set; } = MediaId.None;
         public bool IsPublic { get; set; }
+        public bool AllowsAnonymous { get; set; }
         public string ImageUploadUrl { get; set; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
         public string PictureFormId { get; }
         public string IsPublicFormId { get; }
+        public string AllowsAnonymousFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
             PictureFormId = $"{FormId}-picture";
             IsPublicFormId = $"{FormId}-is-public";
+            AllowsAnonymousFormId = $"{FormId}-allows-anonymous";
         }
     }
 
