@@ -89,7 +89,7 @@ export class BubbleHost {
                 placement: position,
                 middleware: [
                     offset(6),
-                    flip(),
+                    flip({ fallbackAxisSideDirection: 'end' }),
                     shift({ padding: 5 }),
                     arrow({ element: arrowElement }),
                 ],
