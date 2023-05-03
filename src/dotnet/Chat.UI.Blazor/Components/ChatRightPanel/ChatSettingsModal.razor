@@ -135,6 +135,22 @@
                         </Right>
                     </TileItem>
                 </FormBlock>
+                <FormBlock>
+                    <TileItem class="field-is-template">
+                        <Icon>
+                            <i class="icon-file-text text-2xl"></i>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                        </Content>
+                        <Caption>
+                            <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
+                        </Caption>
+                        <Right>
+                            <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                        </Right>
+                    </TileItem>
+                </FormBlock>
             }
         }
         </Body>
@@ -158,6 +174,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
@@ -183,6 +200,7 @@
         _form.Title = chat.Title;
         _form.Picture = chat.Picture?.ContentId ?? "";
         _form.IsPublic = chat.IsPublic;
+        _form.IsTemplate = chat.IsTemplate;
         _form.AllowGuestAuthors = chat.AllowGuestAuthors;
         _form.AllowAnonymousAuthors = chat.AllowAnonymousAuthors;
         _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
@@ -212,6 +230,7 @@
         var newChat = chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,
+            IsTemplate = _form.IsTemplate,
             AllowGuestAuthors = _form.AllowGuestAuthors,
             AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
             MediaId = _form.PictureId,
@@ -246,6 +265,7 @@
         public string PublicUrl { get; set; } = "";
         public MediaId PictureId { get; set; } = MediaId.None;
         public bool IsPublic { get; set; }
+        public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }
         public bool AllowAnonymousAuthors { get; set; }
         public string ImageUploadUrl { get; set; } = "";
@@ -257,6 +277,7 @@
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
+        public string IsTemplateFormId { get; }
         public string AllowGuestAuthorsFormId { get; }
         public string AllowAnonymousAuthorsFormId { get; }
 
@@ -268,6 +289,7 @@
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
             IsPublicFalseFormId = IsPublicFormId + "-false";
+            IsTemplateFormId = $"{FormId}-is-template";
             AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
             AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
         }
