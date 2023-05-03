@@ -20,12 +20,6 @@ public class Avatars : IAvatars
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken)
     {
-        // TODO(DF): We use list here to filter own avatars. Is it better than filtering by user id?
-        // Anything related to sharding?
-        // var avatarIds = await ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
-        // if (!avatarIds.Contains(avatarId))
-        //     return null;
-
         var avatar = await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (avatar == null)
             return null;
@@ -75,18 +69,19 @@ public class Avatars : IAvatars
         var changeCommand = new IAvatarsBackend.ChangeCommand(avatarId, expectedVersion, change);
         avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
-        if (!avatar.IsAnonymous) { // We don't account anonymous avatars in the list
-            cancellationToken = default; // We don't cancel anything from here
-            var kvas = ServerKvas.GetClient(session);
-            var oldSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
-            var settings = oldSettings;
-            if (change.Create.HasValue)
-                settings = settings.WithAvatarId(avatar.Id);
-            else if (change.Remove)
-                settings = settings.WithoutAvatarId(avatarId);
-            if (!ReferenceEquals(settings, oldSettings))
-                await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
-        }
+        if (avatar.IsAnonymous)
+            return avatar; // We don't account anonymous avatars in the list
+
+        cancellationToken = default; // We don't cancel anything from here
+        var kvas = ServerKvas.GetClient(session);
+        var oldSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+        var settings = oldSettings;
+        if (change.Create.HasValue)
+            settings = settings.WithAvatarId(avatar.Id);
+        else if (change.Remove)
+            settings = settings.WithoutAvatarId(avatarId);
+        if (!ReferenceEquals(settings, oldSettings))
+            await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
 
         return avatar;
     }

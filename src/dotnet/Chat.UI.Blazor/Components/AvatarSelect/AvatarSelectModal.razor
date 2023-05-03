@@ -109,7 +109,7 @@
     private Avatar GenerateAnonymous() {
         var next = IdGenerator.Next();
         return new Avatar {
-            Name = RandomNameGenerator.Default.Generate(),// $"Anonymous ({next})",
+            Name = RandomNameGenerator.Default.Generate(),
             Bio = "Someone anonymous",
             Picture = DefaultUserPicture.GetBoringAvatar(next),
         };
