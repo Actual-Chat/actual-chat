@@ -18,6 +18,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IInvitesBackend InvitesBackend { get; }
     private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
+    private IRolesBackend RolesBackend { get; }
 
     public Chats(IServiceProvider services) : base(services)
     {
@@ -28,6 +29,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         InvitesBackend = services.GetRequiredService<IInvitesBackend>();
         ServerKvas = services.ServerKvas();
         Backend = services.GetRequiredService<IChatsBackend>();
+        RolesBackend = services.GetRequiredService<IRolesBackend>();
     }
 
     // [ComputeMethod]
@@ -302,6 +304,96 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             var upsertCommand = new IChatsBackend.UpsertEntryCommand(entry1);
             await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    public virtual async Task<Chat> CreateFromTemplate(IChats.CreateFromTemplateCommand command, CancellationToken cancellationToken)
+    {
+        var (session, templateChatId) = command;
+        var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
+        templateChat.Require(Chat.MustBeTemplate);
+
+        var cloneCommand = new IChatsBackend.ChangeCommand(
+            ChatId.None,
+            null,
+            new Change<ChatDiff> {
+                Create = new ChatDiff {
+                    Title = templateChat.Title,
+                    MediaId = templateChat.MediaId,
+                    Kind = ChatKind.Group,
+                    IsPublic = false,
+                    IsTemplate = false,
+                },
+            }
+        );
+
+        var cloned = await Commander.Call(cloneCommand, cancellationToken).ConfigureAwait(false);
+        var chatId = cloned.Id;
+
+        // copy existing template authors and their roles
+        var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
+        var templateAuthors = await templateAuthorIds
+            .Select(aId => AuthorsBackend.Get(templateChatId, aId, cancellationToken))
+            .Collect(4)
+            .ConfigureAwait(false);
+
+        var clonedAuthors = await templateAuthors
+            .Where(a => a != null)
+            .Select(a => AuthorsBackend.Upsert(
+                new IAuthorsBackend.UpsertCommand(
+                    chatId,
+                    AuthorId.None,
+                    a!.UserId,
+                    ExpectedVersion: null,
+                    new AuthorDiff {
+                        AvatarId = a.AvatarId,
+                    }),
+                cancellationToken))
+            .Collect(4)
+            .ConfigureAwait(false);
+        var authorMap = templateAuthors
+            .Where(a => a != null)
+            .Join(clonedAuthors,
+                a => a!.UserId,
+                a => a.UserId,
+                (l, r) => (TemplateAuthorId: l!.Id, CloneAuthorId: r.Id))
+            .ToDictionary(x => x.TemplateAuthorId, x => x.CloneAuthorId);
+
+        var authorRoles = await templateAuthorIds
+            .Select(async aId => (
+                AuthorId: aId,
+                Roles: await RolesBackend.List(templateChatId,
+                    aId,
+                    false,
+                    false,
+                    cancellationToken).ConfigureAwait(false))
+            )
+            .Collect(4)
+            .ConfigureAwait(false);
+        var roleAuthors = authorRoles
+            .SelectMany(x => x.Roles, (x, r) => (x.AuthorId, Role: r))
+            .GroupBy(x => x.Role.Id,
+                (_, xs) => {
+                    var tuples = xs.ToList();
+                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToImmutableArray());
+                })
+            .ToList();
+
+        foreach (var (role, roleAuthorIds) in roleAuthors) {
+            var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(cloned.Id, default, null, new() {
+                Create = new RoleDiff {
+                    Picture = role.Picture,
+                    Name = role.Name,
+                    SystemRole = role.SystemRole,
+                    Permissions = role.Permissions,
+                    AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
+                        AddedItems = roleAuthorIds,
+                    },
+                },
+            });
+            await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+        }
+
+        return cloned;
     }
 
     // Private methods

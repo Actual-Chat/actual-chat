@@ -46,6 +46,7 @@ public interface IChatsClientDef
 
     [Get(nameof(ListMentionableAuthors))]
     Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
+
     [Get(nameof(FindNext))]
     Task<ChatEntry?> FindNext(Session session, ChatId chatId, long? startEntryId, string text, CancellationToken cancellationToken);
 
@@ -54,8 +55,12 @@ public interface IChatsClientDef
 
     [Post(nameof(UpsertTextEntry))]
     Task<ChatEntry> UpsertTextEntry([Body] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken);
+
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(CreateFromTemplate))]
+    Task<Chat> CreateFromTemplate([Body] IChats.CreateFromTemplateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("authors")]

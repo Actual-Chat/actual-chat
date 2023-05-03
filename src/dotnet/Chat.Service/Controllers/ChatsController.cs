@@ -89,4 +89,9 @@ public sealed class ChatsController : ControllerBase, IChats
     [HttpPost]
     public Task RemoveTextEntry([FromBody] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task<Chat> CreateFromTemplate([FromBody] IChats.CreateFromTemplateCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
+
 }

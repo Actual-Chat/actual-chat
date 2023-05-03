@@ -19,6 +19,11 @@ public sealed record Chat(
         new(() => StandardError.NotFound<Chat>()),
         (Chat? c) => c is { Id.IsNone: false });
 
+    public static Requirement<Chat> MustBeTemplate { get; } = MustExist
+        & Requirement.New<Chat>(
+            new (() => StandardError.Chat.NonTemplate()),
+            c => c is { IsPublic: true, IsTemplate: true });
+
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
