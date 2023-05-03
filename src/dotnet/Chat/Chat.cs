@@ -22,6 +22,7 @@ public sealed record Chat(
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
+    [DataMember] public bool IsTemplate { get; init; }
     [Obsolete("Kept only for api compatibility with mobile apps", true)]
     [DataMember] public ChatAuthorKind AllowedAuthorKind { get; init; }
     [DataMember] public bool AllowGuestAuthors { get; init; }
@@ -48,6 +49,7 @@ public sealed record ChatDiff : RecordDiff
     [DataMember] public string? Title { get; init; }
     [DataMember] public ChatKind? Kind { get; init; }
     [DataMember] public bool? IsPublic { get; init; }
+    [DataMember] public bool? IsTemplate { get; init; }
     [Obsolete("Kept only for api compatibility with mobile apps", true)]
     [DataMember] public ChatAuthorKind? AllowedAuthorKind { get; init; }
     [DataMember] public bool? AllowGuestAuthors { get; init; }
