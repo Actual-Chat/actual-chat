@@ -8,21 +8,25 @@ namespace ActualChat.Chat.IntegrationTests;
 public static class ChatOperations
 {
     public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, bool isPublicChat)
+        => await CreateChat(appHost, c => c with{ IsPublic = isPublicChat});
+
+    public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, Func<ChatDiff, ChatDiff> configure)
     {
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignIn(new User("", "Alice"));
+        var chatDiff = configure(new ChatDiff() {
+            Title = "test chat",
+            Kind = ChatKind.Group,
+        });
+        var isPublicChat = chatDiff.IsPublic ?? false;
 
         var commander = tester.Commander;
         var chat = await commander.Call(new IChats.ChangeCommand(session,
             default,
             null,
             new () {
-                Create = new ChatDiff() {
-                    Title = "test chat",
-                    Kind = ChatKind.Group,
-                    IsPublic = isPublicChat,
-                },
+                Create = chatDiff,
             }));
         chat.Require();
         var chatId = chat.Id;
