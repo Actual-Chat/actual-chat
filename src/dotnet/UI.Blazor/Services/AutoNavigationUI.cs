@@ -11,10 +11,13 @@ public enum AutoNavigationReason
 
 public abstract class AutoNavigationUI : IHasServices
 {
+    private readonly object _lock = new ();
+    private bool _autoNavigateStarted;
+    private readonly List<(LocalUrl Url, AutoNavigationReason Reason)> _initialNavigationTargets = new();
+
     private History? _history;
     private AppBlazorCircuitContext? _blazorCircuitContext;
 
-    protected readonly List<(LocalUrl Url, AutoNavigationReason Reason)> InitialNavigationTargets = new();
     protected ILogger Log { get; }
     protected ILogger? DebugLog { get; }
 
@@ -38,6 +41,14 @@ public abstract class AutoNavigationUI : IHasServices
 
     public void DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
+        DebugLog?.LogDebug("DispatchNavigateTo({Url}, {Reason})", url, reason);
+        lock (_lock) {
+            if (!_autoNavigateStarted) {
+                DebugLog?.LogDebug("DispatchNavigateTo({Url}, {Reason}): enqueuing initial navigation target", url, reason);
+                _initialNavigationTargets.Add((url, reason));
+                return;
+            }
+        }
         if (BlazorCircuitContext.WhenReady.IsCompleted) {
             if (Dispatcher.CheckAccess())
                 NavigateTo(url, reason);
@@ -60,7 +71,13 @@ public abstract class AutoNavigationUI : IHasServices
 
         if (WhenAutoNavigated?.IsCompleted != true) {
             DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): enqueuing initial navigation target", url, reason);
-            InitialNavigationTargets.Add((url, reason));
+            lock (_lock) {
+                if (!_autoNavigateStarted)
+                    _initialNavigationTargets.Add((url, reason));
+                else
+                    // TODO(DF): To think how better gracefully handle this case.
+                    Log.LogWarning("NavigateTo({Url}, {Reason}): enqueuing initial navigation target after auto navigation started", url, reason);
+            }
             return;
         }
 
@@ -75,6 +92,23 @@ public abstract class AutoNavigationUI : IHasServices
 
     // Protected methods
 
-    protected abstract Task HandleAutoNavigate(CancellationToken cancellationToken);
+    protected abstract Task HandleAutoNavigate(LocalUrl url, AutoNavigationReason reason, CancellationToken cancellationToken);
     protected abstract Task HandleNavigateTo(LocalUrl url, AutoNavigationReason reason);
+
+    // Private methods
+
+    private Task HandleAutoNavigate(CancellationToken cancellationToken)
+    {
+        LocalUrl url;
+        AutoNavigationReason reason;
+        lock (_lock) {
+            _autoNavigateStarted = true;
+            (url, reason) = _initialNavigationTargets.Count > 0
+                ? _initialNavigationTargets.MaxBy(t => (int) t.Reason)
+                : default;
+            Log.LogDebug("HandleAutoNavigate. Targets.Count={Count}, Url='{Url}', Reason='{Reason}'",
+                _initialNavigationTargets.Count, url, reason);
+        }
+        return HandleAutoNavigate(url, reason, cancellationToken);
+    }
 }

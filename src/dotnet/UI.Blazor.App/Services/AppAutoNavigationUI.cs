@@ -7,11 +7,8 @@ public class AppAutoNavigationUI : AutoNavigationUI
 {
     public AppAutoNavigationUI(IServiceProvider services) : base(services) { }
 
-    protected override async Task HandleAutoNavigate(CancellationToken cancellationToken)
+    protected override async Task HandleAutoNavigate(LocalUrl url, AutoNavigationReason reason, CancellationToken cancellationToken)
     {
-        var (url, reason) = InitialNavigationTargets.Count > 0
-            ? InitialNavigationTargets.MaxBy(t => (int)t.Reason)
-            : default;
         if (reason == AutoNavigationReason.Skip) {
             // No default auto-navigation
             var currentUrl = History.LocalUrl;
