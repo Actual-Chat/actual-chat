@@ -58,8 +58,6 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
@@ -103,42 +101,17 @@
         var account = await Accounts.GetOwn(Session, cancellationToken);
         try {
             var chat = await Chats.Get(Session, chatId, cancellationToken);
-            if (chat != null) {
-                if (chat.IsTemplate) {
-                    // create new chat based on a template and redirect to the new clone
-                    var command = new IChats.CreateFromTemplateCommand(Session, chatId);
-                    var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
-                    if (createChatError != null)
-                        return Model.None(screenSize);
+            if (chat is not {IsTemplate: true })
+                return new Model(chatId, chat, account, screenSize);
 
-                    _ = History.NavigateTo(Links.Chat(newChat.Id));
-                    return Model.Loading;
-                }
-                var shouldJoin = !chat.Rules.CanWrite() && chat.Rules.CanJoin();
-                if (shouldJoin) {
-                    // join as a guest
-                    var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
-                    var avatars = await avatarIds
-                        .Select(aId => Avatars.GetOwn(Session, aId, cancellationToken))
-                        .Collect();
-                    var guestAvatar = avatars
-                        .Where(a => a != null)
-                        .FirstOrDefault(a => a!.Name == "Guest");
-                    if (guestAvatar == null) {
-                        var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
-                            Create = new AvatarFull {
-                                UserId = account.Id,
-                                Name = "Guest",
-                            }.WithMissingPropertiesFrom(account.Avatar),
-                        });
-                        var (newAvatar, _) = await UICommander.Run(createAvatarCommand, cancellationToken);
-                        guestAvatar = newAvatar;
-                    }
-                    var command = new IAuthors.JoinCommand(Session, chat.Id, guestAvatar.Id);
-                    await UICommander.Run(command, cancellationToken);
-                }
-            }
-            return new Model(chatId, chat, account, screenSize);
+            // create new chat based on a template and redirect to the new clone
+            var command = new IChats.CreateFromTemplateCommand(Session, chatId);
+            var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+            if (createChatError != null)
+                return Model.None(screenSize);
+
+            _ = History.NavigateTo(Links.Chat(newChat.Id));
+            return Model.Loading;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);

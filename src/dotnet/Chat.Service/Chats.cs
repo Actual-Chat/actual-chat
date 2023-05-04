@@ -14,6 +14,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private IAccounts Accounts { get; }
     private IAuthors Authors { get; }
     private IAuthorsBackend AuthorsBackend { get; }
+    private IAvatars Avatars { get; }
     private IContactsBackend ContactsBackend { get; }
     private IInvitesBackend InvitesBackend { get; }
     private IServerKvas ServerKvas { get; }
@@ -25,6 +26,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         Accounts = services.GetRequiredService<IAccounts>();
         Authors = services.GetRequiredService<IAuthors>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        Avatars = services.GetRequiredService<IAvatars>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         InvitesBackend = services.GetRequiredService<IInvitesBackend>();
         ServerKvas = services.ServerKvas();
@@ -312,6 +314,25 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
         templateChat.Require(Chat.MustBeTemplate);
 
+        var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
+        var templateAuthors = await templateAuthorIds
+            .Select(aId => AuthorsBackend.Get(templateChatId, aId, cancellationToken))
+            .Collect(4)
+            .ConfigureAwait(false);
+        var authorRoles = await templateAuthorIds
+            .Select(async aId => (
+                AuthorId: aId,
+                Roles: await RolesBackend.List(templateChatId,
+                    aId,
+                    false,
+                    false,
+                    cancellationToken).ConfigureAwait(false))
+            )
+            .Collect(4)
+            .ConfigureAwait(false);
+        var templateOwner = authorRoles.FirstOrDefault(x => x.Roles.Any(r => r.SystemRole == SystemRole.Owner));
+
+        // clone template chat
         var cloneCommand = new IChatsBackend.ChangeCommand(
             ChatId.None,
             null,
@@ -320,25 +341,21 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     Title = templateChat.Title,
                     MediaId = templateChat.MediaId,
                     Kind = ChatKind.Group,
-                    IsPublic = false,
+                    IsPublic = true,
                     IsTemplate = false,
+                    AllowedAuthorKind = ChatAuthorKind.Any,
                 },
-            }
+            },
+            templateAuthors.Single(a => a?.Id == templateOwner.AuthorId)?.UserId ?? UserId.None // Owner is mandatory
         );
 
         var cloned = await Commander.Call(cloneCommand, cancellationToken).ConfigureAwait(false);
         var chatId = cloned.Id;
 
         // copy existing template authors and their roles
-        var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
-        var templateAuthors = await templateAuthorIds
-            .Select(aId => AuthorsBackend.Get(templateChatId, aId, cancellationToken))
-            .Collect(4)
-            .ConfigureAwait(false);
-
         var clonedAuthors = await templateAuthors
             .Where(a => a != null)
-            .Select(a => AuthorsBackend.Upsert(
+            .Select(a => Commander.Call(
                 new IAuthorsBackend.UpsertCommand(
                     chatId,
                     AuthorId.None,
@@ -357,20 +374,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 a => a.UserId,
                 (l, r) => (TemplateAuthorId: l!.Id, CloneAuthorId: r.Id))
             .ToDictionary(x => x.TemplateAuthorId, x => x.CloneAuthorId);
-
-        var authorRoles = await templateAuthorIds
-            .Select(async aId => (
-                AuthorId: aId,
-                Roles: await RolesBackend.List(templateChatId,
-                    aId,
-                    false,
-                    false,
-                    cancellationToken).ConfigureAwait(false))
-            )
-            .Collect(4)
-            .ConfigureAwait(false);
         var roleAuthors = authorRoles
             .SelectMany(x => x.Roles, (x, r) => (x.AuthorId, Role: r))
+            .Where(x => x.Role.SystemRole is not SystemRole.Anyone and not SystemRole.None and not SystemRole.Owner) // Owner is already registered
             .GroupBy(x => x.Role.Id,
                 (_, xs) => {
                     var tuples = xs.ToList();
@@ -392,6 +398,35 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             });
             await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
         }
+
+        // join guest author
+        var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
+        var avatars = await avatarIds
+            .Select(aId => Avatars.GetOwn(session, aId, cancellationToken))
+            .Collect().ConfigureAwait(false);
+        var guestAvatar = avatars
+            .Where(a => a != null)
+            .FirstOrDefault(a => a!.Name == Avatar.GuestName);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (guestAvatar == null) {
+            var createAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
+                Create = new AvatarFull {
+                    UserId = account.Id,
+                    Name = "Guest",
+                }.WithMissingPropertiesFrom(account.Avatar),
+            });
+            var newAvatar = await Commander.Call(createAvatarCommand, cancellationToken).ConfigureAwait(false);
+            guestAvatar = newAvatar;
+        }
+        var createAuthorCommand = new IAuthorsBackend.UpsertCommand(
+            chatId,
+            AuthorId.None,
+            account.Id,
+            ExpectedVersion: null,
+            new AuthorDiff {
+                AvatarId = guestAvatar.Id,
+            });
+        await Commander.Run(createAuthorCommand, cancellationToken).ConfigureAwait(false);
 
         return cloned;
     }
