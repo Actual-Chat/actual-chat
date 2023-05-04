@@ -4,6 +4,9 @@ import './fonts/tt-commons-pro.css';
 import './node_modules/fork-awesome/css/fork-awesome.min.css';
 import './styles/index.css';
 
+// Components
+import './src/components/simple-greeting'
+
 // Logging init
 import 'logging-init';
 // Critical init logic - should go right after logging-init
