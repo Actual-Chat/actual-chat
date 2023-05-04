@@ -363,7 +363,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     ExpectedVersion: null,
                     new AuthorDiff {
                         AvatarId = a.AvatarId,
-                    }),
+                    },
+                    DoNotNotify: true),
                 cancellationToken))
             .Collect(4)
             .ConfigureAwait(false);

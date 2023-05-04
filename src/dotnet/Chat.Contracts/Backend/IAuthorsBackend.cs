@@ -22,6 +22,7 @@ public interface IAuthorsBackend : IComputeService
         [property: DataMember] AuthorId AuthorId,
         [property: DataMember] UserId UserId,
         [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] AuthorDiff Diff
+        [property: DataMember] AuthorDiff Diff,
+        [property: DataMember] bool DoNotNotify = false
         ) : ICommand<AuthorFull>, IBackendCommand;
 }
