@@ -71,6 +71,15 @@ public partial class History
         }
     }
 
+    public async Task<bool> WhenNavigatedTo(LocalUrl localUrl, TimeSpan? timeout = null)
+    {
+        using var cts = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(0.5));
+        await When(_ => LocalUrl.Value.OrdinalStartsWith(localUrl), cts.Token)
+            .SuppressCancellationAwait();
+        await WhenNavigationCompleted;
+        return LocalUrl.Value.OrdinalStartsWith(localUrl);
+    }
+
     // Internal and private methods
 
     private Task NavigateBack()

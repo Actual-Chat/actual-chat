@@ -57,6 +57,10 @@ public sealed class AuthorUI
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
         var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
-        _ = History.NavigateTo(Links.Chat(peerChatId));
+        var localUrl = Links.Chat(peerChatId);
+        _ = History.NavigateTo(localUrl);
+        await History.WhenNavigatedTo(localUrl);
+        var panelsUI = Services.GetRequiredService<PanelsUI>();
+        panelsUI.Middle.EnsureVisible();
     }
 }
