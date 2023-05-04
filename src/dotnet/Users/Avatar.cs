@@ -13,6 +13,7 @@ public record Avatar(
 {
     public static IdAndVersionEqualityComparer<Avatar, Symbol> EqualityComparer { get; } = new();
 
+    public const string GuestName = "Guest";
     public static Avatar None { get; } = new(Symbol.Empty, 0);
     public static Avatar Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
 
