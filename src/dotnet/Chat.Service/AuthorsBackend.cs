@@ -135,7 +135,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     // [CommandHandler]
     public virtual async Task<AuthorFull> Upsert(IAuthorsBackend.UpsertCommand command, CancellationToken cancellationToken)
     {
-        var (chatId, authorId, userId, expectedVersion, diff) = command;
+        var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         if (!authorId.IsNone && authorId.ChatId != chatId)
@@ -256,9 +256,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .EnqueueOnCompletion();
             }
 
-            // Raise events
-            new AuthorChangedEvent(author, existingAuthor)
-                .EnqueueOnCompletion();
+            if (!doNotNotify)
+                // Raise events
+                new AuthorChangedEvent(author, existingAuthor)
+                    .EnqueueOnCompletion();
             return author;
         }
     }
