@@ -10,21 +10,12 @@
     <div class="flex-auto flex-y gap-y-1">
         <div class="text-caption-1 text-02">Active — @m.OnlineAuthorIds.Length</div>
         @foreach (var authorId in m.OnlineAuthorIds) {
-            @if (authorId == _ownAuthor?.Id) {
-                <AuthorBadge
-                    @key="@authorId"
-                    AuthorSid="@authorId"
-                    ShowPresence="true"
-                    NameClass="font-medium text-02"
-                    Click="OnSelfClick"/>
-            } else {
-                <AuthorBadge
-                    @key="@authorId"
-                    AuthorSid="@authorId"
-                    ShowPresence="true"
-                    NameClass="font-medium text-02"
-                    Click="@(_ => AuthorUI.Show(authorId))"/>
-            }
+            <AuthorBadge
+                @key="@authorId"
+                AuthorSid="@authorId"
+                ShowPresence="true"
+                NameClass="font-medium text-02"
+                Click="@(_ => AuthorUI.Show(authorId))"/>
         }
         <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Length</div>
         @foreach (var authorId in m.OfflineAuthorIds) {
@@ -46,8 +37,6 @@
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    private AuthorFull? _ownAuthor;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.None,
@@ -56,7 +45,6 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        _ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken);
         var onlineAuthorIds = new List<AuthorId>();
         var offlineAuthorIds = new List<AuthorId>();
         var presences = await allAuthorIds
@@ -78,12 +66,6 @@
             OfflineAuthorIds = offlineAuthorIds.ToImmutableArray(),
         };
     }
-
-    private Task OnAuthorClick(AuthorId authorId)
-        => AuthorUI.Show(authorId);
-
-    private void OnSelfClick()
-        => _ = UIEventHub.Publish(new ShowSettingsEvent());
 
     public sealed class Model {
         public static Model None { get; } = new();
