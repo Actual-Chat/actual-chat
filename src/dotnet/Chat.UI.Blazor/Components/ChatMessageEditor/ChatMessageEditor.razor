@@ -22,9 +22,7 @@
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
-<div @ref="Ref" class="chat-message-editor min-h-auto @editorCls"
-     data-bubble="@(BubbleRef.New<TextInputPanelBubble>())"
-     data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+<div @ref="Ref" class="chat-message-editor min-h-auto @editorCls">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
@@ -35,7 +33,9 @@
         <div class="flex-none flex-x justify-items-stretch items-stretch p-0 md:px-3 md:py-2 gap-x-2.5">
             <div class="post-panel-wrapper">
                 <div class="flex-x py-1 md:py-0 bg-07 md:bg-01">
-                    <div class="post-panel flex-auto">
+                    <div class="post-panel flex-auto"
+                         data-bubble="@(BubbleRef.New<TextInputPanelBubble>())"
+                         data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
                         <div class="flex-x attach-dropdown">
                             <ButtonRound Class="attach-btn">
                                 <i class="icon-attach-2 text-2xl"></i>
