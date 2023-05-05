@@ -11,7 +11,9 @@
          data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
         <RecorderToggle Chat="@Chat"/>
     </div>
-    <div class="playback-button">
+    <div class="playback-button"
+         data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
+         data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
         <PlaybackToggle Chat="@Chat"/>
     </div>
 </div>
