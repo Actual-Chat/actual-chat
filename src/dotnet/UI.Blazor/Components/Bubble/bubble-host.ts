@@ -10,14 +10,16 @@ interface BubbleModel {
     isTopElement: boolean;
     isRead: boolean;
     isShown: boolean;
+    priority: number;
 }
 
 const { debugLog } = Log.get('BubbleHost');
 
 export class BubbleHost {
-    private readonly _bubbles: BubbleModel[] = [];
     private readonly mutationObserver: MutationObserver;
     private readonly skipped: Subject<void> = new Subject<void>();
+
+    private _bubbles: BubbleModel[] = [];
 
     public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
         return new BubbleHost(blazorRef, readBubbles);
@@ -145,9 +147,11 @@ export class BubbleHost {
                 isTopElement: this.isTopElement(el),
                 isRead: false,
                 isShown: false,
+                priority: Number(el.dataset['bubblePriority']),
             };
             this._bubbles.push(newBubble);
         });
+        this._bubbles = this._bubbles.sort((a, b) => a.priority - b.priority);
     }
 
     private showNextBubble(): void {
