@@ -22,6 +22,7 @@
   "exclude": [
   ],
   "compilerOptions": {
+    "experimentalDecorators": true,
     "alwaysStrict": true,
     "downlevelIteration": false,
     "moduleResolution": "node",
