@@ -193,7 +193,14 @@ export class BubbleHost {
         if (topElement == null)
             return false;
 
-        return topElement.contains(element);
+        if (topElement.contains(element))
+            return true;
+
+        const trigger = topElement.closest('[data-bubble]');
+        if (element === trigger)
+            return true;
+
+        return false;
     }
 
     private getBubbleElements(): HTMLElement[] {
