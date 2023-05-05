@@ -22,7 +22,9 @@
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
 <OnUIEvent TEvent="@EditChatMessageEvent" Handler="OnEditChatMessageEvent" />
 <OnUIEvent TEvent="@CancelChatMessageEditEvent" Handler="OnCancelChatMessageEditEvent" />
-<div @ref="Ref" class="chat-message-editor min-h-auto @editorCls">
+<div @ref="Ref" class="chat-message-editor min-h-auto @editorCls"
+     data-bubble="@(BubbleRef.New<TextInputPanelBubble>())"
+     data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
