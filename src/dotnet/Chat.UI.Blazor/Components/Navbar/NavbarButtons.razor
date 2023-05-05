@@ -11,6 +11,7 @@
 <NavbarButton
     Tooltip="Create"
     data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+    data-bubble-priority="101"
     data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
     Click="OnCreateChatClick">
     <i class="icon-plus text-2xl font-medium"></i>

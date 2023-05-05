@@ -72,6 +72,7 @@
     <LinkTileItem Link="@Links.User(account.Id)"
                   Caption="Link to your account"
                   data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
+                  data-bubble-priority="301"
                   data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
     </LinkTileItem>
 </Tile>
