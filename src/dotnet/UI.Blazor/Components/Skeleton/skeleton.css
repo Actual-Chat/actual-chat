@@ -87,7 +87,7 @@ body.narrow .chat-skeleton-panel {
     @apply min-h-16;
 }
 .chat-skeleton-panel .skeleton-panel-body {
-    @apply p-2;
+    @apply p-2 pr-8;
     @apply overflow-y-auto;
 }
 .chat-skeleton-panel .skeleton-panel-body::-webkit-scrollbar {
