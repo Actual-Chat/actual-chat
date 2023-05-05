@@ -7,14 +7,16 @@
     var m = _rendered = State.Value;
     var chat = m.Chat;
     var chatOrNone = m.Chat ?? Chat.None;
-    var chatOrLoading = ReferenceEquals(m, Model.Loading) ? Chat.Loading : chatOrNone;
+    var chatOrFallback = ReferenceEquals(m, Model.Loading) ? Chat.Loading
+        : ReferenceEquals(m, Model.SelectChat) ? Chat.SelectChat
+        : chatOrNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
 <AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" />
 
 <RenderIntoSlot Name="MainHeader">
-    <CascadingValue Value="@chatOrLoading">
+    <CascadingValue Value="@chatOrFallback">
         <ChatHeader />
     </CascadingValue>
 </RenderIntoSlot>
@@ -36,7 +38,7 @@
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <CascadingValue Value="@chatOrLoading">
+    <CascadingValue Value="@chatOrFallback">
         <ChatFooter/>
     </CascadingValue>
 </RenderIntoSlot>
@@ -64,16 +66,32 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
 
+    protected override void OnInitialized() {
+        // Force chat selection from Url before ComputeState starts working
+        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
+        ChatUI.SelectChat(chatId);
+        base.OnInitialized();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        var initialValue = Model.Loading;
+        var selectedChatIdStateSnapshot = ChatUI.SelectedChatId.Snapshot;
+        if (selectedChatIdStateSnapshot.State.Value.IsNone && selectedChatIdStateSnapshot.UpdateCount > 0)
+            initialValue = Model.SelectChat;
+        return new() {
+            InitialValue = initialValue,
+            Category = GetStateCategory(),
+        };
+    }
+
     protected override Task OnInitializedAsync() {
         ChatAudioUI.Enable();
-        return ChatUI.WhenLoaded; // Nothing happens until we load everything
+        return Task.CompletedTask;
     }
 
     protected override Task OnParametersSetAsync() {
@@ -84,12 +102,6 @@
         // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
         return Task.CompletedTask;
     }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
@@ -104,10 +116,10 @@
         try {
             var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
             // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
-            var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-            if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
-                return Model.None(screenSize);
+            if (chatId.IsNone)
+                return Model.SelectChat;
 
+            var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
             // Let's delay chat loading when it it is invisible and it happens for the first time
             if (_isFirstLoad) {
                 _isFirstLoad = false;
@@ -148,8 +160,8 @@
         AccountFull Account,
         ScreenSize ScreenSize = ScreenSize.Unknown
     ) {
-        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
-        public static Model None(ScreenSize screenSize) => new(default, null, AccountFull.None, screenSize);
+        public static Model Loading { get; } = new(default, null, AccountFull.Loading);
+        public static Model SelectChat { get; } = new Model(default, null, AccountFull.None);
 
         public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
             if (other == null)

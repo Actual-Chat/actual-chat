@@ -8,6 +8,8 @@
     @if (ReferenceEquals(m, Model.Loading)) {
         // Render skeletons until State is computed
         <ChatFooterSkeletons />
+    } else if (ReferenceEquals(m, Model.SelectChat)) {
+        <ReadOnlyChatFooter FooterText="@String.Empty" />
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor/>
@@ -62,6 +64,8 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (ReferenceEquals(Chat, Chat.Loading))
             return Model.Loading;
+        if (ReferenceEquals(Chat, Chat.SelectChat))
+            return Model.SelectChat;
         if (ReferenceEquals(Chat, Chat.None))
             return Model.None;
 
@@ -110,6 +114,7 @@
 
     public sealed class Model {
         public static Model Loading { get; } = new();
+        public static Model SelectChat { get; } = new();
         public static Model None { get; } = new();
 
         public UserId OtherUserId { get; init; }
