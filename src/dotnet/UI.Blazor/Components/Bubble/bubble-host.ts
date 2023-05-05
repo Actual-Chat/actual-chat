@@ -174,13 +174,17 @@ export class BubbleHost {
         if (!bubbleToShow)
             return;
 
-        this.show(bubbleToShow);
+        const isLastVisible = notReadBubbles
+            .filter(x => x !== bubbleToShow)
+            .filter(x => x.isInViewport && x.isTopElement)
+            .length === 0;
+        this.show(bubbleToShow, isLastVisible);
     }
 
-    private show(bubble: BubbleModel): void {
+    private show(bubble: BubbleModel, isLastVisible: boolean): void {
         debugLog?.log(`show:`, bubble.bubbleRef);
 
-        void this.blazorRef.invokeMethodAsync('OnShow', bubble.bubbleRef);
+        void this.blazorRef.invokeMethodAsync('OnShow', bubble.bubbleRef, isLastVisible);
     }
 
     private isElementInViewport(element: HTMLElement): boolean {

@@ -13,8 +13,12 @@
         <div class="flex-1">
         </div>
         <div class="bubble-buttons flex justify-end">
-            <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
-            <Button Class="btn-bubble btn-next" Click="OnNextClick">Next</Button>
+            @if (!Bubble.IsLastVisible) {
+                <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
+            }
+            <Button Class="btn-bubble btn-next" Click="OnNextClick">
+                @(Bubble.IsLastVisible ? "Ok" : "Next")
+            </Button>
         </div>
     </div>
 </div>

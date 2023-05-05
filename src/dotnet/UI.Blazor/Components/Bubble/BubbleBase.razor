@@ -3,8 +3,7 @@
 
 @code {
     [Parameter] public string Id { get; set; } = "";
-    [Parameter] public int Count { get; set; }
-    [Parameter] public int Current { get; set; }
+    [Parameter] public bool IsLastVisible { get; set; }
 
     [CascadingParameter] public BubbleHost Host { get; set; } = null!;
 
