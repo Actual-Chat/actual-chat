@@ -135,7 +135,8 @@ export class BubbleHost {
                     return;
 
                 bubble.isInViewport = this.isElementInViewport(el);
-                bubble.isTopElement = this.isTopElement(el);
+                bubble.isTopElement = this.isTopElement(el)
+                    || (bubble.isTopElement && this.topElementIsBubble(el));
 
                 return;
             }
@@ -202,6 +203,20 @@ export class BubbleHost {
 
         const trigger = topElement.closest('[data-bubble]');
         if (element === trigger)
+            return true;
+
+        return false;
+    }
+
+    private topElementIsBubble(element: HTMLElement): boolean {
+        const rect = element.getBoundingClientRect();
+        const topElement = document.elementFromPoint(rect.left, rect.top);
+        const isBubble = topElement.classList.contains('ac-bubble');
+        if (isBubble)
+            return true;
+
+        const bubble = topElement.closest('.ac-bubble');
+        if (bubble != undefined)
             return true;
 
         return false;
