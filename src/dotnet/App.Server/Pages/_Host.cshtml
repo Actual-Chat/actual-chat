@@ -2,6 +2,7 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.App.Server.Pages
 @using ActualChat.Hosting
+@using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
 
@@ -17,8 +18,6 @@
     var session = ServerAuthHelper.Session;
     var blazorUtilsVersion = GetBlazorJsVersion();
     Layout = null;
-    // TODO: add HeadOutlet component (to edit <head>)
-    // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
 
     string GetBlazorJsVersion()
     {
@@ -106,6 +105,9 @@
         });
     </script>
     <script async src="/dist/bundle.js" asp-append-version="true"></script>
+    @if (isServerSideBlazor) {
+        <component type="typeof(Microsoft.AspNetCore.Components.Web.HeadOutlet)" render-mode="ServerPrerendered"/>
+    }
 </head>
 
 <body class="app-web @(isServerSideBlazor ? "app-server" : "app-wasm")">

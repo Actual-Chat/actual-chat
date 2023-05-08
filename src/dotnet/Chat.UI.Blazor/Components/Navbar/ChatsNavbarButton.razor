@@ -30,9 +30,8 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatById = await ChatListUI.ListAllUnordered(cancellationToken);
-        var count = chatById.Values.Where(c => c.UnmutedUnreadCount > 0).UnreadChatCount();
-        return new(count);
+        var count = await ChatListUI.UnreadChatsCount.Use(cancellationToken);
+        return new Model(count);
     }
 
     public sealed record Model(Trimmed<int> Count = default);
