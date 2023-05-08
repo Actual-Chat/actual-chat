@@ -57,6 +57,15 @@ export class Landing {
                 takeUntil(this.disposed$),
                 debounceTime(100),
             ).subscribe(() => this.onScroll(false));
+
+        let video = this.landing.querySelector('.landing-video') as HTMLVideoElement;
+        if (video != null) {
+            fromEvent(video, "canplay", )
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event : Event) => {
+                    video.classList.remove('hidden');
+                });
+        }
     }
 
     public dispose() {
