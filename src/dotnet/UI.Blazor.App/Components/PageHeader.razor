@@ -10,6 +10,7 @@
 <PageTitle>@title</PageTitle>
 <HeadContent>
     @{
+        // NOTE(DF): I use png favicons because Chrome does not properly reacts on changes of svg icons.
         var iconHref = m.Count > 0 ? "/unreadcountfavicon/+.png" : "/unreadcountfavicon/0.png";
     }
     <link rel="icon" href="@iconHref">
