@@ -55,8 +55,10 @@
                     <DownloadButton/>
                 </div>
             </div>
-            <div class="hidden md:flex w-2/5 justify-center">
-                <img src="/dist/images/landing/android-phone.svg" alt="phone">
+            <div class="hidden md:flex justify-end items-center w-2/5">
+                <video controls autoplay muted playsinline width="390" class="landing-video h-full hidden">
+                    <source src="/dist/images/landing/highlight-message-03.webm" type="video/webm"/>
+                </video>
             </div>
         </div>
     </div>
@@ -408,6 +410,8 @@
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnInitializedAsync()
         => AuthSchemas = await ClientAuth.GetSchemas();
