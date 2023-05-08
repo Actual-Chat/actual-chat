@@ -10,14 +10,9 @@
 <PageTitle>@title</PageTitle>
 <HeadContent>
     @{
-        var iconHref = m.Count > 0 ? "/unreadcountfavicon/+.svg" : "/unreadcountfavicon/0.svg";
+        var iconHref = m.Count > 0 ? "/unreadcountfavicon/+.png" : "/unreadcountfavicon/0.png";
     }
-    @*
-    Chrome sometimes does not react on svg icon link changes.
-    Apparently it can be connected to issue https://bugs.chromium.org/p/chromium/issues/detail?id=1162276
-    We can try to use png icons as workaround.
-    *@
-    <link rel="icon" href="@iconHref" type="image/svg+xml">
+    <link rel="icon" href="@iconHref">
 </HeadContent>
 
 @code {
