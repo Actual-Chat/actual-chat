@@ -411,8 +411,6 @@
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [CascadingParameter] ScreenSize ScreenSize { get; set; }
-
     protected override async Task OnInitializedAsync()
         => AuthSchemas = await ClientAuth.GetSchemas();
 
