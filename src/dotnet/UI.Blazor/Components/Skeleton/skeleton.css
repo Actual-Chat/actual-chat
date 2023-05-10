@@ -1,59 +1,14 @@
-:root {
-    --card-left-padding: 0.25rem;
-    --card-top-padding: 0.75rem;
-    --chat-list-card-top-padding: 0.25rem;
-    --card-height: 4rem;
-    --chat-list-card-height: 3rem;
-    --card-skeleton: linear-gradient(white var(--card-height), transparent 0);
-    --chat-list-card-skeleton: linear-gradient(#F5F5F5 var(--chat-list-card-height), transparent 0);
-
-    --avatar-size: 2.5rem;
-    --avatar-position: var(--card-left-padding) var(--card-top-padding);
-    --chat-list-avatar-position: var(--card-left-padding) var(--chat-list-card-top-padding);
-    --avatar-skeleton: radial-gradient(circle 1.25rem at center, #E7E7E7 99%, transparent 0
-    );
-
-    --desc-line-1-height: 1rem;
-    --desc-line-2-height: 0.75rem;
-    --desc-line-3-height: 0.5rem;
-    --desc-line-1-left-padding: 3.25rem;
-    --desc-line-1-top-padding: 1rem;
-    --chat-list-desc-line-1-top-padding: 0.5rem;
-    --desc-line-2-left-padding: 3.25rem;
-    --desc-line-2-top-padding: 2.5rem;
-    --chat-list-desc-line-2-top-padding: 2rem;
-    --desc-line-1-skeleton: linear-gradient(#E7E7E7 var(--desc-line-1-height), transparent 0);
-    --desc-line-2-skeleton: linear-gradient(#E7E7E7 var(--desc-line-2-height), transparent 0);
-    --desc-line-3-skeleton: linear-gradient(#E7E7E7 var(--desc-line-3-height), transparent 0);
-    --desc-line-1-width: 20%;
-    --desc-line-1-position: var(--desc-line-1-left-padding) var(--desc-line-1-top-padding);
-    --chat-list-desc-line-1-position: var(--desc-line-1-left-padding) var(--chat-list-desc-line-1-top-padding);
-    --desc-line-2-width:80%;
-    --desc-line-2-position: var(--desc-line-2-left-padding) var(--desc-line-2-top-padding);
-    --chat-list-desc-line-2-position: var(--desc-line-2-left-padding) var(--chat-list-desc-line-2-top-padding);
-
-    --blur-width: 200px;
-    --blur-size: var(--blur-width) calc(var(--card-height));
-
-
-    --skeleton-wide-left-panel-width: 100%;
-    --skeleton-thin-left-panel-width: auto;
-    --skeleton-right-panel-width: 100%;
-}
-@media (min-width: 1024px) {
-    :root {
-        --skeleton-wide-left-panel-width: 20rem;
-        --skeleton-thin-left-panel-width: 7.5rem;
-        --skeleton-right-panel-width: 20rem;
-    }
-}
-
 .thin-left-skeleton-panel {
     @apply flex-y;
     @apply px-0.5 md:px-4.5;
     @apply bg-04;
-    width: var(--skeleton-thin-left-panel-width);
+    width: 7.5rem;
 }
+body.narrow .thin-left-skeleton-panel {
+    @apply hidden;
+    width: auto;
+}
+
 body.narrow .thin-left-skeleton-panel .skeleton-panel-body {
     padding-left: 0.4rem;
     padding-right: 0.5rem;
@@ -62,19 +17,28 @@ body.narrow .thin-left-skeleton-panel .skeleton-panel-body {
     @apply flex-y;
     @apply bg-03;
     @apply border-r border-bg-04;
-    width: var(--skeleton-wide-left-panel-width);
+    @apply w-full md:w-80;
+}
+body.narrow .wide-left-skeleton-panel {
+    @apply hidden;
+    width: 100%;
+}
+.wide-left-skeleton-panel .skeleton-panel-body {
+    @apply gap-y-0.5 overflow-auto;
+    @apply p-2;
+    @apply custom-scrollbar;
+}
+.thin-left-skeleton-panel .skeleton-panel-body {
+    @apply items-end gap-y-3 md:gap-y-2;
 }
 .chat-skeleton-panel {
     @apply flex-1 flex-y;
-}
-body.narrow .chat-skeleton-panel {
-    @apply hidden;
 }
 .right-skeleton-panel {
     @apply hidden md:flex-y;
     @apply bg-02;
     @apply border-l border-bg-04;
-    width: var(--skeleton-right-panel-width);
+    @apply w-full md:w-80;
 }
 .skeleton-panel-header {
     @apply min-h-14;
@@ -83,113 +47,31 @@ body.narrow .chat-skeleton-panel {
     @apply flex-1 flex-y;
 }
 .skeleton-panel-footer {
-    @apply flex-none sticky bottom-0;
-    @apply min-h-16;
+    @apply sticky bottom-0;
+    @apply flex-none flex-x items-center justify-center;
+    @apply min-h-14 md:min-h-16;
+}
+.chat-skeleton-panel .skeleton-panel-footer {
+    @apply flex-x gap-x-2.5;
+    @apply px-3;
+}
+body.narrow .chat-skeleton-panel .skeleton-panel-footer {
+    min-height: 9.5rem;
+}
+body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
+    @apply justify-end;
 }
 .chat-skeleton-panel .skeleton-panel-body {
-    @apply p-2 pr-8;
+    @apply p-2 md:pr-8;
     @apply overflow-y-auto;
+}
+body.narrow .chat-skeleton-panel .skeleton-panel-footer {
+    @apply p-0;
+    @apply bg-03;
 }
 .chat-skeleton-panel .skeleton-panel-body::-webkit-scrollbar {
     @apply hidden;
 }
-
-/* Card Skeleton for chat page */
-
-.card {
-    flex: none;
-    width: 100%;
-    height: var(--card-height);
-}
-.chat-list-skeleton .card {
-    height: var(--chat-list-card-height);
-}
-.card:empty::after {
-     content:"";
-     display:block;
-     width: 100%;
-     height: 100%;
-     border-radius: 6px;
-
-     background-image:
-         linear-gradient(
-             90deg,
-             rgba(255, 255, 255, 0) 0,
-             rgba(255, 255, 255, .8) 50%,
-             rgba(255, 255, 255, 0) 100%
-         ),
-         var(--desc-line-1-skeleton),
-         var(--desc-line-2-skeleton),
-         var(--avatar-skeleton),
-         var(--card-skeleton);
-
-     background-size:
-         var(--blur-size),
-         var(--desc-line-1-width) var(--desc-line-1-height),
-         var(--desc-line-2-width) var(--desc-line-2-height),
-         var(--avatar-size) var(--avatar-size),
-         100% 100%;
-
-     background-position:
-         -150% 0,
-         var(--desc-line-1-position),
-         var(--desc-line-2-position),
-         var(--avatar-position),
-         0 0;
-
-     background-repeat: no-repeat;
-     animation: card-loading 2s infinite;
- }
-.chat-list-skeleton .card:empty::after {
-    background-image:
-        linear-gradient(
-            90deg,
-            rgba(245, 245, 245, 0) 0,
-            rgba(245, 245, 245, .8) 50%,
-            rgba(245, 245, 245, 0) 100%
-        ),
-        var(--desc-line-1-skeleton),
-        var(--desc-line-3-skeleton),
-        var(--avatar-skeleton),
-        var(--chat-list-card-skeleton);
-
-    background-size:
-        var(--blur-size),
-        var(--desc-line-1-width) var(--desc-line-1-height),
-        var(--desc-line-2-width) var(--desc-line-3-height),
-        var(--avatar-size) var(--avatar-size),
-        100% 100%;
-
-    background-position:
-        -150% 0,
-        var(--chat-list-desc-line-1-position),
-        var(--chat-list-desc-line-2-position),
-        var(--chat-list-avatar-position),
-        0 0;
-
-    animation: chat-list-card-loading 2s infinite;
-
-}
-
-@keyframes card-loading {
-    to {
-        background-position:
-            350% 0,
-            var(--desc-line-1-position),
-            var(--desc-line-2-position),
-            var(--avatar-position),
-            0 0
-    ;
-    }
-}
-@keyframes chat-list-card-loading {
-    to {
-        background-position:
-            350% 0,
-            var(--chat-list-desc-line-1-position),
-            var(--chat-list-desc-line-2-position),
-            var(--chat-list-avatar-position),
-            0 0
-    ;
-    }
+.chat-view-footer {
+    @apply flex-1;
 }
