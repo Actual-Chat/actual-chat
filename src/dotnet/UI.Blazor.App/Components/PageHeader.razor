@@ -1,22 +1,21 @@
-@namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Contacts
-@inherits ComputedStateComponent<ChatsNavbarButton.Model>
+﻿@using ActualChat.Chat.UI.Blazor.Services
+@inherits ComputedStateComponent<PageHeader.Model>
 @{
     var m = State.Value;
+    var title = "Actual Chat";
+    if (m.Count > 0)
+        title += " (" + m.Count + ")";
 }
 
-<NavbarGroupSelectionButton
-    Id="@NavbarGroupIds.Chats"
-    Title="Chats"
-    Tooltip="Chats"
-    ShowBadge="@(m.Count != 0)">
-    <ChildContent>
-        <i class="icon-message-ellipse text-2xl font-medium"></i>
-    </ChildContent>
-    <BadgeContent>
-        @m.Count
-    </BadgeContent>
-</NavbarGroupSelectionButton>
+<PageTitle>@title</PageTitle>
+<HeadContent>
+    @{
+        // NOTE(DF): I use png favicons because Chrome does not properly reacts on changes of svg icons.
+        var fileName = m.Count > 9 ? "9+" : m.Count.ToString();
+        var iconHref = $"/unreadcountfavicon/{fileName}.png";
+    }
+    <link rel="icon" href="@iconHref">
+</HeadContent>
 
 @code {
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;

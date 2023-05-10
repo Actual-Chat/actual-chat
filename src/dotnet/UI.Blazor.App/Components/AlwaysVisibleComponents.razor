@@ -1,3 +1,4 @@
+@using ActualChat.Hosting
 <ModalHost />
 <MenuHost />
 @if (ScreenSize.IsWide()) {
@@ -15,8 +16,13 @@
 
 <div class="ui-is-rendered"></div>
 
+@if (!HostInfo.AppKind.IsMauiApp()) {
+    <PageHeader />
+}
+
 @code {
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 }

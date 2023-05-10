@@ -41,6 +41,7 @@ public static class Program
             : null;
         try {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
+            builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
             var baseUrl = builder.HostEnvironment.BaseAddress;
             builder.Services.AddSingleton(Tracer);
             ConfigureServices(builder.Services, builder.Configuration, baseUrl);
