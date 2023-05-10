@@ -44,6 +44,10 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
+        // we can change samplesPerWindow on the fly when switching to NN VAD
+        if (buffer.byteLength !== this.samplesPerWindow * 4)
+            return;
+
         this.bufferPool.release(buffer);
     }
 

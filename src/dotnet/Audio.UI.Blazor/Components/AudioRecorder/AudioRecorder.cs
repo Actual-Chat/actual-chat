@@ -1,4 +1,5 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Audio.UI.Blazor.Services;
 using Stl.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
@@ -18,6 +19,7 @@ public class AudioRecorder : IAsyncDisposable
 
     private Session Session { get; }
     private IJSRuntime JS { get; }
+    private IServiceProvider Services { get; }
 
     public MicrophonePermissionHandler MicrophonePermission { get; }
     public IState<AudioRecorderState> State => _state;
@@ -30,6 +32,7 @@ public class AudioRecorder : IAsyncDisposable
         Session = services.GetRequiredService<Session>();
         JS = services.GetRequiredService<IJSRuntime>();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
+        Services = services;
 
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,
@@ -61,6 +64,9 @@ public class AudioRecorder : IAsyncDisposable
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var audioInitializer = Services.GetRequiredService<AudioInitializer>();
+        await audioInitializer.WhenInitialized.ConfigureAwait(false);
+
         using var _ = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
         var state = _state.Value;
         if (state.ChatId == chatId) {
