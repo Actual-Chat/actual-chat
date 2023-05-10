@@ -27,68 +27,10 @@ enum MessageWidth {
 class ChatSkeleton extends LitElement {
 
     static styles = css`
-    :root {
-        --card-left-padding: 0.25rem;
-        --card-top-padding: 0.75rem;
-        --chat-list-card-top-padding: 0.25rem;
-        --card-height: 4rem;
-        --chat-list-card-height: 3rem;
-        --card-skeleton: linear-gradient(white var(--card-height), transparent 0);
-        --chat-list-card-skeleton: linear-gradient(#F5F5F5 var(--chat-list-card-height), transparent 0);
-
-        --avatar-size: 2.5rem;
-        --avatar-position: var(--card-left-padding) var(--card-top-padding);
-        --chat-list-avatar-position: var(--card-left-padding) var(--chat-list-card-top-padding);
-        --avatar-skeleton: radial-gradient(circle 1.25rem at center, #E7E7E7 99%, transparent 0
-        );
-
-        --desc-line-1-height: 1rem;
-        --desc-line-2-height: 0.75rem;
-        --desc-line-3-height: 0.5rem;
-        --desc-line-1-left-padding: 3.25rem;
-        --desc-line-1-top-padding: 1rem;
-        --chat-list-desc-line-1-top-padding: 0.5rem;
-        --desc-line-2-left-padding: 3.25rem;
-        --desc-line-2-top-padding: 2.5rem;
-        --chat-list-desc-line-2-top-padding: 2rem;
-        --desc-line-1-skeleton: linear-gradient(#E7E7E7 var(--desc-line-1-height), transparent 0);
-        --desc-line-2-skeleton: linear-gradient(#E7E7E7 var(--desc-line-2-height), transparent 0);
-        --desc-line-3-skeleton: linear-gradient(#E7E7E7 var(--desc-line-3-height), transparent 0);
-        --desc-line-1-width: 20%;
-        --desc-line-1-position: var(--desc-line-1-left-padding) var(--desc-line-1-top-padding);
-        --chat-list-desc-line-1-position: var(--desc-line-1-left-padding) var(--chat-list-desc-line-1-top-padding);
-        --desc-line-2-width:80%;
-        --desc-line-2-position: var(--desc-line-2-left-padding) var(--desc-line-2-top-padding);
-        --chat-list-desc-line-2-position: var(--desc-line-2-left-padding) var(--chat-list-desc-line-2-top-padding);
-
-        --blur-width: 200px;
-        --blur-size: var(--blur-width) calc(var(--card-height));
-
-        --skeleton-wide-left-panel-width: 100%;
-        --skeleton-thin-left-panel-width: auto;
-        --skeleton-right-panel-width: 100%;
-    }
-    @media (min-width: 1024px) {
-        :root {
-            --skeleton-wide-left-panel-width: 20rem;
-            --skeleton-thin-left-panel-width: 7.5rem;
-            --skeleton-right-panel-width: 20rem;
-        }
-    }
-    .card {
-        flex: none;
-        width: 100%;
-        // height: var(--card-height);
-        height: 4rem;
-    }
-    .chat-list.card {
-        // height: var(--chat-list-card-height);
-        height: 3rem;
-    }
-
     .message-skeleton {
         display: flex;
         flex-direction: row;
+        column-gap: 0.25rem;
         animation: pulse 2s infinite;
     }
     .avatar-wrapper {
@@ -139,7 +81,7 @@ class ChatSkeleton extends LitElement {
         flex-wrap: wrap;
         align-items: center;
         row-gap: 0.5rem;
-        padding: 0.25rem 3rem 0.25rem 3rem;
+        padding: 0.25rem 3.25rem 0.25rem 3.25rem;
     }
     .message {
         display: flex;
@@ -177,6 +119,85 @@ class ChatSkeleton extends LitElement {
     .message.w-10 {
         width: 100%;
     }
+    .thin-left-panel-button {
+        width: 2.5rem;
+        height: 2.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0.75rem;
+        background: #F5F5F5;
+        animation: pulse 2s infinite;
+    }
+    .thin-left-panel-button.footer-button {
+        width: 2.5rem;
+        height: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: #F5F5F5;
+    }
+    .footer-container {
+        display: none;
+    }
+    .narrow-footer-container {
+        display: flex;
+        flex-direction: column;
+        column-gap: 0.625rem;
+        align-items: center;
+    }
+    .panel-buttons {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        column-gap: 1.5rem;
+        height: 6rem;
+        width: 100%;
+        background: #ffffff;
+        border-bottom-left-radius: 2rem;
+        border-bottom-right-radius: 2rem;
+    }
+    .panel-editor {
+        min-height: 3.5rem;
+    }
+    @media (min-width: 1024px) {
+        .thin-left-panel-button {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.5rem;
+        }
+        .thin-left-panel-button.footer-button {
+            width: 3rem;
+            height: 3rem;
+        }
+        .footer-container {
+            display: flex;
+            flex-direction: row;
+            column-gap: 0.625rem;
+            align-items: center;
+        }
+        .narrow-footer-container {
+            display: none;
+        }
+    }
+    .chat-view-footer {
+        flex: 1 1 0%;
+    }
+    .footer-editor,
+    .footer-button {
+        height: 3rem;
+        border-radius: 9999px;
+        background: #f5f5f5;
+        animation: pulse 2s infinite;
+    }
+    .footer-button {
+        flex: none;
+        width: 3rem;
+    }
+    .footer-button.record {
+        width: 5rem;
+        height: 5rem;
+    }
+    .footer-editor {
+        flex: 1 1 0%;
+    }
 
     @keyframes pulse {
       0%, 100% {
@@ -189,7 +210,7 @@ class ChatSkeleton extends LitElement {
   `;
 
     @property()
-    cls = "";
+    class = "";
 
     @property()
     count = 1;
@@ -237,6 +258,41 @@ class ChatSkeleton extends LitElement {
         `;
     }
 
+    thinLeftPanelTemplate() {
+        return html`
+            <div class="thin-left-panel-button">
+            </div>
+        `;
+    }
+
+    chatViewFooterTemplate() {
+        return html`
+            <div class="footer-container">
+                <div class="footer-editor"></div>
+                <div class="footer-button"></div>
+                <div class="footer-button"></div>
+                <div class="footer-button"></div>
+            </div>
+            <div class="narrow-footer-container">
+                <div class="panel-buttons">
+                    <div class="footer-button"></div>
+                    <div class="footer-button record"></div>
+                    <div class="footer-button"></div>
+                </div>
+                <div class="panel-editor">
+
+                </div>
+            </div>
+        `;
+    }
+    thinLeftPanelFooterTemplate() {
+        return html`
+            <div class="footer-container">
+                <div class="footer-button thin-left-panel-button"></div>
+            </div>
+        `;
+    }
+
     private randomIntFromInterval(min, max) : number {
         return Math.floor(Math.random() * (max - min + 1) + min);
     }
@@ -255,18 +311,34 @@ class ChatSkeleton extends LitElement {
     render() {
         let cards = this.getCards();
 
-        if (this.cls != "chat-list") {
+        if (this.class == "chat-view") {
             return html`
                 ${repeat(cards, (item) => item, (item, index) => html`
-                             ${this.chatMessageTemplate()}
-                         `)}
+                     ${this.chatMessageTemplate()}
+                `)}
+            `;
+        } else if (this.class == "chat-list") {
+            return html`
+                ${repeat(cards, (item) => item, (item, index) => html`
+                    ${this.chatListMessageTemplate()}
+                `)}
+            `;
+        } else if (this.class == "thin-left-panel") {
+            return html`
+                ${repeat(cards, (item) => item, (item, index) => html`
+                    ${this.thinLeftPanelTemplate()}
+                `)}
+            `;
+        } else if (this.class == "chat-view-footer") {
+            return html`
+                ${this.chatViewFooterTemplate()}
+            `;
+        } else if (this.class == "thin-left-panel-footer") {
+            return html`
+                ${this.thinLeftPanelFooterTemplate()}
             `;
         } else {
-            return html`
-                ${repeat(cards, (item) => item, (item, index) => html`
-                             ${this.chatListMessageTemplate()}
-                         `)}
-            `;
+            return ;
         }
     }
 }
