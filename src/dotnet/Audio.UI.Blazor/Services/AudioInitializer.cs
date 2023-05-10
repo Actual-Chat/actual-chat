@@ -28,7 +28,10 @@ public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
     public Task Initialize()
         => new AsyncChain(nameof(Initialize), async ct => {
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
-                await JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioInitializer.init", ct, backendRef);
+                await JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioInitializer.init",
+                    ct,
+                    backendRef,
+                    UrlMapper.BaseUrl);
             })
             .Log(Log)
             .RetryForever(new RetryDelaySeq(0.5, 3), Log)
