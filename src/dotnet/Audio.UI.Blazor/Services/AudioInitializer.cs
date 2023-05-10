@@ -5,12 +5,13 @@ namespace ActualChat.Audio.UI.Blazor.Services;
 public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
 {
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
-    private Task WhenInitialized { get; }
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private IJSRuntime JS { get; }
     private UrlMapper UrlMapper { get; }
+
+    public Task WhenInitialized { get; }
 
     public AudioInitializer(IServiceProvider services)
     {

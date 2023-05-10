@@ -1,11 +1,5 @@
-/// #if DEBUG
-import webRtcVadModule, { WebRtcVadModule } from '@actual-chat/webrtc-vad/webrtc-vad.debug';
-import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.debug.wasm';
-import WebRtcVadWasmMap from '@actual-chat/webrtc-vad/webrtc-vad.debug.wasm.map';
-/// #else
-/// #code import webRtcVadModule, { WebRtcVadModule } from '@actual-chat/webrtc-vad';
-/// #code import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
-/// #endif
+import webRtcVadModule, { WebRtcVadModule } from '@actual-chat/webrtc-vad';
+import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
 
 import Denque from 'denque';
 import { Disposable } from 'disposable';
@@ -199,10 +193,10 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             const codecWasmPath = Versioning.mapPath(WebRtcVadWasm);
             if (filename.slice(-4) === 'wasm')
                 return codecWasmPath;
-            /// #if DEBUG
-            else if (filename.slice(-3) === 'map')
-                return WebRtcVadWasmMap;
-            /// #endif
+            // /// #if DEBUG
+            // else if (filename.slice(-3) === 'map')
+            //     return WebRtcVadWasmMap;
+            // /// #endif
             // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
             else if (filename.slice(0, 5) === 'data:')
