@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
 
@@ -102,6 +103,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         try {
+            var audioInitializer = Services.GetRequiredService<AudioInitializer>();
+            await audioInitializer.WhenInitialized.ConfigureAwait(false);
+
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Kind != ChatEntryKind.Audio)
                 throw StandardError.NotSupported($"The entry's Type must be {ChatEntryKind.Audio}.");

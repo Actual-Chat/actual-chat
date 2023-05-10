@@ -97,7 +97,6 @@ public class AppServiceStarter
             Services.GetRequiredService<DebugUI>();
 
             await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken).ConfigureAwait(false);
-            // Services.GetRequiredService<AudioInitializer>();
         }, cancellationToken);
 
     // Private methods

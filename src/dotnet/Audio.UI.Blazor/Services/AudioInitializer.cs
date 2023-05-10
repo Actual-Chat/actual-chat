@@ -26,7 +26,7 @@ public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
     public void Dispose()
         => _backendRef.DisposeSilently();
 
-    public Task Initialize()
+    private Task Initialize()
         => new AsyncChain(nameof(Initialize), async ct => {
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
                 await JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioInitializer.init",
