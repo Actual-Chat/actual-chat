@@ -1,6 +1,7 @@
 import { arrow, computePosition, flip, offset, Placement, shift } from '@floating-ui/dom';
 import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
 import { Log } from 'logging';
+import { setTimeout } from 'timerQueue';
 
 interface BubbleModel {
     bubbleRef: string;
@@ -11,6 +12,8 @@ interface BubbleModel {
     isRead: boolean;
     isShown: boolean;
     priority: number;
+    index?: number;
+    total?: number;
 }
 
 const { debugLog } = Log.get('BubbleHost');
@@ -152,7 +155,17 @@ export class BubbleHost {
             };
             this._bubbles.push(newBubble);
         });
+
         this._bubbles = this._bubbles.sort((a, b) => a.priority - b.priority);
+
+        const bubblesToShowWithoutIndex = this._bubbles
+            .filter(x => !x.isRead)
+            .filter(x => x.isTopElement && x.isInViewport)
+            .filter(x => x.total === undefined && x.index === undefined);
+        bubblesToShowWithoutIndex.forEach((bubble, index) => {
+            bubble.index = index + 1;
+            bubble.total = bubblesToShowWithoutIndex.length;
+        });
     }
 
     private showNextBubble(): void {
@@ -160,19 +173,30 @@ export class BubbleHost {
 
         const notReadBubbles = this._bubbles.filter(x => !x.isRead);
         const shownBubble = notReadBubbles.find(x => x.isShown);
+        const bubbleToShow = notReadBubbles.find(x => x.isInViewport && x.isTopElement);
+
+        if (shownBubble === bubbleToShow) {
+            return;
+        }
 
         if (shownBubble) {
             if (!shownBubble.isInViewport || !shownBubble.isTopElement) {
                 shownBubble.isShown = false;
                 shownBubble.bubbleElement.style.display = 'none';
             }
-
-            return;
         }
 
-        const bubbleToShow = notReadBubbles.find(x => x.isInViewport && x.isTopElement);
         if (!bubbleToShow)
             return;
+
+        bubbleToShow.isInViewport = this.isElementInViewport(bubbleToShow.triggerElement);
+        bubbleToShow.isTopElement = this.isTopElement(bubbleToShow.triggerElement)
+            || (bubbleToShow.isTopElement && this.topElementIsBubble(bubbleToShow.triggerElement));
+        if (!bubbleToShow.isInViewport || !bubbleToShow.isTopElement)
+        {
+            setTimeout(() => this.showNextBubble(), 0);
+            return;
+        }
 
         const isLastVisible = notReadBubbles
             .filter(x => x !== bubbleToShow)
@@ -184,7 +208,12 @@ export class BubbleHost {
     private show(bubble: BubbleModel, isLastVisible: boolean): void {
         debugLog?.log(`show:`, bubble.bubbleRef);
 
-        void this.blazorRef.invokeMethodAsync('OnShow', bubble.bubbleRef, isLastVisible);
+        void this.blazorRef.invokeMethodAsync(
+            'OnShow',
+            bubble.bubbleRef,
+            isLastVisible,
+            bubble.index,
+            bubble.total);
     }
 
     private isElementInViewport(element: HTMLElement): boolean {

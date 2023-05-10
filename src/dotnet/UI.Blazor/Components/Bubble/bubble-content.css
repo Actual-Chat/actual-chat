@@ -13,6 +13,9 @@
 .bubble-title {
     @apply text-headline-1;
 }
+.bubble-counter {
+    @apply text-caption-2;
+}
 .bubble-buttons {
     @apply gap-x-1;
 }

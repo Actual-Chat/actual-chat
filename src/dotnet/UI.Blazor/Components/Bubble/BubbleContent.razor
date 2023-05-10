@@ -10,7 +10,8 @@
         @Body
     </div>
     <div class="flex-x items-center">
-        <div class="flex-1">
+        <div class="bubble-counter flex-1 text-xs">
+            @Bubble.Index of @Bubble.Total
         </div>
         <div class="bubble-buttons flex justify-end">
             @if (!Bubble.IsLastVisible) {

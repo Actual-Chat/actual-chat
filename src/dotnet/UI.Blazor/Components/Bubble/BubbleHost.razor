@@ -37,7 +37,7 @@
     }
 
     [JSInvokable]
-    public Task OnShow(string bubbleRef, bool isLastVisible) {
+    public Task OnShow(string bubbleRef, bool isLastVisible, int index, int total) {
         var id = IdGenerator.Next();
         _bubble = new BubbleModel(
             id,
@@ -45,6 +45,8 @@
             new Dictionary<string, object> {
                 { nameof(IBubble.Id), id },
                 { nameof(IBubble.IsLastVisible), isLastVisible },
+                { nameof(IBubble.Index), index },
+                { nameof(IBubble.Total), total },
             });
         StateHasChanged();
         return Task.CompletedTask;
