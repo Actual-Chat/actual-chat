@@ -3,7 +3,7 @@
 @implements IDisposable
 @{
     // We can't render anything till the moment a few key components completed the initialization
-    if (!LoadingUI.WhenLoaded.IsCompleted)
+    if (!_readyToRender)
         return;
 }
 
@@ -34,6 +34,7 @@
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
+    private bool _readyToRender;
     private Task? _whenAfterFirstRender;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
@@ -99,6 +100,7 @@
 
         await whenReadyToRender;
         LoadingUI.MarkLoaded();
+        _readyToRender = true;
     }
 
     public void Dispose() {
