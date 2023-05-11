@@ -58,13 +58,14 @@ export class Landing {
                 debounceTime(100),
             ).subscribe(() => this.onScroll(false));
 
-        let video = this.landing.querySelector('.landing-video') as HTMLVideoElement;
+        const plug = this.landing.querySelector('.landing-video-plug') as HTMLImageElement;
+        const video = this.landing.querySelector('.landing-video') as HTMLVideoElement;
         if (video != null) {
-            fromEvent(video, "canplay", )
-                .pipe(takeUntil(this.disposed$))
-                .subscribe((event : Event) => {
-                    video.classList.remove('hidden');
-                });
+            video.play().then(() => {
+                plug.classList.remove('flex');
+                plug.hidden = true;
+                video.hidden = false;
+            });
         }
     }
 

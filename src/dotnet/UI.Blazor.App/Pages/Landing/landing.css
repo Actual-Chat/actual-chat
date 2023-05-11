@@ -6,6 +6,13 @@
     @apply flex-y;
     @apply overflow-hidden;
 }
+.landing-video {
+    @apply h-full;
+}
+.landing-video-plug {
+    @apply h-full;
+    width: 307px;
+}
 
 /* General styles */
 
