@@ -115,10 +115,10 @@
         => CircuitContext.Dispose();
 
     protected override bool ShouldRender()
-        => LoadingUI.WhenLoaded.IsCompleted;
+        => _readyToRender;
 
     protected override void OnAfterRender(bool firstRender) {
-        if (LoadingUI.WhenLoaded.IsCompleted)
+        if (_readyToRender)
             _whenAfterFirstRender ??= AppServiceStarter.AfterFirstRender(_disposeToken);
     }
 }
