@@ -1,6 +1,3 @@
-using AVFoundation;
-using Foundation;
-using Microsoft.AspNetCore.Components.WebView.Maui;
 using WebKit;
 
 namespace ActualChat.App.Maui;
@@ -14,35 +11,5 @@ public partial class MauiBlazorWebViewHandler
 
         PlatformView.ScrollView.Bounces = false;
         PlatformView.AllowsBackForwardNavigationGestures = false;
-        SetSessionIdCookie(AppSettings.BaseUri.Host, true);
-        SetSessionIdCookie("0.0.0.0", false);
-        InjectInitPageScript();
-    }
-
-    void SetSessionIdCookie(string domain, bool secure)
-    {
-        var properties = new NSDictionary(
-            NSHttpCookie.KeyName, "FusionAuth.SessionId",
-            NSHttpCookie.KeyValue, AppSettings.Session.Id.Value,
-            NSHttpCookie.KeyPath, "/",
-            NSHttpCookie.KeyDomain, domain,
-            NSHttpCookie.KeySameSitePolicy, "none");
-        // if (secure)
-        //     properties[NSHttpCookie.KeySecure] = NSObject.FromObject("TRUE");
-        PlatformView.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(new NSHttpCookie(properties), null);
-    }
-
-    private void InjectInitPageScript()
-    {
-        var baseUri = AppSettings.BaseUri;
-        var sessionId = AppSettings.Session.Id.Value;
-        var initScript = $"window.App.initPage('{baseUri}', '{sessionId}')";
-        var addLoadHandlerScript = $"document.addEventListener('DOMContentLoaded', e => {{ {initScript} }});";
-        // PlatformView.EvaluateJavaScript(addLoadHandlerScript, (result, error) => { });
-        PlatformView.Configuration.UserContentController.AddUserScript(
-            new WKUserScript(
-                new NSString(addLoadHandlerScript),
-                WKUserScriptInjectionTime.AtDocumentStart,
-                true));
     }
 }

@@ -1,3 +1,4 @@
+using Android.Webkit;
 using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Maui.Platform;
@@ -11,6 +12,17 @@ public partial class MainPage
     /// Gets the <see cref="AWebView"/> instance that was initialized.
     /// </summary>
     public AWebView? PlatformWebView { get; private set; }
+
+    public partial void SetupSessionCookie(Uri baseUri, Session session)
+    {
+        var cookieManager = CookieManager.Instance!;
+        // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
+        cookieManager.SetAcceptCookie(true);
+        cookieManager.SetAcceptThirdPartyCookies(PlatformWebView, true);
+        var sessionCookieValue = $"FusionAuth.SessionId={session.Id.Value}; path=/; secure; samesite=none; httponly";
+        cookieManager.SetCookie("https://" + AppHostAddress, sessionCookieValue);
+        cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
+    }
 
     // Example to control permissions in browser is taken from the comment
     // https://github.com/dotnet/maui/issues/4768#issuecomment-1137906982

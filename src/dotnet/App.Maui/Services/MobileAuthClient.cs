@@ -30,7 +30,7 @@ public sealed class MobileAuthClient
         if (code.IsNullOrEmpty())
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
 
-        var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
+        var session = await AppSettings.SessionTask.ConfigureAwait(false);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
@@ -45,7 +45,7 @@ public sealed class MobileAuthClient
 
     public async Task SignOut()
     {
-        var session = await AppSettings.WhenSessionReady.ConfigureAwait(false);
+        var session = await AppSettings.SessionTask.ConfigureAwait(false);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {

@@ -11,17 +11,8 @@ public partial class MauiBlazorWebViewHandler
         Log.LogDebug(nameof(ConnectHandler));
 
         base.ConnectHandler(platformView);
-        var baseUri = AppSettings.BaseUri;
-        var sessionId = AppSettings.Session.Id.Value;
 
         platformView.Settings.JavaScriptEnabled = true;
-        var cookieManager = CookieManager.Instance!;
-        // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
-        cookieManager.SetAcceptCookie(true);
-        cookieManager.SetAcceptThirdPartyCookies(platformView, true);
-        var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
-        cookieManager.SetCookie("https://0.0.0.0", sessionCookieValue);
-        cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
 
         var jsInterface = new AndroidJSInterface(this, platformView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.

@@ -1,4 +1,5 @@
 using AVFoundation;
+using Foundation;
 using Microsoft.AspNetCore.Components.WebView;
 using WebKit;
 
@@ -11,6 +12,25 @@ public partial class MainPage
     /// the default values to allow further configuring additional options.
     /// </summary>
     public WKWebView? PlatformWebView { get; private set; }
+
+    public partial void SetupSessionCookie(Uri baseUri, Session session)
+    {
+        SetSessionIdCookie(baseUri.Host, session, true);
+        SetSessionIdCookie(AppHostAddress, session, false);
+    }
+
+    private void SetSessionIdCookie(string domain, Session session, bool secure)
+    {
+        var properties = new NSDictionary(
+            NSHttpCookie.KeyName, "FusionAuth.SessionId",
+            NSHttpCookie.KeyValue, session.Id.Value,
+            NSHttpCookie.KeyPath, "/",
+            NSHttpCookie.KeyDomain, domain,
+            NSHttpCookie.KeySameSitePolicy, "none");
+        // if (secure)
+        //     properties[NSHttpCookie.KeySecure] = NSObject.FromObject("TRUE");
+        PlatformWebView!.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(new NSHttpCookie(properties), null);
+    }
 
     // To manage iOS permissions, update Info.plist to include the necessary keys to access
     // the APIs required by your app. You may have to perform additional configuration to enable
