@@ -68,7 +68,7 @@ public sealed class MauiSession
             else
                 await Setup(session, false).ConfigureAwait(false);
 
-            AppSettings.Session = session;
+            AppSettings.SetupSession(session);
             return session;
         });
 

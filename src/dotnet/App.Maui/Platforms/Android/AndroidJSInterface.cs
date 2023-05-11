@@ -25,15 +25,6 @@ internal class AndroidJSInterface : Java.Lang.Object
     {
         _tracer.Point(nameof(OnDOMContentLoaded));
         _webView.Post(() => {
-            try {
-                _tracer.Point($"{nameof(OnDOMContentLoaded)} - window.App.initPage JS call");
-                var sessionHash = AppSettings.Session.Hash;
-                var script = $"window.App.initPage('{AppSettings.BaseUrl}', '{sessionHash}')";
-                _webView.EvaluateJavascript(script, null);
-            }
-            catch (Exception ex) {
-                Debug.WriteLine(ex.ToString());
-            }
             AppServices.GetRequiredService<LoadingUI>().MarkDisplayed();
         });
     }

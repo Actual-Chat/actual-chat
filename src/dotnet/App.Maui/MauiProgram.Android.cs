@@ -51,7 +51,7 @@ public static partial class MauiProgram
 
     private static async Task HandleBackPressed(Android.App.Activity activity)
     {
-        var webView = Application.Current?.MainPage is MainPage mainPage ? mainPage.PlatformWebView : null;
+        var webView = MainPage.Current?.PlatformWebView;
         var goBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
         if (goBack)
             return;

@@ -6,10 +6,15 @@ namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
+    internal const string AppHostAddress = "0.0.0.0";
+
     private readonly BlazorWebView _blazorWebView;
 
     private MauiNavigationInterceptor NavigationInterceptor { get; }
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
+
+    public static MainPage? Current
+        => Application.Current?.MainPage as MainPage;
 
     public MainPage(MauiNavigationInterceptor navigationInterceptor)
     {
@@ -33,6 +38,8 @@ public partial class MainPage : ContentPage
                 Selector = "#app",
             });
     }
+
+    public partial void SetupSessionCookie(Uri baseUri, Session session);
 
     private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e);
 
