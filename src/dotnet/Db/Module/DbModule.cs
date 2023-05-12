@@ -53,8 +53,9 @@ public sealed class DbModule : HostModule<DbSettings>
             DbKind = dbKind,
             ConnectionString = connectionStringSuffix,
             ShouldRecreateDb = Settings.ShouldRecreateDb,
-            ShouldVerifyDb = Settings.ShouldVerifyDb,
             ShouldMigrateDb = Settings.ShouldMigrateDb,
+            ShouldRepairDb = Settings.ShouldRepairDb,
+            ShouldVerifyDb = Settings.ShouldVerifyDb,
         };
 
         // Adding services

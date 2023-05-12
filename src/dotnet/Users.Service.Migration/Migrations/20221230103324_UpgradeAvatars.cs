@@ -29,8 +29,8 @@ namespace ActualChat.Users.Migrations
         {
             return; // Obsolete: applied to all of our DBs
 
-            var dbInitializer = DbInitializer.Get<UsersDbInitializer>();
-            var chatDbInitializer = await DbInitializer.Get<ChatDbInitializer>().CompleteEarlierMigrations(this);
+            var dbInitializer = DbInitializer.GetCurrent<UsersDbInitializer>();
+            var chatDbInitializer = await DbInitializer.GetOther<ChatDbInitializer>().CompleteEarlierMigrations(this);
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();

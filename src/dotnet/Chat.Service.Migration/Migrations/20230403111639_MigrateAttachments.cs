@@ -22,8 +22,8 @@ namespace ActualChat.Chat.Migrations
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
-            var dbInitializer = DbInitializer.Get<ChatDbInitializer>();
-            var mediaDbInitializer = await DbInitializer.Get<MediaDbInitializer>()
+            var dbInitializer = DbInitializer.GetCurrent<ChatDbInitializer>();
+            var mediaDbInitializer = await DbInitializer.GetOther<MediaDbInitializer>()
                 .CompleteEarlierMigrations(this)
                 .ConfigureAwait(false);
             var log = dbInitializer.Services.LogFor(GetType());

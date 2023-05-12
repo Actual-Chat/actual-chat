@@ -39,7 +39,7 @@ internal static class Program
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
 
-        await appHost.Initialize().ConfigureAwait(false);
+        await appHost.InvokeDbInitializers().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
 
         // We preserve default thread pool settings only if they are bigger of our minimals

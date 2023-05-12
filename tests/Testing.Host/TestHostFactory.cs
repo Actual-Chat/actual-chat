@@ -64,7 +64,7 @@ public static class TestHostFactory
             },
         };
         await appHost.Build();
-        await appHost.Initialize();
+        await appHost.InvokeDbInitializers();
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // force service instantiation
         await appHost.Start();
         return appHost;
