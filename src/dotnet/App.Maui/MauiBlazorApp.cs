@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using Microsoft.JSInterop;
@@ -9,13 +8,15 @@ public class MauiBlazorApp : AppBase
 {
     protected override async Task OnInitializedAsync()
     {
+        LoadingUI.MarkAppCreated();
         var baseUri = AppSettings.BaseUri;
         var session = await SessionProvider.GetSession().ConfigureAwait(true);
+        var initPageTask = InitPage(baseUri, session);
         MainPage.Current!.SetupSessionCookie(baseUri, session);
-        await InitPage(baseUri, session).ConfigureAwait(true);
+        await initPageTask.ConfigureAwait(true);
 
         ScopedServices = Services;
-        await base.OnInitializedAsync().ConfigureAwait(true);
+        await base.OnInitializedAsync().ConfigureAwait(false);
     }
 
     protected override void Dispose(bool disposing)
@@ -28,7 +29,9 @@ public class MauiBlazorApp : AppBase
         DiscardScopedServices();
     }
 
-    private async Task InitPage(Uri baseUri, Session session)
+    // Private methods
+
+    private async ValueTask InitPage(Uri baseUri, Session session)
     {
         using var _ = Tracer.Region("window.App.initPage JS call");
         var js = Services.GetRequiredService<IJSRuntime>();

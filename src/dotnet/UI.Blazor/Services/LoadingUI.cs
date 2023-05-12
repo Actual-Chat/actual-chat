@@ -11,7 +11,6 @@ public sealed class LoadingUI
     private static readonly TaskCompletionSource<Unit> _whenAppDisplayedSource = TaskCompletionSourceExt.New<Unit>();
 
     public static TimeSpan AppBuildTime { get; private set; }
-    public static TimeSpan AppCreationTime { get; private set; }
     public static TimeSpan AppDisplayTime { get; private set; }
     public static Task WhenAppDisplayed => _whenAppDisplayedSource.Task;
 
@@ -23,6 +22,7 @@ public sealed class LoadingUI
     private HostInfo HostInfo { get; }
     private Tracer Tracer { get; }
 
+    public TimeSpan AppCreationTime { get; private set; }
     public TimeSpan LoadTime { get; private set; }
     public TimeSpan ChatListLoadTime { get; private set; }
     public Task WhenLoaded => _whenLoadedSource.Task;
@@ -51,15 +51,6 @@ public sealed class LoadingUI
         StaticTracer.Point(nameof(MarkAppBuilt));
     }
 
-    public static void MarkAppCreated()
-    {
-        if (AppCreationTime != default)
-            return;
-
-        AppCreationTime = StaticTracer.Elapsed;
-        StaticTracer.Point(nameof(MarkAppCreated));
-    }
-
     public static void MarkAppDisplayed()
     {
         if (!_whenAppDisplayedSource.TrySetResult(default))
@@ -67,6 +58,15 @@ public sealed class LoadingUI
 
         AppDisplayTime = StaticTracer.Elapsed;
         StaticTracer.Point(nameof(MarkAppDisplayed));
+    }
+
+    public void MarkAppCreated()
+    {
+        if (AppCreationTime != default)
+            return;
+
+        AppCreationTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkAppCreated));
     }
 
     public void MarkLoaded()
