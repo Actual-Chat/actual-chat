@@ -24,8 +24,11 @@
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y min-h-min">
-            <ChatList Kind="ChatListKind.Active" />
-            <div class="border-t-4 border-bg-04"></div>
+            <ChatList Kind="ChatListKind.Active">
+                <FooterDelimiter>
+                    <div class="border-t-4 border-bg-04"></div>
+                </FooterDelimiter>
+            </ChatList>
             <TabPanel
                 @ref="@_tabPanel"
                 BottomHill="true"
