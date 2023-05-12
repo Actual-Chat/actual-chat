@@ -1,15 +1,31 @@
 Near-term:
-- Fix left panel appearing-disappearing
-- Check why there are 2 error badges for errors + make sure only unique errors appear
+- Don't show duplicate error badges for errors (show just one if they're identical)
+- Fix fast swipe behavior for panels (they don't work) + don't swipe panels when the action starts on scrollable container other than chat view
+- Fix online presence
+- Fix "chat list order isn't stored / restored" + store it on server
+- Switch to Stl.Rpc
 
-Mid-term:
+Mid-term (team):
 - Real-time playback: don't render it as historical
 - AuthorModal - fix view (for you & anonymous authors)
 - Anonymous user names: come up w/ nicer naming scheme
 - Check if it's ok to run ComputeState not in Dispatcher - it is already like this on MAUI
 
-Backlog:
+- Join as guest shouldn't be enabled by default in chats w/ anonymity enabled
+- How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
+- Create chat should have ~ the same anonymity options as in Chat Settings
+- Animated gif of how recording works for recording button walk-through item
+- "Install the app" banner
+- "Join as guest": think of how key walk-through items should look like after this / onboarding
+- "New message [in another chat]" notification banner
+- Sound on any message, + different sound for voice messages w/ more intensive throttling
+- Sign in with phone number
+- Fix "Paste" action - there are almost always extra empty lines
+- Think of how how & when to push a person who joined chat as guest to leave contact info. Ideally, show some dialog after his first message allowing him to sign in or leave this info.
+- Fix "loading banner is never disappearing" in Firefox; ideally, add Firefox user agent detection.
+- New feat: add "Notes" chat for everyone (found this quite useful - just created it manually)
+
+Backlog (team):
 - ChatInfo & ChatState: get rid of one of these. ChatInfo = ChatState + ChatAudioState, i.e. doesn't change frequently enough to have a dedicated entity
-- Join anonymously: show a modal allowing to change your name + provide phone to send the link to re-join
 - Extract SessionService w/ proper sharding (+ use Redis?) and migrate to our own AuthService
 - SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
