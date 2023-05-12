@@ -27,10 +27,10 @@ internal sealed class MauiClientAuth : IClientAuth
 #endif
         }
 
-        var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
+        var session = await MauiSessionProvider.GetSession().ConfigureAwait(true);
         var sessionId = session.Id.Value;
         var uri = $"{AppSettings.BaseUrl}mobileauth/signin/{sessionId}/{scheme}";
-        await OpenSystemBrowserForSignIn(uri).ConfigureAwait(true);
+        await OpenSystemBrowserForSignIn(uri).ConfigureAwait(false);
     }
 
     public async ValueTask SignOut()
@@ -52,7 +52,7 @@ internal sealed class MauiClientAuth : IClientAuth
     private async Task OpenSystemBrowserForSignIn(string url)
     {
         try {
-            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(true);
+            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to authenticate");
