@@ -1,5 +1,3 @@
-using System.Net;
-using System.Security.Authentication;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
@@ -8,7 +6,6 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
-using ActualChat.Audio.WebM;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
@@ -42,7 +39,7 @@ public static partial class MauiProgram
         try {
             const string baseUrl = "https://" + MauiConstants.Host + "/";
             AppSettings = new MauiAppSettings(baseUrl);
-            MauiSession.RestoreOrCreate();
+            MauiSessionProvider.RestoreOrCreate();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
@@ -130,7 +127,7 @@ public static partial class MauiProgram
         AppServices = services;
         LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
         Task.Run(async () => {
-            var session = await AppSettings.SessionTask.ConfigureAwait(false);
+            var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
             var appServiceStarter = services.GetRequiredService<AppServiceStarter>();
             _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);
         });
@@ -156,7 +153,7 @@ public static partial class MauiProgram
         services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
         AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {
-            new Module.BlazorUIClientAppModule(c),
+            new Module.MauiAppModule(c),
         });
 
         // Non-lazy services visible from lazy services

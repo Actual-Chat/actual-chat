@@ -9,13 +9,14 @@ using Stl.IO;
 namespace ActualChat.App.Maui.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class BlazorUIClientAppModule : HostModule, IBlazorUIModule
+public sealed class MauiAppModule : HostModule, IBlazorUIModule
 {
-    public BlazorUIClientAppModule(IServiceProvider services) : base(services) { }
+    public MauiAppModule(IServiceProvider services) : base(services) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
-        // Auth
+        // Session & Auth
+        services.AddScoped<ISessionProvider>(c => new MauiSessionProvider(c));
         services.AddScoped<IClientAuth, MauiClientAuth>();
 
         // Replica cache

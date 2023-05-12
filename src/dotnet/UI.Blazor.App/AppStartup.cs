@@ -108,7 +108,7 @@ namespace ActualChat.UI.Blazor.App
             var moduleServices = services.BuildServiceProvider();
             var moduleHostBuilder = new ModuleHostBuilder()
                 // From less dependent to more dependent!
-                .AddModules(
+                .WithModules(
                     // Core modules
                     new CoreModule(moduleServices),
                     // Generic modules
@@ -133,7 +133,7 @@ namespace ActualChat.UI.Blazor.App
                     new BlazorUIAppModule(moduleServices)
                 );
             if (platformModuleFactory != null)
-                moduleHostBuilder.AddModules(platformModuleFactory.Invoke(moduleServices));
+                moduleHostBuilder = moduleHostBuilder.WithModules(platformModuleFactory.Invoke(moduleServices));
             moduleHostBuilder.Build(services);
         }
 

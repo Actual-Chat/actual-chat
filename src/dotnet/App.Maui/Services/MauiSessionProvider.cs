@@ -1,14 +1,48 @@
 using System.Net;
 using System.Security.Authentication;
-using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Services;
 
-public sealed class MauiSession
+public sealed class MauiSessionProvider : ISessionProvider
 {
-    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSession)];
-    private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSession>();
+    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionProvider)];
+    private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionProvider>();
+
+    private static readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
+    private static readonly Task<Session> _sessionTask = _sessionSource.Task;
+
+    public static Task WhenSessionReady => _sessionSource.Task;
+
+    public static Session Session {
+        get {
+            if (!_sessionTask.IsCompleted)
+                throw StandardError.Internal("Session isn't initialized yet.");
+
+ #pragma warning disable VSTHRD002
+            return _sessionTask.Result;
+ #pragma warning restore VSTHRD002
+        }
+    }
+
+    public IServiceProvider Services { get; }
+
+    // Explicit interface implementations
+    Task<Session> ISessionResolver.SessionTask => _sessionTask;
+    bool ISessionResolver.HasSession => _sessionTask.IsCompleted;
+    Session ISessionResolver.Session => Session;
+    Session ISessionProvider.Session {
+        get => Session;
+        set => throw StandardError.NotSupported<MauiSessionProvider>("Session can't be set explicitly with this provider.");
+    }
+
+    public MauiSessionProvider(IServiceProvider services)
+        => Services = services;
+
+    Task<Session> ISessionResolver.GetSession(CancellationToken cancellationToken)
+        => GetSession(cancellationToken);
+    public static Task<Session> GetSession(CancellationToken cancellationToken = default)
+        => _sessionTask.WaitAsync(cancellationToken);
 
     public static Task RestoreOrCreate()
         => Task.Run(async () => {
@@ -68,7 +102,7 @@ public sealed class MauiSession
             else
                 await Setup(session, false).ConfigureAwait(false);
 
-            AppSettings.SetupSession(session);
+            _sessionSource.TrySetResult(session);
             return session;
         });
 

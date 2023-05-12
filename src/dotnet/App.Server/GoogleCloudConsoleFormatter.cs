@@ -49,7 +49,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
         writer.WriteStartObject();
         writer.WriteString("message", message);
-        writer.WriteString("version", AppHostModule.AppVersion);
+        writer.WriteString("version", ServerAppModule.AppVersion);
         if (logEntry.Exception != null) {
             writer.WriteString("exception", logEntry.Exception.ToString());
         }

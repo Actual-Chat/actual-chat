@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.MediaPlayback.Module;
 
