@@ -6,6 +6,7 @@ const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
 const FileManagerPlugin = require('filemanager-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 /**
  * @param {string} file
@@ -161,6 +162,11 @@ module.exports = (env, args) => {
             new WatchRunPlugin(),
             new webpack.ProvidePlugin({
                 Buffer: ['buffer', 'Buffer'],
+            }),
+            new BundleAnalyzerPlugin({
+                analyzerMode: 'disabled',
+                generateStatsFile: true,
+                statsOptions: { source: false }
             }),
         ],
         module: {
