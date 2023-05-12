@@ -139,7 +139,7 @@ public static partial class MauiProgram
     {
         using var _ = Tracer.Region(nameof(ConfigureAppServices));
 
-        // Non-lazy services visible from lazy services
+        // Singleton services visible from lazy services
         services.AddSingleton(AppSettings);
         services.AddSingleton(HostInfo);
         services.AddSingleton(HostInfo.Configuration);
@@ -152,31 +152,18 @@ public static partial class MauiProgram
         services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
         services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
 #endif
-        AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {
-            new Module.MauiAppModule(c),
-        });
 
-        // Non-lazy services visible from lazy services
+        // Other non-lazy services visible from lazy services
         if (earlyServices != null) {
             var loadingUI = earlyServices.GetRequiredService<LoadingUI>();
             services.AddSingleton(loadingUI);
             ConfigureNonLazyServicesVisibleFromLazyServices(services);
         }
 
-        // Auth
-        services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
-        services.AddSingleton(c => new BaseUrlProvider(c.GetRequiredService<UrlMapper>().BaseUrl));
-        services.AddTransient(c => new MobileAuthClient(
-            c.GetRequiredService<HttpClient>(),
-            c.GetRequiredService<ILogger<MobileAuthClient>>()));
-
-        // UI
-        services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
-        services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
-
-        // Misc.
-        JSObjectReferenceExt.TestIfDisconnected = JSObjectReferenceDisconnectHelper.TestIfIsDisconnected;
-        services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
+        // All other (module) services
+        AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {
+            new Module.MauiAppModule(c),
+        });
 
         // Platform services
         services.AddPlatformServices();

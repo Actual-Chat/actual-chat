@@ -26,7 +26,7 @@ public static class JSObjectReferenceDisconnectHelper
             ).Compile();
     }
 
-    public static bool TestIfIsDisconnected(IJSObjectReference jsRef)
+    public static bool TestIfDisconnected(IJSObjectReference jsRef)
     {
         var typedJSRef = jsRef as JSObjectReference;
         if (typedJSRef == null)

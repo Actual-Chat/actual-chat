@@ -15,9 +15,23 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
 
     protected override void InjectServices(IServiceCollection services)
     {
-        // Session & Auth
+        // Session
         services.AddScoped<ISessionProvider>(c => new MauiSessionProvider(c));
-        services.AddScoped<IClientAuth, MauiClientAuth>();
+
+        // Auth
+        services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
+        services.AddSingleton(c => new BaseUrlProvider(c.GetRequiredService<UrlMapper>().BaseUrl));
+        services.AddTransient(c => new MobileAuthClient(
+            c.GetRequiredService<HttpClient>(),
+            c.GetRequiredService<ILogger<MobileAuthClient>>()));
+
+        // UI
+        services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
+        services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
+
+        // Misc.
+        JSObjectReferenceExt.TestIfDisconnected = JSObjectReferenceDisconnectHelper.TestIfDisconnected;
+        services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
 
         // Replica cache
         // Temporarily disabled for MAUI due to issues there
