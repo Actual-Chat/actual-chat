@@ -64,7 +64,7 @@ public class AppServiceStarter
         // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
         //           coz tasks were started on Dispatcher thread already.
 
-        // Finishing w/ BrowserInfo
+        // Finishing w/ BrowserInfo, + this indicates BulkInit is completed
         await browserInfo.WhenReady.ConfigureAwait(false);
         Tracer.Point("BrowserInfo is ready");
 

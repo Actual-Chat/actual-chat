@@ -28,7 +28,7 @@
             .Assembly
             .GetInformationalVersion()
             .RequireNonEmpty("Blazor extensions assembly version");
-        return version.GetSHA1HashCode().ToLower();
+        return "." + version.GetSHA1HashCode().ToLower();
     }
 }
 
@@ -150,7 +150,7 @@
 </div>
 
 @if (!isServerSideBlazor && !isCloseWindowRequest) {
-    <div class="loading-overlay until-ui-is-ready">
+    <div id="until-ui-is-ready" class="loading-overlay">
         <div class="c-box">
             <img src="/dist/images/landing/ac-icon-light.svg" alt="loading">
         </div>
@@ -184,7 +184,7 @@
     </div>
 
     @if (isServerSideBlazor) {
-        <script src="_framework/blazor.server.@(blazorScriptsHash).js" autostart="false"></script>
+        <script src="_framework/blazor.server@(blazorScriptsHash).js" autostart="false"></script>
         <script>
             (function () {
                 async function tryReload() {
@@ -221,7 +221,7 @@
             </script>
     }
     else {
-        <script src="_framework/blazor.webassembly.@(blazorScriptsHash).js"></script>
+        <script src="_framework/blazor.webassembly@(blazorScriptsHash).js"></script>
     }
 }
 </body>

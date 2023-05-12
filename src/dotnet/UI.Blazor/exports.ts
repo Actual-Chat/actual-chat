@@ -14,7 +14,6 @@ export * from './Services/History/history'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';
-export * from './Services/ThemeUI/theme-ui'
 export * from './Services/TuneUI/tune-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
