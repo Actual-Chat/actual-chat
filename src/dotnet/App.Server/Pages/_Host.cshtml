@@ -16,15 +16,19 @@
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
     var session = ServerAuthHelper.Session;
-    var blazorUtilsVersion = GetBlazorJsVersion();
+    var blazorScriptsHash = GetBlazorScriptsHash();
     Layout = null;
 
-    string GetBlazorJsVersion()
+    string GetBlazorScriptsHash()
     {
         if (HostInfo.IsDevelopmentInstance)
             return "";
-        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions).Assembly.GetInformationalVersion().RequireNonEmpty("blazor extensions assembly version");
-        return $".{version.GetSHA1HashCode().ToLower()}";
+
+        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions)
+            .Assembly
+            .GetInformationalVersion()
+            .RequireNonEmpty("Blazor extensions assembly version");
+        return version.GetSHA1HashCode().ToLower();
     }
 }
 
@@ -180,7 +184,7 @@
     </div>
 
     @if (isServerSideBlazor) {
-        <script src="_framework/blazor.server@(blazorUtilsVersion).js" autostart="false"></script>
+        <script src="_framework/blazor.server.@(blazorScriptsHash).js" autostart="false"></script>
         <script>
             (function () {
                 async function tryReload() {
@@ -217,7 +221,7 @@
             </script>
     }
     else {
-        <script src="_framework/blazor.webassembly@(blazorUtilsVersion).js"></script>
+        <script src="_framework/blazor.webassembly.@(blazorScriptsHash).js"></script>
     }
 }
 </body>
