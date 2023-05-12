@@ -54,11 +54,11 @@ public class MainActivity : MauiAppCompatActivity
         if (TryGetScopedServices(out var scopedServices)) {
             var loadingUI = scopedServices.GetRequiredService<LoadingUI>();
             isLoaded = loadingUI.WhenLoaded.IsCompleted;
-            // If app is put to background with back button
-            // and user brings app to foreground by launching app icon or picking app from recents,
+            // If app is sent to background with back button
+            // and user brings it back to foreground by launching app icon or picking app from recents,
             // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
             // MainActivity is created again, BlazorWebView and MauiBlazorApp also created also,
-            // But new instance of MauiBlazorApp uses same service provider and some services are initialized again.
+            // But the new instance of MauiBlazorApp uses same service provider and some services are initialized again.
             // Which is not expected.
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
@@ -202,7 +202,6 @@ public class MainActivity : MauiAppCompatActivity
     private class SplashScreenDelayer : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
         private readonly object _lock = new();
-        private LoadingUI? _loadingUI;
         private bool _isDrawn;
 
         public bool OnPreDraw()
@@ -214,8 +213,7 @@ public class MainActivity : MauiAppCompatActivity
                 if (_isDrawn)
                     return true;
 
-                _loadingUI ??= AppServices.GetRequiredService<LoadingUI>();
-                return _isDrawn = _loadingUI.WhenDisplayed.IsCompleted;
+                return _isDrawn = LoadingUI.WhenAppDisplayed.IsCompleted;
             }
         }
     }

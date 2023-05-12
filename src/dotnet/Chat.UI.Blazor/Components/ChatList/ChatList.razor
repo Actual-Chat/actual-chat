@@ -38,7 +38,6 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
     [Parameter] public RenderFragment? FooterDelimiter { get; set; }

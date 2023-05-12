@@ -56,7 +56,6 @@
     TabPanel _tabPanel = null!;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
         await ChatListUI.WhenLoaded;

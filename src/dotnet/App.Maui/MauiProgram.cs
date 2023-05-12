@@ -92,7 +92,6 @@ public static partial class MauiProgram
         services.AddSingleton(AppSettings);
         services.AddSingleton(HostInfo);
         services.AddSingleton(HostInfo.Configuration);
-        services.AddSingleton(c => new LoadingUI(c)); // LoadingUI should be available early here, and as singleton
         services.AddMauiDiagnostics(true);
 
         // Core MAUI services
@@ -125,7 +124,7 @@ public static partial class MauiProgram
     private static void AppServicesReady(IServiceProvider services)
     {
         AppServices = services;
-        LoadingUI.MarkMauiAppBuilt(Tracer.Elapsed);
+        LoadingUI.MarkAppBuilt();
         Task.Run(async () => {
             var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
             var appServiceStarter = services.GetRequiredService<AppServiceStarter>();
@@ -154,11 +153,8 @@ public static partial class MauiProgram
 #endif
 
         // Other non-lazy services visible from lazy services
-        if (earlyServices != null) {
-            var loadingUI = earlyServices.GetRequiredService<LoadingUI>();
-            services.AddSingleton(loadingUI);
+        if (earlyServices != null)
             ConfigureNonLazyServicesVisibleFromLazyServices(services);
-        }
 
         // All other (module) services
         AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {

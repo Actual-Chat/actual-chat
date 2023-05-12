@@ -25,7 +25,7 @@ internal class AndroidJSInterface : Java.Lang.Object
     public void OnDOMContentLoaded()
     {
         _tracer.Point(nameof(OnDOMContentLoaded));
-        _webView.Post(() => AppServices.GetRequiredService<LoadingUI>().MarkDisplayed());
+        _webView.Post(LoadingUI.MarkAppDisplayed);
     }
 
     [JavascriptInterface]

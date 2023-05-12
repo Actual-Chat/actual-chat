@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
@@ -5,53 +7,66 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class LoadingUI
 {
-    private readonly TaskCompletionSource<Unit> _whenDisplayedSource = TaskCompletionSourceExt.New<Unit>();
+    private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
+    private static readonly TaskCompletionSource<Unit> _whenAppDisplayedSource = TaskCompletionSourceExt.New<Unit>();
+
+    public static TimeSpan AppBuildTime { get; private set; }
+    public static TimeSpan AppCreationTime { get; private set; }
+    public static TimeSpan AppDisplayTime { get; private set; }
+    public static Task WhenAppDisplayed => _whenAppDisplayedSource.Task;
+
     private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private bool _isLoadingOverlayRemoved;
-    private IJSRuntime? _js;
 
     private IServiceProvider Services { get; }
-    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private HostInfo HostInfo { get; }
     private Tracer Tracer { get; }
 
-    public Task WhenDisplayed => _whenDisplayedSource.Task;
-    public Task WhenLoaded => _whenLoadedSource.Task;
-    public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
-
-    public static TimeSpan MauiAppBuildTime { get; private set; }
-    public TimeSpan AppCreationTime { get; private set; }
-    public TimeSpan DisplayTime { get; private set; }
     public TimeSpan LoadTime { get; private set; }
     public TimeSpan ChatListLoadTime { get; private set; }
+    public Task WhenLoaded => _whenLoadedSource.Task;
+    public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
     public LoadingUI(IServiceProvider services)
     {
         Services = services;
         Tracer = services.Tracer(GetType());
+        HostInfo = Services.GetRequiredService<HostInfo>();
+        if (HostInfo.AppKind.IsMauiApp() && StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
+            // This is to make sure first scope's timings in MAUI are relative to app start
+            Tracer = StaticTracer[GetType()];
+        }
+
         // Let's we remove loading overlay no matter what after 10 seconds
         Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => RemoveLoadingOverlay(), TaskScheduler.Default);
     }
 
-    public static void MarkMauiAppBuilt(TimeSpan mauiAppBuildTime)
+    public static void MarkAppBuilt()
     {
-        if (MauiAppBuildTime == default)
-            MauiAppBuildTime = mauiAppBuildTime;
-    }
-
-    public void MarkAppCreated()
-    {
-        if (AppCreationTime == default)
-            AppCreationTime = Tracer.Elapsed;
-    }
-
-    public void MarkDisplayed()
-    {
-        if (!_whenDisplayedSource.TrySetResult(default))
+        if (AppBuildTime != default)
             return;
 
-        DisplayTime = Tracer.Elapsed;
-        Tracer.Point(nameof(MarkDisplayed));
+        AppBuildTime = StaticTracer.Elapsed;
+        StaticTracer.Point(nameof(MarkAppBuilt));
+    }
+
+    public static void MarkAppCreated()
+    {
+        if (AppCreationTime != default)
+            return;
+
+        AppCreationTime = StaticTracer.Elapsed;
+        StaticTracer.Point(nameof(MarkAppCreated));
+    }
+
+    public static void MarkAppDisplayed()
+    {
+        if (!_whenAppDisplayedSource.TrySetResult(default))
+            return;
+
+        AppDisplayTime = StaticTracer.Elapsed;
+        StaticTracer.Point(nameof(MarkAppDisplayed));
     }
 
     public void MarkLoaded()
@@ -81,12 +96,13 @@ public sealed class LoadingUI
             return;
 
         _isLoadingOverlayRemoved = true;
+        var js = Services.GetRequiredService<IJSRuntime>();
         const string script = """
         (function() {
             const overlay = document.getElementById('until-ui-is-ready');
             if (overlay) overlay.remove();
         })();
         """;
-        JS.EvalVoid(script);
+        js.EvalVoid(script);
     }
 }
