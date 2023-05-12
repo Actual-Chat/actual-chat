@@ -31,6 +31,7 @@ public sealed class MobileAuthController : Controller
         Commander = commander;
     }
 
+    [Obsolete("Kept only for api compatibility with mobile apps", true)]
     [HttpGet("setupSession/{sessionId}")]
     public async Task<ActionResult> SetupSession(string sessionId, CancellationToken cancellationToken)
     {
@@ -67,6 +68,29 @@ public sealed class MobileAuthController : Controller
         }
 
         return Content(sb.ToString());
+    }
+
+    [HttpGet("getSession")]
+    public async Task<ActionResult> GetSession(CancellationToken cancellationToken)
+    {
+        var httpContext = HttpContext;
+        var sessionProvider = httpContext.RequestServices.GetRequiredService<ISessionProvider>();
+        var session = sessionProvider.Session;
+
+        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
+        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
+            ? userAgentValues.FirstOrDefault() ?? ""
+            : "";
+
+        var auth = Services.GetRequiredService<IAuth>();
+        var sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
+        if (sessionInfo == null) {
+            var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
+            var commander = Services.Commander();
+            await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        return Content(session.Id.Value);
     }
 
     // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs

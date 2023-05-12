@@ -70,8 +70,8 @@ public sealed class MauiSessionProvider : ISessionProvider
             }
 
             if (session == null) {
-                session = new SessionFactory().CreateSession();
-                await Setup(session, true).ConfigureAwait(false);
+                var sessionId = await GetSessionId().ConfigureAwait(false);
+                session = new Session(sessionId);
                 bool isSaved;
                 try {
                     if (storage.Remove(sessionIdStorageKey))
@@ -99,16 +99,14 @@ public sealed class MauiSessionProvider : ISessionProvider
                     }
                 }
             }
-            else
-                await Setup(session, false).ConfigureAwait(false);
 
             _sessionSource.TrySetResult(session);
             return session;
         });
 
-    private static async Task Setup(Session session, bool isNew)
+    private static async Task<string> GetSessionId()
     {
-        var _ = Tracer.Region(nameof(Setup));
+        var _ = Tracer.Region(nameof(GetSessionId));
         try {
             // Manually configure HTTP client as we don't have it configured globally at DI level
             using var httpClient = new HttpClient(new HttpClientHandler {
@@ -119,15 +117,14 @@ public sealed class MauiSessionProvider : ISessionProvider
                 DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
             };
             httpClient.DefaultRequestHeaders.Add("cookie", AppStartup.GetCookieHeader());
-            if (!isNew)
-                return;
 
             var authClientLogger = MauiDiagnostics.LoggerFactory.CreateLogger<MobileAuthClient>();
             var authClient = new MobileAuthClient(httpClient, authClientLogger);
-            await authClient.SetupSession(session).ConfigureAwait(false);
+            var sessionId = await authClient.GetSessionId().ConfigureAwait(false);
+            return sessionId;
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(Setup)} failed");
+            Log.LogError(e, $"{nameof(GetSessionId)} failed");
             throw;
         }
     }

@@ -11,13 +11,14 @@ public sealed class MobileAuthClient
         Log = log;
     }
 
-    public async Task SetupSession(Session session)
+    public async Task<string> GetSessionId()
     {
         try {
-            var sessionId = session.Id.Value;
-            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
+            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getSession";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
+            var sessionId = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return sessionId;
         }
         catch (Exception e) {
             Log.LogError(e, "Session setup failed - probably server is unreachable");
