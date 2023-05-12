@@ -263,8 +263,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             && hasVeryLastItem
             && chatEntries.Count > 0) {
             var lastEntryId = chatEntries[^1].Id.LocalId;
-            if (lastEntryId > readEntryLid && ReadPositionState != null)
-                ReadPositionState.Value = new ChatPosition(lastEntryId);
+            if (ReadPositionState != null) {
+                if (lastEntryId > readEntryLid)
+                    ReadPositionState.Value = new ChatPosition(lastEntryId);
+                else if (readEntryLid >= chatIdRange.End)
+                    ReadPositionState.Value = new ChatPosition(chatIdRange.End - 1);
+            }
         }
 
         if (isHighlighted) {
