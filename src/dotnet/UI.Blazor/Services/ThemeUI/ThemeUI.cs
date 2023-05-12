@@ -63,9 +63,16 @@ public class ThemeUI : WorkerBase
             if (_appliedTheme == theme)
                 return;
 
+            var oldTheme = _appliedTheme;
             _appliedTheme = theme;
             try {
-                await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
+                // Ideally we don't want to use any external JS here,
+                // coz this code may start before BulkInitUI completes
+                var script = $"""
+                document.body.classList.remove('{oldTheme.ToCssClass()}');
+                document.body.classList.add('{theme.ToCssClass()}');
+                """;
+                await JS.EvalVoid(script).ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Failed to apply the new theme");

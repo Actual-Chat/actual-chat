@@ -27,6 +27,9 @@
         }
     </div>
 }
+@if (m.ChatCount > 0) {
+    @FooterDelimiter
+}
 
 @code {
     private Model _rendered;
@@ -38,6 +41,7 @@
     [Inject] private LoadingUI LoadingUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+    [Parameter] public RenderFragment? FooterDelimiter { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

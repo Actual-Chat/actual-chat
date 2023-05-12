@@ -8,7 +8,11 @@ public sealed class LoadingUI
     private readonly TaskCompletionSource<Unit> _whenDisplayedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
+    private bool _isLoadingOverlayRemoved;
+    private IJSRuntime? _js;
 
+    private IServiceProvider Services { get; }
+    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
     private Tracer Tracer { get; }
 
     public Task WhenDisplayed => _whenDisplayedSource.Task;
@@ -22,7 +26,12 @@ public sealed class LoadingUI
     public TimeSpan ChatListLoadTime { get; private set; }
 
     public LoadingUI(IServiceProvider services)
-        => Tracer = services.Tracer(GetType());
+    {
+        Services = services;
+        Tracer = services.Tracer(GetType());
+        // Let's we remove loading overlay no matter what after 10 seconds
+        Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => RemoveLoadingOverlay(), TaskScheduler.Default);
+    }
 
     public static void MarkMauiAppBuilt(TimeSpan mauiAppBuildTime)
     {
@@ -52,6 +61,7 @@ public sealed class LoadingUI
 
         LoadTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkLoaded));
+        RemoveLoadingOverlay();
     }
 
     public void MarkChatListLoaded()
@@ -61,5 +71,22 @@ public sealed class LoadingUI
 
         ChatListLoadTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkChatListLoaded));
+    }
+
+    // Private methods
+
+    private void RemoveLoadingOverlay()
+    {
+        if (_isLoadingOverlayRemoved)
+            return;
+
+        _isLoadingOverlayRemoved = true;
+        const string script = """
+        (function() {
+            const overlay = document.getElementById('until-ui-is-ready');
+            if (overlay) overlay.remove();
+        })();
+        """;
+        JS.EvalVoid(script);
     }
 }

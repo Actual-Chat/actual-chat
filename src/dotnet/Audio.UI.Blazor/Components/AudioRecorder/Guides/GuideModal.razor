@@ -8,14 +8,14 @@
     if (ScreenSize.IsNarrow()) {
         if (BrowserInfo.IsEdge)
             device = GuideType.MobileEdgeAndroid;
-        else if (BrowserInfo.IsSafari)
+        else if (BrowserInfo.IsWebKit)
             device = GuideType.MobileSafariIos;
         else
             device = GuideType.MobileChromeAndroid;
     } else {
         if (BrowserInfo.IsEdge)
             device = GuideType.WebEdge;
-        else if (BrowserInfo.IsSafari)
+        else if (BrowserInfo.IsWebKit)
             device = GuideType.WebSafari;
         else
             device = GuideType.WebChrome;

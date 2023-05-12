@@ -1,9 +1,3 @@
-/* Hide ui-is-rendered when until-ui-is-ready is there */
-
-body:has(.ui-is-rendered) .until-ui-is-ready {
-    @apply hidden;
-}
-
 /* Loading overlay */
 
 :root {

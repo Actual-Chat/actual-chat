@@ -3,14 +3,14 @@ const userAgentLowerCase = userAgent.toLowerCase();
 const userAgentData = navigator['userAgentData'] as { mobile: boolean; };
 const isMobile = userAgentData?.mobile === true
     || /android|mobile|phone|webos|iphone|ipad|ipod|blackberry/.test(userAgentLowerCase);
-const isChrome = userAgentLowerCase.indexOf('chrome') >= 0;
+const isChromium = userAgentLowerCase.indexOf('chrome') >= 0;
 
 export const DeviceInfo = {
     isMobile: isMobile,
     isAndroid: isMobile && userAgentLowerCase.indexOf('android') >= 0,
     isIos: isMobile && /iphone|ipad|ipod/.test(userAgentLowerCase),
-    isChrome: isChrome,
-    isSafari: userAgentLowerCase.indexOf('webkit') >= 0 && !isChrome,
+    isChromium: isChromium,
+    isWebKit: userAgentLowerCase.indexOf('webkit') >= 0 && !isChromium,
     isFirefox: userAgentLowerCase.indexOf('firefox') >= 0,
     isEdge: userAgentLowerCase.indexOf('edg/') >= 0,
     isTouchCapable: (('ontouchstart' in window)

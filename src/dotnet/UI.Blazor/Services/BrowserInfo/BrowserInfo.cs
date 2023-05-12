@@ -28,9 +28,9 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
     public bool IsIos { get; protected set; }
-    public bool IsChrome { get; protected set; }
+    public bool IsChromium { get; protected set; }
     public bool IsEdge { get; protected set; }
-    public bool IsSafari { get; protected set; }
+    public bool IsWebKit { get; protected set; }
     public bool IsTouchCapable { get; protected set; }
     public string WindowId { get; protected set; } = "";
     public Task WhenReady => WhenReadySource.Task;
@@ -81,9 +81,9 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
         IsIos = initResult.IsIos;
-        IsChrome = initResult.IsChrome;
+        IsChromium = initResult.IsChromium;
         IsEdge = initResult.IsEdge;
-        IsSafari = initResult.IsSafari;
+        IsWebKit = initResult.IsWebKit;
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
         WhenReadySource.TrySetResult(default);

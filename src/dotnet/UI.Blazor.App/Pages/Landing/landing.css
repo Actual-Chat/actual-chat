@@ -6,6 +6,10 @@
     @apply flex-y;
     @apply overflow-hidden;
 }
+.landing-video,
+.landing-video-plug {
+    @apply h-full;
+}
 
 /* General styles */
 
