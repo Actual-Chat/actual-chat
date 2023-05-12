@@ -12,7 +12,7 @@ export class FallbackPlayback {
     private attachedCount = 0;
     private whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public get isRequired() { return DeviceInfo.isIos && DeviceInfo.isSafari; }
+    public get isRequired() { return DeviceInfo.isIos && DeviceInfo.isWebKit; }
 
     constructor() {
         if (!this.isRequired)

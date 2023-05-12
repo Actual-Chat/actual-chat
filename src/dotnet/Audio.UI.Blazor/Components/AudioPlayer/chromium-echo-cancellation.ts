@@ -163,6 +163,6 @@ export function isAecWorkaroundNeeded(): boolean {
     return false;
 
     // Mobile phones have a good echoCancellation by default, we don't need anything to do
-    const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChrome;
+    const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChromium;
     return !hasBuiltInAec;
 }

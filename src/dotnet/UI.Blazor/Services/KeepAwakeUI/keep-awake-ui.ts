@@ -41,7 +41,7 @@ export class KeepAwakeUI {
     * */
     public static async subscribeOnKeepAwakeTriggers() {
         await BrowserInfo.whenReady;
-        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isSafari;
+        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isWebKit;
         if (!isSsbSafari)
             return;
 
@@ -68,7 +68,7 @@ export class KeepAwakeUI {
     * */
     public static async subscribeOnDocumentVisibility() {
         await BrowserInfo.whenReady;
-        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isSafari;
+        const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isWebKit;
         if (!isSsbSafari)
             return;
 

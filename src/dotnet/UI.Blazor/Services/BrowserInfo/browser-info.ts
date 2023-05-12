@@ -36,10 +36,10 @@ export class BrowserInfo {
             isMobile: DeviceInfo.isMobile,
             isAndroid: DeviceInfo.isAndroid,
             isIos: DeviceInfo.isIos,
-            isChrome: DeviceInfo.isChrome,
+            isChromium: DeviceInfo.isChromium,
             isEdge: DeviceInfo.isEdge,
             isFirefox: DeviceInfo.isFirefox,
-            isSafari: DeviceInfo.isSafari,
+            isWebKit: DeviceInfo.isWebKit,
             isTouchCapable: DeviceInfo.isTouchCapable,
             windowId: this.windowId,
         };
@@ -91,11 +91,11 @@ export class BrowserInfo {
             classList.add('device-android');
         if (DeviceInfo.isIos)
             classList.add('device-ios');
-        if (DeviceInfo.isChrome)
+        if (DeviceInfo.isChromium)
             classList.add('device-chrome');
         if (DeviceInfo.isEdge)
             classList.add('device-edge');
-        if (DeviceInfo.isSafari)
+        if (DeviceInfo.isWebKit)
             classList.add('device-safari');
 
         if (DeviceInfo.isTouchCapable)
@@ -113,10 +113,10 @@ export interface InitResult {
     isMobile: boolean;
     isAndroid: boolean;
     isIos: boolean;
-    isChrome: boolean;
+    isChromium: boolean;
     isEdge: boolean;
     isFirefox: boolean;
-    isSafari: boolean;
+    isWebKit: boolean;
     isTouchCapable: boolean;
     windowId: string;
 }

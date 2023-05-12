@@ -22,8 +22,8 @@ public class MauiBrowserInfo : BrowserInfo
         IsAndroid = clientKind == ClientKind.Android;
         IsIos = clientKind == ClientKind.Ios;
         IsEdge = clientKind == ClientKind.Windows;
-        IsChrome = IsAndroid || IsEdge;
-        IsSafari = IsIos || clientKind == ClientKind.MacOS;
+        IsChromium = IsAndroid || IsEdge; // IsEdge is needed for MAUI on Windows
+        IsWebKit = IsIos || clientKind == ClientKind.MacOS;
         IsTouchCapable = isMobile;
 
         var display = DeviceDisplay.Current.MainDisplayInfo;
