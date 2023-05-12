@@ -116,7 +116,7 @@ public class Startup
         var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
         ModuleHost = new ModuleHostBuilder()
             // From less dependent to more dependent!
-            .AddModules(
+            .WithModules(
                 // Core modules
                 new CoreModule(moduleServices),
                 new KubernetesModule(moduleServices),
@@ -145,13 +145,13 @@ public class Startup
                 new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
-                new AppHostModule(moduleServices)
+                new ServerAppModule(moduleServices)
             ).Build(services);
     }
 
     public void Configure(IApplicationBuilder app)
     {
-        var appHostModule = ModuleHost.GetModule<AppHostModule>();
+        var appHostModule = ModuleHost.GetModule<ServerAppModule>();
         appHostModule.ConfigureApp(app); // This module must be the first one in ConfigureApp call sequence
 
         ModuleHost.Modules

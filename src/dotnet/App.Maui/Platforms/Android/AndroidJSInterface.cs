@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.Webkit;
@@ -24,9 +25,7 @@ internal class AndroidJSInterface : Java.Lang.Object
     public void OnDOMContentLoaded()
     {
         _tracer.Point(nameof(OnDOMContentLoaded));
-        _webView.Post(() => {
-            AppServices.GetRequiredService<LoadingUI>().MarkDisplayed();
-        });
+        _webView.Post(() => AppServices.GetRequiredService<LoadingUI>().MarkDisplayed());
     }
 
     [JavascriptInterface]

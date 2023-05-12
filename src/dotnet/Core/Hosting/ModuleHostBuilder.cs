@@ -4,10 +4,10 @@ public readonly record struct ModuleHostBuilder(ImmutableList<HostModule> Module
 {
     public ModuleHostBuilder() : this(ImmutableList<HostModule>.Empty) { }
 
-    public ModuleHostBuilder AddModule(HostModule module)
+    public ModuleHostBuilder WithModule(HostModule module)
         => new(Modules.Add(module));
 
-    public ModuleHostBuilder AddModules(params HostModule[] modules)
+    public ModuleHostBuilder WithModules(params HostModule[] modules)
     {
         var newModules = Modules;
         foreach (var module in modules)

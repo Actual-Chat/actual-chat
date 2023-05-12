@@ -26,21 +26,21 @@ using Stl.IO;
 namespace ActualChat.App.Server.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class AppHostModule : HostModule<HostSettings>, IWebModule
+public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
 {
     public static string AppVersion { get; } =
-        typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
+        typeof(ServerAppModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
     private ILogger Log { get; }
 
     public IWebHostEnvironment Env { get; }
     public IConfiguration Cfg { get; }
 
-    public AppHostModule(IServiceProvider serviceProvider) : base(serviceProvider)
+    public ServerAppModule(IServiceProvider serviceProvider) : base(serviceProvider)
     {
         Env = serviceProvider.GetRequiredService<IWebHostEnvironment>();
         Cfg = serviceProvider.GetRequiredService<IConfiguration>();
-        Log = serviceProvider.LogFor<AppHostModule>();
+        Log = serviceProvider.LogFor<ServerAppModule>();
     }
 
     public void ConfigureApp(IApplicationBuilder app)
