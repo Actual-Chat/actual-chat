@@ -1,6 +1,4 @@
 Near-term:
-- Don't show duplicate error badges for errors (show just one if they're identical)
-- Fix fast swipe behavior for panels (they don't work) + don't swipe panels when the action starts on scrollable container other than chat view
 - Fix online presence
 - Fix "chat list order isn't stored / restored" + store it on server
 - Switch to Stl.Rpc
