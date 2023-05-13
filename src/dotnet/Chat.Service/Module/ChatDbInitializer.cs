@@ -27,7 +27,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var chatDbInitializer = DbInitializer.GetCurrent<ChatDbInitializer>();
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
 
-        await FixCorruptedReadPositions(cancellationToken).ConfigureAwait(false);
+        // await FixCorruptedReadPositions(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task VerifyData(CancellationToken cancellationToken)
