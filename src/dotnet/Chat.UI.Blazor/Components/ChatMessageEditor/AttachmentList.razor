@@ -125,7 +125,7 @@
     [JSInvokable]
     public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length) {
         var error = TryAdd();
-        if (!error.IsNullOrEmpty()) {
+        if (error != null) {
             ErrorUI.ShowError(error);
             return false;
         }
@@ -133,14 +133,12 @@
         StateHasChanged();
         return true;
 
-        string? TryAdd() {
-            if (length > Constants.Attachments.FileSizeLimit) {
-                return "File is too big. Max file size: 8Mb.";
-            }
+        Exception? TryAdd() {
+            if (length > Constants.Attachments.FileSizeLimit)
+                return StandardError.Constraint("File is too big. Max file size: 8Mb.");
 
-            if (_attachments.Count >= Constants.Attachments.FileCountLimit) {
-                return "Too many files. Max allowed number is 10.";
-            }
+            if (_attachments.Count >= Constants.Attachments.FileCountLimit)
+                return StandardError.Constraint("Too many files. Max allowed number is 10.");
 
             _attachments = _attachments.Add(new(id, url, fileName ?? "", fileType ?? "", length));
             return null;
