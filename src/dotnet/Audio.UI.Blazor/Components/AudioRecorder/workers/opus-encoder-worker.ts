@@ -149,11 +149,12 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     onVoiceActivityChange: async (change: VoiceActivityChange, _noWait?: RpcNoWait) => {
-        debugLog?.log(`onVoiceActivityChange:`, change);
-
         const newVadState = change.kind === 'end' ? 'silence' : 'voice';
         if (vadState === newVadState)
             return;
+
+        debugLog?.log(`onVoiceActivityChange:`, change);
+
         if (state !== 'encoding') {
             // set state, then leave since we are not recording
             vadState = newVadState;

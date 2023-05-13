@@ -1,3 +1,6 @@
+using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatAudioUI
@@ -7,6 +10,10 @@ public partial class ChatAudioUI
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
+        // initialize audio
+        var loadingUi = Services.GetRequiredService<LoadingUI>();
+        loadingUi.WhenLoaded.ContinueWith(_ => Services.GetRequiredService<AudioInitializer>(), cancellationToken);
+
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateActiveChatDependencies), InvalidateActiveChatDependencies),
             new(nameof(InvalidateHistoricalPlaybackDependencies), InvalidateHistoricalPlaybackDependencies),

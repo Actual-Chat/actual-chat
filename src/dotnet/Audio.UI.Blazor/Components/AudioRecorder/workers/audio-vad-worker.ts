@@ -39,6 +39,7 @@ let nnVoiceDetector: VoiceActivityDetector = null;
 let webrtcVoiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 let isActive = false;
+let isNNVadInitialized = false;
 
 const serverImpl: AudioVadWorker = {
     create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
@@ -54,14 +55,8 @@ const serverImpl: AudioVadWorker = {
         debugLog?.log(`-> onCreate`);
         Versioning.init(artifactVersions);
 
-        const isSimdSupported = _isSimdSupported();
-
         queue.clear();
 
-        if (isSimdSupported) {
-            // Load NN VAD Module asynchronously
-            void initNNVad();
-        }
         // Loading WebRtc VAD module
         vadModule = await retry(3, () => webRtcVadModule(getEmscriptenLoaderOptions()));
         webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(48000, 0));
@@ -136,8 +131,18 @@ async function processQueue(): Promise<void> {
             }
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
-            if (vadEvent)
+            if (vadEvent) {
+                if (vadEvent.kind === "start") {
+                    // we are trying to initialize NN vad when WebRTC vad has already triggered recording
+                    // because it's time and CPU consuming operation
+                    const isSimdSupported = _isSimdSupported();
+                    if (isSimdSupported && !hasNNVad && !isNNVadInitialized) {
+                        // Load NN VAD Module asynchronously
+                        void initNNVad();
+                    }
+                }
                 void encoderWorker.onVoiceActivityChange(vadEvent, rpcNoWait);
+            }
         }
     }
     catch (error) {
@@ -198,6 +203,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 async function initNNVad(): Promise<void> {
+    isNNVadInitialized = true;
+
     const OUT_RATE = 16000;
     const soxrResampler = new SoxrResampler(
         CHANNELS,
