@@ -97,6 +97,6 @@
 
     private void OnClick(int count) {
         var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
-        ErrorUI.ShowError(result);
+        ErrorUI.ShowError(StandardError.Constraint(result));
     }
 }

@@ -43,10 +43,11 @@
 
     [JSInvokable]
     public void OnInvalidSize() {
-        if (!MaxSize.HasValue) return;
+        if (!MaxSize.HasValue)
+            return;
+
         var size = FileSizeFormatter.Format(MaxSize.Value);
-        var message = $"File is too big. Max file size: {size}.";
-        ErrorUI.ShowError(message);
+        ErrorUI.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
     }
 
     public async ValueTask DisposeAsync() {
