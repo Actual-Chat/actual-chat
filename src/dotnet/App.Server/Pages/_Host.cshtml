@@ -72,9 +72,6 @@
             baseUri: null,
             sessionHash: '@(session.Hash)',
             windowId: null,
-            initPage: function (baseUri, sessionHash) {
-                throw Error("Internal error: App.initPage is available only in mobile apps.");
-            },
             postMessage: function (data) {
                 throw Error("Internal error: App.postMessage is available only in mobile apps.");
             },

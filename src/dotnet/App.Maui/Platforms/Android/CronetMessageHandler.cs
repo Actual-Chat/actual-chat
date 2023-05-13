@@ -9,6 +9,17 @@ namespace ActualChat.App.Maui;
 
 public class CronetMessageHandler : HttpMessageHandler
 {
+    private static readonly CronetEngine.Builder CronetEngineBuilder = new CronetEngine.Builder(MauiApplication.Current)
+        .EnableBrotli(true)
+        .EnableHttp2(true)
+        .EnableQuic(true)
+        .AddQuicHint("dev.actual.chat", 443, 443)
+        .AddQuicHint("media-dev.actual.chat", 443, 443)
+        .AddQuicHint("cdn-dev.actual.chat", 443, 443)
+        .AddQuicHint("actual.chat", 443, 443)
+        .AddQuicHint("media.actual.chat", 443, 443)
+        .AddQuicHint("cdn.actual.chat", 443, 443);
+
     private readonly CronetEngine _cronetEngine;
 
     private IExecutorService Executor { get; }
@@ -16,17 +27,7 @@ public class CronetMessageHandler : HttpMessageHandler
     public CronetMessageHandler(IExecutorService executor)
     {
         Executor = executor;
-        _cronetEngine = new CronetEngine.Builder(MauiApplication.Current)
-            .EnableBrotli(true)
-            .EnableHttp2(true)
-            .EnableQuic(true)
-            .AddQuicHint("dev.actual.chat", 443, 443)
-            .AddQuicHint("media-dev.actual.chat", 443, 443)
-            .AddQuicHint("cdn-dev.actual.chat", 443, 443)
-            .AddQuicHint("actual.chat", 443, 443)
-            .AddQuicHint("media.actual.chat", 443, 443)
-            .AddQuicHint("cdn.actual.chat", 443, 443)
-            .Build();
+        _cronetEngine = CronetEngineBuilder.Build();
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -64,6 +65,7 @@ public class CronetMessageHandler : HttpMessageHandler
         _cronetEngine.Dispose();
     }
 
+    // Nested types
 
     private class CronetCallback : UrlRequest.Callback
     {

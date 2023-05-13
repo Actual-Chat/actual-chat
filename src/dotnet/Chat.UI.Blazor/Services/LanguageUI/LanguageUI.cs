@@ -75,10 +75,10 @@ public class LanguageUI
 
     private async ValueTask<List<Language>> GetClientLanguages(CancellationToken cancellationToken)
     {
-        var browserLanguages = await Dispatcher.InvokeAsync(
-            () => JS.InvokeAsync<string[]>(
-                $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
-                cancellationToken).AsTask());
+        var browserLanguages = await JS.InvokeAsync<string[]>(
+            $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
+            cancellationToken
+            ).ConfigureAwait(false);
         return browserLanguages
             .Select(x => new Language(x, ParseOrNone.Option))
             .Where(x => !x.IsNone)

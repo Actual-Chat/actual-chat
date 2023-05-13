@@ -6,6 +6,7 @@ namespace ActualChat.App.Maui.Services;
 
 public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageHandlerFactory
 {
+    private static readonly Tracer Tracer = Tracer.Default[nameof(NativeHttpClientFactory)];
     private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new (StringComparer.Ordinal);
 
     private IServiceProvider Services { get; }
@@ -31,13 +32,15 @@ public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageH
     public HttpMessageHandler CreateHandler(string name)
         => _messageHandlers.GetOrAdd(name,
             static (name1, this1) => {
-            var handler = this1.CreatePlatformMessageHandler();
-            if (handler == null)
-                throw StandardError.NotSupported<NativeHttpClientFactory>(
-                    $"{nameof(CreatePlatformMessageHandler)} should not return null on all supported platforms except Windows.");
+                using var _ = Tracer.Region($"{nameof(CreateHandler)}: '{name1}'");
 
-            return this1.ConfigureMessageHandler(handler, name1);
-        }, this);
+                var handler = this1.CreatePlatformMessageHandler();
+                if (handler == null)
+                    throw StandardError.NotSupported<NativeHttpClientFactory>(
+                        $"{nameof(CreatePlatformMessageHandler)} should not return null on all supported platforms except Windows.");
+
+                return this1.ConfigureMessageHandler(handler, name1);
+            }, this);
 
     private partial HttpMessageHandler? CreatePlatformMessageHandler();
 

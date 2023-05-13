@@ -10,6 +10,7 @@ export enum LogLevel {
 export type LogScope =
     'default'
     // Library
+    | 'AppSettings'
     | 'AsyncProcessor'
     | 'BrowserInfo'
     | 'BulkInitUI'

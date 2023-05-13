@@ -15,11 +15,11 @@ public partial class MainPage
 
     public partial void SetupSessionCookie(Uri baseUri, Session session)
     {
-        SetSessionIdCookie(baseUri.Host, session, true);
-        SetSessionIdCookie(AppHostAddress, session, false);
+        SetSessionCookie(AppHostAddress, session, false);
+        SetSessionCookie(baseUri.Host, session, true);
     }
 
-    private void SetSessionIdCookie(string domain, Session session, bool secure)
+    private void SetSessionCookie(string domain, Session session, bool isSecure)
     {
         var properties = new NSDictionary(
             NSHttpCookie.KeyName, "FusionAuth.SessionId",

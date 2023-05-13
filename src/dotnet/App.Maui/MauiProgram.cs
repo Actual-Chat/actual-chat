@@ -43,10 +43,9 @@ public static partial class MauiProgram
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
-#if false
+#if true
             // Normal start
             ConfigureApp(appBuilder, false);
-            AppSettings.WhenSessionReady.Wait();
             var app = appBuilder.Build();
             AppServicesReady(app.Services);
             return app;
@@ -144,8 +143,8 @@ public static partial class MauiProgram
         services.AddSingleton(HostInfo.Configuration);
         services.AddMauiDiagnostics(false);
 
-        // HttpClient
 #if !WINDOWS
+        // HTTP client
         services.RemoveAll<IHttpClientFactory>();
         services.AddSingleton(c => new NativeHttpClientFactory(c));
         services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());

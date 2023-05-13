@@ -6,8 +6,10 @@ export class LocalSettings {
     private static _isInitialized: boolean = false;
 
     public static init(): void {
-        if (LocalSettings._isInitialized)
+        if (this._isInitialized)
             return
+
+        this._isInitialized = true;
         const tagKey = ".App.sessionHash";
         // @ts-ignore
         const tagValue: string = window.App.sessionHash;
@@ -19,7 +21,7 @@ export class LocalSettings {
     }
 
     public static getMany(keys: string[]): Array<string> {
-        LocalSettings.init();
+        this.init();
         const result = new Array<string>();
         debugLog?.log(`getMany(${result.length} keys):`);
         for (const key of keys) {
@@ -31,7 +33,7 @@ export class LocalSettings {
     }
 
     public static setMany(updates: Record<string, string>): void {
-        LocalSettings.init();
+        this.init();
         debugLog?.log(`setMany(${Object.keys(updates).length} keys):`);
         for (const [key, value] of Object.entries(updates)) {
             if (value == null) {

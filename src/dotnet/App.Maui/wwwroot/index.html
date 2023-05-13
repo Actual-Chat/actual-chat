@@ -27,21 +27,11 @@
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     -->
     <script>
-        console.log('About to define window.App');
         window.App = {
             environment: 'unknown',
             baseUri: null,
-            debug: false,
             sessionHash: null,
-            initPage: function (baseUri, sessionHash) {
-                if (window.App.debug)
-                    console.log('App.initPage: baseUri =', baseUri);
-                window.App.baseUri = baseUri;
-                window.App.sessionHash = sessionHash;
-                const opusMediaRecorder = window['opusMediaRecorder'];
-                if (opusMediaRecorder)
-                    opusMediaRecorder.origin = baseUri;
-            },
+            windowId: null,
             postMessage: function (data) {
                 try {
                     if (window.Android) // post message to android webview
@@ -111,8 +101,7 @@
         });
 
         document.addEventListener("DOMContentLoaded", function (event) {
-            if (window.App.debug)
-                console.log("DOM is fully loaded and parsed");
+            // console.log("DOM is fully loaded and parsed");
             try {
                 if (window.Android)
                     window.Android.DOMContentLoaded();

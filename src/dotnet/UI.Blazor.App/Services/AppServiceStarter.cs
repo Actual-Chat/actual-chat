@@ -27,9 +27,10 @@ public class AppServiceStarter
             using var _1 = Tracer.Region(nameof(PostSessionWarmup));
             try {
                 var accounts = Services.GetRequiredService<IAccounts>();
+                var getOwnAccountTask = accounts.GetOwn(session, CancellationToken.None);
                 var contacts = Services.GetRequiredService<IContacts>();
                 var chats = Services.GetRequiredService<IChats>();
-                await accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
+                await getOwnAccountTask.ConfigureAwait(false);
                 // await contacts.ListIds(session, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception e) {
@@ -44,6 +45,7 @@ public class AppServiceStarter
         var accountUI = Services.GetRequiredService<AccountUI>();
 
         // Creating History and BrowserInfo - this should be done as early as possible
+        var jsAppSettings = Services.GetRequiredService<JavaScriptAppSettings>();
         var history = Services.GetRequiredService<History>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
 
@@ -51,6 +53,7 @@ public class AppServiceStarter
         Tracer.Point("BulkInitUI.Invoke");
         var bulkInitUI = Services.GetRequiredService<BulkInitUI>();
         _ = bulkInitUI.Invoke(async bulkInit => {
+            await jsAppSettings.Initialize(bulkInit).ConfigureAwait(false);
             await history.Initialize(bulkInit).ConfigureAwait(false);
             await browserInfo.Initialize(bulkInit).ConfigureAwait(false);
         });

@@ -84,7 +84,7 @@
 
         var appKind = HostInfo.AppKind;
         if (appKind.IsClient() && !appKind.IsMauiApp()) {
-            // MAUI app triggers this step way earlier
+            // MAUI app triggers this step earlier
             _ = AppServiceStarter.PostSessionWarmup(SessionProvider.Session, CancellationToken.None);
         }
 

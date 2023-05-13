@@ -87,7 +87,7 @@ export class OpusMediaRecorder {
         }
 
         if (this.origin.includes('0.0.0.0')) {
-            // use server address if the app is MAUI
+            // Use server address if the app is MAUI
             this.origin = baseUri;
         }
         const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();

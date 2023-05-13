@@ -34,10 +34,10 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
         _isInteractive = services.StateFactory().NewMutable(false);
         _activeDemand = services.StateFactory().NewMutable((ActiveDemandModel?)null);
-        WhenReady = Dispatcher.InvokeAsync(
-            () => JS.InvokeVoidAsync(
-                $"{BlazorUICoreModule.ImportName}.InteractiveUI.init",
-                _backendRef));
+        WhenReady = JS.InvokeVoidAsync(
+            $"{BlazorUICoreModule.ImportName}.InteractiveUI.init",
+            _backendRef
+            ).AsTask();
     }
 
     public void Dispose()

@@ -5,33 +5,27 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class LocalSettingsBackend : IBatchingKvasBackend
 {
-    private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
     public LocalSettingsBackend(IServiceProvider services)
-    {
-        Dispatcher = services.GetRequiredService<Dispatcher>();
-        JS =  services.GetRequiredService<IJSRuntime>();
-    }
+        => JS = services.GetRequiredService<IJSRuntime>();
 
     public Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
-        => Dispatcher.InvokeAsync(
-            () => JS.InvokeAsync<string?[]>(
-                $"{BlazorUICoreModule.ImportName}.LocalSettings.getMany",
-                cancellationToken,
-                new object[] { keys }
-                ).AsTask());
+        => JS.InvokeAsync<string?[]>(
+            $"{BlazorUICoreModule.ImportName}.LocalSettings.getMany",
+            cancellationToken,
+            new object[] { keys }
+            ).AsTask();
 
     public Task SetMany(List<(string Key, string? Value)> updates, CancellationToken cancellationToken = default)
     {
         var dUpdates = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach (var (key, value) in updates)
             dUpdates[key] = value;
-        return Dispatcher.InvokeAsync(
-            () => JS.InvokeVoidAsync(
+        return JS.InvokeVoidAsync(
             $"{BlazorUICoreModule.ImportName}.LocalSettings.setMany",
             cancellationToken,
             dUpdates
-            ).AsTask());
+            ).AsTask();
     }
 }

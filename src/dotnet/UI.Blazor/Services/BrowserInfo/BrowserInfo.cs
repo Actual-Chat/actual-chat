@@ -65,6 +65,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
             bulkInit.Add(AppKind.ToString());
             return ValueTask.CompletedTask;
         }
+
         return JS.InvokeVoidAsync(jsMethod, BackendRef, AppKind.ToString());
     }
 

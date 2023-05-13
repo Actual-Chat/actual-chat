@@ -12,8 +12,8 @@ public static class ChatListOrderExt
 {
     public static string GetIcon(this ChatListOrder order)
         => order switch {
-            ChatListOrder.ByOwnUpdateTime => "icon-sort-by-message",
             ChatListOrder.ByLastEventTime => "icon-sort-by-recent",
+            ChatListOrder.ByOwnUpdateTime => "icon-sort-by-message",
             ChatListOrder.ByUnreadCount => "icon-sort-by-recent",
             ChatListOrder.ByAlphabet => "icon-sort-by-alphabet",
             _ => throw new ArgumentOutOfRangeException(nameof(order)),
