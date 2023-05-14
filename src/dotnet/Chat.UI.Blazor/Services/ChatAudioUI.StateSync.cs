@@ -10,9 +10,15 @@ public partial class ChatAudioUI
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        // initialize audio
-        var loadingUi = Services.GetRequiredService<LoadingUI>();
-        loadingUi.WhenLoaded.ContinueWith(_ => Services.GetRequiredService<AudioInitializer>(), cancellationToken);
+        // Initialize audio
+        var loadingUI = Services.GetRequiredService<LoadingUI>();
+        loadingUI.WhenLoaded
+            .ContinueWith(
+                _ => {
+                    if (!cancellationToken.IsCancellationRequested)
+                        Services.GetRequiredService<AudioInitializer>();
+                },
+                TaskScheduler.Default);
 
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateActiveChatDependencies), InvalidateActiveChatDependencies),
