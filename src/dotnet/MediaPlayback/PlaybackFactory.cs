@@ -6,7 +6,6 @@ public interface IPlaybackFactory
     Playback Create();
 }
 
-/// <inheritdoc cref="IPlaybackFactory"/>
 public class PlaybackFactory : IPlaybackFactory
 {
     private readonly ActivePlaybackInfo _activePlaybackInfo;
@@ -17,7 +16,7 @@ public class PlaybackFactory : IPlaybackFactory
 
     public PlaybackFactory(IServiceProvider services)
     {
-        _stateFactory = services.GetRequiredService<IStateFactory>();
+        _stateFactory = services.StateFactory();
         _trackPlayerFactory = services.GetRequiredService<ITrackPlayerFactory>();
         _activePlaybackInfo = services.GetRequiredService<ActivePlaybackInfo>();
         _playbackLog = services.GetRequiredService<ILogger<Playback>>();

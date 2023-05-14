@@ -85,7 +85,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             // DB authentication services
             db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
                 auth.ConfigureAuthService(_ => new() {
-                    MinUpdatePresencePeriod = Constants.Presence.SkipCheckInPeriod,
+                    MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
                 });
             });
         });

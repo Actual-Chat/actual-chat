@@ -22,9 +22,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 
         var fusion = services.AddFusion();
+        services.AddSingleton(_ => new AppPresenceReporter.Options());
         fusion.AddComputeService<AppPresenceReporter>(ServiceLifetime.Scoped);
-        services.AddSingleton(_ => new AppPresenceReporter.Options {
-            AwayTimeout = Constants.Presence.AwayTimeout,
-        });
     }
 }

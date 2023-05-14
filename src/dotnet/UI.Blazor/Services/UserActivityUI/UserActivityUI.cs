@@ -4,62 +4,34 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class UserActivityUI : IUserActivityUIBackend, IDisposable
 {
-    private readonly Task _whenInitialized;
-    private readonly IComputedState<Moment> _lastActiveAt;
-    private IJSObjectReference _jsRef = null!;
-    private DotNetObjectReference<IUserActivityUIBackend> _blazorRef = null!;
+    private readonly IMutableState<Moment> _activeUntil;
+    private readonly DotNetObjectReference<IUserActivityUIBackend> _blazorRef;
 
-    public IState<Moment> LastActiveAt => _lastActiveAt;
     private IJSRuntime JS { get; }
+    private IMomentClock Clock { get; }
+    private Moment Now => Clock.Now;
+
+    public IState<Moment> ActiveUntil => _activeUntil;
 
     public UserActivityUI(IServiceProvider services)
     {
         JS = services.GetRequiredService<IJSRuntime>();
-        var stateFactory = services.GetRequiredService<IStateFactory>();
-        _whenInitialized = Initialize();
-        _lastActiveAt = stateFactory.NewComputed<Moment>(
-            new () {
-                ComputedOptions = new () {
-                    AutoInvalidationDelay = Constants.Presence.UpdatePeriod,
-                },
-                Category = StateCategories.Get(GetType(), nameof(LastActiveAt)),
-            },
-            (_, token) => GetLastActiveAt(token));
-    }
-
-    public ValueTask SubscribeForNext(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("subscribeForNext", cancellationToken);
-
-    [JSInvokable]
-    public Task OnInteracted()
-    {
-        _lastActiveAt.Recompute();
-        return Task.CompletedTask;
-    }
-
-    private async Task Initialize()
-    {
+        Clock = services.Clocks().CpuClock;
+        _activeUntil = services.StateFactory().NewMutable(
+            Now + Constants.Presence.CheckPeriod,
+            nameof(ActiveUntil));
         _blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
-        _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-            $"{BlazorUICoreModule.ImportName}.UserActivityUI.create",
-            _blazorRef);
+        _ = JS.InvokeAsync<IJSObjectReference>(
+            $"{BlazorUICoreModule.ImportName}.UserActivityUI.init",
+            _blazorRef,
+            Constants.Presence.ActivityPeriod.TotalMilliseconds,
+            Constants.Presence.CheckPeriod.TotalMilliseconds);
     }
 
     public void Dispose()
-    {
-        _lastActiveAt.Dispose();
-        _blazorRef.Dispose();
-    }
+        => _blazorRef.Dispose();
 
-    private async Task<Moment> GetLastActiveAt(CancellationToken cancellationToken)
-    {
-        if (!_whenInitialized.IsCompletedSuccessfully)
-            await _whenInitialized.ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<Moment>("getLastActiveAt", cancellationToken);
-    }
-}
-
-public interface IUserActivityUIBackend
-{
-    Task OnInteracted();
+    [JSInvokable]
+    public void OnInteraction(double willBeActiveForMs)
+        => _activeUntil.Value = Now + TimeSpan.FromMilliseconds(willBeActiveForMs);
 }

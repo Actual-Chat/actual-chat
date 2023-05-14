@@ -3,6 +3,7 @@ namespace ActualChat.Users;
 public class UserPresences : IUserPresences
 {
     private IUserPresencesBackend Backend { get; }
+    private IAuth Auth { get; }
     private IAccounts Accounts { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
@@ -11,6 +12,7 @@ public class UserPresences : IUserPresences
     public UserPresences(IServiceProvider services)
     {
         Backend = services.GetRequiredService<IUserPresencesBackend>();
+        Auth = services.GetRequiredService<IAuth>();
         Accounts = services.GetRequiredService<IAccounts>();
         Commander = services.Commander();
         Clocks = services.Clocks();
@@ -32,5 +34,6 @@ public class UserPresences : IUserPresences
 
         var backendCommand = new IUserPresencesBackend.CheckInCommand(account.Id, Now);
         _ = Commander.Run(backendCommand, true, CancellationToken.None);
+        _ = Auth.UpdatePresence(command.Session, CancellationToken.None);
     }
 }

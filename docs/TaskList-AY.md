@@ -1,5 +1,4 @@
 Near-term:
-- Fix online presence
 - Switch to Stl.Rpc
 
 Mid-term (team):

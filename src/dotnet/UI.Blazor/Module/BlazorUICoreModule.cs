@@ -43,7 +43,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Authentication
         fusion.AddAuthentication();
         services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(c));
-        services.RemoveAll<PresenceReporter>(); // We replace it with our own one further
 
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));

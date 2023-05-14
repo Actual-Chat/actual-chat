@@ -9,58 +9,87 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     public record Options
     {
         public TimeSpan StartDelay { get; init; } = TimeSpan.FromSeconds(1);
-        public TimeSpan AwayTimeout { get; init; } = TimeSpan.FromMinutes(3.5);
     }
 
-    private Options Settings { get; }
-    private ILogger Log { get; }
+    private Session? _session;
+    private UserActivityUI? _userActivityUI;
+    private ChatAudioUI? _chatAudioUI;
+    private ICommander? _commander;
+    private MomentClockSet? _clocks;
+    private ILogger? _log;
+    private IMutableState<Moment> _lastCheckInAt;
 
-    private Session Session { get; }
-    private UserActivityUI UserActivityUI { get; }
-    private ChatAudioUI ChatAudioUI { get; }
-    private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
+    private Options Settings { get; }
+    private IServiceProvider Services { get; }
+    private Session Session => _session ??= Services.GetRequiredService<Session>();
+    private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
+    private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
+    private ICommander Commander => _commander ??= Services.Commander();
+    private MomentClockSet Clocks => _clocks ??= Services.Clocks();
     private Moment Now => Clocks.SystemClock.Now;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public AppPresenceReporter(Options settings, IServiceProvider services)
     {
         Settings = settings;
-        Log = services.LogFor(GetType());
-
-        Session = services.GetRequiredService<Session>();
-        UserActivityUI = services.GetRequiredService<UserActivityUI>();
-        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
-        Commander = services.Commander();
-        Clocks = services.Clocks();
+        Services = services;
+        _lastCheckInAt = services.StateFactory().NewMutable(
+            Now - Constants.Presence.OfflineTimeout,
+            StateCategories.Get(GetType(), nameof(_lastCheckInAt)));
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await Task.Delay(Settings.StartDelay, cancellationToken).ConfigureAwait(false);
 
-        var cState = await Computed.Capture(() => GetAppPresenceState(cancellationToken)).ConfigureAwait(false);
-        await foreach (var change in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (lastActiveAt, isRecordingOrListening) = change.Value;
-            var checkInRecency = Now - lastActiveAt;
-            if (checkInRecency < Settings.AwayTimeout || isRecordingOrListening)
+        var cNextCheckInAt = await Computed.Capture(() => GetNextCheckInAt(cancellationToken)).ConfigureAwait(false);
+        await foreach (var change in cNextCheckInAt.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (change.Value > _lastCheckInAt.Value)
                 await CheckIn(Session, cancellationToken).ConfigureAwait(false);
-            else
-                await UserActivityUI.SubscribeForNext(cancellationToken).ConfigureAwait(false);
         }
     }
 
     [ComputeMethod]
-    protected virtual async Task<(Moment LastActiveAt, bool IsRecordingOrListening)> GetAppPresenceState(
-        CancellationToken cancellationToken)
+    protected virtual async Task<Moment> GetNextCheckInAt(CancellationToken cancellationToken)
     {
-        var lastUserActionAt = await UserActivityUI.LastActiveAt.Use(cancellationToken).ConfigureAwait(false);
-        var audioStoppedAt = await ChatAudioUI.AudioStoppedAt.Use(cancellationToken).ConfigureAwait(false);
-        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-        var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
+        var now = Now;
+        var lastCheckInAt = await _lastCheckInAt.Use(cancellationToken).ConfigureAwait(false);
+        var nextCheckInAt = lastCheckInAt + Constants.Presence.CheckInPeriod;
+        if (nextCheckInAt > now)
+            return WithAutoInvalidation(lastCheckInAt);
 
-        var lastActiveAt = Moment.Max(lastUserActionAt, audioStoppedAt ?? Moment.MinValue);
-        var isRecordingOrListening = !recordingChatId.IsNone || listeningChatIds.Any();
-        return (lastActiveAt, isRecordingOrListening);
+        // nextCheckInAt <= now
+        var activeUntil = await GetActiveUntil(cancellationToken).ConfigureAwait(false);
+        return activeUntil > lastCheckInAt ? nextCheckInAt : lastCheckInAt;
+
+        Moment WithAutoInvalidation(Moment result) {
+            Computed.GetCurrent()!.Invalidate(nextCheckInAt - now);
+            return result;
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<Moment> GetActiveUntil(CancellationToken cancellationToken)
+    {
+        var now = Now;
+        var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
+        if (activeUntil > now)
+            return WithAutoInvalidation(activeUntil);
+
+        var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
+        if (listeningChatIds.Any())
+            return WithAutoInvalidation(Now + Constants.Presence.ActivityPeriod);
+
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        if (!recordingChatId.IsNone)
+            return WithAutoInvalidation(Now + Constants.Presence.ActivityPeriod);
+
+        return activeUntil;
+
+        Moment WithAutoInvalidation(Moment result) {
+            Computed.GetCurrent()!.Invalidate(activeUntil - now);
+            return result;
+        }
     }
 
     // Private methods
@@ -69,9 +98,11 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     {
         try {
             await Commander.Call(new IUserPresences.CheckInCommand(session), cancellationToken).ConfigureAwait(false);
+            _lastCheckInAt.Value = Now;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "CheckIn failed");
+            _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
         }
     }
 }

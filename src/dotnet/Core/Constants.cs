@@ -46,10 +46,17 @@ public static partial class Constants
         public const int FileCountLimit = 10;
     }
 
+    public static class Session
+    {
+        public static TimeSpan MinUpdatePresencePeriod { get; } = TimeSpan.FromHours(1);
+    }
+
     public static class Presence
     {
-        public static TimeSpan UpdatePeriod { get; } = TimeSpan.FromSeconds(35);
-        public static TimeSpan SkipCheckInPeriod { get; } = TimeSpan.FromSeconds(30);
+        public static TimeSpan ActivityPeriod { get; } = TimeSpan.FromSeconds(30);
+        public static TimeSpan CheckPeriod { get; } = TimeSpan.FromSeconds(10);
+        public static TimeSpan CheckInPeriod { get; } = TimeSpan.FromSeconds(49);
+        public static TimeSpan CheckInRetryDelay { get; } = TimeSpan.FromSeconds(15);
         public static TimeSpan AwayTimeout { get; } = TimeSpan.FromSeconds(60);
         public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);
     }
