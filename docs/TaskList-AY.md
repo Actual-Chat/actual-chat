@@ -1,6 +1,5 @@
 Near-term:
 - Fix online presence
-- Fix "chat list order isn't stored / restored" + store it on server
 - Switch to Stl.Rpc
 
 Mid-term (team):
