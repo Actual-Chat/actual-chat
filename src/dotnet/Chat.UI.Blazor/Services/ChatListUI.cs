@@ -43,7 +43,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     public IServiceProvider Services { get; }
     public IMutableState<ChatListSettings> Settings => _settings;
     public Task WhenLoaded => _settings.WhenRead;
-    public IState<Trimmed<int>> UnreadChatsCount { get; }
+    public IState<Trimmed<int>> UnreadChatsCount { get; private set; }
 
     public ChatListUI(IServiceProvider services)
     {
@@ -66,16 +66,18 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
                 InitialValue = new(),
                 Category = StateCategories.Get(type, nameof(Settings)),
             });
-        UnreadChatsCount = StateFactory.NewComputed(
-            new ComputedState<Trimmed<int>>.Options() {
-                UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(type, nameof(UnreadChatsCount)),
-            },
-            ComputeUnreadChatsCount);
     }
 
     void INotifyInitialized.Initialized()
-        => this.Start();
+    {
+        UnreadChatsCount = StateFactory.NewComputed(
+            new ComputedState<Trimmed<int>>.Options() {
+                UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(UnreadChatsCount)),
+            },
+            ComputeUnreadChatsCount);
+        this.Start();
+    }
 
     public int GetCountWhenLoading(ChatListKind listKind)
         => listKind switch {
