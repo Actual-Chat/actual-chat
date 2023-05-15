@@ -677,6 +677,7 @@ module.exports = {
       '9xl': ['8rem', { lineHeight: '1' }],
       'title-1': ['1.25rem', { lineHeight: '1.375rem', fontWeight: '500' }],
       'headline-1': ['1rem', { lineHeight: '1.125rem', fontWeight: '500' }],
+      'headline-5': ['1.5rem', { lineHeight: '1.75rem', fontWeight: '500' }],
       'text-1': ['1rem', { lineHeight: '1.125rem', fontWeight: '400' }],
       'caption-1': ['0.875rem', { lineHeight: '1rem', fontWeight: '500' }],
       'caption-2': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '400' }],

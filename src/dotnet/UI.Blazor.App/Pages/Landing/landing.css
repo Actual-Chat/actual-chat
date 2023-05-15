@@ -2,7 +2,8 @@
     @apply flex-y;
     @apply select-text;
 }
-.landing .page {
+.landing .page,
+.landing .carousel-page {
     @apply flex-y;
     @apply overflow-hidden;
 }
@@ -21,7 +22,8 @@
 .landing ul li {
     @apply my-2;
 }
-.landing .page a[target="_blank"] {
+.landing .page a[target="_blank"],
+.landing .carousel-page a[target="_blank"] {
     @apply underline hover:no-underline;
 }
 
@@ -191,11 +193,13 @@ body.narrow .landing-header .header-text {
     @apply text-01;
 }
 .landing-header .signin-button-group {
-    @apply h-10;
     @apply px-1;
     @apply border border-bg-04;
     @apply bg-transparent;
     @apply text-04;
+}
+body.app-maui .landing-header .download-btn {
+    @apply hidden;
 }
 .landing-menu {
     @apply flex;
@@ -204,22 +208,28 @@ body.narrow .landing-header .header-text {
 }
 
 /* Page styles */
+.landing .carousel-page,
 .landing .page {
     @apply text-base md:text-xl lg:text-2xl;
 }
+.landing .carousel-page .features-text,
 .landing .page .features-text {
     @apply text-base md:text-lg;
 }
-.landing .page p, .landing .page .p{
+.landing .page p, .landing .page .p,
+.landing .carousel-page p, .landing .carousel-page .p {
     @apply pt-2 md:pt-4;
 }
-.landing .page.full-screen-page {
+.landing .page.full-screen-page,
+.landing .carousel-page.full-screen-page {
     height: calc(var(--wh, 100vh));
 }
-.landing .page.full-screen-page.no-auto-scroll {
+.landing .page.full-screen-page.no-auto-scroll,
+.landing .carousel-page.full-screen-page.no-auto-scroll {
     @apply h-full;
 }
-.landing.no-full-screen-pages .page.full-screen-page {
+.landing.no-full-screen-pages .page.full-screen-page,
+.landing.no-full-screen-pages .carousel-page.full-screen-page {
     @apply h-full;
 }
 
@@ -253,7 +263,7 @@ body.narrow .landing .page-1 .main-text {
 .signin-button-group {
     @apply flex-x items-center;
     @apply px-2;
-    @apply h-12 w-fit;
+    @apply h-10 w-fit;
     @apply rounded-full;
     @apply bg-01;
     @apply text-01 font-semibold;
@@ -408,7 +418,7 @@ body.narrow .landing-links {
 }
 .download-btn {
     @apply flex-x gap-x-4 items-center;
-    @apply h-12;
+    @apply h-10;
     @apply px-4;
     @apply rounded-full;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
@@ -432,7 +442,8 @@ body.narrow .page-container {
     @apply justify-around;
     @apply h-full;
 }
-.page .c-header {
+.page .c-header,
+.carousel-page .c-header {
     @apply flex-x justify-center;
     @apply pt-16 pb-8;
     @apply text-5xl font-semibold;
@@ -441,6 +452,24 @@ body.narrow .landing .c-header {
     @apply flex-y items-center;
     @apply pt-14 pb-4;
     @apply text-title-1;
+}
+.landing-carousel-01 .page .c-header {
+    @apply justify-start items-end;
+    @apply h-40;
+    @apply px-14 pb-0 mb-6;
+    @apply text-3xl;
+}
+body.narrow .landing-carousel-01 .page .c-header {
+    @apply justify-end;
+    @apply h-32;
+    @apply px-4 pb-0 mb-2;
+    @apply text-headline-5;
+}
+.landing-carousel-01 .page-container .c-content {
+    @apply items-start;
+}
+body.narrow .landing-carousel-01 .page-container .c-content {
+    @apply justify-start;
 }
 .page-container img {
     @apply h-full;
@@ -472,6 +501,16 @@ body.wide .features-grid {
 }
 body.narrow .features-grid .c-text {
     @apply text-2xl;
+}
+.landing .extra-content {
+    @apply flex-x items-start gap-x-4;
+    @apply h-full;
+    @apply p-4;
+    @apply bg-01;
+    @apply rounded-lg;
+}
+.landing .extra-content p {
+    @apply p-0;
 }
 
 /* Docs */
@@ -596,4 +635,48 @@ body.narrow .side-nav.side-nav-right:has(> .docs-right-panel) {
 }
 body.narrow .layout-body:has(> .docs-content) {
     @apply px-0;
+}
+
+/* Carousel */
+.landing .carousel {
+    @apply relative;
+    @apply flex;
+    @apply overflow-x-auto overflow-y-hidden;
+    height: calc(var(--wh, 100vh));
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+.landing .carousel::-webkit-scrollbar {
+    display: none;
+}
+.carousel .carousel-page {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    width: 100vw;
+    border-radius: 10px;
+    transform-origin: center center;
+    transform: scale(1);
+    transition: transform 0.5s;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.carousel .carousel-page .c-header {
+    @apply w-full;
+}
+.carousel-wrapper {
+    @apply absolute z-10 inset-0;
+    @apply flex-x;
+}
+.carousel-dot {
+    @apply h-2;
+    @apply rounded-full;
+    @apply bg-[#9294E1];
+    @apply cursor-pointer;
+}
+body.narrow .landing .carousel-wrapper .left-arrow,
+body.narrow .landing .carousel-wrapper .right-arrow {
+    @apply hidden;
 }
