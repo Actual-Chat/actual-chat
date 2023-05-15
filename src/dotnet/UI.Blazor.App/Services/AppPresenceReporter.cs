@@ -78,16 +78,16 @@ public class AppPresenceReporter : WorkerBase, IComputeService
 
         var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
         if (listeningChatIds.Any())
-            return WithAutoInvalidation(Now + Constants.Presence.ActivityPeriod);
+            return WithAutoInvalidation(now + Constants.Presence.ActivityPeriod);
 
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         if (!recordingChatId.IsNone)
-            return WithAutoInvalidation(Now + Constants.Presence.ActivityPeriod);
+            return WithAutoInvalidation(now + Constants.Presence.ActivityPeriod);
 
         return activeUntil;
 
         Moment WithAutoInvalidation(Moment result) {
-            Computed.GetCurrent()!.Invalidate(activeUntil - now);
+            Computed.GetCurrent()!.Invalidate(result - now);
             return result;
         }
     }
