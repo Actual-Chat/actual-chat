@@ -35,7 +35,10 @@ public sealed record Chat(
     [DataMember] public string Title { get; init; } = "";
     [DataMember] public Moment CreatedAt { get; init; }
     [DataMember] public bool IsPublic { get; init; }
+    [Obsolete("Kept only for api compatibility with mobile apps", true)]
     [DataMember] public ChatAuthorKind AllowedAuthorKind { get; init; }
+    [DataMember] public bool AllowGuestAuthors { get; init; }
+    [DataMember] public bool AllowAnonymousAuthors { get; init; }
     [DataMember] public MediaId MediaId { get; init; }
 
     // Populated only on front-end
@@ -58,6 +61,9 @@ public sealed record ChatDiff : RecordDiff
     [DataMember] public string? Title { get; init; }
     [DataMember] public ChatKind? Kind { get; init; }
     [DataMember] public bool? IsPublic { get; init; }
+    [Obsolete("Kept only for api compatibility with mobile apps", true)]
     [DataMember] public ChatAuthorKind? AllowedAuthorKind { get; init; }
+    [DataMember] public bool? AllowGuestAuthors { get; init; }
+    [DataMember] public bool? AllowAnonymousAuthors { get; init; }
     [DataMember] public MediaId? MediaId { get; init; }
 }

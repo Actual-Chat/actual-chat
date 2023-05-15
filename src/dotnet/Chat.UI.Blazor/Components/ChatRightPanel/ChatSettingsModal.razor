@@ -37,9 +37,15 @@
                         <ToggleEdit Id="@_form.IsPublicFormId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
                     </FormSection>
 
-                    <FormSection For="() => _form.AllowsAnonymous" Class="flex h-12 md:h-8 justify-center">
-                        <ToggleEdit Id="@_form.AllowsAnonymousFormId" Label="Allows anonymous to join" @bind-Value="_form.AllowsAnonymous"/>
-                    </FormSection>
+                    @if (m.AllowEditJoinAnonymouslyProps) {
+                        <FormSection For="() => _form.AllowGuestAuthors" Class="flex h-12 md:h-8 justify-center">
+                            <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" Label="Allow guest users to join" @bind-Value="_form.AllowGuestAuthors"/>
+                        </FormSection>
+
+                        <FormSection For="() => _form.AllowAnonymousAuthors" Class="flex h-12 md:h-8 justify-center">
+                            <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" Label="Allow signed-in users to join anonymously" @bind-Value="_form.AllowAnonymousAuthors"/>
+                        </FormSection>
+                    }
                 }
                 @if (_form.IsPublic) {
                     @if (m.Link is { } publicUrl) {
@@ -85,6 +91,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -102,7 +109,8 @@
         _form.Title = chat.Title;
         _form.Picture = chat.Picture?.ContentId ?? "";
         _form.IsPublic = chat.IsPublic;
-        _form.AllowsAnonymous = chat.AllowedAuthorKind == ChatAuthorKind.Any;
+        _form.AllowGuestAuthors = chat.AllowGuestAuthors;
+        _form.AllowAnonymousAuthors = chat.AllowAnonymousAuthors;
         _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
     }
 
@@ -115,10 +123,12 @@
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
         var link = Links.Chat(ModalModel.Chat.Id).ToDisplayUrl(UrlMapper);
+        var allowEditJoinAnonymouslyProps = await Features.Get<UIFeatures.AllowEditJoinAnonymouslyChatProps, bool>(cancellationToken);
         return new() {
             Rules = rules,
             Link = link,
             Invites = invites,
+            AllowEditJoinAnonymouslyProps = allowEditJoinAnonymouslyProps,
         };
     }
 
@@ -130,7 +140,8 @@
         var newChat = chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,
-            AllowedAuthorKind = _form.AllowsAnonymous ? ChatAuthorKind.Any : ChatAuthorKind.RegularOnly,
+            AllowGuestAuthors = _form.AllowGuestAuthors,
+            AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
             MediaId = _form.PictureId,
         };
         var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
@@ -161,21 +172,24 @@
         public string Picture { get; set; } = "";
         public MediaId PictureId { get; set; } = MediaId.None;
         public bool IsPublic { get; set; }
-        public bool AllowsAnonymous { get; set; }
+        public bool AllowGuestAuthors { get; set; }
+        public bool AllowAnonymousAuthors { get; set; }
         public string ImageUploadUrl { get; set; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }
         public string PictureFormId { get; }
         public string IsPublicFormId { get; }
-        public string AllowsAnonymousFormId { get; }
+        public string AllowGuestAuthorsFormId { get; }
+        public string AllowAnonymousAuthorsFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
             PictureFormId = $"{FormId}-picture";
             IsPublicFormId = $"{FormId}-is-public";
-            AllowsAnonymousFormId = $"{FormId}-allows-anonymous";
+            AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
+            AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
         }
     }
 
@@ -185,6 +199,7 @@
         public AuthorRules? Rules { get; init; }
         public DisplayUrl? Link { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
+        public bool AllowEditJoinAnonymouslyProps { get; init; }
     }
 
     public sealed record Model(Chat Chat);

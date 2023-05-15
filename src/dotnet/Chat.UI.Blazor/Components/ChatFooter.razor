@@ -28,7 +28,7 @@
                         @if (!m.OtherUserId.IsNone) {
                             <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
                             <AccountName UserSid="@m.OtherUserId.Id"/>
-                        } else if (m.CanUseAnonymousAvatar) {
+                        } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
                         } else {
@@ -76,15 +76,17 @@
         var canPost = Chat.Rules.CanWrite();
         var canJoin = !canPost && Chat.Rules.CanJoin();
         var hasMultipleAvatars = false;
-        var canUseAnonymousAvatar = false;
+        var canJoinWithGuestAccount = false;
+        var canJoinAnonymously = false;
         if (canJoin) {
-            canUseAnonymousAvatar = Chat.CanUseAnonymousAuthor();
-            if (!account.IsGuestOrNone) {
+            if (account.IsGuestOrNone) {
+                canJoinWithGuestAccount = Chat.AllowGuestAuthors;
+            } else {
+                canJoinAnonymously = Chat.AllowAnonymousAuthors;
                 var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
-                hasMultipleAvatars = avatars.Length > 1 || canUseAnonymousAvatar;
+                hasMultipleAvatars = avatars.Length > 1 || canJoinAnonymously;
             }
         }
-
 
         return new () {
             OtherUserId = otherUserId,
@@ -92,7 +94,8 @@
             CanPost = canPost,
             CanJoin = canJoin,
             HasMultipleAvatars = hasMultipleAvatars,
-            CanUseAnonymousAvatar = canUseAnonymousAvatar,
+            CanJoinWithGuestAccount = canJoinWithGuestAccount,
+            CanJoinAnonymously = canJoinAnonymously,
         };
     }
 
@@ -104,7 +107,7 @@
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, m.CanUseAnonymousAvatar, JoinWithAvatar));
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, m.CanJoinAnonymously, JoinWithAvatar));
 
         async Task JoinWithAvatar(AvatarFull avatar) {
             var command = new IAuthors.JoinCommand(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
@@ -122,6 +125,7 @@
         public bool CanPost { get; init; }
         public bool CanJoin { get; init; }
         public bool HasMultipleAvatars { get; init; }
-        public bool CanUseAnonymousAvatar { get; init; }
+        public bool CanJoinWithGuestAccount { get; init; }
+        public bool CanJoinAnonymously { get; init; }
     }
 }

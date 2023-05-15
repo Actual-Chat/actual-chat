@@ -160,13 +160,20 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (account.IsGuestOrNone && joinAnonymously == false)
-            throw StandardError.Constraint(nameof(IAuthors.JoinCommand.JoinAnonymously)
-                + " should be true or not be specified for guest user.");
 
-        var actualJoinAnonymously = joinAnonymously ?? account.IsGuestOrNone;
-        if (actualJoinAnonymously && !chat.CanUseAnonymousAuthor())
-            throw StandardError.Constraint("The chat does not allow to join anonymously.");
+        if (account.IsGuestOrNone) {
+            if (!chat.AllowGuestAuthors)
+                throw StandardError.Constraint("The chat does not allow to join with guest account.");
+            if (joinAnonymously == false)
+                throw StandardError.Constraint(nameof(IAuthors.JoinCommand.JoinAnonymously)
+                    + " should be true or not be specified for guest account.");
+        }
+        else {
+            if (joinAnonymously.GetValueOrDefault()) {
+                if (!chat.AllowAnonymousAuthors)
+                    throw StandardError.Constraint("The chat does not allow to join anonymously.");
+            }
+        }
 
         var upsertCommand = new IAuthorsBackend.UpsertCommand(
             chatId, author?.Id ?? default, account.Id, null,
