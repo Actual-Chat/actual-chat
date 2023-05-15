@@ -34,7 +34,7 @@ export class Landing {
     ) {
         this.header = landing.querySelector('.landing-header');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
-        landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
+        landing.querySelectorAll('.scrollable').forEach(e => this.pages.push(e as HTMLElement));
 
         this.scrollContainer = getScrollContainer(this.pages[0]);
 
@@ -67,6 +67,8 @@ export class Landing {
                 video.hidden = false;
             });
         }
+
+        this.setCarouselControls();
     }
 
     public dispose() {
@@ -75,6 +77,58 @@ export class Landing {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private setCarouselControls() {
+        const rightArrows = this.landing.querySelectorAll('.right-arrow');
+        const leftArrows = this.landing.querySelectorAll('.left-arrow');
+        const dots = this.landing.querySelectorAll('.carousel-dot');
+        rightArrows.forEach(elem => {
+            this.onArrowClick(elem, false);
+        })
+        leftArrows.forEach(elem => {
+            this.onArrowClick(elem, true);
+        })
+        this.onDotClick(dots);
+    }
+
+    private onDotClick(dots: NodeListOf<Element>) {
+        dots.forEach(elem => {
+            let id = elem.getAttribute('id');
+            let slideId = id.replace('dot-', '');
+            let slide = this.landing.querySelector(`#${slideId}`)
+            if (slide != null) {
+                let carousel = elem.closest('.carousel');
+                let slideLeft = slide.getBoundingClientRect().left;
+                const options = {
+                    behavior: 'smooth',
+                    left: slideLeft,
+                } as ScrollToOptions;
+                fromEvent(elem, 'click')
+                    .pipe(takeUntil(this.disposed$))
+                    .subscribe(() => carousel.scrollTo(options));
+            }
+        })
+    }
+
+    private onArrowClick(elem: Element, left: boolean) {
+        let carouselWrapper = elem.closest('.carousel-wrapper');
+        let id = carouselWrapper.getAttribute('name');
+        let splitId = id.split('-');
+        let nextSlideOrder = left ? Number(splitId[2]) - 1 : Number(splitId[2]) + 1;
+        let nextSlideId = splitId[0] + '-' + splitId[1] + '-' + nextSlideOrder;
+        let nextSlide = this.landing.querySelector(`#${nextSlideId}`)
+        if (nextSlide != null) {
+            let carousel = elem.closest('.carousel');
+            let nextSlideLeft = nextSlide.getBoundingClientRect().left;
+            const options = {
+                behavior: 'smooth',
+                left: nextSlideLeft,
+            } as ScrollToOptions;
+            fromEvent(elem, 'click')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => carousel.scrollTo(options));
+        }
     }
 
     private updateHeader(): void {
