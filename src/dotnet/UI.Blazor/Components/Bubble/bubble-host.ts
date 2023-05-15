@@ -36,7 +36,9 @@ export class BubbleHost {
         const domChanged$ = new Subject();
         this.mutationObserver = new MutationObserver((mutations) => {
             mutations.forEach(mutation => {
-                if (mutation.addedNodes.length || mutation.removedNodes.length) {
+                if (mutation.addedNodes.length
+                    || mutation.removedNodes.length
+                    || mutation.type === 'attributes') {
                     domChanged$.next(undefined);
                 }
             });
@@ -44,14 +46,24 @@ export class BubbleHost {
         domChanged$
             .pipe(
                 startWith(undefined),
-                debounceTime(1000),
+                debounceTime(500),
                 takeUntil(this.skipped),
             )
             .subscribe(() => {
                 this.updateBubbles();
                 this.showNextBubble();
             });
-        this.mutationObserver.observe(document.getElementById('app'), { subtree: true, childList: true });
+        this.mutationObserver.observe(
+            document.getElementById('app'),
+            {
+                subtree: true,
+                childList: true,
+                attributes: true,
+                attributeFilter: [
+                    'data-side-nav',
+                    'data-settings-panel',
+                ],
+            });
     }
 
     public async skipBubbles(): Promise<void> {
@@ -244,6 +256,9 @@ export class BubbleHost {
     private topElementIsBubble(element: HTMLElement): boolean {
         const rect = element.getBoundingClientRect();
         const topElement = document.elementFromPoint(rect.left, rect.top);
+        if (!topElement)
+            return false;
+
         const isBubble = topElement.classList.contains('ac-bubble');
         if (isBubble)
             return true;
