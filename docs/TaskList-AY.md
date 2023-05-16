@@ -1,4 +1,6 @@
 Near-term:
+- GuestId is not set issue
+- Check messages in walk-through
 - Switch to Stl.Rpc
 
 Mid-term (team):
