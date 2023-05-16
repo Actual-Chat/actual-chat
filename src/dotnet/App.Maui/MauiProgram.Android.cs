@@ -17,6 +17,14 @@ public static partial class MauiProgram
                 AndroidConstants.LogTag,
                 outputTemplate: "({ThreadID}) [{SourceContext}] {Message:l{NewLine:l}{Exception:l}");
 
+    public static partial string? GetAppSettingsFilePath()
+    {
+        var dirPath = Platform.AppContext.GetExternalFilesDir(null);
+        if (dirPath == null)
+            return null;
+        return Path.Combine(dirPath.Path, MauiConstants.AppSettingsFileName);
+    }
+
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>

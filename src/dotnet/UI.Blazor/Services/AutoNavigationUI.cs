@@ -1,3 +1,5 @@
+using Stl.Diagnostics;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public enum AutoNavigationReason
@@ -33,7 +35,7 @@ public abstract class AutoNavigationUI : IHasServices
     {
         Services = services;
         Log = services.LogFor(GetType());
-        DebugLog ??= Log.IsEnabled(LogLevel.Debug) ? Log : NullLogger.Instance;
+        DebugLog = Log.IfEnabled(LogLevel.Debug);
     }
 
     public Task AutoNavigate(CancellationToken cancellationToken)

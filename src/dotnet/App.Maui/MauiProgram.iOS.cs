@@ -10,6 +10,9 @@ public static partial class MauiProgram
     public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration)
         => loggerConfiguration.WriteTo.NSLog();
 
+    public static partial string? GetAppSettingsFilePath()
+        => null;
+
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);

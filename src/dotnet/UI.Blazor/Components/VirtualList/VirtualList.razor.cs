@@ -10,8 +10,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ILogger<VirtualList<TItem>> Log { get; init; } = null!;
 
-    private bool DebugMode => Constants.DebugMode.VirtualList;
-
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;

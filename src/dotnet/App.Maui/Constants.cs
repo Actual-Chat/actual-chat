@@ -7,4 +7,5 @@ public static class MauiConstants
 #else
     public const string Host = "actual.chat";
 #endif
+    public const string AppSettingsFileName = "appsettings.json";
 }

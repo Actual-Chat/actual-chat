@@ -18,8 +18,6 @@ public static partial class Constants
         public static readonly bool ReplicaCache = false;
 
         // UI services
-        public static readonly bool VirtualList = false;
-        public static readonly bool History = false;
         public static readonly bool ChatUI = false;
 
         // Audio

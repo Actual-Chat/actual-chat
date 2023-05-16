@@ -2,6 +2,7 @@ using ActualChat.Concurrency;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services.Internal;
+using Stl.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -17,7 +18,7 @@ public partial class History : IHasServices, IDisposable
 
     private object Lock { get; } = new();
     private ILogger Log { get; }
-    private ILogger? DebugLog => Constants.DebugMode.History ? Log : null;
+    private ILogger? DebugLog { get; }
 
     internal HistoryItemIdFormatter ItemIdFormatter { get; }
 
@@ -53,6 +54,7 @@ public partial class History : IHasServices, IDisposable
     {
         Services = services;
         Log = services.LogFor(GetType());
+        DebugLog = Log.IfEnabled(LogLevel.Debug);
         ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();

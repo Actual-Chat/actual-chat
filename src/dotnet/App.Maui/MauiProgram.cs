@@ -22,6 +22,8 @@ public static partial class MauiProgram
 
     public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration);
 
+    public static partial string? GetAppSettingsFilePath();
+
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.Region(nameof(CreateMauiApp));

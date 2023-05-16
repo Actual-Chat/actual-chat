@@ -9,6 +9,9 @@ public static partial class MauiProgram
     public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration)
         => loggerConfiguration;
 
+    public static partial string? GetAppSettingsFilePath()
+        => null;
+
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
