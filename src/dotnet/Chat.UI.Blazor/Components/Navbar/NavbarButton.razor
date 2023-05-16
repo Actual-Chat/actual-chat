@@ -1,6 +1,7 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 
-<div class="navbar-button @Class">
+<div class="navbar-button @Class"
+     @attributes="@AdditionalAttributes">
     <ButtonSquare
         Click="@Click"
         Class="@ButtonClass"
@@ -20,4 +21,6 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter] public EventCallback Click { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 }

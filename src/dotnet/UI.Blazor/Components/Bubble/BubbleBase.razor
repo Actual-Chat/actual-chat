@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IBubble
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public bool IsLastVisible { get; set; }
+    [Parameter] public int Index { get; set; }
+    [Parameter] public int Total { get; set; }
+
+    [CascadingParameter] public BubbleHost Host { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+        => await Host.ShowBubble(this);
+}

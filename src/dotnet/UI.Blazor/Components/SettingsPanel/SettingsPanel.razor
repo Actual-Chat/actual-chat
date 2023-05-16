@@ -3,6 +3,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
+    var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var link = Links.User(AccountUI.OwnAccount.Value.Id);
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
@@ -45,7 +46,7 @@
 }
 
 <CascadingValue Value="@this" IsFixed="true" >
-    <div class="@Class settings-panel @cls">
+    <div class="@Class settings-panel @cls" data-settings-panel="@attr">
         <div class="c-tabs" role="tablist">
             <div class="c-header">
                 <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
