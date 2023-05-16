@@ -13,7 +13,7 @@ export type LogScope =
     | 'AppSettings'
     | 'AsyncProcessor'
     | 'BrowserInfo'
-    | 'BulkInitUI'
+    | 'BulkInit'
     | 'Gestures'
     | 'event-handling'
     | 'History'

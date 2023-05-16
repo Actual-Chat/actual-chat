@@ -1,6 +1,6 @@
 import {Log} from "logging";
 
-const { infoLog } = Log.get('BulkInitUI');
+const { infoLog } = Log.get('BulkInit');
 
 export function bulkInit(calls: Array<unknown>) {
     infoLog?.log('-> bulkInit');
@@ -28,7 +28,7 @@ function globalInvoke(name: string, args: unknown[]) {
         }
         else {
             const self = globalEval(typeName);
-            infoLog?.log(`globalInvoke:`, name, ', this:', self, ', arguments:', args);
+            infoLog?.log(`globalInvoke:`, name, ', this:', self?.name, ', arguments:', args);
             fn.apply(self, args);
         }
     }

@@ -76,12 +76,14 @@
                 throw Error("Internal error: App.postMessage is available only in mobile apps.");
             },
             /* Bundle/bulk init */
+            whenBundleReady: null,
+            markBundleReady: function() { },
             bulkInit: async function() {
-                await window.App['whenBundleReady'];
+                await window.App.whenBundleReady;
                 window.ui.bulkInit(arguments);
             },
         };
-        window.App['whenBundleReady'] = new Promise((resolve, reject) => {
+        window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
         });
 
