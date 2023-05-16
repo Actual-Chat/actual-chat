@@ -43,10 +43,8 @@ public partial class ChatListUI
         var changes = cListBase.Changes(cancellationToken);
         await foreach (var cList in changes.ConfigureAwait(false)) {
             DebugLog?.LogDebug("PushItems({ListKind}): push", listKind);
-            var newEntries = cList.Value
-                .Select(c => c.Id)
-                .ToList();
-            PushItems(listKind, newEntries);
+            var newItems = cList.Value.Select(c => c.Id).ToList();
+            PushItems(listKind, newItems);
         }
     }
 
@@ -74,13 +72,14 @@ public partial class ChatListUI
             return;
 
         using (Computed.Invalidate()) {
-            DebugLog?.LogDebug("PushItems({ListKind}): invalidating GetCount", listKind);
-            if (isCountChanged)
-                _ = GetCount(listKind);
             DebugLog?.LogDebug("PushItems({ListKind}): invalidating {Count} indexes: {Indexes}",
                 listKind, changedIndexes.Count, changedIndexes.ToDelimitedString());
             foreach (var i in changedIndexes)
                 _ = GetItem(listKind, i);
+
+            DebugLog?.LogDebug("PushItems({ListKind}): invalidating GetCount", listKind);
+            if (isCountChanged)
+                _ = GetCount(listKind);
         }
     }
 }

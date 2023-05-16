@@ -102,24 +102,30 @@ else {
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = await ChatListUI.GetItem(ListKind, Index);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
+        // Properties are copied to local vars because of this.
+        var listKind = ListKind;
+        var index = Index;
+
+        var chatId = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
         if (chatId.IsNone)
             return Model.Loading;
 
-        var chatInfo = await ChatUI.Get(chatId, cancellationToken);
+        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatInfo == null)
             return Model.None;
 
-        var chatState = await ChatUI.GetState(chatId, false, cancellationToken);
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
         if (chatState == null)
             return Model.None;
 
         var isLastItemInBlock = false;
-        if (chatState.Contact.IsPinned && ListKind == ChatListKind.All) {
-            var nextChatId = await ChatListUI.GetItem(ListKind, Index + 1);
+        if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
+            var nextChatId = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
             var nextChatInfo = nextChatId.IsNone ? null
-                : await ChatUI.Get(nextChatId, cancellationToken);
+                : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
             if (nextChatInfo != null)
                 isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
         }
@@ -130,7 +136,8 @@ else {
         };
     }
 
-    private async Task OnClick(ChatId chatId) {
+    private async Task OnClick(ChatId chatId)
+    {
         var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
         _ = tuneUI.Play("select-chat");
         if (ScreenSize.IsWide())
