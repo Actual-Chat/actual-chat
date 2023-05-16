@@ -268,6 +268,13 @@ module.exports = (env, args) => {
                     type: 'this',
                 },
             },
+            // skeletons
+            skeletons: {
+                import: './../dotnet/UI.Blazor/Components/Skeleton/index.ts',
+                library: {
+                    type: 'this',
+                },
+            },
             // Workers
             sw: {
                 import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',

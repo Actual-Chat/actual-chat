@@ -44,6 +44,7 @@
 </RenderIntoSlot>
 
 @if (ReferenceEquals(m, Model.Loading)) {
+    <chat-view-skeleton count="15" />
     return;
 }
 @if (m.ChatId.IsNone) {

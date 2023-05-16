@@ -7,7 +7,7 @@
 <div class="writable-chat-footer">
     @if (ReferenceEquals(m, Model.Loading)) {
         // Render skeletons until State is computed
-        <ChatFooterSkeletons />
+        <chat-view-footer-skeleton/>
     } else if (ReferenceEquals(m, Model.SelectChat)) {
         <ReadOnlyChatFooter FooterText="@String.Empty" />
     } else {

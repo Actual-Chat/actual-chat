@@ -1,17 +1,11 @@
-@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="chat-skeleton-panel">
     <SkeletonPanelHeader Class="border-b border-bg-04 bg-02"/>
     <SkeletonPanelBody>
-        <chat-skeleton class="chat-view" count="14"></chat-skeleton>
+        <chat-view-skeleton count="14"></chat-view-skeleton>
     </SkeletonPanelBody>
     <SkeletonPanelFooter>
-        <chat-skeleton class="chat-view-footer"></chat-skeleton>
+        <chat-view-footer-skeleton />
     </SkeletonPanelFooter>
-
 </div>
-
-@code {
-
-}
