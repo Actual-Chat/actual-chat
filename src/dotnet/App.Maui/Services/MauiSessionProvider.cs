@@ -70,7 +70,7 @@ public sealed class MauiSessionProvider : ISessionProvider
             }
 
             if (session == null) {
-                var sessionId = await GetSessionId().ConfigureAwait(false);
+                var sessionId = await CreateSessionId().ConfigureAwait(false);
                 session = new Session(sessionId);
                 bool isSaved;
                 try {
@@ -104,9 +104,9 @@ public sealed class MauiSessionProvider : ISessionProvider
             return session;
         });
 
-    private static async Task<string> GetSessionId()
+    private static async Task<string> CreateSessionId()
     {
-        var _ = Tracer.Region(nameof(GetSessionId));
+        var _ = Tracer.Region(nameof(CreateSessionId));
         try {
             // Manually configure HTTP client as we don't have it configured globally at DI level
             using var httpClient = new HttpClient(new HttpClientHandler {
@@ -116,15 +116,16 @@ public sealed class MauiSessionProvider : ISessionProvider
                 DefaultRequestVersion = HttpVersion.Version30,
                 DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
             };
-            httpClient.DefaultRequestHeaders.Add("cookie", AppStartup.GetCookieHeader());
+            var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
+            httpClient.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
 
             var authClientLogger = MauiDiagnostics.LoggerFactory.CreateLogger<MobileAuthClient>();
             var authClient = new MobileAuthClient(httpClient, authClientLogger);
-            var sessionId = await authClient.GetSessionId().ConfigureAwait(false);
+            var sessionId = await authClient.GetOrCreateSessionId().ConfigureAwait(false);
             return sessionId;
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(GetSessionId)} failed");
+            Log.LogError(e, $"{nameof(CreateSessionId)} failed");
             throw;
         }
     }

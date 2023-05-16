@@ -24,19 +24,6 @@ namespace ActualChat.UI.Blazor.App
 {
     public static class AppStartup
     {
-        private static readonly object _lock = new ();
-        private static string? _sessionAffinityKey;
-
-        public static string SessionAffinityKey {
-            get {
-                lock (_lock)
-                    return _sessionAffinityKey ??= GenerateSessionAffinityKey();
-            }
-        }
-
-        public static string GetCookieHeader()
-            => $"GCLB=\"{SessionAffinityKey}\"";
-
         public static void ConfigureServices(
             IServiceCollection services,
             AppKind appKind,
@@ -58,7 +45,6 @@ namespace ActualChat.UI.Blazor.App
             // Fusion services
             var fusion = services.AddFusion();
             var fusionClient = fusion.AddRestEaseClient();
-            const string cookieHeaderName = "cookie";
             var isWasm = appKind == AppKind.WasmApp;
             if (isWasm)
                 fusionClient.ConfigureHttpClient((c, name, o) => {
@@ -77,10 +63,11 @@ namespace ActualChat.UI.Blazor.App
                     var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                     var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
                     o.HttpClientActions.Add(client => {
+                        var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
                         client.BaseAddress = clientBaseUrl.ToUri();
                         client.DefaultRequestVersion = HttpVersion.Version30;
                         client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-                        client.DefaultRequestHeaders.Add(cookieHeaderName, GetCookieHeader());
+                        client.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
                     });
                     o.HttpMessageHandlerBuilderActions.Add(b => {
                         if (b.PrimaryHandler is HttpClientHandler h)
@@ -96,8 +83,10 @@ namespace ActualChat.UI.Blazor.App
                     MessageLogLevel = LogLevel.None,
                     ClientWebSocketFactory = c1 => {
                         var client = WebSocketChannelProvider.Options.DefaultClientWebSocketFactory(c1);
-                        if (!isWasm)
-                            client.Options.SetRequestHeader(cookieHeaderName, GetCookieHeader());
+                        if (!isWasm) {
+                            var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
+                            client.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                        }
                         return client;
                     },
                 };
@@ -136,8 +125,5 @@ namespace ActualChat.UI.Blazor.App
                 moduleHostBuilder = moduleHostBuilder.WithModules(platformModuleFactory.Invoke(moduleServices));
             moduleHostBuilder.Build(services);
         }
-
-        private static string GenerateSessionAffinityKey()
-            => RandomStringGenerator.Default.Next(16, RandomStringGenerator.Base16Alphabet);
     }
 }

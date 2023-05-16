@@ -8,7 +8,7 @@ public class SetupSessionTest : AppHostTestBase
     public SetupSessionTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
-    public async Task SetupSessionBugTest()
+    public async Task SetupSessionBugTest1()
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
@@ -23,7 +23,29 @@ public class SetupSessionTest : AppHostTestBase
         await Task.WhenAll(tasks);
 
         var auth = services.GetRequiredService<IAuth>();
-        var sessionInfo = auth.GetSessionInfo(session);
+        var sessionInfo = await auth.GetSessionInfo(session);
         sessionInfo.Should().NotBeNull();
+        sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetupSessionBugTest2()
+    {
+        using var appHost = await NewAppHost();
+        var services = appHost.Services;
+        var commander = services.Commander();
+
+        await using var tester = appHost.NewWebClientTester();
+
+        var sessionFactory = services.GetRequiredService<ISessionFactory>();
+        var auth = services.GetRequiredService<IAuth>();
+
+        await Parallel.ForEachAsync(Enumerable.Range(0, 10), async (_, cancellationToken) => {
+            var session = sessionFactory.CreateSession();
+            await commander.Call(new SetupSessionCommand(session), cancellationToken);
+            var sessionInfo = await auth.GetSessionInfo(session, cancellationToken);
+            sessionInfo.Should().NotBeNull();
+            sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
+        });
     }
 }

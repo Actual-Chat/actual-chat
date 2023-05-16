@@ -43,7 +43,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
         var userId = new UserId(sessionInfo.UserId);
 
         if (Computed.IsInvalidating()) {
-            InvalidatePresenceIfOffline(userId);
             if (context.Operation().Items.Get<UserNameChangedTag>() != null)
                 _ = AuthBackend.GetUser(default, userId, default);
             return;
@@ -116,45 +115,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
         }
 
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-    }
-
-    [CommandFilter(Priority = 1)]
-    public virtual async Task OnSetupSession(SetupSessionCommand command, CancellationToken cancellationToken)
-    {
-        // This command filter takes the following actions when session gets "touched" or setup:
-        // - Updates UserPresence.Get & invalidates it if it's not computed or offline
-
-        var context = CommandContext.GetCurrent();
-
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
-        var userId = new UserId(sessionInfo?.UserId, ParseOrNone.Option);
-        if (userId.IsNone)
-            return;
-
-        if (Computed.IsInvalidating()) {
-            InvalidatePresenceIfOffline(userId);
-            return;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    // Private methods
-
-    private void InvalidatePresenceIfOffline(UserId userId)
-    {
-        var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
-        if (c == null || c.IsInvalidated())
-            return; // No computed to invalidate
-        if (c.IsConsistent() && c.IsValue(out var v) && v is not Presence.Offline)
-            return; // Consistent + already in desirable (non-Offline) state
-
-        _ = UserPresences.Get(userId, default);
     }
 
     // Nested types

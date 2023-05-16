@@ -11,17 +11,17 @@ public sealed class MobileAuthClient
         Log = log;
     }
 
-    public async Task<string> GetSessionId()
+    public async Task<string> GetOrCreateSessionId()
     {
         try {
-            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getSession";
+            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getOrCreateSession";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             var sessionId = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             return sessionId;
         }
         catch (Exception e) {
-            Log.LogError(e, "Session setup failed - probably server is unreachable");
+            Log.LogError(e, "GetOrCreateSessionId failed - probably server is unreachable");
             throw;
         }
     }
@@ -39,12 +39,14 @@ public sealed class MobileAuthClient
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            Log.LogError(e, "Google sign-in failed");
+            Log.LogError(e, "SignInGoogle failed");
             return false;
         }
     }
 
-    public async Task SignOut()
+    // Obsolete
+#if false
+    public async Task SignInGoogle()
     {
         var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
         var sessionId = session.Id.Value;
@@ -54,8 +56,9 @@ public sealed class MobileAuthClient
             response.EnsureSuccessStatusCode();
         }
         catch (Exception e) {
-            Log.LogError(e, "Sign-out failed");
+            Log.LogError(e, "SignInGoogle failed");
             throw;
         }
     }
+#endif
 }

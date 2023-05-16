@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
+using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
@@ -10,7 +11,6 @@ using Microsoft.Extensions.Options;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Users.Controllers;
 
@@ -31,7 +31,7 @@ public sealed class MobileAuthController : Controller
         Commander = commander;
     }
 
-    [Obsolete("Kept only for api compatibility with mobile apps", true)]
+    [Obsolete("Kept only for compatibility with the old API", true)]
     [HttpGet("setupSession/{sessionId}")]
     public async Task<ActionResult> SetupSession(string sessionId, CancellationToken cancellationToken)
     {
@@ -44,18 +44,17 @@ public sealed class MobileAuthController : Controller
         var session = new Session(sessionId);
 
         var auth = Services.GetRequiredService<IAuth>();
-        var sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
-        if (sessionInfo == null) {
+        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.GetGuestId().IsGuest != true) {
             var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
             var commander = Services.Commander();
             await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
         }
+        sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
 
-        sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
-        var sb = new StringBuilder();
+        using var sb = ZString.CreateStringBuilder();
         sb.Append("SessionInfo: ");
         sb.Append(sessionInfo != null ? sessionInfo.SessionHash : "no-session-info");
-
         sb.AppendLine();
         sb.Append("Account: ");
         try {
@@ -66,16 +65,20 @@ public sealed class MobileAuthController : Controller
         catch (Exception e) {
             sb.Append(e);
         }
-
         return Content(sb.ToString());
     }
 
+    [Obsolete("Kept only for compatibility with the old API", true)]
     [HttpGet("getSession")]
-    public async Task<ActionResult> GetSession(CancellationToken cancellationToken)
+    public Task<ActionResult> GetSession(CancellationToken cancellationToken)
+        => GetOrCreateSession(cancellationToken);
+
+    [HttpGet("getOrCreateSession")]
+    public async Task<ActionResult> GetOrCreateSession(CancellationToken cancellationToken)
     {
         var httpContext = HttpContext;
         var sessionProvider = httpContext.RequestServices.GetRequiredService<ISessionProvider>();
-        var session = sessionProvider.Session;
+        var session = sessionProvider.Session; // The new or existing cookie-based Session
 
         var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
         var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
@@ -83,8 +86,8 @@ public sealed class MobileAuthController : Controller
             : "";
 
         var auth = Services.GetRequiredService<IAuth>();
-        var sessionInfo = await auth.GetSessionInfo(session, default).ConfigureAwait(false);
-        if (sessionInfo == null) {
+        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.GetGuestId().IsGuest != true) {
             var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
             var commander = Services.Commander();
             await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
