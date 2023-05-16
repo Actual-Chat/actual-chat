@@ -1,4 +1,4 @@
-import { arrow, computePosition, flip, offset, Placement, shift } from '@floating-ui/dom';
+import { arrow, computePosition, flip, offset, Placement, shift, autoUpdate } from '@floating-ui/dom';
 import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
 import { Log } from 'logging';
 import { setTimeout } from 'timerQueue';
@@ -23,6 +23,7 @@ export class BubbleHost {
     private readonly skipped: Subject<void> = new Subject<void>();
 
     private _bubbles: BubbleModel[] = [];
+    private _clearAutoUpdate: () => void;
 
     public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
         return new BubbleHost(blazorRef, readBubbles);
@@ -72,6 +73,7 @@ export class BubbleHost {
         this.mutationObserver.disconnect();
         this.skipped.next(undefined);
         this.skipped.complete();
+        this.clearAutoUpdate();
     }
 
     public async readBubble(bubbleRef: string): Promise<void> {
@@ -79,7 +81,7 @@ export class BubbleHost {
 
         const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
         bubble.isRead = true;
-
+        this.clearAutoUpdate();
         this.showNextBubble();
     }
 
@@ -99,6 +101,22 @@ export class BubbleHost {
         if (bubbleElement.style.display != 'block')
             bubbleElement.style.display = 'block';
 
+        this.clearAutoUpdate();
+        this._clearAutoUpdate = autoUpdate(
+            triggerElement,
+            bubbleElement,
+            async () => {
+                await this.updatePosition(triggerElement, bubbleElement, arrowElement, position);
+            }, {
+                animationFrame: true,
+            });
+    }
+
+    private async updatePosition(
+        triggerElement: HTMLElement,
+        bubbleElement: HTMLElement,
+        arrowElement: HTMLElement,
+        position: Placement): Promise<void> {
         const { x, y, placement, middlewareData } = await computePosition(
             triggerElement,
             bubbleElement,
@@ -273,5 +291,13 @@ export class BubbleHost {
     private getBubbleElements(): HTMLElement[] {
         const elements = [...document.querySelectorAll('[data-bubble]')];
         return elements as HTMLElement[];
+    }
+
+    private clearAutoUpdate(): void {
+        if (!this._clearAutoUpdate)
+            return;
+
+        this._clearAutoUpdate();
+        this._clearAutoUpdate = undefined;
     }
 }
