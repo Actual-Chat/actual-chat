@@ -16,6 +16,6 @@ export class VirtualListItem {
     }
 
     get isChatEntry(): boolean {
-        return isNaN(+this.key);
+        return !isNaN(+this.key);
     }
 }
