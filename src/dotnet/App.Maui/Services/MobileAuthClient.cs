@@ -44,8 +44,6 @@ public sealed class MobileAuthClient
         }
     }
 
-    // Obsolete
-#if false
     public async Task SignInGoogle()
     {
         var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
@@ -60,5 +58,4 @@ public sealed class MobileAuthClient
             throw;
         }
     }
-#endif
 }
