@@ -79,18 +79,17 @@ public class ActiveChatsUI
         ImmutableHashSet<ActiveChat> activeChats,
         CancellationToken cancellationToken = default)
     {
-        if (!WhenLoaded.IsCompleted)
-            return FixActiveChats(activeChats, cancellationToken);
-
         // Turn off stored recording on restoring state during app start
         activeChats = activeChats
-            .Select(c => {
-                if (c.IsRecording)
-                    c = c with { IsRecording = false };
-                var listeningRecency = Moment.Max(c.Recency, c.ListeningRecency);
-                if (c.IsListening && Now - listeningRecency > MaxContinueListeningRecency)
-                    c = c with { IsListening = false };
-                return c;
+            .Select(chat => {
+                if (chat.IsRecording)
+                    chat = chat with { IsRecording = false };
+
+                var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
+                if (chat.IsListening && Now - listeningRecency > MaxContinueListeningRecency)
+                    chat = chat with { IsListening = false };
+
+                return chat;
             })
             .ToImmutableHashSet();
         return FixActiveChats(activeChats, cancellationToken);
