@@ -33,10 +33,10 @@ public sealed class UploadController : ControllerBase
 
         var file = httpRequest.Form.Files[0];
         if (file.Length == 0)
-            return BadRequest("Image is empty");
+            return BadRequest("File is empty");
 
-        if (file.Length > Constants.Chat.PictureFileSizeLimit)
-            return BadRequest("Image is too big");
+        if (file.Length > Constants.Chat.FileSizeLimit)
+            return BadRequest("File is too big");
 
         var fileInfo = await ReadFileContent(file, cancellationToken).ConfigureAwait(false);
         var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
