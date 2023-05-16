@@ -35,6 +35,7 @@ export * from './Components/Tooltip/tooltip-host';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/PicUpload/pic-upload';
 export * from './Components/FileUpload/file-upload';
+export * from './Components/Skeleton';
 
 export * from './Layouts/base-layout';
 
