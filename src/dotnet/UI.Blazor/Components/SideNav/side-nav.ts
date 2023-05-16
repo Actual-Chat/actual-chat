@@ -110,6 +110,8 @@ class SideNavPullDetectGesture extends Gesture {
                 return;
             if (document.querySelector('.ac-menu-host.has-overlay')) // Context menu is shown
                 return;
+            if (document.querySelector('.ac-bubble-host > .ac-bubble')) // Context menu is shown
+                return;
 
             const target = event.target;
             if (target instanceof HTMLElement) {

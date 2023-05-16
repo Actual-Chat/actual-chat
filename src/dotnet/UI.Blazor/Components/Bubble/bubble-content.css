@@ -20,6 +20,16 @@
     @apply gap-x-1;
 }
 
+.bubble-content p {
+    @apply my-2;
+}
+.bubble-content pre {
+    @apply inline-block;
+    @apply rounded px-0.25 py-0;
+    @apply whitespace-pre-wrap;
+    @apply bg-bubble-btn-hover;
+}
+
 /* Buttons */
 .btn-next {
     @apply bg-bubble-btn-hover;
