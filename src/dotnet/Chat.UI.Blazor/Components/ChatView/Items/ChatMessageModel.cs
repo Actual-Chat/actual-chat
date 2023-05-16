@@ -25,7 +25,16 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         => $"(#{Key} -> {Entry})";
 
     private Symbol GetKey()
-        => IsFirstUnreadSeparator ? Entry.LocalId.Format() + "-new-messages" : Entry.LocalId.Format();
+    {
+        var key = Entry.LocalId.Format();
+        if (DateLine != null)
+            return $"{key}-date-{DateLine.Value.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}";
+
+        if (IsFirstUnreadSeparator)
+            return $"{key}-new-messages";
+
+        return key;
+    }
 
     // Equality
 
@@ -83,19 +92,20 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
-            var isFirstUnreadSeparator = isUnread && !isPrevUnread;
-            if (isFirstUnreadSeparator)
+            if (hasDateLine)
+                result.Add(new (entry) {
+                    DateLine = date,
+                });
+            if (isUnread && !isPrevUnread)
                 result.Add(new (entry) {
                     IsFirstUnreadSeparator = true,
                 });
 
-            var model = new ChatMessageModel(entry) {
-                DateLine = hasDateLine ? date : null,
+            result.Add(new (entry) {
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
                 ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
-            };
-            result.Add(model);
+            });
 
             isPrevUnread = isUnread;
             isBlockStart = isBlockEnd;
