@@ -8,7 +8,9 @@ body.narrow .thin-left-skeleton-panel {
     @apply hidden;
     width: auto;
 }
-
+.thin-left-skeleton-panel .skeleton-panel-body {
+    @apply items-end gap-y-3 md:gap-y-2;
+}
 body.narrow .thin-left-skeleton-panel .skeleton-panel-body {
     padding-left: 0.4rem;
     padding-right: 0.5rem;
@@ -28,9 +30,7 @@ body.narrow .wide-left-skeleton-panel {
     @apply p-2;
     @apply custom-scrollbar;
 }
-.thin-left-skeleton-panel .skeleton-panel-body {
-    @apply items-end gap-y-3 md:gap-y-2;
-}
+
 .chat-skeleton-panel {
     @apply flex-1 flex-y;
 }
