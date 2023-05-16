@@ -195,3 +195,14 @@ export function preventDefaultForEvent(event?: Event) : void {
     debugLog?.log(`preventDefaultForEvent: event:`, event);
     event.preventDefault();
 }
+
+export function tryPreventDefaultForEvent(event?: Event) : void {
+    if (!event.defaultPrevented) {
+        try {
+            preventDefaultForEvent(event);
+        }
+        catch {
+            // Intended
+        }
+    }
+}

@@ -95,7 +95,7 @@ export class FallbackPlayback {
             this.dest.channelInterpretation = 'speakers';
             this.audio.srcObject = this.dest.stream;
         } catch (e) {
-            errorLog.log('onContextCreated: failed to create destination node', e)
+            errorLog?.log('onContextCreated: failed to create destination node', e)
         }
         debugLog?.log('<- onContextCreated()');
     }
