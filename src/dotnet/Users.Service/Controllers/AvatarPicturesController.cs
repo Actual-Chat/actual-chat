@@ -37,7 +37,7 @@ public sealed class AvatarPicturesController : ControllerBase
         if (file.Length == 0)
             return BadRequest("Image is empty");
 
-        if (file.Length > Constants.Chat.PictureFileSizeLimit)
+        if (file.Length > Constants.Chat.FileSizeLimit)
             return BadRequest("Image is too big");
 
         var user = await Auth.GetUser(SessionResolver.Session, cancellationToken).ConfigureAwait(false);
