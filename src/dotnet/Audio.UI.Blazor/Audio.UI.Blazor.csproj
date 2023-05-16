@@ -13,15 +13,4 @@
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\GuideHeader.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\GuideModal.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\MobileChromeAndroidGuideContent.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\MobileEdgeAndroidGuideContent.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\MobileSafariIosGuideContent.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\WebChromeGuideContent.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\WebEdgeGuideContent.razor" />
-    <AdditionalFiles Include="Components\AudioRecorder\Guides\WebSafariGuideContent.razor" />
-  </ItemGroup>
-
 </Project>

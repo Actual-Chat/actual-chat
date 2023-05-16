@@ -26,16 +26,4 @@
     <ServiceWorker Include="ServiceWorkers\service-worker.ts" />
   </ItemGroup>
 
-  <ItemGroup>
-    <_ContentIncludedByDefault Remove="Components\Guides\GuideHeader.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\GuideModal.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\MobileChromeAndroidGuideContent.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\MobileEdgeAndroidGuideContent.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\MobileSafariIosGuideContent.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\WebChromeGuideContent.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\WebEdgeGuideContent.razor" />
-    <_ContentIncludedByDefault Remove="Components\Guides\WebSafariGuideContent.razor" />
-    <_ContentIncludedByDefault Remove="Pages\GuidesTestPage\GuidesTestPage.razor" />
-  </ItemGroup>
-
 </Project>
