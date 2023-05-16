@@ -1,6 +1,5 @@
 Near-term:
-- GuestId is not set issue
-- Check messages in walk-through
+- [Done?] GuestId is not set issue
 - Historical playback: pause doesn't actually stop it
 - Switch to Stl.Rpc
 
