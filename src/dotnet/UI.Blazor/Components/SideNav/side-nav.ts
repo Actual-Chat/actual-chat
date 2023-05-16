@@ -103,6 +103,9 @@ class SideNavPullDetectGesture extends Gesture {
         debugLog?.log(`SideNavPullDetectGesture.use[${sideNav.side}]`);
 
         return fromSubscription(DocumentEvents.capturedPassive.touchStart$.subscribe((event: TouchEvent) => {
+            if (ScreenSize.isWide())
+                return;
+
             const target = event.target;
             if (target instanceof HTMLElement) {
                 if (hasPotentiallyTouchableParent(target))
