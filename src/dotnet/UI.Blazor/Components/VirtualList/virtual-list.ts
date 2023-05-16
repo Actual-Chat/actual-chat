@@ -982,6 +982,8 @@ export class VirtualList {
         const items = this._orderedItems;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
+            if(!item.isChatEntry)
+                continue;
             if (item.isMeasured && item.range.intersectWith(bufferZone).size > 0) {
                 endIndex = i;
                 if (startIndex < 0)
@@ -999,7 +1001,8 @@ export class VirtualList {
                 let existingItemsHeight = 0;
                 for (let i = 0; i < items.length; i++) {
                     const item = items[i];
-                    endIndex = i;
+                    if(item.isChatEntry)
+                        endIndex = i;
                     existingItemsHeight += item.size;
                     if (existingItemsHeight > viewport.size * 2)
                         break;
