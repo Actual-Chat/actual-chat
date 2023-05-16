@@ -14,9 +14,9 @@
             @Bubble.Index of @Bubble.Total
         </div>
         <div class="bubble-buttons flex justify-end">
-            @if (!Bubble.IsLastVisible) {
-                <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
-            }
+            @* @if (!Bubble.IsLastVisible) { *@
+            @*     <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button> *@
+            @* } *@
             <Button Class="btn-bubble btn-next" Click="OnNextClick">
                 @(Bubble.IsLastVisible ? "Ok" : "Next")
             </Button>
