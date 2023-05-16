@@ -13,8 +13,8 @@ const { debugLog } = Log.get('SideNav');
 const Deceleration = 4; // 1 = full width, per second
 const PullBoundary = 0.2; // 20% of the screen width
 const PrePullDistance = 5; // DeviceInfo.isAndroid ? 5 : 10; // In CSS pixels
-const PrePullDurationMs = 0;
-const MinPullDurationMs = 50;
+const PrePullDurationMs = 15;
+const MinPullDurationMs = 30;
 const MaxSetVisibilityWaitDurationMs = 500;
 
 enum SideNavSide {
@@ -106,6 +106,11 @@ class SideNavPullDetectGesture extends Gesture {
             if (ScreenSize.isWide())
                 return;
 
+            if (document.querySelector('.modal')) // Modal is shown
+                return;
+            if (document.querySelector('.ac-menu-host.has-overlay')) // Context menu is shown
+                return;
+
             const target = event.target;
             if (target instanceof HTMLElement) {
                 if (hasPotentiallyTouchableParent(target))
@@ -117,9 +122,10 @@ class SideNavPullDetectGesture extends Gesture {
             if (sideNav.opposite?.isOpen === true)
                 return; // The other SideNav is open, so only it can be pulled
 
-            for (const activeGesture of Gestures.activeGestures)
+            for (const activeGesture of Gestures.activeGestures) {
                 if (activeGesture instanceof SideNavPullGesture)
-                    return; // Pull is already ongoing / completing
+                    return;
+            }
 
             const coords = getCoords(event);
             if (!coords)
@@ -138,7 +144,10 @@ class SideNavPullDetectGesture extends Gesture {
         const initialState = new MoveState(0, sideNav.isOpen ? 1 : 0);
 
         const move = (event: TouchEvent) => {
-            if (ScreenSize.isWide() || this.isDisposed) {
+            if (this.isDisposed)
+                return;
+
+            if (ScreenSize.isWide()) {
                 this.dispose();
                 return;
             }
@@ -193,10 +202,10 @@ class SideNavPullDetectGesture extends Gesture {
 class SideNavPullGesture extends Gesture {
     constructor(
         public readonly sideNav: SideNav,
-        origin: Vector2D,
-        initialState: MoveState,
-        touchStartEvent: TouchEvent,
-        firstMoveEvent: TouchEvent,
+        public readonly origin: Vector2D,
+        public readonly initialState: MoveState,
+        public readonly touchStartEvent: TouchEvent,
+        public readonly firstMoveEvent: TouchEvent,
     ) {
         super();
         const isOpen = sideNav.isOpen;
@@ -210,17 +219,18 @@ class SideNavPullGesture extends Gesture {
             if (state === null)
                 return;
 
-            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled);
+            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled, ', state:', state);
+
+            const moveDuration = Date.now() - state.startedAt;
+            if (event.type === 'touchstart' || moveDuration < MinPullDurationMs)
+                isCancelled = true;
+
             const coords = getCoords(event);
             if (coords && !isCancelled) {
                 move(event);
                 if (state === null!) // move(event) may call endMove(..., true)
                     return;
             }
-
-            const moveDuration = Date.now() - state.startedAt;
-            if (moveDuration < MinPullDurationMs)
-                isCancelled = true;
 
             let mustBeOpen = isOpen;
             if (state && !isCancelled && !ScreenSize.isWide())
@@ -277,28 +287,19 @@ class SideNavPullGesture extends Gesture {
         sideNav.beginPull();
         sideNav.setTransform(null);
         if (firstMoveEvent.type === 'touchend') {
-            try {
-                endMove(firstMoveEvent, false);
-            }
-            finally {
-                this.dispose();
-            }
+            endMove(firstMoveEvent, false);
         } else {
             try {
                 move(firstMoveEvent);
             }
             catch (e) {
-                try {
-                    endMove(firstMoveEvent, true);
-                }
-                finally {
-                    this.dispose();
-                }
+                endMove(firstMoveEvent, true);
                 throw e;
             }
             this.addDisposables(
                 DocumentEvents.active.touchEnd$.subscribe(e => endMove(e, false)),
                 DocumentEvents.active.touchCancel$.subscribe(e => endMove(e, true)),
+                DocumentEvents.active.touchStart$.subscribe(e => endMove(e, true)), // Just in case
                 DocumentEvents.active.touchMove$.subscribe(move),
             );
         }
@@ -337,15 +338,16 @@ class MoveState {
     }
 }
 
-function getCoords(e: TouchEvent): Vector2D | null {
-    let touches = e?.changedTouches ?? e?.touches;
-    if (touches?.length) {
-        const touch = touches[0];
-        return new Vector2D(touch.pageX, touch.pageY);
-    }
-    return null;
-}
+// Helpers
 
+function getCoords(event?: TouchEvent): Vector2D | null {
+    let touches = event?.changedTouches ?? event?.touches;
+    if (!touches?.length)
+        return null;
+
+    const touch = touches[0];
+    return new Vector2D(touch.pageX, touch.pageY);
+}
 
 function hasPotentiallyTouchableParent(node: Node) {
     if (!(node instanceof HTMLElement))
