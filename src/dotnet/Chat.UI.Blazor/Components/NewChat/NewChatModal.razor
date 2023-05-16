@@ -3,7 +3,7 @@
 @using ActualChat.Search
 @implements IModalView<NewChatModal.Model>
 
-<DialogFrame Class="new-chat-modal" Title="New group" HasCloseButton="true">
+<DialogFrame Class="new-chat-modal" Title="New chat" HasCloseButton="true">
     <Body>
     <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
         <DataAnnotationsValidator/>
@@ -18,7 +18,7 @@
             <div class="flex-y grow">
                 <FormSection
                     For="() => _form.Title"
-                    Label="Group name"
+                    Label="Name"
                     InputId="@_form.TitleId"
                     IsLabelInsideInput="true"
                     Class="!mt-0 grow"
