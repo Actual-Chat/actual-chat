@@ -24,11 +24,11 @@ public sealed class MobileAuthController : Controller
     private IAuth Auth { get; }
     private ICommander Commander { get; }
 
-    public MobileAuthController(IServiceProvider services, IAuth auth, ICommander commander)
+    public MobileAuthController(IServiceProvider services)
     {
         Services = services;
-        Auth = auth;
-        Commander = commander;
+        Auth = services.GetRequiredService<IAuth>();
+        Commander = services.Commander();
     }
 
     [Obsolete("Kept only for compatibility with the old API", true)]
@@ -258,7 +258,6 @@ public sealed class MobileAuthController : Controller
     {
         var session = new Session(sessionId);
         await Commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
-
         await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
     }
 

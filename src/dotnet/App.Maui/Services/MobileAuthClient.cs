@@ -44,7 +44,7 @@ public sealed class MobileAuthClient
         }
     }
 
-    public async Task SignInGoogle()
+    public async Task SignOut()
     {
         var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
         var sessionId = session.Id.Value;
@@ -54,7 +54,7 @@ public sealed class MobileAuthClient
             response.EnsureSuccessStatusCode();
         }
         catch (Exception e) {
-            Log.LogError(e, "SignInGoogle failed");
+            Log.LogError(e, "SignOut failed");
             throw;
         }
     }

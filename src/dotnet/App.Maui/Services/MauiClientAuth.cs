@@ -6,12 +6,12 @@ internal sealed class MauiClientAuth : IClientAuth
 {
     private IServiceProvider Services { get; }
     private MobileAuthClient AuthClient { get; }
-    private ILogger<MauiClientAuth> Log { get; }
+    private ILogger Log { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
         Services = services;
-        Log = services.GetRequiredService<ILogger<MauiClientAuth>>();
+        Log = services.LogFor(GetType());
         AuthClient = services.GetRequiredService<MobileAuthClient>();
     }
 
