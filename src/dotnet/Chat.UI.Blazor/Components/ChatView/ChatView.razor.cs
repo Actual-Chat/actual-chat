@@ -246,7 +246,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             oldData.Items,
             unreadEntryLidStarts,
             hasVeryFirstItem,
-            hasVeryLastItem,
             TimeZoneConverter);
 
         var result = VirtualListData.New(

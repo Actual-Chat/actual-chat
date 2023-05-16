@@ -25,11 +25,13 @@
     var cls = $"{systemClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} message-wrapper";
 }
 
+@* TODO: render dateline as separate entry *@
 @if (message.DateLine.HasValue) {
     <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
 }
-@if (message.IsFirstUnread) {
+@if (message.IsFirstUnreadSeparator) {
     <Separator Title="New messages" TitleClass="new-separator-title"/>
+    return;
 }
 @if (isSystem) {
     <div class="@cls"

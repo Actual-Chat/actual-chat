@@ -6,25 +6,26 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
 {
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
+    private Symbol? _key;
 
-    public Symbol Key { get; }
+    public Symbol Key => _key ??= GetKey();
+
     public ChatEntry Entry { get; }
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
-    public bool IsUnread { get; init; }
     public int CountAs { get; init; } = 1;
-    public bool IsFirstUnread { get; init; }
+    public bool IsFirstUnreadSeparator { get; init; }
     public bool ShowEntryKind { get; init; }
 
     public ChatMessageModel(ChatEntry entry)
-    {
-        Entry = entry;
-        Key = entry.LocalId.Format();
-    }
+        => Entry = entry;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";
+
+    private Symbol GetKey()
+        => IsFirstUnreadSeparator ? Entry.LocalId.Format() + "-new-messages" : Entry.LocalId.Format();
 
     // Equality
 
@@ -42,7 +43,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
-            && IsFirstUnread == other.IsFirstUnread
+            && IsFirstUnreadSeparator == other.IsFirstUnreadSeparator
             && ShowEntryKind == other.ShowEntryKind
             && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
     }
@@ -60,7 +61,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         IReadOnlyCollection<ChatMessageModel> oldItems,
         long? lastReadEntryId,
         bool hasVeryFirstItem,
-        bool hasVeryLastItem,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
@@ -83,12 +83,16 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
+            var isFirstUnreadSeparator = isUnread && !isPrevUnread;
+            if (isFirstUnreadSeparator)
+                result.Add(new (entry) {
+                    IsFirstUnreadSeparator = true,
+                });
+
             var model = new ChatMessageModel(entry) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
-                IsUnread = isUnread,
-                IsFirstUnread = isUnread && !isPrevUnread,
                 ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
             };
             result.Add(model);
