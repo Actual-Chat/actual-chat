@@ -106,6 +106,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
             var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
             if (data == null)
                 return default;
+
             var value = Serializer.Read(data);
             if (Corrector != null)
                 value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
