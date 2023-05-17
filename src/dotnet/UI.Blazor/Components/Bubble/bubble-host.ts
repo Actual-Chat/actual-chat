@@ -67,13 +67,23 @@ export class BubbleHost {
             });
     }
 
-    public async skipBubbles(): Promise<void> {
+    public async skipBubbles(): Promise<string[]> {
         debugLog?.log(`skipBubbles`);
 
-        this.mutationObserver.disconnect();
-        this.skipped.next(undefined);
-        this.skipped.complete();
         this.clearAutoUpdate();
+
+        const notReadBubbles = this._bubbles.filter(x => !x.isRead);
+        const shownBubble = notReadBubbles.find(x => x.isShown);
+        if (shownBubble) {
+            shownBubble.isShown = false;
+            shownBubble.bubbleElement.style.display = 'none';
+        }
+
+        const bubblesToSkip = notReadBubbles
+            .filter(x => x.isTopElement && x.isInViewport);
+        bubblesToSkip.forEach(x => x.isRead = true);
+
+        return bubblesToSkip.map(x => x.bubbleRef);
     }
 
     public async readBubble(bubbleRef: string): Promise<void> {

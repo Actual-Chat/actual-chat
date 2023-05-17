@@ -21,11 +21,8 @@ public sealed class BubbleUI
             });
     }
 
-    public async ValueTask<bool> ShouldBeSkipped()
-    {
-        await _settings.WhenFirstTimeRead;
-        return _settings.Value.Skipped;
-    }
+    public async Task WhenLoaded()
+        => await _settings.WhenFirstTimeRead;
 
     public void UpdateSettings(UserBubblesSettings value)
         => _settings.Value = value;

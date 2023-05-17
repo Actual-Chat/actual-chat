@@ -61,8 +61,9 @@
 
     public async Task SkipBubbles() {
         _bubble = null;
-        BubbleUI.UpdateSettings(BubbleUI.Settings.Value with { Skipped = true });
-        await _jsRef.InvokeVoidAsync("skipBubbles", CancellationToken.None);
+
+        var bubbleRefs = await _jsRef.InvokeAsync<string[]>("skipBubbles", CancellationToken.None);
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRefs));
         StateHasChanged();
     }
 
@@ -71,7 +72,7 @@
             return;
 
         var bubbleRef = _bubble.Ref;
-        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubble(bubbleRef.ToString()));
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRef.ToString()));
         _bubble = null;
         await _jsRef.InvokeVoidAsync("readBubble", CancellationToken.None, bubbleRef.ToString());
         StateHasChanged();
@@ -80,12 +81,10 @@
     // Protected & private methods
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (await BubbleUI.ShouldBeSkipped())
-            return;
-
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
+            await BubbleUI.WhenLoaded();
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef, readBubbles);
         }

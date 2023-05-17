@@ -7,16 +7,20 @@ public sealed record UserBubblesSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserBubblesSettings);
 
-    [DataMember] public bool Skipped { get; init; }
     [DataMember] public ImmutableArray<string> ReadBubbles { get; init; } = ImmutableArray<string>.Empty;
     [DataMember] public string Origin { get; init; } = "";
 
-    public UserBubblesSettings WithReadBubble(string bubbleRef)
+    public UserBubblesSettings WithReadBubbles(params string[] bubbleRefs)
     {
-        if (ReadBubbles.Contains(bubbleRef, StringComparer.Ordinal))
+        if (!bubbleRefs.Any())
             return this;
 
-        var bubbles = ReadBubbles.Add(bubbleRef);
-        return this with { ReadBubbles = bubbles };
+        var readBubbles = bubbleRefs.Aggregate(
+            ReadBubbles,
+            (bubbles, bubble) => bubbles.Contains(bubble, StringComparer.Ordinal)
+                ? bubbles
+                : bubbles.Add(bubble));
+
+        return this with { ReadBubbles = readBubbles };
     }
 }
