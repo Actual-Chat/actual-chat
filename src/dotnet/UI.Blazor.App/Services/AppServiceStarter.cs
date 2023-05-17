@@ -24,7 +24,7 @@ public class AppServiceStarter
     public Task PostSessionWarmup(Session session, CancellationToken cancellationToken)
         => Task.Run(async () => {
             // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
-            using var _1 = Tracer.Region(nameof(PostSessionWarmup));
+            using var _1 = Tracer.Region();
             try {
                 var accounts = Services.GetRequiredService<IAccounts>();
                 var getOwnAccountTask = accounts.GetOwn(session, CancellationToken.None);
@@ -40,7 +40,7 @@ public class AppServiceStarter
 
     public async Task ReadyToRender(CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Region(nameof(ReadyToRender));
+        using var _1 = Tracer.Region();
 
         var accountUI = Services.GetRequiredService<AccountUI>();
 
@@ -111,7 +111,7 @@ public class AppServiceStarter
         if (!HostInfo.AppKind.IsClient())
             return;
 
-        using var _ = Tracer.Region(nameof(StartHostedServices));
+        using var _ = Tracer.Region();
         foreach (var hostedService in Services.HostedServices()) {
             Tracer.Point($"{nameof(StartHostedServices)}: starting {hostedService.GetType().Name}");
             await hostedService.StartAsync(default).ConfigureAwait(false);

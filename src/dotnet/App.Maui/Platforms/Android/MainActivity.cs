@@ -47,7 +47,7 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        using var _ = _tracer.Region(nameof(OnCreate));
+        using var _ = _tracer.Region();
 
         var isLoaded = false;
         CurrentActivity = this;
