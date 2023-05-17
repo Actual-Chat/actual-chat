@@ -4,24 +4,20 @@
 
 <div class="carousel-wrapper @Class" name="@currentSlideId">
     @if (SlideOrder > 1) {
-        <div class="left-arrow flex self-center cursor-pointer">
+        <div class="left-arrow">
             <i class="icon-chevron-left text-5xl text-[#9294E1]"></i>
         </div>
-    } else {
-        <div class="hidden md:flex self-center w-12"></div>
     }
-    <div class="footer flex-1 flex-x self-end items-center justify-center gap-x-2 my-8">
+    <div class="footer">
         @for (var i = 1; i <= CarouselLength; i++) {
             var slideId = GetSlideId(i);
             <div class="carousel-dot w-@(slideId == currentSlideId ? "8" : "2")" id="dot-@slideId"></div>
         }
     </div>
     @if (SlideOrder < CarouselLength) {
-        <div class="right-arrow flex self-center cursor-pointer">
+        <div class="right-arrow">
             <i class="icon-chevron-right text-5xl text-[#9294E1]"></i>
         </div>
-    } else {
-        <div class="hidden md:flex self-center w-12"></div>
     }
 </div>
 

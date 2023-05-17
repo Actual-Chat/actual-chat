@@ -326,8 +326,7 @@ body.narrow .timeline-item .content-icon.left {
 }
 
 .link-btn {
-    @apply flex-1 flex-y items-center justify-center gap-y-1;
-    @apply max-w-28 md:max-w-44;
+    @apply flex-none flex-x items-center justify-center gap-x-2;
     @apply bg-transparent;
 }
 .link-btn-content {
@@ -345,8 +344,7 @@ body.narrow .landing .link-btn-content img {
 }
 
 .landing .footer-link {
-    @apply h-12;
-    @apply text-04;
+    @apply text-title-1 text-01;
 }
 body.narrow .landing .footer-link {
     @apply h-8;
@@ -409,19 +407,45 @@ body.narrow .landing .landing-menu {
     @apply text-title-1 text-01;
 }
 .landing-links {
-    @apply flex-x items-center justify-evenly gap-4;
-    @apply p-4;
+    @apply flex-x items-center justify-between gap-4;
+    @apply p-8 my-16;
+    @apply rounded-lg;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }
 body.narrow .landing-links {
     @apply flex-y;
 }
+.landing .landing-footer {
+    @apply flex-x;
+    @apply p-4 md:py-8 md:px-16;
+    @apply bg-[#EEEEF6];
+}
 .download-btn {
-    @apply flex-x gap-x-4 items-center;
+    @apply flex-x gap-x-4 items-center justify-center;
     @apply h-10;
     @apply px-4;
     @apply rounded-full;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
+}
+.download-btn.web-signin,
+.download-btn.ios-disabled {
+    @apply justify-center;
+    @apply w-full;
+    @apply bg-none bg-01;
+    @apply border border-text-01;
+}
+.download-btn.web-signin.transparent,
+.download-btn.ios-disabled.transparent {
+    @apply justify-center;
+    @apply w-full;
+    @apply bg-none bg-transparent;
+    @apply border border-bg-01;
+}
+.download-btn.ios-disabled {
+    @apply opacity-75;
+}
+.download-btn.transparent * {
+    @apply text-04;
 }
 
 .page-container {
@@ -667,8 +691,27 @@ body.narrow .layout-body:has(> .docs-content) {
     @apply w-full;
 }
 .carousel-wrapper {
-    @apply absolute z-10 inset-0;
-    @apply flex-x;
+    @apply flex-x justify-center;
+    @apply w-full;
+}
+.carousel-wrapper .left-arrow {
+    @apply absolute left-0 inset-y-1/2;
+    @apply flex self-center;
+    @apply cursor-pointer;
+}
+.carousel-wrapper .right-arrow {
+    @apply absolute right-0 inset-y-1/2;
+    @apply flex self-center;
+    @apply cursor-pointer;
+}
+.carousel-wrapper .footer {
+    @apply absolute bottom-8;
+    @apply flex-1 flex-x items-center justify-center gap-x-2;
+    @apply w-fit;
+}
+.feature-carousel .carousel-wrapper .footer {
+    @apply bottom-64;
+    right: calc(50vw - 11rem);
 }
 .carousel-dot {
     @apply h-2;
@@ -679,4 +722,36 @@ body.narrow .layout-body:has(> .docs-content) {
 body.narrow .landing .carousel-wrapper .left-arrow,
 body.narrow .landing .carousel-wrapper .right-arrow {
     @apply hidden;
+}
+
+/* Features carousel */
+.landing .features-carousel-item {
+    @apply flex-1;
+}
+.landing .features-carousel-item.carousel-page {
+    @apply flex-x;
+    @apply p-16 pb-8;
+    @appply bg-[#EEEEF6];
+}
+.features-carousel-item .c-title,
+.features-carousel-item .c-image {
+    @apply flex;
+    @apply self-start;
+}
+.features-carousel-item .c-title {
+    @apply py-8;
+    @apply text-headline-3;
+    font-size: calc(2.5rem + 1vw);
+    width: 20%;
+}
+.features-carousel-item .c-image {
+    @apply h-full;
+    width: 30%;
+    max-height: 50rem;
+}
+.features-carousel-item .c-description {
+    @apply flex-y;
+    @apply self-start;
+    @apply w-1/2;
+    @apply p-16;
 }
