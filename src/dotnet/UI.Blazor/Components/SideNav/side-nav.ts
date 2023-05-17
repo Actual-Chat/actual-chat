@@ -94,7 +94,7 @@ export class SideNav extends DisposableBag {
         const translateRatio = closeDirectionSign * closeRatio;
         this.element.style.backdropFilter = `blur(10px)`
         this.element.style.backgroundColor = `rgba(1,1,1,0)`;
-        this.element.style.transform = `translateX(${100 * translateRatio}%)`;
+        this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
         this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
     }
 
