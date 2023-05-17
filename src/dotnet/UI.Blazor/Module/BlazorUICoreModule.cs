@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
+using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -141,6 +142,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
                 return new AppReplicaCache(options, c);
             });
         }
+        // Test services
+        if (IsDevelopmentInstance)
+            fusion.AddComputeService<ComputeStateTestService>(ServiceLifetime.Scoped);
     }
 
     private void InjectDiagnosticsServices(IServiceCollection services)

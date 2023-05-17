@@ -9,7 +9,7 @@
         // Render skeletons until State is computed
         <chat-view-footer-skeleton/>
     } else if (ReferenceEquals(m, Model.SelectChat)) {
-        <ReadOnlyChatFooter FooterText="@String.Empty" />
+        <ReadOnlyChatFooter FooterText="@string.Empty" />
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor/>
