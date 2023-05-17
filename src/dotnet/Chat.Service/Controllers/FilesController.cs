@@ -5,13 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Chat.Controllers;
 
 [ApiController]
-public sealed class UploadController : ControllerBase
+public sealed class FilesController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
     private ICommander Commander { get; }
 
-    public UploadController(
+    public FilesController(
         IContentSaver contentSaver,
         IEnumerable<IUploadProcessor> uploadProcessors,
         ICommander commander)
@@ -21,8 +21,9 @@ public sealed class UploadController : ControllerBase
         Commander = commander;
     }
 
-    [HttpPost, Route("api/chats/{chatId}/upload-picture")]
-    public async Task<ActionResult<MediaContent>> UploadPicture(ChatId chatId, CancellationToken cancellationToken)
+    [HttpPost, Route("api/chats/{chatId}/upload-picture")] // TODO: for BC only, remove when not required anymore
+    [HttpPost, Route("api/chats/{chatId}/files")]
+    public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)

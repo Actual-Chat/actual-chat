@@ -179,7 +179,7 @@ class FileUpload {
                     this.whenCompletedSource.reject(this.xhr.statusText);
             }
         };
-        const url = this.getUrl(`api/chats/${this.chatId}/upload-picture`);
+        const url = this.getUrl(`api/chats/${this.chatId}/files`);
         this.xhr.open('post', url, true);
         this.xhr.send(formData);
     }
