@@ -41,7 +41,7 @@ public static partial class MauiProgram
         try {
             const string baseUrl = "https://" + MauiConstants.Host + "/";
             AppSettings = new MauiAppSettings(baseUrl);
-            MauiSessionProvider.RestoreOrCreate();
+            _ = MauiSessionProvider.RestoreOrCreate();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);

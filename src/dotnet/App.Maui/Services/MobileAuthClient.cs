@@ -11,13 +11,13 @@ public sealed class MobileAuthClient
         Log = log;
     }
 
-    public async Task<string> GetOrCreateSessionId()
+    public async Task<string> GetOrCreateSessionId(string? sessionId = null)
     {
         try {
-            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getOrCreateSession";
+            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getOrCreateSession/{sessionId}";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            var sessionId = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            sessionId = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             return sessionId;
         }
         catch (Exception e) {

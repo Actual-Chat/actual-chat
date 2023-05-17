@@ -6,13 +6,12 @@ namespace ActualChat.App.Maui.Services;
 
 public sealed class MauiSessionProvider : ISessionProvider
 {
+    private const string SessionIdStorageKey = "Fusion.SessionId";
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionProvider)];
     private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionProvider>();
 
     private static readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
     private static readonly Task<Session> _sessionTask = _sessionSource.Task;
-
-    public static Task WhenSessionReady => _sessionSource.Task;
 
     public static Session Session {
         get {
@@ -48,65 +47,19 @@ public sealed class MauiSessionProvider : ISessionProvider
         => Task.Run(async () => {
             using var _ = Tracer.Region();
 
-            const string sessionIdStorageKey = "Fusion.SessionId";
-            var session = (Session?)null;
+            var storedSid = await Read().ConfigureAwait(false);
+            var validSid = await GetOrCreateSessionId(storedSid).ConfigureAwait(false);
+            if (!OrdinalEquals(storedSid, validSid))
+                await Save(validSid).ConfigureAwait(false);
 
-            var storage = SecureStorage.Default;
-            try {
-                var storedSessionId = await storage.GetAsync(sessionIdStorageKey).ConfigureAwait(false);
-                if (!storedSessionId.IsNullOrEmpty()) {
-                    session = new Session(storedSessionId);
-                    Log.LogInformation("Successfully read stored Session ID");
-                }
-                else
-                    Log.LogInformation("No stored Session ID");
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Failed to read stored Session ID");
-                // ignored
-                // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
-                // TODO: configure selective backup, to prevent app crashes after re-installing
-                // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
-            }
-
-            if (session == null) {
-                var sessionId = await CreateSessionId().ConfigureAwait(false);
-                session = new Session(sessionId);
-                bool isSaved;
-                try {
-                    if (storage.Remove(sessionIdStorageKey))
-                        Log.LogInformation("Removed stored Session ID");
-                    await storage.SetAsync(sessionIdStorageKey, session.Id.Value).ConfigureAwait(false);
-                    isSaved = true;
-                }
-                catch (Exception e) {
-                    isSaved = false;
-                    Log.LogWarning(e, "Failed to store Session ID");
-                    // Ignored, see:
-                    // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
-                }
-
-                if (!isSaved) {
-                    Log.LogInformation("Second attempt to store Session ID");
-                    try {
-                        storage.RemoveAll();
-                        await storage.SetAsync(sessionIdStorageKey, session.Id.Value).ConfigureAwait(false);
-                    }
-                    catch (Exception e) {
-                        Log.LogWarning(e, "Failed to store Session ID (second attempt)");
-                        // Ignored, see:
-                        // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
-                    }
-                }
-            }
-
+            var session = new Session(validSid);
             _sessionSource.TrySetResult(session);
             return session;
         });
 
-    private static async Task<string> CreateSessionId()
+    private static async Task<string> GetOrCreateSessionId(string? sid)
     {
-        var _ = Tracer.Region();
+        using var _ = Tracer.Region();
         try {
             // Manually configure HTTP client as we don't have it configured globally at DI level
             using var httpClient = new HttpClient(new HttpClientHandler {
@@ -121,12 +74,74 @@ public sealed class MauiSessionProvider : ISessionProvider
 
             var authClientLogger = MauiDiagnostics.LoggerFactory.CreateLogger<MobileAuthClient>();
             var authClient = new MobileAuthClient(httpClient, authClientLogger);
-            var sessionId = await authClient.GetOrCreateSessionId().ConfigureAwait(false);
-            return sessionId;
+            return await authClient.GetOrCreateSessionId(sid).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(CreateSessionId)} failed");
-            throw;
+            Log.LogError(e, $"{nameof(GetOrCreateSessionId)} failed");
+            if (sid.IsNullOrEmpty())
+                throw;
+
+            return sid;
+        }
+    }
+
+    private static async Task<string?> Read()
+    {
+        var storage = SecureStorage.Default;
+        try {
+            var storedSessionId = await storage.GetAsync(SessionIdStorageKey).ConfigureAwait(false);
+            if (storedSessionId.IsNullOrEmpty())
+                Log.LogInformation("No stored Session ID");
+            else {
+                Log.LogInformation("Successfully read stored Session ID");
+                return storedSessionId;
+            }
+        }
+        catch (Exception e)
+        {
+            Log.LogWarning(e, "Failed to read stored Session ID");
+            // ignored
+            // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+            // TODO: configure selective backup, to prevent app crashes after re-installing
+            // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
+        }
+
+        return null;
+    }
+
+    private static async Task Save(string sid)
+    {
+        var storage = SecureStorage.Default;
+        bool isSaved;
+        try
+        {
+            if (storage.Remove(SessionIdStorageKey))
+                Log.LogInformation("Removed stored Session ID");
+            await storage.SetAsync(SessionIdStorageKey, sid).ConfigureAwait(false);
+            isSaved = true;
+        }
+        catch (Exception e)
+        {
+            isSaved = false;
+            Log.LogWarning(e, "Failed to store Session ID");
+            // Ignored, see:
+            // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+        }
+
+        if (!isSaved)
+        {
+            Log.LogInformation("Second attempt to store Session ID");
+            try
+            {
+                storage.RemoveAll();
+                await storage.SetAsync(SessionIdStorageKey, sid).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning(e, "Failed to store Session ID (second attempt)");
+                // Ignored, see:
+                // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
+            }
         }
     }
 }

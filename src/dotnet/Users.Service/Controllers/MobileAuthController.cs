@@ -71,10 +71,10 @@ public sealed class MobileAuthController : Controller
     [Obsolete("Kept only for compatibility with the old API", true)]
     [HttpGet("getSession")]
     public Task<ActionResult> GetSession(CancellationToken cancellationToken)
-        => GetOrCreateSession(cancellationToken);
+        => GetOrCreateSession(null, cancellationToken);
 
-    [HttpGet("getOrCreateSession")]
-    public async Task<ActionResult> GetOrCreateSession(CancellationToken cancellationToken)
+    [HttpGet("getOrCreateSession/{sid?}")]
+    public async Task<ActionResult> GetOrCreateSession(string? sid, CancellationToken cancellationToken)
     {
         var httpContext = HttpContext;
         var sessionProvider = httpContext.RequestServices.GetRequiredService<ISessionProvider>();
