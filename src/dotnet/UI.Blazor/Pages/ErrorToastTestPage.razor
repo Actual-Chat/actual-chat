@@ -53,9 +53,16 @@
     <Button Class="btn-error" Click="@(_ => OnLogErrorClick())">
         Log error
     </Button>
+    <Button Class="btn-error" Click="@(_ => OnCrashClick())">
+        Throw error
+    </Button>
+    <Button Class="btn-error" Click="@(_ => OnAppCrashClick())">
+        App crash error
+    </Button>
 </div>
 
 @code {
+    [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private ILogger<ErrorToastTestPage> Log { get; init; } = null!;
 
@@ -66,4 +73,12 @@
 
     private void OnLogErrorClick()
         => Log.LogError("!!!An error log entry is generated on ErrorToastTestPage");
+
+    private void OnCrashClick()
+        => throw StandardError.Internal("Simulated crash!");
+
+    private void OnAppCrashClick() {
+        var rootComponent = (IRootComponent)CircuitContext.RootComponent;
+        rootComponent.SimulateCrash(StandardError.Internal("Simulated application crash!"));
+    }
 }

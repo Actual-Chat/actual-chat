@@ -26,4 +26,8 @@
     <ServiceWorker Include="ServiceWorkers\service-worker.ts" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Services\BulkInitUI\bulk-init.ts" />
+  </ItemGroup>
+
 </Project>

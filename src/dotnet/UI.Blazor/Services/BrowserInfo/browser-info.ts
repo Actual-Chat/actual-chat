@@ -1,3 +1,4 @@
+import { BrowserInit } from '../BrowserInit/browser-init';
 import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
 import { Interactive } from 'interactive';
@@ -14,7 +15,7 @@ export class BrowserInfo {
 
     public static appKind: AppKind;
     public static utcOffset: number;
-    public static windowId: string = "";
+    public static windowId = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public static init(backendRef1: DotNet.DotNetObject, appKind: AppKind): void {
@@ -22,7 +23,7 @@ export class BrowserInfo {
         this.backendRef = backendRef1;
         this.appKind = appKind;
         this.utcOffset = new Date().getTimezoneOffset();
-        this.windowId = (globalThis['App'] as { windowId: string }).windowId;
+        this.windowId = BrowserInit.windowId; // It is already computed when this call happens
         if (this.appKind == 'MauiApp')
             Interactive.isAlwaysInteractive = true;
         this.initBodyClasses();

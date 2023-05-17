@@ -31,7 +31,6 @@
             environment: 'unknown',
             baseUri: null,
             sessionHash: null,
-            windowId: null,
             postMessage: function (data) {
                 try {
                     if (window.Android) // post message to android webview
@@ -46,67 +45,19 @@
             /* Bundle/bulk init */
             whenBundleReady: null,
             markBundleReady: function() { },
-            bulkInit: async function() {
+            browserInit: async function(sessionHash, calls) {
                 await window.App.whenBundleReady;
-                window.ui.bulkInit(arguments);
+                await window.ui.BrowserInit.init(sessionHash, calls);
             },
         };
         window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
         });
 
-        if (window.Android) {
-            // In Android WebView read text and write text operations fail with insufficient permissions
-            // and there is no way to grant these permissions.
-            // https://stackoverflow.com/questions/61243646/clipboard-api-call-throws-notallowederror-without-invoking-onpermissionrequest
-            // So we replace `navigator.clipboard` functions with our own implementation
-            // based on Js-to-Native-Android interop.
-            navigator.clipboard.writeText = function(newClipText) {
-                return new Promise((resolve, reject) => {
-                    try {
-                        window.Android.writeTextToClipboard(newClipText);
-                        resolve();
-                    }
-                    catch (e) {
-                        reject(e);
-                    }
-                });
-            };
-            navigator.clipboard.readText = function() {
-                return new Promise((resolve, reject) => {
-                    try {
-                        const clipText = window.Android.readTextFromClipboard();
-                        resolve(clipText);
-                    }
-                    catch (e) {
-                        reject(e);
-                    }
-                });
-            };
-        }
-
-        // Set App.windowId
-        window.addEventListener("beforeunload", function (e) {
-            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
-            windowIds.push(window.windowId);
-            window.sessionStorage.windowIds = JSON.stringify(windowIds);
-            return null;
-        });
-        window.addEventListener("load", function (e) {
-            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
-            window.App.windowId = windowIds.pop();
-            if (window.App.windowId == null)
-                window.App.windowId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
-            else
-                window.sessionStorage.windowIds = JSON.stringify(windowIds);
-            return null;
-        });
-
         document.addEventListener("DOMContentLoaded", function (event) {
             // console.log("DOM is fully loaded and parsed");
             try {
-                if (window.Android)
-                    window.Android.DOMContentLoaded();
+                window?.Android?.DOMContentLoaded?.();
             }
             catch (e) {
                 console.log(e);
@@ -120,33 +71,6 @@
 </head>
 
 <body class="app-mobile app-maui">
-    <div id="blazor-error-ui" class="hidden fixed inset-x-0 mt-12" style="z-index:100000;">
-        <div class="flex w-full justify-center">
-            <div class="flex flex-1 max-w-3xl bg-red-100 shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
-                <div class="bg-red-500 w-16 text-white justify-center flex items-center">
-                    <i class="fa fa-2x fa-exclamation-triangle"></i>
-                </div>
-                <div class="h-full flex-1 flex border-r-8 border-red-500">
-                    <div class="flex-1 px-4 py-2 break-words">
-                        <p class="text-grey-dark font-bold">Error</p>
-                        <p class="text-grey-dark">
-                            <environment include="Staging,Production">
-                                An error has occurred. This application may no longer respond until reloaded.
-                            </environment>
-                            <environment include="Development">
-                                An unhandled exception has occurred. See browser dev tools for details.
-                            </environment>
-                        </p>
-                    </div>
-                    <div class="flex-col w-8 items-start mx-auto pt-2 px-1 text-right text-grey-dark ml-3 mr-1">
-                        <i class="block dismiss cursor-pointer fa fa-times fa-fw"></i>
-                        <i class="reload block cursor-pointer fa fa-repeat fa-fw"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div id="until-ui-is-ready" class="loading-overlay">
         <div class="c-box">
             <img src="/dist/images/landing/ac-icon-light.svg" alt="loading">
@@ -157,7 +81,9 @@
     <div id="app" class="flex flex-col h-full"></div>
 
     <!-- This block must go right after app, otherwise page content won't be blurred -->
-    <div id="components-reconnect-modal" class="reconnect-overlay">
+    <div id="components-reconnect-modal"></div>
+    <div id="blazor-error-ui"></div>
+    <div id="app-connection-state" class="reconnect-overlay" style="display: none">
         <div class="c-bg"></div>
         <div class="c-circle-blur"></div>
         <div class="c-circle">

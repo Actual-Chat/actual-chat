@@ -10,16 +10,16 @@ public class JavaScriptAppSettings
     public JavaScriptAppSettings(IServiceProvider services)
         => Services = services;
 
-    public Task Initialize(List<object?>? bulkInit = null)
+    public Task Initialize(List<object?>? initCalls = null)
     {
         var jsMethod = $"{BlazorUICoreModule.ImportName}.AppSettings.init";
         var hostInfo = Services.GetRequiredService<HostInfo>();
         var session = Services.GetRequiredService<Session>();
-        if (bulkInit != null) {
-            bulkInit.Add(jsMethod);
-            bulkInit.Add(2);
-            bulkInit.Add(hostInfo.BaseUrl);
-            bulkInit.Add(session.Hash);
+        if (initCalls != null) {
+            initCalls.Add(jsMethod);
+            initCalls.Add(2);
+            initCalls.Add(hostInfo.BaseUrl);
+            initCalls.Add(session.Hash);
             return Task.CompletedTask;
         }
 

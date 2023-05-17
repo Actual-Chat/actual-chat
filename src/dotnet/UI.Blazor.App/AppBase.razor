@@ -1,10 +1,13 @@
 @using ActualChat.Hosting
 @using ActualChat.Module
+@implements IRootComponent
 @implements IDisposable
 @{
     // We can't render anything till the moment a few key components completed the initialization
     if (!_readyToRender)
         return;
+    if (_simulatedCrashError != null)
+        throw _simulatedCrashError;
 }
 
 <ScreenSizeProvider>
@@ -36,6 +39,7 @@
     private readonly CancellationToken _disposeToken;
     private bool _readyToRender;
     private Task? _whenAfterFirstRender;
+    private Exception? _simulatedCrashError;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
     [Inject] protected ILogger<AppBase> Log { get; init; } = null!;
@@ -113,6 +117,11 @@
 
     protected virtual void Dispose(bool disposing)
         => CircuitContext.Dispose();
+
+    public void SimulateCrash(Exception error) {
+        _simulatedCrashError = error;
+        StateHasChanged();
+    }
 
     protected override bool ShouldRender()
         => _readyToRender;
