@@ -14,6 +14,8 @@
 
     [Inject] ComputeStateTestService TestService { get; init; } = null!;
 
+    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; init; }
+
     protected override ComputedState<ComputeStateTestComponent.Model>.Options GetStateOptions() {
         return new() {
             InitialValue = ComputeStateTestComponent.Model.None,
@@ -26,6 +28,4 @@
         var value = await TestService.State.Use(cancellationToken);
         return new(value);
     }
-
-    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; init; }
 }

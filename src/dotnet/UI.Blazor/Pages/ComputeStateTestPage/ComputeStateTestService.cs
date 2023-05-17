@@ -19,13 +19,18 @@ public class ComputeStateTestService : IHasServices, IComputeService, INotifyIni
     public void Initialized()
     { }
 
-    public Task<string> GetValue(CancellationToken cancellationToken)
+    [ComputeMethod]
+    public virtual Task<string> GetValue(CancellationToken cancellationToken)
         // var latestValue = await _state.Use(cancellationToken).ConfigureAwait(false);
         // return latestValue;
         => Task.FromResult(_state.Value);
 
-    public async Task MutateAndInvalidate(string finalValue, CancellationToken cancellationToken)
+    public virtual async Task MutateAndInvalidate(string finalValue, CancellationToken cancellationToken)
     {
+        _state.Value = "start";
+        using (Computed.Invalidate())
+            _ = GetValue(default);
+
         for (int i = 0; i < 100; i++) {
             if (i % 10 == 0)
                 await Task.Delay(100, cancellationToken).ConfigureAwait(false);
