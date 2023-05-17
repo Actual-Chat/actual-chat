@@ -156,8 +156,6 @@ module.exports = {
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'gradient-stop-01': 'var(--gradient-stop-01)',
         'gradient-stop-02': 'var(--gradient-stop-02)',
-
-        'bubble': 'var(--bubble)',
         'bubble-btn-hover': 'var(--bubble-btn-hover)',
       },
       textColor: {
