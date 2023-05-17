@@ -5,6 +5,7 @@
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
     @apply transition-transform duration-200 ease-out;
+    transition-property: transform, opacity;
     transform: none;
     touch-action: pan-y;
     will-change: custom; /* Ensures its own composition layer */

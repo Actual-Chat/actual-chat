@@ -75,16 +75,18 @@ export class SideNav extends DisposableBag {
     public setTransform(openRatio: number | null = null): void {
         if (ScreenSize.isWide()) {
             this.element.style.transform = null;
-            this.element.style.backgroundColor = null;
-            this.element.style.backdropFilter = null;
-            this.contentDiv.style.opacity = null;
+            this.element.style.opacity = null;
+            // this.element.style.backgroundColor = null;
+            // this.element.style.backdropFilter = null;
+            // this.contentDiv.style.opacity = null;
             return;
         }
         if (openRatio === null) {
             this.element.style.transform = null;
-            this.element.style.backgroundColor = null;
-            this.element.style.backdropFilter = null;
-            this.contentDiv.style.opacity = null;
+            this.element.style.opacity = null;
+            // this.element.style.backgroundColor = null;
+            // this.element.style.backdropFilter = null;
+            // this.contentDiv.style.opacity = null;
             return;
         }
 
@@ -92,10 +94,12 @@ export class SideNav extends DisposableBag {
         const closeDirectionSign = isLeft ? -1 : 1;
         const closeRatio = 1 - openRatio;
         const translateRatio = closeDirectionSign * closeRatio;
-        this.element.style.backdropFilter = `blur(10px)`
-        this.element.style.backgroundColor = `rgba(1,1,1,0)`;
+        const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.2));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
-        this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
+        this.element.style.opacity = opacity.toString();
+        // this.element.style.backdropFilter = `blur(1.5px)`
+        // this.element.style.backgroundColor = `rgba(1,1,1,0)`;
+        // this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
     }
 
     public setVisibility = serialize(async (isOpen: boolean): Promise<void> => {
