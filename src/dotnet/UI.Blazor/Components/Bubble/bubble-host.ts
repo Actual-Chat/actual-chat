@@ -1,7 +1,6 @@
 import { arrow, computePosition, flip, offset, Placement, shift, autoUpdate } from '@floating-ui/dom';
 import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
 import { Log } from 'logging';
-import { setTimeout } from 'timerQueue';
 
 interface BubbleModel {
     bubbleRef: string;
@@ -139,6 +138,12 @@ export class BubbleHost {
                     arrow({ element: arrowElement }),
                 ],
             });
+
+        const rect = triggerElement.getBoundingClientRect();
+        if (!this.isElementInDOM(rect)) {
+            bubbleElement.style.display = 'none';
+        }
+
         Object.assign(bubbleElement.style, {
             left: `${x}px`,
             top: `${y}px`,
@@ -174,12 +179,7 @@ export class BubbleHost {
 
             const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
             if (bubble) {
-                if (bubble.isRead)
-                    return;
-
-                bubble.isInViewport = this.isElementInViewport(el);
-                bubble.isTopElement = this.isTopElement(el)
-                    || (bubble.isTopElement && this.topElementIsBubble(el));
+                bubble.triggerElement = el;
 
                 return;
             }
@@ -187,13 +187,23 @@ export class BubbleHost {
             const newBubble: BubbleModel = {
                 bubbleRef: bubbleRef,
                 triggerElement: el,
-                isInViewport: this.isElementInViewport(el),
-                isTopElement: this.isTopElement(el),
+                isInViewport: false,
+                isTopElement: false,
                 isRead: false,
                 isShown: false,
                 priority: Number(el.dataset['bubblePriority']),
             };
             this._bubbles.push(newBubble);
+        });
+
+        this._bubbles.forEach(bubble => {
+            bubble.isInViewport = this.isElementInViewport(bubble.triggerElement);
+            bubble.isTopElement = this.isTopElement(bubble.triggerElement)
+                || (bubble.isTopElement && this.topElementIsBubble(bubble.triggerElement));
+            if (bubble.isShown && (!bubble.isTopElement || !bubble.isInViewport)) {
+                bubble.isShown = false;
+                bubble.bubbleElement.style.display = 'none';
+            }
         });
 
         this._bubbles = this._bubbles.sort((a, b) => a.priority - b.priority);
@@ -212,31 +222,13 @@ export class BubbleHost {
         debugLog?.log(`showNextBubble`);
 
         const notReadBubbles = this._bubbles.filter(x => !x.isRead);
-        const shownBubble = notReadBubbles.find(x => x.isShown);
         const bubbleToShow = notReadBubbles.find(x => x.isInViewport && x.isTopElement);
-
-        if (shownBubble === bubbleToShow) {
-            return;
-        }
-
-        if (shownBubble) {
-            if (!shownBubble.isInViewport || !shownBubble.isTopElement) {
-                shownBubble.isShown = false;
-                shownBubble.bubbleElement.style.display = 'none';
-            }
-        }
-
         if (!bubbleToShow)
             return;
 
-        bubbleToShow.isInViewport = this.isElementInViewport(bubbleToShow.triggerElement);
-        bubbleToShow.isTopElement = this.isTopElement(bubbleToShow.triggerElement)
-            || (bubbleToShow.isTopElement && this.topElementIsBubble(bubbleToShow.triggerElement));
-        if (!bubbleToShow.isInViewport || !bubbleToShow.isTopElement)
-        {
-            setTimeout(() => this.showNextBubble(), 0);
+        const shownBubble = notReadBubbles.find(x => x.isShown);
+        if (shownBubble === bubbleToShow)
             return;
-        }
 
         const isLastVisible = notReadBubbles
             .filter(x => x !== bubbleToShow)
@@ -258,8 +250,15 @@ export class BubbleHost {
 
     private isElementInViewport(element: HTMLElement): boolean {
         const rect = element.getBoundingClientRect();
+        if (!this.isElementInDOM(rect))
+            return false;
+
         const viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
         return rect.bottom >= 0 && rect.top - viewHeight < 0;
+    }
+
+    private isElementInDOM(rect: DOMRect): boolean {
+        return rect.bottom !== 0 || rect.top !== 0;
     }
 
     private isTopElement(element: HTMLElement): boolean {
