@@ -186,15 +186,14 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
         DebugLog?.LogDebug("GetReadEntryLid: {ChatId}", chatId);
 
-        var fetchedReadPosition = await ChatPositions
+        var serverReadPosition = await ChatPositions
             .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
             .ConfigureAwait(false);
 
+        using var _ = Computed.SuspendDependencyCapture();
         using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
         var readPosition = readPositionState.Value;
-        return readPosition.EntryLid > fetchedReadPosition.EntryLid
-            ? readPosition.EntryLid
-            : fetchedReadPosition.EntryLid;
+        return MathExt.Max(readPosition.EntryLid, serverReadPosition.EntryLid);
     }
 
     [ComputeMethod] // Synced
