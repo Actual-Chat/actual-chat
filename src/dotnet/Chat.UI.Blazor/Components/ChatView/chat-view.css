@@ -2,7 +2,7 @@
     @apply relative flex-y;
     @apply border-l-2 border-bg-01;
     @apply md:select-text;
-    transform: translateZ(0);
+    @apply: translate-z-0;
 }
 body.hoverable .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
@@ -114,6 +114,7 @@ body.hoverable .chat-header-title:hover {
 .new-separator-title {
     @apply bg-new-separator;
     @apply text-icons-04;
+    @apply translate-z-0;
 }
 
 .message-content {
