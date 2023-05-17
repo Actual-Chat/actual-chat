@@ -26,7 +26,17 @@
     @* ChatListKind.All *@
     <div class="chat-list chat-list-all">
         @for (var i = 0; i < m.ChatCount; i++) {
-            <ChatListItem ListKind="@Kind" Index="@i" />
+            if (i == 0) {
+                <ChatListItem
+                    ListKind="@Kind"
+                    Index="@i"
+                    data-bubble="@(BubbleRef.New<ChatListItemBubble>())"
+                    data-bubble-priority="204"
+                    data-bubble-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                </ChatListItem>
+            } else {
+                <ChatListItem ListKind="@Kind" Index="@i"/>
+            }
         }
     </div>
 }

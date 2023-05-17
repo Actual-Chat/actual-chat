@@ -5,6 +5,9 @@
 
 @if (isVisible) {
     <ButtonRound
+        data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
+        data-bubble-priority="401"
+        data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
         Click="Click"
         Class="transparent btn-md"
         Tooltip="Chat properties"
