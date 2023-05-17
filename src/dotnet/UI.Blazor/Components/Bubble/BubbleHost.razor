@@ -69,6 +69,7 @@
     public async Task ReadBubble(IBubble bubble) {
         if (_bubble?.Id != bubble.Id)
             return;
+
         var bubbleRef = _bubble.Ref;
         BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubble(bubbleRef.ToString()));
         _bubble = null;

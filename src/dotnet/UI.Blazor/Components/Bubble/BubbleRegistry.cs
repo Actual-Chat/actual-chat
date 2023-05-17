@@ -9,7 +9,11 @@ public static class BubbleRegistry
         => TypeToTypeId.GetOrAdd(type, type1 => {
             if (!type1.IsAssignableTo(typeof(IBubble)))
                 throw new ArgumentOutOfRangeException(nameof(type));
-            var typeId = type1.ToSymbol(false);
+
+            // NOTE(AY): We intentionally use just type name here -
+            // to make sure we can move them across namespaces w/o losing
+            // read status.
+            var typeId = new Symbol(type1.Name);
             TypeIdToType.GetOrAdd(typeId, type1);
             return typeId;
         });
