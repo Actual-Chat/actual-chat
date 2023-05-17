@@ -6,7 +6,7 @@
     var title = m.IsOwn ? "Your profile" : $"{m.Author.Avatar.Name}";
 }
 
-<DialogFrame Title="@title" Class="author-modal" HasHeader="false">
+<DialogFrame Title="@title" Class="author-modal narrow-view__modal__position-bottom" HasHeader="false">
     <Body>
     <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn"/>
     </Body>
