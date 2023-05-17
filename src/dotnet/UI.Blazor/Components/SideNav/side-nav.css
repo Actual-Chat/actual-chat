@@ -9,8 +9,14 @@
     touch-action: pan-y;
     will-change: custom; /* Ensures its own composition layer */
 }
+.side-nav > *:first-child {
+    @apply transition-opacity duration-200 ease-out;
+}
 
 .side-nav.side-nav-dragging {
+    @apply transition-none;
+}
+.side-nav.side-nav-dragging > *:first-child {
     @apply transition-none;
 }
 

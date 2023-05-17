@@ -13,8 +13,8 @@ const { debugLog } = Log.get('SideNav');
 const Deceleration = 2; // 1 = full width/second^2
 const PullBoundary = 0.35; // 35% of the screen width
 const PrePullDistance = 5; // DeviceInfo.isAndroid ? 5 : 10; // In CSS pixels
-const PrePullDurationMs = 15;
-const MinPullDurationMs = 30;
+const PrePullDurationMs = 20;
+const MinPullDurationMs = 20;
 const MaxSetVisibilityWaitDurationMs = 500;
 
 enum SideNavSide {
@@ -29,6 +29,7 @@ interface SideNavOptions {
 export class SideNav extends DisposableBag {
     public static left: SideNav | null = null;
     public static right: SideNav | null = null;
+    private readonly contentDiv: HTMLElement;
 
     public get side(): SideNavSide { return this.options.side; }
     public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
@@ -47,6 +48,7 @@ export class SideNav extends DisposableBag {
         public readonly options: SideNavOptions,
     ) {
         super();
+        this.contentDiv = element.firstElementChild as HTMLElement;
         const pullGestureDisposer = DeviceInfo.isIos && BrowserInfo.appKind !== 'MauiApp' ? null : SideNavPullDetectGesture.use(this);
         if (this.side == SideNavSide.Left) {
             SideNav.left = this;
@@ -73,10 +75,16 @@ export class SideNav extends DisposableBag {
     public setTransform(openRatio: number | null = null): void {
         if (ScreenSize.isWide()) {
             this.element.style.transform = null;
+            this.element.style.backgroundColor = null;
+            this.element.style.backdropFilter = null;
+            this.contentDiv.style.opacity = null;
             return;
         }
         if (openRatio === null) {
             this.element.style.transform = null;
+            this.element.style.backgroundColor = null;
+            this.element.style.backdropFilter = null;
+            this.contentDiv.style.opacity = null;
             return;
         }
 
@@ -84,7 +92,10 @@ export class SideNav extends DisposableBag {
         const closeDirectionSign = isLeft ? -1 : 1;
         const closeRatio = 1 - openRatio;
         const translateRatio = closeDirectionSign * closeRatio;
-        this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
+        this.element.style.backdropFilter = `blur(10px)`
+        this.element.style.backgroundColor = `rgba(1,1,1,0)`;
+        this.element.style.transform = `translateX(${100 * translateRatio}%)`;
+        this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
     }
 
     public setVisibility = serialize(async (isOpen: boolean): Promise<void> => {
