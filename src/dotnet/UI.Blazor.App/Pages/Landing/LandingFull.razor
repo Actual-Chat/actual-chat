@@ -33,11 +33,16 @@
                         <strong>We are here to redefine the meaning of "Chat".</strong>
                     </p>
                 </div>
-                <div class="flex-y md:flex-x gap-x-4 items-center py-8 md:py-4">
+                <div class="flex-y md:flex-x gap-y-4 gap-x-4 py-8 md:py-4">
+                    <DownloadButton/>
                     @if (isGuest) {
-                        <button class="signin-button-group bg-01" onclick="@(() => SignIn(googleScheme.Name))">
-                            <span class="px-2 text-xl font-semibold">Sign in with</span>
-                            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                        <button class="download-btn web-signin transparent" onclick="@(() => SignIn(googleScheme.Name))">
+                            <span class="text-headline-1">Sign in for Web with</span>
+                            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
+                        </button>
+                        <button class="download-btn web-signin transparent" onclick="@(() => SignIn(googleScheme.Name))">
+                            <i class="icon-play-fill text-2xl"></i>
+                            <span class="text-headline-1">Watch video how it works</span>
                         </button>
                         // Don't remove this button group
                         @* <SigninButtonGroup> *@
@@ -52,7 +57,6 @@
                         @*     </AppleIcon> *@
                         @* </SigninButtonGroup> *@
                     }
-                    <DownloadButton/>
                 </div>
             </div>
             <div class="hidden md:flex justify-center items-center w-2/5">
@@ -379,19 +383,21 @@
     </LandingItem>
 </LandingCarousel>
 
-@* Page 9 *@
-<LandingItem
-    ImagePositionMobile="ImagePosition.Top"
-    ImagePositionDesktop="ImagePosition.Bottom"
-    Class="no-auto-scroll scrollable">
+<FeaturesCarousel/>
 
-    <LandingItemTitle>
-        Actual Chat Features
-    </LandingItemTitle>
-    <LandingItemImage Class="features-grid">
-        <LandingFeatures/>
-    </LandingItemImage>
-</LandingItem>
+@* Page 9 *@
+@* <LandingItem *@
+@*     ImagePositionMobile="ImagePosition.Top" *@
+@*     ImagePositionDesktop="ImagePosition.Bottom" *@
+@*     Class="no-auto-scroll scrollable"> *@
+@* *@
+@*     <LandingItemTitle> *@
+@*         Actual Chat Features *@
+@*     </LandingItemTitle> *@
+@*     <LandingItemImage Class="features-grid"> *@
+@*         <LandingFeatures/> *@
+@*     </LandingItemImage> *@
+@* </LandingItem> *@
 
 @* Page 10 *@
 @*
@@ -427,24 +433,43 @@
 <LandingItem
     ImagePositionMobile="ImagePosition.Top"
     ImagePositionDesktop="ImagePosition.Left"
-    Class="no-auto-scroll">
+    Class="scrollable">
 
     <ChildContent>
-        <LandingItemImage Class="flex-col gap-y-12 md:flex-row">
-            <div class="flex-x flex-wrap title-text items-center">
-                <span>Are there any fees?</span>
+        <LandingItemImage Class="flex-col gap-y-12">
+            <div class="hidden md:flex-1"></div>
+            <div class="flex-y md:flex-x gap-y-2">
+                <div class="flex-x flex-wrap items-start md:w-1/2 text-headline-4 md:text-headline-2">
+                    <span>Are there any fees?</span>
+                </div>
+                <div class="flex-y items-start md:w-1/2 text-text-1 md:text-2xl md:leading-7" style="font-size: calc(0.5rem + 1vw);">
+                    <p>At the moment, Actual Chat is <strong>entirely free</strong> for personal use, and we intend to keep it that way.
+                        However, we do plan to generate revenue from commercial usage and a small subset of advanced features
+                        we plan to add in near future.</p>
+                    <p>So, if you're using Actual Chat for your personal communication needs, you can rest assured that
+                        there won't be any changes to the pricing.</p>
+                </div>
             </div>
+            @if (ScreenSize.IsNarrow()) {
+                <div class="flex-y gap-y-4">
+                    <DownloadButton/>
+                    <button class="download-btn web-signin" onclick="@(() => SignIn(googleScheme.Name))">
+                        <span class="text-headline-1">Sign in for Web with</span>
+                        <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
+                    </button>
+                    <button class="download-btn ios-disabled" onclick="@(() => SignIn(googleScheme.Name))">
+                        <span class="text-headline-1">Coming soon for iOs</span>
+                        <img src="/dist/images/landing/apple-logo-black.svg" alt="apple" class="h-5 w-5">
+                    </button>
+                </div>
+            }
         </LandingItemImage>
-        <LandingItemDescription>
-            <p>At the moment, Actual Chat is <strong>entirely free</strong> for personal use, and we intend to keep it that way.
-                However, we do plan to generate revenue from commercial usage and a small subset of advanced features
-                we plan to add in near future.</p>
-            <p>So, if you're using Actual Chat for your personal communication needs, you can rest assured that
-                there won't be any changes to the pricing.</p>
-        </LandingItemDescription>
+        <LandingItemDescription Class="hidden"/>
     </ChildContent>
+    <ExtraContent>
+        <LandingLinks EnableIncompleteUI="@m.EnableIncompleteUI"/>
+    </ExtraContent>
     <FooterContent>
-        <LandingLinks IsNarrow="false" EnableIncompleteUI="@m.EnableIncompleteUI"/>
         <LandingFooter/>
     </FooterContent>
 </LandingItem>
