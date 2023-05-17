@@ -21,7 +21,8 @@ else {
         Url="@($"/chat/{chat.Id}")"
         IsSelected="@chatState.IsSelected"
         data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
-        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+        @attributes="@Attributes">
         <ChildContent>
             <div class="flex-1 flex-x items-center gap-x-2" @onclick="()=>OnClick(chat.Id)">
                 <ChatIcon Chat="chatState.Chat"/>
@@ -95,6 +96,8 @@ else {
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
     [Parameter, EditorRequired] public int Index { get; init; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> Attributes { get; set; } = new();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
