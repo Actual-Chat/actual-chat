@@ -14,6 +14,7 @@ public static class MenuRegistry
         => TypeToTypeId.GetOrAdd(type, type1 => {
             if (!type1.IsAssignableTo(typeof(IMenu)))
                 throw new ArgumentOutOfRangeException(nameof(type));
+
             var menuId = Interlocked.Increment(ref _lastMenuId);
             var typeId = new Symbol($"{type1.Name}-{menuId}");
             TypeIdToType.GetOrAdd(typeId, type1);
