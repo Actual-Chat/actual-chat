@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { BrowserInit } from '../BrowserInit/browser-init';
 
 const { debugLog, warnLog } = Log.get('LocalSettings');
 
@@ -12,9 +13,10 @@ export class LocalSettings {
         this._isInitialized = true;
         const tagKey = ".App.sessionHash";
         // @ts-ignore
-        const tagValue: string = window.App.sessionHash;
-        if (tagValue != localStorage.getItem(tagKey)) {
-            warnLog?.log(`init: local storage is cleared!`);
+        const tagValue = BrowserInit.sessionHash;
+        const oldTagValue = localStorage.getItem(tagKey);
+        if (oldTagValue !== tagValue) {
+            warnLog?.log(`init: local storage is cleared! ('${oldTagValue}' != '${tagValue}')`);
             localStorage.clear();
             localStorage.setItem(tagKey, tagValue);
         }
