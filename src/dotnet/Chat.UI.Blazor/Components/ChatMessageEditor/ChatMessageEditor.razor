@@ -92,7 +92,7 @@
     private AttachmentList AttachmentListRef { get; set; } = null!;
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
-    private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
+    private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -198,7 +198,7 @@
             var readEntryLid = chatEntry.Value.LocalId;
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
-                ReadPositionState.Value = new ChatPosition(readEntryLid);
+                ReadPositionState.Value = new (Chat.Id, readEntryLid);
             _ = ActiveChatsUI.AddActiveChat(Chat.Id);
             await AttachmentListRef.Clear();
         }

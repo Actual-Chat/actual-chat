@@ -12,7 +12,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
-    private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
+    private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
@@ -88,7 +88,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
-        _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ChatPosition>>(CreateReadPositionState);
+        _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ReadPosition>>(CreateReadPositionState);
     }
 
     void INotifyInitialized.Initialized()
@@ -283,10 +283,10 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     public Task ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 
-    public async ValueTask<SyncedStateLease<ChatPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
+    public async ValueTask<SyncedStateLease<ReadPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        var result = new SyncedStateLease<ChatPosition>(lease);
+        var result = new SyncedStateLease<ReadPosition>(lease);
         await result.WhenFirstTimeRead;
         return result;
     }
@@ -305,7 +305,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
     }
 
-    private Task<ISyncedState<ChatPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
+    private Task<ISyncedState<ReadPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
 
@@ -314,21 +314,30 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
             TimeSpan.FromSeconds(1),
             command => Commander.Run(command, CancellationToken.None));
 
-        return Task.FromResult(StateFactory.NewCustomSynced<ChatPosition>(
+        return Task.FromResult(StateFactory.NewCustomSynced<ReadPosition>(
             new (
                 // Reader
                 async ct => {
                     if (pChatId.IsNone)
-                        return new ChatPosition();
+                        return ReadPosition.None;
 
-                    return await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
+                    var (entryLid, origin) = await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
+                    return new ReadPosition(pChatId, entryLid, origin);
                 },
                 // Writer
                 (position, ct) => {
                     if (pChatId.IsNone || position == null!)
                         return Task.CompletedTask;
 
-                    var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, position);
+                    if (position.ChatId != pChatId) {
+                        Log.LogWarning(
+                            $"{nameof(CreateReadPositionState)}.Write: expected ChatId={{ChatId}}, but received {{ActualChatId}}",
+                            pChatId,
+                            position.ChatId);
+                        return Task.CompletedTask;
+                    }
+
+                    var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, new ChatPosition(position.EntryLid, position.Origin));
                     writeDebouncer.Throttle(command);
 
                     var cReadEntryLid = Computed.GetExisting(() => GetReadEntryLid(pChatId, default));
@@ -341,7 +350,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
                     return Task.CompletedTask;
                 }) {
-                InitialValue = new ChatPosition(),
+                InitialValue = ReadPosition.GetInitial(pChatId),
                 UpdateDelayer = _readStateUpdateDelayer,
                 Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }

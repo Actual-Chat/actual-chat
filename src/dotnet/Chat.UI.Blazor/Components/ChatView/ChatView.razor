@@ -5,9 +5,10 @@
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
     Class="chat-view"
-    DataSource="this"
-    KeyComparer="LongAsStringKeyComparer.Default"
-    ItemVisibilityChanged="OnItemVisibilityChanged">
+    DataSource="@this"
+    Identity="@Chat.Id"
+    KeyComparer="@LongAsStringKeyComparer.Default"
+    ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
         <ChatMessage Message="@context" />
     </Item>
@@ -22,5 +23,5 @@
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
     <NavigateToUnreadOrEnd
         ChatSid="@Chat.Id"
-        ChatView="this" />
+        ChatView="@this" />
 </RenderIntoStack>

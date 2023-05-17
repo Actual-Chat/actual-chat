@@ -22,6 +22,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     private int RenderIndex { get; set; } = 0;
 
+    [Parameter] public string Identity { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
 
@@ -47,12 +48,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     [JSInvokable]
-    public Task UpdateItemVisibility(HashSet<string> visibleKeys, bool isEndAnchorVisible)
+    public Task UpdateItemVisibility(string identity, HashSet<string> visibleKeys, bool isEndAnchorVisible)
     {
         if (JSRef == null!) // The component is disposed
             return Task.CompletedTask;
 
-        LastReportedItemVisibility = new VirtualListItemVisibility(visibleKeys, isEndAnchorVisible);
+        if (identity != Identity) {
+            Log.LogWarning("Expected JS identity to be {Identity}, but has {ActualIdentity}", Identity, identity);
+            return Task.CompletedTask;
+        }
+        LastReportedItemVisibility = new VirtualListItemVisibility(identity, visibleKeys, isEndAnchorVisible);
         ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
         return Task.CompletedTask;
     }
@@ -82,7 +87,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                 Ref,
-                BlazorRef);
+                BlazorRef,
+                Identity);
         }
     }
 

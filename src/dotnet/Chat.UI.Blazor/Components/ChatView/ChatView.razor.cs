@@ -37,7 +37,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private IStateFactory StateFactory { get; init; } = null!;
 
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
-    private SyncedStateLease<ChatPosition>? ReadPositionState { get; set; } = null!;
+    private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
     private CancellationToken DisposeToken => _disposeTokenSource.Token;
 
     public IState<bool> IsViewportAboveUnreadEntry { get; private set; } = null!;
@@ -264,9 +264,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var lastEntryId = chatEntries[^1].Id.LocalId;
             if (ReadPositionState != null) {
                 if (lastEntryId > readEntryLid)
-                    ReadPositionState.Value = new ChatPosition(lastEntryId);
+                    ReadPositionState.Value = new ReadPosition(chatId,  lastEntryId);
                 else if (readEntryLid >= chatIdRange.End)
-                    ReadPositionState.Value = new ChatPosition(chatIdRange.End - 1);
+                    ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
             }
         }
 
@@ -332,6 +332,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
+        var identity = virtualListItemVisibility.ListIdentity;
+        if (identity != Chat.Id.Value) {
+            Log.LogWarning(
+                $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
+                identity,
+                Chat.Id.Value);
+            return;
+        }
+
         _itemVisibilityUpdateHasReceived = true;
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
@@ -344,7 +353,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
-            readPositionState.Value = new ChatPosition(itemVisibility.MaxEntryLid);
+            readPositionState.Value = new ReadPosition(Chat.Id, itemVisibility.MaxEntryLid);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)

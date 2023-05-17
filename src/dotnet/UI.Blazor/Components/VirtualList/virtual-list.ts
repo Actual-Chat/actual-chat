@@ -34,6 +34,7 @@ export class VirtualList {
     private readonly _containerRef: HTMLElement;
     private readonly _renderStateRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
+    private readonly _identity: string;
     private readonly _spacerRef: HTMLElement;
     private readonly _endSpacerRef: HTMLElement;
     private readonly _renderIndexRef: HTMLElement;
@@ -81,13 +82,15 @@ export class VirtualList {
     public static create(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
+        identity: string,
     ) {
-        return new VirtualList(ref, backendRef);
+        return new VirtualList(ref, backendRef, identity);
     }
 
     public constructor(
         ref: HTMLElement,
         backendRef: DotNet.DotNetObject,
+        identity: string,
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
@@ -96,6 +99,7 @@ export class VirtualList {
 
         this._ref = ref;
         this._blazorRef = backendRef;
+        this._identity = identity;
         this._isDisposed = false;
         this._abortController = new AbortController();
         this._spacerRef = this._ref.querySelector(':scope > .spacer-start');
@@ -609,7 +613,7 @@ export class VirtualList {
 
         const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
         debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, this._isEndAnchorVisible);
-        await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', visibleItems, this._isEndAnchorVisible);
+        await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', this._identity, visibleItems, this._isEndAnchorVisible);
     }, 2);
 
     private updateOrderedItems(): void {
