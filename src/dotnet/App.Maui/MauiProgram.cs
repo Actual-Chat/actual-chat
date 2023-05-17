@@ -26,7 +26,7 @@ public static partial class MauiProgram
 
     public static MauiApp CreateMauiApp()
     {
-        using var _1 = Tracer.Region(nameof(CreateMauiApp));
+        using var _1 = Tracer.Region();
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
@@ -75,7 +75,7 @@ public static partial class MauiProgram
 
     private static MauiAppBuilder ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
     {
-        using var _ = Tracer.Region(nameof(ConfigureApp));
+        using var _ = Tracer.Region();
 
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
             builder = builder.UseSentry(options => options.ConfigureForApp());
@@ -115,7 +115,7 @@ public static partial class MauiProgram
 
     private static Task<IServiceProvider> CreateLazyAppServices(IServiceProvider earlyServices)
     {
-        using var _1 = Tracer.Region(nameof(CreateLazyAppServices));
+        using var _1 = Tracer.Region();
         var services = new ServiceCollection();
         ConfigureAppServices(services, earlyServices);
         var appServices = services.BuildServiceProvider();
@@ -137,7 +137,7 @@ public static partial class MauiProgram
 
     private static void ConfigureAppServices(IServiceCollection services, IServiceProvider? earlyServices)
     {
-        using var _ = Tracer.Region(nameof(ConfigureAppServices));
+        using var _ = Tracer.Region();
 
         // Singleton services visible from lazy services
         services.AddSingleton(AppSettings);

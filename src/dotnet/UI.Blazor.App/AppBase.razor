@@ -61,7 +61,7 @@
 
     protected override async Task OnInitializedAsync() {
         LoadingUI.MarkAppCreated();
-        using var _1 = Tracer.Region(nameof(OnInitializedAsync));
+        using var _1 = Tracer.Region();
 
         // Hit StaticImportsInitializer to make sure DefaultLog is set
         Services.GetRequiredService<StaticImportsInitializer>();

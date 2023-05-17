@@ -63,6 +63,6 @@ public sealed class Tracer
         => Writer?.Invoke(new TracePoint(this, label, elapsed));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TraceRegion Region(string label, bool logEnter = true)
+    public TraceRegion Region([CallerMemberName] string label = "", bool logEnter = true)
         => new(this, label, logEnter);
 }

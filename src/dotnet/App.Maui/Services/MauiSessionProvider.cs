@@ -46,7 +46,7 @@ public sealed class MauiSessionProvider : ISessionProvider
 
     public static Task RestoreOrCreate()
         => Task.Run(async () => {
-            using var _ = Tracer.Region(nameof(RestoreOrCreate));
+            using var _ = Tracer.Region();
 
             const string sessionIdStorageKey = "Fusion.SessionId";
             var session = (Session?)null;
@@ -106,7 +106,7 @@ public sealed class MauiSessionProvider : ISessionProvider
 
     private static async Task<string> CreateSessionId()
     {
-        var _ = Tracer.Region(nameof(CreateSessionId));
+        var _ = Tracer.Region();
         try {
             // Manually configure HTTP client as we don't have it configured globally at DI level
             using var httpClient = new HttpClient(new HttpClientHandler {
