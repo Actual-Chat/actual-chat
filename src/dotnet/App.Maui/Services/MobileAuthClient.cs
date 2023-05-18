@@ -17,8 +17,7 @@ public sealed class MobileAuthClient
             var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getOrCreateSession/{sessionId}";
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            sessionId = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return sessionId;
+            return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "GetOrCreateSessionId failed - probably server is unreachable");
