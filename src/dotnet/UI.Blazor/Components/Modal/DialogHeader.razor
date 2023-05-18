@@ -1,35 +1,37 @@
 ﻿@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-@if (ScreenSize.IsWide()) {
-    if (WideViewTemplate != null) {
-        @WideViewTemplate
-    } else {
-        <div class="modal-header">
-            <h3 class="modal-title">@Title</h3>
-            @if (HasCloseButton) {
-                <div class="modal-close">
-                    <ButtonX Class="btn-sm" Click="OnCloseClick"/>
-                </div>
-            }
-        </div>
-    }
-} else {
-    if (NarrowViewTemplate != null) {
-        @NarrowViewTemplate
-    } else {
-        <div class="modal-header-mobile">
-            @if (HasCloseButton) {
-                <ButtonRound Click="OnCloseClick" Class="btn-sm transparent">
-                    <i class="icon-arrow-left text-2xl"></i>
-                </ButtonRound>
-            }
-            <div class="modal-title">
-                @Title
+<CascadingValue Value="@this">
+    @if (ScreenSize.IsWide()) {
+        if (WideViewTemplate != null) {
+            @WideViewTemplate
+        } else {
+            <div class="modal-header">
+                <h3 class="modal-title">@Title</h3>
+                @if (HasCloseButton) {
+                    <div class="modal-close">
+                        <ButtonX Class="btn-sm" Click="OnCloseClick"/>
+                    </div>
+                }
             </div>
-        </div>
+        }
+    } else {
+        if (NarrowViewTemplate != null) {
+            @NarrowViewTemplate
+        } else {
+            <div class="modal-header-mobile">
+                @if (HasCloseButton) {
+                    <ButtonRound Click="OnCloseClick" Class="btn-sm transparent">
+                        <i class="icon-arrow-left text-2xl"></i>
+                    </ButtonRound>
+                }
+                <div class="modal-title">
+                    @Title
+                </div>
+            </div>
+        }
     }
-}
+</CascadingValue>
 
 @code {
     [CascadingParameter] public Modal Modal { get; set; } = null!;
