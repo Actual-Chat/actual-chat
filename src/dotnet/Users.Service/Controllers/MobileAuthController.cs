@@ -21,13 +21,11 @@ public sealed class MobileAuthController : Controller
     private const string CallbackScheme = "xamarinessentials";
 
     private IServiceProvider Services { get; }
-    private IAuth Auth { get; }
     private ICommander Commander { get; }
 
     public MobileAuthController(IServiceProvider services)
     {
         Services = services;
-        Auth = services.GetRequiredService<IAuth>();
         Commander = services.Commander();
     }
 
@@ -78,7 +76,6 @@ public sealed class MobileAuthController : Controller
     {
         var httpContext = HttpContext;
         var sessionProvider = httpContext.RequestServices.GetRequiredService<ISessionProvider>();
-        var session = sessionProvider.Session; // The new or existing cookie-based Session
 
         var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
         var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
@@ -86,6 +83,7 @@ public sealed class MobileAuthController : Controller
             : "";
 
         var auth = Services.GetRequiredService<IAuth>();
+        var session = !sid.IsNullOrEmpty() ? new Session(sid) : sessionProvider.Session; // use existing or create new
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo?.GetGuestId().IsGuest != true) {
             var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
