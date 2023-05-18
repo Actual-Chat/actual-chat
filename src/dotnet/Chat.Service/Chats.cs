@@ -343,7 +343,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     Kind = ChatKind.Group,
                     IsPublic = true,
                     IsTemplate = false,
-                    AllowedAuthorKind = ChatAuthorKind.Any,
+                    AllowAnonymousAuthors = false,
+                    AllowGuestAuthors = true,
                 },
             },
             templateAuthors.Single(a => a?.Id == templateOwner.AuthorId)?.UserId ?? UserId.None // Owner is mandatory
@@ -407,7 +408,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .Collect().ConfigureAwait(false);
         var guestAvatar = avatars
             .Where(a => a != null)
-            .FirstOrDefault(a => a!.Name == Avatar.GuestName);
+            .FirstOrDefault(a => OrdinalEquals(a!.Name, Avatar.GuestName));
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (guestAvatar == null) {
             var createAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
