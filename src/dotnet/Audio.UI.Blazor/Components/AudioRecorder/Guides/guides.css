@@ -1,5 +1,6 @@
 .guide-modal .modal-header-interactive {
     @apply bg-bubble;
+    @apply pr-1; /* indent to OK button */
 }
 
 .guide-modal .modal-header-interactive .modal-title {

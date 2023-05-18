@@ -119,7 +119,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .modal-header-interactive {
     @apply flex-x items-center;
     @apply min-h-14;
-    @apply pr-1;
+    @apply pr-2; /* indent to Submit button */
     @apply bg-02 border-bg-04 border-b;
 }
 

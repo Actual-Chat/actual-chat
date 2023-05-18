@@ -10,7 +10,7 @@
         Class="own-account-editor-modal"
         Title="Edit account"
         HasCloseButton="true"
-        NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch"
+        NarrowViewSettings="@_viewSettings"
         ButtonsClass="full-width">
         <Body>
         <DataAnnotationsValidator/>
@@ -54,6 +54,7 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private AccountFull _account = AccountFull.Loading;
+    private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -62,6 +63,14 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _viewSettings = DialogFrameNarrowViewSettings
+            .CreateBuilder(DialogFramePosition.Stretch)
+            .SubmitButtonType(ButtonType.Submit)
+            .Build();
+    }
 
     protected override async Task OnInitializedAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
