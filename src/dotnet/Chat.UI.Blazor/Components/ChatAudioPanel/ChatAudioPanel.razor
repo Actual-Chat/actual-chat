@@ -4,22 +4,28 @@
 
 <div class="chat-audio-panel">
     <div class="language-button">
-        <LanguageToggle/>
+        <LanguageToggle ChatSid="@ChatSid"/>
     </div>
     <div class="recorder-button"
          data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
          data-bubble-priority="102"
          data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-        <RecorderToggle Chat="@Chat"/>
+        <RecorderToggle ChatSid="@ChatSid"/>
     </div>
     <div class="playback-button"
          data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
          data-bubble-priority="103"
          data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-        <PlaybackToggle Chat="@Chat"/>
+        <PlaybackToggle ChatSid="@ChatSid"/>
     </div>
 </div>
 
 @code {
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    private ChatId ChatId { get; set; } = ChatId.None;
+
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        ChatId = new (ChatSid);
+    }
 }

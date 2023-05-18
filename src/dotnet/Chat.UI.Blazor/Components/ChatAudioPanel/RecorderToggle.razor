@@ -40,20 +40,25 @@
 
 @code {
     private OnOffAnimator _animator = null!;
+    private ChatId ChatId { get; set; } = ChatId.None;
 
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsChatChanging => !ChatId.IsNone && State.Value.ChatId != ChatId;
     private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
     private bool IsForcePush { get; set; } = false;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
 
     protected override void OnInitialized() {
         _animator = new OnOffAnimator(this, TimeSpan.FromMilliseconds(300));
         base.OnInitialized();
+    }
+
+    protected override void OnParametersSet() {
+        ChatId = new (ChatSid);
     }
 
     public override ValueTask DisposeAsync() {
@@ -72,9 +77,9 @@
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         var recorderState = await AudioRecorder.State.Use(cancellationToken);
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
-        var isRecording = recordingChatId == Chat.Id;
-        var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
-        return new Model(Chat, isRecording, isApplyingChanges, hasMicrophonePermission);
+        var isRecording = recordingChatId == ChatId;
+        var isApplyingChanges = recorderState.ChatId == ChatId && recorderState.IsRecording != isRecording;
+        return new (ChatId, isRecording, isApplyingChanges, hasMicrophonePermission);
     }
 
     private async Task OnClick() {
@@ -88,7 +93,7 @@
             if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
                 return;
 
-            _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
+            _ = ChatAudioUI.SetRecordingChatId(ChatId);
         }
     }
 
@@ -99,7 +104,7 @@
             return;
 
         IsForcePush = true;
-        _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
+        _ = ChatAudioUI.SetRecordingChatId(ChatId);
     }
 
     private void OnPointerUp() {
@@ -113,11 +118,11 @@
     // Nested types
 
     public sealed record Model(
-        Chat Chat,
+        ChatId ChatId,
         bool IsRecording = false,
         bool IsApplyingChanges = false,
         bool? HasMicrophonePermission = null
     ) {
-        public static Model Loading { get; } = new(Chat.Loading, false, true);
+        public static Model Loading { get; } = new(ChatId.None, false, true);
     }
 }

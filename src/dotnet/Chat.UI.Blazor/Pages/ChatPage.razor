@@ -7,7 +7,8 @@
     var m = _rendered = State.Value;
     var chat = m.Chat;
     var chatOrNone = m.Chat ?? Chat.None;
-    var chatOrFallback = ReferenceEquals(m, Model.Loading) ? Chat.Loading
+    var isLoading = ReferenceEquals(m, Model.Loading);
+    var chatOrFallback = isLoading ? Chat.Loading
         : ReferenceEquals(m, Model.SelectChat) ? Chat.SelectChat
         : chatOrNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
@@ -38,12 +39,10 @@
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <CascadingValue Value="@chatOrFallback">
-        <ChatFooter/>
-    </CascadingValue>
+    <ChatFooter ChatSid="@ChatSid" IsLoading="@isLoading"/>
 </RenderIntoSlot>
 
-@if (ReferenceEquals(m, Model.Loading)) {
+@if (isLoading) {
     <chat-view-skeleton count="15" />
     return;
 }

@@ -2,6 +2,7 @@
 @inherits ComputedStateComponent<ChatFooter.Model>
 @{
     var m = State.Value;
+    var chat = m.Chat ?? Chat.SelectChat;
 }
 
 <div class="writable-chat-footer">
@@ -12,7 +13,7 @@
         <ReadOnlyChatFooter FooterText="@string.Empty" />
     } else {
         @if (m.CanPost) {
-            <ChatMessageEditor/>
+            <ChatMessageEditor ChatSid="@ChatSid" ChatTitle="@chat.Title" />
         } else if (m.CanJoin) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
@@ -44,6 +45,8 @@
 </div>
 
 @code {
+    private ChatId ChatId { get; set; } = ChatId.None;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
@@ -52,7 +55,12 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+    [Parameter, EditorRequired] public bool IsLoading { get; set; }
+
+    protected override void OnParametersSet() {
+        ChatId = new (ChatSid);
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -62,33 +70,36 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ReferenceEquals(Chat, Chat.Loading))
+        if (IsLoading)
             return Model.Loading;
-        if (ReferenceEquals(Chat, Chat.SelectChat))
+        if (ChatId == ChatId.None)
             return Model.SelectChat;
-        if (ReferenceEquals(Chat, Chat.None))
-            return Model.None;
+
+        var chat = await Chats.Get(Session, ChatId, cancellationToken);
+        if (chat == null)
+            return Model.SelectChat;
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
-        var otherUserId = Chat.Id.IsPeerChat(out var peerChatId)
+        var otherUserId = ChatId.IsPeerChat(out var peerChatId)
             ? peerChatId.UserIds.OtherThan(account.Id)
             : default;
-        var canPost = Chat.Rules.CanWrite();
-        var canJoin = !canPost && Chat.Rules.CanJoin();
+        var canPost = chat.Rules.CanWrite();
+        var canJoin = !canPost && chat.Rules.CanJoin();
         var hasMultipleAvatars = false;
         var canJoinWithGuestAccount = false;
         var canJoinAnonymously = false;
         if (canJoin) {
             if (account.IsGuestOrNone) {
-                canJoinWithGuestAccount = Chat.AllowGuestAuthors;
+                canJoinWithGuestAccount = chat.AllowGuestAuthors;
             } else {
-                canJoinAnonymously = Chat.AllowAnonymousAuthors;
+                canJoinAnonymously = chat.AllowAnonymousAuthors;
                 var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
                 hasMultipleAvatars = avatars.Length > 1 || canJoinAnonymously;
             }
         }
 
         return new () {
+            Chat = chat,
             OtherUserId = otherUserId,
             IsGuest = account.IsGuestOrNone,
             CanPost = canPost,
@@ -102,7 +113,7 @@
     private async Task OnJoin() {
         var m = State.Value;
         if (!m.HasMultipleAvatars) {
-            var command = new IAuthors.JoinCommand(Session, Chat.Id);
+            var command = new IAuthors.JoinCommand(Session, ChatId);
             await UICommander.Run(command);
             return;
         }
@@ -110,7 +121,7 @@
         await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, m.CanJoinAnonymously, JoinWithAvatar));
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new IAuthors.JoinCommand(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            var command = new IAuthors.JoinCommand(Session, ChatId, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
             await UICommander.Run(command);
         }
     }
@@ -118,8 +129,8 @@
     public sealed class Model {
         public static Model Loading { get; } = new();
         public static Model SelectChat { get; } = new();
-        public static Model None { get; } = new();
 
+        public Chat? Chat { get; init; }
         public UserId OtherUserId { get; init; }
         public bool IsGuest { get; init; }
         public bool CanPost { get; init; }

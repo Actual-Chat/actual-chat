@@ -11,13 +11,19 @@
 </ButtonRound>
 
 @code {
+    private ChatId ChatId { get; set; } = ChatId.None;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        ChatId = new (ChatSid);
+    }
 
     protected override ComputedState<Language>.Options GetStateOptions()
         => new() {
@@ -26,12 +32,12 @@
         };
 
     protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
-        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
+        => await LanguageUI.GetChatLanguage(ChatId, cancellationToken).ConfigureAwait(false);
 
     protected async Task OnClick(CancellationToken cancellationToken = default) {
         var languages = await LanguageUI.Settings.Use(cancellationToken);
         if (languages.Secondary != null)
-            await LanguageUI.ChangeChatLanguage(Chat.Id);
+            await LanguageUI.ChangeChatLanguage(ChatId);
         else
             _ = ModalUI.Show(new NoSecondaryLanguageModal.Model());
     }
