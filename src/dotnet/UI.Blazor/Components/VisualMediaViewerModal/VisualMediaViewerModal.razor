@@ -4,37 +4,29 @@
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 
-<DialogFrame
-    Class="image-viewer-modal"
-    CloseButtonClass="btn-sm"
-    HasCloseButton="true"
-    NoNarrowHeader="false"
-    HasHeader="false"
-    Title="@(ModalModel.AltText.NullIfEmpty() ?? "Image")">
-    <Body>
-        <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
-        <div @ref="@Ref" class="image-viewer-content">
-            @if (ModalModel.IsVideo) {
-                <video width="@ModalModel.Width" height="@ModalModel.Height" preload="auto" autoplay controls onclick="this.play()">
-                    <source src="@ModalModel.Url"/>
-                </video>
-            } else {
-                <img class="hidden"
-                     width="@ModalModel.Width"
-                     height="@ModalModel.Height"
-                     src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
-                     onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
-                <img id="@_cachedImgElementId"
-                     style="width: @(ModalModel.Width)px; height: @(ModalModel.Height)px;"
-                     src="@ModalModel.CachedImageUrl"
-                     alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
-            }
-        </div>
-        <div class="image-viewer-footer">
-            <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
-        </div>
-    </Body>
-</DialogFrame>
+<ModalFrame Class="image-viewer-modal">
+    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
+    <div @ref="@Ref" class="image-viewer-content">
+        @if (ModalModel.IsVideo) {
+            <video width="@ModalModel.Width" height="@ModalModel.Height" preload="auto" autoplay controls onclick="this.play()">
+                <source src="@ModalModel.Url"/>
+            </video>
+        } else {
+            <img class="hidden"
+                 width="@ModalModel.Width"
+                 height="@ModalModel.Height"
+                 src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
+                 onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
+            <img id="@_cachedImgElementId"
+                 style="width: @(ModalModel.Width)px; height: @(ModalModel.Height)px;"
+                 src="@ModalModel.CachedImageUrl"
+                 alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+        }
+    </div>
+    <div class="image-viewer-footer">
+        <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
+    </div>
+</ModalFrame>
 
 @code {
     private string _cachedImgElementId = "";

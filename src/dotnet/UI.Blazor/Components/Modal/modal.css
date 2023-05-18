@@ -88,8 +88,12 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply p-2;
     @apply overflow-visible;
 }
-.modal-header .modal-title {
+
+.modal-title {
     @apply flex-1;
+}
+
+.modal-header .modal-title {
     @apply text-xl md:text-lg font-semibold md:font-medium truncate;
 }
 .modal-header .modal-close {
@@ -99,9 +103,27 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply invisible md:visible;
 }
 
-.modal-mobile-header {
+.modal-header-mobile {
     @apply flex-x justify-start items-center gap-x-2;
     @apply p-2;
+}
+
+.modal-header-mobile .modal-title {
+    @apply text-title-1 text-02;
+}
+
+.modal-header-interactive {
+    @apply flex-x items-center;
+    @apply min-h-14;
+    @apply pr-1;
+}
+
+.modal-header-interactive .modal-title {
+    @apply text-headline-1;
+}
+
+.modal-header-interactive .btn-submit {
+    @apply text-headline-1;
 }
 
 .dialog-body {
@@ -149,4 +171,8 @@ body.narrow .dialog-buttons {
 }
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
+}
+
+.modal-frame .no-padding-header-decorator {
+    @apply -mt-2 -ml-2 -mr-2;
 }

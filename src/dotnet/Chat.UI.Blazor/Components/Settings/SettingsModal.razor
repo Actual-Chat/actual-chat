@@ -15,8 +15,7 @@
     var showLogout = !isGuestOrNone;
 }
 
-<DialogFrame Title="Settings" NoNarrowHeader="true">
-    <Body>
+<ModalFrame>
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
@@ -65,8 +64,7 @@
             </SettingsTab>
         }
     </SettingsPanel>
-    </Body>
-</DialogFrame>
+</ModalFrame>
 
 @code {
     private bool _enableIncompleteUI;

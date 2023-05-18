@@ -1,32 +1,21 @@
-body.wide .guide-modal .guide-header-wrapper {
-    @apply hidden;
-}
-body.narrow .guide-modal .guide-header-wrapper {
-    @apply absolute top-0 left-0 right-0;
-}
-body.narrow .guide-modal .guide-header {
-    @apply flex-x items-center;
-    @apply min-h-footer;
-}
 .guide-modal .guide-header {
     @apply bg-bubble;
+    @apply text-04;
 }
-.guide-header-btn.btn .btn-content {
+
+.guide-modal .guide-header .btn .btn-content {
     @apply bg-transparent;
+    @apply text-04;
 }
-.modal-frame.guide-modal .dialog-body {
+
+.guide-modal .dialog-body {
     @apply gap-y-4;
     @apply overflow-y-auto;
 }
-body.narrow .modal-frame.guide-modal .dialog-body {
-    @apply pt-20;
-}
+
 .guide-modal .dialog-body::-webkit-scrollbar {
     @apply hidden;
 }
 .guide-modal .c-text {
     @apply text-02;
-}
-body.narrow .guide-modal .dialog-buttons {
-    @apply hidden;
 }

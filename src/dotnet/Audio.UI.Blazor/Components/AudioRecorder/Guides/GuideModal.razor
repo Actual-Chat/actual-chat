@@ -20,12 +20,36 @@
         else
             device = GuideType.WebChrome;
     }
+
+    RenderFragment RenderButtons() {
+        if (!ScreenSize.IsWide())
+            return RenderFragments.Null;
+        return @<NoComponent>
+                   <Button Class="btn-modal mobile" Click="OnCancel">
+                       Cancel
+                   </Button>
+                   <Button Class="btn-modal mobile" Click="OnOkClick">
+                       OK
+                   </Button>
+               </NoComponent>;
+    }
+
+    var buttons = RenderButtons();
 }
 
-<DialogFrame Class="guide-modal" Title="Guide" HasCloseButton="true" NoNarrowHeader="true">
+<DialogFrame Class="guide-modal" Buttons="@buttons">
+    <Header>
+        <DialogHeader Title="Guide" HasCloseButton="true">
+            <NarrowViewTemplate>
+                <DialogInteractiveHeader
+                    Title="Guide"
+                    Class="guide-header"
+                    SubmitButtonText="OK"
+                    SubmitClick="@OnCancel" />
+            </NarrowViewTemplate>
+        </DialogHeader>
+    </Header>
     <Body>
-
-    <GuideHeader OnCloseClick="OnCancel" OnOkClick="OnCancel"/>
 
     @switch (device) {
         case GuideType.MobileSafariIos:
@@ -49,14 +73,7 @@
     }
 
     </Body>
-    <Buttons>
-        <Button Class="btn-modal mobile" Click="OnCancel">
-            Cancel
-        </Button>
-        <Button Class="btn-modal mobile" Click="OnOkClick">
-            OK
-        </Button>
-    </Buttons>
+
 </DialogFrame>
 
 @code {
