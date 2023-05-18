@@ -1,10 +1,13 @@
-.guide-modal .guide-header {
+.guide-modal .modal-header-interactive {
     @apply bg-bubble;
-    @apply text-04;
 }
 
-.guide-modal .guide-header .btn .btn-content {
-    @apply bg-transparent;
+.guide-modal .modal-header-interactive .modal-title {
+    @apply text-04;
+    @apply text-headline-1;
+}
+
+.guide-modal .modal-header-interactive .btn .btn-content {
     @apply text-04;
 }
 

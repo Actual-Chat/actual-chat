@@ -116,14 +116,20 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply flex-x items-center;
     @apply min-h-14;
     @apply pr-1;
+    @apply bg-02 border-bg-04 border-b;
+}
+
+.modal-header-interactive .btn .btn-content {
+    @apply bg-transparent;
 }
 
 .modal-header-interactive .modal-title {
-    @apply text-headline-1;
+    @apply text-title-1 text-02;
 }
 
 .modal-header-interactive .btn-submit {
     @apply text-headline-1;
+    @apply text-primary;
 }
 
 .dialog-body {

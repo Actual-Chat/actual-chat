@@ -12,9 +12,9 @@
         <div class="modal-title">
             @title
         </div>
-        @if (SubmitClick.HasDelegate) {
-            <ButtonRound Class="btn-submit" Click="SubmitClick">
-                @SubmitButtonText
+        @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
+            <ButtonRound Class="btn-submit" Type="SubmitButtonType" Click="SubmitClick">
+                <span>@SubmitButtonText</span>
             </ButtonRound>
         }
     </div>
@@ -27,6 +27,7 @@
     [Parameter] public string? Title { set; get; }
     [Parameter] public string Class { set; get; } = "";
     [Parameter] public string SubmitButtonText { set; get; } = "";
+    [Parameter] public ButtonType SubmitButtonType { set; get; } = ButtonType.Button;
     [Parameter] public EventCallback SubmitClick { set; get; }
 
     private void OnCloseClick()
