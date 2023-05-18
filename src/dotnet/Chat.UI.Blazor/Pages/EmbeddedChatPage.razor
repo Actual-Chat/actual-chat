@@ -6,7 +6,8 @@
     var m = _rendered = State.Value;
     var chat = m.Chat;
     var chatOrNone = m.Chat ?? Chat.None;
-    var chatOrLoading = ReferenceEquals(m, Model.Loading) ? Chat.Loading : chatOrNone;
+    var isLoading = ReferenceEquals(m, Model.Loading);
+    var chatOrLoading = isLoading ? Chat.Loading : chatOrNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
@@ -24,7 +25,10 @@
                     <div class="flex-1 flex-x h-full overflow-hidden">
                         <div class="flex-1 -flex-y h-full overflow-hidden relative">
                             <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
-                                <ChatFooter/>
+                                <ChatFooter ChatSid="@ChatSid" IsLoading="@isLoading"/>
+                            </div>
+                            <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
+                                <RenderStack Name="SubFooter"/>
                             </div>
                             <div class="layout-body flex-1 custom-scrollbar">
                                 @if (m.ChatId.IsNone) {
@@ -44,10 +48,6 @@
         </RegionVisibilityProvider>
     </ErrorBarrier>
 </div>
-
-@* @if (ReferenceEquals(m, Model.Loading)) { *@
-@*     return; *@
-@* } *@
 
 @code {
     private Model? _rendered;
