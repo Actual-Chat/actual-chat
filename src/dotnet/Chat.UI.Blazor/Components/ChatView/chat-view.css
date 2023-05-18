@@ -2,7 +2,7 @@
     @apply relative flex-y;
     @apply border-l-2 border-bg-01;
     @apply md:select-text;
-    @apply: translate-z-0;
+    @apply translate-z-0;
 }
 body.hoverable .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
