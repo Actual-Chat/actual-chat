@@ -154,6 +154,9 @@ export class OpusMediaRecorder {
                 () => this.encoderWorker?.stop(),
                 e => warnLog?.log('start.detach encoderWorker.stop error:', e));
             await catchErrors(
+                () => this.vadWorker?.reset(),
+                e => warnLog?.log('start.detach vadWorker.reset error:', e));
+            await catchErrors(
                 () => this.source?.disconnect(),
                 e => warnLog?.log('start.detach source.disconnect error:', e));
             this.source = null;

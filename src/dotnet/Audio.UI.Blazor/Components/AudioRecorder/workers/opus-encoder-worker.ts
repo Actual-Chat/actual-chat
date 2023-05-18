@@ -130,6 +130,7 @@ const serverImpl: OpusEncoderWorker = {
         debugLog?.log(`stop`);
 
         state = 'ended';
+        vadState = 'silence';
         processQueue('out');
         recordingSubject?.complete();
         recordingSubject = null;
