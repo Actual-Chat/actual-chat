@@ -1,17 +1,28 @@
 import DetectRTC from 'detectrtc';
-import { opusMediaRecorder } from './opus-media-recorder';
 import { Log } from 'logging';
-import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { PromiseSource } from 'promises';
 import { DeviceInfo } from 'device-info';
+import { opusMediaRecorder } from './opus-media-recorder';
+import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
+
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioRecorder {
     private readonly sessionId: string;
 
-    private whenInitialized: Promise<void>;
+    private static whenInitialized: Promise<void> | null;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
+
+    public static init(): Promise<void> {
+        debugLog?.log(`-> init()`);
+        AudioRecorder.whenInitialized = new Promise<void>(resolve => {
+            DetectRTC.load(resolve);
+            debugLog?.log(`<- init(): resolved`);
+        });
+
+        return AudioRecorder.whenInitialized;
+    }
 
     /** Called by Blazor  */
     public static create(sessionId: string) {
@@ -20,7 +31,8 @@ export class AudioRecorder {
 
     public constructor(sessionId: string) {
         this.sessionId = sessionId;
-        this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
+        if (!AudioRecorder.whenInitialized)
+            void AudioRecorder.init();
     }
 
     /** Called by Blazor  */
@@ -37,45 +49,60 @@ export class AudioRecorder {
     /** Called by Blazor  */
     public async requestPermission(): Promise<boolean> {
         debugLog?.log(`-> requestPermission()`);
-        await this.whenInitialized;
+        try {
+            await AudioRecorder.whenInitialized;
 
-        const hasMicrophone = DetectRTC.isAudioContextSupported
-            && DetectRTC.hasMicrophone
-            && DetectRTC.isGetUserMediaSupported
-            && DetectRTC.isWebsiteHasMicrophonePermissions;
+            const isMaui = BrowserInfo.appKind == 'MauiApp';
+            const hasMicrophone = DetectRTC.isAudioContextSupported
+                && DetectRTC.hasMicrophone
+                && DetectRTC.isGetUserMediaSupported
+                && (DetectRTC.isWebsiteHasMicrophonePermissions || isMaui);
 
-        if (!hasMicrophone) {
-            // Requests microphone permission
-            let stream: MediaStream = null;
-            try {
-                debugLog?.log(`requestPermission: detecting active tracks to stop`);
-                stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
-            }
-            catch (error) {
-                errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
-                return false;
-            }
-            finally {
-                if (stream) {
-                    const audioTracks = stream.getAudioTracks();
-                    const videoTracks = stream.getVideoTracks();
-                    debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
-                    audioTracks.forEach(t => t.stop());
-                    videoTracks.forEach(t => t.stop());
+            debugLog?.log(`requestPermission(): hasMicrophone=`,
+                hasMicrophone,
+                DetectRTC.isAudioContextSupported,
+                DetectRTC.hasMicrophone,
+                DetectRTC.isGetUserMediaSupported,
+                DetectRTC.isWebsiteHasMicrophonePermissions);
+
+            if (!hasMicrophone) {
+                // Requests microphone permission
+                let stream: MediaStream = null;
+                try {
+                    debugLog?.log(`requestPermission: detecting active tracks to stop`);
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+                    // update DetectRTC with new microphone permission if granted
+                    AudioRecorder.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
                 }
+                catch (error) {
+                    errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
+                    return false;
+                }
+                finally {
+                    if (stream) {
+                        const audioTracks = stream.getAudioTracks();
+                        const videoTracks = stream.getVideoTracks();
+                        debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
+                        audioTracks.forEach(t => t.stop());
+                        videoTracks.forEach(t => t.stop());
+                    }
+                }
+
+                return true;
             }
 
-            return true;
+            return hasMicrophone;
         }
-
-        return hasMicrophone;
+        finally {
+            debugLog?.log(`<- requestPermission()`);
+        }
     }
 
     /** Called by Blazor  */
     public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
-        await this.whenInitialized;
+        await AudioRecorder.whenInitialized;
 
         try {
             if (this.state === 'recording' || this.state === 'starting') {
@@ -89,6 +116,7 @@ export class AudioRecorder {
                 errorLog?.log(`startRecording: microphone is unavailable`);
                 return false;
             }
+            debugLog?.log(`startRecording(), after hasMicrophone`);
 
             if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
                 if (DeviceInfo.isFirefox) {
@@ -115,6 +143,7 @@ export class AudioRecorder {
                     return false;
                 }
             }
+            debugLog?.log(`startRecording(), after isWebsiteHasMicrophonePermissions`);
 
             await opusMediaRecorder.start(this.sessionId, chatId, repliedChatEntryId);
             if (this.state !== 'starting')

@@ -1,6 +1,7 @@
+import { Log } from 'logging';
 import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
-import { Log } from 'logging';
+import {AudioRecorder} from "../Components/AudioRecorder/audio-recorder";
 
 const { infoLog, warnLog } = Log.get('AudioInfo');
 
@@ -27,6 +28,7 @@ export class AudioInitializer {
 
         if (!this.isRecorderInitialized) {
             try {
+                await AudioRecorder.init();
                 await opusMediaRecorder.init(baseUri);
                 this.isRecorderInitialized = true;
             }

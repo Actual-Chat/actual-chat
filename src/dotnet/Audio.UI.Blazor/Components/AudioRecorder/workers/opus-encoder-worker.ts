@@ -72,6 +72,7 @@ const serverImpl: OpusEncoderWorker = {
         };
 
         // Connect to SignalR Hub
+        debugLog?.log(`create: hub connecting...`);
         hubConnection = new signalR.HubConnectionBuilder()
             .withUrl(audioHubUrl, {
                 skipNegotiation: true,
@@ -82,6 +83,13 @@ const serverImpl: OpusEncoderWorker = {
             .configureLogging(signalR.LogLevel.Information)
             .build();
         await hubConnection.start();
+
+        // Ensure audio transport is up and running
+        debugLog?.log(`create: -> hub.ping()`);
+        const pong = await hubConnection.invoke('Ping');
+        debugLog?.log(`create: <- hub.ping(): `, pong);
+        if (pong !== 'Pong')
+            warnLog?.log(`create: unexpected Ping call result`, pong);
 
         // Get fade-in window
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
@@ -104,13 +112,6 @@ const serverImpl: OpusEncoderWorker = {
     init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
         encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, workletPort, serverImpl);
         vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
-
-        // Ensure audio transport is up and running
-        debugLog?.log(`init: -> hub.ping()`);
-        const pong = await hubConnection.invoke('Ping');
-        debugLog?.log(`init: <- hub.ping(): `, pong);
-        if (pong !== 'Pong')
-            warnLog?.log(`init: unexpected Ping call result`, pong);
 
         state = 'ended';
     },
