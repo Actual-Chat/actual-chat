@@ -11,46 +11,39 @@ public record DialogFrameNarrowViewSettings
     public bool? ShouldHideButtons { get; init; }
     public ButtonType SubmitButtonType { get; init; } = ButtonType.Button;
     public EventCallback SubmitClick { get; init; }
-    public string SubmitButtonText { get; init; } = "Save";
+    public string SubmitButtonText { get; init; } = "";
 
     public bool IsSubmitDefined
         => SubmitButtonType != ButtonType.Button || SubmitClick.HasDelegate;
 
-    public static DialogFrameNarrowViewSettingsBuilder CreateBuilder(DialogFramePosition position)
-        => new (position == DialogFramePosition.Bottom ? Bottom : Stretch);
-}
+    public static DialogFrameNarrowViewSettings FormSubmitButton(string submitButtonText = "")
+        => new() {
+            Position = DialogFramePosition.Stretch,
+            SubmitButtonType = ButtonType.Submit,
+            SubmitButtonText = submitButtonText
+        };
 
-public readonly struct DialogFrameNarrowViewSettingsBuilder
-{
-    private readonly DialogFrameNarrowViewSettings _settings;
-
-    public DialogFrameNarrowViewSettings Build()
-        => _settings;
-
-    public DialogFrameNarrowViewSettingsBuilder SubmitText(string text)
-        => new (_settings with {SubmitButtonText = text});
-
-    public DialogFrameNarrowViewSettingsBuilder SubmitButtonType(ButtonType buttonType)
-        => new (_settings with {SubmitButtonType = buttonType});
-
-    public DialogFrameNarrowViewSettingsBuilder SubmitHandler(Action callback)
+    public static DialogFrameNarrowViewSettings SubmitButton(Action callback, string submitButtonText = "")
     {
         var eventCallback = callback.Target != null
             ? EventCallback.Factory.Create(callback.Target, callback)
             : new EventCallback(null, callback);
-        return new DialogFrameNarrowViewSettingsBuilder(_settings with {SubmitClick = eventCallback});
+        return new DialogFrameNarrowViewSettings {
+            Position = DialogFramePosition.Stretch,
+            SubmitClick = eventCallback,
+            SubmitButtonText = submitButtonText
+        };
     }
 
-    public DialogFrameNarrowViewSettingsBuilder SubmitHandler(Func<Task> callback)
+    public static DialogFrameNarrowViewSettings SubmitButton(Func<Task> callback, string submitButtonText = "")
     {
         var eventCallback = callback.Target != null
             ? EventCallback.Factory.Create(callback.Target, callback)
             : new EventCallback(null, callback);
-        return new DialogFrameNarrowViewSettingsBuilder(_settings with {SubmitClick = eventCallback});
+        return new DialogFrameNarrowViewSettings {
+            Position = DialogFramePosition.Stretch,
+            SubmitClick = eventCallback,
+            SubmitButtonText = submitButtonText
+        };
     }
-    public DialogFrameNarrowViewSettingsBuilder ShouldHideButtons(bool? hide)
-        => new (_settings with {ShouldHideButtons = hide});
-
-    internal DialogFrameNarrowViewSettingsBuilder(DialogFrameNarrowViewSettings settings)
-        => _settings = settings;
 }

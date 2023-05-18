@@ -3,7 +3,7 @@
 @using ActualChat.Search
 @implements IModalView<NewChatModal.Model>
 
-<DialogFrame Class="new-chat-modal" Title="New chat" HasCloseButton="true">
+<DialogFrame Class="new-chat-modal" Title="New chat" HasCloseButton="true" NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
     <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
         <DataAnnotationsValidator/>

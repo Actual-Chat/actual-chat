@@ -11,25 +11,23 @@
     var cls = Class + " " + positionClass;
 }
 
-<CascadingValue Value="@this">
-    <ModalFrame Class="@cls">
-        <Header>
-            @if (HasHeader) {
-                <DialogHeader DialogFrame="@this" Title="@Title" HasCloseButton="@HasCloseButton"/>
-            }
-        </Header>
-        <ChildContent>
-            <div class="dialog-body">
-                @Body
+<ModalFrame Class="@cls">
+    <Header>
+        @if (HasHeader) {
+            <DialogHeader DialogFrame="@this" Title="@Title" HasCloseButton="@HasCloseButton"/>
+        }
+    </Header>
+    <ChildContent>
+        <div class="dialog-body">
+            @Body
+        </div>
+        @if (Buttons != null && showButtons && Buttons != RenderFragments.Null) {
+            <div class="dialog-buttons @ButtonsClass">
+                @Buttons
             </div>
-            @if (Buttons != null && showButtons && Buttons != RenderFragments.Null) {
-                <div class="dialog-buttons @ButtonsClass">
-                    @Buttons
-                </div>
-            }
-        </ChildContent>
-    </ModalFrame>
-</CascadingValue>
+        }
+    </ChildContent>
+</ModalFrame>
 
 @code {
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

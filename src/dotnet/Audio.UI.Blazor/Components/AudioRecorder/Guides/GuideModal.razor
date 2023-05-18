@@ -22,7 +22,11 @@
     }
 }
 
-<DialogFrame Class="guide-modal" Title="Guide" HasCloseButton="true" NarrowViewSettings="_viewSettings">
+<DialogFrame
+    Class="guide-modal"
+    Title="Guide"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, "OK")">
     <Body>
 
     @switch (device) {
@@ -58,8 +62,6 @@
 </DialogFrame>
 
 @code {
-    private DialogFrameNarrowViewSettings _viewSettings = null!;
-
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] public IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
 
@@ -67,14 +69,6 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        _viewSettings = DialogFrameNarrowViewSettings
-            .CreateBuilder(DialogFramePosition.Stretch)
-            .SubmitText("OK")
-            .SubmitHandler(OnOkClick)
-            .Build();
-    }
 
     private void OnCancel()
         => Modal.Close();
