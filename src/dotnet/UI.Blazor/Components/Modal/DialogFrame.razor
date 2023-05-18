@@ -1,35 +1,46 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-<ModalFrame Class="@Class">
-    <Header>
-        @if (Header != null) {
-            @Header
-        }
-        else if (HasHeader) {
-            <DialogHeader Title="@Title" HasCloseButton="@HasCloseButton" />
-        }
-    </Header>
-    <ChildContent>
-        <div class="dialog-body">
-            @Body
-        </div>
-        @if (Buttons != null && Buttons != RenderFragments.Null) {
-            <div class="dialog-buttons @ButtonsClass">
-                @Buttons
+@{
+    var settings = NarrowViewSettings;
+    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.IsSubmitDefined);
+    var showButtons = ScreenSize.IsWide() || !hideButtonsInNarrowView;
+    var positionClass = settings.Position == DialogFramePosition.Bottom
+        ? "narrow-view__modal__position-bottom"
+        : "narrow-view__modal__position-stretch";
+    var cls = Class + " " + positionClass;
+}
+
+<CascadingValue Value="@this">
+    <ModalFrame Class="@cls">
+        <Header>
+            @if (HasHeader) {
+                <DialogHeader DialogFrame="@this" Title="@Title" HasCloseButton="@HasCloseButton"/>
+            }
+        </Header>
+        <ChildContent>
+            <div class="dialog-body">
+                @Body
             </div>
-        }
-    </ChildContent>
-</ModalFrame>
+            @if (Buttons != null && showButtons && Buttons != RenderFragments.Null) {
+                <div class="dialog-buttons @ButtonsClass">
+                    @Buttons
+                </div>
+            }
+        </ChildContent>
+    </ModalFrame>
+</CascadingValue>
 
 @code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public ElementReference? Ref { get; set; }
+    [Parameter] public DialogFrameNarrowViewSettings NarrowViewSettings { get; set; } = DialogFrameNarrowViewSettings.Bottom;
 }

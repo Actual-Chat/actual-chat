@@ -1,16 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
-@{
-    var cls = "modal-header-interactive " + Class;
-    var title = Title ?? DialogHeader?.Title ?? "";
-}
 
 <ModalHeaderNoPaddingDecorator>
-    <div class="@cls">
-        <ButtonRound Class="btn-close" Click="OnCloseClick">
+    <div class="modal-header-interactive">
+        <ButtonRound Class="btn-close" Click="CloseClick">
             <i class="icon-close text-xl"></i>
         </ButtonRound>
         <div class="modal-title">
-            @title
+            @Title
         </div>
         @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
             <ButtonRound Class="btn-submit" Type="SubmitButtonType" Click="SubmitClick">
@@ -21,15 +17,9 @@
 </ModalHeaderNoPaddingDecorator>
 
 @code {
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
-    [CascadingParameter] public DialogHeader? DialogHeader { get; set; }
-
-    [Parameter] public string? Title { set; get; }
-    [Parameter] public string Class { set; get; } = "";
+    [Parameter] public string Title { set; get; } = "";
     [Parameter] public string SubmitButtonText { set; get; } = "";
     [Parameter] public ButtonType SubmitButtonType { set; get; } = ButtonType.Button;
     [Parameter] public EventCallback SubmitClick { set; get; }
-
-    private void OnCloseClick()
-        => _ = Modal.Close();
+    [Parameter] public EventCallback CloseClick { set; get; }
 }

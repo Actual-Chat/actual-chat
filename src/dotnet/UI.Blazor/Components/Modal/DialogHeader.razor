@@ -3,21 +3,24 @@
 
 <CascadingValue Value="@this">
     @if (ScreenSize.IsWide()) {
-        if (WideViewTemplate != null) {
-            @WideViewTemplate
-        } else {
-            <div class="modal-header">
-                <h3 class="modal-title">@Title</h3>
-                @if (HasCloseButton) {
-                    <div class="modal-close">
-                        <ButtonX Class="btn-sm" Click="OnCloseClick"/>
-                    </div>
-                }
-            </div>
-        }
+        <div class="modal-header">
+            <h3 class="modal-title">@Title</h3>
+            @if (HasCloseButton) {
+                <div class="modal-close">
+                    <ButtonX Class="btn-sm" Click="OnCloseClick"/>
+                </div>
+            }
+        </div>
     } else {
-        if (NarrowViewTemplate != null) {
-            @NarrowViewTemplate
+        var settings = DialogFrame.NarrowViewSettings;
+        var useInteractiveHeader = DialogFrame.NarrowViewSettings.IsSubmitDefined;
+        if (useInteractiveHeader) {
+            <DialogInteractiveHeader
+                Title="@Title"
+                CloseClick="OnCloseClick"
+                SubmitButtonType="@settings.SubmitButtonType"
+                SubmitButtonText="@settings.SubmitButtonText"
+                SubmitClick="@settings.SubmitClick" />
         } else {
             <div class="modal-header-mobile">
                 @if (HasCloseButton) {
@@ -37,8 +40,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Parameter] public RenderFragment? WideViewTemplate { get; set; }
-    [Parameter] public RenderFragment? NarrowViewTemplate { get; set; }
+    [Parameter] public DialogFrame DialogFrame { get; set; } = null!;
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public string Title { get; set; } = "";
 

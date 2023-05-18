@@ -32,6 +32,10 @@
     @apply w-auto h-auto;
 }
 
+.narrow .narrow-view__modal__position-stretch {
+    @apply rounded-none;
+}
+
 /* Full-screen mode overrides */
 .modal-overlay-fullscreen .modal-focus-trap,
 .modal-overlay-fullscreen .modal .modal-content {

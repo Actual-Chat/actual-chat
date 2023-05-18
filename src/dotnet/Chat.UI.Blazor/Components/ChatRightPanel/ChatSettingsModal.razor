@@ -5,32 +5,10 @@
 @inherits ComputedStateComponent<ChatSettingsModal.ComputedModel>
 @{
     var m = State.Value;
-
-    RenderFragment RenderButtons() {
-        if (!ScreenSize.IsWide())
-            return RenderFragments.Null;
-        var isValid = _formRef?.IsValid ?? false;
-        var submitClass = $"btn-primary {(isValid ? "" : "disabled")}";
-        return @<div class="btn-group">
-                   <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
-                   <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
-               </div>;
-    }
-
-    var buttons = RenderButtons();
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Class="edit-chat-settings-modal" Buttons="buttons">
-        <Header>
-            <DialogHeader Title="Edit chat settings" HasCloseButton="true">
-                <NarrowViewTemplate>
-                    <DialogInteractiveHeader
-                        SubmitButtonType="ButtonType.Submit"
-                        SubmitButtonText="Save" />
-                </NarrowViewTemplate>
-            </DialogHeader>
-        </Header>
+    <DialogFrame Class="edit-chat-settings-modal" Title="Edit chat settings" HasCloseButton="true" NarrowViewSettings="_viewSettings">
         <Body>
         <div class="flex-y text-03 p-3 overflow-y-auto custom-scrollbar">
             @if (m.Rules != null) {
@@ -82,12 +60,22 @@
             }
         </div>
         </Body>
+        <Buttons>
+            <div class="btn-group">
+                @{
+                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                }
+                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
+            </div>
+        </Buttons>
     </DialogFrame>
 </Form>
 
 @code {
-    private Form? _formRef;
+    private Form _formRef = null!;
     private FormModel _form = null!;
+    private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -103,6 +91,14 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _viewSettings = DialogFrameNarrowViewSettings
+            .CreateBuilder(DialogFramePosition.Stretch)
+            .SubmitButtonType(ButtonType.Submit)
+            .Build();
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {

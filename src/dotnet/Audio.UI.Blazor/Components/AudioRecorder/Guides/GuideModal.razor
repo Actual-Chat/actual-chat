@@ -20,33 +20,9 @@
         else
             device = GuideType.WebChrome;
     }
-
-    RenderFragment RenderButtons() {
-        if (!ScreenSize.IsWide())
-            return RenderFragments.Null;
-        return @<NoComponent>
-                   <Button Class="btn-modal mobile" Click="OnCancel">
-                       Cancel
-                   </Button>
-                   <Button Class="btn-modal mobile" Click="OnOkClick">
-                       OK
-                   </Button>
-               </NoComponent>;
-    }
-
-    var buttons = RenderButtons();
 }
 
-<DialogFrame Class="guide-modal" Buttons="@buttons">
-    <Header>
-        <DialogHeader Title="Guide" HasCloseButton="true">
-            <NarrowViewTemplate>
-                <DialogInteractiveHeader
-                    SubmitButtonText="OK"
-                    SubmitClick="@OnCancel" />
-            </NarrowViewTemplate>
-        </DialogHeader>
-    </Header>
+<DialogFrame Class="guide-modal" Title="Guide" HasCloseButton="true" NarrowViewSettings="_viewSettings">
     <Body>
 
     @switch (device) {
@@ -71,18 +47,18 @@
     }
 
     </Body>
-
+    <Buttons>
+        <Button Class="btn-modal mobile" Click="OnCancel">
+            Cancel
+        </Button>
+        <Button Class="btn-modal mobile" Click="OnOkClick">
+            OK
+        </Button>
+    </Buttons>
 </DialogFrame>
 
 @code {
-    enum GuideType {
-        MobileChromeAndroid,
-        MobileEdgeAndroid,
-        MobileSafariIos,
-        WebChrome,
-        WebEdge,
-        WebSafari,
-    }
+    private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] public IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
@@ -91,6 +67,14 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _viewSettings = DialogFrameNarrowViewSettings
+            .CreateBuilder(DialogFramePosition.Stretch)
+            .SubmitText("OK")
+            .SubmitHandler(OnOkClick)
+            .Build();
+    }
 
     private void OnCancel()
         => Modal.Close();
@@ -102,5 +86,14 @@
 
     public sealed record Model {
         public bool WasPermissionRequested { get; set; }
+    }
+
+    private enum GuideType {
+        MobileChromeAndroid,
+        MobileEdgeAndroid,
+        MobileSafariIos,
+        WebChrome,
+        WebEdge,
+        WebSafari,
     }
 }
