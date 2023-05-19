@@ -32,7 +32,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public RenderFragment<TItem> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public RenderFragment? Empty { get; set; }
-    [Parameter] public int SkeletonCount { get; set; } = 5;
+    [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
