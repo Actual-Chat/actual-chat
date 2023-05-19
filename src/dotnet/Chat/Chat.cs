@@ -19,14 +19,6 @@ public sealed record Chat(
         Title = "This chat is unavailable",
         Rules = AuthorRules.None(default),
     };
-    public static Chat Loading { get; } = new(default, -1) {
-        Title = "Loading...",
-        Rules = AuthorRules.None(default),
-    };
-    public static Chat SelectChat { get; } = new(default, -1) {
-        Title = "Select a chat",
-        Rules = AuthorRules.None(default),
-    };
 
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Chat>()),

@@ -12,7 +12,6 @@ public sealed record Contact(
     ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
     public static Contact None { get; } = new(default, 0) { Chat = ActualChat.Chat.Chat.None };
-    public static Contact Loading { get; } = new(default, -1) { Chat = ActualChat.Chat.Chat.Loading };
 
     public static Requirement<Contact> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Contact>()),

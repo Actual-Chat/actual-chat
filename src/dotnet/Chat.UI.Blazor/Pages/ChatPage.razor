@@ -7,43 +7,37 @@
     var m = _rendered = State.Value;
     var chat = m.Chat;
     var chatOrNone = m.Chat ?? Chat.None;
-    var chatOrFallback = ReferenceEquals(m, Model.Loading) ? Chat.Loading
-        : ReferenceEquals(m, Model.SelectChat) ? Chat.SelectChat
-        : chatOrNone;
+    var isLoading = ReferenceEquals(m, Model.Loading);
+    var chatOrFallback = isLoading
+        ? ChatUI.Loading
+            : ReferenceEquals(m, Model.SelectChat) ? ChatUI.NoChatSelected
+            : chatOrNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
 <AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" />
 
 <RenderIntoSlot Name="MainHeader">
-    <CascadingValue Value="@chatOrFallback">
-        <ChatHeader />
-    </CascadingValue>
+    <ChatHeader Chat="@chatOrFallback" />
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainFooter">
+    <ChatFooter Chat="@chatOrFallback"/>
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
     @if (chat != null) {
-        <CascadingValue Value="@chat">
-            <Banners/>
-        </CascadingValue>
+        <Banners Chat="@chat"/>
     }
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
     @if (chat != null) {
-        <CascadingValue Value="@chat">
-            <ChatRightPanel/>
-        </CascadingValue>
+        <ChatRightPanel Chat="@chat"/>
     }
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainFooter">
-    <CascadingValue Value="@chatOrFallback">
-        <ChatFooter/>
-    </CascadingValue>
-</RenderIntoSlot>
-
-@if (ReferenceEquals(m, Model.Loading)) {
+@if (isLoading) {
     <chat-view-skeleton count="15" />
     return;
 }
@@ -52,9 +46,7 @@
 } else if (chat == null) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
 } else {
-    <CascadingValue Value="chat" @key="ChatSid">
-        <ChatView @ref="_chatViewRef" />
-    </CascadingValue>
+    <ChatView @ref="_chatViewRef" Chat="@chat" @key="@ChatSid" />
 }
 
 @code {
@@ -76,6 +68,8 @@
         // Force chat selection from Url before ComputeState starts working
         var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
         ChatUI.SelectChat(chatId);
+        ChatAudioUI.Enable();
+
         base.OnInitialized();
     }
 
@@ -88,11 +82,6 @@
             InitialValue = initialValue,
             Category = GetStateCategory(),
         };
-    }
-
-    protected override Task OnInitializedAsync() {
-        ChatAudioUI.Enable();
-        return Task.CompletedTask;
     }
 
     protected override Task OnParametersSetAsync() {

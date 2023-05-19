@@ -23,7 +23,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
         _isSearchEnabled = await Features.Get<UIFeatures.EnableChatMessageSearchUI, bool>(CancellationToken.None);

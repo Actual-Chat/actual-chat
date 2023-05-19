@@ -67,12 +67,12 @@
                 @if (ScreenSize.IsNarrow()) {
                     <RelatedChatEntryPanel/>
                     <div class="audio-panel-wrapper">
-                        <ChatAudioPanel/>
+                        <ChatAudioPanel Chat="@Chat"/>
                     </div>
                 }
             </div>
             @if (ScreenSize.IsWide()) {
-                <ChatAudioPanel/>
+                <ChatAudioPanel Chat="@Chat"/>
             }
         </div>
     </MentionListManager>
@@ -109,7 +109,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     public async ValueTask DisposeAsync() {
@@ -159,7 +159,6 @@
         => NotifyCallPanelRef.Close();
 
     // Private methods
-    [Inject] private BannerUI BannerUI { get; set; } = null!;
 
     private async Task Post(string? text = null) {
         using var __ = await _postLock.Lock();

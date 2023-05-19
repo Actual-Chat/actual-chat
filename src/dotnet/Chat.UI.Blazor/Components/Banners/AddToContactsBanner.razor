@@ -20,7 +20,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

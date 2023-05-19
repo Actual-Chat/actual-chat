@@ -35,7 +35,7 @@
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

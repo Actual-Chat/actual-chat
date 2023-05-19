@@ -45,8 +45,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -333,7 +333,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
         var identity = virtualListItemVisibility.ListIdentity;
-        if (identity != Chat.Id.Value) {
+        if (!OrdinalEquals(identity, Chat.Id.Value)) {
             Log.LogWarning(
                 $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
                 identity,

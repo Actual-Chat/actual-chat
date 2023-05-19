@@ -111,7 +111,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()

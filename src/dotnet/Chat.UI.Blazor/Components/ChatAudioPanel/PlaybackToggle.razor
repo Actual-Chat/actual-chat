@@ -71,7 +71,7 @@
         ChatAudioState AudioState,
         bool IsSpeakerphoneOn = false
     ) {
-        public static Model Loading { get; } = new(Chat.Loading, ChatAudioState.None);
+        public static Model Loading { get; } = new(ChatUI.Loading, ChatAudioState.None);
         public static Model None { get; } = new(Chat.None, ChatAudioState.None);
     }
 }

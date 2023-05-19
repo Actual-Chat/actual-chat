@@ -17,7 +17,7 @@
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Language>.Options GetStateOptions()
         => new() {

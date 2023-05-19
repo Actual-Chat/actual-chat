@@ -12,9 +12,9 @@
     IsOpen="@m.IsVisible"
     VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="right-chat-panel">
-        <RightPanelHeader/>
+        <RightPanelHeader Chat="@Chat"/>
         <div class="c-panel-content">
-            <RightPanelChatInfo/>
+            <RightPanelChatInfo Chat="@Chat"/>
             <div class="c-panel-tabs">
                 @if (m.ShowMembers || m.EnableIncompleteUI) {
                     <TabPanel
@@ -24,7 +24,7 @@
 
                         @if (m.ShowMembers) {
                             <Tab @key="@("members")" Id="members" Title="Members" Order="0">
-                                <AuthorList/>
+                                <AuthorList Chat="@Chat"/>
                             </Tab>
                         }
                         @if (m.EnableIncompleteUI) {
@@ -51,7 +51,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()

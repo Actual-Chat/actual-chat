@@ -30,7 +30,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private TuneUI? _tuneUI;
     private ModalUI? _modalUI;
     private ActiveChatsUI? _activeChatsUI;
-    private ChatListUI? _chatListUI;
     private ChatAudioUI? _chatAudioUI;
     private ChatEditorUI? _chatEditorUI;
     private UICommander? _uiCommander;
@@ -55,7 +54,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
-    private ChatListUI ChatListUI => _chatListUI ??= Services.GetRequiredService<ChatListUI>();
     private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     private UICommander UICommander => _uiCommander ??= Services.UICommander();
@@ -64,6 +62,15 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
+
+    public static Chat Loading { get; } = new(default, -1) {
+        Title = "Loading...",
+        Rules = AuthorRules.None(default),
+    };
+    public static Chat NoChatSelected { get; } = new(default, -1) {
+        Title = "Select a chat",
+        Rules = AuthorRules.None(default),
+    };
 
     public IServiceProvider Services { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;

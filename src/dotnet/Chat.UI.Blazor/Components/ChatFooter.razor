@@ -2,17 +2,19 @@
 @inherits ComputedStateComponent<ChatFooter.Model>
 @{
     var m = State.Value;
+    var isLoading = ReferenceEquals(m, Model.Loading);
+    var shouldSelectChat = ReferenceEquals(m, Model.SelectChat);
 }
 
 <div class="writable-chat-footer">
-    @if (ReferenceEquals(m, Model.Loading)) {
+    @if (isLoading) {
         // Render skeletons until State is computed
         <chat-view-footer-skeleton/>
-    } else if (ReferenceEquals(m, Model.SelectChat)) {
+    } else if (shouldSelectChat) {
         <ReadOnlyChatFooter FooterText="@string.Empty" />
     } else {
         @if (m.CanPost) {
-            <ChatMessageEditor/>
+            <ChatMessageEditor Chat="@Chat"/>
         } else if (m.CanJoin) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
@@ -52,7 +54,7 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -62,9 +64,9 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ReferenceEquals(Chat, Chat.Loading))
+        if (ReferenceEquals(Chat, ChatUI.Loading))
             return Model.Loading;
-        if (ReferenceEquals(Chat, Chat.SelectChat))
+        if (ReferenceEquals(Chat, ChatUI.NoChatSelected))
             return Model.SelectChat;
         if (ReferenceEquals(Chat, Chat.None))
             return Model.None;

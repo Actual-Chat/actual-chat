@@ -7,22 +7,22 @@
          data-bubble="@(BubbleRef.New<TranscriptionLanguageButtonBubble>())"
          data-bubble-priority="103"
          data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
-        <LanguageToggle />
+        <LanguageToggle Chat="@Chat" />
     </div>
     <div class="recorder-button"
          data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
          data-bubble-priority="102"
          data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-        <RecorderToggle ChatSid="@ChatSid"/>
+        <RecorderToggle Chat="@Chat"/>
     </div>
     <div class="playback-button"
          data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
          data-bubble-priority="103"
          data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-        <PlaybackToggle ChatSid="@ChatSid"/>
+        <PlaybackToggle Chat="@Chat"/>
     </div>
 </div>
 
 @code {
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 }
