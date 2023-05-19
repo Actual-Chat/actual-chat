@@ -51,8 +51,8 @@
                                 Id="message-input"
                                 Class="message-input -flex-y"
                                 Autofocus="Autofocus"
-                                Placeholder="@("#" + ChatTitle)"
-                                Post="@Post"
+                                Placeholder="@("#" + Chat.Title)"
+                                Post="text => Post(text)"
                                 Cancel="@(() => OnCancel())"
                                 OpenPrevious="OnOpenPrevious"/>
                         </label>
@@ -67,12 +67,12 @@
                 @if (ScreenSize.IsNarrow()) {
                     <RelatedChatEntryPanel/>
                     <div class="audio-panel-wrapper">
-                        <ChatAudioPanel ChatSid="@ChatSid"/>
+                        <ChatAudioPanel/>
                     </div>
                 }
             </div>
             @if (ScreenSize.IsWide()) {
-                <ChatAudioPanel ChatSid="@ChatSid"/>
+                <ChatAudioPanel/>
             }
         </div>
     </MentionListManager>
@@ -85,7 +85,6 @@
 
     private readonly AsyncLock _postLock = new (ReentryMode.CheckedPass);
     private bool Autofocus => ScreenSize.IsWide();
-    private ChatId ChatId { get; set; } = ChatId.None;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -110,8 +109,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public string ChatTitle { get; set; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     public async ValueTask DisposeAsync() {
@@ -123,19 +121,16 @@
         ReadPositionState = null!;
     }
 
-    protected override void OnParametersSet() {
-        ChatId = new (ChatSid);
-    }
-
     protected override async Task OnParametersSetAsync() {
+        var chatId = Chat.Id;
         var oldChatId = ChatMarkupHub?.ChatId ?? default;
-        if (oldChatId == ChatId)
+        if (oldChatId == chatId)
             return;
 
-        ChatMarkupHub = ChatMarkupHubFactory[ChatId];
+        ChatMarkupHub = ChatMarkupHubFactory[chatId];
         ReadPositionState.DisposeSilently();
         ReadPositionState = null;
-        ReadPositionState = await ChatUI.LeaseReadPositionState(ChatId, default);
+        ReadPositionState = await ChatUI.LeaseReadPositionState(chatId, default);
 
         if (JSRef != null!) {
             // Only when rendered
@@ -153,7 +148,7 @@
             await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
             await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();
-            await ChatEditorUI.RestoreRelatedEntry(ChatId);
+            await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
         }
     }
 
@@ -193,7 +188,7 @@
                 cmd = new IChats.UpsertTextEntryCommand(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
             } else {
                 var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
-                cmd = new IChats.UpsertTextEntryCommand(Session, ChatId, null, text) {
+                cmd = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {
                     RepliedChatEntryId = repliedEntryLid,
                     Attachments = attachmentListSnapshot.Attachments,
                 };
@@ -203,8 +198,8 @@
             var readEntryLid = chatEntry.Value.LocalId;
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
-                ReadPositionState.Value = new (ChatId, readEntryLid);
-            _ = ActiveChatsUI.AddActiveChat(ChatId);
+                ReadPositionState.Value = new (Chat.Id, readEntryLid);
+            _ = ActiveChatsUI.AddActiveChat(Chat.Id);
             await AttachmentListRef.Clear();
         }
         catch (Exception e) {
@@ -221,7 +216,7 @@
     }
 
     private ValueTask UpdateChatId()
-        => JSRef.InvokeVoidAsync("setChatId", ChatId);
+        => JSRef.InvokeVoidAsync("setChatId", Chat.Id);
 
     // Event handlers
 

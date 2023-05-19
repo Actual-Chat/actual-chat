@@ -3,7 +3,7 @@
 @{
     var rendered = _rendered;
     var m = _rendered = State.Value;
-    if (rendered.ChatId != m.ChatId)
+    if (rendered.Chat.Id != m.Chat.Id)
         rendered = m;
     var audioState = m.AudioState;
 
@@ -33,20 +33,14 @@
 @code {
     private Model _rendered = Model.Loading;
 
-    private ChatId ChatId { get; set; } = ChatId.None;
-
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
-    private bool IsLoading => !ChatId.IsNone && State.Value.ChatId != ChatId;
+    private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsLoading && State.Value.AudioState.IsListening;
 
-    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-
-    protected override void OnParametersSet() {
-        ChatId = new (ChatSid);
-    }
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -56,16 +50,16 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var audioState = await ChatAudioUI.GetState(ChatId);
+        var audioState = await ChatAudioUI.GetState(Chat.Id);
         var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
-        return new (ChatId, audioState, isSpeakerphoneOn);
+        return new Model(Chat, audioState, isSpeakerphoneOn);
     }
 
     private void OnListenClick() {
         if (IsLoading)
             return;
 
-        _ = ChatAudioUI.SetListeningState(ChatId, !IsListening);
+        _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);
     }
 
     private void OnToggleAudioOutputClick()
@@ -73,10 +67,11 @@
 
 
     public sealed record Model(
-        ChatId ChatId,
+        Chat Chat,
         ChatAudioState AudioState,
         bool IsSpeakerphoneOn = false
     ) {
-        public static Model Loading { get; } = new(ChatId.None, ChatAudioState.None);
+        public static Model Loading { get; } = new(Chat.Loading, ChatAudioState.None);
+        public static Model None { get; } = new(Chat.None, ChatAudioState.None);
     }
 }
