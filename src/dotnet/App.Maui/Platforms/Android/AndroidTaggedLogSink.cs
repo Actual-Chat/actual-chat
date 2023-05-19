@@ -33,28 +33,28 @@ public class AndroidTaggedLogSink : ILogEventSink
             throw new ArgumentNullException(nameof(logEvent));
 
         StringWriter output = new StringWriter();
-        this._textFormatter.Format(logEvent, output);
+        _textFormatter.Format(logEvent, output);
         switch (logEvent.Level) {
         case LogEventLevel.Verbose:
-            Android.Util.Log.Verbose(_tag, output.ToString());
+            Log.Verbose(_tag, output.ToString());
             break;
         case LogEventLevel.Debug:
-            Android.Util.Log.Debug(_tag, output.ToString());
+            Log.Debug(_tag, output.ToString());
             break;
         case LogEventLevel.Information:
-            Android.Util.Log.Info(_tag, output.ToString());
+            Log.Info(_tag, output.ToString());
             break;
         case LogEventLevel.Warning:
-            Android.Util.Log.Warn(_tag, output.ToString());
+            Log.Warn(_tag, output.ToString());
             break;
         case LogEventLevel.Error:
-            Android.Util.Log.Error(_tag, output.ToString());
+            Log.Error(_tag, output.ToString());
             break;
         case LogEventLevel.Fatal:
-            Android.Util.Log.Wtf(_tag, output.ToString());
+            Log.Wtf(_tag, output.ToString());
             break;
         default:
-            Android.Util.Log.WriteLine(LogPriority.Assert, _tag, output.ToString());
+            Log.WriteLine(LogPriority.Assert, _tag, output.ToString());
             break;
         }
     }
