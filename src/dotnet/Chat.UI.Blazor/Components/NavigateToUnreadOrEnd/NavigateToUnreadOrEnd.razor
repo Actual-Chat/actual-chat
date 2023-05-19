@@ -57,7 +57,7 @@
         if (chatId.IsNone)
             return Model.None;
 
-        var isContainerVisible = await RegionVisibility.IsOverallVisible.Use(cancellationToken);
+        var isContainerVisible = await RegionVisibility.IsVisible.Use(cancellationToken);
         if (!isContainerVisible)
             return Model.None;
 

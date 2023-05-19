@@ -21,7 +21,7 @@ export class UserActivityUI {
 
         const documentEvents = DocumentEvents.passive;
         documentEvents.visibilityChange$.subscribe(_ => {
-            if (document.visibilityState === "visible")
+            if (!document.hidden)
                 this.onInteraction();
             else
                 this.onInteraction(0, true);

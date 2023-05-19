@@ -4,13 +4,13 @@ public interface IBrowserInfoBackend
 {
     void OnScreenSizeChanged(string screenSizeText, bool isHoverable);
 
-    void OnIsHiddenChanged(bool isHidden);
+    void OnIsVisibleChanged(bool isVisible);
 
     // Nested types
 
     public sealed record InitResult(
         string ScreenSizeText,
-        bool IsHidden,
+        bool IsVisible,
         bool IsHoverable,
         double UtcOffset,
         bool IsMobile,

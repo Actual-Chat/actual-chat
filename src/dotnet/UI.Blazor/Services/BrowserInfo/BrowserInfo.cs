@@ -7,7 +7,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
-    private readonly IMutableState<bool> _isHidden;
+    private readonly IMutableState<bool> _isVisible;
 
     protected readonly TaskCompletionSource<Unit> WhenReadySource = TaskCompletionSourceExt.New<Unit>();
     protected DotNetObjectReference<IBrowserInfoBackend>? BackendRef;
@@ -23,7 +23,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
-    public IState<bool> IsHidden => _isHidden;
+    public IState<bool> IsVisible => _isVisible;
     public TimeSpan UtcOffset { get; protected set; }
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
@@ -48,7 +48,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         var stateFactory = services.StateFactory();
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
-        _isHidden = stateFactory.NewMutable(false);
+        _isVisible = stateFactory.NewMutable(true);
     }
 
     public void Dispose()
@@ -77,7 +77,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;
 
-        Update(screenSize, initResult.IsHoverable, initResult.IsHidden);
+        Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
         IsAndroid = initResult.IsAndroid;
@@ -99,12 +99,12 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     }
 
     [JSInvokable]
-    public void OnIsHiddenChanged(bool isHidden)
-        => Update(isHidden: isHidden);
+    public void OnIsVisibleChanged(bool isVisible)
+        => Update(isVisible: isVisible);
 
     // Protected methods
 
-    protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isHidden = null)
+    protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isVisible = null)
     {
         var isUpdated = false;
  #pragma warning disable MA0064
@@ -118,8 +118,8 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
                 _isHoverable.Value = vIsHoverable;
                 isUpdated = true;
             }
-            if (isHidden is { } vIsHidden && _isHidden.Value != vIsHidden) {
-                _isHidden.Value = vIsHidden;
+            if (isVisible is { } vIsVisible && _isVisible.Value != vIsVisible) {
+                _isVisible.Value = vIsVisible;
                 isUpdated = true;
             }
         }

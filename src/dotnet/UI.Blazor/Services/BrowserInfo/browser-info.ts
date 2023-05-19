@@ -31,7 +31,7 @@ export class BrowserInfo {
         // Call OnInitialized
         const initResult: InitResult = {
             screenSizeText: ScreenSize.size,
-            isHidden: document.hidden,
+            isVisible: !document.hidden,
             isHoverable: ScreenSize.isHoverable,
             utcOffset: this.utcOffset,
             isMobile: DeviceInfo.isMobile,
@@ -49,7 +49,7 @@ export class BrowserInfo {
         this.whenReady.resolve(undefined);
 
         ScreenSize.change$.subscribe(_ => this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable));
-        DocumentEvents.active.visibilityChange$.subscribe(_ => this.onVisibilityChanged());
+        DocumentEvents.passive.visibilityChange$.subscribe(_ => this.onVisibilityChanged());
         globalThis["browserInfo"] = this;
     }
 
@@ -61,8 +61,8 @@ export class BrowserInfo {
     };
 
     private static onVisibilityChanged(): void {
-        infoLog?.log(`onVisibilityChanged, hidden:`, document.hidden);
-        this.backendRef.invokeMethodAsync('OnIsHiddenChanged', document.hidden);
+        infoLog?.log(`onVisibilityChanged, visible:`, !document.hidden);
+        this.backendRef.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
     };
 
     private static initBodyClasses() {
@@ -81,7 +81,6 @@ export class BrowserInfo {
             classList.add('app-unknown');
             break;
         }
-
 
         if (DeviceInfo.isMobile)
             classList.add('device-mobile');
@@ -108,7 +107,7 @@ export class BrowserInfo {
 
 export interface InitResult {
     screenSizeText: string;
-    isHidden: boolean,
+    isVisible: boolean,
     isHoverable: boolean,
     utcOffset: number;
     isMobile: boolean;

@@ -1,12 +1,12 @@
 @using ActualChat.UI.Blazor.Services
 <div class="page-with-header-and-footer h-full w-full flex-x">
     <ErrorBarrier>
-        <RegionVisibilityProvider IsPanelVisible="@PanelsUI.Left.IsVisible">
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Left.IsVisible">
             @LeftDrawer
         </RegionVisibilityProvider>
     </ErrorBarrier>
     <ErrorBarrier>
-        <RegionVisibilityProvider IsPanelVisible="@PanelsUI.Middle.IsVisible">
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
             <div class="@Class relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
                 <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
                     @Header
@@ -33,7 +33,7 @@
         </RegionVisibilityProvider>
     </ErrorBarrier>
     <ErrorBarrier>
-        <RegionVisibilityProvider IsPanelVisible="@PanelsUI.Right.IsVisible">
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Right.IsVisible">
             @RightDrawer
         </RegionVisibilityProvider>
     </ErrorBarrier>
