@@ -1,20 +1,18 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<ModalHeaderNoPaddingDecorator>
-    <div class="modal-header-interactive">
-        <ButtonRound Class="btn-close" Click="CloseClick">
-            <i class="icon-close text-xl"></i>
-        </ButtonRound>
-        <div class="modal-title">
-            @Title
-        </div>
-        @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
-            <ButtonRound Class="btn-submit" Type="SubmitButtonType" Click="SubmitClick">
-                <span>@SubmitButtonText</span>
-            </ButtonRound>
-        }
+<div class="modal-header-interactive no-padding-header-decorator">
+    <ButtonRound Class="btn-close" Click="CloseClick">
+        <i class="icon-close text-xl"></i>
+    </ButtonRound>
+    <div class="modal-title">
+        @Title
     </div>
-</ModalHeaderNoPaddingDecorator>
+    @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
+        <ButtonRound Class="btn-submit" Type="SubmitButtonType" Click="SubmitClick">
+            <span>@SubmitButtonText</span>
+        </ButtonRound>
+    }
+</div>
 
 @code {
     [Parameter] public string Title { set; get; } = "";
