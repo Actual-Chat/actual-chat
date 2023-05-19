@@ -333,7 +333,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
         var identity = virtualListItemVisibility.ListIdentity;
-        if (!OrdinalEquals(identity, Chat.Id.Value)) {
+        if (identity != Chat.Id.Value) {
             Log.LogWarning(
                 $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
                 identity,
