@@ -53,7 +53,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         if (JSRef == null!) // The component is disposed
             return Task.CompletedTask;
 
-        if (identity != Identity) {
+        if (!OrdinalEquals(identity, Identity)) {
             Log.LogWarning("Expected JS identity to be {Identity}, but has {ActualIdentity}", Identity, identity);
             return Task.CompletedTask;
         }
