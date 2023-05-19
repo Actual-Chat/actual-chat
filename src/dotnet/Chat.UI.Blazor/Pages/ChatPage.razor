@@ -147,10 +147,10 @@
         }
     }
 
-    // protected override bool ShouldRender()
-    //     => ReferenceEquals(_rendered, null)
-    //         || State.HasError
-    //         || !State.Value.IsIdenticalTo(_rendered);
+    protected override bool ShouldRender()
+        => ReferenceEquals(_rendered, null)
+            || State.HasError
+            || !State.Value.IsIdenticalTo(_rendered);
 
     // Nested types
 
