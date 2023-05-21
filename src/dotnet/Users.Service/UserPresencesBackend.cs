@@ -22,7 +22,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
     public virtual async Task CheckIn(IUserPresencesBackend.CheckInCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
-            _userPresences.CheckIn(command.UserId, command.At);
+            _userPresences.CheckIn(command.UserId, command.At, command.IsActive);
             return;
         }
 

@@ -10,6 +10,7 @@ public interface IUserPresences : IComputeService
 
     [DataContract]
     public sealed record CheckInCommand(
-        [property: DataMember] Session Session
+        [property: DataMember] Session Session,
+        [property: DataMember] bool IsActive
     ) : ISessionCommand<Unit>;
 }

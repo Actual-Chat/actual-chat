@@ -29,13 +29,14 @@ internal class UserPresenceTracker : IAsyncDisposable
     public Presence GetPresence(UserId userId)
         => ToPresence(_checkIns.Get(userId), Now);
 
-    public void CheckIn(UserId userId, Moment at)
+    public void CheckIn(UserId userId, Moment at, bool isActive)
     {
         var now = Now;
-        var oldPresence = GetPresence(userId);
-        var newPresence = ToPresence(at, now);
+        var lastCheckIn = _checkIns.Get(userId);
+        var oldPresence = ToPresence(lastCheckIn, now);
+        var newPresence = ToPresence(new (at, isActive, lastCheckIn), now);
         if (newPresence is Presence.Online or Presence.Away) {
-            _checkIns.Set(userId, at);
+            _checkIns.Set(userId, at, isActive);
             if (newPresence is Presence.Online)
                 _awayTimers.AddOrUpdateToLater(userId, at + Constants.Presence.AwayTimeout);
             _offlineTimers.AddOrUpdateToLater(userId, at + Constants.Presence.OfflineTimeout);
@@ -58,15 +59,16 @@ internal class UserPresenceTracker : IAsyncDisposable
         _onPresenceChanged.Invoke(userId);
     }
 
-    private Presence ToPresence(Moment? lastCheckInAt, Moment now)
+    private Presence ToPresence(CheckIn? lastCheckIn, Moment now)
     {
-        if (lastCheckInAt == null)
+        if (lastCheckIn == null)
             return Presence.Offline;
 
-        var checkInRecency = now - lastCheckInAt;
-        if (checkInRecency < Constants.Presence.AwayTimeout)
+        var activityRecency = now - lastCheckIn.LastActiveAt;
+        if (activityRecency < Constants.Presence.AwayTimeout)
             return Presence.Online;
 
+        var checkInRecency = now - lastCheckIn.At;
         if (checkInRecency < Constants.Presence.OfflineTimeout)
             return Presence.Away;
 
