@@ -149,6 +149,10 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
             return activeChats;
         });
 
+    [ComputeMethod] // Synced
+    public virtual Task<bool> IsAudioOn()
+        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording || c.IsListening));
+
     [ComputeMethod]
     public virtual async Task<RealtimePlaybackState?> GetExpectedRealtimePlaybackState()
     {

@@ -53,6 +53,10 @@ public partial class ChatAudioUI
             var added = newListeningChats.Except(oldListeningChats);
             var removed = oldListeningChats.Except(newListeningChats);
             var changed = added.Concat(removed).ToList();
+
+            var oldAudioOn = oldRecordingChat != default || oldListeningChats.Any();
+            var newAudioOn = newRecordingChat != default || newListeningChats.Any();
+
             using (Computed.Invalidate()) {
                 if (newRecordingChat != oldRecordingChat) {
                     _ = GetRecordingChatId();
@@ -64,6 +68,8 @@ public partial class ChatAudioUI
                     foreach (var c in changed)
                         _ = GetState(c.ChatId);
                 }
+                if (oldAudioOn != newAudioOn)
+                    _ = IsAudioOn();
             }
             if ((oldRecordingChat != default && newRecordingChat == default) || (newListeningChats.Count == 0 && oldListeningChats.Count > 0))
                 _audioStoppedAt.Value = Now;

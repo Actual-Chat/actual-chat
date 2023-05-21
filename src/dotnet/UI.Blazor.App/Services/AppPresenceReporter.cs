@@ -42,28 +42,32 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     {
         await Task.Delay(Settings.StartDelay, cancellationToken).ConfigureAwait(false);
 
-        var cNextCheckInAt = await Computed.Capture(() => GetNextCheckInAt(cancellationToken)).ConfigureAwait(false);
-        await foreach (var change in cNextCheckInAt.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (change.Value > _lastCheckInAt.Value)
-                await CheckIn(Session, cancellationToken).ConfigureAwait(false);
+        var cIsActive = await Computed.Capture(() => IsActive(cancellationToken)).ConfigureAwait(false);
+        var prevIsActive = false;
+        await foreach (var change in cIsActive.Changes(cancellationToken).ConfigureAwait(false)) {
+            var isActive = change.Value;
+            // throttle since IsActive depends on LastCheckInAt
+            if (isActive == prevIsActive && Now - _lastCheckInAt.Value < Constants.Presence.CheckInPeriod * 0.7)
+                continue;
+
+            await CheckIn(isActive, cancellationToken).ConfigureAwait(false);
+            prevIsActive = isActive;
         }
     }
 
     [ComputeMethod]
-    protected virtual async Task<Moment> GetNextCheckInAt(CancellationToken cancellationToken)
+    protected virtual async Task<bool> IsActive(CancellationToken cancellationToken)
     {
         var now = Now;
         var lastCheckInAt = await _lastCheckInAt.Use(cancellationToken).ConfigureAwait(false);
-        var nextCheckInAt = lastCheckInAt + Constants.Presence.CheckInPeriod;
-        if (nextCheckInAt > now)
-            return WithAutoInvalidation(lastCheckInAt);
-
-        // nextCheckInAt <= now
         var activeUntil = await GetActiveUntil(cancellationToken).ConfigureAwait(false);
-        return activeUntil > lastCheckInAt ? nextCheckInAt : lastCheckInAt;
 
-        Moment WithAutoInvalidation(Moment result) {
-            Computed.GetCurrent()!.Invalidate(nextCheckInAt - now);
+        return activeUntil > now
+            ? WithAutoInvalidation(activeUntil, true)
+            : WithAutoInvalidation(lastCheckInAt + Constants.Presence.CheckInPeriod, false);
+
+        bool WithAutoInvalidation(Moment invalidateAt, bool result) {
+            Computed.GetCurrent()!.Invalidate(invalidateAt - now);
             return result;
         }
     }
@@ -72,17 +76,16 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     protected virtual async Task<Moment> GetActiveUntil(CancellationToken cancellationToken)
     {
         var now = Now;
+        if (await ChatAudioUI.IsAudioOn().ConfigureAwait(false))
+            return WithAutoInvalidation(Now + Constants.Presence.ActivityPeriod);
+
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
+        var audioStoppedAt = await ChatAudioUI.AudioStoppedAt.Use(cancellationToken).ConfigureAwait(false);
+        if (audioStoppedAt != null)
+            activeUntil = Moment.Max(audioStoppedAt.Value + Constants.Presence.ActivityPeriod, activeUntil);
+
         if (activeUntil > now)
             return WithAutoInvalidation(activeUntil);
-
-        var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
-        if (listeningChatIds.Any())
-            return WithAutoInvalidation(now + Constants.Presence.ActivityPeriod);
-
-        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-        if (!recordingChatId.IsNone)
-            return WithAutoInvalidation(now + Constants.Presence.ActivityPeriod);
 
         return activeUntil;
 
@@ -94,10 +97,10 @@ public class AppPresenceReporter : WorkerBase, IComputeService
 
     // Private methods
 
-    private async Task CheckIn(Session session, CancellationToken cancellationToken)
+    private async Task CheckIn(bool isActive, CancellationToken cancellationToken)
     {
         try {
-            await Commander.Call(new IUserPresences.CheckInCommand(session), cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new IUserPresences.CheckInCommand(Session, isActive), cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = Now;
         }
         catch (Exception e) when (e is not OperationCanceledException) {

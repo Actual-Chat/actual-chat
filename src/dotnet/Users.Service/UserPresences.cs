@@ -28,12 +28,14 @@ public class UserPresences : IUserPresences
         if (Computed.IsInvalidating())
             return;
 
-        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        var (session, isActive) = command;
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
             return;
 
-        var backendCommand = new IUserPresencesBackend.CheckInCommand(account.Id, Now);
+        var backendCommand = new IUserPresencesBackend.CheckInCommand(account.Id, Now, isActive);
         _ = Commander.Run(backendCommand, true, CancellationToken.None);
-        _ = Auth.UpdatePresence(command.Session, CancellationToken.None);
+        _ = Auth.UpdatePresence(session, CancellationToken.None);
     }
 }
