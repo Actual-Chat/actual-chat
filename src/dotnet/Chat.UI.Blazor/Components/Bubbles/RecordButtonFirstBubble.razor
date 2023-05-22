@@ -1,0 +1,16 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits BubbleBase
+
+<BubbleContent Bubble="@(this)">
+    <Video>
+        <video autoplay oncanplay="this.muted = true; this.play()" loop>
+            <source src="/dist/images/bubbles/record-1.webm" type="video/webm"/>
+        </video>
+    </Video>
+    <Title>"Record" button</Title>
+    <Body>
+    <ul>
+        <li>Toggle it to start or stop recording in this chat</li>
+    </ul>
+    </Body>
+</BubbleContent>

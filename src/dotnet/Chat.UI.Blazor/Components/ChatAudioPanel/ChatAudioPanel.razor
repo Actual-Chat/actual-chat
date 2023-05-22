@@ -5,14 +5,19 @@
 <div class="chat-audio-panel">
     <div class="language-button"
          data-bubble="@(BubbleRef.New<TranscriptionLanguageButtonBubble>())"
-         data-bubble-priority="103"
+         data-bubble-priority="104"
          data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
         <LanguageToggle Chat="@Chat" />
     </div>
-    <div class="recorder-button"
-         data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
-         data-bubble-priority="102"
-         data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+    <div class="recorder-button">
+        <div data-bubble="@(BubbleRef.New<RecordButtonFirstBubble>())"
+             data-bubble-priority="101"
+             data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+        </div>
+        <div data-bubble="@(BubbleRef.New<RecordButtonSecondBubble>())"
+             data-bubble-priority="102"
+             data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+        </div>
         <RecorderToggle Chat="@Chat"/>
     </div>
     <div class="playback-button"

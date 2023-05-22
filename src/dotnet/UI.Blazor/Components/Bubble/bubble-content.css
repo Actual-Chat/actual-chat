@@ -2,6 +2,10 @@
 .bubble-content {
     @apply text-04;
 }
+.bubble-content > video {
+    @apply rounded-lg;
+    @apply mb-4;
+}
 .bubble-body {
     @apply pt-2 pb-4;
     @apply text-caption-4;
