@@ -7,12 +7,19 @@
         cls += " language-" + Markup.Language;
 }
 
-<pre @ref="_preRef" class="@cls" title="@title"><code>@Markup.Code</code></pre>
+<pre @ref="_preRef" class="@cls" title="@title"
+    data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, "", Markup.Code))">
+    <code>@Markup.Code</code>
+</pre>
 
 @code {
     private ElementReference _preRef;
+    private ChatMessageModel _message = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    protected override void OnParametersSet()
+        => _message = new ChatMessageModel(Entry);
 
     protected override Task OnAfterRenderAsync(bool firstRender)
         => JS.InvokeVoidAsync($"{ChatBlazorUIModule.ImportName}.highlightCode", _preRef, Markup.Language.NullIfWhiteSpace(), Markup.Code).AsTask();

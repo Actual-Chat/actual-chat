@@ -10,6 +10,7 @@
 <MessageMenuContent
     ChatEntry="m.ChatEntry"
     ClickedLinkUrl="@m.Link"
+    ClickedCode="@m.Code"
     IsOwnEntry="m.IsOwnEntry"
     CanWrite="m.CanWrite"
     IsSystem="m.IsSystem">
@@ -17,6 +18,7 @@
 
 @code {
     private string? _link;
+    private string? _code;
     private bool _isSystem;
     private TextEntryId _entryId;
 
@@ -25,12 +27,13 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
 
     protected override void OnParametersSet() {
-        if (Arguments is not [ var sEntryId, var sIsSystem, var link ])
+        if (Arguments is not [ var sEntryId, var sIsSystem, var link, var code ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _isSystem = bool.Parse(sIsSystem);
         _entryId = new TextEntryId(sEntryId);
         _link = link.NullIfEmpty();
+        _code = code.NullIfEmpty();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -52,6 +55,7 @@
         return new Model {
             Link = _link,
             IsSystem = _isSystem,
+            Code = _code,
             ChatEntry = chatEntry,
             CanWrite = canWrite,
             IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
@@ -63,6 +67,7 @@
 
         public string? Link { get; init; }
         public bool IsSystem { get; init; }
+        public string? Code { get; set; }
         public bool IsOwnEntry { get; init; }
         public bool CanWrite { get; init; }
         public ChatEntry ChatEntry { get; init; } = null!;

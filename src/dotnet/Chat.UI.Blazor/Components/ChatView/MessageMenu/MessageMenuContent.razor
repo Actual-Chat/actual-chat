@@ -39,6 +39,14 @@
             </MenuEntry>
         </CopyTrigger>
     }
+    @if (!ClickedCode.IsNullOrEmpty()) {
+        <CopyTrigger Tooltip="" CopyText="@ClickedCode.Trim()" Class="ac-menu-item !p-0">
+            <MenuEntry
+                Icon="icon-copy"
+                Text="Copy code">
+            </MenuEntry>
+        </CopyTrigger>
+    }
     @if (!IsSystem) {
         <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
             <MenuEntry
@@ -66,6 +74,7 @@
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
+    [Parameter, EditorRequired] public string? ClickedCode { get; set; }
     [Parameter, EditorRequired] public bool IsSystem { get; set; }
     [Parameter, EditorRequired] public bool IsOwnEntry { get; set; }
     [Parameter, EditorRequired] public bool CanWrite { get; set; }
