@@ -4,8 +4,13 @@
 @using Stl.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
 
-<Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="@_form.Title" Class="own-account-editor-modal" ButtonsClass="full-width" HasCloseButton="true">
+<Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame
+        Class="own-account-editor-modal"
+        Title="@_form.Title"
+        HasCloseButton="true"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
+        ButtonsClass="full-width">
         <Body>
         <DataAnnotationsValidator/>
         <ValidationSummary/>

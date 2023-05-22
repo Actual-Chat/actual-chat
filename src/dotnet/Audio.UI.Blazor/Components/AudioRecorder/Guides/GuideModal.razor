@@ -22,10 +22,12 @@
     }
 }
 
-<DialogFrame Class="guide-modal" Title="Guide" HasCloseButton="true" NoNarrowHeader="true">
+<DialogFrame
+    Class="guide-modal"
+    Title="Guide"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, "OK")">
     <Body>
-
-    <GuideHeader OnCloseClick="OnCancel" OnOkClick="OnCancel"/>
 
     @switch (device) {
         case GuideType.MobileSafariIos:
@@ -60,15 +62,6 @@
 </DialogFrame>
 
 @code {
-    enum GuideType {
-        MobileChromeAndroid,
-        MobileEdgeAndroid,
-        MobileSafariIos,
-        WebChrome,
-        WebEdge,
-        WebSafari,
-    }
-
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] public IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
 
@@ -87,5 +80,14 @@
 
     public sealed record Model {
         public bool WasPermissionRequested { get; set; }
+    }
+
+    private enum GuideType {
+        MobileChromeAndroid,
+        MobileEdgeAndroid,
+        MobileSafariIos,
+        WebChrome,
+        WebEdge,
+        WebSafari,
     }
 }

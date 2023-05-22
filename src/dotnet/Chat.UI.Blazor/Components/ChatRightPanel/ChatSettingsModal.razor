@@ -7,19 +7,17 @@
     var m = State.Value;
 }
 
-<Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="Edit chat settings" Class="edit-chat-settings-modal" HasCloseButton="true">
+<Form Class="h-full" @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame
+        Class="edit-chat-settings-modal"
+        Title="Edit chat settings"
+        HasCloseButton="true"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()">
         <Body>
         <div class="flex-y text-03 p-3 overflow-y-auto custom-scrollbar">
             @if (m.Rules != null) {
                 @if (m.Rules.CanEditProperties()) {
                     <DataAnnotationsValidator/>
-
-                    <div class="pb-2 mb-4 border-b border-bg-03">
-                        <FormSection For="() => ModalModel.Chat">
-                            <ChatMuteToggle Chat="@ModalModel.Chat" />
-                        </FormSection>
-                    </div>
 
                     <PicUpload
                         ImageUploadUrl="@_form.ImageUploadUrl"
@@ -93,6 +91,7 @@
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 

@@ -27,6 +27,15 @@
     @apply h-full md:h-[90vh] w-full;
 }
 
+.narrow .narrow-view__modal__position-bottom {
+    @apply absolute bottom-10 left-4 right-4;
+    @apply w-auto h-auto;
+}
+
+.narrow .narrow-view__modal__position-stretch {
+    @apply rounded-none;
+}
+
 /* Full-screen mode overrides */
 .modal-overlay-fullscreen .modal-focus-trap,
 .modal-overlay-fullscreen .modal .modal-content {
@@ -83,8 +92,12 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply p-2;
     @apply overflow-visible;
 }
-.modal-header .modal-title {
+
+.modal-title {
     @apply flex-1;
+}
+
+.modal-header .modal-title {
     @apply text-xl md:text-lg font-semibold md:font-medium truncate;
 }
 .modal-header .modal-close {
@@ -94,9 +107,33 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply invisible md:visible;
 }
 
-.modal-mobile-header {
+.modal-header-mobile {
     @apply flex-x justify-start items-center gap-x-2;
     @apply p-2;
+}
+
+.modal-header-mobile .modal-title {
+    @apply text-title-1 text-02;
+}
+
+.modal-header-interactive {
+    @apply flex-x items-center;
+    @apply min-h-14;
+    @apply pr-2; /* indent to Submit button */
+    @apply bg-02 border-bg-04 border-b;
+}
+
+.modal-header-interactive .btn .btn-content {
+    @apply bg-transparent;
+}
+
+.modal-header-interactive .modal-title {
+    @apply text-title-1 text-02;
+}
+
+.modal-header-interactive .btn-submit {
+    @apply text-headline-1;
+    @apply text-primary;
 }
 
 .dialog-body {
@@ -144,4 +181,8 @@ body.narrow .dialog-buttons {
 }
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
+}
+
+.modal-frame .no-padding-header-decorator {
+    @apply -mt-2 -ml-2 -mr-2;
 }

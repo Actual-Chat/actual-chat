@@ -1,10 +1,5 @@
 /* DeleteMessageModal */
 
-body.narrow .delete-message-modal {
-    @apply absolute left-4 right-4 bottom-10;
-    @apply w-auto h-auto;
-    max-height: calc(100% - 5rem);
-}
 .delete-message-modal .c-question {
     @apply flex-none;
     @apply mb-4;
@@ -219,10 +214,6 @@ body.hoverable .author-modal .tile,
 body.hoverable .author-modal .tile:hover {
     @apply p-0;
     @apply shadow-none;
-}
-body.narrow .author-modal {
-    @apply absolute bottom-10 left-4 right-4;
-    @apply w-auto h-auto;
 }
 .author-modal .tile {
     @apply p-0;

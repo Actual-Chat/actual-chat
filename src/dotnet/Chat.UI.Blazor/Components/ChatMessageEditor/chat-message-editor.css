@@ -283,10 +283,6 @@ body.hoverable .add-attachment.btn:hover .btn-content {
     @apply bg-07 md:bg-03;
     @apply text-05 md:text-icons-01;
 }
-.attach-dropdown-menu {
-    @apply absolute;
-    @apply bottom-2;
-}
 
 .related-chat-entry-panel {
     @apply flex-x;

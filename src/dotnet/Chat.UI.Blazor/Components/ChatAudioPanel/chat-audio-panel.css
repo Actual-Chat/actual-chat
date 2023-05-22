@@ -303,10 +303,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply md:gap-x-0;
     @apply max-w-72;
 }
-.modal-frame.menu-styled-modal .modal-header,
-.modal-frame.menu-styled-modal .modal-mobile-header {
-    @apply hidden;
-}
 .modal-frame.menu-styled-modal .c-text {
     @apply flex-y gap-y-2;
     @apply font-medium text-sm;
@@ -315,17 +311,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .modal-frame.menu-styled-modal .c-text {
     @apply font-normal text-base;
 }
-.narrow .modal-frame.menu-styled-modal {
-    @apply absolute bottom-4;
-    @apply h-auto;
-    max-width: calc(100% - 2rem);
-}
 .narrow .modal-frame.menu-styled-modal .dialog-body {
     @apply gap-y-4;
-}
-.narrow .modal-frame.menu-styled-modal .header-icon {
-    @apply flex-none flex items-center justify-center;
-    @apply w-10 h-10;
-    @apply rounded-full;
-    background-image: linear-gradient(to bottom, #2970FF, #C60077)
 }

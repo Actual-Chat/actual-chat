@@ -7,7 +7,3 @@
 .avatar-select-item, .avatar-select-item *   {
     @apply cursor-pointer;
 }
-body.narrow .avatar-select-modal {
-    @apply absolute bottom-10 left-4 right-4;
-    @apply h-auto;
-}

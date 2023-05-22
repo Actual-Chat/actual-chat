@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Events
 @implements IModalView<NoSecondaryLanguageModal.Model>
 
-<DialogFrame Class="menu-styled-modal">
+<DialogFrame HasHeader="false" Class="menu-styled-modal">
     <Body>
     <div class="c-text">
         <p>
@@ -17,12 +17,10 @@
 </DialogFrame>
 
 @code {
-    [Inject] private ModalUI ModalUI { get; set; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
