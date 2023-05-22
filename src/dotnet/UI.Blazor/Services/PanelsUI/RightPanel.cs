@@ -20,12 +20,16 @@ public class RightPanel
         Owner = owner;
         var stateFactory = Services.StateFactory();
         var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
+        // it's OK to render the panel hidden for the first time after refresh
+        // - still better than doing otherwise due to flicker
         _isVisible = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
                 InitialValue = false,
                 Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !Owner.IsNarrow()),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
+        // local settings are fast enough to make following code safe
+        // - it's not possible to switch state through UI before WhenRead completion
         _isVisible.WhenRead.ContinueWith(
             _ => {
                 var isVisible = _isVisible.Value;
