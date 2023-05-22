@@ -421,7 +421,7 @@ body.narrow .landing-links {
     @apply bg-[#EEEEF6];
 }
 .download-btn {
-    @apply flex-x gap-x-4 items-center justify-center;
+    @apply md:flex-none flex-x gap-x-4 items-center justify-center;
     @apply h-10;
     @apply px-4;
     @apply rounded-full;
@@ -430,14 +430,13 @@ body.narrow .landing-links {
 .download-btn.web-signin,
 .download-btn.ios-disabled {
     @apply justify-center;
-    @apply w-full;
+    @apply w-full md:w-fit;
     @apply bg-none bg-01;
     @apply border border-text-01;
 }
 .download-btn.web-signin.transparent,
 .download-btn.ios-disabled.transparent {
     @apply justify-center;
-    @apply w-full;
     @apply bg-none bg-transparent;
     @apply border border-bg-01;
 }
@@ -485,7 +484,7 @@ body.narrow .landing .c-header {
 }
 body.narrow .landing-carousel-01 .page .c-header {
     @apply justify-end;
-    @apply h-32;
+    @apply h-48 md:h-32;
     @apply px-4 pb-0 mb-2;
     @apply text-headline-5;
 }
@@ -666,92 +665,130 @@ body.narrow .layout-body:has(> .docs-content) {
     @apply relative;
     @apply flex;
     @apply overflow-x-auto overflow-y-hidden;
+    @apply w-screen;
     height: calc(var(--wh, 100vh));
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
 }
-.landing .carousel::-webkit-scrollbar {
+.landing .carousel::-webkit-scrollbar,
+.landing .carousel .carousel-content::-webkit-scrollbar {
     display: none;
 }
 .carousel .carousel-page {
-    scroll-snap-align: start;
-    flex-shrink: 0;
-    width: 100vw;
-    border-radius: 10px;
-    transform-origin: center center;
-    transform: scale(1);
-    transition: transform 0.5s;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    @apply relative;
+    @apply flex justify-center items-center shrink-0;
+    @apply w-screen;
 }
 .carousel .carousel-page .c-header {
     @apply w-full;
 }
 .carousel-wrapper {
+    @apply absolute z-10;
     @apply flex-x justify-center;
-    @apply w-full;
+    @apply w-screen h-full;
 }
-.carousel-wrapper .left-arrow {
+.carousel-wrapper .c-side-left,
+.carousel-wrapper .c-side-right {
+    @apply flex-none;
+    @apply w-12;
+    @apply cursor-pointer;
+}
+body.narrow .carousel-wrapper .c-side-left,
+body.narrow .carousel-wrapper .c-side-right {
+    @apply hidden;
+}
+.carousel-wrapper .c-body {
+    @apply flex-1 flex-y;
+}
+.carousel-wrapper .arrow {
+    @apply opacity-30;
+}
+.carousel-wrapper .c-side-left:hover .arrow,
+.carousel-wrapper .c-side-right:hover .arrow {
+    @apply opacity-100;
+}
+.carousel-wrapper .c-side-left .arrow {
     @apply absolute left-0 inset-y-1/2;
     @apply flex self-center;
     @apply cursor-pointer;
 }
-.carousel-wrapper .right-arrow {
+.carousel-wrapper .c-side-right .arrow {
     @apply absolute right-0 inset-y-1/2;
     @apply flex self-center;
     @apply cursor-pointer;
 }
-.carousel-wrapper .footer {
-    @apply absolute bottom-8;
+.carousel-wrapper .c-bottom {
+    @apply relative self-center bottom-8;
     @apply flex-1 flex-x items-center justify-center gap-x-2;
     @apply w-fit;
 }
-.feature-carousel .carousel-wrapper .footer {
-    @apply bottom-64;
-    right: calc(50vw - 11rem);
+body.wide .feature-carousel .carousel-wrapper .c-bottom {
+    @apply bottom-96 -right-40;
+}
+.feature-carousel .c-bottom {
+    @apply relative;
+    @apply flex self-center;
+}
+.c-bottom .carousel-dot {
+    @apply self-end;
 }
 .carousel-dot {
-    @apply h-2;
+    @apply h-2 w-2;
     @apply rounded-full;
     @apply bg-[#9294E1];
     @apply cursor-pointer;
+    @apply transition-all ease-in-out duration-300;
 }
-body.narrow .landing .carousel-wrapper .left-arrow,
-body.narrow .landing .carousel-wrapper .right-arrow {
+.carousel-dot.active {
+    @apply w-8;
+}
+body.narrow .landing .carousel-wrapper .arrow {
     @apply hidden;
 }
 
 /* Features carousel */
 .landing .features-carousel-item {
     @apply flex-1;
-}
-.landing .features-carousel-item.carousel-page {
     @apply flex-x;
+    @apply h-full w-screen;
     @apply p-16 pb-8;
     @appply bg-[#EEEEF6];
 }
-.features-carousel-item .c-title,
-.features-carousel-item .c-image {
-    @apply flex;
-    @apply self-start;
+body.narrow .landing .features-carousel-item {
+    @apply flex-y justify-start gap-y-8;
+    @apply p-4 pt-16;
 }
 .features-carousel-item .c-title {
-    @apply py-8;
+    @apply flex-none flex;
+    @apply self-start;
+    @apply md:w-1/4;
     @apply text-headline-3;
+}
+body.wide .features-carousel-item .c-title {
     font-size: calc(2.5rem + 1vw);
-    width: 20%;
+}
+body.narrow .features-carousel-item .c-title {
+    @apply h-32;
+    @apply text-headline-4;
 }
 .features-carousel-item .c-image {
-    @apply h-full;
-    width: 30%;
-    max-height: 50rem;
+    @apply flex-none;
+    @apply self-end;
+    @apply md:h-full;
+}
+body.narrow .features-carousel-item .c-image {
+    @apply contents;
+    @apply self-center;
 }
 .features-carousel-item .c-description {
     @apply flex-y;
     @apply self-start;
+}
+body.wide .features-carousel-item .c-description {
     @apply w-1/2;
     @apply p-16;
+}
+.carousel .carousel-content {
+    @apply relative;
+    @apply flex;
+    @apply overflow-x-auto overflow-y-hidden;
+    @apply w-fit;
 }
