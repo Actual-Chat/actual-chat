@@ -1,0 +1,13 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+
+<div class="form-block">
+    @if (!string.IsNullOrEmpty(Title)) {
+        <div class="form-block-title">@Title</div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+}

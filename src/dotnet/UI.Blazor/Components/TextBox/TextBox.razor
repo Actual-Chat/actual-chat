@@ -13,6 +13,7 @@
        autocomplete="@(Autocomplete ? "on" : "off")"
        class="@cls"
        value="@CurrentValue"
+       placeholder="@Placeholder"
        @attributes="@AdditionalAttributes"
        @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
 
@@ -26,6 +27,7 @@
     [Parameter] public bool Autofocus { get; set; }
     [Parameter] public bool Autocomplete { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
