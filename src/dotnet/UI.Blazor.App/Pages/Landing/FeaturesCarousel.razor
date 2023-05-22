@@ -1,14 +1,23 @@
+@{
+    var title = ScreenSize.IsNarrow() ? "Actual.chat Features" : "Features";
+}
+
 <LandingCarousel
     CarouselOrder="2"
     CarouselLength="6"
-    Class="feature-carousel">
+    Class="feature-carousel"
+    WrapperClass="mt-20 px-4 text-headline-3"
+    WrapperTitle="@title">
 
     <FeaturesCarouselItem
         Class="carousel-page bg-[#EEEEF6]"
         SlideOrder="1">
-        <Title>Features</Title>
         <ImageContent>
-            <img src="/dist/images/landing/features-carousel-1.png" alt="feature-1">
+            @if (ScreenSize.IsNarrow()) {
+                <img src="/dist/images/landing/features-carousel-mobile-1.png" alt="feature-1">
+            } else {
+                <img src="/dist/images/landing/features-carousel-1.png" alt="feature-1">
+            }
         </ImageContent>
         <Description>
             <div class="font-bold">
@@ -23,9 +32,12 @@
     <FeaturesCarouselItem
         Class="carousel-page bg-[#EEEEF6]"
         SlideOrder="2">
-        <Title>Features</Title>
         <ImageContent>
-            <img src="/dist/images/landing/features-carousel-2.png" alt="feature-2">
+            @if (ScreenSize.IsNarrow()) {
+                <img src="/dist/images/landing/features-carousel-mobile-2.png" alt="feature-2">
+            } else {
+                <img src="/dist/images/landing/features-carousel-2.png" alt="feature-2">
+            }
         </ImageContent>
         <Description>
             <div class="font-bold">
@@ -46,9 +58,12 @@
     <FeaturesCarouselItem
         Class="carousel-page bg-[#EEEEF6]"
         SlideOrder="3">
-        <Title>Features</Title>
         <ImageContent>
-            <img src="/dist/images/landing/features-carousel-3.png" alt="feature-3">
+            @if (ScreenSize.IsNarrow()) {
+                <img src="/dist/images/landing/features-carousel-mobile-3.png" alt="feature-3">
+            } else {
+                <img src="/dist/images/landing/features-carousel-3.png" alt="feature-3">
+            }
         </ImageContent>
         <Description>
             <div class="font-bold">
@@ -63,9 +78,12 @@
     <FeaturesCarouselItem
         Class="carousel-page bg-[#EEEEF6]"
         SlideOrder="4">
-        <Title>Features</Title>
         <ImageContent>
-            <img src="/dist/images/landing/features-carousel-4.png" alt="feature-4">
+            @if (ScreenSize.IsNarrow()) {
+                <img src="/dist/images/landing/features-carousel-mobile-4.png" alt="feature-4">
+            } else {
+                <img src="/dist/images/landing/features-carousel-4.png" alt="feature-4">
+            }
         </ImageContent>
         <Description>
             <div class="font-bold">
@@ -83,9 +101,12 @@
     <FeaturesCarouselItem
         Class="carousel-page bg-[#EEEEF6]"
         SlideOrder="5">
-        <Title>Features</Title>
         <ImageContent>
-            <img src="/dist/images/landing/features-carousel-5.png" alt="feature-5">
+            @if (ScreenSize.IsNarrow()) {
+                <img src="/dist/images/landing/features-carousel-mobile-5.png" alt="feature-5">
+            } else {
+                <img src="/dist/images/landing/features-carousel-5.png" alt="feature-5">
+            }
         </ImageContent>
         <Description>
             <div class="font-bold">
@@ -109,26 +130,14 @@
     <FeaturesCarouselItem
         Class="carousel-page bg-[#EEEEF6]"
         SlideOrder="6">
-        <Title>Features</Title>
         <ImageContent>
-            <img src="/dist/images/landing/features-carousel-6.png" alt="feature-6">
+            @if (ScreenSize.IsNarrow()) {
+                <img src="/dist/images/landing/features-carousel-mobile-6.png" alt="feature-6">
+            } else {
+                <img src="/dist/images/landing/features-carousel-6.png" alt="feature-6">
+            }
         </ImageContent>
         <Description>
-            <div class="font-bold">
-                Voice & text
-            </div>
-            <div>
-                are blended together– everywhere!
-            </div>
-            <div class="mt-4 font-bold">
-                Replies, @@mentions, and reactions
-            </div>
-            <div class="mt-4 font-bold">
-                Playing messages
-            </div>
-            <div>
-                Read and listen to received voice messages at any time
-            </div>
             <div class="mt-4 font-bold">
                 Avatars
             </div>

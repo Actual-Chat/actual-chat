@@ -1,5 +1,5 @@
 <div class="page full-screen-page @Class" id="@GetCurrentSlideId()">
-    <div class="features-carousel-item @Class">
+    <div class="features-carousel-item">
         <div class="c-title">
             @Title
         </div>
@@ -10,9 +10,6 @@
             @Description
         </div>
     </div>
-    @if (CarouselOrder != 0 && SlideOrder != 0) {
-        <LandingCarouselWrapper SlideOrder="@SlideOrder"/>
-    }
 </div>
 
 @code {
