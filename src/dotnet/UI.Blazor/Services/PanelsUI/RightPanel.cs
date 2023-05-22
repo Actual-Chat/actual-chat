@@ -26,9 +26,12 @@ public class RightPanel
                 Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && !Owner.IsNarrow()),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
-        History.Register(new OwnHistoryState(this, false));
         _isVisible.WhenRead.ContinueWith(
-            _ => History.Dispatcher.InvokeAsync(() => SetIsVisible(_isVisible.Value)),
+            _ => {
+                var isVisible = _isVisible.Value;
+                History.Register(new OwnHistoryState(this, isVisible));
+                return History.Dispatcher.InvokeAsync(() => SetIsVisible(isVisible));
+            },
             TaskScheduler.Default);
     }
 
