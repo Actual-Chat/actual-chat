@@ -83,7 +83,13 @@ public sealed class MobileAuthController : Controller
             : "";
 
         var auth = Services.GetRequiredService<IAuth>();
-        var session = !sid.IsNullOrEmpty() ? new Session(sid) : sessionProvider.Session; // use existing or create new
+
+        Session? session = null;
+        if (!sid.IsNullOrEmpty()
+            && await auth.GetSessionInfo(new Session(sid), cancellationToken).ConfigureAwait(false) != null)
+            session = new Session(sid);
+        session ??= sessionProvider.Session;
+
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo?.GetGuestId().IsGuest != true) {
             var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
