@@ -16,12 +16,14 @@ public class LeftPanel
     public LeftPanel(PanelsUI owner, bool? initialLeftPanelIsVisible)
     {
         Owner = owner;
-        _isVisible = Services.StateFactory().NewMutable(true);
-        History.Register(new OwnHistoryState(this, true));
-
         var isVisibleOverride = GetIsVisibleOverride()
             ?? initialLeftPanelIsVisible
             ?? (History.LocalUrl.IsChat() ? false : null);
+
+        var isVisible = isVisibleOverride ?? true;
+        _isVisible = Services.StateFactory().NewMutable(isVisible);
+        History.Register(new OwnHistoryState(this, isVisible));
+
         if (isVisibleOverride == false)
             SetIsVisible(false);
     }
