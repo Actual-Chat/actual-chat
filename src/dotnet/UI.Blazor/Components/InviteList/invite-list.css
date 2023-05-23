@@ -1,0 +1,20 @@
+﻿.invite-list-item {
+    @apply flex-y px-4 py-2 gap-y-2;
+    @apply border rounded-lg;
+}
+
+.invite-list-item .link {
+    @apply flex-x items-center;
+}
+
+.invite-list-item .actions {
+    @apply flex-x gap-x-4;
+}
+
+.invite-list-item .actions > * {
+    @apply grow;
+}
+
+.invite-list-item .actions .btn {
+    @apply max-w-none;
+}

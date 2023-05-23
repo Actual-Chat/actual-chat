@@ -29,10 +29,10 @@
 }
 
 .toggle:has(input:checked) > .dash {
-    @apply bg-primary;
+    @apply bg-accent;
 }
 .toggle:has(input:checked) > .dash > .o {
-    @apply bg-01 border-primary;
+    @apply bg-01 border-accent;
     @apply translate-x-3;
 }
 

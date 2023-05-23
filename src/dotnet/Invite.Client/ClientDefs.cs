@@ -16,4 +16,7 @@ public interface IInvitesClientDef
 
     [Post(nameof(Use))]
     Task<Invite> Use([Body] IInvites.UseCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(Revoke))]
+    Task Revoke([Body] IInvites.RevokeCommand command, CancellationToken cancellationToken);
 }

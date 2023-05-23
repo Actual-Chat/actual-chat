@@ -13,6 +13,8 @@ public interface IInvitesBackend : IComputeService
     Task<Invite> Generate(GenerateCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Invite> Use(UseCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task Revoke(RevokeCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record GenerateCommand(
@@ -24,4 +26,10 @@ public interface IInvitesBackend : IComputeService
         [property: DataMember] Session Session,
         [property: DataMember] string InviteId
         ) : ISessionCommand<Invite>;
+
+    [DataContract]
+    public sealed record RevokeCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string InviteId
+    ) : ISessionCommand<Unit>;
 }

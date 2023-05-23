@@ -141,6 +141,7 @@ body.hoverable .btn.btn-text:focus:hover {
 }
 .btn.btn-modal .btn-content {
     @apply bg-transparent;
+    @apply flex-x gap-x-2 items-center;
 }
 .btn.btn-modal:active {
     @apply bg-secondary;

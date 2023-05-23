@@ -22,8 +22,8 @@
 }
 .form input:focus,
 .form select:focus {
-    @apply outline-none border-primary;
-    @apply ring-1 ring-primary;
+    @apply outline-none border-accent;
+    @apply ring-1 ring-accent;
 }
 .form input:not([type='checkbox']).invalid:focus,
 .form select.invalid:focus {
@@ -63,7 +63,7 @@
 
 /*Label inside input*/
 .form-section-content.label-inside-input {
-    @apply bg-02 border-b border-primary gap-y-0 px-1;
+    @apply bg-02 border-b border-accent gap-y-0 px-2;
 }
 .form section.invalid .form-section-content.label-inside-input {
     @apply border-error;
@@ -75,7 +75,7 @@
 }
 
 .form .form-section-content.label-inside-input label {
-    @apply text-xs font-normal text-primary;
+    @apply text-xs font-normal text-accent;
 }
 .form section.invalid .form-section-content.label-inside-input label {
     @apply text-error;
@@ -95,4 +95,50 @@
 .form .form-section-content.label-inside-input input:not([type='checkbox']).invalid:focus,
 .form .form-section-content.label-inside-input select.invalid:focus {
     @apply border-error ring-0;
+}
+
+.form .tile-item {
+    @apply min-h-10;
+    @apply h-auto;
+}
+
+.form .tile-item-icon {
+    @apply justify-start;
+}
+
+.form .tile-item-body {
+    @apply grow;
+    @apply max-h-max;
+}
+
+.form .tile-item-body-content {
+    @apply max-h-max;
+    @apply text-headline-1;
+}
+
+.form .tile-item-right {
+    @apply grow-0;
+}
+
+.form .tile-item input[type=radio] {
+    @apply h-5 w-5;
+}
+
+.form-block {
+    @apply flex-y;
+    @apply py-4;
+    @apply gap-y-2;
+}
+
+.form-block .form-block-title {
+    @apply text-02;
+}
+
+/* separator between form blocks */
+.form-block:not(:first-of-type) {
+    @apply border-bg-04 border-t-8;
+}
+
+.form-block section {
+    @apply mt-0; /* reset top margin on FormSection */
 }

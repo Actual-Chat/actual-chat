@@ -75,6 +75,20 @@ internal class Invites : IInvites
         return invite.Mask();
     }
 
+    // [CommandHandler]
+    public virtual async Task Revoke(IInvites.RevokeCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        var (session, inviteId) = command;
+        var invite = await Backend.Get(inviteId, cancellationToken).ConfigureAwait(false);
+        invite.Require();
+        _ = await AssertCanRevoke(session, invite, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new IInvitesBackend.RevokeCommand(session, invite.Id), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // Assertions
 
     private async Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
@@ -99,6 +113,30 @@ internal class Invites : IInvites
         case UserInviteOption:
             if (!account.IsAdmin)
                 throw StandardError.Unauthorized("Only admins can generate user invites.");
+            break;
+        case ChatInviteOption chatInvite:
+            var rules = await Chats
+                .GetRules(session, chatInvite.ChatId, cancellationToken)
+                .ConfigureAwait(false);
+            rules.Require(ChatPermissions.Invite);
+            break;
+        default:
+            throw StandardError.Format<Invite>();
+        }
+
+        return account;
+    }
+
+    private async Task<AccountFull> AssertCanRevoke(Session session, Invite invite, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(Account.MustNotBeGuest);
+        account.Require(AccountFull.MustBeActive);
+
+        switch (invite.Details.Option) {
+        case UserInviteOption:
+            if (!account.IsAdmin)
+                throw StandardError.Unauthorized("Only admins can revoke user invites.");
             break;
         case ChatInviteOption chatInvite:
             var rules = await Chats
