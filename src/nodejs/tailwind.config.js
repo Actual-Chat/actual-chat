@@ -86,6 +86,7 @@ module.exports = {
 
         'disabled': 'var(--disabled)',
         'primary': 'var(--primary)',
+        'accent': 'var(--accent)',
         'primary-hover': 'var(--primary-hover)',
         'primary-title': 'var(--primary-title)',
         'reaction-own': 'var(--reaction-own)',
@@ -183,6 +184,7 @@ module.exports = {
         'text-05': 'var(--text-05)',
         'bg-06': 'var(--background-06)',
         'bg-07': 'var(--background-07)',
+        'accent': 'var(--accent)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -199,6 +201,7 @@ module.exports = {
         'banner-info': 'var(--background-banner-info)',
         'banner-success': 'var(--background-banner-success)',
         'recording-countdown': 'var(--background-recording-countdown)',
+        'accent': 'var(--accent)',
       },
     },
     screens: {
