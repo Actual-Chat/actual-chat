@@ -159,44 +159,20 @@
     private FormModel _form = null!;
     private Symbol _newInviteId = Symbol.Empty;
 
-    [Inject]
-    private Session Session { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
-    [Inject]
-    private IChats Chats { get; init; } = null!;
-
-    [Inject]
-    private IInvites Invites { get; init; } = null!;
-
-    [Inject]
-    private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-
-    [Inject]
-    private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
-
-    [Inject]
-    private UICommander UICommander { get; init; } = null!;
-
-    [Inject]
-    private UrlMapper UrlMapper { get; init; } = null!;
-
-    [Inject]
-    private DiffEngine DiffEngine { get; init; } = null!;
-
-    [Inject]
-    private MomentClockSet Clocks { get; init; } = null!;
-
-    [Inject]
-    private Features Features { get; init; } = null!;
-
-    [CascadingParameter]
-    public ScreenSize ScreenSize { get; set; }
-
-    [CascadingParameter]
-    public Modal Modal { get; set; } = null!;
-
-    [Parameter]
-    public Model ModalModel { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
