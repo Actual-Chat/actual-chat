@@ -31,4 +31,8 @@ public sealed class InvitesController : ControllerBase, IInvites
     [HttpPost]
     public Task<Invite> Use([FromBody] IInvites.UseCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
+
+    [HttpPost]
+    public Task Revoke([FromBody] IInvites.RevokeCommand command, CancellationToken cancellationToken)
+        => Commander.Call(command, cancellationToken);
 }

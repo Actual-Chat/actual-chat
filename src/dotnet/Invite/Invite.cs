@@ -27,6 +27,16 @@ public sealed record Invite(
         };
     }
 
+    public Invite Revoke(VersionGenerator<long> versionGenerator)
+    {
+        if (Remaining <= 0)
+            throw StandardError.Constraint("The invite link is no active already.");
+        return this with {
+            Version = versionGenerator.NextVersion(Version),
+            Remaining = 0,
+        };
+    }
+
     public Invite Mask()
         => this with {
             CreatedBy = Symbol.Empty,

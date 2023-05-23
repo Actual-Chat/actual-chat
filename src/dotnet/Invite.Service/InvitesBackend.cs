@@ -154,6 +154,38 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         return invite;
     }
 
+    // [CommandHandler]
+    public virtual async Task Revoke(
+        IInvitesBackend.RevokeCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            var invInvite = context.Operation().Items.Get<Invite>();
+            if (invInvite != null) {
+                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
+                _ = Get(invInvite.Id, default);
+            }
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbInvite = await dbContext.Invites
+                .FirstOrDefaultAsync(x => x.Id == command.InviteId, cancellationToken)
+                .ConfigureAwait(false)
+            ?? throw StandardError.NotFound<Invite>("Invite with the specified code is not found.");
+
+        var invite = dbInvite.ToModel();
+        invite = invite.Revoke(VersionGenerator);
+        dbInvite.UpdateFrom(invite);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(invite);
+    }
+
     [ComputeMethod]
     protected virtual Task<Unit> PseudoGetAll(string searchKey)
         => Stl.Async.TaskExt.UnitTask;
