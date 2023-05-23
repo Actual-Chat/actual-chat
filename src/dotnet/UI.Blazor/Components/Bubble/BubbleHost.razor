@@ -28,6 +28,7 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private BubbleUI BubbleUI { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
@@ -84,7 +85,8 @@
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
             var identifier = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
-            await BubbleUI.WhenLoaded();
+            await BrowserInfo.WhenReady;
+            await BubbleUI.WhenReady;
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef, readBubbles);
         }

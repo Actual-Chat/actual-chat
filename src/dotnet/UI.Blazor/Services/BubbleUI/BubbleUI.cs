@@ -21,8 +21,7 @@ public sealed class BubbleUI
             });
     }
 
-    public async Task WhenLoaded()
-        => await _settings.WhenFirstTimeRead;
+    public Task WhenReady => _settings.WhenFirstTimeRead;
 
     public void UpdateSettings(UserBubblesSettings value)
         => _settings.Value = value;

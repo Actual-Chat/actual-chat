@@ -1,8 +1,11 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="bubble-content">
-    @if (Video != null) {
-        @Video
+    @if (VideoMP4 != null && BrowserInfo.IsIos) {
+        @VideoMP4
+    } else if (VideoWebM != null) {
+        @VideoWebM
     }
     @if (Title != null) {
         <div class="bubble-title">
@@ -30,8 +33,11 @@
 @code {
     [Parameter, EditorRequired] public IBubble Bubble { get; set; } = null!;
     [Parameter] public RenderFragment? Title { get; set; }
-    [Parameter] public RenderFragment? Video { get; set; }
+    [Parameter] public RenderFragment? VideoWebM { get; set; }
+    [Parameter] public RenderFragment? VideoMP4 { get; set; }
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
+
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     private async Task OnNextClick() => await Bubble.Host.ReadBubble(Bubble);
 

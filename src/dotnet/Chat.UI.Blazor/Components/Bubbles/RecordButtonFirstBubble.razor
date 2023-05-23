@@ -2,11 +2,12 @@
 @inherits BubbleBase
 
 <BubbleContent Bubble="@(this)">
-    <Video>
-        <video muted autoplay loop playsinline>
-            <source src="/dist/images/bubbles/record-1.mp4" type="video/mp4"/>
-        </video>
-    </Video>
+    <VideoMP4>
+        <video autoplay loop muted playsinline src="/dist/images/bubbles/record-1.mp4"></video>
+    </VideoMP4>
+    <VideoWebM>
+        <video autoplay loop muted playsinline src="/dist/images/bubbles/record-1.webm"></video>
+    </VideoWebM>
     <Title>"Record" button</Title>
     <Body>
     <ul>
