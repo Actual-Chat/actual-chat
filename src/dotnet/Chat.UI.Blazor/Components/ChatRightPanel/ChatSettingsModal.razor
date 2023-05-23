@@ -105,7 +105,11 @@
                     @if (displayLinks) {
                         <FormBlock Title="@title">
                             @if (m.Invites.Length > 0) {
-                                <InviteList Invites="m.Invites" LinkFormat="join/{0}" AllowRevoke="true" />
+                                <InviteList
+                                    Invites="m.Invites"
+                                    LinkFormat="join/{0}"
+                                    NewInviteId="@_newInviteId"
+                                    AllowRevoke="true" />
                             }
                             @if (canInvite) {
                                 <Button Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
@@ -153,6 +157,7 @@
 @code {
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private Symbol _newInviteId = Symbol.Empty;
 
     [Inject]
     private Session Session { get; init; } = null!;
@@ -259,7 +264,8 @@
             Remaining = 10000, // TODO: make it configurable
             Details = new ChatInviteOption(ModalModel.Chat.Id),
         };
-        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+        invite = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+        _newInviteId = invite.Id;
     }
 
     public sealed class FormModel {

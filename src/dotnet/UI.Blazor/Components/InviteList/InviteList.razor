@@ -6,6 +6,7 @@
     @foreach (var invite in Invites) {
         var link = GetLink(invite);
         var caption = GetCaption(invite);
+        var isNew = !NewInviteId.IsNullOrEmpty() && invite.Id.Equals(NewInviteId);
 
         <div class="invite-list-item">
             <div class="link">
@@ -15,6 +16,9 @@
                     </Icon>
                     <Content>
                         @link.ShortAbsoluteUrl
+                        @if (isNew) {
+                            <sup class="text-badge ml-0.5">new</sup>
+                        }
                     </Content>
                     <Caption>
                         @caption
@@ -48,6 +52,7 @@
     [Parameter, EditorRequired] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
     [Parameter] public bool AllowRevoke { get; init; }
+    [Parameter] public string NewInviteId { get; init; } = "";
 
     private DisplayUrl GetLink(Invite invite)
         => Links.Invite(LinkFormat, invite.Id).ToDisplayUrl(UrlMapper);
