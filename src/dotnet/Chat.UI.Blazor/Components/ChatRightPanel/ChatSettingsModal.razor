@@ -9,7 +9,7 @@
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame
-        Class="edit-chat-settings-modal custom-scrollbar"
+        Class="edit-chat-settings-modal"
         Title="Edit chat settings"
         HasCloseButton="true"
         NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()">
@@ -99,14 +99,20 @@
                         </FormBlock>
                     }
                 } else {
-                    @if (m.Rules.CanInvite()) {
-                        <FormBlock Title="Private join links">
+                    var canInvite = m.Rules.CanInvite();
+                    var displayLinks = canInvite || m.Invites.Length > 0;
+                    var title = canInvite ? "Manage links" : "Private links";
+                    @if (displayLinks) {
+                        <FormBlock Title="@title">
                             @if (m.Invites.Length > 0) {
-                                <InviteList Invites="m.Invites" LinkFormat="join/{0}"/>
+                                <InviteList Invites="m.Invites" LinkFormat="join/{0}" AllowRevoke="true" />
                             }
-                            <div class="@(new FlexMode(FlexAlignment.End)) mt-2">
-                                <Button Click="OnNewInviteClick" Class="btn-primary">New private join link</Button>
-                            </div>
+                            @if (canInvite) {
+                                <Button Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+                                    <i class="icon-plus text-xl"></i>
+                                    New private join link
+                                </Button>
+                            }
                         </FormBlock>
                     }
                 }
@@ -250,7 +256,7 @@
 
     private async Task OnNewInviteClick() {
         var invite = new Invite {
-            Remaining = 10, // TODO: make it configurable
+            Remaining = 10000, // TODO: make it configurable
             Details = new ChatInviteOption(ModalModel.Chat.Id),
         };
         _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
@@ -301,5 +307,4 @@
     }
 
     public sealed record Model(Chat Chat);
-
 }

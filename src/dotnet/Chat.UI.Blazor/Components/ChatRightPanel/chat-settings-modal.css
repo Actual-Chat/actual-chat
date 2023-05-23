@@ -16,12 +16,13 @@
 }
 
 .edit-chat-settings-modal .dialog-body {
-    @apply px-0;
+    @apply p-0;
 }
 
 .edit-chat-settings-modal .dialog-buttons {
     @apply px-4;
-    @apply pb-4;
+    @apply pt-4;
+    @apply pb-2;
 }
 
 .edit-chat-settings-modal .form-block {
