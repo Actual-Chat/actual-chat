@@ -7,6 +7,8 @@ public interface IChatsUpgradeBackend : ICommandService
     [CommandHandler]
     Task<Chat> CreateDefaultChat(CreateDefaultChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task<Chat> CreateFeedbackTemplateChat(CreateFeedbackTemplateChatCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task UpgradeChat(UpgradeChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task FixCorruptedReadPositions(FixCorruptedReadPositionsCommand command, CancellationToken cancellationToken);
@@ -18,6 +20,11 @@ public interface IChatsUpgradeBackend : ICommandService
     [DataContract]
     public sealed record CreateDefaultChatCommand(
     ) : ICommand<Chat>, IBackendCommand;
+
+    [DataContract]
+    public sealed record CreateFeedbackTemplateChatCommand(
+    ) : ICommand<Chat>, IBackendCommand;
+
 
     public sealed record UpgradeChatCommand(
         [property: DataMember] ChatId ChatId
