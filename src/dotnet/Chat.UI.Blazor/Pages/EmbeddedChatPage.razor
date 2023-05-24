@@ -18,7 +18,7 @@
         <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
             <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
                 <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
-                    <ChatHeader Chat="@chatOrLoading" IsLeftNavigateButtonVisible="false" IsRightNavigateButtonVisible="false" />
+                    <ChatHeader Chat="@chatOrLoading" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
                 </div>
                 <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
                     <Banners Chat="@chatOrLoading"/>
@@ -68,6 +68,8 @@
 
     protected override Task OnInitializedAsync() {
         ChatAudioUI.Enable();
+        PanelsUI.Left.SetIsVisible(false);
+        PanelsUI.Right.SetIsVisible(false);
         return ChatUI.WhenLoaded; // Nothing happens until we load everything
     }
 
@@ -110,7 +112,7 @@
             if (createChatError != null)
                 return Model.None(screenSize);
 
-            _ = History.NavigateTo(Links.Chat(newChat.Id));
+            _ = History.NavigateTo(Links.EmbeddedChat(newChat.Id));
             return Model.Loading;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
