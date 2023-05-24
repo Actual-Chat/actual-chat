@@ -792,3 +792,82 @@ body.wide .features-carousel-item .c-description {
     @apply overflow-x-auto overflow-y-hidden;
     @apply w-fit;
 }
+
+/* Video modal */
+body.narrow .landing-video-modal {
+    @apply top-0 bottom-0 left-0 right-0;
+    @apply p-0;
+    @apply rounded-none;
+}
+body.narrow .landing-video-modal .dialog-body {
+    @apply p-0;
+}
+body.narrow .landing-video-modal video,
+body.narrow .landing-video-modal .c-video-plug {
+    @apply h-screen;
+}
+body.narrow .landing-video-modal .dialog-body {
+    @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
+}
+body.narrow .landing-video-modal .c-header {
+    @apply absolute top-0 left-0 right-0 z-20;
+    @apply flex-1 flex-x items-center;
+    @apply h-14;
+    @apply text-04;
+    @apply bg-black opacity-80;
+}
+body.narrow .landing-video-modal .c-body {
+    @apply relative;
+    @apply flex justify-center items-center;
+    @apply bg-cover bg-repeat-round;
+    @apply bg-[url('/dist/images/ellipses-mobile.svg')];
+}
+body.narrow .landing-video-modal .c-footer {
+    @apply absolute bottom-0 left-0 right-0 z-20 gap-x-2;
+    @apply flex-1 flex-x items-center;
+    @apply h-14;
+    @apply px-2;
+    @apply text-04;
+    @apply bg-black opacity-80;
+}
+.landing-video-modal .play-btn,
+.landing-video-modal .pause-btn {
+    @apply absolute z-10;
+    @apply flex-none items-center justify-center;
+    @apply w-20 h-20;
+    @apply rounded-full;
+    @apply bg-black;
+    @apply opacity-50;
+    left: calc(50vw - 2.5rem);
+    bottom: calc(50vh - 2.5rem);
+}
+.landing-video-modal .play-btn-icon {
+    @apply absolute;
+    @apply bg-transparent;
+    @apply text-3xl text-04;
+    @apply opacity-100;
+}
+.landing-video-modal .c-body .play-btn,
+.landing-video-modal .c-body.playing .pause-btn {
+    @apply flex;
+}
+.landing-video-modal .c-body .pause-btn,
+.landing-video-modal .c-body.playing .play-btn {
+    @apply hidden;
+}
+.landing-video-modal progress {
+    @apply flex-1;
+    @apply h-0.5 w-full;
+}
+.landing-video-modal progress[value]::-webkit-progress-bar {
+    @apply bg-06;
+    @apply rounded-sm;
+}
+
+.landing-video-modal progress[value]::-webkit-progress-value {
+    @apply bg-01;
+}
+.landing-video-modal .c-timeline {
+    @apply flex-none flex-x gap-x-1;
+    @apply text-04 text-xs font-thin;
+}
