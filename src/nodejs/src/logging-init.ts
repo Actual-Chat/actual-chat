@@ -17,6 +17,7 @@ export type LogScope =
     | 'BubbleHost'
     | 'Gestures'
     | 'event-handling'
+    | 'NoSleep'
     | 'History'
     | 'Interactive'
     | 'LocalSettings'
@@ -193,6 +194,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // XxxUI
     // minLevels.set('FocusUI', LogLevel.Debug);
     // minLevels.set('KeepAwakeUI', LogLevel.Debug);
+    // minLevels.set('NoSleep', LogLevel.Debug);
     minLevels.set('NotificationUI', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
 
