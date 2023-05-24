@@ -220,14 +220,26 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, author, changeKind) = eventCommand;
-        if (changeKind != ChangeKind.Create || entry.IsSystemEntry)
+        if (entry.IsSystemEntry)
             return;
+
+        var isTranscribedTextEntry = entry.AudioEntryId.HasValue;
+        if (isTranscribedTextEntry) {
+            if (changeKind != ChangeKind.Update)
+                return;
+            // When transcribed message is being finalized, it's updated to IsStreaming = false.
+            // At this moment we can notify chat users.
+        }
+        else {
+            if (changeKind != ChangeKind.Create)
+                return;
+            // For regular text messages we notify chat users upon message creation.
+        }
 
         var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
         var chatId = entry.ChatId;
         var key = chatId.Id.Value;
-        if (!_recentChatsWithNotifications.TryGetValue(key, out _))
-        {
+        if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
             using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
             cacheEntry.Size = 1;
             cacheEntry.Value = "";
