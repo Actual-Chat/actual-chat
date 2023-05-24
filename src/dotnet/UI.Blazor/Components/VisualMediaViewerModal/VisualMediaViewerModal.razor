@@ -5,7 +5,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <ModalFrame Class="image-viewer-modal">
-    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry"/>
+    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@ModalModel.Url"/>
     <div @ref="@Ref" class="image-viewer-content">
         @if (ModalModel.IsVideo) {
             <video width="@ModalModel.Width" height="@ModalModel.Height" preload="auto" autoplay controls onclick="this.play()">
