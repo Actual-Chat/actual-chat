@@ -21,9 +21,11 @@
             <ButtonRound Class="image-header-btn">
                 <i class="icon-share"></i>
             </ButtonRound>
-            <ButtonRound Class="image-header-btn">
-                <i class="icon-download"></i>
-            </ButtonRound>
+            <a href="@DownloadUrl" target="_blank" download class="flex justify-center">
+                <ButtonRound Class="image-header-btn">
+                    <i class="icon-download"></i>
+                </ButtonRound>
+            </a>
         }
         <ButtonRound Class="image-header-btn desktop" Click="CloseClick">
             <i class="icon-close"></i>
@@ -42,6 +44,7 @@
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
+    [Parameter] public string DownloadUrl { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
