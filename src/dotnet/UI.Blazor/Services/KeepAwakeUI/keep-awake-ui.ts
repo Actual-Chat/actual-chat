@@ -37,9 +37,11 @@ export class KeepAwakeUI {
     }
 
     /*
-    * Workaround for safari
+    * Workaround for safari < 16.4
     * */
     public static async subscribeOnKeepAwakeTriggers() {
+        if (noSleep.isNativeWakeLockSupported)
+            return;
         await BrowserInfo.whenReady;
         const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isWebKit;
         if (!isSsbSafari)
@@ -67,6 +69,8 @@ export class KeepAwakeUI {
     * Fixes issue when hiding browser or switching between apps or force sleep breaks keep awake functionality
     * */
     public static async subscribeOnDocumentVisibility() {
+        if (noSleep.isNativeWakeLockSupported)
+            return;
         await BrowserInfo.whenReady;
         const isSsbSafari = BrowserInfo.appKind === 'WebServer' && DeviceInfo.isWebKit;
         if (!isSsbSafari)

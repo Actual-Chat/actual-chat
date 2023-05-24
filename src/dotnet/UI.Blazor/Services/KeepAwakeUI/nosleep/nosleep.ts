@@ -3,7 +3,7 @@ import { Log } from 'logging';
 
 const { debugLog, warnLog, errorLog } = Log.get('NoSleep');
 // Detect iOS browsers < version 10
-const oldIOS = () =>
+const isOldIOS = () =>
     typeof navigator !== "undefined" &&
     parseFloat(
         (
@@ -18,11 +18,6 @@ const oldIOS = () =>
     ) < 10 &&
     !('MSStream' in window);
 
-// Detect native Wake Lock API support (Samsung Browser supports it but cannot use it)
-const nativeWakeLock = () =>
-    "wakeLock" in navigator &&
-    window.navigator.userAgent.indexOf("Samsung") === -1;
-
 export class NoSleep {
     private readonly noSleepVideo: HTMLVideoElement = null;
     private enabled = false;
@@ -30,14 +25,14 @@ export class NoSleep {
     private noSleepTimer: number = null;
 
     constructor() {
-        if (nativeWakeLock()) {
+        if (this.isNativeWakeLockSupported) {
             const handleVisibilityChange = () => {
                 if (this.wakeLock !== null && document.visibilityState === "visible")
                     this.enable();
             };
             document.addEventListener("visibilitychange", handleVisibilityChange);
             document.addEventListener("fullscreenchange", handleVisibilityChange);
-        } else if (oldIOS()) {
+        } else if (isOldIOS()) {
             this.noSleepTimer = null;
         } else {
             // Set up no sleep video element
@@ -46,8 +41,8 @@ export class NoSleep {
             this.noSleepVideo.setAttribute("title", "Actual Chat");
             this.noSleepVideo.setAttribute("playsinline", "");
 
-            this._addSourceToVideo(this.noSleepVideo, "webm", webm);
-            this._addSourceToVideo(this.noSleepVideo, "mp4", mp4);
+            this.addSourceToVideo(this.noSleepVideo, "webm", webm);
+            this.addSourceToVideo(this.noSleepVideo, "mp4", mp4);
 
             // For iOS >15 video needs to be on the document to work as a wake lock
             Object.assign(this.noSleepVideo.style, {
@@ -73,19 +68,18 @@ export class NoSleep {
         }
     }
 
-    _addSourceToVideo(element, type, dataURI) {
-        const source = document.createElement("source");
-        source.src = dataURI;
-        source.type = `video/${type}`;
-        element.appendChild(source);
+    // Detect native Wake Lock API support (Samsung Browser supports it but cannot use it)
+    public get isNativeWakeLockSupported () {
+        return "wakeLock" in navigator &&
+            window.navigator.userAgent.indexOf("Samsung") === -1;
     }
 
-    get isEnabled() {
+    public get isEnabled() {
         return this.enabled;
     }
 
-    enable() {
-        if (nativeWakeLock()) {
+    public enable() {
+        if (this.isNativeWakeLockSupported) {
             return navigator.wakeLock
                 .request("screen")
                 .then((wakeLock) => {
@@ -104,7 +98,7 @@ export class NoSleep {
                     errorLog?.log(`${err.name}, ${err.message}`);
                     throw err;
                 });
-        } else if (oldIOS()) {
+        } else if (isOldIOS()) {
             this.disable();
             warnLog?.log(`
         NoSleep enabled for older iOS devices. This can interrupt
@@ -133,12 +127,12 @@ export class NoSleep {
         }
     }
 
-    disable() {
-        if (nativeWakeLock()) {
+    public disable() {
+        if (this.isNativeWakeLockSupported) {
             if (this.wakeLock)
                 this.wakeLock.release();
             this.wakeLock = null;
-        } else if (oldIOS()) {
+        } else if (isOldIOS()) {
             if (this.noSleepTimer) {
                 debugLog?.log('NoSleep now disabled for older iOS devices.');
                 window.clearInterval(this.noSleepTimer);
@@ -148,5 +142,12 @@ export class NoSleep {
             this.noSleepVideo.pause();
         }
         this.enabled = false;
+    }
+
+    private addSourceToVideo(element, type, dataURI) {
+        const source = document.createElement("source");
+        source.src = dataURI;
+        source.type = `video/${type}`;
+        element.appendChild(source);
     }
 }
