@@ -4,6 +4,7 @@
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
+    @key="@Chat.Id.Value"
     Class="chat-view"
     DataSource="@this"
     Identity="@Chat.Id"
