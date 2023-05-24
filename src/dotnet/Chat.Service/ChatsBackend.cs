@@ -528,6 +528,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (oldHasLeft == author.HasLeft)
             return;
 
+        // Skip for template chats
+        var chat = await Get(author.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat?.IsTemplate ?? false)
+            return;
+
         // Let's delay fetching an author a bit
         Author? readAuthor = null;
         var retrier = new Retrier(5, new RetryDelaySeq(0.25, 1));
