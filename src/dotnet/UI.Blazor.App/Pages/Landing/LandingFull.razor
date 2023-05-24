@@ -40,7 +40,7 @@
                             <span class="text-headline-1">Sign in for Web with</span>
                             <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
                         </button>
-                        <button class="download-btn web-signin transparent md:hidden" onclick="@(() => SignIn(googleScheme.Name))">
+                        <button class="download-btn web-signin transparent md:hidden" onclick="@OnShowVideoClick">
                             <i class="icon-play-fill text-2xl"></i>
                             <span class="text-headline-1">Watch video how it works</span>
                         </button>
@@ -491,6 +491,7 @@
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
@@ -523,8 +524,11 @@
         await base.DisposeAsync();
     }
 
+    private Task OnShowVideoClick()
+        => ModalUI.Show(new LandingVideoModal.Model());
+
     private Task SignIn(string name) =>
-        ClientAuth.SignIn(name).AsTask();
+    ClientAuth.SignIn(name).AsTask();
 
     private void OnMenuHandleClick()
         => _landingLeftMenu?.Open();

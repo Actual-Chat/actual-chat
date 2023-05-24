@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
@@ -24,5 +25,10 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
         services.AddSingleton(_ => new AppPresenceReporter.Options());
         fusion.AddComputeService<AppPresenceReporter>(ServiceLifetime.Scoped);
+
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<LandingVideoModal.Model, LandingVideoModal>()
+        );
     }
 }
