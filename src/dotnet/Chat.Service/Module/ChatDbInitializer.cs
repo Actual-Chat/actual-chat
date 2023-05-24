@@ -17,6 +17,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
 
         await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
+        await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
         if (HostInfo.IsDevelopmentInstance)
             await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
     }
@@ -103,6 +104,26 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
         catch (Exception e) {
             Log.LogCritical(e, "Failed to create default chat!");
+            throw;
+        }
+    }
+
+    private async Task EnsureFeedbackTemplateChatExists(CancellationToken cancellationToken)
+    {
+        var chatsBackend = Services.GetRequiredService<IChatsBackend>();
+        var chatId = Constants.Chat.FeedbackTemplateChatId;
+        var chat = await chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return;
+
+        try {
+            Log.LogInformation("There is no 'Feedback' chat, creating one");
+            var command = new IChatsUpgradeBackend.CreateFeedbackTemplateChatCommand();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("'Feedback' chat is created");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create 'Feedback' chat!");
             throw;
         }
     }

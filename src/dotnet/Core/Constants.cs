@@ -8,8 +8,9 @@ public static partial class Constants
     {
         public static ChatId DefaultChatId { get; } = new("the-actual-one", default, default, AssumeValid.Option);
         public static ChatId AnnouncementsChatId { get; } = new("announcements", default, default, AssumeValid.Option);
+        public static ChatId FeedbackTemplateChatId { get; } = new("feedback-template", default, default, AssumeValid.Option);
         public static IReadOnlySet<Symbol> SystemChatIds { get; } =
-            new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id });
+            new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id });
 
         public static TileStack<long> IdTileStack { get; } = TileStacks.Long5To1K;
         public static TileStack<Moment> TimeTileStack { get; } = TileStacks.Moment3MTo6Y;
