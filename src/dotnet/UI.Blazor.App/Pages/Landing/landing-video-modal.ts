@@ -30,11 +30,6 @@ export class LandingVideoModal {
         this.progressBar = landingVideoModal.querySelector('.c-progress-bar');
         this.timeline = landingVideoModal.querySelector('.c-timeline');
 
-        // this.onScreenSizeChange();
-        // ScreenSize.event$
-        //     .pipe(takeUntil(this.disposed$))
-        //     .subscribe(() => this.onScreenSizeChange());
-
         const plug = this.landingVideoModal.querySelector('.c-video-plug') as HTMLImageElement;
         const video = this.landingVideoModal.querySelector('.c-video') as HTMLVideoElement;
         if (video != null) {
@@ -114,7 +109,6 @@ export class LandingVideoModal {
 
     private updateTimeline(video: HTMLVideoElement) {
         let current = video.currentTime;
-        console.log('current: ', current);
         let percentage = Math.floor((100 / video.duration) * current);
         this.progressBar.value = percentage;
         this.progressBar.innerHTML = percentage + '% played';
@@ -130,18 +124,4 @@ export class LandingVideoModal {
         let value = progressBar.value = Math.floor(percent / 100);
         progressBar.innerHTML = value + '% played';
     }
-
-    // Event handlers
-
-    // private onScreenSizeChange() {
-    //     const h = window.innerHeight;
-    //     const w = window.innerWidth;
-    //     const hwRatio = h / w;
-    //     document.documentElement.style.setProperty('--wh', `${h}px`);
-    //     let useFullScreenPages = ScreenSize.isNarrow() ? (hwRatio >= 1.8 && hwRatio <= 2.5) : (h >= 700);
-    //     // if (useFullScreenPages)
-    //     //     this.landing.classList.remove('no-full-screen-pages');
-    //     // else
-    //     //     this.landing.classList.add('no-full-screen-pages');
-    // }
 }
