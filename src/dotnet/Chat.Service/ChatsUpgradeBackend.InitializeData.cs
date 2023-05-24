@@ -370,6 +370,9 @@ public partial class ChatsUpgradeBackend
         var hostInfo = Services.GetRequiredService<HostInfo>();
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
+        var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
         var creatorId = UserId.None;
 
         var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
@@ -401,8 +404,12 @@ public partial class ChatsUpgradeBackend
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;
         }
-        if (creatorId.IsNone)
-            throw StandardError.Constraint("Creator user not found");
+        if (creatorId.IsNone) {
+            if (admin.Id.IsNone)
+                throw StandardError.Constraint("Creator user not found");
+
+            creatorId = admin.Id;
+        }
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId,
             null,

@@ -508,8 +508,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
 
-        if (HostInfo.IsDevelopmentInstance)
+        if (HostInfo.IsDevelopmentInstance) {
             await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+            await JoinFeedbackTemplateChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     [EventHandler]
@@ -670,6 +672,22 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
 
         var chatId = Constants.Chat.DefaultChatId;
+        var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
+
+        await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task JoinFeedbackTemplateChatIfAdmin(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account is not { IsAdmin: true })
+            return;
+        if (account.Email.IsNullOrEmpty())
+            return;
+        if (!account.Email.OrdinalEndsWith("@actual.chat"))
+            return;
+
+        var chatId = Constants.Chat.FeedbackTemplateChatId;
         var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
