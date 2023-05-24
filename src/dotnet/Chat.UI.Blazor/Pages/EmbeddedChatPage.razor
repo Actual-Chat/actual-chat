@@ -7,44 +7,44 @@
     var chat = m.Chat;
     var chatOrNone = m.Chat ?? Chat.None;
     var isLoading = ReferenceEquals(m, Model.Loading);
-    var chatOrLoading = isLoading ? Chat.Loading : chatOrNone;
+    var chatOrLoading = isLoading
+        ? ChatUI.Loading
+        : chatOrNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
 <div class="page-with-header-and-footer h-full w-full flex-x">
     <ErrorBarrier>
-        <RegionVisibilityProvider IsPanelVisible="@PanelsUI.Middle.IsVisible">
-            <CascadingValue Value="@chatOrLoading">
-                <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
-                    <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
-                        <ChatHeader IsLeftNavigateButtonVisible="false" IsRightNavigateButtonVisible="false" />
-                    </div>
-                    <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
-                        <Banners/>
-                    </div>
-                    <div class="flex-1 flex-x h-full overflow-hidden">
-                        <div class="flex-1 -flex-y h-full overflow-hidden relative">
-                            <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
-                                <ChatFooter ChatSid="@ChatSid" IsLoading="@isLoading"/>
-                            </div>
-                            <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
-                                <RenderStack Name="SubFooter"/>
-                            </div>
-                            <div class="layout-body flex-1 custom-scrollbar">
-                                @if (m.ChatId.IsNone) {
-                                    <NoChatSelected/>
-                                } else if (chat == null) {
-                                    <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
-                                } else {
-                                    <CascadingValue Value="chat" @key="ChatSid">
-                                        <ChatView @ref="_chatViewRef" />
-                                    </CascadingValue>
-                                }
-                            </div>
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
+            <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
+                <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
+                    <ChatHeader Chat="@chatOrLoading" IsLeftNavigateButtonVisible="false" IsRightNavigateButtonVisible="false" />
+                </div>
+                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
+                    <Banners Chat="@chatOrLoading"/>
+                </div>
+                <div class="flex-1 flex-x h-full overflow-hidden">
+                    <div class="flex-1 -flex-y h-full overflow-hidden relative">
+                        <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
+                            <ChatFooter ChatSid="@ChatSid" IsLoading="@isLoading"/>
+                        </div>
+                        <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
+                            <RenderStack Name="SubFooter"/>
+                        </div>
+                        <div class="layout-body flex-1 custom-scrollbar">
+                            @if (m.ChatId.IsNone) {
+                                <NoChatSelected/>
+                            } else if (chat == null) {
+                                <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+                            } else {
+                                <CascadingValue Value="chat" @key="ChatSid">
+                                    <ChatView @ref="_chatViewRef" Chat="@chatOrLoading" />
+                                </CascadingValue>
+                            }
                         </div>
                     </div>
                 </div>
-            </CascadingValue>
+            </div>
         </RegionVisibilityProvider>
     </ErrorBarrier>
 </div>
