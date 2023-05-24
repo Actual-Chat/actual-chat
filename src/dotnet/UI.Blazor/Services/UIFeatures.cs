@@ -52,4 +52,7 @@ public static class UIFeatures
 
     public class AllowEditJoinAnonymouslyChatProps : ExperimentalFeature
     { }
+
+    public class AllowEditIsTemplateChat : ExperimentalFeature
+    { }
 }
