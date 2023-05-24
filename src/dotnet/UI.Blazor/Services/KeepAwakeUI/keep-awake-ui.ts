@@ -1,4 +1,4 @@
-import { default as NoSleep } from '@uriopass/nosleep.js';
+import { NoSleep } from './nosleep/nosleep';
 import { Log } from 'logging';
 import { DocumentEvents } from 'event-handling';
 import { filter, exhaustMap, tap, concatMap } from 'rxjs';
