@@ -5,6 +5,7 @@ using Android.Content;
 using Android.Graphics;
 using AndroidX.Core.App;
 using Firebase.Messaging;
+using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
 
 namespace ActualChat.App.Maui;
 
@@ -16,6 +17,20 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     private static readonly ThreadSafeLruCache<string, Bitmap?> _imagesCache = new (ImageCacheSize);
     private static FirebaseMessagingUtils? _utils;
+    /**
+    * Request code used by display notification pending intents.
+    *
+    * Android only keeps one PendingIntent instance if it thinks multiple pending intents match.
+    * Our intents often only differ by the payload which is stored in intent extras. As comparing
+    * PendingIntents/Intents does not inspect the payload data, multiple pending intents, such as the
+    * ones for click/dismiss will conflict.
+    *
+    * We also need to avoid conflicts with notifications started by an earlier launch of the app,
+    * so use the truncated uptime of when the class was instantiated. The uptime will only overflow
+    * every ~50 days, and even then chances of conflict will be rare.
+    */
+    private static readonly AtomicInteger _requestCodeProvider =
+        new AtomicInteger((int) Android.OS.SystemClock.ElapsedRealtime());
 
     private ILogger Log { get; set; } = NullLogger.Instance;
 
@@ -95,8 +110,15 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             intent.PutExtra(key, value);
         }
 
-        var pendingIntent = PendingIntent.GetActivity(this,
-            MainActivity.NotificationID, intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
+        if (Log.IsEnabled(LogLevel.Debug)) {
+            var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
+            Log.LogDebug("About to show ShowNotification '{Text}'. Data: {Data}", text, dataAsText);
+        }
+
+        // Generate an unique(ish) request code for a PendingIntent.
+        var pendingIntentRequestCode = _requestCodeProvider.IncrementAndGet();
+        var pendingIntent = PendingIntent.GetActivity(this, pendingIntentRequestCode,
+            intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
         var notificationBuilder = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
             .SetContentTitle(title)

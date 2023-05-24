@@ -175,8 +175,6 @@ public class MainActivity : MauiAppCompatActivity
         if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
-        Log.LogDebug("NotificationTap");
-
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach(var key in keySet) {
@@ -187,6 +185,11 @@ public class MainActivity : MauiAppCompatActivity
             var extraValue = extras.Get(key);
             if (extraValue != null)
                 data.Add(key, extraValue.ToString());
+        }
+
+        if (Log.IsEnabled(LogLevel.Debug)) {
+            var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
+            Log.LogDebug("NotificationTap. Data: {Data}", dataAsText);
         }
 
         var url = data.GetValueOrDefault(NotificationConstants.MessageDataKeys.Link);
