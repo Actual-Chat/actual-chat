@@ -324,7 +324,6 @@ export class Landing {
             this.landing.classList.remove('no-full-screen-pages');
         else
             this.landing.classList.add('no-full-screen-pages');
-        // this.updateDotsPosition();
     }
 
     private onKeyDown(event: KeyboardEvent): void {
