@@ -22,7 +22,8 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
         Settings = options;
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
-        if (initialize) Initialize(options);
+        if (initialize)
+            Initialize(options);
  #pragma warning restore MA0056
     }
 

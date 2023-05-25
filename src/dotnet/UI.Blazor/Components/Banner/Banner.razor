@@ -47,7 +47,6 @@
     [Parameter] public EventCallback Dismiss { get; set; }
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
     }
 

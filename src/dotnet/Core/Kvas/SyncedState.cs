@@ -59,7 +59,8 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
-        if (initialize) Initialize(options);
+        if (initialize)
+            Initialize(options);
  #pragma warning restore MA0056
     }
 

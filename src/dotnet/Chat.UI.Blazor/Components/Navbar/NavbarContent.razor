@@ -47,17 +47,19 @@
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
+    private EventHandler _navbarUIOnSelectedGroupChanged = null!;
+
     protected override void OnInitialized() {
-        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
+        _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
+        NavbarUI.SelectedGroupChanged += _navbarUIOnSelectedGroupChanged;
         base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
-        NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
+        NavbarUI.SelectedGroupChanged -= _navbarUIOnSelectedGroupChanged;
         return base.DisposeAsync();
     }
 
-    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e) {
-        StateHasChanged();
-    }
+    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
+        => StateHasChanged();
 }

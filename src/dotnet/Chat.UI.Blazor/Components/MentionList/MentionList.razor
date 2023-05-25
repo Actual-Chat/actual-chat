@@ -53,10 +53,10 @@
     }
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         Filter = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), nameof(Filter)));
+        base.OnInitialized();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
