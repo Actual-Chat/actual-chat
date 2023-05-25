@@ -5,11 +5,11 @@
     @apply min-w-0 px-2;
 }
 .reaction-select-reaction-emoji {
-    @apply h-5 w-5;
+    @apply h-6 w-6;
 }
 .reaction-select-menu .reaction-select-reaction {
-    @apply h-6 w-8 justify-center;
+    @apply h-6 w-6 justify-center;
 }
 .reaction-select-menu .reaction-select-reaction-emoji {
-    @apply h-5 w-5;
+    @apply h-6 w-6;
 }

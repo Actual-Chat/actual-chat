@@ -70,6 +70,9 @@ body.narrow .ac-menu-icon > i {
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
 }
+body.narrow .ac-menu-text {
+    @apply text-headline-1;
+}
 body.hoverable .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
 }

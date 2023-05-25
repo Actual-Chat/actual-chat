@@ -88,10 +88,10 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply ml-0;
 }
 body.narrow .message-menu .reaction-select {
-    @apply gap-4;
+    @apply gap-2;
 }
 body.narrow .message-menu .reaction-select-reaction-emoji {
-    @apply w-6 h-6;
+    @apply w-8 h-8;
 }
 body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
