@@ -1,6 +1,7 @@
 import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
 import { clamp } from 'math';
 import { NumberRange, Range } from './ts/range';
+import { InertialScroll } from './ts/inertial-scroll';
 import { VirtualListEdge } from './ts/virtual-list-edge';
 import { VirtualListStickyEdgeState } from './ts/virtual-list-sticky-edge-state';
 import { VirtualListRenderState } from './ts/virtual-list-render-state';
@@ -39,6 +40,7 @@ export class VirtualList {
     private readonly _endSpacerRef: HTMLElement;
     private readonly _renderIndexRef: HTMLElement;
     private readonly _endAnchorRef: HTMLElement;
+    private readonly _inertialScroll: InertialScroll;
     private readonly _abortController: AbortController;
     private readonly _renderEndObserver: MutationObserver;
     private readonly _sizeObserver: ResizeObserver;
@@ -108,6 +110,7 @@ export class VirtualList {
         this._renderStateRef = this._ref.querySelector(':scope > .data.render-state');
         this._renderIndexRef = this._ref.querySelector(':scope > .data.render-index');
         this._endAnchorRef = this._ref.querySelector(':scope > .end-anchor');
+        this._inertialScroll = new InertialScroll(this._ref);
 
         // Events & observers
         const listenerOptions = { signal: this._abortController.signal };
@@ -432,6 +435,7 @@ export class VirtualList {
         debugLog?.log(`onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
 
         try {
+            this._inertialScroll.freeze();
             this._renderState = rs;
 
             // fix iOS MAUI scroll issue after first renders
@@ -534,6 +538,7 @@ export class VirtualList {
             // trigger update only for first render to load data if needed
             if (rs.renderIndex <= 1)
                 void this.updateViewport();
+            this._inertialScroll.unfreeze();
         }
     }
 
@@ -812,6 +817,7 @@ export class VirtualList {
         useSmoothScroll: boolean = false,
         blockPosition: ScrollLogicalPosition = 'nearest') {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
+        this._inertialScroll.interrupt();
         this._scrollTime = Date.now();
         itemRef?.scrollIntoView({
             behavior: useSmoothScroll ? 'smooth' : 'auto',
