@@ -47,6 +47,8 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
+    private ChatId ChatId => Chat?.Id ?? ChatId.None;
+
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
     [Parameter] public Chat? Chat { get; set; } = null;
 
@@ -81,7 +83,7 @@
     }
 
     private Task EditAvatar(AvatarFull avatar, string title)
-        => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
+        => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, ChatId, title));
 
     private async Task SetDefaultAvatar(AvatarFull avatar) {
         var command = new IAvatars.SetDefaultCommand(Session, avatar.Id);
