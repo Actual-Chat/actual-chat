@@ -216,7 +216,7 @@ public class MainActivity : MauiAppCompatActivity
                 if (_isDrawn)
                     return true;
 
-                return _isDrawn = LoadingUI.WhenAppDisplayed.IsCompleted;
+                return _isDrawn = LoadingUI.WhenAppLoaded.IsCompleted;
             }
         }
     }

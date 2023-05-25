@@ -9,10 +9,12 @@ public sealed class LoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
     private static readonly TaskCompletionSource<Unit> _whenAppDisplayedSource = TaskCompletionSourceExt.New<Unit>();
+    private static readonly TaskCompletionSource<Unit> _whenAppLoadedSource = TaskCompletionSourceExt.New<Unit>();
 
     public static TimeSpan AppBuildTime { get; private set; }
     public static TimeSpan AppDisplayTime { get; private set; }
     public static Task WhenAppDisplayed => _whenAppDisplayedSource.Task;
+    public static Task WhenAppLoaded => _whenAppLoadedSource.Task;
 
     private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
     private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
@@ -33,13 +35,13 @@ public sealed class LoadingUI
         Services = services;
         Tracer = services.Tracer(GetType());
         HostInfo = Services.GetRequiredService<HostInfo>();
-        if (HostInfo.AppKind.IsMauiApp() && StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
-            // This is to make sure first scope's timings in MAUI are relative to app start
-            Tracer = StaticTracer[GetType()];
+        if (HostInfo.AppKind.IsMauiApp()) {
+            _isLoadingOverlayRemoved = true; // This overlay isn't used in MAUI apps
+            if (StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
+                // This is to make sure first scope's timings in MAUI are relative to app start
+                Tracer = StaticTracer[GetType()];
+            }
         }
-
-        // Let's we remove loading overlay no matter what after 10 seconds
-        Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => RemoveLoadingOverlay(), TaskScheduler.Default);
     }
 
     public static void MarkAppBuilt()
@@ -74,6 +76,7 @@ public sealed class LoadingUI
         if (!_whenLoadedSource.TrySetResult(default))
             return;
 
+        _whenAppLoadedSource.TrySetResult(default);
         LoadTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkLoaded));
         RemoveLoadingOverlay();
@@ -97,6 +100,7 @@ public sealed class LoadingUI
 
         _isLoadingOverlayRemoved = true;
         var js = Services.GetRequiredService<IJSRuntime>();
+        // We want to do this via script, coz BrowserInit might not be loaded yet
         const string script = """
         (function() {
             const overlay = document.getElementById('until-ui-is-ready');

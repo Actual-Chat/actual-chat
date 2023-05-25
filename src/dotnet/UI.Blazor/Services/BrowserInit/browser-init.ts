@@ -1,5 +1,5 @@
 import { Log } from "logging";
-import { PromiseSource } from 'promises';
+import { delayAsync, PromiseSource } from 'promises';
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -111,6 +111,17 @@ export class BrowserInit {
         }
     }
 
+    public static removeLoadingOverlay() {
+        const overlay = document.getElementById('until-ui-is-ready');
+        if (overlay)
+            overlay.remove();
+    }
+
+    public static async startLoadingOverlayRemoval(delayMs: number): Promise<void> {
+        await delayAsync(delayMs);
+        this.removeLoadingOverlay();
+    }
+
     // Private methods
 
     private static initSessionHash(sessionHash: string = null) {
@@ -208,6 +219,7 @@ export class BrowserInit {
 
 // This call must be done as soon as possible
 BrowserInit.startReloadWatchers();
+void BrowserInit.startLoadingOverlayRemoval(5_000);
 
 // Helpers
 
