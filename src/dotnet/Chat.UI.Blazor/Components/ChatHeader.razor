@@ -19,7 +19,7 @@
                 </div>
                 <div class="flex-1"></div>
                 <div class="flex-none flex-x items-center gap-x-3 px-0.5">
-                    <ChatActivities Chat="@chat"/>
+                    <ChatActivities @key="@chat" Chat="@chat"/>
                 </div>
             </div>
         }
@@ -27,7 +27,7 @@
     @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel ml-2">
             <div class="flex-x gap-x-1">
-                <ChatSearch Chat="@chat"/>
+                <ChatSearch @key="@chat" Chat="@chat"/>
             </div>
             <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
         </div>

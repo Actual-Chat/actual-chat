@@ -1,8 +1,8 @@
 ﻿@using ActualChat.Chat.UI.Blazor.Pages
-@inherits ComputedStateComponent<ChatFooter.Model>
+@inherits FusionComponentBase
 @{
-    var m = State.Value;
-    var chat = m.Chat;
+    var m = Model;
+    var chat = Chat;
 }
 
 <div class="writable-chat-footer">
@@ -13,13 +13,13 @@
         <ReadOnlyChatFooter FooterText="@string.Empty" />
     } else {
         @if (m.CanPost) {
-            <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
+            <ChatMessageEditor @key="@chat" Chat="@chat" />
         } else if (m.CanJoin) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
                     <div>
                         <span class="inline-flex">To post or talk,</span>
-                        <Button Click="@(() => OnJoin(m.Chat.Id))" Class="btn-sm btn-primary">Join this chat</Button>
+                        <Button Click="@OnJoin" Class="btn-sm btn-primary">Join this chat</Button>
                     </div>
                 } else {
                     <div class="signin-footer">
@@ -31,7 +31,7 @@
                             <AccountName UserSid="@m.OtherUserId.Id"/>
                         } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">or</span>
-                            <Button Click="@(() => OnJoin(m.Chat.Id))" Class="inline-flex btn-outline">Join anonymously</Button>
+                            <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
                         } else {
                             <span class="inline-flex ml-2 items-center">to join this chat</span>
                         }
@@ -47,83 +47,30 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    private ChatPage.FooterModel Model => ParentModel.Footer;
+    private Chat Chat => ParentModel.Chat;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
-    }
+    [Parameter, EditorRequired] public ChatPage.Model ParentModel { get; set; } = null!;
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ReferenceEquals(Chat, SpecialChat.Loading))
-            return Model.Loading;
-
-        var account = await Accounts.GetOwn(Session, cancellationToken);
-        var otherUserId = Chat.Id.IsPeerChat(out var peerChatId)
-            ? peerChatId.UserIds.OtherThan(account.Id)
-            : default;
-        var canPost = Chat.Rules.CanWrite();
-        var canJoin = !canPost && Chat.Rules.CanJoin();
-        var hasMultipleAvatars = false;
-        var canJoinWithGuestAccount = false;
-        var canJoinAnonymously = false;
-        if (canJoin) {
-            if (account.IsGuestOrNone) {
-                canJoinWithGuestAccount = Chat.AllowGuestAuthors;
-            } else {
-                canJoinAnonymously = Chat.AllowAnonymousAuthors;
-                var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
-                hasMultipleAvatars = avatars.Length > 1 || canJoinAnonymously;
-            }
-        }
-
-        return new() {
-            Chat = Chat,
-            OtherUserId = otherUserId,
-            IsGuest = account.IsGuestOrNone,
-            CanPost = canPost,
-            CanJoin = canJoin,
-            HasMultipleAvatars = hasMultipleAvatars,
-            CanJoinWithGuestAccount = canJoinWithGuestAccount,
-            CanJoinAnonymously = canJoinAnonymously,
-        };
-    }
-
-    private async Task OnJoin(ChatId chatId) {
-        var m = State.Value;
-        if (!m.HasMultipleAvatars) {
-            var command = new IAuthors.JoinCommand(Session, chatId);
+    private async Task OnJoin() {
+        if (!Model.HasMultipleAvatars) {
+            var command = new IAuthors.JoinCommand(Session, Chat.Id);
             await UICommander.Run(command);
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, m.CanJoinAnonymously, JoinWithAvatar));
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new IAuthors.JoinCommand(Session, chatId, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            var command = new IAuthors.JoinCommand(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
             await UICommander.Run(command);
         }
     }
 
-    public sealed class Model {
-        public static Model Loading { get; } = new() { Chat = SpecialChat.Loading };
-
-        public Chat Chat { get; init; } = null!;
-        public UserId OtherUserId { get; init; }
-        public bool IsGuest { get; init; }
-        public bool CanPost { get; init; }
-        public bool CanJoin { get; init; }
-        public bool HasMultipleAvatars { get; init; }
-        public bool CanJoinWithGuestAccount { get; init; }
-        public bool CanJoinAnonymously { get; init; }
-    }
 }
