@@ -21,6 +21,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private UrlMapper UrlMapper { get; }
+    private IUserPresences UserPresences { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
 
     public NotificationsBackend(IServiceProvider services) : base(services)
@@ -32,6 +33,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
+        UserPresences = services.GetRequiredService<IUserPresences>();
         FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
 
         _recentChatsWithNotifications = new MemoryCache(new MemoryCacheOptions {
@@ -315,6 +317,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var otherUserIds = changeAuthor.UserId.IsNone ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
+            var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+            // Do not send notifications to users who are online
+            if (presence is Presence.Online or Presence.Recording)
+                continue;
             var notificationId = new NotificationId(otherUserId, kind, similarityKey);
             var notification = new Notification(notificationId) {
                 Title = title,
