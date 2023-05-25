@@ -68,7 +68,6 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     {
         base.Initialize(options);
 
-        using var _ = ExecutionContextExt.SuppressFlow();
         WhenDisposed = BackgroundTask.Run(SyncCycle, DisposeToken);
     }
 

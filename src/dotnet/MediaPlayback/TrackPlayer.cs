@@ -54,29 +54,27 @@ public abstract class TrackPlayer : ProcessorBase
                 throw StandardError.StateTransition(GetType(), "Play is already started.");
             this.ThrowIfDisposedOrDisposing();
 
-            using (ExecutionContext.SuppressFlow()) {
-                PlayTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, StopToken);
-                PlayToken = PlayTokenSource.Token;
+            PlayTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, StopToken);
+            PlayToken = PlayTokenSource.Token;
 
-                var playStartingTask = OnPlayStarting(PlayToken);
-                _whenPlaying = Task
-                    .Run(async () => {
-                        await playStartingTask.ConfigureAwait(false);
-                        await PlayInternal(PlayToken).ConfigureAwait(false);
-                    }, CancellationToken.None)
-                    .ContinueWith(async _ => {
-                        PlayTokenSource.CancelAndDisposeSilently();
-                        try {
-                            await OnPlayEnded().ConfigureAwait(false);
-                        }
-                        catch {
-                            // Intended
-                        }
-                    }, TaskScheduler.Default);
+            var playStartingTask = OnPlayStarting(PlayToken);
+            _whenPlaying = Task
+                .Run(async () => {
+                    await playStartingTask.ConfigureAwait(false);
+                    await PlayInternal(PlayToken).ConfigureAwait(false);
+                }, CancellationToken.None)
+                .ContinueWith(async _ => {
+                    PlayTokenSource.CancelAndDisposeSilently();
+                    try {
+                        await OnPlayEnded().ConfigureAwait(false);
+                    }
+                    catch {
+                        // Intended
+                    }
+                }, TaskScheduler.Default);
 #pragma warning disable MA0100
-                return _whenPlaying;
+            return _whenPlaying;
 #pragma warning restore MA0100
-            }
         }
     }
 
