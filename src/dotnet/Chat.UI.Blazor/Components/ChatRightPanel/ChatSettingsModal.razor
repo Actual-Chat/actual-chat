@@ -80,24 +80,6 @@
                             </TileItem>
                         </FormBlock>
                     }
-                    @if (m.AllowEditJoinAnonymouslyProps) {
-                        <FormBlock>
-                            <TileItem class="field-allow-guest">
-                                <Icon>
-                                    <i class="icon-guest text-2xl"></i>
-                                </Icon>
-                                <Content>
-                                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
-                                </Content>
-                                <Caption>
-                                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
-                                </Caption>
-                                <Right>
-                                    <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
-                                </Right>
-                            </TileItem>
-                        </FormBlock>
-                    }
                 } else {
                     var canInvite = m.Rules.CanInvite();
                     var displayLinks = canInvite || m.Invites.Length > 0;
@@ -123,6 +105,22 @@
 
                 @if (m.AllowEditJoinAnonymouslyProps) {
                     <FormBlock>
+                        @if (_form.IsPublic) {
+                            <TileItem class="field-allow-guest">
+                                <Icon>
+                                    <i class="icon-guest text-2xl"></i>
+                                </Icon>
+                                <Content>
+                                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                                </Content>
+                                <Caption>
+                                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                                </Caption>
+                                <Right>
+                                    <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                                </Right>
+                            </TileItem>
+                        }
                         <TileItem class="field-allow-anonym">
                             <Icon>
                                 <i class="icon-anonym text-2xl"></i>
