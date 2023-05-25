@@ -126,7 +126,7 @@ public class KubeServices : IKubeInfo
                 .ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw StandardError.Constraint(
-                    "Kubernetes ClusterRole to read EndpointSlices is required for the service account");
+                    "Kubernetes ClusterRole to read EndpointSlices is required for the service account.");
             response.EnsureSuccessStatusCode();
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);

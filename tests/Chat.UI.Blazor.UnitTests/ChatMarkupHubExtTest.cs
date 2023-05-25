@@ -59,7 +59,7 @@ public class ChatMarkupHubExtTest
     private static TextEntryAttachment Attachment(string file)
     {
         if (!_fileExtensionContentTypeProvider.TryGetContentType(file, out var contentType))
-            throw StandardError.Constraint($"Failed to find content type for '{file}'");
+            throw StandardError.Constraint($"Failed to find content type for '{file}'.");
 
         return new TextEntryAttachment {
             Media = new Media.Media {

@@ -21,7 +21,7 @@
 
     private bool IsLoading => !Chat.Id.IsNone;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
     [Parameter] public string Label { get; set; } = "Mute notifications";
 
     protected override ComputedState<ChatNotificationMode>.Options GetStateOptions()

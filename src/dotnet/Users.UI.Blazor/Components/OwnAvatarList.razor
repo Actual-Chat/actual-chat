@@ -48,7 +48,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
-    [Parameter] public Chat Chat { get; set; } = Chat.None;
+    [Parameter] public Chat? Chat { get; set; } = null;
 
     protected override ComputedState<ImmutableArray<AvatarFull>>.Options GetStateOptions()
         => new () {
@@ -65,8 +65,8 @@
     }
 
     private async Task OnAddNewAvatar() {
-        if (!Chat.Id.IsNone)
-            throw StandardError.Constraint("Avatars can be added on account page only");
+        if (Chat != null)
+            throw StandardError.Constraint("Avatars can be added only on account page.");
 
         var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
             Create = new AvatarFull() {

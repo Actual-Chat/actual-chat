@@ -15,11 +15,6 @@ public sealed record Chat(
 {
     public static IdAndVersionEqualityComparer<Chat, ChatId> EqualityComparer { get; } = new();
 
-    public static Chat None { get; } = new(default, 0) {
-        Title = "This chat is unavailable",
-        Rules = AuthorRules.None(default),
-    };
-
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Chat>()),
         (Chat? c) => c is { Id.IsNone: false });

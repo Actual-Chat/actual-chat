@@ -16,7 +16,7 @@ public sealed class AndroidGoogleSignIn
         get {
             var mainActivity = MainActivity.CurrentActivity;
             if (mainActivity == null)
-                throw StandardError.Constraint("No current main activity");
+                throw StandardError.Constraint("No current main activity.");
             if (_impl != null && _impl.MainActivity != mainActivity) {
                 _impl.Dispose();
                 _impl = null;

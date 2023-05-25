@@ -31,7 +31,7 @@
 @code {
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
     [Parameter, EditorRequired] public bool IsRecording { get; set; }
     [Parameter] public string Class { get; set; } = "";
 }

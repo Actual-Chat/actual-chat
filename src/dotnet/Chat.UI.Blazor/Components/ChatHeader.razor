@@ -1,8 +1,7 @@
 @using ActualChat.Contacts
-@inherits FusionComponentBase
+@inherits ComputedStateComponent<Chat>
 @{
-    var isUnavailable = ReferenceEquals(Chat, Chat.None);
-    var isSelectChat = ReferenceEquals(Chat, ChatUI.NoChatSelected);
+    var chat = State.Value;
 }
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
     <div>
@@ -11,24 +10,24 @@
         </ButtonRound>
     </div>
     <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 md:pl-2 overflow-hidden">
-        @if (!isSelectChat) {
-            <ChatIcon Chat="@Chat"/>
+        @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
+            <ChatIcon Chat="@chat"/>
             <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
                 <div class="flex-y self-center truncate">
-                    <div class="text-01 font-medium truncate">@Chat.Title</div>
-                    <div class="text-icons-02">@_subTitle</div>
+                    <div class="text-01 font-medium truncate">@chat.Title</div>
+                    <div class="text-icons-02"></div>
                 </div>
                 <div class="flex-1"></div>
                 <div class="flex-none flex-x items-center gap-x-3 px-0.5">
-                    <ChatActivities Chat="@Chat"/>
+                    <ChatActivities Chat="@chat"/>
                 </div>
             </div>
         }
     </div>
-    @if (!isUnavailable && !isSelectChat) {
+    @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel ml-2">
             <div class="flex-x gap-x-1">
-                <ChatSearch Chat="@Chat"/>
+                <ChatSearch Chat="@chat"/>
             </div>
             <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
         </div>
@@ -36,13 +35,33 @@
 </div>
 
 @code {
-    private string _subTitle = " ";
-
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    public ChatHeader() {
+        Options = ComputedStateComponentOptions.RecomputeOnParametersSet; // Intended
+    }
+
+    protected override ComputedState<Chat>.Options GetStateOptions() {
+        return new() {
+            InitialValue = SpecialChat.Loading,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<Chat> ComputeState(CancellationToken cancellationToken) {
+        // This method is !non-synchronized, so it can't use any parameters, etc.
+        // You should use .ConfigureAwait(false) here.
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (chatId.IsNone)
+            return SpecialChat.NoChatSelected;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return chat ?? SpecialChat.Unavailable;
+    }
 
     private void OnSwitchRightPanelClick()
         => PanelsUI.Right.Toggle();

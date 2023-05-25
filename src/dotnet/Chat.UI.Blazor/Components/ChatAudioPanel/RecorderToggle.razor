@@ -49,7 +49,7 @@
     private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
     private bool IsForcePush { get; set; } = false;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
     protected override void OnInitialized() {
         _animator = new OnOffAnimator(this, TimeSpan.FromMilliseconds(300));
@@ -118,6 +118,6 @@
         bool IsApplyingChanges = false,
         bool? HasMicrophonePermission = null
     ) {
-        public static Model Loading { get; } = new(ChatUI.Loading, false, true);
+        public static Model Loading { get; } = new(SpecialChat.Loading, false, true);
     }
 }

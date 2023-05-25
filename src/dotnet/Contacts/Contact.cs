@@ -11,8 +11,6 @@ public sealed record Contact(
     [property: DataMember] long Version = 0
     ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    public static Contact None { get; } = new(default, 0) { Chat = ActualChat.Chat.Chat.None };
-
     public static Requirement<Contact> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Contact>()),
         (Contact? c) => c is { Id.IsNone: false });

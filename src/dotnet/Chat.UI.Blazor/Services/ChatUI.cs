@@ -63,15 +63,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
-    public static Chat Loading { get; } = new(default, -1) {
-        Title = "Loading...",
-        Rules = AuthorRules.None(default),
-    };
-    public static Chat NoChatSelected { get; } = new(default, -1) {
-        Title = "Select a chat",
-        Rules = AuthorRules.None(default),
-    };
-
     public IServiceProvider Services { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;

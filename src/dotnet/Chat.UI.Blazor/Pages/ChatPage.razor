@@ -6,44 +6,39 @@
 @{
     var m = _rendered = State.Value;
     var chat = m.Chat;
-    var chatOrNone = m.Chat ?? Chat.None;
-    var isLoading = ReferenceEquals(m, Model.Loading);
-    var chatOrFallback = isLoading
-        ? ChatUI.Loading
-            : ReferenceEquals(m, Model.SelectChat) ? ChatUI.NoChatSelected
-            : chatOrNone;
+    var hasChat = !m.Chat.Id.IsNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
 <AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" />
 
 <RenderIntoSlot Name="MainHeader">
-    <ChatHeader Chat="@chatOrFallback" />
+    <ChatHeader/>
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <ChatFooter ChatSid="@ChatSid" @key="@ChatSid"/>
+    <ChatFooter/>
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
-    @if (chat != null) {
+    @if (hasChat) {
         <Banners Chat="@chat"/>
     }
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    @if (chat != null) {
+    @if (hasChat) {
         <ChatRightPanel Chat="@chat"/>
     }
 </RenderIntoSlot>
 
-@if (isLoading) {
+@if (ReferenceEquals(chat, SpecialChat.Loading)) {
     <chat-view-skeleton count="15" />
     return;
 }
-@if (m.ChatId.IsNone) {
+@if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
-} else if (chat == null) {
+} else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
 } else {
     <ChatView @ref="_chatViewRef" Chat="@chat" @key="@ChatSid" />
@@ -73,16 +68,11 @@
         base.OnInitialized();
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        var initialValue = Model.Loading;
-        var selectedChatIdStateSnapshot = ChatUI.SelectedChatId.Snapshot;
-        if (selectedChatIdStateSnapshot.State.Value.IsNone && selectedChatIdStateSnapshot.UpdateCount > 0)
-            initialValue = Model.SelectChat;
-        return new() {
-            InitialValue = initialValue,
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
             Category = GetStateCategory(),
         };
-    }
 
     protected override Task OnParametersSetAsync() {
         var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
@@ -106,8 +96,6 @@
         try {
             var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
             // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
-            if (chatId.IsNone)
-                return Model.SelectChat;
 
             var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
             // Let's delay chat loading when it it is invisible and it happens for the first time
@@ -124,12 +112,16 @@
 
             var account = await Accounts.GetOwn(Session, cancellationToken);
             try {
-                var chat = await Chats.Get(Session, chatId, cancellationToken);
-                return new Model(chatId, chat, account, screenSize);
+                var chat = SpecialChat.NoChatSelected;
+                if (!chatId.IsNone) {
+                    chat = await Chats.Get(Session, chatId, cancellationToken);
+                    chat ??= SpecialChat.Unavailable;
+                }
+                return new Model(chat, account, screenSize);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-                return new Model(chatId, null, account, screenSize);
+                return new Model(SpecialChat.Unavailable, account, screenSize);
             }
         }
         finally {
@@ -145,22 +137,19 @@
     // Nested types
 
     public sealed record Model(
-        ChatId ChatId,
-        Chat? Chat,
+        Chat Chat,
         AccountFull Account,
         ScreenSize ScreenSize = ScreenSize.Unknown
     ) {
-        public static Model Loading { get; } = new(default, null, AccountFull.Loading);
-        public static Model SelectChat { get; } = new Model(default, null, AccountFull.None);
+        public static Model Loading { get; } = new(SpecialChat.Loading, AccountFull.Loading);
 
         public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
             if (other == null)
                 return false;
 
-            return ChatId == other.ChatId
-                   && ReferenceEquals(Chat, other.Chat)
-                   && ReferenceEquals(Account, other.Account)
-                   && ScreenSize == other.ScreenSize;
+            return ReferenceEquals(Chat, other.Chat)
+               && ReferenceEquals(Account, other.Account)
+               && ScreenSize == other.ScreenSize;
         }
     }
 }

@@ -59,7 +59,7 @@ public partial class ChatsUpgradeBackend
                 creatorId = userIdByEmail.First().Value;
         }
         if (creatorId.IsNone)
-            throw StandardError.Constraint("Creator user not found");
+            throw StandardError.Constraint("Creator user not found.");
 
         var changeCommand = new IChatsBackend.ChangeCommand(chatId,
             null,
