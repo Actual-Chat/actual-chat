@@ -13,22 +13,22 @@
 <AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" />
 
 <RenderIntoSlot Name="MainHeader">
-    <ChatHeader/>
+    <ChatHeader @key="@chat" Chat="@chat" />
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <ChatFooter/>
+    <ChatFooter @key="@chat" Chat="@chat" />
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
     @if (hasChat) {
-        <Banners Chat="@chat"/>
+        <Banners @key="@chat" Chat="@chat"/>
     }
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
     @if (hasChat) {
-        <ChatRightPanel Chat="@chat"/>
+        <ChatRightPanel @key="@chat" Chat="@chat"/>
     }
 </RenderIntoSlot>
 
@@ -41,7 +41,7 @@
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
 } else {
-    <ChatView @ref="_chatViewRef" Chat="@chat" @key="@ChatSid" />
+    <ChatView @ref="_chatViewRef" @key="@chat" Chat="@chat"/>
 }
 
 @code {
@@ -60,12 +60,16 @@
     [Parameter] public string? ChatSid { get; set; }
 
     protected override void OnInitialized() {
-        // Force chat selection from Url before ComputeState starts working
-        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
-        ChatUI.SelectChat(chatId);
         ChatAudioUI.Enable();
-
+        // We need to call SelectChat() before ComputeState starts working,
+        // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
+        SelectChat();
         base.OnInitialized();
+    }
+
+    protected override Task OnParametersSetAsync() {
+        SelectChat();
+        return base.OnParametersSetAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -73,15 +77,6 @@
             InitialValue = Model.Loading,
             Category = GetStateCategory(),
         };
-
-    protected override Task OnParametersSetAsync() {
-        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
-        ChatUI.SelectChat(chatId);
-
-        // No need to call base.OnParametersSetAsync() here, coz
-        // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
-        return Task.CompletedTask;
-    }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
@@ -133,6 +128,12 @@
         => ReferenceEquals(_rendered, null)
             || State.HasError
             || !State.Value.IsIdenticalTo(_rendered);
+
+    private void SelectChat()
+    {
+        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
+        ChatUI.SelectChat(chatId);
+    }
 
     // Nested types
 

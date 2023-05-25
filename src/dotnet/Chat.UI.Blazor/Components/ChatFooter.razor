@@ -54,9 +54,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    public ChatFooter() {
-        Options = ComputedStateComponentOptions.RecomputeOnParametersSet; // Intended
-    }
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -66,38 +64,30 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        // This method is !non-synchronized, so it can't use any parameters, etc.
-        // You should use .ConfigureAwait(false) here.
+        if (ReferenceEquals(Chat, SpecialChat.Loading))
+            return Model.Loading;
 
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId.IsNone)
-            return Model.NoChatSelected;
-
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return Model.Unavailable;
-
-        var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-        var otherUserId = chatId.IsPeerChat(out var peerChatId)
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        var otherUserId = Chat.Id.IsPeerChat(out var peerChatId)
             ? peerChatId.UserIds.OtherThan(account.Id)
             : default;
-        var canPost = chat.Rules.CanWrite();
-        var canJoin = !canPost && chat.Rules.CanJoin();
+        var canPost = Chat.Rules.CanWrite();
+        var canJoin = !canPost && Chat.Rules.CanJoin();
         var hasMultipleAvatars = false;
         var canJoinWithGuestAccount = false;
         var canJoinAnonymously = false;
         if (canJoin) {
             if (account.IsGuestOrNone) {
-                canJoinWithGuestAccount = chat.AllowGuestAuthors;
+                canJoinWithGuestAccount = Chat.AllowGuestAuthors;
             } else {
-                canJoinAnonymously = chat.AllowAnonymousAuthors;
-                var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken).ConfigureAwait(false);
+                canJoinAnonymously = Chat.AllowAnonymousAuthors;
+                var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
                 hasMultipleAvatars = avatars.Length > 1 || canJoinAnonymously;
             }
         }
 
         return new() {
-            Chat = chat,
+            Chat = Chat,
             OtherUserId = otherUserId,
             IsGuest = account.IsGuestOrNone,
             CanPost = canPost,
@@ -126,8 +116,6 @@
 
     public sealed class Model {
         public static Model Loading { get; } = new() { Chat = SpecialChat.Loading };
-        public static Model Unavailable { get; } = new() { Chat = SpecialChat.Unavailable };
-        public static Model NoChatSelected { get; } = new() { Chat = SpecialChat.NoChatSelected };
 
         public Chat Chat { get; init; } = null!;
         public UserId OtherUserId { get; init; }

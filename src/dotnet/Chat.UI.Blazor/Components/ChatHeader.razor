@@ -1,7 +1,7 @@
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<Chat>
+@inherits FusionComponentBase
 @{
-    var chat = State.Value;
+    var chat = Chat;
 }
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
     <div>
@@ -41,27 +41,7 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
-    public ChatHeader() {
-        Options = ComputedStateComponentOptions.RecomputeOnParametersSet; // Intended
-    }
-
-    protected override ComputedState<Chat>.Options GetStateOptions() {
-        return new() {
-            InitialValue = SpecialChat.Loading,
-            Category = GetStateCategory(),
-        };
-    }
-
-    protected override async Task<Chat> ComputeState(CancellationToken cancellationToken) {
-        // This method is !non-synchronized, so it can't use any parameters, etc.
-        // You should use .ConfigureAwait(false) here.
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        if (chatId.IsNone)
-            return SpecialChat.NoChatSelected;
-
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return chat ?? SpecialChat.Unavailable;
-    }
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     private void OnSwitchRightPanelClick()
         => PanelsUI.Right.Toggle();
