@@ -27,15 +27,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
 
-        // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
-        if (appKind.IsWasmApp())
-            ComputedStateComponent.DefaultOptions =
-                ComputedStateComponentOptions.RecomputeOnParametersSet;
-        else
-            ComputedStateComponent.DefaultOptions =
-                ComputedStateComponentOptions.RecomputeOnParametersSet
-                | ComputedStateComponentOptions.SynchronizeComputeState;
-
         // Fusion
         var fusion = services.AddFusion();
         fusion.AddBackendStatus();
