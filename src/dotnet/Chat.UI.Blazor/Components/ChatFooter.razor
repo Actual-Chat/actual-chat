@@ -53,10 +53,10 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    private ChatPage.FooterModel Model => ParentModel.Footer;
-    private Chat Chat => ParentModel.Chat;
+    private ChatPage.FooterModel Model => ChatPageModel.Footer;
+    private Chat Chat => ChatPageModel.Chat;
 
-    [Parameter, EditorRequired] public ChatPage.Model ParentModel { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatPage.Model ChatPageModel { get; set; } = null!;
 
     private async Task OnJoin() {
         if (!Model.HasMultipleAvatars) {
