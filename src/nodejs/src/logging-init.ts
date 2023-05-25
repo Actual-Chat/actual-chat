@@ -17,6 +17,7 @@ export type LogScope =
     | 'BubbleHost'
     | 'Gestures'
     | 'event-handling'
+    | 'InertialScroll'
     | 'NoSleep'
     | 'History'
     | 'Interactive'
@@ -187,6 +188,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
     minLevels.set('OpusEncoderWorker', LogLevel.Debug);
     // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('InertialScroll', LogLevel.Debug);
     // minLevels.set('VirtualList', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
