@@ -2,14 +2,18 @@ import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
 import { Log } from 'logging';
+import { setTimeout } from 'timerQueue';
 
 const { debugLog } = Log.get('Landing');
 
 export class LandingVideoModal {
     private readonly disposed$ = new Subject<void>();
-    private readonly header: HTMLElement;
-    private readonly footer: HTMLElement;
-    private readonly body: HTMLElement;
+    private readonly videoWrapper: HTMLElement;
+    private readonly controlWrapper: HTMLElement;
+    private readonly video: HTMLVideoElement;
+    private readonly controlHeader: HTMLElement;
+    private readonly controlFooter: HTMLElement;
+    private readonly controlBody: HTMLElement;
     private readonly playBtn: HTMLElement;
     private readonly pauseBtn: HTMLElement;
     private readonly progressBar: HTMLProgressElement;
@@ -22,28 +26,32 @@ export class LandingVideoModal {
     constructor(
         private readonly landingVideoModal: HTMLElement,
     ) {
-        this.header = landingVideoModal.querySelector('.c-header');
-        this.footer = landingVideoModal.querySelector('.c-footer');
-        this.body = landingVideoModal.querySelector('.c-body');
-        this.playBtn = landingVideoModal.querySelector('.play-btn');
-        this.pauseBtn = landingVideoModal.querySelector('.pause-btn');
-        this.progressBar = landingVideoModal.querySelector('.c-progress-bar');
-        this.timeline = landingVideoModal.querySelector('.c-timeline');
+        this.videoWrapper = landingVideoModal.querySelector('.video-wrapper');
+        this.video = this.videoWrapper.querySelector('.c-video');
+        this.controlWrapper = landingVideoModal.querySelector('.control-wrapper');
+        this.controlHeader = this.controlWrapper.querySelector('.c-header');
+        this.controlFooter = this.controlWrapper.querySelector('.c-footer');
+        this.controlBody = this.controlWrapper.querySelector('.c-body');
+        this.playBtn = this.controlBody.querySelector('.play-btn');
+        this.pauseBtn = this.controlBody.querySelector('.pause-btn');
+        this.progressBar = this.controlFooter.querySelector('.c-progress-bar');
+        this.timeline = this.controlFooter.querySelector('.c-timeline');
+
+        this.controlWrapper.style.display = 'none';
 
         const plug = this.landingVideoModal.querySelector('.c-video-plug') as HTMLImageElement;
-        const video = this.landingVideoModal.querySelector('.c-video') as HTMLVideoElement;
-        if (video != null) {
-            fromEvent(video, 'playing')
+        if (this.video != null) {
+            fromEvent(this.video, 'playing')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onVideoState(video));
+                .subscribe(() => this.onVideoState());
 
-            fromEvent(video, 'pause')
+            fromEvent(this.video, 'pause')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onVideoState(video));
+                .subscribe(() => this.onVideoState());
 
-            fromEvent(video, 'timeupdate')
+            fromEvent(this.video, 'timeupdate')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.updateTimeline(video));
+                .subscribe(() => this.updateTimeline());
 
             fromEvent(this.progressBar, 'click')
                 .pipe(takeUntil(this.disposed$))
@@ -52,17 +60,22 @@ export class LandingVideoModal {
             let clickElements = [this.pauseBtn, this.playBtn];
             fromEvent(clickElements, 'click')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.playOrPause(video));
+                .subscribe((event: Event) => this.playOrPause(event));
 
-            video.play().then(() => {
-                let durationDiv = this.footer.querySelector('.c-duration');
-                durationDiv.innerHTML = this.formatTime(video.duration);
+            fromEvent(this.videoWrapper, 'click')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.showControl(true));
+
+            fromEvent(this.controlWrapper, 'click')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.showControl(false));
+
+            this.video.play().then(() => {
+                let durationDiv = this.controlFooter.querySelector('.c-duration');
+                durationDiv.innerHTML = this.formatTime(this.video.duration);
                 plug.classList.remove('flex');
                 plug.hidden = true;
-                video.hidden = false;
-                this.playBtn.classList.remove('invisible');
-                this.pauseBtn.classList.remove('invisible');
-                this.footer.classList.remove('invisible');
+                this.video.hidden = false;
             });
         }
     }
@@ -91,36 +104,48 @@ export class LandingVideoModal {
         return `${minutes}:${seconds}`;
     }
 
-    private onVideoState = (video: HTMLVideoElement) => {
-        if (video.paused) {
-            this.body.classList.remove('playing');
+    private showControl(show: boolean) {
+        if (show)
+            this.controlWrapper.style.display = 'flex';
+        else
+            this.controlWrapper.style.display = 'none';
+    }
+
+    private onVideoState() {
+        if (this.video.paused) {
+            this.controlBody.classList.remove('playing');
         } else {
-            if (!this.body.classList.contains('playing'))
-                this.body.classList.add('playing');
+            if (!this.controlBody.classList.contains('playing'))
+                this.controlBody.classList.add('playing');
         }
     }
 
-    private playOrPause(video: HTMLVideoElement) {
-        if (video.paused)
-            video.play().then();
+    private playOrPause(e: Event) {
+        e.stopPropagation();
+        if (this.video.paused)
+            this.video.play().then(() => {
+                setTimeout(() => {
+                    this.controlWrapper.style.display = 'none';
+                }, 200);
+            });
         else
-            video.pause();
+            this.video.pause();
     }
 
-    private updateTimeline(video: HTMLVideoElement) {
-        let current = video.currentTime;
-        let percentage = Math.floor((100 / video.duration) * current);
+    private updateTimeline() {
+        let current = this.video.currentTime;
+        let percentage = Math.floor((100 / this.video.duration) * current);
         this.progressBar.value = percentage;
         this.progressBar.innerHTML = percentage + '% played';
-        let currentTimeDiv = this.footer.querySelector('.c-current');
+        let currentTimeDiv = this.controlFooter.querySelector('.c-current');
         currentTimeDiv.innerHTML = this.formatTime(current);
     }
 
     private seekVideoPoint(e: MouseEvent) {
-        let video = this.body.querySelector('video');
+        e.stopPropagation();
         let progressBar = this.progressBar;
         let percent = e.offsetX / progressBar.offsetWidth;
-        video.currentTime = percent * video.duration;
+        this.video.currentTime = percent * this.video.duration;
         let value = progressBar.value = Math.floor(percent / 100);
         progressBar.innerHTML = value + '% played';
     }

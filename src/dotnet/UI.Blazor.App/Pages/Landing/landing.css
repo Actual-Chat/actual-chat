@@ -809,22 +809,32 @@ body.narrow .landing-video-modal .c-video-plug {
 body.narrow .landing-video-modal .dialog-body {
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
 }
+.landing-video-modal .modal-wrapper {
+    @apply absolute;
+    @apply h-full w-full;
+    @apply bg-cover bg-repeat-round;
+    @apply bg-[url('/dist/images/ellipses-mobile.svg')];
+}
+.landing-video-modal .video-wrapper {
+    @apply relative z-20;
+    @apply flex items-center justify-center;
+    @apply h-full w-full;
+}
+.landing-video-modal .control-wrapper {
+    @apply absolute z-30 top-0 bottom-0 left-0 right-0;
+    @apply flex-y;
+}
 body.narrow .landing-video-modal .c-header {
-    @apply absolute top-0 left-0 right-0 z-20;
-    @apply flex-1 flex-x items-center;
+    @apply flex-x items-center;
     @apply h-14;
     @apply text-04;
     @apply bg-black opacity-80;
 }
 body.narrow .landing-video-modal .c-body {
-    @apply relative;
-    @apply flex justify-center items-center;
-    @apply bg-cover bg-repeat-round;
-    @apply bg-[url('/dist/images/ellipses-mobile.svg')];
+    @apply flex-1 flex justify-center items-center;
 }
 body.narrow .landing-video-modal .c-footer {
-    @apply absolute bottom-0 left-0 right-0 z-20 gap-x-2;
-    @apply flex-1 flex-x items-center;
+    @apply flex-x items-center gap-x-2;
     @apply h-14;
     @apply px-2;
     @apply text-04;
@@ -832,7 +842,6 @@ body.narrow .landing-video-modal .c-footer {
 }
 .landing-video-modal .play-btn,
 .landing-video-modal .pause-btn {
-    @apply absolute z-10;
     @apply flex-none items-center justify-center;
     @apply w-20 h-20;
     @apply rounded-full;
@@ -870,4 +879,9 @@ body.narrow .landing-video-modal .c-footer {
 .landing-video-modal .c-timeline {
     @apply flex-none flex-x gap-x-1;
     @apply text-04 text-xs font-thin;
+}
+.landing-video-modal .c-current,
+.landing-video-modal .c-duration {
+    @apply flex items-center justify-center;
+    @apply w-10;
 }
