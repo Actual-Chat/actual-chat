@@ -53,6 +53,7 @@ module.exports = {
     'min-w-17',
     'min-w-88',
     'min-h-120',
+    'min-h-128',
     'rounded-4xl',
     'rounded-5xl',
     '-r-46',
