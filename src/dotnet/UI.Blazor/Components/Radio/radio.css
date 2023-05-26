@@ -21,13 +21,19 @@
     @apply rounded bg-no-repeat bg-center;
     background-size: 50% 50%;
 }
-.radio:has(input:checked) > .x {
+.radio[data-input-checked] > .x {
     @apply border-primary bg-primary;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
 }
-body.hoverable .radio:has(input:not(:disabled):not(:checked)):hover > .x {
+body.hoverable .radio:not([data-input-checked]):not([data-input-disabled]):hover > .x {
     @apply border-primary;
 }
+.radio[data-input-disabled] > .x {
+    @apply bg-primary border-primary;
+}
+
+/* Active/Focus - impossible, coz input is invisible */
+/*
 .radio:has(input:not(:disabled):active) > .x {
     @apply bg-primary border-primary;
 }
@@ -37,6 +43,4 @@ body.hoverable .radio:has(input:not(:disabled):not(:checked)):hover > .x {
 .radio:has(input:focus:not(:checked)) > .x {
     @apply border-primary-hover;
 }
-.radio:has(input:disabled) > .x {
-    @apply bg-primary border-primary;
-}
+*/

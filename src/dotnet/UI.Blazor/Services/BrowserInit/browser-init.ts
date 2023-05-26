@@ -76,7 +76,7 @@ export class BrowserInit {
     public static startReloadWatchers() {
         const blazorReconnectDiv = document.getElementById('components-reconnect-modal');
         if (blazorReconnectDiv) {
-            const observer = new MutationObserver((mutations, observer) => {
+            const observer = new MutationObserver((mutations, _) => {
                 mutations.forEach(mutation => {
                     const target = mutation.target;
                     if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
@@ -93,11 +93,11 @@ export class BrowserInit {
                         this.startReconnecting(false);
                 });
             });
-            observer.observe(blazorReconnectDiv, { attributes: true, subtree: false });
+            observer.observe(blazorReconnectDiv, { attributes: true });
         }
         const blazorErrorDiv = document.getElementById('blazor-error-ui');
         if (blazorErrorDiv) {
-            const observer = new MutationObserver((mutations, observer) => {
+            const observer = new MutationObserver((mutations, _) => {
                 mutations.forEach(mutation => {
                     const target = mutation.target;
                     if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
@@ -107,7 +107,7 @@ export class BrowserInit {
                         this.startReloading();
                 });
             });
-            observer.observe(blazorErrorDiv, { attributes: true, subtree: false });
+            observer.observe(blazorErrorDiv, { attributes: true });
         }
     }
 

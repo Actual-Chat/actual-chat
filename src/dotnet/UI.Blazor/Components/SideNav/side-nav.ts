@@ -2,7 +2,7 @@ import { clamp, Vector2D } from 'math';
 import { delayAsync, serialize } from 'promises';
 import { DeviceInfo } from 'device-info';
 import { Disposable, DisposableBag, fromSubscription } from 'disposable';
-import { DocumentEvents, preventDefaultForEvent, tryPreventDefaultForEvent } from 'event-handling';
+import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
 import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
@@ -30,9 +30,12 @@ export class SideNav extends DisposableBag {
     public static left: SideNav | null = null;
     public static right: SideNav | null = null;
     private readonly contentDiv: HTMLElement;
+    private readonly stateObserver: MutationObserver;
+    private readonly bodyClassWhenOpen: string;
 
     public get side(): SideNavSide { return this.options.side; }
     public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
+    public get isOpen() { return !this.element.classList.contains('closed'); }
 
     public static create(
         element: HTMLDivElement,
@@ -49,6 +52,7 @@ export class SideNav extends DisposableBag {
     ) {
         super();
         this.contentDiv = element.firstElementChild as HTMLElement;
+        this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
         const pullGestureDisposer = DeviceInfo.isIos && BrowserInfo.appKind !== 'MauiApp' ? null : SideNavPullDetectGesture.use(this);
         if (this.side == SideNavSide.Left) {
             SideNav.left = this;
@@ -58,10 +62,17 @@ export class SideNav extends DisposableBag {
             SideNav.right = this;
             this.addDisposables(pullGestureDisposer, { dispose() { SideNav.right = null }});
         }
+
+        this.stateObserver = new MutationObserver(() => this.updateBodyClassList());
+        this.stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
+        this.updateBodyClassList();
     }
 
-    public get isOpen(): boolean {
-        return !this.element.classList.contains('closed');
+    public updateBodyClassList(): void {
+        if (this.isOpen)
+            document.body.classList.add(this.bodyClassWhenOpen);
+        else
+            document.body.classList.remove(this.bodyClassWhenOpen);
     }
 
     public beginPull() {
@@ -136,8 +147,11 @@ class SideNavPullDetectGesture extends Gesture {
             else if (!(target instanceof SVGElement))
                 return;
 
-            if (sideNav.opposite?.isOpen === true)
-                return; // The other SideNav is open, so only it can be pulled
+            if (sideNav.opposite?.isOpen === true) {
+                // The other SideNav is open
+                if (!sideNav.isOpen)
+                    return; // And this SideNav is closed, so only other SideNav can be pulled
+            }
 
             for (const activeGesture of Gestures.activeGestures) {
                 if (activeGesture instanceof SideNavPullGesture)
