@@ -308,11 +308,17 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         }
     }
 
-    public virtual async Task<Chat> CreateFromTemplate(IChats.CreateFromTemplateCommand command, CancellationToken cancellationToken)
+    // [CommandHandler]
+    public virtual async Task<Chat> GetOrCreateFromTemplate(IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken)
     {
         var (session, templateChatId) = command;
         var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
         templateChat.Require(Chat.MustBeTemplate);
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var chat = await Backend.GetTemplatedChatFor(templateChatId, account.Id, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return chat;
 
         var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
         var templateAuthors = await templateAuthorIds
@@ -343,6 +349,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     Kind = ChatKind.Group,
                     IsPublic = true,
                     IsTemplate = false,
+                    TemplateId = templateChatId,
+                    TemplatedForUserId = account.Id,
                     AllowAnonymousAuthors = false,
                     AllowGuestAuthors = true,
                 },
@@ -408,7 +416,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var guestAvatar = avatars
             .Where(a => a != null)
             .FirstOrDefault(a => OrdinalEquals(a!.Name, Avatar.GuestName));
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (guestAvatar == null) {
             var createAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
                 Create = new AvatarFull {

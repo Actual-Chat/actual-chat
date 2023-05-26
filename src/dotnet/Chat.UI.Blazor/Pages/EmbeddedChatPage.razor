@@ -53,6 +53,8 @@
     private Model? _rendered;
     private ChatView _chatViewRef = null!;
 
+    private ChatId ChatId { get; set; } = ChatId.None;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -67,6 +69,8 @@
     [Parameter] public string? ChatSid { get; set; }
 
     protected override Task OnInitializedAsync() {
+        // Set ChatId before calling ComputeState
+        ChatId = new (ChatSid, ParseOrNone.Option);
         ChatAudioUI.Enable();
         PanelsUI.Left.SetIsVisible(false);
         PanelsUI.Right.SetIsVisible(false);
@@ -74,8 +78,8 @@
     }
 
     protected override Task OnParametersSetAsync() {
-        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
-        ChatUI.SelectChat(chatId);
+        ChatId = new (ChatSid, ParseOrNone.Option);
+        ChatUI.SelectChat(ChatId);
 
         // No need to call base.OnParametersSetAsync() here, coz
         // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
@@ -89,35 +93,31 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
-        // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
-        // and moreover, we want to make sure ComputeState gets invalidated
-        // specifically when SelectedChatId changes (vs when ChatSid changes).
-
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", ChatId);
         var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-        if (chatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
+        if (ChatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
             return Model.None(screenSize);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
         try {
-            var chat = await Chats.Get(Session, chatId, cancellationToken);
+            var chat = await Chats.Get(Session, ChatId, cancellationToken);
             if (chat is not {IsTemplate: true })
-                return new Model(chatId, chat, account, screenSize);
+                return new (ChatId, chat, account, screenSize);
 
             // create new chat based on a template and redirect to the new clone
-            var command = new IChats.CreateFromTemplateCommand(Session, chatId);
+            var command = new IChats.GetOrCreateFromTemplateCommand(Session, ChatId);
             var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
                 return Model.None(screenSize);
 
+            // Short delay to process invalidation
+            await Task.Delay(TimeSpan.FromSeconds(0.25), cancellationToken);
             _ = History.NavigateTo(Links.EmbeddedChat(newChat.Id));
             return Model.Loading;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            return new Model(chatId, null, account, screenSize);
+            Log.LogWarning(e, "Failed to get Chat #{ChatId}", ChatId);
+            return new (ChatId, null, account, screenSize);
         }
     }
 

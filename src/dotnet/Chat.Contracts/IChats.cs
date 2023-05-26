@@ -67,7 +67,7 @@ public interface IChats : IComputeService
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Chat> CreateFromTemplate(CreateFromTemplateCommand command, CancellationToken cancellationToken);
+    Task<Chat> GetOrCreateFromTemplate(GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
     public sealed record ChangeCommand(
@@ -98,7 +98,7 @@ public interface IChats : IComputeService
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public sealed record CreateFromTemplateCommand(
+    public sealed record GetOrCreateFromTemplateCommand(
         [property: DataMember] Session Session,
         [property: DataMember] ChatId TemplateChatId
     ) : ISessionCommand<Chat>;

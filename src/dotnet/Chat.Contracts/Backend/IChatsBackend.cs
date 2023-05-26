@@ -6,6 +6,9 @@ public interface IChatsBackend : IComputeService
     Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<ChatNews> GetNews(
         ChatId chatId,
         CancellationToken cancellationToken);
