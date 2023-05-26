@@ -41,8 +41,12 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Title = Title,
             CreatedAt = CreatedAt,
             IsTemplate = IsTemplate,
-            TemplateId = new ChatId(TemplateId),
-            TemplatedForUserId = new UserId(TemplatedForUserId),
+            TemplateId = TemplateId.IsNullOrEmpty()
+                ? null
+                :new ChatId(TemplateId),
+            TemplatedForUserId = TemplatedForUserId.IsNullOrEmpty()
+                ? null
+                : new UserId(TemplatedForUserId),
             IsPublic = IsPublic,
             AllowGuestAuthors = AllowGuestAuthors,
             AllowAnonymousAuthors = AllowAnonymousAuthors,

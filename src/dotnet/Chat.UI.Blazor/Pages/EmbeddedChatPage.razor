@@ -1,15 +1,10 @@
 @page "/embedded/{ChatSid}"
-@using System.Diagnostics.CodeAnalysis
-@inherits ComputedStateComponent<EmbeddedChatPage.Model>
+@inherits ChatPage
 @layout BaseLayout
 @{
-    var m = _rendered = State.Value;
+    var m = Rendered = State.Value;
     var chat = m.Chat;
-    var chatOrNone = m.Chat ?? Chat.None;
-    var isLoading = ReferenceEquals(m, Model.Loading);
-    var chatOrLoading = isLoading
-        ? ChatUI.Loading
-        : chatOrNone;
+    var hasChat = !m.Chat.Id.IsNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
@@ -18,28 +13,30 @@
         <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
             <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
                 <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
-                    <ChatHeader Chat="@chatOrLoading" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
+                    <ChatHeader @key="@chat" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
                 </div>
                 <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
-                    <Banners Chat="@chatOrLoading"/>
+                    @if (hasChat) {
+                        <Banners @key="@chat" Chat="@chat"/>
+                    }
                 </div>
                 <div class="flex-1 flex-x h-full overflow-hidden">
                     <div class="flex-1 -flex-y h-full overflow-hidden relative">
                         <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
-                            <ChatFooter ChatSid="@ChatSid" />
+                            <ChatFooter ChatPageModel="@m" />
                         </div>
                         <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
                             <RenderStack Name="SubFooter"/>
                         </div>
                         <div class="layout-body flex-1 custom-scrollbar">
-                            @if (m.ChatId.IsNone) {
+                            @if (ReferenceEquals(chat, SpecialChat.Loading)) {
+                                <chat-view-skeleton count="15" />
+                            } else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
                                 <NoChatSelected/>
-                            } else if (chat == null) {
+                            } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
                                 <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
                             } else {
-                                <CascadingValue Value="chat" @key="ChatSid">
-                                    <ChatView @ref="_chatViewRef" Chat="@chatOrLoading" />
-                                </CascadingValue>
+                                <ChatView @ref="ChatViewRef" @key="@chat" Chat="@chat"/>
                             }
                         </div>
                     </div>
@@ -50,101 +47,68 @@
 </div>
 
 @code {
-    private Model? _rendered;
-    private ChatView _chatViewRef = null!;
-
-    private ChatId ChatId { get; set; } = ChatId.None;
-
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
 
-    [Parameter] public string? ChatSid { get; set; }
-
-    protected override Task OnInitializedAsync() {
-        // Set ChatId before calling ComputeState
-        ChatId = new (ChatSid, ParseOrNone.Option);
-        ChatAudioUI.Enable();
+    protected override void OnInitialized() {
         PanelsUI.Left.SetIsVisible(false);
         PanelsUI.Right.SetIsVisible(false);
-        return ChatUI.WhenLoaded; // Nothing happens until we load everything
+        base.OnInitialized();
     }
 
-    protected override Task OnParametersSetAsync() {
-        ChatId = new (ChatSid, ParseOrNone.Option);
-        ChatUI.SelectChat(ChatId);
+    protected override async Task<ChatPage.Model> ComputeState(CancellationToken cancellationToken) {
+        // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
+        // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
+        // and moreover, we want to make sure ComputeState gets invalidated
+        // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        // No need to call base.OnParametersSetAsync() here, coz
-        // ChatUI.SelectChat(...) triggers UICommander.RunNothing() anyway
-        return Task.CompletedTask;
-    }
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
+        var computed = Computed.GetCurrent()!;
+        computed.Invalidated += c => {
+            Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
         };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", ChatId);
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
         var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-        if (ChatId.IsNone) // Weird case: this should never happen due to code in OnParametersSetAsync
-            return Model.None(screenSize);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
         try {
-            var chat = await Chats.Get(Session, ChatId, cancellationToken);
-            if (chat is not {IsTemplate: true })
-                return new (ChatId, chat, account, screenSize);
+            var chat = SpecialChat.NoChatSelected;
+            if (!chatId.IsNone) {
+                chat = await Chats.Get(Session, chatId, cancellationToken);
+                chat ??= SpecialChat.Unavailable;
+            }
+            if (chat is not {IsTemplate: true }) {
+                var footer = await GetFooterModel(chat, account, cancellationToken);
+                return new (chat, account, footer, screenSize);
+            }
 
             // create new chat based on a template and redirect to the new clone
-            var command = new IChats.GetOrCreateFromTemplateCommand(Session, ChatId);
+            var command = new IChats.GetOrCreateFromTemplateCommand(Session, chatId);
             var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
-                return Model.None(screenSize);
+                throw StandardError.Unavailable("Unable to create new chat from template");
 
             // Short delay to process invalidation
             await Task.Delay(TimeSpan.FromSeconds(0.25), cancellationToken);
-            _ = History.NavigateTo(Links.EmbeddedChat(newChat.Id));
-            return Model.Loading;
+
+            // Set new ChatId
+            ChatSid = newChat.Id;
+            SelectChat();
+
+            // Subscribe to chat changes
+            newChat = await Chats.Get(Session, newChat.Id, cancellationToken);
+            var newChatFooter = await GetFooterModel(newChat!, account, cancellationToken);
+            return new (newChat!, account, newChatFooter, screenSize);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to get Chat #{ChatId}", ChatId);
-            return new (ChatId, null, account, screenSize);
+            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+            return new ChatPage.Model(SpecialChat.Unavailable, account, new(), screenSize);
         }
     }
 
     protected override bool ShouldRender()
-        => ReferenceEquals(_rendered, null)
-            || State.HasError
-            || !State.Value.IsIdenticalTo(_rendered);
-
-    // Nested types
-
-    public sealed record Model(
-        ChatId ChatId,
-        Chat? Chat,
-        AccountFull Account,
-        ScreenSize ScreenSize = ScreenSize.Unknown
-    ) {
-        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
-        public static Model None(ScreenSize screenSize) => new(default, null, AccountFull.None, screenSize);
-
-        public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
-            if (other == null)
-                return false;
-
-            return ChatId == other.ChatId
-                   && ReferenceEquals(Chat, other.Chat)
-                   && ReferenceEquals(Account, other.Account)
-                   && ScreenSize == other.ScreenSize;
-        }
-    }
+        => ReferenceEquals(Rendered, null)
+           || State.HasError
+           || State.Value != Rendered;
 }

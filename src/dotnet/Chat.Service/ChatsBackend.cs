@@ -294,8 +294,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>();
-            if (invChat != null)
+            if (invChat != null) {
                 _ = Get(invChat.Id, default);
+                if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
+                    _ = GetTemplatedChatFor(invChat.TemplateId.Value, invChat.TemplatedForUserId.Value, default);
+            }
             return null!;
         }
 
@@ -546,9 +549,18 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (oldHasLeft == author.HasLeft)
             return;
 
+        // Skip for system admin user
+        if (author.UserId == Constants.User.Admin.UserId)
+            return;
+
         // Skip for template chats
         var chat = await Get(author.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat?.IsTemplate ?? false)
+            return;
+
+        // and template chat owners
+        var ownerRole = await RolesBackend.GetSystem(author.ChatId, SystemRole.Owner, cancellationToken).ConfigureAwait(false);
+        if ((chat?.TemplatedForUserId.HasValue ?? false) && ownerRole != null && author.RoleIds.Contains(ownerRole.Id))
             return;
 
         // Let's delay fetching an author a bit
