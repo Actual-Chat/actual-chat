@@ -1,9 +1,8 @@
-using ActualChat.UI.Blazor.Services;
-
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
 {
+
     public HistoricalChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
         => PlayerKind = ChatPlayerKind.Historical;
@@ -28,7 +27,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         }
 
         var clock = Clocks.CpuClock;
-        var initialSleepDuration = SleepDuration.Value;
+        var initialSleepAndPauseDuration = SleepAndPauseDuration;
         var realStartAt = RealNow();
         var lastPlaybackBlockEnd = PlaybackNow(); // Any time in past, actually
 
@@ -71,7 +70,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             entryPlayer.EnqueueEntry(entry, skipTo, playAt);
         }
 
-        Moment RealNow() => Clocks.CpuClock.Now + initialSleepDuration - SleepDuration.Value;
+        Moment RealNow() => Clocks.CpuClock.Now + initialSleepAndPauseDuration - SleepAndPauseDuration;
         TimeSpan PlaybackDuration() => RealNow() - realStartAt;
         Moment PlaybackNow() => minPlayAt + PlaybackDuration();
     }
@@ -188,10 +187,10 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     private async Task EnqueueDelay(TimeSpan delay, CancellationToken cancellationToken)
     {
         // Waits for enqueue delay.
-        // If pause is activated during enqueue delay, enqueue delay is extended by the duration of the pause.
-        var cIsPaused = Playback.IsPaused.Computed;
+        // If pause or sleep is activated during enqueue delay,
+        // enqueue delay is extended by the duration of the pause.
         while (true) {
-            cIsPaused = await cIsPaused.When(x => !x, cancellationToken);
+            delay = delay.Positive();
             if (delay <= TimeSpan.FromMilliseconds(50)) {
                 // Extremely short delays increase the CPU load,
                 // but don't add much of extra value here, coz all we want
@@ -199,19 +198,12 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 return;
             }
 
-            var enqueuedAt = CpuTimestamp.Now;
-            var cts = cancellationToken.CreateLinkedTokenSource();
-            try {
-                var delayTask = Clocks.CpuClock.Delay(delay, cts.Token);
-                var isPausedInvalidatedTask = cIsPaused.WhenInvalidated(cts.Token);
-                await Task.WhenAny(delayTask, isPausedInvalidatedTask).ConfigureAwait(false);
-                cts.Token.ThrowIfCancellationRequested();
-            }
-            finally {
-                cts.CancelAndDisposeSilently();
-            }
-            var elapsed = enqueuedAt.Elapsed;
-            delay -= elapsed;
+            var initialSleepAndPauseDuration = SleepAndPauseDuration;
+            var startedAt = CpuTimestamp.Now;
+            await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            await Playback.IsPaused.When(x => !x, cancellationToken).ConfigureAwait(false);
+            var actualDelay = startedAt.Elapsed - SleepAndPauseDuration + initialSleepAndPauseDuration;
+            delay -= actualDelay;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
@@ -87,6 +88,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new FocusUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new KeepAwakeUI(c));
         services.AddScoped(c => new DeviceAwakeUI(c));
+        services.AddScoped(c => (ISleepDurationProvider)c.GetRequiredService<DeviceAwakeUI>());
         services.AddScoped(c => new UserActivityUI(c));
         services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new TuneUI(c));

@@ -23,9 +23,11 @@ public abstract class ChatPlayer : ProcessorBase
     protected bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     protected IServiceProvider Services { get; }
+    protected HostInfo HostInfo { get; }
     protected MomentClockSet Clocks { get; }
     protected IState<TimeSpan> SleepDuration { get; }
-    protected HostInfo HostInfo { get; }
+    protected IState<TimeSpan> PauseDuration { get; }
+    protected TimeSpan SleepAndPauseDuration => SleepDuration.Value + Playback.TotalPauseDuration.Value;
 
     protected IAuthors Authors { get; }
     protected IChats Chats { get; }
@@ -42,9 +44,8 @@ public abstract class ChatPlayer : ProcessorBase
     {
         Services = services;
         Log = services.LogFor(GetType());
-        Clocks = services.Clocks();
-        SleepDuration = services.GetRequiredService<DeviceAwakeUI>().TotalSleepDuration;
         HostInfo = services.GetRequiredService<HostInfo>();
+        Clocks = services.Clocks();
 
         ChatId = chatId;
         Session = session;
@@ -53,6 +54,9 @@ public abstract class ChatPlayer : ProcessorBase
         Authors = services.GetRequiredService<IAuthors>();
         Chats = services.GetRequiredService<IChats>();
         InteractiveUI = services.GetRequiredService<InteractiveUI>();
+
+        SleepDuration = services.GetRequiredService<DeviceAwakeUI>().TotalSleepDuration;
+        PauseDuration = Playback.TotalPauseDuration;
     }
 
     protected override async Task DisposeAsyncCore()
@@ -127,6 +131,9 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected async ValueTask<bool> CanContinuePlayback(CancellationToken cancellationToken)
     {
+        if (this is HistoricalChatPlayer)
+            await Playback.IsPaused.When(x => !x, cancellationToken).ConfigureAwait(false);
+
         if (InteractiveUI.IsInteractive.Value)
             return true;
 
