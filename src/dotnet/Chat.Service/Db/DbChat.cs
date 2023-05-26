@@ -21,11 +21,13 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
 
+    // Template info for embedded chats
+    public bool IsTemplate { get; set; }
+    public string? TemplateId { get; set; }
+    public string? TemplatedForUserId { get; set; }
+
     // Permissions & Rules
     public bool IsPublic { get; set; }
-
-    public bool IsTemplate { get; set; }
-
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
 
@@ -38,8 +40,10 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new(new ChatId(Id), Version) {
             Title = Title,
             CreatedAt = CreatedAt,
-            IsPublic = IsPublic,
             IsTemplate = IsTemplate,
+            TemplateId = new ChatId(TemplateId),
+            TemplatedForUserId = new UserId(TemplatedForUserId),
+            IsPublic = IsPublic,
             AllowGuestAuthors = AllowGuestAuthors,
             AllowAnonymousAuthors = AllowAnonymousAuthors,
             MediaId = new MediaId(MediaId),
@@ -55,8 +59,10 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Version = model.Version;
         Title = model.Title;
         CreatedAt = model.CreatedAt;
-        IsPublic = model.IsPublic;
         IsTemplate = model.IsTemplate;
+        TemplateId = model.TemplateId;
+        TemplatedForUserId = model.TemplatedForUserId;
+        IsPublic = model.IsPublic;
         AllowGuestAuthors = model.AllowGuestAuthors;
         AllowAnonymousAuthors = model.AllowAnonymousAuthors;
         Kind = model.Kind;

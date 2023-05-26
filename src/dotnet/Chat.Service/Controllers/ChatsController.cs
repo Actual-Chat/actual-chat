@@ -91,7 +91,7 @@ public sealed class ChatsController : ControllerBase, IChats
         => Commander.Call(command, cancellationToken);
 
     [HttpPost]
-    public Task<Chat> CreateFromTemplate([FromBody] IChats.CreateFromTemplateCommand command, CancellationToken cancellationToken)
+    public Task<Chat> GetOrCreateFromTemplate([FromBody] IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 
 }

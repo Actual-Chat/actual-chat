@@ -64,6 +64,24 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [ComputeMethod]
+    public virtual async Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken)
+    {
+        if (templateId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(templateId));
+        if (userId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbChat = await dbContext.Chats.AsQueryable()
+            .Where(c => c.TemplateId == templateId && c.TemplatedForUserId == userId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return dbChat?.ToModel();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         ChatId chatId,
         PrincipalId principalId,
