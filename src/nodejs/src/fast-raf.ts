@@ -7,14 +7,13 @@ export interface FastRafOptions {
 
 let readCallbacks: Callback [] | null = null;
 let writeCallbacks: Callback [] | null = null;
-let callbackKeys: Set<string> = new Set<string>();
+const callbackKeys: Set<string> = new Set<string>();
 
 export function fastRaf(options: FastRafOptions): boolean;
 export function fastRaf(read: Callback, key?: string): boolean;
 export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
     if (!arg)
         return false;
-
 
     let cbKey = key;
     let read: Callback | null = null;
@@ -43,8 +42,8 @@ export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
             writeCallbacks.push(write);
 
         requestAnimationFrame(() => {
-            const currentReadCallbacks = readCallbacks!;
-            const currentWriteCallbacks = writeCallbacks!;
+            const currentReadCallbacks = readCallbacks;
+            const currentWriteCallbacks = writeCallbacks;
             readCallbacks = null;
             writeCallbacks = null;
             callbackKeys.clear();
@@ -63,11 +62,12 @@ export function fastRaf(arg: Callback | FastRafOptions, key?: string): boolean {
 let readRafPromise: Promise<void> | null = null;
 
 export function fastReadRaf(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (readRafPromise)
         return readRafPromise;
 
     readRafPromise = new Promise<void>((resolve) => fastRaf(() => resolve()));
-    readRafPromise.then(() => {
+    void readRafPromise.then(() => {
         readRafPromise = null;
     });
 
@@ -78,11 +78,12 @@ export function fastReadRaf(): Promise<void> {
 let writeRafPromise: Promise<void> | null = null;
 
 export function fastWriteRaf(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     if (writeRafPromise)
         return writeRafPromise;
 
     writeRafPromise = new Promise<void>((resolve) => fastRaf({ write: () => resolve()}));
-    writeRafPromise.then(() => {
+    void writeRafPromise.then(() => {
         writeRafPromise = null;
     });
 
