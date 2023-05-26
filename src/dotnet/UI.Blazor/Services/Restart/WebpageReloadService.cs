@@ -2,11 +2,18 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class WebpageReloadService : IRestartService
 {
+    private ILogger Log { get; }
     private NavigationManager Nav { get; }
 
-    public WebpageReloadService(NavigationManager nav)
-        => Nav = nav;
+    public WebpageReloadService(IServiceProvider services)
+    {
+        Log = services.LogFor<WebpageReloadService>();
+        Nav = services.GetRequiredService<NavigationManager>();
+    }
 
     public void Restart()
-        => Nav.NavigateTo(Links.Home, true);
+    {
+        Log.LogInformation("About to Restart");
+        Nav.NavigateTo(Links.Home, true);
+    }
 }

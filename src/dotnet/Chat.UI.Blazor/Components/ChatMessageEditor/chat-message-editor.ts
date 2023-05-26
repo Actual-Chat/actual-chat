@@ -298,11 +298,11 @@ export class ChatMessageEditor {
         const data = {
             [`MessageDraft.${this.chatId}.Html`]: !!text ? text : null,
         };
-        LocalSettings.setMany(data);
+        LocalSettings.getInstance().setMany(data);
     }
 
     private restoreDraft() {
-        const [html] = this.chatId && LocalSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
+        const [html] = this.chatId && LocalSettings.getInstance().getMany([`MessageDraft.${this.chatId}.Html`]);
         this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
     }
 }

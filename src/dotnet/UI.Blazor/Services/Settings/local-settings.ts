@@ -4,26 +4,17 @@ import { BrowserInit } from '../BrowserInit/browser-init';
 const { debugLog, warnLog } = Log.get('LocalSettings');
 
 export class LocalSettings {
-    private static _isInitialized: boolean = false;
+    private static _instance: LocalSettings;
 
-    public static init(): void {
-        if (this._isInitialized)
-            return
-
-        this._isInitialized = true;
-        const tagKey = ".App.sessionHash";
-        // @ts-ignore
-        const tagValue = BrowserInit.sessionHash;
-        const oldTagValue = localStorage.getItem(tagKey);
-        if (oldTagValue !== tagValue) {
-            warnLog?.log(`init: local storage is cleared! ('${oldTagValue}' != '${tagValue}')`);
-            localStorage.clear();
-            localStorage.setItem(tagKey, tagValue);
+    public static getInstance() : LocalSettings {
+        if (!this._instance) {
+            this._instance = new LocalSettings();
+            this._instance.init()
         }
+        return this._instance;
     }
 
-    public static getMany(keys: string[]): Array<string> {
-        this.init();
+    public getMany(keys: string[]): Array<string> {
         const result = new Array<string>();
         debugLog?.log(`getMany(${result.length} keys):`);
         for (const key of keys) {
@@ -34,8 +25,7 @@ export class LocalSettings {
         return result;
     }
 
-    public static setMany(updates: Record<string, string>): void {
-        this.init();
+    public setMany(updates: Record<string, string>): void {
         debugLog?.log(`setMany(${Object.keys(updates).length} keys):`);
         for (const [key, value] of Object.entries(updates)) {
             if (value == null) {
@@ -46,6 +36,18 @@ export class LocalSettings {
                 localStorage.setItem(key, value);
                 debugLog?.log(` * '${key}' <- '${value}'`);
             }
+        }
+    }
+
+    private init(): void {
+        const tagKey = ".App.sessionHash";
+        // @ts-ignore
+        const tagValue = BrowserInit.sessionHash;
+        const oldTagValue = localStorage.getItem(tagKey);
+        if (oldTagValue !== tagValue) {
+            warnLog?.log(`init: local storage is cleared! ('${oldTagValue}' != '${tagValue}')`);
+            localStorage.clear();
+            localStorage.setItem(tagKey, tagValue);
         }
     }
 }
