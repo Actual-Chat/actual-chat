@@ -4,7 +4,8 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
     will-change: scroll-position;
-    animation-name: scroller-overflow-hack;
+    /* TODO: remove if everything is OK */
+    /*animation-name: scroller-overflow-hack;*/
     animation-fill-mode: forwards;
     animation-duration: 1ms;
 }
@@ -21,7 +22,8 @@
     @apply flex flex-y;
 }
 
-@keyframes scroller-overflow-hack {
-    0% { opacity: .9999; }
-    100% { opacity: 1; }
-}
+/* TODO: remove if everything is OK */
+/*@keyframes scroller-overflow-hack {*/
+/*    0% { opacity: .9999; }*/
+/*    100% { opacity: 1; }*/
+/*}*/
