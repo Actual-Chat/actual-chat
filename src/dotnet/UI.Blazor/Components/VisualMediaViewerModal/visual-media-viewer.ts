@@ -1,6 +1,8 @@
 import { preventDefaultForEvent } from 'event-handling';
+import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
 
 export class VisualMediaViewer {
+    private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly overlay: HTMLElement;
     private readonly image: HTMLElement;
     private readonly multiplier: number = 1.4;
@@ -25,18 +27,27 @@ export class VisualMediaViewer {
         this.image = imageViewer.querySelector('img');
         this.overlay = this.imageViewer.closest('.modal-overlay');
 
-        window.addEventListener('touchstart', this.onTouch);
         imageViewer.addEventListener('wheel', this.onWheel);
         imageViewer.addEventListener('pointerdown', this.onPointerDown);
         imageViewer.addEventListener('pointerup', this.onPointerUp);
+
+        fromEvent(window, 'touchstart')
+            .pipe(
+                takeUntil(this.disposed$),
+                debounceTime(100),
+            ).subscribe((event: TouchEvent) => this.onTouch(event));
     }
 
     public dispose() {
-        window.removeEventListener('touchstart', this.onTouch);
-        window.removeEventListener('touchmove', this.onTouchesMove);
         this.imageViewer.removeEventListener('wheel', this.onWheel);
         this.imageViewer.removeEventListener('pointerdown', this.onPointerDown);
         this.imageViewer.removeEventListener('pointerup', this.onPointerUp);
+
+        if (this.disposed$.closed)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
     }
 
     private round = (value: number) : number => {
@@ -143,10 +154,11 @@ export class VisualMediaViewer {
             this.oneTouchMoveImage(event);
         } else if (event.touches.length === 2) {
             this.firstTouchDelta = this.getDistance(event);
-            window.addEventListener('touchmove', this.onTouchesMove);
-            this.onScaleImage(event);
-            this.twoTouchMoveImage(event);
-        } return;
+            fromEvent(window, 'touchmove')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: TouchEvent) => this.onTouchesMove(event));
+        }
+        return;
     }
 
     private getDistance = (e: TouchEvent): number => {
@@ -164,31 +176,27 @@ export class VisualMediaViewer {
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         const width = this.image.getBoundingClientRect().width;
-        const height = this.image.getBoundingClientRect().height;
         let delta = this.getDistance(event);
         this.imageViewer.classList.add('absolute');
         preventDefaultForEvent(event);
 
+        let viewerRect = this.imageViewer.getBoundingClientRect();
+        if (viewerRect.left != 0 || viewerRect.right != windowWidth) {
+            this.imageViewer.style.left = 0 + 'px';
+            this.imageViewer.style.width = windowWidth + 'px';
+        }
+
         let newWidth = width * (delta / this.firstTouchDelta);
-        let newHeight = height * (delta / this.firstTouchDelta);
         let newMaxWidth = newWidth;
-        let newMaxHeight = newHeight;
         if (newWidth > windowWidth * 3) {
             newWidth = windowWidth * 3;
             newMaxWidth = newWidth;
         }
-        if (newHeight > windowHeight * 3) {
-            newHeight = windowHeight * 3;
-            newMaxHeight = newHeight;
+        if (newWidth < windowWidth) {
+            newWidth = windowWidth;
         }
-        if (newWidth < 100) {
-            newWidth = 100;
-            newMaxWidth = newWidth;
-        }
-        if (newHeight < 100) {
-            newHeight = 100;
-            newMaxHeight = 100;
-        }
+
+        newMaxWidth = newWidth;
         this.image.style.width = newWidth + 'px';
         this.image.style.maxWidth = newMaxWidth + 'px';
         this.firstTouchDelta = delta;
@@ -269,9 +277,5 @@ export class VisualMediaViewer {
     private onPointerUp = (event: PointerEvent) => {
         window.removeEventListener('pointermove', this.onPointerMove);
     };
-
-    // private onTouchEnd = (event: TouchEvent) => {
-    //     window.removeEventListener('touchmove', this.onTouch);
-    // };
 }
 
