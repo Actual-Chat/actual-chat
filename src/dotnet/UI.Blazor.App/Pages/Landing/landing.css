@@ -537,7 +537,7 @@ body.narrow .features-grid .c-text {
 }
 
 /* Docs */
-body.narrow .side-nav-left:has(.docs-left-panel){
+body.narrow .side-nav-left:has(.docs-left-panel) {
     @apply hidden;
 }
 
