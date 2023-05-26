@@ -62,6 +62,7 @@
     "onnxruntime-web": "^1.13.1",
     "readable-stream": "^4.3.0",
     "rxjs": "^7.8.0",
+    "selector-observer": "^2.1.6",
     "swiftclick": "^2.1.1",
     "tslib": "^2.4.1",
     "uuid": "^9.0.0",
