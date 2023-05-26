@@ -35,12 +35,7 @@
                 }
             });
         });
-        const menuObserverConfig = {
-            attributes: true,
-            childList: false,
-            subtree: false,
-        };
-        this.menuObserver.observe(this._dropdownMenu, menuObserverConfig);
+        this.menuObserver.observe(this._dropdownMenu, { attributes: true });
     }
 
     public dispose() {

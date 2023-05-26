@@ -1,8 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<label class="@Class checkbox">
+<label class="@Class checkbox"
+       data-input-checked="@IsChecked"
+       data-input-disabled="@IsDisabled">
     <div class="x">&nbsp;</div>
-    <input type="checkbox" id="@Id" name="@Name" disabled="@IsDisabled" checked="@IsChecked" @onchange="Change">
+    <input type="checkbox"
+           id="@Id" name="@Name" disabled="@IsDisabled" checked="@IsChecked"
+           @onchange="@Change">
     @if (LabelContent != null) {
         <div class="c-label">@LabelContent</div>
     } else if (!Label.IsNullOrEmpty()) {

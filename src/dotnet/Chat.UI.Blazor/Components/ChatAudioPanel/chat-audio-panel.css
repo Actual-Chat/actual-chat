@@ -61,7 +61,7 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply bg-icons-02;
 }
-.recorder-wrapper:has(.mic-disabled) {
+.recorder-wrapper.mic-disabled {
     @apply border-icons-02;
 }
 

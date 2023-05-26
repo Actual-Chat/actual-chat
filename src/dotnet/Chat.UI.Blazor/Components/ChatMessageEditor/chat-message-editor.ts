@@ -87,6 +87,7 @@ export class ChatMessageEditor {
         if (this.attachmentListElement != null) {
             this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
         }
+        this.attachmentListObserver.disconnect();
         this.notifyPanelObserver.disconnect();
     }
 
