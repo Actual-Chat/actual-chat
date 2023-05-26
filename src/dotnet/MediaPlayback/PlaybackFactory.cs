@@ -1,3 +1,5 @@
+using ActualChat.Hardware;
+
 namespace ActualChat.MediaPlayback;
 
 /// <summary> Must be scoped service </summary>
@@ -11,6 +13,7 @@ public class PlaybackFactory : IPlaybackFactory
     private readonly ActivePlaybackInfo _activePlaybackInfo;
     private readonly IStateFactory _stateFactory;
     private readonly ITrackPlayerFactory _trackPlayerFactory;
+    private readonly ISleepDurationProvider _sleepDurationProvider;
     private readonly ILogger<Playback> _playbackLog;
     private readonly Action<TrackInfo, PlayerState> _onTrackPlayingChanged;
 
@@ -18,6 +21,7 @@ public class PlaybackFactory : IPlaybackFactory
     {
         _stateFactory = services.StateFactory();
         _trackPlayerFactory = services.GetRequiredService<ITrackPlayerFactory>();
+        _sleepDurationProvider = services.GetRequiredService<ISleepDurationProvider>();
         _activePlaybackInfo = services.GetRequiredService<ActivePlaybackInfo>();
         _playbackLog = services.GetRequiredService<ILogger<Playback>>();
         _onTrackPlayingChanged = OnTrackPlayingChanged;
@@ -25,7 +29,7 @@ public class PlaybackFactory : IPlaybackFactory
 
     public Playback Create()
     {
-        var playback = new Playback(_stateFactory, _trackPlayerFactory, _playbackLog);
+        var playback = new Playback(_stateFactory, _trackPlayerFactory, _sleepDurationProvider, _playbackLog);
         playback.OnTrackPlayingChanged += _onTrackPlayingChanged;
         return playback;
     }

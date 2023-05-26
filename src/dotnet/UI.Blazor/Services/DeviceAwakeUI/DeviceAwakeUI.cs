@@ -1,9 +1,10 @@
+using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class DeviceAwakeUI : IDeviceAwakeUIBackend, IDisposable
+public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDisposable
 {
     private readonly DotNetObjectReference<IDeviceAwakeUIBackend> _backendRef;
     private readonly IMutableState<TimeSpan> _totalSleepDuration;
