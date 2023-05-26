@@ -311,6 +311,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [CommandHandler]
     public virtual async Task<Chat> GetOrCreateFromTemplate(IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
         var (session, templateChatId) = command;
         var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
         templateChat.Require(Chat.MustBeTemplate);

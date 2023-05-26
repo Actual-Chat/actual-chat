@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
 @{
-    var m = _rendered = State.Value;
+    var m = Rendered = State.Value;
     var chat = m.Chat;
     var hasChat = !m.Chat.Id.IsNone;
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
@@ -40,22 +40,22 @@
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
 } else {
-    <ChatView @ref="_chatViewRef" @key="@chat" Chat="@chat"/>
+    <ChatView @ref="ChatViewRef" @key="@chat" Chat="@chat"/>
 }
 
 @code {
-    private Model? _rendered;
-    private ChatView _chatViewRef = null!;
-    private bool _isFirstLoad = true;
+    protected Model? Rendered;
+    protected ChatView ChatViewRef = null!;
+    protected bool IsFirstLoad = true;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
+    [Inject] protected Session Session { get; init; } = null!;
+    [Inject] protected IAccounts Accounts { get; init; } = null!;
+    [Inject] protected IChats Chats { get; init; } = null!;
+    [Inject] protected IAvatars Avatars { get; init; } = null!;
+    [Inject] protected ChatUI ChatUI { get; init; } = null!;
+    [Inject] protected ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] protected BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] protected ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
 
@@ -94,8 +94,8 @@
 
             var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
             // Let's delay chat loading when it it is invisible and it happens for the first time
-            if (_isFirstLoad) {
-                _isFirstLoad = false;
+            if (IsFirstLoad) {
+                IsFirstLoad = false;
                 if (screenSize.IsNarrow()) {
                     var panelsUI = Services.GetRequiredService<PanelsUI>();
                     if (panelsUI.Left.IsVisible.Value) {
@@ -156,11 +156,11 @@
     }
 
     protected override bool ShouldRender()
-        => ReferenceEquals(_rendered, null)
+        => ReferenceEquals(Rendered, null)
             || State.HasError
-            || State.Value != _rendered;
+            || State.Value != Rendered;
 
-    private void SelectChat() {
+    protected void SelectChat() {
         var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
         ChatUI.SelectChat(chatId);
     }
