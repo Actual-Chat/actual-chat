@@ -1,18 +1,33 @@
 @page "/test/embedded"
+@using ActualChat.Hosting
+
+@{
+    var baseUri = new Uri(HostInfo.BaseUrl);
+    var domain = HostInfo.IsDevelopmentInstance
+        ? "cdn.local.actual.chat"
+        : baseUri.IdnHost;
+    var feedbackTemplateUrl = $"https://{domain}/embedded/feedback-template";
+}
 
 <RequireAccount MustBeAdmin="true"/>
 <h2>Embedded Test Page</h2>
 
 <p>
     <iframe id="chatFrame"
-            class="min-w-88 min-h-120"
+            class="min-w-88 min-h-128"
             style="
                border: none;
                box-shadow: 5px 5px 10px #CCC;"
-            src="https://local.actual.chat/embedded/feedback-template"
+            src="@feedbackTemplateUrl"
             referrerpolicy="origin-when-cross-origin"
             loading="lazy"
             sandbox="allow-downloads allow-scripts allow-same-origin"
             allow="microphone *; storage-access-api *; sync-xhr *; document-domain *">
     </iframe>
 </p>
+
+@code {
+
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+}
