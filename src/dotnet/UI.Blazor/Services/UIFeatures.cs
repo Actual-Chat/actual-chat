@@ -47,6 +47,9 @@ public static class UIFeatures
     public class EnableChatMessageSearchUI : ExperimentalFeature
     { }
 
+    public class EnableDownloadVisualMedia : ExperimentalFeature
+    { }
+
     public class AllowEditJoinAnonymouslyChatProps : ExperimentalFeature
     { }
 }
