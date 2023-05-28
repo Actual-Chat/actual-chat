@@ -8,7 +8,7 @@ public sealed class LocalSettingsBackend : IBatchingKvasBackend
     private IJSRuntime JS { get; }
 
     public LocalSettingsBackend(IServiceProvider services)
-        => JS = services.JSRuntime();
+        => JS = services.SafeJSRuntime();
 
     public Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
         => JS.InvokeAsync<string?[]>(

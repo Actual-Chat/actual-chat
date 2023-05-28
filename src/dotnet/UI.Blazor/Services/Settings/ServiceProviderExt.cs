@@ -11,6 +11,6 @@ public static class ServiceProviderExt
     public static UIEventHub UIEventHub(this IServiceProvider services)
         => services.GetRequiredService<UIEventHub>();
 
-    public static IJSRuntime JSRuntime(this IServiceProvider services)
+    public static IJSRuntime SafeJSRuntime(this IServiceProvider services)
         => services.GetRequiredService<JSRuntimeWithDisconnectGuard>();
 }
