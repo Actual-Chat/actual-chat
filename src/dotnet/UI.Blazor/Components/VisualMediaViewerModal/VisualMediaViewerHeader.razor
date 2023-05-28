@@ -21,6 +21,8 @@
             <ButtonRound Class="image-header-btn">
                 <i class="icon-share"></i>
             </ButtonRound>
+        }
+        @if (_isDownloadEnabled) {
             <a href="@DownloadUrl" target="_blank" download class="flex justify-center">
                 <ButtonRound Class="image-header-btn">
                     <i class="icon-download"></i>
@@ -36,6 +38,7 @@
 @code {
     private Author? _author;
     private bool _enableIncompleteUI;
+    private bool _isDownloadEnabled;
 
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -48,6 +51,7 @@
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+        _isDownloadEnabled = await Features.Get<UIFeatures.ExperimentalFeature, bool>(CancellationToken.None);
     }
 
     protected override async Task OnParametersSetAsync() {
