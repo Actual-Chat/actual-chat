@@ -19,7 +19,7 @@
        @onclick="@(_ => VisualMediaViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry, attachment.IsVideo()))"
        @onclick:preventDefault="true">
         @if (attachment.IsVideo()) {
-            <video class="@imageCls" preload="auto" autoplay oncanplay="this.muted = true; this.play()" loop>
+            <video class="@imageCls" preload="auto" autoplay playsinline oncanplay="this.muted = true; this.play()" loop>
                 <source src="@url" />
             </video>
         } else {
