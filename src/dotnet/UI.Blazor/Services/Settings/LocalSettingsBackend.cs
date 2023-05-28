@@ -8,7 +8,7 @@ public sealed class LocalSettingsBackend : IBatchingKvasBackend
     private IJSRuntime JS { get; }
 
     public LocalSettingsBackend(IServiceProvider services)
-        => JS = services.GetRequiredService<IJSRuntime>();
+        => JS = services.JSRuntime();
 
     public Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
         => JS.InvokeAsync<string?[]>(
@@ -17,15 +17,21 @@ public sealed class LocalSettingsBackend : IBatchingKvasBackend
             new object[] { keys }
             ).AsTask();
 
-    public Task SetMany(List<(string Key, string? Value)> updates, CancellationToken cancellationToken = default)
+    public async Task SetMany(List<(string Key, string? Value)> updates, CancellationToken cancellationToken = default)
     {
         var dUpdates = new Dictionary<string, string?>(StringComparer.Ordinal);
         foreach (var (key, value) in updates)
             dUpdates[key] = value;
-        return JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.LocalSettings.setMany",
-            cancellationToken,
-            dUpdates
-            ).AsTask();
+        try {
+            await JS.InvokeVoidAsync(
+                $"{BlazorUICoreModule.ImportName}.LocalSettings.setMany",
+                cancellationToken,
+                dUpdates
+            );
+        }
+        catch (JSDisconnectedException) {
+            // Suppress exception to avoid reprocessing.
+            // JS invokes are no longer possible in a current scope.
+        }
     }
 }
