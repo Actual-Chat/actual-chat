@@ -25,7 +25,6 @@ public interface IChatsUpgradeBackend : ICommandService
     public sealed record CreateFeedbackTemplateChatCommand(
     ) : ICommand<Chat>, IBackendCommand;
 
-
     public sealed record UpgradeChatCommand(
         [property: DataMember] ChatId ChatId
     ) : ICommand<Unit>, IBackendCommand;

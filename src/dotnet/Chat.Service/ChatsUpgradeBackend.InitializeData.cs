@@ -42,18 +42,18 @@ public partial class ChatsUpgradeBackend
                 continue;
 
             if (hostInfo.IsDevelopmentInstance) {
-                if (email.OrdinalIgnoreCaseEndsWith("actual.chat"))
+                if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
                     userIdByEmail.Add(email, userId);
             }
             else {
-                if (OrdinalIgnoreCaseEquals(email, "alex.yakunin@actual.chat")
-                    || OrdinalIgnoreCaseEquals(email, "alexey.kochetov@actual.chat"))
+                if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
+                    || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
                     userIdByEmail.Add(email, userId);
             }
         }
 
         if (creatorId.IsNone) {
-            if (userIdByEmail.TryGetValue("alex.yakunin@actual.chat", out var temp))
+            if (userIdByEmail.TryGetValue(Constants.Team.Member1Email, out var temp))
                 creatorId = temp;
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;
@@ -382,24 +382,23 @@ public partial class ChatsUpgradeBackend
                 continue;
 
             var user = account.User;
-            if (user.Claims.Count == 0)
-                continue;
-            if (!user.Claims.TryGetValue(ClaimTypes.Email, out var email))
+            var email = user.GetEmail();
+            if (email.IsNullOrEmpty())
                 continue;
 
             if (hostInfo.IsDevelopmentInstance) {
-                if (email.OrdinalIgnoreCaseEndsWith("actual.chat"))
+                if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
                     userIdByEmail.Add(email, userId);
             }
             else {
-                if (OrdinalIgnoreCaseEquals(email, "alex.yakunin@actual.chat")
-                    || OrdinalIgnoreCaseEquals(email, "alexey.kochetov@actual.chat"))
+                if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
+                    || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
                     userIdByEmail.Add(email, userId);
             }
         }
 
         if (creatorId.IsNone) {
-            if (userIdByEmail.TryGetValue("alex.yakunin@actual.chat", out var temp))
+            if (userIdByEmail.TryGetValue(Constants.Team.Member1Email, out var temp))
                 creatorId = temp;
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;

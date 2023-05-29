@@ -41,6 +41,13 @@ public static partial class Constants
         public static int TestBotCount { get; } = 30;
     }
 
+    public static class Team
+    {
+        public static string EmailSuffix => "@actual.chat";
+        public static string Member1Email => "alex.yakunin@actual.chat";
+        public static string Member2Email => "alexey.kochetov@actual.chat";
+    }
+
     public static class Attachments
     {
         public const int FileSizeLimit = 25 * 1024 * 1024; // 25MB

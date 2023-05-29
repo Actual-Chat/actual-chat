@@ -73,7 +73,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
-        var dbChat = await dbContext.Chats.AsQueryable()
+        var dbChat = await dbContext.Chats
             .Where(c => c.TemplateId == templateId && c.TemplatedForUserId == userId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -171,7 +171,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbChatEntries = dbContext.ChatEntries.AsQueryable()
+        var dbChatEntries = dbContext.ChatEntries
             .Where(e => e.ChatId == chatId && e.Kind == entryKind);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
@@ -199,7 +199,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbChatEntries = dbContext.ChatEntries.AsQueryable()
+        var dbChatEntries = dbContext.ChatEntries
             .Where(e => e.ChatId == chatId && e.Kind == entryKind);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => e.IsRemoved == false);
@@ -593,7 +593,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        return await dbContext.ChatEntries.AsQueryable()
+        return await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId && e.Kind == entryKind)
             .OrderBy(e => e.LocalId)
             .Select(e => e.LocalId)
@@ -717,9 +717,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account is not { IsAdmin: true })
             return;
-        if (account.Email.IsNullOrEmpty())
+
+        var email = account.User.GetEmail();
+        if (email.IsNullOrEmpty())
             return;
-        if (!account.Email.OrdinalEndsWith("@actual.chat"))
+        if (!email.OrdinalEndsWith(Constants.Team.EmailSuffix))
             return;
 
         var chatId = Constants.Chat.FeedbackTemplateChatId;

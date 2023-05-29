@@ -106,9 +106,4 @@
             return new ChatPage.Model(SpecialChat.Unavailable, account, new(), screenSize);
         }
     }
-
-    protected override bool ShouldRender()
-        => ReferenceEquals(Rendered, null)
-           || State.HasError
-           || State.Value != Rendered;
 }
