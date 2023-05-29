@@ -3,8 +3,7 @@ Use:
 - <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly"> for regular builds
 - <Project Sdk="Microsoft.NET.Sdk.Razor"> for hot reload (only in server mode)
 -->
-<!--<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">-->
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <!-- Publish & runtime properties -->
   <PropertyGroup>
