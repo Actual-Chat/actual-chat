@@ -59,8 +59,8 @@ public interface IChatsClientDef
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
-    [Post(nameof(CreateFromTemplate))]
-    Task<Chat> CreateFromTemplate([Body] IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(GetOrCreateFromTemplateCommand))]
+    Task<Chat> GetOrCreateFromTemplateCommand([Body] IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("authors")]
