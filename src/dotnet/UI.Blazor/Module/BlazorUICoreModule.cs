@@ -49,6 +49,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
         services.AddScoped(_ => new DisposeMonitor());
         services.AddScoped(c => new BrowserInit(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new JSRuntimeWithDisconnectGuard(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new JavaScriptAppSettings(c));
         services.AddScoped(c => new BrowserInfo(c));
 

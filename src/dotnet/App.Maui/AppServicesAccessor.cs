@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.App.Maui.Services;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 using Stl.Internal;
 
@@ -80,7 +80,7 @@ public class AppServicesAccessor
             var js = _scopedServices.GetRequiredService<IJSRuntime>();
             _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>(); // Must go first
             _scopedServices = null;
-            JSObjectReferenceDisconnectHelper.MarkAsDisconnected(js);
+            JSRuntimeWithDisconnectGuard.MarkAsDisconnected(js);
             AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
         }
     }

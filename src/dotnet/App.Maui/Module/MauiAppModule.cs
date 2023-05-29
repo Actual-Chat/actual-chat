@@ -28,7 +28,6 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
 
         // Misc.
-        JSObjectReferenceExt.TestIfDisconnected = JSObjectReferenceDisconnectHelper.TestIfDisconnected;
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
 
         // Replica cache

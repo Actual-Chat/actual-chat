@@ -94,7 +94,7 @@ public class LazyWriter<T> : WorkerBase
             upcomingFlushCts?.CancelAndDisposeSilently();
             upcomingFlushCts = null;
             var failedTryCount = 0;
-            while (true) {
+            while (batch.Count > 0) {
                 try {
                     await Implementation.Invoke(batch).ConfigureAwait(false);
                     break;
