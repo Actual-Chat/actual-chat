@@ -63,12 +63,12 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        var computed = Computed.GetCurrent()!;
-        computed.Invalidated += c => {
-            Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
-        };
+        // var computed = Computed.GetCurrent()!;
+        // computed.Invalidated += c => {
+        //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
+        // };
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
         var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
