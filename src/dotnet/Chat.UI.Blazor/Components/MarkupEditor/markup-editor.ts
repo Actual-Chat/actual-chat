@@ -343,7 +343,8 @@ export class MarkupEditor {
         const ok = () => preventDefaultForEvent(e);
 
         const data = e.clipboardData;
-        const text = cleanPastedText(data.getData('text'));
+        const plainText = data.getData('text');
+        const text = cleanPastedText(plainText, data.types.includes('text/html'));
 
         // debugLog?.log(`onPaste: text:`, text)
         this.transaction(() => {
@@ -724,9 +725,11 @@ function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | nul
     return node as unknown as TNode;
 }
 
-function cleanPastedText(text: string): string {
+function cleanPastedText(text: string, removeDoubleNewLines: boolean): string {
     text = text.replace(ZeroWidthSpaceRe, '');
     text = normalize(text);
+    if (removeDoubleNewLines)
+        text = text.replace("\n\n", "\n");
     return text;
 }
 
