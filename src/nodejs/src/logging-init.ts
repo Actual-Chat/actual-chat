@@ -76,7 +76,8 @@ export type LogScope =
     | 'MessageEditor'
     | 'SideNav'
     | 'TextBox'
-    | 'TooltipHost';
+    | 'TooltipHost'
+    | 'VisualMediaViewer';
 
 const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';
