@@ -80,7 +80,7 @@ public class AppServicesAccessor
             var js = _scopedServices.GetRequiredService<IJSRuntime>();
             _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>(); // Must go first
             _scopedServices = null;
-            JSRuntimeWithDisconnectGuard.MarkAsDisconnected(js);
+            SafeJSRuntime.MarkDisconnected(js);
             AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
         }
     }

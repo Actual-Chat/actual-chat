@@ -56,11 +56,11 @@ public static class Program
 
             await host.RunAsync().ConfigureAwait(false);
         }
-        catch (Exception exc) {
+        catch (Exception e) {
             if (!isSentryEnabled)
                 throw;
 
-            SentrySdk.CaptureException(exc);
+            SentrySdk.CaptureException(e);
             await SentrySdk.FlushAsync().ConfigureAwait(false);
             throw;
         }

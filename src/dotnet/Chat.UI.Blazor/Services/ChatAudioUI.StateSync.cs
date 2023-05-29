@@ -271,14 +271,14 @@ public partial class ChatAudioUI
         try {
             await foreach (var _ in WatchIdleAudioBoundaries(chatId, options, cancellationToken).ConfigureAwait(false)) { }
         }
-        catch (Exception exc) {
+        catch (Exception e) {
             if (cancellationToken.IsCancellationRequested) {
-                // Cancellation happens when user click on restart button in maui app.
-                // We should avoid updating recent chats at this moment.
+                // Cancellation happens when user click on restart button in MAUI app.
+                // We should avoid updating recent chats when this happens.
                 stopListening = false;
             }
             else {
-                Log.LogError(exc, "StopIdleListening failed");
+                Log.LogError(e, "StopIdleListening failed");
                 throw;
             }
         }

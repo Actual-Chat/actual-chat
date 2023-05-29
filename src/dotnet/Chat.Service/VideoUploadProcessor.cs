@@ -33,8 +33,8 @@ public class VideoUploadProcessor : IUploadProcessor
             return video is null ? null : new Size(video.Width, video.Height);
 
         }
-        catch (Exception exc) {
-            Log.LogWarning(exc, "Failed to extract video info from '{FileName}'", file.FileName);
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to extract video info from '{FileName}'", file.FileName);
             return null;
         }
     }

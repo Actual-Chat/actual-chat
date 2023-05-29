@@ -58,8 +58,8 @@ public class ImageUploadProcessor : IUploadProcessor
             var imageInfo = await Image.IdentifyAsync(stream).ConfigureAwait(false);
             return imageInfo;
         }
-        catch (Exception exc) {
-            Log.LogWarning(exc, "Failed to extract image info from '{FileName}'", file.FileName);
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to extract image info from '{FileName}'", file.FileName);
             return null;
         }
     }
