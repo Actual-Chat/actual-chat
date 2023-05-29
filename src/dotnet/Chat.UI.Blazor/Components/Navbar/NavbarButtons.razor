@@ -8,14 +8,16 @@
     var m = State.Value;
 }
 
-<NavbarButton
-    Tooltip="Create"
-    data-bubble="@(BubbleRef.New<CreateChatBubble>())"
-    data-bubble-priority="201"
-    data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
-    Click="OnCreateChatClick">
-    <i class="icon-plus text-2xl font-medium"></i>
-</NavbarButton>
+@if (m.IsActive()) {
+    <NavbarButton
+        Tooltip="Create"
+        data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+        data-bubble-priority="201"
+        data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
+        Click="OnCreateChatClick">
+        <i class="icon-plus text-2xl font-medium"></i>
+    </NavbarButton>
+}
 
 <ChatsNavbarButton/>
 
