@@ -103,40 +103,38 @@
                     }
                 }
 
-                @if (m.AllowEditJoinAnonymouslyProps) {
-                    <FormBlock>
-                        @if (_form.IsPublic) {
-                            <TileItem class="field-allow-guest">
-                                <Icon>
-                                    <i class="icon-guest text-2xl"></i>
-                                </Icon>
-                                <Content>
-                                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
-                                </Content>
-                                <Caption>
-                                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
-                                </Caption>
-                                <Right>
-                                    <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
-                                </Right>
-                            </TileItem>
-                        }
-                        <TileItem class="field-allow-anonym">
+                <FormBlock>
+                    @if (_form.IsPublic) {
+                        <TileItem class="field-allow-guest">
                             <Icon>
-                                <i class="icon-anonym text-2xl"></i>
+                                <i class="icon-guest text-2xl"></i>
                             </Icon>
                             <Content>
-                                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                                <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
                             </Content>
                             <Caption>
-                                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                                <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
                             </Caption>
                             <Right>
-                                <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                                <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
                             </Right>
                         </TileItem>
-                    </FormBlock>
-                }
+                    }
+                    <TileItem class="field-allow-anonym">
+                        <Icon>
+                            <i class="icon-anonym text-2xl"></i>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                        </Content>
+                        <Caption>
+                            <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                        </Caption>
+                        <Right>
+                            <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                        </Right>
+                    </TileItem>
+                </FormBlock>
             }
         }
         </Body>
@@ -167,7 +165,6 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -200,12 +197,10 @@
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
         var link = Links.Chat(ModalModel.Chat.Id).ToDisplayUrl(UrlMapper);
-        var allowEditJoinAnonymouslyProps = await Features.Get<UIFeatures.AllowEditJoinAnonymouslyChatProps, bool>(cancellationToken);
         return new() {
             Rules = rules,
             Link = link,
             Invites = invites,
-            AllowEditJoinAnonymouslyProps = allowEditJoinAnonymouslyProps,
         };
     }
 
@@ -284,7 +279,6 @@
         public AuthorRules? Rules { get; init; }
         public DisplayUrl? Link { get; init; }
         public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
-        public bool AllowEditJoinAnonymouslyProps { get; init; }
     }
 
     public sealed record Model(Chat Chat);
