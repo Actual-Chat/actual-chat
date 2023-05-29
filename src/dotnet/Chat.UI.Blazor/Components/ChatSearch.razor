@@ -14,8 +14,9 @@
     Cancelled="OnSearchCancelled"/>
 
 @code{
-    private ChatEntry? _lastFoundEntry;
     private bool _isSearchEnabled;
+    private ChatEntry? _lastFoundEntry;
+    private string? _lastSearchText;
 
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -31,12 +32,15 @@
 
     private async Task OnSearchTriggered(string text) {
         var chatId = Chat.Id;
+        if (!OrdinalEquals(text, _lastSearchText))
+            _lastFoundEntry = null;
         var nextEntry = await Chats.FindNext(Session, chatId, _lastFoundEntry?.LocalId, text, CancellationToken.None);
         if (nextEntry == null)
             return;
 
         ChatUI.HighlightEntry(nextEntry.Id, navigate: true);
         _lastFoundEntry = nextEntry;
+        _lastSearchText = text;
     }
 
     private void OnSearchCancelled()
