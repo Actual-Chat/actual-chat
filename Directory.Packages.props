@@ -24,6 +24,7 @@
     <SentryVersion>3.29.1</SentryVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">
+    <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="7.0.2" />
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="6.0.2" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />

@@ -1,13 +1,17 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Claims;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
+using ActualChat.Users.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.FileProviders.Physical;
+using Newtonsoft.Json;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
@@ -52,6 +56,32 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             options.ClientSecret = Settings.GoogleClientSecret;
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
             options.BackchannelHttpHandler = GoogleBackchannelHttpHandler;
+        });
+        authentication.AddApple(options => {
+            options.Events.OnCreatingTicket = context => {
+                if (context.Identity == null)
+                    return Task.CompletedTask;
+
+                if (!context.HttpContext.Request.Form.TryGetValue("user", out var userValue))
+                    return Task.CompletedTask;
+
+                var userInfo = JsonConvert.DeserializeObject<AppleUser>(userValue.ToString());
+                if (userInfo?.Name == null)
+                    return Task.CompletedTask;
+
+                if (!userInfo.Name.FirstName.IsNullOrEmpty())
+                    context.Identity.AddClaim(new Claim(ClaimTypes.GivenName, userInfo.Name.FirstName));
+
+                if (!userInfo.Name.LastName.IsNullOrEmpty())
+                    context.Identity.AddClaim(new Claim(ClaimTypes.Surname, userInfo.Name.LastName));
+
+                return Task.CompletedTask;
+            };
+            options.ClientId = Settings.AppleClientId;
+            options.KeyId = Settings.AppleKeyId;
+            options.TeamId = Settings.AppleTeamId;
+            options.GenerateClientSecret = true;
+            options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
         });
         /*
         authentication.AddMicrosoftAccount(options => {
