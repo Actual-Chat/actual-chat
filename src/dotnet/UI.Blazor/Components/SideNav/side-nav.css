@@ -7,17 +7,17 @@
     @apply transition-transform duration-200 ease-out;
     transition-property: transform, opacity;
     transform: none;
-    touch-action: pan-y;
+    touch-action: manipulation;
     will-change: custom; /* Ensures its own composition layer */
 }
 .side-nav > *:first-child {
     @apply transition-opacity duration-200 ease-out;
 }
 
-.side-nav.side-nav-dragging {
+.side-nav.pulling {
     @apply transition-none;
 }
-.side-nav.side-nav-dragging > *:first-child {
+.side-nav.pulling > *:first-child {
     @apply transition-none;
 }
 

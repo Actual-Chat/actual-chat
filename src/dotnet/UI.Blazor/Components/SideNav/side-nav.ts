@@ -12,10 +12,11 @@ const { debugLog } = Log.get('SideNav');
 
 const Deceleration = 2; // 1 = full width/second^2
 const PullBoundary = 0.35; // 35% of the screen width
-const PrePullDistance = 5; // DeviceInfo.isAndroid ? 5 : 10; // In CSS pixels
+const PrePullDistance1 = 5; // Normal pre-pull distance in CSS pixels
+const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
 const MinPullDurationMs = 20;
-const MaxSetVisibilityWaitDurationMs = 500;
+const MaxSetVisibilityWaitDurationMs = 1000;
 
 enum SideNavSide {
     Left,
@@ -25,6 +26,8 @@ enum SideNavSide {
 interface SideNavOptions {
     side: SideNavSide;
 }
+
+type TouchResponsiveControlKind = 'none' | 'control' | 'scrollable' | 'unknown';
 
 export class SideNav extends DisposableBag {
     public static left: SideNav | null = null;
@@ -36,6 +39,13 @@ export class SideNav extends DisposableBag {
     public get side(): SideNavSide { return this.options.side; }
     public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
     public get isOpen() { return !this.element.classList.contains('closed'); }
+    public get isPulling() { return this.element.classList.contains('pulling')}
+    public set isPulling(value: boolean) {
+        if (value)
+            this.element.classList.add('pulling');
+        else
+            this.element.classList.remove('pulling');
+    }
 
     public static create(
         element: HTMLDivElement,
@@ -53,7 +63,7 @@ export class SideNav extends DisposableBag {
         super();
         this.contentDiv = element.firstElementChild as HTMLElement;
         this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
-        const pullGestureDisposer = DeviceInfo.isIos && BrowserInfo.appKind !== 'MauiApp' ? null : SideNavPullDetectGesture.use(this);
+        const pullGestureDisposer = SideNavPullDetectGesture.use(this);
         if (this.side == SideNavSide.Left) {
             SideNav.left = this;
             this.addDisposables(pullGestureDisposer, { dispose() { SideNav.left = null }});
@@ -75,29 +85,18 @@ export class SideNav extends DisposableBag {
             document.body.classList.remove(this.bodyClassWhenOpen);
     }
 
-    public beginPull() {
-        this.element.classList.add('side-nav-dragging');
+    public resetTransform(): void {
+        this.setTransform(this.isOpen ? 1 : 0);
     }
 
-    public endPull() {
-        this.element.classList.remove('side-nav-dragging');
-    }
-
-    public setTransform(openRatio: number | null = null): void {
-        if (ScreenSize.isWide()) {
+    public setTransform(openRatio: number): void {
+        const mustTransform = !ScreenSize.isWide() && (this.isOpen ? openRatio < 1 : openRatio > 0);
+        if (!mustTransform) {
             this.element.style.transform = null;
             this.element.style.opacity = null;
-            // this.element.style.backgroundColor = null;
-            // this.element.style.backdropFilter = null;
-            // this.contentDiv.style.opacity = null;
-            return;
-        }
-        if (openRatio === null) {
-            this.element.style.transform = null;
-            this.element.style.opacity = null;
-            // this.element.style.backgroundColor = null;
-            // this.element.style.backdropFilter = null;
-            // this.contentDiv.style.opacity = null;
+            this.element.style.backgroundColor = null;
+            this.element.style.backdropFilter = null;
+            this.contentDiv.style.opacity = null;
             return;
         }
 
@@ -108,9 +107,9 @@ export class SideNav extends DisposableBag {
         const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.2));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
         this.element.style.opacity = opacity.toString();
-        // this.element.style.backdropFilter = `blur(1.5px)`
-        // this.element.style.backgroundColor = `rgba(1,1,1,0)`;
-        // this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
+        this.element.style.backdropFilter = `blur(1.5px)`
+        this.element.style.backgroundColor = `rgba(1,1,1,0)`;
+        this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
     }
 
     public setVisibility = serialize(async (isOpen: boolean): Promise<void> => {
@@ -128,7 +127,12 @@ class SideNavPullDetectGesture extends Gesture {
     public static use(sideNav: SideNav): Disposable {
         debugLog?.log(`SideNavPullDetectGesture.use[${sideNav.side}]`);
 
-        return fromSubscription(DocumentEvents.capturedPassive.touchStart$.subscribe((event: TouchEvent) => {
+        const hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.appKind !== 'MauiApp';
+        const touchStartEvent = hasHistoryNavigationGesture
+            ? DocumentEvents.capturedActive.touchStart$
+            : DocumentEvents.capturedPassive.touchStart$;
+
+        return fromSubscription(touchStartEvent.subscribe((event: TouchEvent) => {
             if (ScreenSize.isWide())
                 return;
 
@@ -136,33 +140,48 @@ class SideNavPullDetectGesture extends Gesture {
                 return;
             if (document.querySelector('.ac-menu-host.has-overlay')) // Context menu is shown
                 return;
-            if (document.querySelector('.ac-bubble-host > .ac-bubble')) // Context menu is shown
+            if (document.querySelector('.ac-bubble-host > .ac-bubble')) // Walk-through bubble is shown
                 return;
 
-            const target = event.target;
-            if (target instanceof HTMLElement) {
-                if (hasPotentiallyTouchableParent(target))
-                    return;
-            }
-            else if (!(target instanceof SVGElement))
+            const prePullDistance = getPrePullDistance(event.target);
+            if (!prePullDistance)
                 return;
 
             if (sideNav.opposite?.isOpen === true) {
                 // The other SideNav is open
                 if (!sideNav.isOpen)
                     return; // And this SideNav is closed, so only other SideNav can be pulled
+                if (sideNav.side === SideNavSide.Right)
+                    return; // And this is the right SideNav - while the left one is always on top
             }
 
+            /*
             for (const activeGesture of Gestures.activeGestures) {
                 if (activeGesture instanceof SideNavPullGesture)
                     return;
             }
+            */
 
             const coords = getCoords(event);
             if (!coords)
                 return; // Not sure if this is possible, but just in case
 
-            Gestures.addActive(new SideNavPullDetectGesture(sideNav, coords, event));
+            if (hasHistoryNavigationGesture) {
+                let pullEdge = sideNav.side === SideNavSide.Left ? 0 : 1;
+                if (sideNav.isOpen)
+                    pullEdge = 1 - pullEdge;
+                const pullEdgeX = ScreenSize.width * pullEdge;
+
+                const headerFooterHeight = 56;
+                const isEdgeSwipe = Math.abs(coords.x - pullEdgeX) < 20;
+                const isHeaderOrFooterSwipe = coords.y <= 56 && coords.y >= (ScreenSize.height - headerFooterHeight);
+                const isControlSwipe = prePullDistance === PrePullDistance2;
+                const mustPreventHistoryNavigationGesture = isEdgeSwipe && !isHeaderOrFooterSwipe && !isControlSwipe;
+                if (mustPreventHistoryNavigationGesture)
+                    tryPreventDefaultForEvent(event);
+            }
+
+            Gestures.addActive(new SideNavPullDetectGesture(sideNav, coords, event, prePullDistance));
         }));
     }
 
@@ -170,6 +189,7 @@ class SideNavPullDetectGesture extends Gesture {
         public readonly sideNav: SideNav,
         public readonly origin: Vector2D,
         public readonly touchStartEvent: TouchEvent,
+        public readonly prePullDistance: number,
     ) {
         super();
         const initialState = new MoveState(0, sideNav.isOpen ? 1 : 0);
@@ -191,7 +211,7 @@ class SideNavPullDetectGesture extends Gesture {
             }
 
             const offset = coords.sub(this.origin);
-            if (offset.length < PrePullDistance || Date.now() - initialState.startedAt < PrePullDurationMs)
+            if (offset.length < prePullDistance || Date.now() - initialState.startedAt < PrePullDurationMs)
                 return; // Too small pull distance or too early to start the pull
 
             const isLeft = sideNav.side == SideNavSide.Left;
@@ -231,6 +251,8 @@ class SideNavPullDetectGesture extends Gesture {
 }
 
 class SideNavPullGesture extends Gesture {
+    private state: MoveState;
+
     constructor(
         public readonly sideNav: SideNav,
         public readonly origin: Vector2D,
@@ -244,52 +266,57 @@ class SideNavPullGesture extends Gesture {
         const isOpenSign = sideNav.isOpen ? 1 : -1;
         const openDirectionSign = isLeft ? 1 : -1;
         const allowedDirectionSign = openDirectionSign * -isOpenSign;
-        let state = initialState;
+        this.state = initialState;
 
         const endMove = (event: TouchEvent, isCancelled: boolean) => {
-            if (state === null)
+            if (this.state === null)
                 return;
 
-            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled, ', state:', state);
+            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled, ', state:', this.state);
 
-            const moveDuration = Date.now() - state.startedAt;
+            const moveDuration = Date.now() - this.state.startedAt;
             if (event.type === 'touchstart' || moveDuration < MinPullDurationMs)
                 isCancelled = true;
 
             const coords = getCoords(event);
             if (coords && !isCancelled) {
                 move(event);
-                if (state === null!) // move(event) may call endMove(..., true)
+                if (this.state === null!) // move(event) may call endMove(..., true)
                     return;
             }
 
             let mustBeOpen = isOpen;
-            if (state && !isCancelled && !ScreenSize.isWide())
-                mustBeOpen = state.terminalOpenRatio > 0.5;
+            if (this.state && !isCancelled && !ScreenSize.isWide())
+                mustBeOpen = this.state.terminalOpenRatio > 0.5;
 
-            state = null; // Ended
-            sideNav.setTransform(mustBeOpen ? 1 : 0);
-            sideNav.endPull();
+            debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove: ending w/ mustBeOpen:`, mustBeOpen);
+            this.state = null; // Ended
             (async () => {
                 try {
+                    sideNav.isPulling = false;
                     if (sideNav.isOpen == mustBeOpen)
-                        return;
+                        return; // Note that we call sideNav.resetTransform() in finally { ... }
 
+                    // "Pre-apply" visibility change
+                    sideNav.setTransform(mustBeOpen ? 1 : 0);
+
+                    // Trigger server-side visibility change
                     await sideNav.setVisibility(mustBeOpen);
-                    // Make sure changes are applied to DOM
+
+                    // Wait when the changes are applied to DOM
                     const endTime = Date.now() + MaxSetVisibilityWaitDurationMs;
                     while (sideNav.isOpen != mustBeOpen && Date.now() < endTime)
                         await delayAsync(50);
                 }
                 finally {
-                    sideNav.setTransform(null);
+                    sideNav.resetTransform();
                     this.dispose();
                 }
             })();
         }
 
         const move = (event: TouchEvent) => {
-            if (state === null)
+            if (this.state === null)
                 return;
 
             if (ScreenSize.isWide()) {
@@ -311,12 +338,12 @@ class SideNavPullGesture extends Gesture {
             const pdx = dx * allowedDirectionSign; // Must be positive
             const pullRatio = clamp(pdx / (sideNav.element.clientWidth + 0.01), 0, 1);
             const openRatio = isOpen ? 1 - pullRatio : pullRatio;
-            state = new MoveState(pullRatio, openRatio, state);
-            sideNav.setTransform(state.openRatio);
+            this.state = new MoveState(pullRatio, openRatio, this.state);
+            sideNav.setTransform(this.state.openRatio);
         }
 
-        sideNav.beginPull();
-        sideNav.setTransform(null);
+        sideNav.isPulling = true;
+        sideNav.setTransform(isOpen ? 1 : 0);
         if (firstMoveEvent.type === 'touchend') {
             endMove(firstMoveEvent, false);
         } else {
@@ -380,16 +407,30 @@ function getCoords(event?: TouchEvent): Vector2D | null {
     return new Vector2D(touch.pageX, touch.pageY);
 }
 
-function hasPotentiallyTouchableParent(node: Node) {
-    if (!(node instanceof HTMLElement))
-        return false;
+function getPrePullDistance(node: EventTarget): number | null {
+    const controlKind = getTouchResponsiveControlKind(node);
+    debugLog?.log(`getPrePullDistance: node:`, node, `, controlKind:`, controlKind);
+    switch (controlKind) {
+    case 'none':
+        return PrePullDistance1;
+    case 'control':
+        return PrePullDistance2;
+    default: // 'scrollable' | 'unknown'
+        return null;
+    }
+}
 
-    if (node.tagName === 'INPUT')
-        return true;
-    if (node.tagName === 'BUTTON')
-        return true;
-    if (node.scrollWidth > node.clientWidth)
-        return true;
+function getTouchResponsiveControlKind(node: EventTarget): TouchResponsiveControlKind {
+    if (!(node instanceof HTMLElement || node instanceof SVGElement))
+        return 'unknown';
 
-    return hasPotentiallyTouchableParent(node.parentNode);
+    const tagName = node.tagName;
+    if (tagName === 'BODY' || tagName === 'HTML')
+        return 'none';
+    if (tagName === 'INPUT' || tagName === 'BUTTON' || tagName === 'LABEL')
+        return 'control';
+    if (node.scrollWidth > (node.clientWidth + 0.5))
+        return 'scrollable';
+
+    return getTouchResponsiveControlKind(node.parentNode);
 }
