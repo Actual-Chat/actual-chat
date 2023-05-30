@@ -16,6 +16,7 @@ export class VisualMediaViewer {
     private startX: number = 0;
     private deltaY: number = 0;
     private deltaX: number = 0;
+    private readonly originImageWidth: number = 0;
     private startDistance: number = 0;
     private startImageWidth: number = 0;
     private startImageTop: number = 0;
@@ -38,6 +39,7 @@ export class VisualMediaViewer {
         this.header = this.overlay.querySelector('.image-viewer-header');
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.footerHeaderToggle();
+        this.originImageWidth = this.image.getBoundingClientRect().width;
 
         fromEvent(window, 'wheel')
             .pipe(takeUntil(this.disposed$))
@@ -268,9 +270,18 @@ export class VisualMediaViewer {
 
     private onPointerUp = (event: PointerEvent) => {
         window.removeEventListener('pointermove', this.onPointerMove);
+        this.touchablePointerUpHandler(event);
+    };
+
+    private touchablePointerUpHandler = (event: PointerEvent) => {
+        let imageWidth = this.image.getBoundingClientRect().width;
+        if (imageWidth < this.originImageWidth) {
+            this.image.style.width = this.originImageWidth + 'px';
+            this.image.style.maxWidth = this.originImageWidth + 'px';
+        }
         window.removeEventListener('pointermove', this.onTouchableMove);
         this.removeEvent(event);
-    };
+    }
 
     private onTouchableMove = (event: PointerEvent) => {
         preventDefaultForEvent(event);
