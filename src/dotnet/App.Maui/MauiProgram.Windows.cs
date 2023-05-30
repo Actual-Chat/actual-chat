@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Notification.UI.Blazor;
 using Microsoft.Maui.LifecycleEvents;
 using Serilog;
@@ -28,6 +29,7 @@ public static partial class MauiProgram
 
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
+        services.AddTransient<IAppIconBadge>(_ => new AppIconBadge());
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
         services.AddScoped<INotificationPermissions>(_ => new WindowsNotificationPermissions());
     }

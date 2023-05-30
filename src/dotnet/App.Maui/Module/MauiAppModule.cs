@@ -26,6 +26,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         // UI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
+        services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));
 
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
