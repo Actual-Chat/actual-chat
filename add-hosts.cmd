@@ -12,11 +12,15 @@
 
     echo patching hosts file...
     set hostsFile=%WINDIR%\system32\drivers\etc\hosts
-    set hostsString=127.0.0.1  local.actual.chat media.local.actual.chat cdn.local.actual.chat
-    set newLine=^& echo.
+    echo determining ip address...
+    FOR /F "tokens=4 delims= " %%i in ('route print ^| find " 0.0.0.0"') do set localIp=%%i
+    set hosts=local.actual.chat media.local.actual.chat cdn.local.actual.chat
+    set hostsLine=%localIp%  local.actual.chat media.local.actual.chat cdn.local.actual.chat
 
-    find /C /I "%hostsString%" %hostsFile%
-    if %ERRORLEVEL% NEQ 0 ECHO %newLine%^%hostsString%>>%hostsFile%
+    set removeHostEntriesScript="(Get-Content "%hostsFile%") | where-object { $_ -notmatch '[0-9\.]+\s+%hosts%.*' } | Set-Content "%hostsFile%""
+    powershell -Command %removeHostEntriesScript%;
+    set addHostEntryScript="Add-Content -Path '%hostsFile%' -Value '%hostsLine%'"
+    powershell -Command %addHostEntryScript%;
     echo hosts file patched
 
     echo trusting certificate...
@@ -33,11 +37,24 @@ BATCH
 
 #!/bin/sh
 
-appendIfNotExists() {
-  LINE=$1
-  FILE=$2
+updateHostsFile() {
+  IP=$1
+  HOST=$2
+  FILE=$3
+
   sudo touch $FILE
-  sudo grep -qF -- "$LINE" "$FILE" || echo "$LINE" | sudo tee -a "$FILE"
+  line="$IP  $HOST"
+
+  if sudo grep -qF -- "$line" "$FILE"; then
+    echo "hosts is up-to-date, skipped"
+    return 1;
+  fi
+
+  if sudo grep -qF -- "$HOST" "$FILE"; then
+    sudo sed -i.bak "/$HOST/ s/.*/$line/g" "$FILE";
+  else
+    echo "$line" | sudo tee -a "$FILE";
+  fi
 }
 
 trustCertificate() {
@@ -60,7 +77,9 @@ trustCertificate() {
 }
 
 echo patching hosts...
-appendIfNotExists "127.0.0.1  local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
+localIp=$(ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}')
+[ -z "$localIp" ] && echo "Failed to detect local ip address" && exit 1
+updateHostsFile "$localIp" "local.actual.chat media.local.actual.chat cdn.local.actual.chat" "/etc/hosts"
 
 echo trusting actual.chat certificate...
 trustCertificate
