@@ -20,7 +20,7 @@ case MarkupUrlKind.Image:
        role="button"
        @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Image, Markup.Url))"
        @onclick:preventDefault="true">
-        <img src="@Markup.Url" alt="@Markup.Url"/>
+        <img draggable="false" src="@Markup.Url" alt="@Markup.Url"/>
     </a>
     break;
 default:

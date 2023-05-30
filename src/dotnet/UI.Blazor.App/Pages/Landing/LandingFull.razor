@@ -38,7 +38,7 @@
                     @if (isGuest) {
                         <button class="download-btn web-signin transparent" onclick="@(() => SignIn(googleScheme.Name))">
                             <span class="text-headline-1">Sign in for Web with</span>
-                            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
+                            <img draggable="false" src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
                         </button>
                         <button class="download-btn web-signin transparent md:hidden" onclick="@OnShowVideoClick">
                             <i class="icon-play-fill text-2xl"></i>
@@ -47,13 +47,13 @@
                         // Don't remove this button group
                         @* <SigninButtonGroup> *@
                         @*     <GoogleIcon> *@
-                        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
+                        @*         <img draggable="false" src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
                         @*     </GoogleIcon> *@
                         @*     <FacebookIcon> *@
-                        @*         <img src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8"> *@
+                        @*         <img draggable="false" src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8"> *@
                         @*     </FacebookIcon> *@
                         @*     <AppleIcon> *@
-                        @*         <img src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8"> *@
+                        @*         <img draggable="false" src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8"> *@
                         @*     </AppleIcon> *@
                         @* </SigninButtonGroup> *@
                     }
@@ -63,7 +63,7 @@
                 <video controls hidden muted playsinline loop class="landing-video">
                     <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
                 </video>
-                <img src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="landing-video-plug flex">
+                <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="landing-video-plug flex">
             </div>
         </div>
     </div>
@@ -76,7 +76,7 @@
     Class="scrollable">
 
     <LandingItemImage>
-        <img src="/dist/images/landing/evolution.svg" alt="evolution">
+        <img draggable="false" src="/dist/images/landing/evolution.svg" alt="evolution">
     </LandingItemImage>
     <LandingItemDescription Title="We used to speak, laugh, and cry">
         <p>
@@ -104,7 +104,7 @@
             We reimagine calls, texts and voice messages
         </LandingItemTitle>
         <LandingItemImage>
-            <img src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
+            <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
         </LandingItemImage>
         <LandingItemDescription Title="We reimagine calls, texts and voice messages" TitleClass="hidden md:flex">
             <p>
@@ -156,7 +156,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img src="/dist/images/landing/stressless.svg" alt="stressless">
+                <img draggable="false" src="/dist/images/landing/stressless.svg" alt="stressless">
             </LandingItemImage>
             <LandingItemDescription Title="Stressless">
                 <ul>
@@ -194,18 +194,18 @@
                 <div class="flex-y gap-y-4 justify-center w-full h-full">
                     <div class="flex-x gap-x-8 justify-center">
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-01.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-01.svg" alt="body">
                         </div>
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-02.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-02.svg" alt="body">
                         </div>
                     </div>
                     <div class="flex-x gap-x-8 justify-center">
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-03.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-03.svg" alt="body">
                         </div>
                         <div class="flex overflow-hidden justify-center items-center">
-                            <img src="/dist/images/landing/person-04.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-04.svg" alt="body">
                         </div>
                     </div>
                 </div>
@@ -237,7 +237,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img src="/dist/images/landing/synchronous.svg" alt="synchronous">
+                <img draggable="false" src="/dist/images/landing/synchronous.svg" alt="synchronous">
             </LandingItemImage>
             <LandingItemDescription Title="Real-time + asynchronous">
                 <ul>
@@ -269,7 +269,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img src="/dist/images/landing/productive.svg" alt="productive">
+                <img draggable="false" src="/dist/images/landing/productive.svg" alt="productive">
             </LandingItemImage>
             <LandingItemDescription Title="Productive">
                 <ul>
@@ -304,7 +304,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img src="/dist/images/landing/team-friendly.svg" alt="team-friendly">
+                <img draggable="false" src="/dist/images/landing/team-friendly.svg" alt="team-friendly">
             </LandingItemImage>
             <LandingItemDescription Title="Team-friendly">
                 <p>
@@ -351,7 +351,7 @@
             <LandingItemImage Class="flex-col gap-y-4 md:gap-y-12 md:flex-row items-center">
                 <div class="flex-x md:flex-y gap-y-4 items-center">
                     <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
-                        <img src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
                     </div>
                     <div class="w-1/2 md:w-auto px-8 text-center">
                         Many people prefer hearing your voice rather than reading your texts
@@ -360,7 +360,7 @@
 
                 <div class="flex-x md:flex-y gap-y-4 items-center">
                     <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
-                        <img src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
                     </div>
                     <div class="w-1/2 md:w-auto px-8 text-center">
                         For some, speaking is a stronger communication tool than writing
@@ -369,7 +369,7 @@
 
                 <div class="flex-x md:flex-y gap-y-4 items-center">
                     <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
-                        <img src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
                     </div>
                     <div class="w-1/2 md:w-auto px-8 text-center">
                         Jokes are almost always more fun when delivered verbally
@@ -457,11 +457,11 @@
                     <DownloadButton/>
                     <button class="download-btn web-signin" onclick="@(() => SignIn(googleScheme.Name))">
                         <span class="text-headline-1">Sign in for Web with</span>
-                        <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
+                        <img draggable="false" src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
                     </button>
                     <button class="download-btn ios-disabled" onclick="@(() => SignIn(googleScheme.Name))">
                         <span class="text-headline-1">Coming soon for iOs</span>
-                        <img src="/dist/images/landing/apple-logo-black.svg" alt="apple" class="h-5 w-5">
+                        <img draggable="false" src="/dist/images/landing/apple-logo-black.svg" alt="apple" class="h-5 w-5">
                     </button>
                 </div>
             }
