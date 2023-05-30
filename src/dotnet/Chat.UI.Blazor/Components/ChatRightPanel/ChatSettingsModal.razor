@@ -178,7 +178,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
-    [Inject] private IFeatures Features { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -218,7 +218,7 @@
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
         var link = Links.Chat(ModalModel.Chat.Id).ToDisplayUrl(UrlMapper);
-        var allowEditIsTemplateChat = await Features.Get<UIFeatures.AllowEditIsTemplateChat, bool>(cancellationToken);
+        var allowEditIsTemplateChat = await Features.Get<UIFeatures.EnableTemplateChats, bool>(cancellationToken);
         return new() {
             Rules = rules,
             Link = link,

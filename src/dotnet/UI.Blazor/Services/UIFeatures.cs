@@ -50,9 +50,6 @@ public static class UIFeatures
     public class EnableDownloadVisualMedia : ExperimentalFeature
     { }
 
-    public class AllowEditJoinAnonymouslyChatProps : ExperimentalFeature
-    { }
-
-    public class AllowEditIsTemplateChat : ExperimentalFeature
+    public class EnableTemplateChats : ExperimentalFeature
     { }
 }
