@@ -10,7 +10,7 @@ export class TuneUI {
         'cancel': [20],
         'open-modal': [20],
         'close-modal': [20],
-        'select-navbar-item': [20],
+        'select-navbar-item': [],
         // Recording
         'begin-recording': [100,50,50],
         'end-recording': [100],
