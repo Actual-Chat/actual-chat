@@ -17,8 +17,13 @@ export class VisualMediaViewer {
     private deltaY: number = 0;
     private deltaX: number = 0;
     private readonly originImageWidth: number = 0;
+    private readonly originImageHeight: number = 0;
+    private readonly originViewerWidth: number = 0;
+    private readonly originViewerHeight: number = 0;
     private startDistance: number = 0;
     private startImageWidth: number = 0;
+    private startImageHeight: number = 0;
+    private startViewerRect: DOMRect;
     private startImageTop: number = 0;
     private startImageLeft: number = 0;
     private headerBottom: number = 0;
@@ -39,23 +44,26 @@ export class VisualMediaViewer {
         this.header = this.overlay.querySelector('.image-viewer-header');
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.footerHeaderToggle();
-        this.originImageWidth = this.image.getBoundingClientRect().width;
+        this.originImageWidth = this.round(this.image.getBoundingClientRect().width);
+        this.originImageHeight = this.round(this.image.getBoundingClientRect().height);
+        this.originViewerWidth = this.round(this.imageViewer.getBoundingClientRect().width);
+        this.originViewerHeight = this.round(this.imageViewer.getBoundingClientRect().height);
 
         fromEvent(window, 'wheel')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: WheelEvent) => this.onWheel(event))
+            .subscribe((event: WheelEvent) => this.onWheel(event));
 
         fromEvent(window, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onPointerDown(event))
+            .subscribe((event: PointerEvent) => this.onPointerDown(event));
 
         fromEvent(window, 'pointerup')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onPointerUp(event))
+            .subscribe((event: PointerEvent) => this.onPointerUp(event));
 
         fromEvent(window, 'pointercancel')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onPointerUp(event))
+            .subscribe((event: PointerEvent) => this.onPointerUp(event));
     }
 
     public dispose() {
@@ -181,7 +189,7 @@ export class VisualMediaViewer {
     private getDistance() : number {
         let x = Math.abs(this.points[0].clientX - this.points[1].clientX);
         let y = Math.abs(this.points[0].clientY - this.points[1].clientY);
-        return Math.sqrt(x*x + y*y);
+        return this.round(Math.sqrt(x*x + y*y));
     }
 
     private removeEvent(event: PointerEvent) {
@@ -248,12 +256,27 @@ export class VisualMediaViewer {
                 preventDefaultForEvent(event);
             }
         } else if (event.pointerType == 'touch') {
+            window.addEventListener('pointermove', this.onTouchableMove);
+            this.image.style.touchAction = 'none';
             this.imageViewer.style.touchAction = 'none';
             this.overlay.style.touchAction = 'none';
             this.points.push(event);
+            this.startImageWidth = this.round(this.image.getBoundingClientRect().width);
+            this.startImageHeight = this.round(this.image.getBoundingClientRect().height);
+            this.startViewerRect = this.imageViewer.getBoundingClientRect();
             if (this.points.length === 2) {
-                this.startDistance = this.getDistance();
-                this.startImageWidth = this.imageViewer.getBoundingClientRect().width;
+                this.startDistance = this.round(this.getDistance());
+            } else if (this.points.length === 1) {
+                this.startY = event.pageY;
+                this.startX = event.pageX;
+                let target = event.target as HTMLElement;
+                if (this.imageViewer.contains(target)) {
+                    this.footerHeaderToggle();
+                } else if (!this.imageViewer.contains(target)
+                    && !this.footer.contains(target)
+                    && !this.header.contains(target)) {
+                    this.blazorRef.invokeMethodAsync('Close');
+                }
             }
             window.addEventListener('pointermove', this.onTouchableMove);
         }
@@ -270,18 +293,22 @@ export class VisualMediaViewer {
 
     private onPointerUp = (event: PointerEvent) => {
         window.removeEventListener('pointermove', this.onPointerMove);
-        this.touchablePointerUpHandler(event);
-    };
+        this.removeEvent(event);
+        if (this.points.length === 0) {
+            window.removeEventListener('pointermove', this.onTouchableMove);
+        }
+        let imageWidth = this.round(this.image.getBoundingClientRect().width);
+        let windowWidth = window.innerWidth;
 
-    private touchablePointerUpHandler = (event: PointerEvent) => {
-        let imageWidth = this.image.getBoundingClientRect().width;
-        if (imageWidth < this.originImageWidth) {
+        if (imageWidth > windowWidth * 3) {
+            this.image.style.width = (windowWidth * 3) + 'px';
+            this.image.style.maxWidth = (windowWidth * 3) + 'px';
+        } else if (imageWidth < this.originImageWidth) {
             this.image.style.width = this.originImageWidth + 'px';
             this.image.style.maxWidth = this.originImageWidth + 'px';
+            this.image.style.maxHeight = this.originImageHeight + 'px';
         }
-        window.removeEventListener('pointermove', this.onTouchableMove);
-        this.removeEvent(event);
-    }
+    };
 
     private onTouchableMove = (event: PointerEvent) => {
         preventDefaultForEvent(event);
@@ -290,20 +317,43 @@ export class VisualMediaViewer {
         );
         this.points[index] = event;
 
+        let windowWidth = window.innerWidth;
+        let windowHeight = window.innerHeight;
+
         if (this.points.length === 2) {
             let distance = this.getDistance();
             let scale = distance / this.startDistance;
-            let newWidth = this.round(this.startImageWidth * scale);
-            this.image.style.width = newWidth + 'px';
-            this.image.style.maxWidth = newWidth + 'px';
-            this.image.style.maxHeight = 'none';
+            let newImageWidth = this.round(this.startImageWidth * scale);
+            let newImageHeight = this.round(this.startImageHeight * scale);
+            this.image.style.width = newImageWidth + 'px';
+            this.image.style.maxWidth = newImageWidth + 'px';
+            this.image.style.maxHeight = newImageHeight + 'px';
         } else if (this.points.length === 1 && this.imageViewer.contains(event.target as HTMLElement)) {
-            let rect = this.imageViewer.getBoundingClientRect();
-            let topPosition = this.round(event.clientY - rect.top);
-            let leftPosition = this.round(event.clientX - rect.left);
-            this.imageViewer.style.top = topPosition + 'px';
-            this.imageViewer.style.left = leftPosition + 'px';
+            let viewer = this.imageViewer;
+            let rect = this.startViewerRect;
+            if (this.canMoveTouchable(rect)) {
+                let top = rect.top;
+                let right = rect.right;
+                let bottom = rect.bottom;
+                let left = rect.left;
+                let deltaY = event.pageY - this.startY;
+                let deltaX = event.pageX - this.startX;
+
+                let newTop = top + deltaY;
+                let newRight = right + deltaX;
+                let newBottom = bottom + deltaY;
+                let newLeft = left + deltaX;
+
+                viewer.style.left = newLeft + 'px';
+                viewer.style.top = newTop + 'px';
+            }
+        } else {
+            preventDefaultForEvent(event);
         }
+    }
+
+    private canMoveTouchable(rect: DOMRect) : boolean {
+        return rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight || rect.left < 0;
     }
 }
 

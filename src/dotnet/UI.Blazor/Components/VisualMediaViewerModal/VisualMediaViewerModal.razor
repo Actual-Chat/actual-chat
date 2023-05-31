@@ -62,6 +62,10 @@
     public void LogJS(string text)
         => Log.LogInformation(text);
 
+    [JSInvokable]
+    public void Close()
+        => CloseModal();
+
 
     public sealed record Model(
         string Url,
