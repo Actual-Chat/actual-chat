@@ -31,6 +31,7 @@
             }));
         _leftPanelVisibilityChanged = () => _isOpenDebouncer.Debounce(default);
 #endif
+        _isOpen = PanelsUI.Left.IsVisible.Value;
         _leftPanelVisibilityChanged = () => {
             _isOpen = PanelsUI.Left.IsVisible.Value;
             StateHasChanged();
