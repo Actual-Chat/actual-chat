@@ -33,12 +33,11 @@ export class SideNav extends DisposableBag {
     public static left: SideNav | null = null;
     public static right: SideNav | null = null;
     private readonly contentDiv: HTMLElement;
-    private readonly stateObserver: MutationObserver;
     private readonly bodyClassWhenOpen: string;
 
     public get side(): SideNavSide { return this.options.side; }
     public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
-    public get isOpen() { return !this.element.classList.contains('closed'); }
+    public get isOpen() { return this.element.dataset['sideNav'] === 'open'; }
     public get isPulling() { return this.element.classList.contains('pulling')}
     public set isPulling(value: boolean) {
         if (value)
@@ -63,19 +62,25 @@ export class SideNav extends DisposableBag {
         super();
         this.contentDiv = element.firstElementChild as HTMLElement;
         this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
-        const pullGestureDisposer = SideNavPullDetectGesture.use(this);
-        if (this.side == SideNavSide.Left) {
+        const stateObserver = new MutationObserver(() => this.updateBodyClassList());
+        stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
+        if (this.side == SideNavSide.Left)
             SideNav.left = this;
-            this.addDisposables(pullGestureDisposer, { dispose() { SideNav.left = null }});
-        }
-        else {
+        else
             SideNav.right = this;
-            this.addDisposables(pullGestureDisposer, { dispose() { SideNav.right = null }});
-        }
-
-        this.stateObserver = new MutationObserver(() => this.updateBodyClassList());
-        this.stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
+        const pullGestureDisposer = SideNavPullDetectGesture.use(this);
+        this.addDisposables(pullGestureDisposer, { dispose() {
+            if (SideNav.left === this)
+                SideNav.left = null;
+            else if (SideNav.right === this)
+                SideNav.right = null;
+            stateObserver.disconnect();
+        }});
         this.updateBodyClassList();
+        delayAsync(250).then(() => {
+            // No transitions immediately after the first render
+            this.element.classList.add('animated');
+        });
     }
 
     public updateBodyClassList(): void {
@@ -93,7 +98,6 @@ export class SideNav extends DisposableBag {
         const mustTransform = !ScreenSize.isWide() && (this.isOpen ? openRatio < 1 : openRatio > 0);
         if (!mustTransform) {
             this.element.style.transform = null;
-            this.element.style.opacity = null;
             this.element.style.backgroundColor = null;
             this.element.style.backdropFilter = null;
             this.contentDiv.style.opacity = null;
@@ -104,12 +108,11 @@ export class SideNav extends DisposableBag {
         const closeDirectionSign = isLeft ? -1 : 1;
         const closeRatio = 1 - openRatio;
         const translateRatio = closeDirectionSign * closeRatio;
-        const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.2));
+        const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.35));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
-        this.element.style.opacity = opacity.toString();
-        this.element.style.backdropFilter = `blur(1.5px)`
+        this.element.style.backdropFilter = `blur(3px)`
         this.element.style.backgroundColor = `rgba(1,1,1,0)`;
-        this.contentDiv.style.opacity = `${Math.pow(openRatio, 0.33)}`;
+        this.contentDiv.style.opacity = opacity.toString();
     }
 
     public setVisibility = serialize(async (isOpen: boolean): Promise<void> => {

@@ -2,34 +2,38 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class LeftPanel
 {
-    private readonly IMutableState<bool> _isVisible;
     private readonly object _lock = new();
+    private readonly IMutableState<bool> _isVisible;
+    private Dispatcher? _dispatcher;
+    private ILogger? _log;
 
     private IServiceProvider Services => Owner.Services;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private History History => Owner.History;
+    private Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
-    public event EventHandler? VisibilityChanged;
+    public event Action? VisibilityChanged;
 
     public LeftPanel(PanelsUI owner, bool? initialLeftPanelIsVisible)
     {
         Owner = owner;
+        _isVisible = Services.StateFactory().NewMutable(true);
+        History.Register(new OwnHistoryState(this, true));
+
         var isVisibleOverride = GetIsVisibleOverride()
             ?? initialLeftPanelIsVisible
             ?? (History.LocalUrl.IsChat() ? false : null);
-
-        var isVisible = isVisibleOverride ?? true;
-        _isVisible = Services.StateFactory().NewMutable(isVisible);
-        History.Register(new OwnHistoryState(this, isVisible));
-
+        // Log.LogDebug($".ctor: {History.LocalUrl} -> {isVisibleOverride}, {initialLeftPanelIsVisible}");
         if (isVisibleOverride == false)
             SetIsVisible(false);
     }
 
     public void SetIsVisible(bool value)
     {
+        Dispatcher.AssertAccess();
         if (GetIsVisibleOverride() is { } valueOverride)
             value = valueOverride;
 
@@ -40,8 +44,9 @@ public class LeftPanel
                 _isVisible.Value = value;
         }
         if (oldIsVisible != value) {
+            Log.LogDebug("SetIsVisible: {IsVisible}", value);
             History.Save<OwnHistoryState>();
-            VisibilityChanged?.Invoke(this, EventArgs.Empty);
+            VisibilityChanged?.Invoke();
         }
     }
 
@@ -49,7 +54,7 @@ public class LeftPanel
 
     private bool? GetIsVisibleOverride()
     {
-        if (IsWide())
+        if (Owner.IsWide())
             return true;
 
         var localUrl = History.LocalUrl;
@@ -60,9 +65,6 @@ public class LeftPanel
 
         return null;
     }
-
-    private bool IsWide()
-        => Owner.ScreenSize.Value.IsWide();
 
     // Nested types
 
@@ -78,7 +80,10 @@ public class LeftPanel
             => With(Host.IsVisible.Value);
 
         public override void Apply(HistoryTransition transition)
-            => Host.SetIsVisible(IsVisible);
+        {
+            Host.SetIsVisible(IsVisible);
+            _ = Host.Owner.HandleHistoryTransition(transition);
+        }
 
         public override HistoryState? Back()
             => BackStepCount == 0 ? null : With(!IsVisible);

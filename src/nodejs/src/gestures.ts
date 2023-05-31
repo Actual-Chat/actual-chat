@@ -7,6 +7,7 @@ import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
+import { TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
 import { Log } from 'logging';
 
@@ -110,7 +111,7 @@ class DataHrefGesture extends Gesture {
         if (event.defaultPrevented)
             return;
 
-        const [, href] = getOrInheritData(event.target, 'href');
+        const [element, href] = getOrInheritData(event.target, 'href');
         if (href === null)
             return;
 
@@ -124,7 +125,10 @@ class DataHrefGesture extends Gesture {
             return;
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
+        const tuneName = element.dataset['hrefTune'];
         FocusUI.blur();
+        if (tuneName)
+            TuneUI.play(tuneName);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
         else

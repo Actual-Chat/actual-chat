@@ -10,6 +10,7 @@ export class TuneUI {
         'cancel': [20],
         'open-modal': [20],
         'close-modal': [20],
+        'select-navbar-item': [20],
         // Recording
         'begin-recording': [100,50,50],
         'end-recording': [100],
@@ -19,7 +20,6 @@ export class TuneUI {
         'stop-historical-playback': [20],
         'stop-realtime-playback': [20],
         // Chat UI
-        'select-chat': [],
         'pin-unpin-chat': [50],
         // ChatMessageEditor
         'send-message': [50],

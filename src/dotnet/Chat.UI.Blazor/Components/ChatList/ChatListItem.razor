@@ -24,7 +24,7 @@ else {
         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
         @attributes="@Attributes">
         <ChildContent>
-            <div class="flex-1 flex-x items-center gap-x-2" @onclick="()=>OnClick(chat.Id)">
+            <div class="flex-1 flex-x items-center gap-x-2">
                 <ChatIcon Chat="chatState.Chat"/>
                 <div class="grid justify-start items-start gap-y-1">
                     <span class="text-headline-1 text-02 truncate">
@@ -137,23 +137,6 @@ else {
             ChatState = chatState,
             IsLastItemInBlock = isLastItemInBlock,
         };
-    }
-
-    private async Task OnClick(ChatId chatId)
-    {
-        var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
-        _ = tuneUI.Play("select-chat");
-        if (ScreenSize.IsWide())
-            return;
-
-        ChatUI.SelectChat(chatId);
-
-        // This part hides LeftPanel when you select this chat
-        var chatUrl = Links.Chat(chatId);
-        var history = ChatUI.Services.GetRequiredService<History>();
-        await history.WhenNavigatedTo(chatUrl);
-        var panelsUI = ChatUI.Services.GetRequiredService<PanelsUI>();
-        panelsUI.Middle.EnsureVisible();
     }
 
     public sealed record Model {

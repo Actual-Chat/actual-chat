@@ -47,11 +47,11 @@ public partial class History
                     // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                     DebugLog?.LogDebug(message, uri);
                 }
-                var eventArgs = new LocationChangedEventArgs(uri, true);
-                var newItem = mustReplace
-                    ? _currentItem with { Uri = uri }
-                    : NewItemUnsafe(uri);
-                LocationChange(eventArgs, newItem, mustReplace);
+                Nav.NavigateTo(uri, new NavigationOptions() {
+                    ForceLoad = false,
+                    ReplaceHistoryEntry = mustReplace,
+                    HistoryEntryState = mustReplace ? ItemIdFormatter.Format(_currentItem.Id) : null,
+                });
             });
         }
     }

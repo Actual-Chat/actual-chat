@@ -46,6 +46,6 @@
     public void Dispose()
         => PanelsUI.Left.VisibilityChanged -= OnNavbarVisibilityChanged;
 
-    private void OnNavbarVisibilityChanged(object? sender, EventArgs e)
+    private void OnNavbarVisibilityChanged()
         => StateHasChanged();
 }

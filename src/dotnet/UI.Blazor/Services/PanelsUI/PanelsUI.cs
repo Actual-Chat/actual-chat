@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services.Internal;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public class PanelsUI : WorkerBase, IHasServices
@@ -30,19 +32,43 @@ public class PanelsUI : WorkerBase, IHasServices
         this.Start();
     }
 
-    public bool IsNarrow()
-        => ScreenSize.Value.IsNarrow();
+    public void HidePanels()
+    {
+        if (IsWide())
+            return;
+
+        Left.SetIsVisible(false);
+        Right.SetIsVisible(false);
+    }
+
+    public async ValueTask HandleHistoryTransition(HistoryTransition transition)
+    {
+        if (transition.LocationChangeKind != LocationChangeKind.NewUri)
+            return;
+
+        var url = new LocalUrl(transition.Item.Uri);
+        if (!(IsWide() || url.IsChatRoot())) {
+            await History.WhenNavigationCompleted;
+            HidePanels();
+        }
+    }
+
     public bool IsWide()
         => ScreenSize.Value.IsWide();
 
+    // Protected & private methods
+
     protected override Task OnRun(CancellationToken cancellationToken)
         => History.Dispatcher.InvokeAsync(async () => {
+            var dispatcher = History.Dispatcher;
             var lastIsWide = IsWide();
             await foreach (var _ in ScreenSize.Changes(cancellationToken)) {
                 var isWide = IsWide();
                 if (lastIsWide != isWide) {
                     lastIsWide = isWide;
-                    Left.SetIsVisible(Left.IsVisible.Value); // It changes to the right one anyway
+                    await dispatcher
+                        .InvokeAsync(() => Left.SetIsVisible(Left.IsVisible.Value)) // Changes it to the right one
+                        .ConfigureAwait(false);
                 }
             }
         });

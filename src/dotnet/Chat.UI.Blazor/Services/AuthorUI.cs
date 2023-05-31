@@ -59,8 +59,5 @@ public sealed class AuthorUI
         var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
         var localUrl = Links.Chat(peerChatId);
         _ = History.NavigateTo(localUrl);
-        await History.WhenNavigatedTo(localUrl);
-        var panelsUI = Services.GetRequiredService<PanelsUI>();
-        panelsUI.Middle.EnsureVisible();
     }
 }

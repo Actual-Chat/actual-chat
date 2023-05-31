@@ -21,15 +21,6 @@ public class MiddlePanel
             ComputeIsVisible);
     }
 
-    public void EnsureVisible()
-    {
-        if (Owner.IsWide())
-            return;
-
-        Owner.Left.SetIsVisible(false);
-        Owner.Right.SetIsVisible(false);
-    }
-
     private async Task<bool> ComputeIsVisible(IComputedState<bool> state, CancellationToken cancellationToken)
     {
         var screenSize = await Owner.ScreenSize.Use(cancellationToken).ConfigureAwait(false);

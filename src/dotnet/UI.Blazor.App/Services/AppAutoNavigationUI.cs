@@ -79,7 +79,7 @@ public class AppAutoNavigationUI : AutoNavigationUI
             else {
                 // Ensure middle panel is visible after we land on /chat/<chatId> page
                 var panelsUI = Services.GetRequiredService<PanelsUI>();
-                panelsUI.Middle.EnsureVisible();
+                panelsUI.HidePanels();
             }
         }
     }
