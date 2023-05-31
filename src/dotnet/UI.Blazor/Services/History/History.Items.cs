@@ -12,7 +12,10 @@ public partial class History
     private readonly LruCache<long, HistoryItem> _itemById = new(MaxItemCount);
 
     private HistoryItem NewItemUnsafe(string? uri = null)
-        => new(this, _currentItem.Id, uri ?? _uri, _currentItem.States) { Id = NewItemId() };
+        => NewItemUnsafe(NewItemId(), uri);
+
+    private HistoryItem NewItemUnsafe(long itemId, string? uri = null)
+        => new(this, _currentItem.Id, uri ?? _uri, _currentItem.States) { Id = itemId };
 
     private HistoryItem? GetItemByIdUnsafe(long id)
         => _itemById.GetValueOrDefault(id);
@@ -38,17 +41,20 @@ public partial class History
         return item;
     }
 
-    private void AddItem(ref HistoryItem item)
+    private void AddItem(ref HistoryItem item, bool validate = true)
     {
-        if (item.BackItemId != _currentItem.Id)
-            throw StandardError.Internal("AddHistoryItem: item.BackItemId != CurrentItem.Id");
+        if (item.BackItemId != _currentItem.Id) {
+            if (validate)
+                throw StandardError.Internal("AddHistoryItem: item.BackItemId != CurrentItem.Id");
+            item = item with { BackItemId = _currentItem.Id };
+        }
 
         RegisterCurrentItem(item);
     }
 
-    private void ReplaceItem(ref HistoryItem item)
+    private void ReplaceItem(ref HistoryItem item, bool validate = true)
     {
-        if (item.Id != _currentItem.Id)
+        if (validate && item.Id != _currentItem.Id)
             throw StandardError.Internal("ReplaceHistoryItem: item.Id != CurrentItem.Id");
 
         RegisterCurrentItem(item);

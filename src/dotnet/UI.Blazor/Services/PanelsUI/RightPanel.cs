@@ -6,10 +6,10 @@ public class RightPanel
 {
     private const string StatePrefix = nameof(RightPanel) + "UI";
     private readonly IStoredState<bool> _isVisible;
-    private readonly object _lock = new();
 
     private IServiceProvider Services => Owner.Services;
     private History History => Owner.History;
+    private Dispatcher Dispatcher => Owner.Dispatcher;
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
@@ -37,16 +37,13 @@ public class RightPanel
         => SetIsVisible(!IsVisible.Value);
 
     public void SetIsVisible(bool value)
-    {
-        bool oldIsVisible;
-        lock (_lock) {
-            oldIsVisible = _isVisible.Value;
-            if (oldIsVisible != value)
-                _isVisible.Value = value;
-        }
-        if (oldIsVisible != value)
+        => Dispatcher.InvokeAsync(() => {
+            if (_isVisible.Value == value)
+                return;
+
+            _isVisible.Value = value;
             History.Save<OwnHistoryState>();
-    }
+        });
 
     // Nested types
 

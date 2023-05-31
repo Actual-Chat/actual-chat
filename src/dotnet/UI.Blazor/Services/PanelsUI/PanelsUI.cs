@@ -6,6 +6,7 @@ public class PanelsUI : WorkerBase, IHasServices
 {
     public IServiceProvider Services { get; }
     public History History { get; }
+    public Dispatcher Dispatcher { get; }
     public IState<ScreenSize> ScreenSize { get; }
 
     public LeftPanel Left { get; }
@@ -16,6 +17,7 @@ public class PanelsUI : WorkerBase, IHasServices
     {
         Services = services;
         History = services.GetRequiredService<History>();
+        Dispatcher = History.Dispatcher;
 
         var browserInfo = services.GetRequiredService<BrowserInfo>();
         if (!browserInfo.WhenReady.IsCompleted)
@@ -50,7 +52,7 @@ public class PanelsUI : WorkerBase, IHasServices
         if (!(IsWide() || url.IsChatRoot())) {
             // We want to make sure HidePanels() creates an additional history step,
             // otherwise "Back" from chat will hide the panel AND select the prev. chat.
-            await History.WhenNavigationCompleted;
+            await History.WhenNavigationCompleted();
             HidePanels();
         }
     }
@@ -61,14 +63,13 @@ public class PanelsUI : WorkerBase, IHasServices
     // Protected & private methods
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => History.Dispatcher.InvokeAsync(async () => {
-            var dispatcher = History.Dispatcher;
+        => Dispatcher.InvokeAsync(async () => {
             var lastIsWide = IsWide();
             await foreach (var _ in ScreenSize.Changes(cancellationToken)) {
                 var isWide = IsWide();
                 if (lastIsWide != isWide) {
                     lastIsWide = isWide;
-                    await dispatcher
+                    await Dispatcher
                         .InvokeAsync(() => Left.SetIsVisible(Left.IsVisible.Value)) // Changes it to the right one
                         .ConfigureAwait(false);
                 }

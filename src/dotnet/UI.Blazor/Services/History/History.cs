@@ -9,17 +9,17 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class History : IHasServices, IDisposable
 {
     public const int MaxItemCount = 200;
-    public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1.5);
 
     private Session? _session;
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<History>? _backendRef;
     private readonly TaskCompletionSource<Unit> _whenReadySource;
 
-    private object Lock { get; } = new();
     private ILogger Log { get; }
     private ILogger? DebugLog { get; }
 
+    internal object Lock { get; } = new();
     internal HistoryItemIdFormatter ItemIdFormatter { get; }
 
     // We intentionally expose a number of services here, coz it's convenient to access them via History
@@ -28,9 +28,9 @@ public partial class History : IHasServices, IDisposable
     public HostInfo HostInfo { get; }
     public UrlMapper UrlMapper { get; }
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    public MomentClockSet Clocks { get; }
     public NavigationManager Nav { get; }
     public IJSRuntime JS { get; }
+    public NavigationQueue NavigationQueue { get; }
 
     public Task WhenReady => _whenReadySource.Task;
 
@@ -58,19 +58,17 @@ public partial class History : IHasServices, IDisposable
         ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
-        Clocks = services.Clocks();
         Nav = services.GetRequiredService<NavigationManager>();
         JS = services.GetRequiredService<IJSRuntime>();
+        NavigationQueue = new NavigationQueue(this); // Services must be initialized before this call
 
         _isSaveSuppressed = new RegionalValue<bool>(false);
-        _saveRegion = new NoRecursionRegionWithExitAction("Save", Lock, Log);
-        _locationChangeRegion = new NoRecursionRegionWithExitAction("LocationChange", Lock, Log);
+        _saveRegion = new NoRecursionRegion("Save", Lock, Log);
+        _locationChangeRegion = new NoRecursionRegion("LocationChange", Lock, Log);
         _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
-        _whenNavigationCompletedSource = TaskCompletionSourceExt.New<Unit>();
         _whenReadySource = TaskCompletionSourceExt.New<Unit>();
-        _processNextNavigationActionUnsafeCached = () => ProcessNextNavigationUnsafe();
 
         if (!HostInfo.AppKind.IsTestServer())
             Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);

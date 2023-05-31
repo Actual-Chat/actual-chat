@@ -68,7 +68,6 @@ public class AppAutoNavigationUI : AutoNavigationUI
 
         DebugLog?.LogDebug("HandleNavigateTo: {Url}, mustReplace = {MustReplace}", url, mustReplace);
         await History.NavigateTo(url, mustReplace).ConfigureAwait(true);
-        await History.WhenNavigationCompleted.ConfigureAwait(true);
 
         if (url.IsChat()) {
             if (url != originalUrl) {

@@ -99,7 +99,7 @@
 
     private async Task OnAuthorClicked() {
         Modal.Close();
-        await History.WhenNavigationCompleted;
+        await History.WhenNavigationCompleted();
         await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
     }
 
@@ -113,7 +113,7 @@
 
     private async Task OnSettingsClick() {
         Modal.Close();
-        await History.WhenNavigationCompleted;
+        await History.WhenNavigationCompleted();
         _ = UIEventHub.Publish(new ShowSettingsEvent());
     }
 }

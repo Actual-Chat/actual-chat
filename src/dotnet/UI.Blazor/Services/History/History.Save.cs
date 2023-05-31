@@ -5,10 +5,11 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class History
 {
     private readonly RegionalValue<bool> _isSaveSuppressed;
-    private readonly NoRecursionRegionWithExitAction _saveRegion;
+    private readonly NoRecursionRegion _saveRegion;
 
     public HistoryItem Save()
     {
+        Dispatcher.AssertAccess();
         using var _ = _saveRegion.Enter();
         if (_isSaveSuppressed.Value) {
             DebugLog?.LogDebug("Save: suppressed");
@@ -28,9 +29,11 @@ public partial class History
         return EndSave(item, baseItem);
     }
 
-    public HistoryItem Save<TState>() => Save(typeof(TState));
+    public HistoryItem Save<TState>()
+        => Save(typeof(TState));
     public HistoryItem Save(Type stateType)
     {
+        Dispatcher.AssertAccess();
         using var _ = _saveRegion.Enter();
         if (_isSaveSuppressed.Value) {
             DebugLog?.LogDebug("Save {StateType}: suppressed", stateType.GetName(true));
@@ -78,15 +81,15 @@ public partial class History
                 BackItemId = baseItem.Id,
             };
             AddItem(ref item);
-            _saveRegion.ExitAction = () => AddNavigationHistoryEntry(item);
-            DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry({Item})", item.ToString());
+            _saveRegion.ExitAction = () => AddHistoryEntry(item, true);
+            DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", item.ToString());
             break;
         case < 0:
             // Backward state
             var backItem = GetItemByIdUnsafe(baseItem.BackItemId);
             if (backItem != null && backItem.IsIdenticalTo(item)) {
                 item = _currentItem = backItem;
-                _saveRegion.ExitAction = () => NavigateBack();
+                _saveRegion.ExitAction = () => NavigateBack(true);
                 DebugLog?.LogDebug("EndSave: +NavigateBack({Item})", item.ToString());
             }
             else
@@ -100,8 +103,8 @@ public partial class History
     {
         if (ReplaceItem(ref item, out var _)) {
             var itemCopy = item;
-            _saveRegion.ExitAction = () => AddNavigationHistoryEntry(itemCopy);
-            DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry({Item})", itemCopy.ToString());
+            _saveRegion.ExitAction = () => AddHistoryEntry(itemCopy, true);
+            DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", itemCopy.ToString());
         }
         else
             DebugLog?.LogDebug("EndSave: done");

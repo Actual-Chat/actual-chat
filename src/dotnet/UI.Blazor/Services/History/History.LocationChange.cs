@@ -5,24 +5,21 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
 {
-    private readonly NoRecursionRegionWithExitAction _locationChangeRegion;
+    private readonly NoRecursionRegion _locationChangeRegion;
 
-    private void LocationChange(
-        LocationChangedEventArgs eventArgs,
-        HistoryItem? newItem = null,
-        bool mustReplace = false)
+    private void LocationChange(LocationChangedEventArgs eventArgs, bool mustReplace = false)
     {
         using var _ = _locationChangeRegion.Enter();
-        if (DebugLog != null) {
-            var intercepted = eventArgs.IsNavigationIntercepted ? "intercepted" : "internal";
-            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            DebugLog.LogDebug($"-> LocationChange: {intercepted} '{{Location}}' #{{State}}",
-                eventArgs.Location,
-                eventArgs.HistoryEntryState);
-        }
+        var historyEntryState = eventArgs.HistoryEntryState;
+        DebugLog?.LogDebug(
+            "-> LocationChange: {Kind} '{Location}' #{State}",
+            eventArgs.IsNavigationIntercepted ? "intercepted" : "internal",
+            eventArgs.Location, historyEntryState);
 
+        Action? exitAction = null;
+        long? parsedHistoryEntryState = null;
         try {
-            // Saving current state
+            // Saving the current state
             Save();
 
             var uri = _uri = Nav.GetLocalUrl().Value;
@@ -32,15 +29,16 @@ public partial class History
 
             HistoryItem currentItem;
             var locationChangeKind = LocationChangeKind.HistoryMove;
-            if (newItem == null
-                && ItemIdFormatter.Parse(eventArgs.HistoryEntryState) is { } itemId
-                && GetItemByIdUnsafe(itemId) is { } existingItem) {
+            parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
+            var existingItemId = parsedHistoryEntryState.GetValueOrDefault();
+            var hasValidHistoryEntryState = existingItemId > 0;
+            var existingItem = hasValidHistoryEntryState && GetItemByIdUnsafe(existingItemId) is { } item ? item : null;
+            if (existingItem != null) {
                 currentItem = _currentItem = existingItem;
                 if (!OrdinalEquals(uri, currentItem.Uri)) {
                     Log.LogWarning(
                         "LocationChange: Uri mismatch, expected: {Expected}, actual: {Actual} - fixed",
-                        currentItem.Uri,
-                        uri);
+                        currentItem.Uri, uri);
                     currentItem = currentItem.WithUri(uri);
                     ReplaceItem(ref currentItem);
                 }
@@ -54,25 +52,18 @@ public partial class History
             }
             else {
                 locationChangeKind = LocationChangeKind.NewUri;
-                currentItem = newItem ?? NewItemUnsafe();
-                if (mustReplace)
-                    ReplaceItem(ref currentItem);
-                else
-                    AddItem(ref currentItem);
-                _locationChangeRegion.ExitAction = () => {
-                    if (newItem != null && !mustReplace)
-                        AddNavigationHistoryEntry(currentItem);
-                    else
-                        ReplaceNavigationHistoryEntry(currentItem);
-                };
+                currentItem = hasValidHistoryEntryState ? NewItemUnsafe(existingItemId) : NewItemUnsafe();
+                if (mustReplace) {
+                    ReplaceItem(ref currentItem, false);
+                    if (!hasValidHistoryEntryState)
+                        exitAction = () => ReplaceHistoryEntry(currentItem, true);
+                }
+                else {
+                    AddItem(ref currentItem, false);
+                    if (!hasValidHistoryEntryState)
+                        exitAction = () => AddHistoryEntry(currentItem, true);
+                }
             }
-
-            /*
-            if (currentItem.IsIdenticalTo(lastItem)) {
-                DebugLog?.LogDebug("LocationChange: same state as now, nothing to do");
-                return;
-            }
-            */
 
             var transition = new HistoryTransition(currentItem, lastItem, locationChangeKind);
             DebugLog?.LogDebug(
@@ -87,17 +78,13 @@ public partial class History
             catch (Exception ex) {
                 Log.LogError(ex, "LocationChange: One of LocationChanged handlers failed");
             }
-            var exitAction = _locationChangeRegion.ExitAction!;
-            _locationChangeRegion.ExitAction = exitAction == Delegates.Noop
-                ? _processNextNavigationActionUnsafeCached
-                : () => {
-                    try {
-                        exitAction.Invoke();
-                    }
-                    finally {
-                        ProcessNextNavigationUnsafe();
-                    }
-                };
+            try {
+                exitAction?.Invoke();
+            }
+            finally {
+                if (parsedHistoryEntryState is { } expectedItemId)
+                    NavigationQueue.TryComplete(expectedItemId);
+            }
         }
     }
 
@@ -157,7 +144,7 @@ public partial class History
         // Adding "Back" item
         if (ReplaceItem(ref item, out backItem)) {
             DebugLog?.LogDebug("Transition: adding Back item");
-            _locationChangeRegion.ExitAction = () => AddNavigationHistoryEntry(item);
+            _locationChangeRegion.ExitAction = () => AddHistoryEntry(item);
         }
         else
             Log.LogWarning("Transition: Back item couldn't be added");

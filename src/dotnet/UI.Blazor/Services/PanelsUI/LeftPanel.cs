@@ -2,15 +2,13 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class LeftPanel
 {
-    private readonly object _lock = new();
     private readonly IMutableState<bool> _isVisible;
-    private Dispatcher? _dispatcher;
     private ILogger? _log;
 
     private IServiceProvider Services => Owner.Services;
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private History History => Owner.History;
-    private Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
+    private Dispatcher Dispatcher => Owner.Dispatcher;
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
@@ -32,23 +30,17 @@ public class LeftPanel
     }
 
     public void SetIsVisible(bool value)
-    {
-        Dispatcher.AssertAccess();
-        if (GetIsVisibleOverride() is { } valueOverride)
-            value = valueOverride;
+        => Dispatcher.InvokeAsync(() => {
+            if (GetIsVisibleOverride() is { } valueOverride)
+                value = valueOverride;
+            if (_isVisible.Value == value)
+                return;
 
-        bool oldIsVisible;
-        lock (_lock) {
-            oldIsVisible = _isVisible.Value;
-            if (oldIsVisible != value)
-                _isVisible.Value = value;
-        }
-        if (oldIsVisible != value) {
-            Log.LogDebug("SetIsVisible: {IsVisible}", value);
+            // Log.LogDebug("SetIsVisible: {IsVisible}", value);
+            _isVisible.Value = value;
             History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke();
-        }
-    }
+        });
 
     // Private methods
 
