@@ -72,7 +72,9 @@
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
-    [Parameter] public LandingLeftMenu Owner { get; init; } = null!;
+    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // ReSharper disable once RedundantNameQualifier
+    [Parameter] public  ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenu Owner { get; init; } = null!;
     [Parameter] public bool ShowHome { get; init; }
 
     protected override ComputedState<Model>.Options GetStateOptions()

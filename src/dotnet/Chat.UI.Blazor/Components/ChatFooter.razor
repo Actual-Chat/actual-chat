@@ -56,7 +56,9 @@
     private ChatPage.FooterModel Model => ChatPageModel.Footer;
     private Chat Chat => ChatPageModel.Chat;
 
-    [Parameter, EditorRequired] public ChatPage.Model ChatPageModel { get; set; } = null!;
+    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // ReSharper disable once RedundantNameQualifier
+    [Parameter, EditorRequired] public ActualChat.Chat.UI.Blazor.Pages.ChatPage.Model ChatPageModel { get; set; } = null!;
 
     private async Task OnJoin() {
         if (!Model.HasMultipleAvatars) {
