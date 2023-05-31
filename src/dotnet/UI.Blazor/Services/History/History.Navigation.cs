@@ -54,9 +54,8 @@ public partial class History
 
     private Task NavigateBack(bool addInFront = false)
         => NavigationQueue.Enqueue(addInFront, "NavigateBack", () => {
-            var backItemId = _currentItem.BackItemId;
             _ = JS.EvalVoid("window.history.back()");
-            return backItemId;
+            return 0;
         }).WhenCompleted;
 
     private Task ReplaceHistoryEntry(HistoryItem item, bool addInFront = false)

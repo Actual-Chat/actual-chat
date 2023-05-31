@@ -82,13 +82,13 @@ public sealed class NavigationQueue
         }
     }
 
-    internal void TryComplete(long expectedId)
+    internal void TryComplete(long itemId)
     {
         Dispatcher.AssertAccess();
         if (_lastProcessedEntry?.ExpectedId is not { } vExpectedId)
             return;
 
-        if (vExpectedId == expectedId)
+        if (vExpectedId == 0 || vExpectedId == itemId)
             _lastProcessedEntry.TryComplete();
     }
 
