@@ -48,6 +48,8 @@ public class PanelsUI : WorkerBase, IHasServices
 
         var url = new LocalUrl(transition.Item.Uri);
         if (!(IsWide() || url.IsChatRoot())) {
+            // We want to make sure HidePanels() creates an additional history step,
+            // otherwise "Back" from chat will hide the panel AND select the prev. chat.
             await History.WhenNavigationCompleted;
             HidePanels();
         }
