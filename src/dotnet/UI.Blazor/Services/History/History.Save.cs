@@ -86,7 +86,7 @@ public partial class History
             break;
         case < 0:
             // Backward state
-            var backItem = GetItemByIdUnsafe(baseItem.BackItemId);
+            var backItem = GetItemById(baseItem.BackItemId);
             if (backItem != null && backItem.IsIdenticalTo(item)) {
                 item = _currentItem = backItem;
                 _saveRegion.ExitAction = () => NavigateBack(true);

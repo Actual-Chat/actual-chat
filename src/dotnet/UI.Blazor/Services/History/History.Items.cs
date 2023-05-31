@@ -11,13 +11,13 @@ public partial class History
     private volatile HistoryItem _defaultItem;
     private readonly LruCache<long, HistoryItem> _itemById = new(MaxItemCount);
 
-    private HistoryItem NewItemUnsafe(string? uri = null)
-        => NewItemUnsafe(NewItemId(), uri);
+    private HistoryItem NewItem(string? uri = null)
+        => NewItem(NewItemId(), uri);
 
-    private HistoryItem NewItemUnsafe(long itemId, string? uri = null)
+    private HistoryItem NewItem(long itemId, string? uri = null)
         => new(this, _currentItem.Id, uri ?? _uri, _currentItem.States) { Id = itemId };
 
-    private HistoryItem? GetItemByIdUnsafe(long id)
+    private HistoryItem? GetItemById(long id)
         => _itemById.GetValueOrDefault(id);
 
     private long NewItemId()
@@ -67,7 +67,7 @@ public partial class History
         if (item.Id == 0)
             throw StandardError.Internal("ReplaceHistoryItemWithGeneratedBackItem: item.Id == 0");
 
-        backItem = GetItemByIdUnsafe(item.BackItemId);
+        backItem = GetItemById(item.BackItemId);
         if (backItem != null) { // Already has back item
             ReplaceItem(ref item);
             return false;

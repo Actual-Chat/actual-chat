@@ -32,7 +32,7 @@ public partial class History
             parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
             var existingItemId = parsedHistoryEntryState.GetValueOrDefault();
             var hasValidHistoryEntryState = existingItemId > 0;
-            var existingItem = hasValidHistoryEntryState && GetItemByIdUnsafe(existingItemId) is { } item ? item : null;
+            var existingItem = hasValidHistoryEntryState && GetItemById(existingItemId) is { } item ? item : null;
             if (existingItem != null) {
                 currentItem = _currentItem = existingItem;
                 if (!OrdinalEquals(uri, currentItem.Uri)) {
@@ -52,7 +52,7 @@ public partial class History
             }
             else {
                 locationChangeKind = LocationChangeKind.NewUri;
-                currentItem = hasValidHistoryEntryState ? NewItemUnsafe(existingItemId) : NewItemUnsafe();
+                currentItem = hasValidHistoryEntryState ? NewItem(existingItemId) : NewItem();
                 if (mustReplace) {
                     ReplaceItem(ref currentItem, false);
                     if (!hasValidHistoryEntryState)
@@ -134,7 +134,7 @@ public partial class History
 
         // Special case: we might be at the very beginning of the history,
         // but current state requires us to have "Back" item.
-        var backItem = GetItemByIdUnsafe(item.BackItemId);
+        var backItem = GetItemById(item.BackItemId);
         var mustAddBackItem =
             backItem == null // There is no "back" item in history
             && item.HasBackSteps; // And the state isn't "base"

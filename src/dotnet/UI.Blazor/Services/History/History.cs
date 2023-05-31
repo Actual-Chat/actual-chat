@@ -35,7 +35,7 @@ public partial class History : IHasServices, IDisposable
     public Task WhenReady => _whenReadySource.Task;
 
     public HistoryItem? this[long itemId] {
-        get { lock (Lock) return GetItemByIdUnsafe(itemId); }
+        get { lock (Lock) return GetItemById(itemId); }
     }
 
     public HistoryItem CurrentItem {
@@ -79,6 +79,7 @@ public partial class History : IHasServices, IDisposable
 
     public async Task Initialize(List<object?>? initCalls = null)
     {
+        Dispatcher.AssertAccess();
         try {
             LocationChange(new LocationChangedEventArgs(Nav.Uri, true));
 
