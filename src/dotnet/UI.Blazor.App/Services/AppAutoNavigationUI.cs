@@ -32,30 +32,15 @@ public class AppAutoNavigationUI : AutoNavigationUI
         }
 
         // The part below is tricky: we want to wait for actual NavigationManager.Location change
-        var nav = History.Nav;
-        var whenNavigatedSource = TaskCompletionSourceExt.New<Unit>();
-        var onLocationChanged = (EventHandler<LocationChangedEventArgs>)OnLocationChanged;
-        nav.LocationChanged += onLocationChanged;
         try {
             Log.LogInformation("AutoNavigate to {Url}", url);
-            await HandleNavigateTo(url, AutoNavigationReason.Initial).ConfigureAwait(false);
-            await whenNavigatedSource.Task
+            await HandleNavigateTo(url, AutoNavigationReason.Initial)
                 .WaitAsync(TimeSpan.FromMilliseconds(250), cancellationToken)
                 .ConfigureAwait(true);
             Log.LogInformation("AutoNavigate to {Url}: completed", url);
         }
         catch (TimeoutException) {
             Log.LogInformation("AutoNavigate to {Url}: timed out", url);
-        }
-        finally {
-            nav.LocationChanged -= onLocationChanged;
-        }
-
-        void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        {
-            var navUrl = nav.GetLocalUrl();
-            if (navUrl == fixedUrl)
-                whenNavigatedSource.TrySetResult(default);
         }
     }
 
@@ -89,7 +74,7 @@ public class AppAutoNavigationUI : AutoNavigationUI
             return url;
 
         var chatUI = Services.GetRequiredService<ChatUI>();
-        var defaultChatId = await chatUI.GetDefaultChatId(cancellationToken).ConfigureAwait(true);
+        var defaultChatId = await chatUI.GetDefaultChatId(cancellationToken).ConfigureAwait(false);
         return Links.Chat(defaultChatId);
     }
 }
