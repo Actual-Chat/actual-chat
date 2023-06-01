@@ -217,7 +217,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         if (string.IsNullOrWhiteSpace(text) && command.Attachments.IsEmpty)
-            throw StandardError.Constraint("User cannot publish empty messages");
+            throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
