@@ -10,14 +10,22 @@
     var unusedAuthSchemas = AuthSchemas!.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
-@foreach (var (name, displayName) in unusedAuthSchemas) {
-    var title = "Sign in with " + displayName;
-    <MenuEntry Text="@title" Click="@(_ => SignIn(name))"/>
+@foreach (var schema in unusedAuthSchemas) {
+    var title = "Sign in with " + schema.DisplayName;
+    <MenuEntry Click="@(_ => SignIn(schema.Name))">
+        <IconContent>
+            @if (schema.Icon != null) {
+                <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName" class="h-8 w-8">
+            }
+        </IconContent>
+        <TextContent>
+            @title
+        </TextContent>
+    </MenuEntry>
 }
 
 @code {
-    private static readonly HashSet<string> NoAuthSchemas = new();
-    private (string Name, string DisplayName)[]? AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+    private List<AuthSchemaModel>? AuthSchemas { get; set; }
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
@@ -34,10 +42,24 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            AuthSchemas = await ClientAuth.GetSchemas();
+            var schemas = await ClientAuth.GetSchemas();
+            AuthSchemas = schemas
+                .Select(schema => new AuthSchemaModel {
+                    Name = schema.Name,
+                    DisplayName = schema.DisplayName,
+                    Icon = schema.Name switch
+                    {
+                        IClientAuth.GoogleSchemeName => "/dist/images/landing/google-icon-color.svg",
+                        IClientAuth.AppleIdSchemeName => "/dist/images/landing/apple-icon-black.svg",
+                        _ => null,
+                    },
+                })
+                .ToList();
             StateHasChanged();
+
             return;
         }
+
         if (CanBeRendered())
             await Host.Position(this);
     }
@@ -47,4 +69,10 @@
 
     private void SignIn(string name)
         => ClientAuth.SignIn(name);
+
+    private class AuthSchemaModel {
+        public string Name { get; init; } = null!;
+        public string DisplayName { get; init; } = null!;
+        public string? Icon { get; init; }
+    }
 }
