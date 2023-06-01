@@ -176,11 +176,17 @@ class SideNavPullDetectGesture extends Gesture {
                 const pullEdgeX = ScreenSize.width * pullEdge;
 
                 const headerFooterHeight = 56;
-                const isEdgeSwipe = Math.abs(coords.x - pullEdgeX) < 20;
-                const isHeaderOrFooterSwipe = coords.y <= 56 && coords.y >= (ScreenSize.height - headerFooterHeight);
+                const isHeaderSwipe = coords.y <= headerFooterHeight;
+                const isFooterSwipe = coords.y >= (ScreenSize.height - headerFooterHeight);
+                if (isHeaderSwipe || isFooterSwipe)
+                    return;
+
                 const isControlSwipe = prePullDistance === PrePullDistance2;
-                const mustPreventHistoryNavigationGesture = isEdgeSwipe && !isHeaderOrFooterSwipe && !isControlSwipe;
-                if (mustPreventHistoryNavigationGesture)
+                if (isControlSwipe)
+                    return;
+
+                const isEdgeSwipe = Math.abs(coords.x - pullEdgeX) <= 20;
+                if (isEdgeSwipe)
                     tryPreventDefaultForEvent(event);
             }
 
