@@ -11,13 +11,13 @@ public partial class History
     {
         using var _ = _locationChangeRegion.Enter();
         var historyEntryState = eventArgs.HistoryEntryState;
+        var parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
         DebugLog?.LogDebug(
-            "-> LocationChange: {Kind} '{Location}' #{State}",
+            "-> LocationChange: {Kind} '{Location}' #{ParsedState} / {UnparsedState}",
             eventArgs.IsNavigationIntercepted ? "intercepted" : "internal",
-            eventArgs.Location, historyEntryState);
+            eventArgs.Location, parsedHistoryEntryState?.Format() ?? "null", historyEntryState);
 
         Action? exitAction = null;
-        long? parsedHistoryEntryState = null;
         try {
             // Saving the current state
             Save();
@@ -29,7 +29,6 @@ public partial class History
 
             HistoryItem currentItem;
             var locationChangeKind = LocationChangeKind.HistoryMove;
-            parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
             var existingItemId = parsedHistoryEntryState.GetValueOrDefault();
             var hasValidHistoryEntryState = existingItemId > 0;
             var existingItem = hasValidHistoryEntryState && GetItemById(existingItemId) is { } item ? item : null;
@@ -68,23 +67,28 @@ public partial class History
             var transition = new HistoryTransition(currentItem, lastItem, locationChangeKind);
             DebugLog?.LogDebug(
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                $"<- LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
+                $"LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
             Transition(transition);
         }
         finally {
             try {
                 LocationChanged?.Invoke(this, eventArgs);
             }
-            catch (Exception ex) {
-                Log.LogError(ex, "LocationChange: One of LocationChanged handlers failed");
+            catch (Exception e) {
+                Log.LogError(e, "LocationChange: One of LocationChanged handlers failed");
             }
             try {
                 exitAction?.Invoke();
             }
-            finally {
-                if (parsedHistoryEntryState is { } expectedItemId)
-                    NavigationQueue.TryComplete(expectedItemId);
+            catch (Exception e) {
+                Log.LogError(e, "LocationChange: exit action failed");
             }
+            if (parsedHistoryEntryState is { } expectedItemId) {
+                DebugLog?.LogDebug("<- LocationChange: completing #{ExpectedItemId}", expectedItemId);
+                NavigationQueue.TryComplete(expectedItemId);
+            }
+            else
+                DebugLog?.LogDebug("<- LocationChange");
         }
     }
 

@@ -54,7 +54,7 @@ public partial class History : IHasServices, IDisposable
     {
         Services = services;
         Log = services.LogFor(GetType());
-        DebugLog = Log.IfEnabled(LogLevel.Debug);
+        DebugLog = Constants.DebugMode.History ? Log.IfEnabled(LogLevel.Debug) : null;
         ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();

@@ -6,6 +6,7 @@ public sealed class NavigationQueue
 {
     private readonly LinkedList<Entry> _queue = new();
     private volatile Entry? _lastProcessedEntry;
+    private HashSet<long> _completedItemIds = new();
 
     internal ILogger Log { get; }
     internal ILogger? DebugLog { get; }
@@ -53,8 +54,8 @@ public sealed class NavigationQueue
         Dispatcher.AssertAccess();
         var entry = new Entry(this, title, action);
         DebugLog?.LogDebug(
-            "Enqueue({InsertInFront}, \"{Comment}\"): queue size = {Count}",
-            addInFront ? "addInFront" : "", title, _queue.Count);
+            "Enqueue({HeadOrTail}, \"{Comment}\"): queue size = {Count}",
+            addInFront ? "head" : "tail", title, _queue.Count);
         if (addInFront)
             _queue.AddFirst(entry);
         else
@@ -76,20 +77,36 @@ public sealed class NavigationQueue
 
             _queue.Remove(head);
             var entry = _lastProcessedEntry = head.Value;
+            _completedItemIds.Clear();
             entry.Invoke();
-            if (entry.ExpectedId.HasValue)
-                return;
+            if (entry.ExpectedId is not { } vExpectedId)
+                continue; // Invocation failed or no-op
+
+            if (_completedItemIds.Count == 0)
+                return; // entry.Invoke() will complete asynchronously or nothing to complete here
+
+            // entry.Invoke() does everything synchronously in WASM
+            if (vExpectedId == 0 || _completedItemIds.Contains(vExpectedId)) {
+                if (entry.TryComplete(false))
+                    continue; // We just completed the entry, so it's fine to continue the loop
+            }
+
+            // We couldn't complete the entry.
+            // Once it completes asynchronously or times out, ProcessNext will be invoked anyway.
+            break;
         }
     }
 
-    internal void TryComplete(long itemId)
+    internal bool TryComplete(long itemId)
     {
         Dispatcher.AssertAccess();
-        if (_lastProcessedEntry?.ExpectedId is not { } vExpectedId)
-            return;
+        if (_lastProcessedEntry?.ExpectedId is { } vExpectedId
+            && (vExpectedId == 0 || vExpectedId == itemId)
+            && _lastProcessedEntry.TryComplete())
+            return true;
 
-        if (vExpectedId == 0 || vExpectedId == itemId)
-            _lastProcessedEntry.TryComplete();
+        _completedItemIds.Add(itemId); // This allows ProcessNext to complete the entry synchronously
+        return false;
     }
 
     // Nested types
@@ -98,7 +115,7 @@ public sealed class NavigationQueue
     {
         private static readonly string TypeName = $"{nameof(NavigationQueue)}.{nameof(Entry)}";
 
-        private readonly TaskCompletionSource _whenCompletedSource = new();
+        private readonly TaskCompletionSource _whenCompletedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private CancellationTokenSource? _timeoutSource;
         private CancellationToken _timeoutToken;
 
@@ -118,7 +135,7 @@ public sealed class NavigationQueue
         public override string ToString()
         {
             var sCompleted = (WhenCompleted.IsCompleted ? "completed" : "not completed yet");
-            return $"{TypeName}(\"{Title}\", ExpectedId: {ExpectedId} - {sCompleted})";
+            return $"{TypeName}(\"{Title}\", ExpectedId: #{ExpectedId} - {sCompleted})";
         }
 
         internal void Invoke()
@@ -143,17 +160,20 @@ public sealed class NavigationQueue
             }, this);
         }
 
-        internal void TryComplete()
+        internal bool TryComplete(bool mustProcessNext = true)
         {
             if (!_whenCompletedSource.TrySetResult())
-                return;
+                return false;
 
             _timeoutSource.DisposeSilently();
             if (_timeoutToken.IsCancellationRequested)
                 Queue.Log.LogError("Entry timed out: {Entry}", this);
             else
                 Queue.DebugLog?.LogDebug("Entry completed: {Entry}", this);
-            _ = Queue.ProcessNext();
+
+            if (mustProcessNext)
+                _ = Queue.ProcessNext();
+            return true;
         }
     }
 }
