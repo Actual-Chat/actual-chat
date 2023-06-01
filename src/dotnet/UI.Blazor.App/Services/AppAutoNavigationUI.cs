@@ -44,29 +44,28 @@ public class AppAutoNavigationUI : AutoNavigationUI
         }
     }
 
-    protected override async Task HandleNavigateTo(LocalUrl url, AutoNavigationReason reason)
-    {
-        var cancellationToken = BlazorCircuitContext.StopToken;
-        var mustReplace = reason == AutoNavigationReason.Initial;
-        var originalUrl = url;
-        url = await FixUrl(url, cancellationToken).ConfigureAwait(true);
+    protected override Task HandleNavigateTo(LocalUrl url, AutoNavigationReason reason)
+        => Dispatcher.InvokeAsync(async () => {
+            var cancellationToken = BlazorCircuitContext.StopToken;
+            var mustReplace = reason == AutoNavigationReason.Initial;
+            var originalUrl = url;
+            url = await FixUrl(url, cancellationToken).ConfigureAwait(true);
 
-        DebugLog?.LogDebug("HandleNavigateTo: {Url}, mustReplace = {MustReplace}", url, mustReplace);
-        await History.NavigateTo(url, mustReplace).ConfigureAwait(true);
-
-        if (url.IsChat()) {
-            if (url != originalUrl) {
-                // Original URL was either home or chat root page
-                if (reason == AutoNavigationReason.Initial)
-                    InitialLeftPanelIsVisible = true; // Ensures left panel is open when PanelsUI is loaded
+            DebugLog?.LogDebug("HandleNavigateTo: {Url}, mustReplace = {MustReplace}", url, mustReplace);
+            await History.NavigateTo(url, mustReplace).ConfigureAwait(true);
+            if (url.IsChat()) {
+                if (url != originalUrl) {
+                    // Original URL was either home or chat root page
+                    if (reason == AutoNavigationReason.Initial)
+                        InitialLeftPanelIsVisible = true; // Ensures left panel is open when PanelsUI is loaded
+                }
+                else {
+                    // Ensure middle panel is visible after we land on /chat/<chatId> page
+                    var panelsUI = Services.GetRequiredService<PanelsUI>();
+                    panelsUI.HidePanels();
+                }
             }
-            else {
-                // Ensure middle panel is visible after we land on /chat/<chatId> page
-                var panelsUI = Services.GetRequiredService<PanelsUI>();
-                panelsUI.HidePanels();
-            }
-        }
-    }
+        });
 
     private async ValueTask<LocalUrl> FixUrl(LocalUrl url, CancellationToken cancellationToken)
     {
@@ -74,7 +73,7 @@ public class AppAutoNavigationUI : AutoNavigationUI
             return url;
 
         var chatUI = Services.GetRequiredService<ChatUI>();
-        var defaultChatId = await chatUI.GetDefaultChatId(cancellationToken).ConfigureAwait(false);
+        var defaultChatId = await chatUI.GetDefaultChatId(cancellationToken).ConfigureAwait(true);
         return Links.Chat(defaultChatId);
     }
 }
