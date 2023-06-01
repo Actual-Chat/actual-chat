@@ -5,6 +5,8 @@
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net7.0-windows10.0.22000.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
+    <AssemblyName>AC</AssemblyName>
+    <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <!--
@@ -18,6 +20,7 @@
 
     <!-- Display name -->
     <ApplicationTitle>Actual Chat</ApplicationTitle>
+    <appname>actual.chat</appname>
 
     <!-- App Identifier -->
     <ApplicationId>chat.actual.app</ApplicationId>
@@ -123,12 +126,19 @@
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
+    <UseShortFileNames>True</UseShortFileNames>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision>Automatic</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
+    <CodesignKey>Apple Development: Alexey Kochetov (3WV5NB4MDR)</CodesignKey>
+    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
   </PropertyGroup>
 
   <!-- Platform-specific references -->
@@ -147,7 +157,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
-    <PackageReference Include="Plugin.Firebase" />
+    <PackageReference Include="Plugin.Firebase.CloudMessaging" />
+    <PackageReference Include="Xamarin.Build.Download" />
   </ItemGroup>
 
   <!-- Resources -->

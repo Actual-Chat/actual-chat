@@ -2,7 +2,6 @@ using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Foundation;
-using Plugin.Firebase.Bundled.Platforms.iOS;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
 using UIKit;
@@ -37,7 +36,8 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         // prevent null ref for windows+iphone
         // see https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
 #if !HOTRESTART
-        CrossFirebase.Initialize(new(isCloudMessagingEnabled: true));
+        Firebase.Core.App.Configure();
+        FirebaseCloudMessagingImplementation.Initialize();
 #endif
     }
 
