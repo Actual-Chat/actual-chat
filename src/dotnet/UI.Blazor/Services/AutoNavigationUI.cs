@@ -39,7 +39,19 @@ public abstract class AutoNavigationUI : IHasServices
     }
 
     public Task AutoNavigate(CancellationToken cancellationToken)
-        => WhenAutoNavigated ??= HandleAutoNavigate(cancellationToken);
+        => WhenAutoNavigated ??= Dispatcher.InvokeAsync((Func<Task>)(() => {
+            LocalUrl url;
+            AutoNavigationReason reason;
+            lock (_lock) {
+                _autoNavigateStarted = true;
+                (url, reason) = _initialNavigationTargets.Count > 0
+                    ? _initialNavigationTargets.MaxBy(t => (int) t.Reason)
+                    : default;
+                Log.LogDebug("AutoNavigate: Targets.Count: {Count}, Url: {Url}, Reason: '{Reason}'",
+                    _initialNavigationTargets.Count, url, reason);
+            }
+            return HandleAutoNavigate(url, reason, cancellationToken);
+        }));
 
     public void DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
@@ -96,21 +108,4 @@ public abstract class AutoNavigationUI : IHasServices
 
     protected abstract Task HandleAutoNavigate(LocalUrl url, AutoNavigationReason reason, CancellationToken cancellationToken);
     protected abstract Task HandleNavigateTo(LocalUrl url, AutoNavigationReason reason);
-
-    // Private methods
-
-    private Task HandleAutoNavigate(CancellationToken cancellationToken)
-    {
-        LocalUrl url;
-        AutoNavigationReason reason;
-        lock (_lock) {
-            _autoNavigateStarted = true;
-            (url, reason) = _initialNavigationTargets.Count > 0
-                ? _initialNavigationTargets.MaxBy(t => (int) t.Reason)
-                : default;
-            Log.LogDebug("HandleAutoNavigate. Targets.Count={Count}, Url='{Url}', Reason='{Reason}'",
-                _initialNavigationTargets.Count, url, reason);
-        }
-        return HandleAutoNavigate(url, reason, cancellationToken);
-    }
 }

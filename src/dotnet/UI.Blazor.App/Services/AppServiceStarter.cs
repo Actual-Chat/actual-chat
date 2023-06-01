@@ -84,9 +84,10 @@ public class AppServiceStarter
         Tracer.Point("ThemeUI is ready");
 
         // Awaiting for account to be resolved
-        await accountUI.WhenLoaded.ConfigureAwait(true); // This .ConfigureAwait(true) is needed to run AutoNavigate
+        await accountUI.WhenLoaded.ConfigureAwait(false);
         Tracer.Point("AccountUI is ready");
 
+        // AutoNavigate automatically dispatches itself via Dispatcher
         await autoNavigationUI.AutoNavigate(cancellationToken).ConfigureAwait(false);
     }
 
