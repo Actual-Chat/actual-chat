@@ -68,9 +68,9 @@
 
 @code {
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
     // ReSharper disable once RedundantNameQualifier
@@ -95,11 +95,8 @@
         History.NavigateTo(url);
     }
 
-    private void SignIn()
-        => SignIn(IClientAuth.GoogleSchemeName);
-
-    private Task SignIn(string name) =>
-        ClientAuth.SignIn(name).AsTask();
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
 
     public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
 }

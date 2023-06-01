@@ -24,6 +24,7 @@
 @import './Components/SearchBox/search-box.css';
 @import './Components/SettingsPanel/settings-panel.css';
 @import './Components/SignIn/sign-in.css';
+@import './Components/SignIn/sign-in-modal.css';
 @import './Components/SideNav/side-nav.css';
 @import './Components/Skeleton/skeleton.css';
 @import './Components/Stepper/stepper.css';
