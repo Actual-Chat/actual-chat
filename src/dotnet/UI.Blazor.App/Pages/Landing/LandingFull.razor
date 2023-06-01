@@ -6,12 +6,6 @@
     var m = State.Value;
     var account = m.Account;
     var isGuest = account is not {IsGuestOrNone: false };
-    var user = account.User.OrGuest();
-    var avatar = account.Avatar;
-    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
-    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
-    var appleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.AppleIdSchemeName));
 }
 
 <div @ref="Ref" class="landing" xmlns="http://www.w3.org/1999/html">
@@ -38,29 +32,14 @@
                 <div class="flex-y md:flex-x gap-y-4 gap-x-4 py-8 md:py-4">
                     <DownloadButton/>
                     @if (isGuest) {
-                        <button class="download-btn web-signin transparent" onclick="@(() => SignIn(googleScheme.Name))">
-                            <span class="text-headline-1">Sign in for Web with</span>
-                            <img draggable="false" src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
+                        <button class="download-btn web-signin transparent" onclick="@SignIn">
+                            <span class="text-headline-1">Sign in</span>
                         </button>
-                        @* <button class="download-btn web-signin transparent" onclick="@(() => SignIn(appleScheme.Name))"> *@
-                        @*     <span class="text-headline-1">Sign in for Web with Apple </span> *@
-                        @* </button> *@
+
                         <button class="download-btn web-signin transparent md:hidden" onclick="@OnShowVideoClick">
                             <i class="icon-play-fill text-2xl"></i>
                             <span class="text-headline-1">Watch video how it works</span>
                         </button>
-                        // Don't remove this button group
-                        @* <SigninButtonGroup> *@
-                        @*     <GoogleIcon> *@
-                        @*         <img draggable="false" src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
-                        @*     </GoogleIcon> *@
-                        @*     <FacebookIcon> *@
-                        @*         <img draggable="false" src="/dist/images/landing/facebook-icon-blue.svg" alt="facebook" class="min-h-8 min-w-8"> *@
-                        @*     </FacebookIcon> *@
-                        @*     <AppleIcon> *@
-                        @*         <img draggable="false" src="/dist/images/landing/apple-icon-blue.svg" alt="apple" class="min-h-8 min-w-8"> *@
-                        @*     </AppleIcon> *@
-                        @* </SigninButtonGroup> *@
                     }
                 </div>
             </div>
@@ -460,13 +439,8 @@
             @if (ScreenSize.IsNarrow()) {
                 <div class="flex-y gap-y-4">
                     <DownloadButton/>
-                    <button class="download-btn web-signin" onclick="@(() => SignIn(googleScheme.Name))">
-                        <span class="text-headline-1">Sign in for Web with</span>
-                        <img draggable="false" src="/dist/images/landing/google-icon-color.svg" alt="google" class="h-8 w-8">
-                    </button>
-                    <button class="download-btn ios-disabled" onclick="@(() => SignIn(googleScheme.Name))">
-                        <span class="text-headline-1">Coming soon for iOs</span>
-                        <img draggable="false" src="/dist/images/landing/apple-logo-black.svg" alt="apple" class="h-5 w-5">
+                    <button class="download-btn web-signin" onclick="@SignIn">
+                        <span class="text-headline-1">Sign in</span>
                     </button>
                 </div>
             }
@@ -484,8 +458,6 @@
 </div>
 
 @code {
-    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private LandingLeftMenu? _landingLeftMenu;
@@ -499,9 +471,6 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
-
-    protected override async Task OnInitializedAsync()
-        => AuthSchemas = await ClientAuth.GetSchemas();
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
@@ -532,8 +501,8 @@
     private Task OnShowVideoClick()
         => ModalUI.Show(new LandingVideoModal.Model());
 
-    private Task SignIn(string name) =>
-    ClientAuth.SignIn(name).AsTask();
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
 
     private void OnMenuHandleClick()
         => _landingLeftMenu?.Open();
