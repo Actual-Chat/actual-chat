@@ -40,8 +40,8 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
-        var userId = new UserId(sessionInfo.UserId);
 
+        var userId = new UserId(sessionInfo.UserId);
         if (Computed.IsInvalidating()) {
             if (context.Operation().Items.Get<UserNameChangedTag>() != null)
                 _ = AuthBackend.GetUser(default, userId, default);
@@ -81,15 +81,14 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
             throw StandardError.Internal("No SessionInfo in operation's items.");
-        var userId = new UserId(sessionInfo.UserId);
 
         // Follow-up actions
+        var userId = new UserId(sessionInfo.UserId);
         new IServerKvas.MigrateGuestKeysCommand(command.Session)
             .EnqueueOnCompletion();
 
-        var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler
-
         // Raise events
+        var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler
         if (isNewUser)
             new NewUserEvent(userId)
                 .EnqueueOnCompletion();
