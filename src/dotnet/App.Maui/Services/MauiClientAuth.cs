@@ -46,7 +46,6 @@ internal sealed class MauiClientAuth : IClientAuth
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
         => ValueTask.FromResult(new[] {
             (IClientAuth.GoogleSchemeName, "Google"),
-            (IClientAuth.FacebookSchemeName, "Facebook"),
         });
 
     private async Task OpenSystemBrowserForSignIn(string url)
