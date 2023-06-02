@@ -57,3 +57,8 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
     @apply object-contain;
     max-height: calc(100vh - 7rem); /* screen height - close button height */
 }
+
+body.narrow .image-viewer-modal .image-viewer-content img,
+body.narrow .image-viewer-modal .image-viewer-content video {
+    max-height: 100vh;
+}
