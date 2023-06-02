@@ -104,12 +104,13 @@
 
 @if (isCloseWindowRequest) {
     <script>
-    	setTimeout(function () {
-    		window.close();
-    	}, 500)
+        setTimeout(function () {
+            window.opener && window.opener.location.reload(false);
+            window.close();
+        }, 500)
     </script>
     <div class="alert alert-primary">
-    	@(closeWindowFlowName) completed, you can close this window.
+        @(closeWindowFlowName) completed, you can close this window.
     </div>
 } else {
     <app id="app" class="flex flex-col h-full">
