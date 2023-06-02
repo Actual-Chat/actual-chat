@@ -2,6 +2,7 @@ import { preventDefaultForEvent } from 'event-handling';
 import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
 
 import { Log } from 'logging';
+import { setTimeout } from 'timerQueue';
 
 const { debugLog } = Log.get('VisualMediaViewer');
 
@@ -16,14 +17,18 @@ export class VisualMediaViewer {
     private startX: number = 0;
     private deltaY: number = 0;
     private deltaX: number = 0;
+    private prevY: number = 0;
+    private prevX: number = 0;
     private readonly originImageWidth: number = 0;
     private readonly originImageHeight: number = 0;
     private readonly originViewerWidth: number = 0;
     private readonly originViewerHeight: number = 0;
+    private movementStart: boolean = false;
     private startDistance: number = 0;
     private startImageWidth: number = 0;
     private startImageHeight: number = 0;
     private startViewerRect: DOMRect;
+    private startImageRect: DOMRect;
     private startImageTop: number = 0;
     private startImageLeft: number = 0;
     private headerBottom: number = 0;
@@ -261,21 +266,30 @@ export class VisualMediaViewer {
             this.imageViewer.style.touchAction = 'none';
             this.overlay.style.touchAction = 'none';
             this.points.push(event);
-            this.startImageWidth = this.round(this.image.getBoundingClientRect().width);
-            this.startImageHeight = this.round(this.image.getBoundingClientRect().height);
+            this.startImageRect = this.image.getBoundingClientRect();
+            this.startImageWidth = this.round(this.startImageRect.width);
+            this.startImageHeight = this.round(this.startImageRect.height);
             this.startViewerRect = this.imageViewer.getBoundingClientRect();
             if (this.points.length === 2) {
                 this.startDistance = this.round(this.getDistance());
             } else if (this.points.length === 1) {
                 this.startY = event.pageY;
                 this.startX = event.pageX;
+                this.prevY = this.startY;
+                this.prevX = this.startX;
                 let target = event.target as HTMLElement;
                 if (this.imageViewer.contains(target)) {
-                    this.footerHeaderToggle();
+                    setTimeout(() => {
+                        if (this.points.length < 2 && !this.movementStart)
+                            this.footerHeaderToggle();
+                    }, 50);
                 } else if (!this.imageViewer.contains(target)
                     && !this.footer.contains(target)
                     && !this.header.contains(target)) {
-                    this.blazorRef.invokeMethodAsync('Close');
+                    setTimeout(() => {
+                        if (this.points.length < 2 && !this.movementStart)
+                            this.blazorRef.invokeMethodAsync('Close');
+                    }, 50);
                 }
             }
             window.addEventListener('pointermove', this.onTouchableMove);
@@ -296,9 +310,11 @@ export class VisualMediaViewer {
         this.removeEvent(event);
         if (this.points.length === 0) {
             window.removeEventListener('pointermove', this.onTouchableMove);
+            this.movementStart = false;
         }
-        let imageWidth = this.round(this.image.getBoundingClientRect().width);
+        let imageWidth = this.round(this.imageViewer.getBoundingClientRect().width);
         let windowWidth = window.innerWidth;
+        let windowHeight = window.innerHeight;
 
         if (imageWidth > windowWidth * 3) {
             this.image.style.width = (windowWidth * 3) + 'px';
@@ -307,10 +323,14 @@ export class VisualMediaViewer {
             this.image.style.width = this.originImageWidth + 'px';
             this.image.style.maxWidth = this.originImageWidth + 'px';
             this.image.style.maxHeight = this.originImageHeight + 'px';
+            this.imageViewer.style.left = ((windowWidth - this.originImageWidth) / 2) + 'px';
+            this.imageViewer.style.top = ((windowHeight - this.originImageHeight) / 2) + 'px';
         }
     };
 
     private onTouchableMove = (event: PointerEvent) => {
+        if (!this.movementStart)
+            this.movementStart = true;
         preventDefaultForEvent(event);
         const index = this.points.findIndex(
             (e) => e.pointerId === event.pointerId
@@ -328,24 +348,61 @@ export class VisualMediaViewer {
             this.image.style.width = newImageWidth + 'px';
             this.image.style.maxWidth = newImageWidth + 'px';
             this.image.style.maxHeight = newImageHeight + 'px';
+            this.touchableCenter();
         } else if (this.points.length === 1 && this.imageViewer.contains(event.target as HTMLElement)) {
             let viewer = this.imageViewer;
-            let rect = this.startViewerRect;
-            if (this.canMoveTouchable(rect)) {
-                let top = rect.top;
-                let right = rect.right;
-                let bottom = rect.bottom;
-                let left = rect.left;
-                let deltaY = event.pageY - this.startY;
-                let deltaX = event.pageX - this.startX;
+            let imageRect = this.startImageRect;
+            let viewerRect = this.startViewerRect;
+            if (this.canMoveTouchable(imageRect)) {
+                let rect = this.image.getBoundingClientRect();
+                let imageTop = this.round(rect.top);
+                let imageRight = this.round(rect.right);
+                let imageBottom = this.round(rect.bottom);
+                let imageLeft = this.round(rect.left);
+                let deltaX = this.round(event.pageX - this.startX);
+                let deltaY = this.round(event.pageY - this.startY);
 
-                let newTop = top + deltaY;
-                let newRight = right + deltaX;
-                let newBottom = bottom + deltaY;
-                let newLeft = left + deltaX;
+                if (rect.width > windowWidth) {
+                    if (event.pageX > this.prevX) {
+                        // move right
+                        if (imageLeft >= 0) {
+                            viewer.style.left = 0 + 'px';
+                            this.startX = event.pageX;
+                        } else {
+                            viewer.style.left = this.round(viewerRect.left + deltaX) + 'px';
+                        }
+                    } else if (event.pageX < this.prevX) {
+                        // move left
+                        if (imageRight <= windowWidth) {
+                            viewer.style.left = this.round(windowWidth - viewerRect.width) + 'px';
+                            this.startX = event.pageX;
+                        } else {
+                            viewer.style.left = this.round(viewerRect.left + deltaX) + 'px';
+                        }
+                    }
+                    this.prevX = event.pageX;
+                }
 
-                viewer.style.left = newLeft + 'px';
-                viewer.style.top = newTop + 'px';
+                if (rect.height > windowHeight) {
+                    if (event.pageY > this.prevY) {
+                        // move down
+                        if (imageTop >= 0 && imageTop < 16) {
+                            viewer.style.top = (imageRect.top - viewerRect.top) + 'px';
+                            this.startY = event.pageY;
+                        } else {
+                            viewer.style.top = this.round(viewerRect.top + deltaY) + 'px';
+                        }
+                    } else if (event.pageY < this.prevY) {
+                        // move up
+                        if (imageBottom <= windowHeight && imageBottom > windowHeight - 16) {
+                            viewer.style.top = this.round(windowHeight - viewerRect.height) + 'px';
+                            this.startY = event.pageY;
+                        } else {
+                            viewer.style.top = this.round(viewerRect.top + deltaY) + 'px';
+                        }
+                    }
+                    this.prevY = event.pageY;
+                }
             }
         } else {
             preventDefaultForEvent(event);
@@ -354,6 +411,28 @@ export class VisualMediaViewer {
 
     private canMoveTouchable(rect: DOMRect) : boolean {
         return rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight || rect.left < 0;
+    }
+
+    private touchableCenter() {
+        let rect = this.imageViewer.getBoundingClientRect();
+        // center x
+        const imageLeft = this.round(rect.left);
+        const imageRight = this.round(rect.right);
+        const imageWidth = this.round(rect.width);
+        const windowWidth = window.innerWidth;
+        if ((windowWidth / 2 - imageLeft) != (imageRight - windowWidth / 2)) {
+            let newImageLeft = (windowWidth - imageWidth) / 2;
+            this.imageViewer.style.left = newImageLeft + 'px';
+        }
+        // center y
+        const imageTop = this.round(rect.top);
+        const imageBottom = this.round(rect.bottom);
+        const imageHeight = this.round(rect.height);
+        const windowHeight = window.innerHeight;
+        if ((windowHeight / 2 - imageTop) != (imageBottom - windowHeight / 2)) {
+            let newImageTop = (windowHeight - imageHeight) / 2;
+            this.imageViewer.style.top = newImageTop + 'px';
+        }
     }
 }
 
