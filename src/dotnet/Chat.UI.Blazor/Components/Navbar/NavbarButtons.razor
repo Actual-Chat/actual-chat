@@ -38,6 +38,7 @@
     </NavbarGroupSelectionButton>
 }
 
+@*
 @if (HostInfo.AppKind.IsMauiApp()) {
     <NavbarButton
         Class="mt-auto"
@@ -46,6 +47,7 @@
         <i class="icon-refresh text-2xl font-medium"></i>
     </NavbarButton>
 }
+*@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
