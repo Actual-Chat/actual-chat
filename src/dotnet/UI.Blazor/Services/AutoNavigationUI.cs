@@ -67,14 +67,14 @@ public abstract class AutoNavigationUI : IHasServices
             if (Dispatcher.CheckAccess())
                 NavigateTo(url, reason);
             else
-                Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+                _ = Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
             return;
         }
-        BlazorCircuitContext.WhenReady.ContinueWith(_ => {
+        _ = BlazorCircuitContext.WhenReady.ContinueWith(_1 => {
             if (Dispatcher.CheckAccess())
                 NavigateTo(url, reason);
             else
-                Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+                _ = Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
         }, TaskScheduler.Current);
     }
 
@@ -101,7 +101,7 @@ public abstract class AutoNavigationUI : IHasServices
         }
 
         DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): processing", url, reason);
-        HandleNavigateTo(url, reason);
+        _ = HandleNavigateTo(url, reason);
     }
 
     // Protected methods

@@ -165,7 +165,7 @@ public sealed class NavigationQueue
             _timeoutToken = _timeoutSource.Token;
             _timeoutToken.Register(static state => {
                 var self = (Entry)state!;
-                self.Queue.Dispatcher.InvokeAsync(() => {
+                _ = self.Queue.Dispatcher.InvokeAsync(() => {
                     var error = new TimeoutException("The navigation haven't completed on time.");
                     return self.TryComplete(true, error);
                 });

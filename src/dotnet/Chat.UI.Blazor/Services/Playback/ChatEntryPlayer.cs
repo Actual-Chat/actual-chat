@@ -66,7 +66,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             EntryPlaybackTasks.Add(resultSource.Task);
         }
 
-        BackgroundTask.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             try {
                 var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, StopToken).ConfigureAwait(false);
                 await playProcess.WhenCompleted.ConfigureAwait(false);

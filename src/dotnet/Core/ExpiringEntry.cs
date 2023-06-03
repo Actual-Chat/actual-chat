@@ -55,9 +55,9 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
         Dictionary.TryRemove(KeyValuePair.Create(Key, this));
         cts.CancelAndDisposeSilently();
         if (_disposer != null)
-            _disposer.Invoke(this);
+            _ = _disposer.Invoke(this);
         else if (Value is IAsyncDisposable ad)
-            ad.DisposeAsync();
+            _ = ad.DisposeAsync();
         else if (Value is IDisposable d)
             d.Dispose();
     }

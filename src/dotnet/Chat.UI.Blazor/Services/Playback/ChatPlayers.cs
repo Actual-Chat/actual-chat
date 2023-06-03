@@ -88,7 +88,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
         => _playbackState.Value = playbackState;
 
     private void ResumeRealtimePlayback()
-        => BackgroundTask.Run(async () => {
+        => _ = BackgroundTask.Run(async () => {
             var playbackState = await ChatAudioUI.GetExpectedRealtimePlaybackState().ConfigureAwait(false);
             if (playbackState == null)
                 StopPlayback();

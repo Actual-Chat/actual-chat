@@ -29,7 +29,7 @@ public class ComponentAnimator : IDisposable
         _lastAnimateCts = new CancellationTokenSource();
         var cancellationToken = _lastAnimateCts.Token;
         AnimationEndsAt = Clock.Now + (duration ?? Duration);
-        Clock.Delay(AnimationEndsAt, cancellationToken).ContinueWith(_ => {
+        _ = Clock.Delay(AnimationEndsAt, cancellationToken).ContinueWith(_ => {
             if (cancellationToken.IsCancellationRequested)
                 return;
 

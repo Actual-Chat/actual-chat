@@ -103,7 +103,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
             else if (mustListen)
                 activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now));
             if (oldActiveChats != activeChats)
-                UICommander.RunNothing();
+                _ = UICommander.RunNothing();
 
             return activeChats;
         });
@@ -117,7 +117,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
                     activeChats = activeChats.AddOrUpdate(chat with { IsListening = false });
             }
             if (oldActiveChats != activeChats)
-                UICommander.RunNothing();
+                _ = UICommander.RunNothing();
 
             return activeChats;
         });
@@ -140,12 +140,12 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
             if (!chatId.IsNone) {
                 var newChat = new ActiveChat(chatId, true, true, Now);
                 activeChats = activeChats.AddOrUpdate(newChat);
-                TuneUI.Play("begin-recording");
+                _ = TuneUI.Play("begin-recording");
             }
             else
-                TuneUI.Play("end-recording");
+                _ = TuneUI.Play("end-recording");
 
-            UICommander.RunNothing();
+            _ = UICommander.RunNothing();
             return activeChats;
         });
 

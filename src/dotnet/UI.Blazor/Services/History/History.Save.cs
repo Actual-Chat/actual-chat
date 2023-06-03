@@ -81,7 +81,7 @@ public partial class History
                 BackItemId = baseItem.Id,
             };
             AddItem(ref item);
-            _saveRegion.ExitAction = () => AddHistoryEntry(item, true);
+            _saveRegion.ExitAction = () => _ = AddHistoryEntry(item, true);
             DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", item.ToString());
             break;
         case < 0:
@@ -89,7 +89,7 @@ public partial class History
             var backItem = GetItemById(baseItem.BackItemId);
             if (backItem != null && backItem.IsIdenticalTo(item)) {
                 item = _currentItem = backItem;
-                _saveRegion.ExitAction = () => NavigateBack(true);
+                _saveRegion.ExitAction = () => _ = NavigateBack(true);
                 DebugLog?.LogDebug("EndSave: +NavigateBack({Item})", item.ToString());
             }
             else
@@ -103,7 +103,7 @@ public partial class History
     {
         if (ReplaceItem(ref item, out var _)) {
             var itemCopy = item;
-            _saveRegion.ExitAction = () => AddHistoryEntry(itemCopy, true);
+            _saveRegion.ExitAction = () => _ = AddHistoryEntry(itemCopy, true);
             DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", itemCopy.ToString());
         }
         else

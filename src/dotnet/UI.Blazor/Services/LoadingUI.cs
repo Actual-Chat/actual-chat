@@ -107,6 +107,6 @@ public sealed class LoadingUI
             if (overlay) overlay.remove();
         })();
         """;
-        js.EvalVoid(script);
+        _ = js.EvalVoid(script);
     }
 }

@@ -275,7 +275,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         if (navigate)
             _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId));
         if (updateUI)
-            UICommander.RunNothing();
+            _ = UICommander.RunNothing();
     }
 
     public Task ShowDeleteMessageModal(ChatMessageModel model)

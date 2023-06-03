@@ -9,7 +9,7 @@ public partial class History
 
     private void LocationChange(LocationChangedEventArgs eventArgs, bool mustReplace = false)
     {
-        using var _ = _locationChangeRegion.Enter();
+        using var _1 = _locationChangeRegion.Enter();
         var historyEntryState = eventArgs.HistoryEntryState;
         var parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
         DebugLog?.LogDebug(
@@ -55,12 +55,12 @@ public partial class History
                 if (mustReplace) {
                     ReplaceItem(ref currentItem, false);
                     if (!hasValidHistoryEntryState)
-                        exitAction = () => ReplaceHistoryEntry(currentItem, true);
+                        exitAction = () => _ = ReplaceHistoryEntry(currentItem, true);
                 }
                 else {
                     AddItem(ref currentItem, false);
                     if (!hasValidHistoryEntryState)
-                        exitAction = () => AddHistoryEntry(currentItem, true);
+                        exitAction = () => _ = AddHistoryEntry(currentItem, true);
                 }
             }
 
@@ -148,7 +148,7 @@ public partial class History
         // Adding "Back" item
         if (ReplaceItem(ref item, out backItem)) {
             DebugLog?.LogDebug("Transition: adding Back item");
-            _locationChangeRegion.ExitAction = () => AddHistoryEntry(item);
+            _locationChangeRegion.ExitAction = () => _ = AddHistoryEntry(item);
         }
         else
             Log.LogWarning("Transition: Back item couldn't be added");

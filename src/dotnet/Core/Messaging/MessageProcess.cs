@@ -107,7 +107,7 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
     }
 
     public override void MarkCompletedAfter(Task<object?> resultTask)
-        => resultTask.ContinueWith(async t => {
+        => _ = resultTask.ContinueWith(async t => {
             try {
                 var result = await t.ConfigureAwait(false);
                 MarkCompleted(result);

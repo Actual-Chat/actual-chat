@@ -41,7 +41,7 @@ public partial class SharedResourcePool<TKey, TResource>
                 var endRentDelayToken = endRentDelayTokenSource.Token;
                 _endRentDelayTokenSource = endRentDelayTokenSource;
 
-                BackgroundTask.Run(async () => {
+                _ = BackgroundTask.Run(async () => {
                     try {
                         await Task.Delay(Pool.ResourceDisposeDelay, endRentDelayToken).ConfigureAwait(false);
                         lock (Lock)

@@ -30,7 +30,7 @@ public static class AppLinks
         if (!OrdinalIgnoreCaseEquals(uri.Host, MauiConstants.Host))
             return;
 
-        WhenScopedServicesReady.ContinueWith(_ => {
+        _ = WhenScopedServicesReady.ContinueWith(_ => {
             var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
             var autoNavigationUI = ScopedServices.GetRequiredService<AutoNavigationUI>();
             autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);

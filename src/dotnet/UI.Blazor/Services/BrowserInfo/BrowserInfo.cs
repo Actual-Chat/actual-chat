@@ -124,6 +124,6 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
             }
         }
         if (isUpdated)
-            UICommander.RunNothing(); // To instantly update everything
+            _ = UICommander.RunNothing(); // To instantly update everything
     }
 }

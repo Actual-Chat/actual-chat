@@ -27,9 +27,9 @@ public class RightPanel
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
         History.Register(new OwnHistoryState(this, false));
-        _isVisible.WhenRead.ContinueWith(_ => {
+        _ = _isVisible.WhenRead.ContinueWith(_1 => {
             var isVisible = _isVisible.Value;
-            History.Dispatcher.InvokeAsync(() => SetIsVisible(isVisible));
+            _ = History.Dispatcher.InvokeAsync(() => SetIsVisible(isVisible));
         }, TaskScheduler.Default);
     }
 
@@ -37,7 +37,7 @@ public class RightPanel
         => SetIsVisible(!IsVisible.Value);
 
     public void SetIsVisible(bool value)
-        => Dispatcher.InvokeAsync(() => {
+        => _ = Dispatcher.InvokeAsync(() => {
             if (_isVisible.Value == value)
                 return;
 

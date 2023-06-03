@@ -113,7 +113,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private Task<ModalRef> ShowModal()
     {
         var modalRefTask = Dispatcher.InvokeAsync(() => ModalUI.Show(DemandUserInteractionModal.Model.Instance));
-        modalRefTask.ContinueWith(async _ => {
+        _ = modalRefTask.ContinueWith(async _ => {
             if (modalRefTask.IsCompletedSuccessfully) {
                 // If modal was successfully created, let's wait when it gets closed
                 var modalRef = await modalRefTask.ConfigureAwait(false);

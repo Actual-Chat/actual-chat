@@ -126,7 +126,7 @@ public static partial class MauiProgram
     {
         AppServices = services;
         LoadingUI.MarkAppBuilt();
-        Task.Run(async () => {
+        _ = Task.Run(async () => {
             var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
             var appServiceStarter = services.GetRequiredService<AppServiceStarter>();
             _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);

@@ -30,7 +30,7 @@ public class LeftPanel
     }
 
     public void SetIsVisible(bool value)
-        => Dispatcher.InvokeAsync(() => {
+        => _ = Dispatcher.InvokeAsync(() => {
             if (GetIsVisibleOverride() is { } valueOverride)
                 value = valueOverride;
             if (_isVisible.Value == value)

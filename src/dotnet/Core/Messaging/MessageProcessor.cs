@@ -45,7 +45,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         try {
             var queueTask = Queue!.Writer.WriteAsync(process, cancellationToken);
             if (!queueTask.IsCompletedSuccessfully)
-                queueTask.AsTask().ContinueWith(async queueTask1 => {
+                _ = queueTask.AsTask().ContinueWith(async queueTask1 => {
                     try {
                         await queueTask1.ConfigureAwait(false);
                     }

@@ -34,7 +34,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
         if (snapshot.UpdateCount == 0) {
             // Initial value
             var initialSnapshot = snapshot;
-            ForegroundTask.Run(async () => {
+            _ = ForegroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
                     using var _ = Stl.Fusion.Computed.SuspendDependencyCapture();

@@ -196,7 +196,7 @@ public class MainActivity : MauiAppCompatActivity
         if (url.IsNullOrEmpty())
             return;
 
-        WhenScopedServicesReady.ContinueWith(_ => {
+        _ = WhenScopedServicesReady.ContinueWith(_ => {
             var notificationUI = ScopedServices.GetRequiredService<NotificationUI>();
             notificationUI.HandleNotificationNavigation(url);
         }, TaskScheduler.Default);
