@@ -41,7 +41,8 @@ public sealed class NavigationQueue
         while (true) {
             var entry = LastProcessedEntry;
             if (entry != null)
-                await entry.WhenCompleted.WaitAsync(cancellationToken);
+                await entry.WhenCompleted.WaitAsync(cancellationToken).SilentAwait();
+            cancellationToken.ThrowIfCancellationRequested();
             if (LastProcessedEntry == entry)
                 break;
         }
@@ -99,14 +100,19 @@ public sealed class NavigationQueue
 
     internal bool TryComplete(long itemId)
     {
-        Dispatcher.AssertAccess();
         if (_lastProcessedEntry?.ExpectedId is { } vExpectedId
             && (vExpectedId == 0 || vExpectedId == itemId)
-            && _lastProcessedEntry.TryComplete())
+            && _lastProcessedEntry.TryComplete(true))
             return true;
 
         _completedItemIds.Add(itemId); // This allows ProcessNext to complete the entry synchronously
         return false;
+    }
+
+    internal void Clear()
+    {
+        DebugLog?.LogDebug("Clear(): {Count} item(s) removed", _queue.Count);
+        _queue.Clear();
     }
 
     // Nested types
@@ -143,12 +149,15 @@ public sealed class NavigationQueue
             try {
                 Queue.DebugLog?.LogDebug("Invoking: {Entry}", this);
                 ExpectedId = Action.Invoke();
+                if (!ExpectedId.HasValue) {
+                    // No navigation happened
+                    TryComplete(true);
+                    return;
+                }
             }
             catch (Exception e) {
                 Queue.Log.LogError(e, "Invoke failed for entry: {Entry}", this);
-            }
-            if (!ExpectedId.HasValue) {
-                TryComplete();
+                TryComplete(true, e);
                 return;
             }
 
@@ -156,23 +165,39 @@ public sealed class NavigationQueue
             _timeoutToken = _timeoutSource.Token;
             _timeoutToken.Register(static state => {
                 var self = (Entry)state!;
-                self.Queue.Dispatcher.InvokeAsync(() => self.TryComplete());
+                self.Queue.Dispatcher.InvokeAsync(() => {
+                    var error = new TimeoutException("The navigation haven't completed on time.");
+                    return self.TryComplete(true, error);
+                });
             }, this);
         }
 
-        internal bool TryComplete(bool mustProcessNext = true)
+        internal bool TryComplete(bool mustProcessNext, Exception? error = null)
         {
-            if (!_whenCompletedSource.TrySetResult())
+            if (error != null) {
+                if (!_whenCompletedSource.TrySetException(error))
+                    return false;
+            }
+            else if (!_whenCompletedSource.TrySetResult())
                 return false;
 
             _timeoutSource.DisposeSilently();
-            if (_timeoutToken.IsCancellationRequested)
-                Queue.Log.LogError("Entry timed out: {Entry}", this);
-            else
+            if (_whenCompletedSource.Task.IsCompletedSuccessfully) {
                 Queue.DebugLog?.LogDebug("Entry completed: {Entry}", this);
-
-            if (mustProcessNext)
-                _ = Queue.ProcessNext();
+                if (mustProcessNext)
+                    _ = Queue.ProcessNext();
+            }
+            else {
+                var isTimedOut = _timeoutToken.IsCancellationRequested;
+                if (isTimedOut) {
+                    Queue.Log.LogError("Entry timed out: {Entry}", this);
+                    // Running the rest after timeout may cause weird "delayed" side-effects
+                    // (e.g. panels moving by themselves), so...
+                    Queue.Clear();
+                }
+                else
+                    Queue.Log.LogError("Entry failed: {Entry}", this);
+            }
             return true;
         }
     }

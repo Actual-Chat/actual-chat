@@ -4,10 +4,10 @@ namespace ActualChat;
 
 public static partial class LocalUrlExt
 {
-    // [GeneratedRegex(@"^/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\d+)?")]
-    // private static partial Regex IsChatComplexRegexFactory();
-    //
-    // private static readonly Regex IsChatComplexRegex = IsChatComplexRegexFactory();
+    [GeneratedRegex(@"^\/chat\/(?<chatId>[a-z0-9-]+)(?<parameters>\?[^#]*)?#(?<hash>.*)?")]
+    private static partial Regex IsChatRegexFactory();
+
+    private static readonly Regex IsChatRegex = IsChatRegexFactory();
 
     public static bool IsHome(this LocalUrl url)
         => url == Links.Home;
@@ -26,14 +26,34 @@ public static partial class LocalUrlExt
     public static bool IsChat(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/chat/");
 
-    // public static bool IsChatComplex(this LocalUrl url)
-    // {
-    //     var match = IsChatComplexRegex.Match(url);
-    //     if (!match.Success)
-    //         return false;
-    //
-    //     return match.Groups["chatid"].Success;
-    // }
+    public static bool IsChat(this LocalUrl url, out ChatId chatId)
+        => url.IsChat(out chatId, out _, out _);
+    public static bool IsChat(this LocalUrl url, out ChatId chatId, out long entryLid)
+    {
+        entryLid = 0;
+        if (!url.IsChat(out chatId, out _, out var hash))
+            return false;
+
+        long.TryParse(hash, CultureInfo.InvariantCulture, out entryLid);
+        return true;
+    }
+
+    public static bool IsChat(this LocalUrl url, out ChatId chatId, out string hash)
+        => url.IsChat(out chatId, out _, out hash);
+    public static bool IsChat(this LocalUrl url, out ChatId chatId, out string parameters, out string hash)
+    {
+        chatId = default;
+        parameters = "";
+        hash = "";
+        var match = IsChatRegex.Match(url);
+        if (!match.Success)
+            return false;
+
+        chatId = ChatId.ParseOrNone(match.Groups["chatId"].Value);
+        parameters = match.Groups["parameters"].Value;
+        hash = match.Groups["hash"].Value;
+        return !chatId.IsNone;
+    }
 
     public static bool IsUser(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/u/");

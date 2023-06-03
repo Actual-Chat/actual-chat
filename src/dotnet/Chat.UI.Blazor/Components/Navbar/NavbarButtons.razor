@@ -49,11 +49,12 @@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private IRestartService RestartService { get; init; } = null!;
 
     private Task OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model());
 
-    private void OnRestartClick()
-        => RestartService.Restart();
+    private void OnRestartClick() {
+        var history = Services.GetRequiredService<History>();
+        history.ForceReload(Links.Home);
+    }
 }

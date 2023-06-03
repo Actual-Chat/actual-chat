@@ -61,6 +61,6 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         // Blazor Server/WASM scenario:
         // - Redirect to sign-out page, which redirects to home page after sign-out completion
         // - SignOutReloader doesn't get a chance to reload anything in this case - which is fine.
-        await history.HardNavigateTo(Links.SignOut());
+        history.ForceReload(Links.SignOut());
     }
 }

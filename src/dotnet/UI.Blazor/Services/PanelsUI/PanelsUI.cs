@@ -45,11 +45,20 @@ public class PanelsUI : WorkerBase, IHasServices
 
     public async ValueTask HandleHistoryTransition(HistoryTransition transition)
     {
-        if (transition.LocationChangeKind != LocationChangeKind.NewUri)
+        if (transition.LocationChangeKind != LocationChangeKind.NewUri || IsWide())
             return;
 
         var url = new LocalUrl(transition.Item.Uri);
-        if (!(IsWide() || url.IsChatRoot())) {
+        if (!url.IsChatRoot()) {
+            if (url.IsChat(out var chatId, out long entryLid)) {
+                var oldUrl = new LocalUrl(transition.BaseItem.Uri);
+                if (oldUrl.IsChat(out var oldChatId, out long oldEntryLid) && chatId == oldChatId) {
+                    // Same chat
+                    if (entryLid == 0 && oldEntryLid != 0)
+                        return; // Special case: do nothing on #entryLid removal
+                }
+            }
+
             // We want to make sure HidePanels() creates an additional history step,
             // otherwise "Back" from chat will hide the panel AND select the prev. chat.
             await History.WhenNavigationCompleted();

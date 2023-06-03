@@ -59,14 +59,14 @@ public class SignOutReloader : WorkerBase
             _ = History.Dispatcher.InvokeAsync(() => {
                 if (History.HostInfo.AppKind.IsMauiApp()) {
                     // MAUI scenario:
-                    // - Go to home page
-                    History.NavigateTo(Links.Home);
-                    return ValueTask.CompletedTask;
+                    // - Go to home page (we don't handle forced sign-out here yet)
+                    _ = History.NavigateTo(Links.Home);
                 }
-
-                // Blazor Server/WASM scenario:
-                // - Hard reload of home page
-                return History.HardNavigateTo(Links.Home);
+                else {
+                    // Blazor Server/WASM scenario:
+                    // - Reload home page to make sure new Session is picked up on forced sign-out
+                    History.ForceReload(Links.Home);
+                }
             });
         }
     }

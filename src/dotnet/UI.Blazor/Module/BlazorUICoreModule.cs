@@ -106,8 +106,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
-        services.AddScoped<IRestartService, WebpageReloadService>(c => new WebpageReloadService(
-            c.GetRequiredService<NavigationManager>()));
 
         InjectDiagnosticsServices(services);
 

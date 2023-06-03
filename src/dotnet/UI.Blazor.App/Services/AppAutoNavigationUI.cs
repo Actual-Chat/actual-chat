@@ -52,7 +52,7 @@ public class AppAutoNavigationUI : AutoNavigationUI
         url = await FixUrl(url, cancellationToken).ConfigureAwait(true);
 
         DebugLog?.LogDebug("HandleNavigateTo: {Url}, mustReplace = {MustReplace}", url, mustReplace);
-        await History.NavigateTo(url, mustReplace).ConfigureAwait(true);
+        await History.NavigateTo(url, mustReplace).SilentAwait();
         if (url.IsChat()) {
             if (url != originalUrl) {
                 // Original URL was either home or chat root page

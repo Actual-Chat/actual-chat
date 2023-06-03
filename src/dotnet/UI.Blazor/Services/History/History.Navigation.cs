@@ -2,9 +2,6 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
 {
-    public Task WhenCurrentNavigationCompleted(CancellationToken cancellationToken = default)
-        => NavigationQueue.WhenLastEntryCompleted(cancellationToken);
-
     public Task WhenNavigationCompleted(CancellationToken cancellationToken = default)
         => NavigationQueue.WhenAllEntriesCompleted(cancellationToken);
 
@@ -35,19 +32,12 @@ public partial class History
         return entry.WhenCompleted;
     }
 
-    public ValueTask HardNavigateTo(LocalUrl url)
-        => HardNavigateTo(url.ToAbsolute(UrlMapper));
-
-    public async ValueTask HardNavigateTo(string url)
+    public void ForceReload(LocalUrl url)
+        => ForceReload(url.ToAbsolute(UrlMapper));
+    public void ForceReload(string url)
     {
-        try {
-            Log.LogInformation("HardNavigateTo: -> '{Url}'", url);
-            await JS.EvalVoid($"window.location.assign({JsonFormatter.Format(url)})");
-        }
-        catch (Exception e) {
-            Log.LogError(e, "HardNavigateTo failed");
-            throw;
-        }
+        Log.LogInformation("ForceReload: {Url}", url);
+        Nav.NavigateTo(url, true);
     }
 
     // Internal and private methods
