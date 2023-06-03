@@ -16,7 +16,7 @@
     <NpgsqlVersion>7.0.1</NpgsqlVersion>
     <RedisVersion>2.6.111</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>5.2.87</StlFusionVersion>
+    <StlFusionVersion>6.0.12</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
@@ -61,7 +61,7 @@
     <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageVersion Include="sqlite-net-pcl" Version="1.8.116" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.4" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.5" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
@@ -102,7 +102,7 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageVersion Include="RestEase" Version="1.6.4" />
     <PackageVersion Include="Pidgin" Version="3.2.1" />
-    <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.2" />
+    <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.8" />
     <PackageVersion Include="Polly" Version="7.2.3" />
     <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Extensions.Logging" Version="$(SentryVersion)" />
@@ -154,15 +154,15 @@
     <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
-    <PackageVersion Include="bunit" Version="1.18.4" />
+    <PackageVersion Include="bunit" Version="1.20.8" />
     <PackageVersion Include="FluentAssertions" Version="6.11.0" />
-    <PackageVersion Include="GitHubActionsTestLogger" Version="2.0.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
+    <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.6.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
-    <PackageVersion Include="Microsoft.Playwright" Version="1.32.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.34.0" />
     <PackageVersion Include="Moq" Version="4.18.4" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.5.119" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
@@ -172,8 +172,8 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.5" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.5.22" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.37" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.6.40" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.56" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.3.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit.analyzers" Version="1.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->

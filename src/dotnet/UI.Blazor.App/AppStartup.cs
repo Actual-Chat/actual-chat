@@ -37,11 +37,6 @@ namespace ActualChat.UI.Blazor.App
 #endif
             var tracer = Tracer.Default;
 
-            // Commander - it must be added first to make sure its options are set
-            var commander = services.AddCommander().Configure(new CommanderOptions() {
-                AllowDirectCommandHandlerCalls = false,
-            });
-
             // Fusion services
             var fusion = services.AddFusion();
             var fusionClient = fusion.AddRestEaseClient();
