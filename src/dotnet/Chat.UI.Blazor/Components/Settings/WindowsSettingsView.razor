@@ -30,9 +30,8 @@
 
     [Parameter, EditorRequired] public IWindowsSettings WindowsSettings { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        await UpdateAutoStart();
-    }
+    protected override Task OnInitializedAsync()
+        => UpdateAutoStart();
 
     private async Task UpdateAutoStart()
         => _autoStartState = await WindowsSettings.GetAutoStartupState();
