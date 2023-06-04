@@ -56,6 +56,9 @@
                     var isActive = tab == ActiveTab;
                     var activeCls = $"{(isActive ? "on" : "")}";
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
+                    @if (tab.HasSeparatorBefore) {
+                        <div class="w-auto bg-04 h-px my-4 mx-4"></div>
+                    }
                     <div class="c-tab-item @containerCls @activeCls">
                         @switch (tab.Id) {
                             case "logOut":
@@ -66,10 +69,6 @@
                                 break;
                         }
                     </div>
-                    @if (!tab.HasSeparator) {
-                        continue;
-                    }
-                    <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                 }
             </div>
             <div class="px-3">
