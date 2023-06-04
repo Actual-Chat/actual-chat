@@ -49,7 +49,7 @@ public partial class MainPage
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
 
-        webView.SetRendererPriorityPolicy(RendererPriority.Important, false);
+        // webView.SetRendererPriorityPolicy(RendererPriority.Important, false);
         var webViewSettings = webView.Settings;
         webViewSettings.JavaScriptEnabled = true;
         webViewSettings.AllowFileAccess = true;
