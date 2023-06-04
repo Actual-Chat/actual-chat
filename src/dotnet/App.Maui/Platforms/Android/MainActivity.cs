@@ -7,8 +7,12 @@ using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
+using Android.Views.Animations;
+using Android.Window;
 using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
+using Microsoft.Maui.Controls.Platform;
+using AView = Android.Views.View;
 
 namespace ActualChat.App.Maui;
 
@@ -92,9 +96,18 @@ public class MainActivity : MauiAppCompatActivity
 
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
-        var content = FindViewById(Android.Resource.Id.Content);
-        content!.ViewTreeObserver!.AddOnPreDrawListener(new SplashScreenDelayer());
+        var contentView = FindViewById(Android.Resource.Id.Content);
+        contentView!.ViewTreeObserver!.AddOnPreDrawListener(new SplashScreenDelayer(contentView));
     }
+
+// NOTE(AY): Doesn't work, not sure why
+#if false
+    public override void OnCreate(Bundle? savedInstanceState, PersistableBundle? persistentState)
+    {
+        base.OnCreate(savedInstanceState, persistentState);
+        SplashScreen.SetOnExitAnimationListener(new SplashScreenExitAnimationListener());
+    }
+#endif
 
     protected override void OnStart()
     {
@@ -202,22 +215,38 @@ public class MainActivity : MauiAppCompatActivity
         }, TaskScheduler.Default);
     }
 
+    public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener
+    {
+        public void OnSplashScreenExit(SplashScreenView view)
+        {
+            Tracer.Default.Point("OnSplashScreenExit");
+            var fade = new AlphaAnimation(1f, 0f) {
+                Duration = 500,
+                Interpolator = new LinearInterpolator(),
+            };
+            view.AnimationEnd += (_, _) => {
+                Tracer.Default.Point("OnSplashScreenExit - AnimationEnd");
+                view.Remove();
+            };
+            view.StartAnimation(fade);
+        }
+    }
     private class SplashScreenDelayer : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
-        private readonly object _lock = new();
-        private bool _isDrawn;
+        private readonly AView _contentView;
+        private readonly Task _whenSplashRemoved = LoadingUI.WhenAppLoaded;
+        // .ContinueWith(_ => Task.Delay(TimeSpan.FromSeconds(0.1)), TaskScheduler.Default);
+
+        public SplashScreenDelayer(AView contentView)
+            => _contentView = contentView;
 
         public bool OnPreDraw()
         {
-            if (_isDrawn)
-                return true;
+            if (!_whenSplashRemoved.IsCompleted)
+                return false;
 
-            lock (_lock) {
-                if (_isDrawn)
-                    return true;
-
-                return _isDrawn = LoadingUI.WhenAppLoaded.IsCompleted;
-            }
+            _contentView.ViewTreeObserver!.RemoveOnPreDrawListener(this);
+            return true;
         }
     }
 }

@@ -37,28 +37,31 @@ public partial class MainPage
     // to define what happens when the WebView requests a set of permissions. See
     // PermissionManagingBlazorWebChromeClient.cs to explore the approach taken in this example.
 
-    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
+    private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     { }
 
-    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
+    private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
-        PlatformWebView = e.WebView;
+        var webView = PlatformWebView = e.WebView;
 
-        if (e.WebView.Context?.GetActivity() is not ComponentActivity activity)
+        if (webView.Context?.GetActivity() is not ComponentActivity activity)
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
 
-        e.WebView.Settings.JavaScriptEnabled = true;
-        e.WebView.Settings.AllowFileAccess = true;
-        e.WebView.Settings.MediaPlaybackRequiresUserGesture = false;
+        webView.SetRendererPriorityPolicy(RendererPriority.Important, false);
+        var webViewSettings = webView.Settings;
+        webViewSettings.JavaScriptEnabled = true;
+        webViewSettings.AllowFileAccess = true;
+        webViewSettings.MediaPlaybackRequiresUserGesture = false;
+        // webViewSettings.OffscreenPreRaster = true;
  #pragma warning disable CS0618
-        e.WebView.Settings.EnableSmoothTransition();
+        webViewSettings.EnableSmoothTransition();
  #pragma warning restore CS0618
-        //e.WebView.Settings.SetGeolocationEnabled(true);
-        //e.WebView.Settings.SetGeolocationDatabasePath(e.WebView.Context?.FilesDir?.Path);
-        e.WebView.SetWebChromeClient(new PermissionManagingBlazorWebChromeClient(e.WebView.WebChromeClient!, activity));
+        //webView.Settings.SetGeolocationEnabled(true);
+        //webView.Settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);
+        webView.SetWebChromeClient(new PermissionManagingWebChromeClient(webView.WebChromeClient!, activity));
     }
 
-    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
+    private partial void OnWebViewLoaded(object? sender, EventArgs e)
     { }
 }

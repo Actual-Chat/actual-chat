@@ -20,12 +20,12 @@ public partial class MainPage
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
     }
 
-    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
+    private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     { }
 
-    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
+    private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
         => PlatformWebView = e.WebView;
 
-    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
+    private partial void OnWebViewLoaded(object? sender, EventArgs e)
     { }
 }

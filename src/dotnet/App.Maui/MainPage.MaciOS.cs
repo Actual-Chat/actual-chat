@@ -36,17 +36,17 @@ public partial class MainPage
     // the APIs required by your app. You may have to perform additional configuration to enable
     // use of those APIs from the WebView, as is done below.
 
-    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
+    private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     {
         e.Configuration.AllowsInlineMediaPlayback = true;
         e.Configuration.MediaTypesRequiringUserActionForPlayback = WebKit.WKAudiovisualMediaTypes.None;
         e.Configuration.UpgradeKnownHostsToHttps = true;
     }
 
-    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
+    private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
         => PlatformWebView = e.WebView;
 
-    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e)
+    private partial void OnWebViewLoaded(object? sender, EventArgs e)
         => PlatformWebView!.UIDelegate = new UIDelegate();
 
     private sealed class UIDelegate : WKUIDelegate

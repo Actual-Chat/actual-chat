@@ -269,7 +269,7 @@ body.narrow .landing .page-1 .main-text {
     @apply text-01 font-semibold;
 }
 body.narrow .signin-button-group {
-    @apply my-4 pr-1;
+    @apply my-4;
     @apply text-xl;
 }
 

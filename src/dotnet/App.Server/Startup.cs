@@ -108,11 +108,6 @@ public class Startup
             };
         });
 
-        // Commander - it must be added first to make sure its options are set
-        var commander = services.AddCommander().Configure(new CommanderOptions {
-            AllowDirectCommandHandlerCalls = false,
-        });
-
         var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
         ModuleHost = new ModuleHostBuilder()
             // From less dependent to more dependent!

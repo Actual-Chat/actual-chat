@@ -8,7 +8,7 @@ public partial class MainPage : ContentPage
 {
     internal const string AppHostAddress = "0.0.0.0";
 
-    private readonly BlazorWebView _blazorWebView;
+    private readonly BlazorWebView _webView;
 
     private MauiNavigationInterceptor NavigationInterceptor { get; }
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
@@ -20,19 +20,18 @@ public partial class MainPage : ContentPage
     {
         Tracer.Point(".ctor");
         NavigationInterceptor = navigationInterceptor;
-
         BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
-        _blazorWebView = new BlazorWebView {
-            HostPage = "wwwroot/index.html"
+
+        _webView = new BlazorWebView {
+            HostPage = "wwwroot/index.html",
         };
-        Content = _blazorWebView;
+        _webView.BlazorWebViewInitializing += OnWebViewInitializing;
+        _webView.BlazorWebViewInitialized += OnWebViewInitialized;
+        _webView.UrlLoading += OnWebViewUrlLoading;
+        _webView.Loaded += OnWebViewLoaded;
+        Content = _webView;
 
-        _blazorWebView.BlazorWebViewInitializing += OnBlazorWebViewInitializing;
-        _blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
-        _blazorWebView.UrlLoading += OnUrlLoading;
-        _blazorWebView.Loaded += OnBlazorWebViewLoaded;
-
-        _blazorWebView.RootComponents.Add(
+        _webView.RootComponents.Add(
             new RootComponent {
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
@@ -41,12 +40,12 @@ public partial class MainPage : ContentPage
 
     public partial void SetupSessionCookie(Uri baseUri, Session session);
 
-    private partial void OnBlazorWebViewLoaded(object? sender, EventArgs e);
+    private partial void OnWebViewLoaded(object? sender, EventArgs e);
 
-    private void OnUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
+    private void OnWebViewUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
         var uri = eventArgs.Url;
-        Tracer.Point($"{nameof(OnUrlLoading)}: Url: '{uri}'");
+        Tracer.Point($"{nameof(OnWebViewUrlLoading)}: Url: '{uri}'");
         if (NavigationInterceptor.TryIntercept(uri))
             // Load cancellation seems not working On Windows platform,
             // even though the issues were closed a while ago, and  Uri gets opened in WebView.
@@ -56,6 +55,6 @@ public partial class MainPage : ContentPage
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
     }
 
-    private partial void OnBlazorWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);
-    private partial void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e);
+    private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);
+    private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e);
 }
