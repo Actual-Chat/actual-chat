@@ -13,19 +13,18 @@ public class ClientDefsTest : AppHostTestBase
     public async Task ShouldHaveCorrectClientDefs()
     {
         IServiceCollection services = null!;
-        using var _ = await NewAppHost(configureServices: sc => services = sc);
-
+        using var _ = await NewAppHost(configureServices: c => services = c);
         new ClientDefsValidator().Validate(services);
     }
 
     // TODO: Move it into App.Server when it's fast enough
     private class ClientDefsValidator
     {
-        public void Validate(IServiceCollection serviceCollection)
+        public void Validate(IServiceCollection services)
         {
             var skippedServiceTypes = new HashSet<Type>();
             var computeServiceTypes = (
-                from d in serviceCollection
+                from d in services
                 where d.Lifetime is not ServiceLifetime.Scoped
                 let t = d.ServiceType
                 where t.IsInterface && t.IsAssignableTo(typeof(IComputeService))

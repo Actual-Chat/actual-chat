@@ -1,3 +1,4 @@
+using Android.Views;
 using Android.Webkit;
 using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
@@ -60,6 +61,7 @@ public partial class MainPage
         //webView.Settings.SetGeolocationEnabled(true);
         //webView.Settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);
         webView.SetWebChromeClient(new PermissionManagingWebChromeClient(webView.WebChromeClient!, activity));
+        webView.Visibility = ViewStates.Visible;
     }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)

@@ -8,11 +8,13 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private readonly DotNetObjectReference<IInteractiveUIBackend>? _backendRef;
     private readonly IMutableState<bool> _isInteractive;
     private readonly IMutableState<ActiveDemandModel?> _activeDemand;
+    private Dispatcher? _dispatcher;
     private readonly object _lock = new();
 
     // Services
+    private IServiceProvider Services { get; }
     private ModalUI ModalUI { get; }
-    private Dispatcher Dispatcher { get; }
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private IJSRuntime JS { get; }
     private HostInfo HostInfo { get; }
     private ILogger Log { get; }
@@ -24,11 +26,11 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public InteractiveUI(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         HostInfo = services.GetRequiredService<HostInfo>();
 
         ModalUI = services.GetRequiredService<ModalUI>();
-        Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
         _backendRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
 

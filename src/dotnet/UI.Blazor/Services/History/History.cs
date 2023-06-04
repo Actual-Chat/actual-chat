@@ -65,7 +65,10 @@ public partial class History : IHasServices, IDisposable
         _isSaveSuppressed = new RegionalValue<bool>(false);
         _saveRegion = new NoRecursionRegion("Save", Lock, Log);
         _locationChangeRegion = new NoRecursionRegion("LocationChange", Lock, Log);
-        _uri = Nav.GetLocalUrl().Value;
+        if (HostInfo.AppKind.IsTestServer())
+            _uri = Links.Home;
+        else
+            _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
         _whenReadySource = TaskCompletionSourceExt.New<Unit>();

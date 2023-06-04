@@ -5,12 +5,13 @@ namespace ActualChat.UI.Blazor.Services.Internal;
 public sealed class NavigationQueue
 {
     private readonly LinkedList<Entry> _queue = new();
+    private readonly HashSet<long> _completedItemIds = new();
     private volatile Entry? _lastProcessedEntry;
-    private HashSet<long> _completedItemIds = new();
+    private Dispatcher? _dispatcher;
 
     internal ILogger Log { get; }
     internal ILogger? DebugLog { get; }
-    internal Dispatcher Dispatcher { get; }
+    internal Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
 
     // ReSharper disable once InconsistentlySynchronizedField
     public History History { get; }
@@ -23,7 +24,6 @@ public sealed class NavigationQueue
         var services = History.Services;
         Log = services.LogFor(GetType());
         DebugLog = Log.IfEnabled(LogLevel.Debug);
-        Dispatcher = History.Dispatcher;
     }
 
     public Task WhenLastEntryCompleted(CancellationToken cancellationToken = default)
