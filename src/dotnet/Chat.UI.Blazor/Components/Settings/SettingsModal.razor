@@ -78,9 +78,7 @@
 @code {
     private bool _enableIncompleteUI;
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
