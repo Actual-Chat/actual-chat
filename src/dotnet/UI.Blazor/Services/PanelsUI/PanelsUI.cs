@@ -4,9 +4,11 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class PanelsUI : WorkerBase, IHasServices
 {
+    private Dispatcher? _dispatcher;
+
     public IServiceProvider Services { get; }
     public History History { get; }
-    public Dispatcher Dispatcher { get; }
+    public Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
     public IState<ScreenSize> ScreenSize { get; }
 
     public LeftPanel Left { get; }
@@ -17,7 +19,6 @@ public class PanelsUI : WorkerBase, IHasServices
     {
         Services = services;
         History = services.GetRequiredService<History>();
-        Dispatcher = History.Dispatcher;
 
         var browserInfo = services.GetRequiredService<BrowserInfo>();
         if (!browserInfo.WhenReady.IsCompleted)

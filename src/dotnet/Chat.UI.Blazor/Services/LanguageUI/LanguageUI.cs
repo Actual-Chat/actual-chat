@@ -11,19 +11,17 @@ public class LanguageUI
 
     private TuneUI TuneUI { get; }
     private AccountSettings AccountSettings { get; }
-    private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
     public IState<UserLanguageSettings> Settings => _settings;
 
     public LanguageUI(IServiceProvider services)
     {
-        Dispatcher = services.GetRequiredService<Dispatcher>();
+        TuneUI = services.GetRequiredService<TuneUI>();
+        AccountSettings = services.GetRequiredService<AccountSettings>();
         JS = services.GetRequiredService<IJSRuntime>();
 
         var stateFactory = services.StateFactory();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        AccountSettings = services.GetRequiredService<AccountSettings>();
         _settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),
