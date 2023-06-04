@@ -20,6 +20,7 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
+using Stl.Fusion.Server.Authentication;
 using Stl.Generators;
 using Stl.IO;
 
@@ -141,6 +142,27 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         var hostName = Dns.GetHostName().ToLowerInvariant();
         services.AddSingleton(new PublisherOptions {
             Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, Alphabet.AlphaNumeric)}",
+        });
+        services.AddSingleton(_ => new SessionMiddleware.Options() {
+            RequestFilter = httpContext => {
+                // This part makes sure that SessionMiddleware
+                // doesn't reset missing FusionAuth.SessionId cookie
+                // on POST redirect from Apple. Such a redirect
+                // violates Lax CORS policy, so cookies aren't sent
+                // with it, and thus if we do nothing, SessionMiddleware
+                // will reset the cookie.
+                //
+                // What we want is to just skip setting the cookie:
+                // cookies will be anyway available on redirect to
+                // /fusion/close, which happens right after the redirect
+                // to /signin-xxx.
+                var requestPath = httpContext.Request.Path.Value ?? "";
+                if (requestPath.StartsWith("signin-", StringComparison.Ordinal))
+                    return false;
+                if (requestPath.StartsWith("/signin-", StringComparison.Ordinal))
+                    return false;
+                return true;
+            },
         });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();

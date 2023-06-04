@@ -105,7 +105,10 @@
 @if (isCloseWindowRequest) {
     <script>
         setTimeout(function () {
-            window.opener && window.opener.location.reload(false);
+            @*
+           // NOTE(AY): This isn't necessary after SessionMiddleware.Options.RequestFilter fix:
+           window.opener && window.opener.location.reload(false);
+           *@
             window.close();
         }, 500)
     </script>
