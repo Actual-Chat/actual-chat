@@ -32,9 +32,11 @@ type TouchResponsiveControlKind = 'none' | 'control' | 'scrollable' | 'unknown';
 export class SideNav extends DisposableBag {
     public static left: SideNav | null = null;
     public static right: SideNav | null = null;
+
     private readonly contentDiv: HTMLElement;
     private readonly bodyClassWhenOpen: string;
 
+    public readonly hasHistoryNavigationGesture: boolean;
     public get side(): SideNavSide { return this.options.side; }
     public get opposite(): SideNav { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
     public get isOpen() { return this.element.dataset['sideNav'] === 'open'; }
@@ -62,6 +64,7 @@ export class SideNav extends DisposableBag {
         super();
         this.contentDiv = element.firstElementChild as HTMLElement;
         this.bodyClassWhenOpen = `side-nav-${this.side == SideNavSide.Left ? 'left' : 'right'}-open`;
+        this.hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.appKind !== 'MauiApp';
         const stateObserver = new MutationObserver(() => this.updateBodyClassList());
         stateObserver.observe(this.element, { attributeFilter: ['data-side-nav'] });
         if (this.side == SideNavSide.Left)
@@ -108,7 +111,7 @@ export class SideNav extends DisposableBag {
         const closeDirectionSign = isLeft ? -1 : 1;
         const closeRatio = 1 - openRatio;
         const translateRatio = closeDirectionSign * closeRatio;
-        const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.35));
+        const opacity = Math.min(1, (DeviceInfo.isWebKit ? 0.2 : 0.05) + Math.pow(openRatio, 0.35));
         this.element.style.transform = `translate3d(${100 * translateRatio}%, 0, 0)`;
         this.element.style.backdropFilter = `blur(3px)`
         this.element.style.backgroundColor = `rgba(1,1,1,0)`;
@@ -130,8 +133,7 @@ class SideNavPullDetectGesture extends Gesture {
     public static use(sideNav: SideNav): Disposable {
         debugLog?.log(`SideNavPullDetectGesture.use[${sideNav.side}]`);
 
-        const hasHistoryNavigationGesture = DeviceInfo.isWebKit && BrowserInfo.appKind !== 'MauiApp';
-        const touchStartEvent = hasHistoryNavigationGesture
+        const touchStartEvent = sideNav.hasHistoryNavigationGesture
             ? DocumentEvents.capturedActive.touchStart$
             : DocumentEvents.capturedPassive.touchStart$;
 
@@ -169,7 +171,7 @@ class SideNavPullDetectGesture extends Gesture {
             if (!coords)
                 return; // Not sure if this is possible, but just in case
 
-            if (hasHistoryNavigationGesture) {
+            if (sideNav.hasHistoryNavigationGesture) {
                 let pullEdge = sideNav.side === SideNavSide.Left ? 0 : 1;
                 if (sideNav.isOpen)
                     pullEdge = 1 - pullEdge;
@@ -181,13 +183,14 @@ class SideNavPullDetectGesture extends Gesture {
                 if (isHeaderSwipe || isFooterSwipe)
                     return;
 
-                const isControlSwipe = prePullDistance === PrePullDistance2;
-                if (isControlSwipe)
-                    return;
+                const isEdgeSwipe = Math.abs(coords.x - pullEdgeX) <= 25;
+                if (isEdgeSwipe) {
+                    const isControlSwipe = prePullDistance === PrePullDistance2;
+                    if (isControlSwipe)
+                        return;
 
-                const isEdgeSwipe = Math.abs(coords.x - pullEdgeX) <= 20;
-                if (isEdgeSwipe)
                     tryPreventDefaultForEvent(event);
+                }
             }
 
             Gestures.addActive(new SideNavPullDetectGesture(sideNav, coords, event, prePullDistance));
