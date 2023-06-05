@@ -31,6 +31,14 @@
             Click="@(() => Reply(entry))">
         </MenuEntry>
     }
+    @if (entry.Kind == ChatEntryKind.Text && !entry.Content.IsNullOrEmpty()) {
+        <CopyTrigger Tooltip="" CopyText="@entry.Content" Class="ac-menu-item !p-0">
+            <MenuEntry
+                Icon="icon-copy"
+                Text="Copy text">
+            </MenuEntry>
+        </CopyTrigger>
+    }
     @if (!ClickedLinkUrl.IsNullOrEmpty()) {
         <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
             <MenuEntry
