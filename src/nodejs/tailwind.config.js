@@ -1263,6 +1263,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       footer: '3.75rem',
+      none: 'none',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       ...theme('spacing'),

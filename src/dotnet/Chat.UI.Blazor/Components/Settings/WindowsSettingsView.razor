@@ -1,0 +1,43 @@
+﻿<Tile Class="win-settings">
+    @if (_autoStartState != null) {
+        <TileItem Class="auto-launch">
+            <Icon>
+                <i class="icon-settings text-xl"></i>
+            </Icon>
+            <Content>
+                Auto launch with the system start
+            </Content>
+            <Caption>
+                @if (_autoStartState.Fix != null) {
+                    <span class="disable-reason active" @onclick="@(() => _autoStartState.Fix())">@_autoStartState.CanNotChangeReason</span>
+                } else {
+                    <span class="disable-reason">@_autoStartState.CanNotChangeReason</span>
+                }
+            </Caption>
+            <Right>
+                <Toggle
+                    IsDisabled="@(!_autoStartState.CanChange)"
+                    IsChecked="@_autoStartState.IsEnabled"
+                    IsCheckedChanged="OnAutoStartChanged"
+                    Class="toggle-sm"/>
+            </Right>
+        </TileItem>
+    }
+</Tile>
+
+@code {
+    private AutoStartupState? _autoStartState;
+
+    [Parameter, EditorRequired] public IWindowsSettings WindowsSettings { get; set; } = null!;
+
+    protected override Task OnInitializedAsync()
+        => UpdateAutoStart();
+
+    private async Task UpdateAutoStart()
+        => _autoStartState = await WindowsSettings.GetAutoStartupState();
+
+    private async Task OnAutoStartChanged(bool isEnabled) {
+        await WindowsSettings.SetAutoStartup(isEnabled);
+        await UpdateAutoStart();
+    }
+}

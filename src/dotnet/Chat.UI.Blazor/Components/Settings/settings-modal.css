@@ -1,0 +1,16 @@
+﻿.settings-tab .win-settings .tile-item {
+    @apply h-auto;
+}
+
+.settings-tab .win-settings .tile-item-body {
+    @apply max-h-none;
+}
+
+.settings-tab .win-settings .auto-launch .disable-reason {
+    @apply text-icons-04;
+}
+
+.settings-tab .win-settings .auto-launch .disable-reason.active {
+    @apply underline;
+    @apply cursor-pointer;
+}
