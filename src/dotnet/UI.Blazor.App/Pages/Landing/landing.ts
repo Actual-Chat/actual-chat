@@ -144,18 +144,20 @@ export class Landing {
             let carouselContent = c.querySelector('.carousel-content');
 
             fromEvent(carousel.sideRight, 'click')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onArrowClick(carousel, false));
+                .pipe(
+                    takeUntil(this.disposed$),
+                    debounceTime(500),
+                ).subscribe(() => this.onArrowClick(carousel, false));
 
             fromEvent(carousel.sideLeft, 'click')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onArrowClick(carousel, true));
+                .pipe(
+                    takeUntil(this.disposed$),
+                    debounceTime(500),
+                ).subscribe(() => this.onArrowClick(carousel, true));
 
             fromEvent(carouselContent, 'scroll')
-                .pipe((
-                    takeUntil(this.disposed$)),
-                    debounceTime(100),
-                ).subscribe(() => this.updateControls(carousel));
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.updateControls(carousel));
         })
     }
 
