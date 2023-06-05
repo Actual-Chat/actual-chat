@@ -44,7 +44,11 @@ public partial class MainPage
     }
 
     private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
-        => PlatformWebView = e.WebView;
+    {
+        var webView = e.WebView;
+        webView.Inspectable = true;
+        PlatformWebView = webView;
+    }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)
         => PlatformWebView!.UIDelegate = new UIDelegate();
