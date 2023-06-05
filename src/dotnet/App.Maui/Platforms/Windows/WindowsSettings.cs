@@ -7,7 +7,7 @@ public class WindowsSettings : IWindowsSettings
 {
     public async Task<AutoStartupState> GetAutoStartupState()
     {
-        var startupTask = await StartupTask.GetAsync("MyStartupId"); // Pass the task ID you specified in the appxmanifest file
+        var startupTask = await GetStartupTask().ConfigureAwait(true);
         switch (startupTask.State) {
         case StartupTaskState.Disabled:
             return new AutoStartupState(false);
@@ -32,7 +32,7 @@ public class WindowsSettings : IWindowsSettings
 
     public async Task SetAutoStartup(bool isEnabled)
     {
-        var startupTask = await StartupTask.GetAsync("MyStartupId"); // Pass the task ID you specified in the appxmanifest file
+        var startupTask = await GetStartupTask().ConfigureAwait(true);
         if (isEnabled) {
             switch (startupTask.State) {
             case StartupTaskState.Enabled:
@@ -68,6 +68,10 @@ public class WindowsSettings : IWindowsSettings
             }
         }
     }
+
+    private static async Task<StartupTask> GetStartupTask()
+        // Pass the task ID you specified in the appxmanifest file
+        => await StartupTask.GetAsync("{2720A628-2446-460A-9B15-9F3B41104E79}");
 
     private void OpenTaskManager()
     {

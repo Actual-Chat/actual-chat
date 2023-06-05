@@ -32,7 +32,7 @@
           </uap:Extension>
             <uap5:Extension Category="windows.startupTask">
                 <uap5:StartupTask
-                    TaskId="MyStartupId"
+                    TaskId="{2720A628-2446-460A-9B15-9F3B41104E79}"
                     Enabled="false"
                     DisplayName="Actual Chat" />
             </uap5:Extension>
