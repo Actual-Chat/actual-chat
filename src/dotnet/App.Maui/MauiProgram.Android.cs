@@ -1,5 +1,6 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
@@ -59,13 +60,23 @@ public static partial class MauiProgram
 
     private static async Task HandleBackPressed(Android.App.Activity activity)
     {
+        var handler = ScopedServices.GetService<BackButtonHandler>();
+        if (handler != null) {
+            var eventArgs = new BackPressedEventArgs(MoveToBack);
+            handler.OnBackPressed(eventArgs);
+            if (eventArgs.Handled)
+                return;
+        }
         var webView = MainPage.Current?.PlatformWebView;
         var goBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
         if (goBack)
             return;
-        // Move app to background as Home button acts.
-        // It prevents scenario when app is running, but activity is destroyed.
-        activity.MoveTaskToBack(true);
+        MoveToBack();
+
+        void MoveToBack()
+            // Move app to background as Home button acts.
+            // It prevents scenario when app is running, but activity is destroyed.
+            => activity.MoveTaskToBack(true);
     }
 
     private static async Task<bool> TryGoBack(Android.Webkit.WebView webView)
