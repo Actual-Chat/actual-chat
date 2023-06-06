@@ -26,7 +26,7 @@ internal static class ParserExt
     public static Parser<char, Markup> ToTextMarkup(this Parser<char, string> parser, TextMarkupKind textMarkupKind, bool parseNewLines)
         => parser.Select(s => TextMarkup.New(textMarkupKind, s, parseNewLines));
 
-    private static Parser<char, char> OrEnd(this Parser<char, char> parser)
+    public static Parser<char, char> OrEnd(this Parser<char, char> parser)
         => End.ThenReturn(default(char)).Or(parser);
 
     public static Parser<char, Markup> JoinMarkup(this Parser<char, Markup> head, Parser<char, Markup> tail) =>
