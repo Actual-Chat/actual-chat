@@ -151,7 +151,7 @@
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <MtouchLink>SdkOnly</MtouchLink>
     <UseInterpreter>true</UseInterpreter>
-    <MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>
+    <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>-->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <WarningLevel>4</WarningLevel>
