@@ -140,6 +140,7 @@
   <PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
     <CodesignKey>Apple Development: Alexey Kochetov (3WV5NB4MDR)</CodesignKey>
     <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+    <ProvisioningType>automatic</ProvisioningType>
   </PropertyGroup>
 
   <!-- Platform-specific references -->

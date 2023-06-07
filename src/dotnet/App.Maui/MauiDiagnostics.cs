@@ -41,9 +41,8 @@ public static class MauiDiagnostics
     {
         services.AddSingleton<Disposer>();
         services.AddTracer(Tracer); // We don't want to have scoped tracers in MAUI app
-        services.AddSingleton(LoggerFactory);
-        services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
-        /*
+        // services.AddSingleton(LoggerFactory);
+        // services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
         services.AddLogging(logging => {
             logging.ClearProviders();
             var minLevel = Log.Logger.IsEnabled(LogEventLevel.Debug)
@@ -53,7 +52,6 @@ public static class MauiDiagnostics
                 .AddSerilog(Log.Logger, dispose: dispose)
                 .SetMinimumLevel(minLevel);
         });
-        */
         return services;
     }
 
@@ -62,7 +60,7 @@ public static class MauiDiagnostics
     private static LoggerConfiguration CreateSerilogLoggerConfiguration()
     {
         var configuration = new LoggerConfiguration()
-            .MinimumLevel.Is(LogEventLevel.Information)
+            .MinimumLevel.Is(LogEventLevel.Debug)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.With(new ThreadIdEnricher())
