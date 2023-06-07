@@ -146,7 +146,6 @@
   <!-- Platform-specific references -->
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
-    <CreatePackage>false</CreatePackage>
     <CodesignProvision>App Store Dev</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
