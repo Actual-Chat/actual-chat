@@ -183,13 +183,39 @@ body.hoverable .chat-header-title:hover {
 }
 
 .message-attachments {
-    @apply flex-y gap-y-1 md:gap-y-4;
+    @apply flex-y gap-y-px md:gap-y-4;
     @apply mt-2 md:mt-4;
     @apply overflow-hidden;
 }
 .message-image-attachments {
-    @apply flex flex-wrap gap-1 md:gap-4;
+    @apply flex-y flex-wrap gap-px;
+    @apply border-2 border-primary;
+    @apply rounded-xl;
+    @apply overflow-hidden;
+}
+body.wide .message-image-attachments {
+    width: 30rem;
 }
 .message-file-attachments {
     @apply flex-y gap-y-1;
+}
+
+.image-line {
+    @apply flex-x gap-x-px;
+}
+.image-line .image-item {
+    @apply flex-1 flex-x;
+    @apply bg-01;
+}
+.image-line .image-item img {
+    @apply h-full;
+    max-height: 30rem;
+}
+.image-line .image-item img,
+.image-line .image-item a {
+    @apply flex-1 flex;
+}
+.image-line .image-item img,
+.image-line .image-item video {
+    @apply object-cover;
 }
