@@ -65,6 +65,13 @@
     <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
@@ -132,13 +139,12 @@
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
-    <CodesignKey>Apple Development: Alexey Kochetov (3WV5NB4MDR)</CodesignKey>
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
+    <CreatePackage>false</CreatePackage>
     <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+    <CodesignKey>iPhone Developer</CodesignKey>
     <ProvisioningType>automatic</ProvisioningType>
   </PropertyGroup>
-
-  <!-- Platform-specific references -->
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
     <CodesignProvision>App Store Dev</CodesignProvision>
@@ -148,12 +154,8 @@
     <UseInterpreter>true</UseInterpreter>
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>-->
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
-  </ItemGroup>
+
+  <!-- Platform-specific references -->
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android'">
     <PackageReference Include="Xamarin.Firebase.Messaging" />
