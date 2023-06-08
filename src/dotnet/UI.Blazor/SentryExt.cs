@@ -10,7 +10,7 @@ public static class SentryExt
     {
         options.Dsn = UIDsn;
         options.AddExceptionFilterForType<OperationCanceledException>();
-        options.Debug = true;
-        options.DiagnosticLevel = SentryLevel.Debug;
+        options.Debug = false;
+        options.DiagnosticLevel = SentryLevel.Error;
     }
 }
