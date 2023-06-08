@@ -76,6 +76,6 @@ public static partial class Constants
 
     public static class Sentry
     {
-        public static HashSet<AppKind> EnabledFor { get; } = new();
+        public static HashSet<AppKind> EnabledFor { get; } = new () {AppKind.MauiApp};
     }
 }

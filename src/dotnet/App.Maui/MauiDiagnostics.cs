@@ -2,7 +2,11 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Configuration;
+using Sentry;
+using Sentry.Maui.Internal;
+using Sentry.Serilog;
 using Serilog;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
@@ -14,6 +18,7 @@ public static class MauiDiagnostics
 {
     private const string LogTag = "actual.chat";
     private static Exception? _configureLoggerException;
+    private static SentryOptions? _sentryOptions;
     public static readonly ILoggerFactory LoggerFactory;
     public static readonly Tracer Tracer;
 
@@ -27,10 +32,14 @@ public static class MauiDiagnostics
             DefaultLog.LogError(_configureLoggerException, "Failed to configure logger");
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = LoggerFactory.CreateLogger(typeof(WebMReader));
+        if (_sentryOptions != null)
+            _ = LoadingUI.WhenAppLoaded
+                .ContinueWith(_ => InitSentrySdk(_sentryOptions), TaskScheduler.Default);
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
     {
+        services.AddSingleton<Disposer>();
         services.AddTracer(Tracer); // We don't want to have scoped tracers in MAUI app
         services.AddSingleton(LoggerFactory);
         services.Add(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
@@ -62,8 +71,43 @@ public static class MauiDiagnostics
         configuration = ConfigureFromJsonFile(configuration, MauiProgram.GetAppSettingsFilePath());
         configuration = MauiProgram.ConfigurePlatformLogger(configuration);
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
-            configuration = configuration.WriteTo.Sentry(options => options.ConfigureForApp());
+            configuration = configuration.WriteTo.Sentry(ConfigureSentrySerilog);
         return configuration;
+    }
+
+    private static void ConfigureSentrySerilog(SentrySerilogOptions options)
+    {
+        options.ConfigureForApp();
+        // We'll initialize the SDK later after app is loaded.
+        options.InitializeSdk = false;
+
+        // Set defaults for options that are different for MAUI.
+        options.AutoSessionTracking = true;
+        options.DetectStartupTime = StartupTimeDetectionMode.Fast;
+        options.CacheDirectoryPath = Microsoft.Maui.Storage.FileSystem.CacheDirectory;
+
+        // Global Mode makes sense for client apps
+        options.IsGlobalModeEnabled = true;
+
+        // We'll use an event processor to set things like SDK name
+        options.AddEventProcessor(new SentryMauiEventProcessor2(options));
+
+        _sentryOptions = options;
+    }
+
+    private static void InitSentrySdk(SentryOptions options)
+    {
+        // We can use MAUI's network connectivity information to inform the CachingTransport when we're offline.
+        // We do it here to eliminate startup delay due to checking connectivity status in MauiNetworkStatusListener .ctor.
+        options.NetworkStatusListener = new MauiNetworkStatusListener(Connectivity.Current, options);
+
+        // Initialize the Sentry SDK.
+        var disposable = SentrySdk.Init(options);
+        // TODO(DF): It seems disposer is not invoked on application closing. Look up for another solution to flush client data.
+        var disposer = AppServices.GetRequiredService<Disposer>();
+        // Register the return value from initializing the SDK with the disposer.
+        // This will ensure that it gets disposed when the service provider is disposed.
+        disposer.Register(disposable);
     }
 
     private static LoggerConfiguration ConfigureFromJsonFile(

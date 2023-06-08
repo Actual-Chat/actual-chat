@@ -7,7 +7,6 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using Serilog;
 
@@ -76,9 +75,6 @@ public static partial class MauiProgram
     private static MauiAppBuilder ConfigureApp(MauiAppBuilder builder, bool isEarlyApp)
     {
         using var _ = Tracer.Region();
-
-        if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
-            builder = builder.UseSentry(options => options.ConfigureForApp());
 
         builder = builder
             .ConfigureFonts(fonts => {
