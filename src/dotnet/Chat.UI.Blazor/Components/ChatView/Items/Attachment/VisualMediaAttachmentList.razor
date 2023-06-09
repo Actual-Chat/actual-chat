@@ -107,6 +107,11 @@
         ImageLine mixedLine;
         foreach (var line in gallery) {
             if (line is not { IsFull: false,Line: not null }) continue;
+            if (line.ImageSize == ImageSize.Large) {
+                line.IsFull = true;
+                newGallery.Add(line);
+                continue;
+            }
             foreach (var item in line.Line) {
                 mixedList.Add(item);
                 if (mixedList.Count != 3) continue;
