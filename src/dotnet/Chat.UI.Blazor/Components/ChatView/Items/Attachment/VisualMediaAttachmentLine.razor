@@ -8,29 +8,29 @@
         itemCls = "image-small";
         attachmentCls = "flex-1";
         if (IsFull) {
-            lineHeight = "h-60";
+            lineHeight = "h-36 md:h-60";
         } else if (ImageLine.Count == 3) {
-            lineHeight = "h-80";
+            lineHeight = "h-48 md:h-80";
         } else if (ImageLine.Count == 2) {
-            lineHeight = "h-fit";
+            lineHeight = "h-fit max-h-48 md:max-h-none";
         }
     } else if (ImageSize == ImageSize.Medium) {
         itemCls = "image-medium";
         if (IsFull)
-            lineHeight = "h-40";
+            lineHeight = "h-24 md:h-40";
         else if (ImageLine.Count == 1) {
-            lineHeight = "h-fit";
+            lineHeight = "h-fit max-h-48 md:max-h-none";
         }
     } else if (ImageSize == ImageSize.Large) {
         itemCls = "image-large";
         if (IsFull)
-            lineHeight = "h-28";
+            lineHeight = "h-24 md:h-40";
     } else if (ImageSize == ImageSize.Mixed) {
         itemCls = "image-mixed";
         lineHeight = ImageLine.Count switch {
-            3 => "h-40",
-            2 => "h-60",
-            _ => "h-120",
+            3 => "h-24 md:h-40",
+            2 => "h-36 md:h-60",
+            _ => "h-64 md:h-120",
         };
     }
 }
