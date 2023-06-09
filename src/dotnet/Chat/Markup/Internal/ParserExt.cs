@@ -11,14 +11,14 @@ internal static class ParserExt
 
     public static Action<string>? DebugOutput { get; set; }
 
-    public static Parser<char, T> Debug<T>(this Parser<char, T> parser, Func<T, string> formatter) where T: Markup
+    public static Parser<char, T> Debug<T>(this Parser<char, T> parser, Func<T, string> formatter) where T: class
         => Constants.DebugMode.MarkupParser
             ? parser.Select(x => {
                 DebugOutput?.Invoke(formatter(x));
                 return x;
             })
             : parser;
-    public static Parser<char, T> Debug<T>(this Parser<char, T> parser, string title) where T: Markup
+    public static Parser<char, T> Debug<T>(this Parser<char, T> parser, string title) where T: class
         => parser.Debug(x => $"{title}: {x}");
 
     // Extensions
@@ -52,10 +52,10 @@ internal static class ParserExt
 
     public static readonly Parser<char, Unit> Nothing = new NothingParser();
 
-    public static Parser<char, T> SafeTryOneOf<T>(params Parser<char, T>[] parsers) where T: Markup
+    public static Parser<char, T> SafeTryOneOf<T>(params Parser<char, T>[] parsers) where T: class
         => OneOf(parsers.Select(Try));
 
-    public static Parser<char, T> TryOneOf<T>(params Parser<char, T>[] parsers) where T: Markup
+    public static Parser<char, T> TryOneOf<T>(params Parser<char, T>[] parsers) where T: class
     {
         var newParsers = new Parser<char, T>[parsers.Length];
         var lastIndex = parsers.Length - 1;
