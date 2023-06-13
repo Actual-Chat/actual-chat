@@ -34,10 +34,9 @@ namespace ActualChat.Users.Migrations
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();
-            var versionGenerator = dbInitializer.DbHub.VersionGenerator;
 
-            using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
-            using var chatDbContext = chatDbInitializer.DbHub.CreateDbContext(true);
+            using var dbContext = dbInitializer.CreateDbContext(true);
+            using var chatDbContext = chatDbInitializer.CreateDbContext(true);
 
             var dbAvatars = await dbContext.Avatars
                 .Where(a => (a.UserId ?? "").Contains(":"))

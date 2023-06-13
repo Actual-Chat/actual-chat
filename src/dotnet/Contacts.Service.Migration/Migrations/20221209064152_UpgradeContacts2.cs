@@ -30,9 +30,8 @@ namespace ActualChat.Contacts.Migrations
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();
-            var versionGenerator = dbInitializer.DbHub.VersionGenerator;
 
-            using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
+            using var dbContext = dbInitializer.CreateDbContext(true);
 
             var dbContacts = await dbContext.Contacts.OrderBy(c => c.Id).ToListAsync();
             log.LogInformation("Upgrading {Count} contacts", dbContacts.Count);

@@ -41,7 +41,7 @@ public static class MigrationExt
         CancellationToken cancellationToken = default)
         where TDbContext : DbContext
     {
-        var dbContext = dbInitializer.DbHub.CreateDbContext();
+        var dbContext = dbInitializer.CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var db = dbContext.Database;
 

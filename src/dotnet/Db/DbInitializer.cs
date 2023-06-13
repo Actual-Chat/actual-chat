@@ -8,8 +8,10 @@ namespace ActualChat.Db;
 public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDbInitializer
     where TDbContext : DbContext
 {
+    private const int CommandTimeout = 30;
+
+    private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
-    public new DbHub<TDbContext> DbHub => base.DbHub;
     public DbInfo<TDbContext> DbInfo { get; }
     public HostInfo HostInfo { get; }
     public Dictionary<IDbInitializer, Task> RunningTasks { get; set; } = null!;
@@ -23,11 +25,18 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         HostInfo = services.GetRequiredService<HostInfo>();
     }
 
+    public new TDbContext CreateDbContext(bool readWrite = false)
+    {
+        var dbContext = DbHub.CreateDbContext(readWrite);
+        ConfigureContext(dbContext);
+        return dbContext;
+    }
+
     public virtual async Task InitializeSchema(CancellationToken cancellationToken)
     {
         var hostInfo = Services.GetRequiredService<HostInfo>();
 
-        var dbContext = DbHub.CreateDbContext(readWrite: true);
+        var dbContext = CreateDbContext(readWrite: true);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var db = dbContext.Database;
@@ -82,4 +91,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
 
     public virtual Task VerifyData(CancellationToken cancellationToken)
         => Task.CompletedTask;
+
+    protected void ConfigureContext(TDbContext dbContext)
+        => dbContext.Database.SetCommandTimeout(CommandTimeout);
 }

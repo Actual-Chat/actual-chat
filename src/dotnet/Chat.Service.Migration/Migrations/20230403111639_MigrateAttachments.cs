@@ -35,8 +35,8 @@ namespace ActualChat.Chat.Migrations
             var blobs = new List<(string OldPath, string NewPath)>(batchSize);
 
             while (true) {
-                using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
-                using var mediaDbContext = mediaDbInitializer.DbHub.CreateDbContext(true);
+                using var dbContext = dbInitializer.CreateDbContext(true);
+                using var mediaDbContext = mediaDbInitializer.CreateDbContext(true);
                 mediaDbContext.ChangeTracker.AutoDetectChangesEnabled = false;
 
                 var dbAttachments = await dbContext.TextEntryAttachments

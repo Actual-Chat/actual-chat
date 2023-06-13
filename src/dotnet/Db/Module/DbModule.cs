@@ -14,6 +14,8 @@ namespace ActualChat.Db.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class DbModule : HostModule<DbSettings>
 {
+    private const int CommandTimeout = 3;
+
     private ILogger Log { get; }
 
     public DbModule(IServiceProvider services) : base(services)
@@ -72,6 +74,7 @@ public sealed class DbModule : HostModule<DbSettings>
                 break;
             case DbKind.PostgreSql:
                 builder.UseNpgsql(dbInfo.ConnectionString, npgsql => {
+                    npgsql.CommandTimeout(CommandTimeout);
                     npgsql.EnableRetryOnFailure(0);
                     npgsql.MaxBatchSize(1);
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
