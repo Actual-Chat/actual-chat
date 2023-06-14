@@ -21,20 +21,21 @@ export class VisualMediaViewer {
     private prevX: number = 0;
     private readonly originImageWidth: number = 0;
     private readonly originImageHeight: number = 0;
-    private readonly originViewerWidth: number = 0;
-    private readonly originViewerHeight: number = 0;
     private movementStart: boolean = false;
     private startDistance: number = 0;
-    private startImageWidth: number = 0;
-    private startImageHeight: number = 0;
-    private startViewerRect: DOMRect;
+    private prevDistance: number = 0;
     private startImageRect: DOMRect;
+    private prevImageRect: DOMRect;
     private startImageTop: number = 0;
     private startImageLeft: number = 0;
     private headerBottom: number = 0;
     private footerTop: number = 0;
     private isShowFooterAndHeader: boolean = false;
     private points: PointerEvent[] = new Array<PointerEvent>();
+    private readonly minWidth: number = 0;
+    private readonly minHeight: number = 0;
+    private readonly maxWidth: number = 0;
+    private readonly maxHeight: number = 0;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -51,8 +52,10 @@ export class VisualMediaViewer {
         this.footerHeaderToggle();
         this.originImageWidth = this.round(this.image.getBoundingClientRect().width);
         this.originImageHeight = this.round(this.image.getBoundingClientRect().height);
-        this.originViewerWidth = this.round(this.imageViewer.getBoundingClientRect().width);
-        this.originViewerHeight = this.round(this.imageViewer.getBoundingClientRect().height);
+        this.maxHeight = window.innerHeight * 3;
+        this.maxWidth = window.innerWidth * 3;
+        this.minHeight = this.round(this.image.getBoundingClientRect().height);
+        this.minWidth = this.round(this.image.getBoundingClientRect().width);
 
         fromEvent(window, 'wheel')
             .pipe(takeUntil(this.disposed$))
@@ -266,12 +269,11 @@ export class VisualMediaViewer {
             this.imageViewer.style.touchAction = 'none';
             this.overlay.style.touchAction = 'none';
             this.points.push(event);
-            this.startImageRect = this.image.getBoundingClientRect();
-            this.startImageWidth = this.round(this.startImageRect.width);
-            this.startImageHeight = this.round(this.startImageRect.height);
-            this.startViewerRect = this.imageViewer.getBoundingClientRect();
+            this.startImageRect = this.imageViewer.getBoundingClientRect();
+            this.prevImageRect = this.startImageRect;
             if (this.points.length === 2) {
-                this.startDistance = this.round(this.getDistance());
+                this.startDistance = this.getDistance();
+                this.prevDistance = this.getDistance();
             } else if (this.points.length === 1) {
                 this.startY = event.pageY;
                 this.startX = event.pageX;
@@ -307,24 +309,21 @@ export class VisualMediaViewer {
 
     private onPointerUp = (event: PointerEvent) => {
         window.removeEventListener('pointermove', this.onPointerMove);
-        this.removeEvent(event);
-        if (this.points.length === 0) {
-            window.removeEventListener('pointermove', this.onTouchableMove);
-            this.movementStart = false;
-        }
-        let imageWidth = this.round(this.imageViewer.getBoundingClientRect().width);
-        let windowWidth = window.innerWidth;
-        let windowHeight = window.innerHeight;
-
-        if (imageWidth > windowWidth * 3) {
-            this.image.style.width = (windowWidth * 3) + 'px';
-            this.image.style.maxWidth = (windowWidth * 3) + 'px';
-        } else if (imageWidth < this.originImageWidth) {
-            this.image.style.width = this.originImageWidth + 'px';
-            this.image.style.maxWidth = this.originImageWidth + 'px';
-            this.image.style.maxHeight = this.originImageHeight + 'px';
-            this.imageViewer.style.left = ((windowWidth - this.originImageWidth) / 2) + 'px';
-            this.imageViewer.style.top = ((windowHeight - this.originImageHeight) / 2) + 'px';
+        if (event.pointerType === 'touch') {
+            this.removeEvent(event);
+            if (this.points.length === 0) {
+                window.removeEventListener('pointermove', this.onTouchableMove);
+                this.movementStart = false;
+            }
+            let imageWidth = this.round(this.imageViewer.getBoundingClientRect().width);
+            let imageHeight = this.round(this.imageViewer.getBoundingClientRect().height);
+            if (imageWidth < this.minWidth || imageHeight < this.minHeight) {
+                this.image.style.width = this.minWidth + 'px';
+                this.image.style.maxWidth = this.minWidth + 'px';
+                this.image.style.maxHeight = this.minHeight + 'px';
+                this.imageViewer.style.left = ((window.innerWidth - this.originImageWidth) / 2) + 'px';
+                this.imageViewer.style.top = ((window.innerHeight - this.originImageHeight) / 2) + 'px';
+            }
         }
     };
 
@@ -343,17 +342,24 @@ export class VisualMediaViewer {
         if (this.points.length === 2) {
             let distance = this.getDistance();
             let scale = distance / this.startDistance;
-            let newImageWidth = this.round(this.startImageWidth * scale);
-            let newImageHeight = this.round(this.startImageHeight * scale);
-            this.image.style.width = newImageWidth + 'px';
-            this.image.style.maxWidth = newImageWidth + 'px';
-            this.image.style.maxHeight = newImageHeight + 'px';
-            this.touchableCenter();
+            let imageRect = this.image.getBoundingClientRect();
+            if (imageRect.width >= this.maxWidth || imageRect.height >= this.maxHeight) {
+                if (distance >= this.prevDistance) {
+                    this.startDistance = distance;
+                    this.startImageRect = imageRect;
+                } else {
+                    this.scaleImage(scale);
+                }
+            } else {
+                this.scaleImage(scale);
+            }
+            this.prevDistance = distance;
+            this.prevImageRect = imageRect;
+
         } else if (this.points.length === 1 && this.imageViewer.contains(event.target as HTMLElement)) {
             let viewer = this.imageViewer;
             let imageRect = this.startImageRect;
-            let viewerRect = this.startViewerRect;
-            if (this.canMoveTouchable(imageRect)) {
+            if (this.canMoveImage(imageRect)) {
                 let rect = this.image.getBoundingClientRect();
                 let imageTop = this.round(rect.top);
                 let imageRight = this.round(rect.right);
@@ -369,15 +375,15 @@ export class VisualMediaViewer {
                             viewer.style.left = 0 + 'px';
                             this.startX = event.pageX;
                         } else {
-                            viewer.style.left = this.round(viewerRect.left + deltaX) + 'px';
+                            viewer.style.left = this.round(imageRect.left + deltaX) + 'px';
                         }
                     } else if (event.pageX < this.prevX) {
                         // move left
                         if (imageRight <= windowWidth) {
-                            viewer.style.left = this.round(windowWidth - viewerRect.width) + 'px';
+                            viewer.style.left = this.round(windowWidth - imageRect.width) + 'px';
                             this.startX = event.pageX;
                         } else {
-                            viewer.style.left = this.round(viewerRect.left + deltaX) + 'px';
+                            viewer.style.left = this.round(imageRect.left + deltaX) + 'px';
                         }
                     }
                     this.prevX = event.pageX;
@@ -387,52 +393,89 @@ export class VisualMediaViewer {
                     if (event.pageY > this.prevY) {
                         // move down
                         if (imageTop >= 0 && imageTop < 16) {
-                            viewer.style.top = (imageRect.top - viewerRect.top) + 'px';
+                            viewer.style.top = (imageRect.top - imageRect.top) + 'px';
                             this.startY = event.pageY;
                         } else {
-                            viewer.style.top = this.round(viewerRect.top + deltaY) + 'px';
+                            viewer.style.top = this.round(imageRect.top + deltaY) + 'px';
                         }
                     } else if (event.pageY < this.prevY) {
                         // move up
                         if (imageBottom <= windowHeight && imageBottom > windowHeight - 16) {
-                            viewer.style.top = this.round(windowHeight - viewerRect.height) + 'px';
+                            viewer.style.top = this.round(windowHeight - imageRect.height) + 'px';
                             this.startY = event.pageY;
                         } else {
-                            viewer.style.top = this.round(viewerRect.top + deltaY) + 'px';
+                            viewer.style.top = this.round(imageRect.top + deltaY) + 'px';
                         }
                     }
                     this.prevY = event.pageY;
                 }
+                this.prevImageRect = rect;
             }
         } else {
             preventDefaultForEvent(event);
         }
     }
 
-    private canMoveTouchable(rect: DOMRect) : boolean {
+    private scaleImage(scale: number) {
+        let newImageWidth = this.round(this.startImageRect.width * scale);
+        let newImageHeight = this.round(this.startImageRect.height * scale);
+        this.image.style.width = newImageWidth + 'px';
+        this.image.style.maxWidth = newImageWidth + 'px';
+        this.image.style.maxHeight = newImageHeight + 'px';
+        this.centerImage();
+    }
+
+    private canMoveImage(rect: DOMRect) : boolean {
         return rect.top < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight || rect.left < 0;
     }
 
-    private touchableCenter() {
+    private centerImage() {
         let rect = this.imageViewer.getBoundingClientRect();
-        // center x
         const imageLeft = this.round(rect.left);
         const imageRight = this.round(rect.right);
         const imageWidth = this.round(rect.width);
         const windowWidth = window.innerWidth;
-        if ((windowWidth / 2 - imageLeft) != (imageRight - windowWidth / 2)) {
-            let newImageLeft = (windowWidth - imageWidth) / 2;
-            this.imageViewer.style.left = newImageLeft + 'px';
-        }
-        // center y
         const imageTop = this.round(rect.top);
         const imageBottom = this.round(rect.bottom);
         const imageHeight = this.round(rect.height);
         const windowHeight = window.innerHeight;
-        if ((windowHeight / 2 - imageTop) != (imageBottom - windowHeight / 2)) {
-            let newImageTop = (windowHeight - imageHeight) / 2;
-            this.imageViewer.style.top = newImageTop + 'px';
+        const viewerRect = this.imageViewer.getBoundingClientRect();
+
+        let left = imageLeft;
+        let top = imageTop;
+        let deltaX = (this.round(this.prevImageRect.width) - imageWidth) / 2;
+        let deltaY = (this.round(this.prevImageRect.height) - imageHeight) / 2;
+
+        // center x
+        if (rect.width >= windowWidth && rect.width <= this.prevImageRect.width) {
+            left = (this.prevImageRect.left + deltaX);
+            if (viewerRect.left >= 0) {
+                left = 0;
+            } else if (viewerRect.right <= windowWidth) {
+                left = windowWidth - rect.width;
+            }
+        } else {
+            if ((windowWidth / 2 - imageLeft) != (imageRight - windowWidth / 2)) {
+                left = (this.prevImageRect.left + deltaX);
+            }
         }
+
+        // center y
+        if (rect.height >= windowHeight && rect.height <= this.prevImageRect.height) {
+            top = (this.prevImageRect.top + deltaY);
+            if (viewerRect.top > 0) {
+                top = 0;
+            } else if (viewerRect.bottom <= windowHeight) {
+                top = windowHeight - rect.height;
+            }
+        } else {
+            if ((windowHeight / 2 - imageTop) != (imageBottom - windowHeight / 2)) {
+                top = (this.prevImageRect.top + deltaY);
+            }
+        }
+
+        this.imageViewer.style.left = left + 'px';
+        this.imageViewer.style.top = top + 'px';
     }
 }
 

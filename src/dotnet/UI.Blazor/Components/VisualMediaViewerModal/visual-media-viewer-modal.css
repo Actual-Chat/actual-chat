@@ -49,7 +49,7 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
 
 .image-viewer-modal .image-viewer-content {
     @apply absolute flex-y max-h-fit;
-    @apply justify-center items-center backdrop-blur-md;
+    @apply justify-center items-center md:backdrop-blur-md;
 }
 
 .image-viewer-modal .image-viewer-content img, .image-viewer-modal .image-viewer-content video {
