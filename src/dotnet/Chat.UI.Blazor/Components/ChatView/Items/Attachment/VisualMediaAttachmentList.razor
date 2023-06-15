@@ -3,7 +3,7 @@
 <div class="message-image-attachments">
     @foreach (var item in GetOptimizedGallery(ImageList)) {
         <VisualMediaAttachmentLine
-            ImageLine="@item.Line"
+            ImageList="@item.ImageList"
             ChatEntry="@ChatEntry"
             IsFull="@item.IsFull"
             ImageSize="@item.ImageSize"/>
@@ -15,137 +15,111 @@
     public List<TextEntryAttachment> ImageList { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
 
-    private List<ImageItem> CreateImageItemList(List<TextEntryAttachment> imageList) {
-        var imageItemList = new List<ImageItem>();
-        foreach (var image in imageList) {
-            var ratio = (float) image.Media.Width / image.Media.Height;
-            var crop = (double) ratio;
-            if (ratio <= 0.75)
-                crop = 0.333;
-            else if (ratio > 0.75 && ratio <= 1.25)
-                crop = 0.667;
-            else if (ratio > 1.25 && ratio <= 2)
-                crop = 1.5;
-            var imageItem = new ImageItem(image, crop);
-            imageItemList.Add(imageItem);
-        }
-        return imageItemList;
-    }
+    private List<GalleryRow> GetGallery(List<TextEntryAttachment> list) {
+        var orderedList = (from image in list.OrderByDescending(item => (float) item.Media.Width / item.Media.Height)
+            let ratio = (float)image.Media.Width / image.Media.Height
+            let size = ratio switch {
+                <= (float)0.75 => ImageSize.Small,
+                <= (float)1.25 => ImageSize.Medium,
+                <= 2 => ImageSize.Large,
+                _ => ImageSize.ExtraLarge,
+                }
+            select new ImageItem(image, size)).ToList();
 
-    private List<ImageLine> GetGallery(List<TextEntryAttachment> list) {
-        var imageItemList = CreateImageItemList(list);
-        var orderedList = imageItemList
-            .OrderByDescending(item => (float) item.Attachment.Media.Width / item.Attachment.Media.Height)
-            .ToList();
-
-        var gallery = new List<ImageLine>();
+        var gallery = new List<GalleryRow>();
         var imageList = new List<ImageItem>();
-        var imageType = ImageSize.ExtraLarge;
-        for (var i = 0; i < orderedList.Count; i++) {
-            var item = orderedList[i];
-            ImageLine imageLine;
-            if (item.Crop > 1.5) {
-                imageList.Add(item);
-                imageLine = new ImageLine(imageType, true, imageList);
-                gallery.Add(imageLine);
-                imageList = new List<ImageItem>();
-            } else if (Math.Abs(item.Crop - 1.5) < 0.001) {
-                imageType = ImageSize.Large;
-                if (imageList.Count == 2) {
-                    imageLine = new ImageLine(imageType, true, imageList);
-                    gallery.Add(imageLine);
-                    imageList = new List<ImageItem>();
-                }
-                imageList.Add(item);
-            } else if (Math.Abs(item.Crop - 0.667) < 0.001) {
-                if (imageType != ImageSize.Medium) {
-                    if (imageList.Count > 0) {
-                        imageLine = new ImageLine(ImageSize.Large, imageList.Count == 2, imageList);
-                        gallery.Add(imageLine);
-                    }
-                    imageList = new List<ImageItem>();
-                    imageType = ImageSize.Medium;
-                }
-                if (imageList.Count == 3) {
-                    imageLine = new ImageLine(imageType, true, imageList);
-                    gallery.Add(imageLine);
-                    imageList = new List<ImageItem>();
-                }
-                imageList.Add(item);
-            } else {
-                if (imageType != ImageSize.Small) {
-                    if (imageList.Count > 0) {
-                        imageLine = new ImageLine(ImageSize.Medium, imageList.Count == 3, imageList);
-                        gallery.Add(imageLine);
-                    }
-                    imageList = new List<ImageItem>();
-                    imageType = ImageSize.Small;
-                }
-                if (imageList.Count == 4) {
-                    imageLine = new ImageLine(imageType, true, imageList);
-                    gallery.Add(imageLine);
-                    imageList = new List<ImageItem>();
-                }
-                imageList.Add(item);
-            }
-            if (i != orderedList.Count - 1 || imageList.Count <= 0) continue;
-            imageLine = new ImageLine(imageType, imageList.Count == 4, imageList);
-            gallery.Add(imageLine);
+        var rowSize = ImageSize.ExtraLarge;
+
+        foreach (var item in orderedList) {
+            (gallery, imageList, rowSize) = item.ImageSize switch {
+                ImageSize.ExtraLarge => GetGalleryRow(gallery, item, imageList, rowSize, 1),
+                ImageSize.Large => GetGalleryRow(gallery, item, imageList, rowSize, 2),
+                ImageSize.Medium => GetGalleryRow(gallery, item, imageList, rowSize, 3),
+                _ => GetGalleryRow(gallery, item, imageList, rowSize, 4),
+            };
+
+            if (orderedList.IndexOf(item) != orderedList.Count - 1 || imageList.Count == 0)
+                continue;
+            var row = new GalleryRow(rowSize, imageList.Count == 4, imageList);
+            gallery.Add(row);
             imageList = new List<ImageItem>();
         }
         return gallery;
     }
 
-    private List<ImageLine> GetOptimizedGallery(List<TextEntryAttachment> list) {
-        var gallery = GetGallery(list);
-        var newGallery = new List<ImageLine>();
-        foreach (var line in gallery) {
-            if (line.IsFull)
-                newGallery.Add(line);
-        }
-        var mixedList = new List<ImageItem>();
-        ImageLine mixedLine;
-        foreach (var line in gallery) {
-            if (line is not { IsFull: false,Line: not null }) continue;
-            if (line.ImageSize == ImageSize.Large) {
-                line.IsFull = true;
-                newGallery.Add(line);
-                continue;
+    private (List<GalleryRow>, List<ImageItem>, ImageSize) GetGalleryRow(
+        List<GalleryRow> gallery,
+        ImageItem item,
+        List<ImageItem> imageList,
+        ImageSize rowSize,
+        int maxRowCount) {
+        var isFull = rowSize switch {
+            ImageSize.ExtraLarge or ImageSize.Large => imageList.Count >= 1,
+            ImageSize.Medium => imageList.Count == 3,
+            _ => imageList.Count == 4,
+        };
+
+        if (item.ImageSize != rowSize) {
+            if (imageList.Count > 0) {
+                var row = new GalleryRow(rowSize, isFull, imageList);
+                gallery.Add(row);
             }
-            foreach (var item in line.Line) {
+            imageList = new List<ImageItem>();
+            rowSize = item.ImageSize;
+        }
+        if (imageList.Count == maxRowCount) {
+            var row = new GalleryRow(rowSize, true, imageList);
+            gallery.Add(row);
+            imageList = new List<ImageItem>();
+        }
+        imageList.Add(item);
+        return (gallery, imageList, rowSize);
+    }
+
+    private List<GalleryRow> GetOptimizedGallery(List<TextEntryAttachment> list) {
+        var gallery = GetGallery(list);
+        var newGallery = gallery.Where(line => line.IsFull).ToList();
+        var mixedList = new List<ImageItem>();
+        GalleryRow mixedRow;
+        foreach (var row in gallery
+            .Where(line => line is { IsFull: false, ImageList: not null })) {
+            if (row.ImageList == null)
+                continue;
+            foreach (var item in row.ImageList) {
                 mixedList.Add(item);
-                if (mixedList.Count != 3) continue;
-                mixedLine = new ImageLine(ImageSize.Mixed, true, mixedList);
-                newGallery.Add(mixedLine);
+                if (mixedList.Count != 3)
+                    continue;
+                mixedRow = new GalleryRow(ImageSize.Mixed, true, mixedList);
+                newGallery.Add(mixedRow);
                 mixedList = new List<ImageItem>();
             }
         }
-        if (mixedList.Count <= 0) return newGallery;
-        mixedLine = new ImageLine(ImageSize.Mixed, true, mixedList);
-        newGallery.Add(mixedLine);
+        if (mixedList.Count <= 0)
+            return newGallery;
+        mixedRow = new GalleryRow(ImageSize.Mixed, true, mixedList);
+        newGallery.Add(mixedRow);
         return newGallery;
     }
 
     public record ImageItem {
         public TextEntryAttachment Attachment { get; set; } = null!;
-        public double Crop { get; set; }
+        public ImageSize ImageSize { get; set; }
 
-        public ImageItem(TextEntryAttachment attachment, double crop) {
+        public ImageItem(TextEntryAttachment attachment, ImageSize imageSize) {
             Attachment = attachment;
-            Crop = crop;
+            ImageSize = imageSize;
         }
     }
 
-    public record ImageLine {
+    public record GalleryRow {
         public ImageSize ImageSize { get; set; }
         public bool IsFull { get; set; }
-        public List<ImageItem>? Line { get; set; }
+        public List<ImageItem>? ImageList { get; set; }
 
-        public ImageLine(ImageSize imageSize, bool isFull, List<ImageItem> line) {
+        public GalleryRow(ImageSize imageSize, bool isFull, List<ImageItem> imageList) {
             ImageSize = imageSize;
             IsFull = isFull;
-            Line = line;
+            ImageList = imageList;
         }
     }
-
 }

@@ -9,16 +9,16 @@
         attachmentCls = "flex-1";
         if (IsFull) {
             lineHeight = "h-36 md:h-60";
-        } else if (ImageLine.Count == 3) {
+        } else if (ImageList.Count == 3) {
             lineHeight = "h-48 md:h-80";
-        } else if (ImageLine.Count == 2) {
+        } else if (ImageList.Count == 2) {
             lineHeight = "h-fit max-h-48 md:max-h-none";
         }
     } else if (ImageSize == ImageSize.Medium) {
         itemCls = "image-medium";
         if (IsFull)
             lineHeight = "h-24 md:h-40";
-        else if (ImageLine.Count == 1) {
+        else if (ImageList.Count == 1) {
             lineHeight = "h-fit max-h-48 md:max-h-none";
         }
     } else if (ImageSize == ImageSize.Large) {
@@ -27,7 +27,7 @@
             lineHeight = "h-24 md:h-40";
     } else if (ImageSize == ImageSize.Mixed) {
         itemCls = "image-mixed";
-        lineHeight = ImageLine.Count switch {
+        lineHeight = ImageList.Count switch {
             3 => "h-24 md:h-40",
             2 => "h-36 md:h-60",
             _ => "h-64 md:h-120",
@@ -36,7 +36,7 @@
 }
 
 <div class="image-line @Class @lineHeight">
-    @foreach (var item in ImageLine) {
+    @foreach (var item in ImageList) {
         <div class="image-item @itemCls">
             <VisualMediaAttachment Attachment="@item.Attachment" ChatEntry="@ChatEntry" Class="@attachmentCls"/>
         </div>
@@ -45,7 +45,7 @@
 
 @code {
     [Parameter, EditorRequired]
-    public List<VisualMediaAttachmentList.ImageItem> ImageLine { get; set; } = null!;
+    public List<VisualMediaAttachmentList.ImageItem> ImageList { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsFull { get; set; }
