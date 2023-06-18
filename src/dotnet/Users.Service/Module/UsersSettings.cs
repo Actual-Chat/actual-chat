@@ -12,6 +12,7 @@ public sealed class UsersSettings
     public string MicrosoftAccountClientId { get; set; } = "";
     public string MicrosoftAccountClientSecret { get; set; } = "";
     public string AppleClientId { get; set; } = "";
+    public string AppleAppId { get; set; } = "";
     public string? AppleKeyId { get; set; } = "";
     public string AppleTeamId { get; set; } = "";
     public string ApplePrivateKeyPath { get; set; } = "";

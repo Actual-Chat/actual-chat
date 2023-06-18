@@ -1,6 +1,7 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.App.Maui;
 
 internal sealed class MauiClientAuth : IClientAuth
 {
@@ -27,6 +28,18 @@ internal sealed class MauiClientAuth : IClientAuth
 #endif
         }
 
+#if IOS
+        if (OrdinalEquals(IClientAuth.AppleIdSchemeName, scheme)
+            && DeviceInfo.Platform == DevicePlatform.iOS
+            && DeviceInfo.Version.Major >= 13)
+        {
+            var appleSignIn = Services.GetRequiredService<AppleSignIn>();
+            await appleSignIn.SignIn().ConfigureAwait(false);
+
+            return;
+        }
+#endif
+
         var session = await MauiSessionProvider.GetSession().ConfigureAwait(true);
         var sessionId = session.Id.Value;
         var uri = $"{AppSettings.BaseUrl}mobileauth/signin/{sessionId}/{scheme}";
@@ -44,9 +57,19 @@ internal sealed class MauiClientAuth : IClientAuth
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
-        => ValueTask.FromResult(new[] {
-            (IClientAuth.GoogleSchemeName, "Google"),
-        });
+    {
+        var schemas = DeviceInfo.Platform == DevicePlatform.iOS
+                ? new[] {
+                    (IClientAuth.AppleIdSchemeName, "Apple"),
+                    (IClientAuth.GoogleSchemeName, "Google"),
+                }
+                : new[] {
+                    (IClientAuth.GoogleSchemeName, "Google"),
+                    (IClientAuth.AppleIdSchemeName, "Apple"),
+                };
+
+        return ValueTask.FromResult(schemas);
+    }
 
     private async Task OpenSystemBrowserForSignIn(string url)
     {

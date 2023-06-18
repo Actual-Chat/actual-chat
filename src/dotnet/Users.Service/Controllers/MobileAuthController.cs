@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
+using ActualChat.Users.Module;
+using AspNet.Security.OAuth.Apple;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -22,9 +24,11 @@ public sealed class MobileAuthController : Controller
 
     private IServiceProvider Services { get; }
     private ICommander Commander { get; }
+    private ILogger<MobileAuthController> Logger { get; }
 
     public MobileAuthController(IServiceProvider services)
     {
+        Logger = services.GetRequiredService<ILogger<MobileAuthController>>();
         Services = services;
         Commander = services.Commander();
     }
@@ -153,6 +157,66 @@ public sealed class MobileAuthController : Controller
         }
     }
 
+    [HttpPost("signInAppleWithCode")]
+    [Consumes("application/x-www-form-urlencoded")]
+    public async Task<IActionResult> SignInAppleWithCode(
+        [FromForm] IFormCollection request,
+        CancellationToken cancellationToken)
+    {
+        var code = request["Code"].ToString();
+        var sessionId = request["SessionId"].ToString();
+        var email = request["Email"].ToString();
+        var name = request["Name"].ToString();
+        var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
+        var userSettings = Services.GetRequiredService<UsersSettings>();
+        var handler = await authenticationHandlerProvider
+            .GetHandlerAsync(HttpContext, AppleAuthenticationDefaults.AuthenticationScheme)
+            .ConfigureAwait(false);
+        if (handler is not AppleAuthenticationHandler appleAuthHandler)
+            throw new InvalidOperationException($"{nameof(AppleAuthenticationHandler)} is not found.");
+
+        var options = appleAuthHandler.Options;
+        var context = new AppleGenerateClientSecretContext(HttpContext, appleAuthHandler.Scheme, options);
+        options.ClientId = userSettings.AppleAppId;
+        options.ClientSecret = await options.ClientSecretGenerator.GenerateAsync(context).ConfigureAwait(false);
+
+        using var tokenResponse = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
+        if (tokenResponse.Error != null) {
+            Logger.LogError(tokenResponse.Error, $"{nameof(SignInAppleWithCode)} error.");
+
+            return BadRequest();
+        }
+
+        var identity = new ClaimsIdentity(options.ClaimsIssuer);
+
+        if (!email.IsNullOrEmpty()) {
+            identity.AddClaim(new Claim(ClaimTypes.Email, email));
+        }
+
+        if (!name.IsNullOrEmpty()) {
+            var names = name.Split(' ');
+            switch (names.Length)
+            {
+                case 1: {
+                    identity.AddClaim(new Claim(ClaimTypes.GivenName, names[0]));
+                    break;
+                }
+                case > 1: {
+                    var firstName = names[0];
+                    identity.AddClaim(new Claim(ClaimTypes.GivenName, firstName));
+                    var lastName = string.Join(' ', names.Skip(1));
+                    identity.AddClaim(new Claim(ClaimTypes.Surname, lastName!));
+                    break;
+                }
+            }
+        }
+
+        var principal = new ClaimsPrincipal(identity);
+        await AuthenticateSessionWithPrincipal(sessionId, principal, cancellationToken).ConfigureAwait(false);
+
+        return Ok();
+    }
+
     [HttpGet("signInGoogleWithCode/{sessionId}/{code}")]
     public async Task<IActionResult> SignInGoogleWithCode(string sessionId, string code, CancellationToken cancellationToken)
     {
@@ -187,22 +251,9 @@ public sealed class MobileAuthController : Controller
         }
         var principal = new ClaimsPrincipal(identity);
 
-        // Authenticate session with the principal
-        var oldUser = HttpContext.User;
-        HttpContext.User = principal;
-        try {
-            var helper = Services.GetRequiredService<ServerAuthHelper>();
-            await helper.UpdateAuthState(
-                    new Session(sessionId),
-                    HttpContext,
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
-        finally {
-            HttpContext.User = oldUser;
-        }
+        await AuthenticateSessionWithPrincipal(sessionId, principal, cancellationToken).ConfigureAwait(false);
 
-        return this.Ok();
+        return Ok();
     }
 
     // <summary>
@@ -241,10 +292,9 @@ public sealed class MobileAuthController : Controller
             var payload = JsonDocument.Parse(json);
             return OAuthTokenResponse.Success(payload);
         }
-        else {
-            var error = "OAuth token endpoint failure: " + await Display(response).ConfigureAwait(false);
-            return OAuthTokenResponse.Failed(new Exception(error));
-        }
+
+        var error = "OAuth token endpoint failure: " + await Display(response).ConfigureAwait(false);
+        return OAuthTokenResponse.Failed(new Exception(error));
     }
 
     private static async Task<string> Display(HttpResponseMessage response)
@@ -271,5 +321,27 @@ public sealed class MobileAuthController : Controller
             "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
         HttpContext.Response.ContentType = "text/html; charset=utf-8";
         await HttpContext.Response.WriteAsync(responseString, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task AuthenticateSessionWithPrincipal(
+        string sessionId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var oldUser = HttpContext.User;
+        HttpContext.User = principal;
+        try
+        {
+            var helper = Services.GetRequiredService<ServerAuthHelper>();
+            await helper.UpdateAuthState(
+                    new Session(sessionId),
+                    HttpContext,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            HttpContext.User = oldUser;
+        }
     }
 }

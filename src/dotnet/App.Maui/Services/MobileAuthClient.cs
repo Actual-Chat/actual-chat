@@ -25,6 +25,31 @@ public sealed class MobileAuthClient
         }
     }
 
+    public async Task<bool> SignInApple(string code, string name, string email)
+    {
+        var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
+        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInAppleWithCode";
+        try {
+            var values = new List<KeyValuePair<string, string>> {
+                new ("SessionId", session.Id.Value),
+                new ("Name", name),
+                new ("Email", email),
+                new ("Code", code),
+            };
+            var request = new HttpRequestMessage(HttpMethod.Post, requestUri) {
+                Content = new FormUrlEncodedContent(values),
+            };
+            var response = await HttpClient.SendAsync(request).ConfigureAwait(false);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "SignInApple failed");
+
+            return false;
+        }
+    }
+
     public async Task<bool> SignInGoogle(string code)
     {
         if (code.IsNullOrEmpty())
