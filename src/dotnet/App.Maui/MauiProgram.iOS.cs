@@ -19,6 +19,7 @@ public static partial class MauiProgram
         services.AddScoped<PushNotifications>(c => new PushNotifications(c));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
         services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<PushNotifications>());
+        services.AddTransient<AppleSignIn>();
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
