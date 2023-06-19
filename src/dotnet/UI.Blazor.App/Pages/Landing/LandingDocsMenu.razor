@@ -31,7 +31,7 @@
     </TextContent>
 </MenuEntry>
 <MenuEntry
-    Click="@(_ => History.NavigateTo(Links.Chats))">
+    Click="@(_ => NavigateTo(Links.Chats))">
     <IconContent>
         <i class="icon-message-ellipse"></i>
     </IconContent>
@@ -40,7 +40,7 @@
     </TextContent>
 </MenuEntry>
 <MenuEntry
-    Click="@(_ => History.NavigateTo("mailto:support@actual.chat"))">
+    Click="@(_ => NavigateTo("mailto:support@actual.chat"))">
     <IconContent>
         <i class="icon-question-mark-circle"></i>
     </IconContent>
@@ -60,7 +60,6 @@
 
 @code {
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
