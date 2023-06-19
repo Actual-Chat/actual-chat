@@ -233,6 +233,7 @@ public class MainActivity : MauiAppCompatActivity
     }
     private class SplashScreenDelayer : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
     {
+        private static bool _splashRemoved; // Iron pants to prevent splash screen displayed after app is taken back from background.
         private readonly AView _contentView;
         private readonly Task _whenSplashRemoved = LoadingUI.WhenAppLoaded;
         // .ContinueWith(_ => Task.Delay(TimeSpan.FromSeconds(0.1)), TaskScheduler.Default);
@@ -242,9 +243,12 @@ public class MainActivity : MauiAppCompatActivity
 
         public bool OnPreDraw()
         {
+            if (_splashRemoved)
+                return true;
             if (!_whenSplashRemoved.IsCompleted)
                 return false;
 
+            _splashRemoved = true;
             _contentView.ViewTreeObserver!.RemoveOnPreDrawListener(this);
             return true;
         }
