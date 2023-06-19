@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <div class="message-image-attachments">
-    @foreach (var item in GetOptimizedGallery(ImageList)) {
+    @foreach (var item in GetOptimizedGallery()) {
         <VisualMediaAttachmentLine
             ImageList="@item.ImageList"
             ChatEntry="@ChatEntry"
@@ -15,90 +15,56 @@
     public List<TextEntryAttachment> ImageList { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
 
-    private List<GalleryRow> GetGallery(List<TextEntryAttachment> list) {
-        var orderedList = (from image in list.OrderByDescending(item => (float) item.Media.Width / item.Media.Height)
+    private List<GalleryRow> GetOptimizedGallery() {
+        var orderedList = (from image in ImageList.OrderByDescending(item => (float) item.Media.Width / item.Media.Height)
             let ratio = (float)image.Media.Width / image.Media.Height
             let size = ratio switch {
-                <= (float)0.75 => ImageSize.Small,
-                <= (float)1.25 => ImageSize.Medium,
+                <= 0.75f => ImageSize.Small,
+                <= 1.25f => ImageSize.Medium,
                 <= 2 => ImageSize.Large,
                 _ => ImageSize.ExtraLarge,
                 }
             select new ImageItem(image, size)).ToList();
 
         var gallery = new List<GalleryRow>();
-        var imageList = new List<ImageItem>();
+        List<ImageItem>? rowItems = null;
+        var lastItem = orderedList.Last();
+        var rowCapacity = 1;
         var rowSize = ImageSize.ExtraLarge;
 
         foreach (var item in orderedList) {
-            (gallery, imageList, rowSize) = item.ImageSize switch {
-                ImageSize.ExtraLarge => GetGalleryRow(gallery, item, imageList, rowSize, 1),
-                ImageSize.Large => GetGalleryRow(gallery, item, imageList, rowSize, 2),
-                ImageSize.Medium => GetGalleryRow(gallery, item, imageList, rowSize, 3),
-                _ => GetGalleryRow(gallery, item, imageList, rowSize, 4),
-            };
-
-            if (orderedList.IndexOf(item) != orderedList.Count - 1 || imageList.Count == 0)
-                continue;
-            var row = new GalleryRow(rowSize, imageList.Count == 4, imageList);
-            gallery.Add(row);
-            imageList = new List<ImageItem>();
-        }
-        return gallery;
-    }
-
-    private (List<GalleryRow>, List<ImageItem>, ImageSize) GetGalleryRow(
-        List<GalleryRow> gallery,
-        ImageItem item,
-        List<ImageItem> imageList,
-        ImageSize rowSize,
-        int maxRowCount) {
-        var isFull = rowSize switch {
-            ImageSize.ExtraLarge or ImageSize.Large => imageList.Count >= 1,
-            ImageSize.Medium => imageList.Count == 3,
-            _ => imageList.Count == 4,
-        };
-
-        if (item.ImageSize != rowSize) {
-            if (imageList.Count > 0) {
-                var row = new GalleryRow(rowSize, isFull, imageList);
+            GalleryRow? row;
+            if (rowItems != null && rowSize != item.ImageSize) {
+                row = new GalleryRow(rowSize, rowItems.Count == rowCapacity, rowItems);
                 gallery.Add(row);
+                rowItems = null;
             }
-            imageList = new List<ImageItem>();
-            rowSize = item.ImageSize;
-        }
-        if (imageList.Count == maxRowCount) {
-            var row = new GalleryRow(rowSize, true, imageList);
-            gallery.Add(row);
-            imageList = new List<ImageItem>();
-        }
-        imageList.Add(item);
-        return (gallery, imageList, rowSize);
-    }
+            rowItems ??= new List<ImageItem>();
 
-    private List<GalleryRow> GetOptimizedGallery(List<TextEntryAttachment> list) {
-        var gallery = GetGallery(list);
-        var newGallery = gallery.Where(line => line.IsFull).ToList();
-        var mixedList = new List<ImageItem>();
-        GalleryRow mixedRow;
-        foreach (var row in gallery
-            .Where(line => line is { IsFull: false, ImageList: not null })) {
-            if (row.ImageList == null)
+            rowItems.Add(item);
+            rowSize = item.ImageSize;
+            rowCapacity = rowSize switch {
+                ImageSize.ExtraLarge => 1,
+                ImageSize.Large => 2,
+                ImageSize.Medium => 3,
+                _ => 4,
+                };
+            if (rowItems.Count != rowCapacity && !ReferenceEquals(lastItem, item))
                 continue;
-            foreach (var item in row.ImageList) {
-                mixedList.Add(item);
-                if (mixedList.Count != 3)
-                    continue;
-                mixedRow = new GalleryRow(ImageSize.Mixed, true, mixedList);
-                newGallery.Add(mixedRow);
-                mixedList = new List<ImageItem>();
-            }
+            row = new GalleryRow(rowSize, rowItems.Count == rowCapacity, rowItems);
+            gallery.Add(row);
+            rowItems = null;
         }
-        if (mixedList.Count <= 0)
-            return newGallery;
-        mixedRow = new GalleryRow(ImageSize.Mixed, true, mixedList);
-        newGallery.Add(mixedRow);
-        return newGallery;
+
+        var optimizedGallery = gallery.Where(line => line.IsFull || line.ImageSize == ImageSize.Large).ToList();
+        var mixedRows = gallery
+            .Where(row => row is { IsFull: false, ImageList: not null, ImageSize: not ImageSize.Large })
+            .SelectMany(row => row.ImageList)
+            .Chunk(3)
+            .Select(ch => new GalleryRow(ImageSize.Mixed, true, ch.ToList()))
+            .ToList();
+        optimizedGallery.AddRange(mixedRows);
+        return optimizedGallery;
     }
 
     public record ImageItem {
@@ -111,15 +77,5 @@
         }
     }
 
-    public record GalleryRow {
-        public ImageSize ImageSize { get; set; }
-        public bool IsFull { get; set; }
-        public List<ImageItem>? ImageList { get; set; }
-
-        public GalleryRow(ImageSize imageSize, bool isFull, List<ImageItem> imageList) {
-            ImageSize = imageSize;
-            IsFull = isFull;
-            ImageList = imageList;
-        }
-    }
+    public record GalleryRow(ImageSize ImageSize, bool IsFull, List<ImageItem> ImageList);
 }
