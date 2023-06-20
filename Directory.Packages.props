@@ -22,6 +22,7 @@
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
     <OpenTelemetryNpgsqlVersion>7.0.4</OpenTelemetryNpgsqlVersion>
     <SentryVersion>3.29.1</SentryVersion>
+    <MemoryPackVersion>1.9.16</MemoryPackVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">
     <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="7.0.2" />
@@ -40,6 +41,8 @@
     <PackageVersion Include="Grpc.Core" Version="2.46.6" />
     <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0-beta03" />
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
+    <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
+    <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MessagePack" Version="2.4.59" />
     <PackageVersion Include="MessagePack.Annotations" Version="2.4.59" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />

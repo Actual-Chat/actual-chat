@@ -133,7 +133,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<AuthorFull> Upsert(IAuthorsBackend.UpsertCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AuthorFull> Upsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
         if (chatId.IsNone)
@@ -279,7 +279,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var authors = await ListAuthorsByAvatarId(oldAvatar.UserId, oldAvatar.Id, cancellationToken).ConfigureAwait(false);
 
         foreach (var author in authors) {
-            var command = new IAuthorsBackend.UpsertCommand(author.ChatId,
+            var command = new AuthorsBackend_Upsert(author.ChatId,
                 author.Id,
                 author.UserId,
                 author.Version,

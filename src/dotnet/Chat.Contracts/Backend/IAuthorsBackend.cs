@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IAuthorsBackend : IComputeService
@@ -11,18 +13,19 @@ public interface IAuthorsBackend : IComputeService
     [ComputeMethod]
     Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
 
-    // Commands
-
     [CommandHandler]
-    Task<AuthorFull> Upsert(UpsertCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record UpsertCommand(
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] AuthorId AuthorId,
-        [property: DataMember] UserId UserId,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] AuthorDiff Diff,
-        [property: DataMember] bool DoNotNotify = false
-        ) : ICommand<AuthorFull>, IBackendCommand;
+    Task<AuthorFull> Upsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);
 }
+
+// Commands
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AuthorsBackend_Upsert(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId,
+    [property: DataMember, MemoryPackOrder(2)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(3)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(4)] AuthorDiff Diff,
+    [property: DataMember, MemoryPackOrder(5)] bool DoNotNotify = false
+) : ICommand<AuthorFull>, IBackendCommand;

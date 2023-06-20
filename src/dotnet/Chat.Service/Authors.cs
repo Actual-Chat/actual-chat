@@ -175,7 +175,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             }
         }
 
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+        var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author?.Id ?? default, account.Id, null,
             new AuthorDiff() {
                 IsAnonymous = joinAnonymously,
@@ -210,7 +210,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return;
         chat.Rules.Require(ChatPermissions.Leave);
 
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+        var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { HasLeft = true });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -243,7 +243,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author == null || author.AvatarId == command.AvatarId)
             return;
 
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+        var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { AvatarId = avatarId });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);

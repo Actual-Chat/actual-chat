@@ -15,7 +15,7 @@ public static class AuthorsBackendExt
         if (author is { HasLeft: false } and not { Version: 0 } )
             return author;
 
-        var command = new IAuthorsBackend.UpsertCommand(chatId, default, userId, null, new AuthorDiff());
+        var command = new AuthorsBackend_Upsert(chatId, default, userId, null, new AuthorDiff());
         var commander = authorsBackend.GetCommander();
         var context = await commander.Run(command, true, cancellationToken).ConfigureAwait(false);
         var typedContext = (CommandContext<AuthorFull>) context;

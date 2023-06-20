@@ -2,18 +2,19 @@ using System.ComponentModel;
 using System.Numerics;
 using ActualChat.Internal;
 using Cysharp.Text;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Generators;
 
 namespace ActualChat;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<UserId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<UserId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<UserId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct UserId : ISymbolIdentifier<UserId>,
+public readonly partial struct UserId : ISymbolIdentifier<UserId>,
     IComparable<UserId>,
     IComparisonOperators<UserId, UserId, bool>
 {
@@ -23,17 +24,17 @@ public readonly struct UserId : ISymbolIdentifier<UserId>,
     public static readonly char GuestIdPrefixChar = '~';
     public static UserId None => default;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsGuest => Value is { } v && v.Length != 0 && v[0] == GuestIdPrefixChar;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsGuestOrNone => IsNone || Value[0] == GuestIdPrefixChar;
 
     public static UserId New()
@@ -41,7 +42,7 @@ public readonly struct UserId : ISymbolIdentifier<UserId>,
     public static UserId NewGuest()
         => new(ZString.Concat(GuestIdPrefixChar, GuestIdGenerator.Next()), AssumeValid.Option);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public UserId(Symbol id)
         => this = Parse(id);
     public UserId(string? id)

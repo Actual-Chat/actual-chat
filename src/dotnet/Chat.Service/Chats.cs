@@ -367,7 +367,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         // copy existing template authors and their roles
         var clonedAuthors = new List<AuthorFull>();
         foreach (var templateAuthor in templateAuthors.Where(ta => ta != null)) {
-            var cloneAuthorCommand = new IAuthorsBackend.UpsertCommand(
+            var cloneAuthorCommand = new AuthorsBackend_Upsert(
                 chatId,
                 AuthorId.None,
                 templateAuthor!.UserId,
@@ -429,7 +429,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             var newAvatar = await Commander.Call(createAvatarCommand, cancellationToken).ConfigureAwait(false);
             guestAvatar = newAvatar;
         }
-        var createAuthorCommand = new IAuthorsBackend.UpsertCommand(
+        var createAuthorCommand = new AuthorsBackend_Upsert(
             chatId,
             AuthorId.None,
             account.Id,

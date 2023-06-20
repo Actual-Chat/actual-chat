@@ -9,6 +9,7 @@ using Microsoft.Extensions.FileProviders;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
+using Stl.Rpc;
 using Stl.Testing.Output;
 using Xunit.DependencyInjection.Logging;
 
@@ -58,7 +59,7 @@ public static class TestHostFactory
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(output);
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                var fusion = services.AddFusion();
+                var fusion = services.AddFusion(RpcServiceMode.Server, true);
                 var fusionServer = fusion.AddWebServer();
                 fusionServer.AddSessionMiddleware();
             },
