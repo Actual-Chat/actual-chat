@@ -1,15 +1,14 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
-@inherits LandingShort
+@inherits LandingApp
 @{
     var account = State.Value;
     var isGuest = account is not {IsGuestOrNone: false };
     var avatar = account.Avatar;
-    var isNarrow = ScreenSize.IsNarrow();
 }
 
 @* Header *@
 <div class="landing-header blur-bg">
-    @if (isNarrow) {
+    @if (ScreenSize.IsNarrow()) {
         <ButtonRound Class="menu-button flex-none" Click="@Click">
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
