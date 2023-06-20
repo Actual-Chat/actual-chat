@@ -268,6 +268,15 @@ module.exports = (env, args) => {
                     type: 'this',
                 },
             },
+            // Fusion Auth
+            fusionAuth: {
+                import: './src/fusion-auth.ts',
+                library: {
+                    name: 'FusionAuth',
+                    type: 'window',
+                    export: 'default',
+                },
+            },
             // Workers
             sw: {
                 import: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts',

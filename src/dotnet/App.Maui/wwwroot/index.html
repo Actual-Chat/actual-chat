@@ -19,6 +19,7 @@
     <link rel="preload" href="/dist/vadWorker.js" as="script" crossorigin />
     -->
     <link href="/dist/bundle.css" rel="stylesheet" />
+    <script src="/dist/fusionAuth.js" crossorigin></script>
     <!--
     <link rel="prefetch" href="/dist/wasm/codec.wasm" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/wasm/soxr_wasm.wasm" as="fetch" crossorigin />
@@ -27,6 +28,7 @@
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     -->
     <script>
+        window.FusionAuth.enablePopup = false;
         window.App = {
             environment: 'unknown',
             baseUri: null,
