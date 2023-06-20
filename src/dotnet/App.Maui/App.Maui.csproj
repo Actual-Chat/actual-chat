@@ -235,6 +235,7 @@
 
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.1" />
     <PackageReference Include="Sentry.Serilog" />
     <PackageReference Include="Sentry.Extensions.Logging" />
     <PackageReference Include="Serilog" />

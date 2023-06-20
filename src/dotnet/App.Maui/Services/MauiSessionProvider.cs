@@ -4,7 +4,7 @@ using ActualChat.UI.Blazor.App;
 
 namespace ActualChat.App.Maui.Services;
 
-public sealed class MauiSessionProvider : ISessionProvider
+public sealed class MauiSessionProvider : ISessionResolver
 {
     private const string SessionIdStorageKey = "Fusion.SessionId";
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionProvider)];
@@ -29,8 +29,7 @@ public sealed class MauiSessionProvider : ISessionProvider
     // Explicit interface implementations
     Task<Session> ISessionResolver.SessionTask => _sessionTask;
     bool ISessionResolver.HasSession => _sessionTask.IsCompleted;
-    Session ISessionResolver.Session => Session;
-    Session ISessionProvider.Session {
+    Session ISessionResolver.Session {
         get => Session;
         set => throw StandardError.NotSupported<MauiSessionProvider>("Session can't be set explicitly with this provider.");
     }
