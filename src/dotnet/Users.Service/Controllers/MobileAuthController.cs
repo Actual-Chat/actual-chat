@@ -189,14 +189,12 @@ public sealed class MobileAuthController : Controller
 
         var identity = new ClaimsIdentity(options.ClaimsIssuer);
 
-        if (!email.IsNullOrEmpty()) {
+        if (!email.IsNullOrEmpty())
             identity.AddClaim(new Claim(ClaimTypes.Email, email));
-        }
 
         if (!name.IsNullOrEmpty()) {
             var names = name.Split(' ');
-            switch (names.Length)
-            {
+            switch (names.Length) {
                 case 1: {
                     identity.AddClaim(new Claim(ClaimTypes.GivenName, names[0]));
                     break;
@@ -330,17 +328,11 @@ public sealed class MobileAuthController : Controller
     {
         var oldUser = HttpContext.User;
         HttpContext.User = principal;
-        try
-        {
+        try {
             var helper = Services.GetRequiredService<ServerAuthHelper>();
-            await helper.UpdateAuthState(
-                    new Session(sessionId),
-                    HttpContext,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            await helper.UpdateAuthState(new Session(sessionId), HttpContext, cancellationToken).ConfigureAwait(false);
         }
-        finally
-        {
+        finally {
             HttpContext.User = oldUser;
         }
     }
