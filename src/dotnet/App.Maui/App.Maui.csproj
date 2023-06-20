@@ -133,7 +133,7 @@
   <!-- iOS runtime identifier & other fixes -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
-    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+<!--    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>-->
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>

@@ -35,10 +35,10 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     {
         // prevent null ref for windows+iphone
         // see https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
-#if !HOTRESTART
-        Firebase.Core.App.Configure();
-        FirebaseCloudMessagingImplementation.Initialize();
-#endif
+//#if !HOTRESTART
+//        Firebase.Core.App.Configure();
+//        FirebaseCloudMessagingImplementation.Initialize();
+//#endif
     }
 
     public void Dispose()

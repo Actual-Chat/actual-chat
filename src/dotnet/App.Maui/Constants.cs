@@ -3,7 +3,7 @@ namespace ActualChat.App.Maui;
 public static class MauiConstants
 {
 #if ISDEVMAUI
-    public const string Host = "dev.actual.chat";
+    public const string Host = "local.actual.chat";
 #else
     public const string Host = "actual.chat";
 #endif
