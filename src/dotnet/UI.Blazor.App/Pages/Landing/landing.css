@@ -68,6 +68,9 @@ body.narrow .landing-header {
     @apply gap-x-2;
     @apply px-2;
 }
+body.wide.app-maui .landing-header {
+    @apply px-8;
+}
 .landing-header .light-icon,
 .landing-header .dark-icon {
     @apply min-w-10 min-h-10 max-h-10;
@@ -255,6 +258,9 @@ body.narrow .landing .page-1 .page-1-wrapper {
 .landing .page-1 .main-text {
     @apply flex-y justify-center;
     @apply w-3/5;
+}
+body.app-maui .landing .page-1 .main-text {
+    @apply gap-y-4;
 }
 body.narrow .landing .page-1 .main-text {
     @apply flex-y justify-center;
