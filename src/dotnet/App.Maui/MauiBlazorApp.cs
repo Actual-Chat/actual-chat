@@ -10,7 +10,7 @@ public class MauiBlazorApp : AppBase
         LoadingUI.MarkAppCreated();
         _ = LoadingUI.WhenLoaded.ContinueWith(OnLoaded, TaskScheduler.Default);
         var baseUri = AppSettings.BaseUri;
-        var session = await SessionProvider.GetSession().ConfigureAwait(true);
+        var session = await SessionResolver.GetSession().ConfigureAwait(true);
         MainPage.Current!.SetupSessionCookie(baseUri, session);
 
         ScopedServices = Services;

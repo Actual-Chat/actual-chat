@@ -9,7 +9,7 @@ public class ActiveChatsUI
     public const int MaxActiveChatCount = 3;
     public static TimeSpan MaxContinueListeningRecency { get; } = TimeSpan.FromMinutes(5);
 
-    private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
+    private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
     private readonly IStoredState<ImmutableHashSet<ActiveChat>> _activeChats;
     private IChats? _chats;
 

@@ -17,7 +17,7 @@ public class KubeInfo : IKubeInfo, IAsyncDisposable
 
     private IServiceProvider Services { get; }
 
-    private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
+    private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
     private volatile CachedKube? _cachedInfo;
     private volatile KubeToken? _token;
 

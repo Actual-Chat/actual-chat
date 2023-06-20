@@ -48,8 +48,8 @@ public sealed class NotificationServiceModule : HostModule<NotificationSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<INotifications, Notifications>();
-        fusion.AddComputeService<INotificationsBackend, NotificationsBackend>();
+        fusion.AddService<INotifications, Notifications>();
+        fusion.AddService<INotificationsBackend, NotificationsBackend>();
 
         // Firebase
         var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();

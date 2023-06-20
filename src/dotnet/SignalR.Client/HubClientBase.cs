@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
-using Stl.Fusion.Bridge;
+using Stl.Fusion.Extensions;
 
 namespace ActualChat.SignalR;
 

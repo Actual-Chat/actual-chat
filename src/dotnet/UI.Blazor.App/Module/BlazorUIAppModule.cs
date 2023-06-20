@@ -24,7 +24,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 
         var fusion = services.AddFusion();
         services.AddSingleton(_ => new AppPresenceReporter.Options());
-        fusion.AddComputeService<AppPresenceReporter>(ServiceLifetime.Scoped);
+        fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map

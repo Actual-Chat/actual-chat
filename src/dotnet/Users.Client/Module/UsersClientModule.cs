@@ -17,20 +17,13 @@ public sealed class UsersClientModule : HostModule
             return; // Client-side only module
 
         var fusion = services.AddFusion();
-        var fusionClient = services.AddFusion().AddRestEaseClient();
-        fusionClient.ConfigureHttpClient((c, name, o) => {
-            o.HttpClientActions.Add(client => {
-                client.DefaultRequestVersion = HttpVersion.Version30;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            });
-        });
-        var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
+        var fusionAuth = fusion.AddAuthClient();
 
-        fusionClient.AddReplicaService<ISystemProperties, ISystemPropertiesClientDef>();
-        fusionClient.AddReplicaService<IServerKvas, IServerKvasClientDef>();
-        fusionClient.AddReplicaService<IAccounts, IAccountsClientDef>();
-        fusionClient.AddReplicaService<IAvatars, IAvatarsClientDef>();
-        fusionClient.AddReplicaService<IUserPresences, IUserPresencesClientDef>();
-        fusionClient.AddReplicaService<IChatPositions, IChatPositionsClientDef>();
+        fusion.AddClient<ISystemProperties>();
+        fusion.AddClient<IServerKvas>();
+        fusion.AddClient<IAccounts>();
+        fusion.AddClient<IAvatars>();
+        fusion.AddClient<IUserPresences>();
+        fusion.AddClient<IChatPositions>();
     }
 }

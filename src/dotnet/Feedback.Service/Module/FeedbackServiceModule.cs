@@ -44,7 +44,7 @@ public sealed class FeedbackServiceModule : HostModule<FeedbackSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<IFeedbacks, Feedbacks>();
+        fusion.AddService<IFeedbacks, Feedbacks>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

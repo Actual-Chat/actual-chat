@@ -83,7 +83,7 @@
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
 
-    private readonly AsyncLock _postLock = new (ReentryMode.CheckedPass);
+    private readonly AsyncLock _postLock = AsyncLock.New(LockReentryMode.CheckedPass);
     private bool Autofocus => ScreenSize.IsWide();
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;

@@ -2,9 +2,8 @@ using ActualChat.Commands;
 using ActualChat.Kvas;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
-using Stl.Fusion.Authentication.Commands;
+using Stl.Fusion.Authentication.Services;
 using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Internal;
 
 namespace ActualChat.Users;
@@ -28,7 +27,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
     }
 
     [CommandFilter(Priority = 1)]
-    public virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSignIn(AuthBackend_SignIn command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
         // - Normalizes user name & invalidates AuthBackend.GetUser if it was changed
@@ -66,7 +65,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
     }
 
     [CommandFilter(Priority = FusionEntityFrameworkCommandHandlerPriority.DbOperationScopeProvider + 1)]
-    public virtual async Task OnSignedIn(SignInCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSignedIn(AuthBackend_SignIn command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on sign-in:
         // - moves session keys to user keys in IServerKvas
@@ -95,7 +94,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
     }
 
     [CommandFilter(Priority = 1)]
-    protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
+    protected virtual async Task OnEditUser(Auth_EditUser command, CancellationToken cancellationToken)
     {
         // This command filter takes the following actions on user name edit:
         // - Validates user name

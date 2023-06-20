@@ -10,6 +10,8 @@ using Microsoft.Extensions.Options;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
 using Stl.Mathematics.Internal;
+using Stl.RestEase;
+using Stl.Rpc;
 
 namespace ActualChat.Module;
 
@@ -58,7 +60,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Features
         services.AddScoped(c => new Features(c));
-        fusion.AddComputeService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
+        fusion.AddService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
         if (HostInfo.AppKind.IsServer())
             InjectServerServices(services);
@@ -80,14 +82,14 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
 
         var fusion = services.AddFusion();
-        fusion.AddComputeService<IServerFeatures, ServerFeatures>();
+        fusion.AddService<IServerFeatures, ServerFeatures>();
     }
 
     private void InjectClientServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();
-        var fusionClient = fusion.AddRestEaseClient();
-        fusionClient.ConfigureHttpClient((c, name, o) => {
+        var restEase = services.AddRestEase();
+        restEase.ConfigureHttpClient((c, name, o) => {
             o.HttpClientActions.Add(client => {
                 client.DefaultRequestVersion = HttpVersion.Version30;
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
@@ -95,7 +97,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         });
 
         // Features
-        fusionClient.AddReplicaService<IServerFeaturesClient, IServerFeaturesClientDef>();
-        fusion.AddComputeService<IServerFeatures, ServerFeaturesClient>();
+        fusion.AddClient<IServerFeaturesClient>();
+        fusion.AddService<IServerFeatures, ServerFeaturesClient>();
     }
 }

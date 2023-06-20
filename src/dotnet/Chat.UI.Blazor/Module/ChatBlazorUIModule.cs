@@ -28,7 +28,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
 
         // Singletons
-        fusion.AddComputeService<VirtualListTestService>();
+        fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
         services.AddScoped(_ => new NavbarUI());
@@ -38,17 +38,17 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
-        fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatListUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatEditorUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(c => new ActiveChatsUI(c));
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c));
-        fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
+        fusion.AddService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings
         services.AddSingleton(_ => new AudioSettings());

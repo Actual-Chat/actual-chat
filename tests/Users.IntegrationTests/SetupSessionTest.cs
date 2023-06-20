@@ -1,5 +1,4 @@
 ﻿using ActualChat.Testing.Host;
-using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -18,7 +17,7 @@ public class SetupSessionTest : AppHostTestBase
         var session = tester.Session;
 
         var tasks = Enumerable.Range(0, 10)
-            .Select(_ => commander.Call(new SetupSessionCommand(session)))
+            .Select(_ => commander.Call(new AuthBackend_SetupSession(session)))
             .ToArray();
         await Task.WhenAll(tasks);
 

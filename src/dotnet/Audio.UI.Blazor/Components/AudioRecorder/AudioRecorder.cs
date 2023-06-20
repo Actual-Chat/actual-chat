@@ -9,7 +9,7 @@ public class AudioRecorder : IAsyncDisposable
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
 
-    private readonly AsyncLock _stateLock = new (ReentryMode.UncheckedDeadlock);
+    private readonly AsyncLock _stateLock = AsyncLock.New(LockReentryMode.Unchecked);
     private readonly IMutableState<AudioRecorderState> _state;
     private IJSObjectReference _jsRef = null!;
 
