@@ -49,8 +49,8 @@ public sealed class InviteServiceModule : HostModule<InviteSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<IInvites, Invites>();
-        fusion.AddComputeService<IInvitesBackend, InvitesBackend>();
+        fusion.AddService<IInvites, Invites>();
+        fusion.AddService<IInvitesBackend, InvitesBackend>();
         // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
 
         // Controllers, etc.

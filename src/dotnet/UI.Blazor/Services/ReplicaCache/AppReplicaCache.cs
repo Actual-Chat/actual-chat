@@ -1,11 +1,11 @@
 using Cysharp.Text;
 using Microsoft.Toolkit.HighPerformance;
-using Stl.Fusion.Bridge;
+using Stl.Fusion.Client.Cache;
 using Stl.Fusion.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class AppReplicaCache : ReplicaCache
+public class AppReplicaCache : ClientComputedCache
 {
     public sealed record Options(FlushingKeyValueStore Store)
     {

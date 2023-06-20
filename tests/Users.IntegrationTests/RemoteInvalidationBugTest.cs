@@ -1,6 +1,4 @@
 ﻿using ActualChat.Testing.Host;
-using Stl.Fusion.Bridge;
-using Stl.Fusion.Bridge.Interception;
 using Stl.Fusion.Interception;
 
 namespace ActualChat.Users.IntegrationTests;

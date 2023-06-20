@@ -48,8 +48,8 @@ public sealed class ContactsServiceModule : HostModule<ContactsSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<IContacts, Contacts>();
-        fusion.AddComputeService<IContactsBackend, ContactsBackend>();
+        fusion.AddService<IContacts, Contacts>();
+        fusion.AddService<IContactsBackend, ContactsBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

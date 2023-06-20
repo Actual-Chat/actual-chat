@@ -4,7 +4,7 @@ namespace ActualChat.Collections;
 
 public abstract class FlushingKeyValueStore : WorkerBase
 {
-    private readonly AsyncLock _asyncLock = new (ReentryMode.CheckedPass);
+    private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
     protected readonly ConcurrentDictionary<HashedString, string?> WriteCache = new();
 
     public ILogger? Log { get; init; }

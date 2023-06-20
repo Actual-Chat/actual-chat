@@ -2,7 +2,6 @@ using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using Microsoft.Toolkit.HighPerformance;
-using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Users.Module;
 
@@ -69,7 +68,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         // Create & sign in the user
         var session = Services.SessionFactory().CreateSession();
         var user = new User(userId, name).WithIdentity(userIdentity);
-        var signInCommand = new SignInCommand(session, user, userIdentity);
+        var signInCommand = new AuthBackend_SignIn(session, user, userIdentity);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
         // Fetch its account

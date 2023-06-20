@@ -8,8 +8,8 @@ using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.Fusion.Bridge;
-using Stl.Fusion.Bridge.Interception;
+using Stl.Fusion.Client.Cache;
+using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Module;
@@ -30,11 +30,12 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Fusion
         var fusion = services.AddFusion();
-        fusion.AddBackendStatus();
-        fusion.AddBlazorUIServices();
+        fusion.AddBlazor();
+        if (appKind.IsClient())
+            fusion.AddRpcPeerConnectionMonitor();
 
         // Authentication
-        fusion.AddAuthentication();
+        fusion.AddAuthClient();
         services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(c));
 
         // Default update delay is 0.2s
@@ -96,14 +97,14 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new TuneUI(c));
         services.AddScoped(c => new VibrationUI(c));
         services.AddScoped(c => new BubbleUI(c));
-        fusion.AddComputeService<LiveTime>(ServiceLifetime.Scoped);
+        fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
         services.AddScoped(c => new ThemeUI(c));
         services.AddScoped(c => new FeedbackUI(c));
         services.AddScoped(c => new VisualMediaViewerUI(c.GetRequiredService<ModalUI>()));
-        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
+        fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
+        fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
@@ -126,7 +127,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Temporarily disabled for WASM due to bad performance
         if (false && appKind.IsWasmApp()) {
             services.AddSingleton<AppReplicaCacheConfigurator>();
-            services.AddSingleton<ReplicaCache>(c => {
+            services.AddSingleton<ClientComputedCache>(c => {
                 var store = new IndexedDbKeyValueStore(c).Start();
                 var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
                 var options = new AppReplicaCache.Options(store) {
@@ -137,7 +138,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         }
         // Test services
         if (IsDevelopmentInstance)
-            fusion.AddComputeService<ComputeStateTestService>(ServiceLifetime.Scoped);
+            fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);
     }
 
     private void InjectDiagnosticsServices(IServiceCollection services)
@@ -160,7 +161,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
                 SleepPeriod = isDev ? TimeSpan.Zero : TimeSpan.FromMinutes(5).ToRandom(0.2),
                 CollectPeriod = TimeSpan.FromSeconds(isDev ? 10 : 60),
                 AccessFilter = isWasmApp
-                    ? static computed => computed.Input.Function is IReplicaMethodFunction
+                    ? static computed => computed.Input.Function is IClientComputeMethodFunction
                     : static _ => true,
                 AccessStatisticsPreprocessor = StatisticsPreprocessor,
                 RegistrationStatisticsPreprocessor = StatisticsPreprocessor,

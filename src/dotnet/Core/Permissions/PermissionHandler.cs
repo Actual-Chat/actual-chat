@@ -10,7 +10,7 @@ public abstract class PermissionHandler : WorkerBase
     protected ILogger Log { get; }
 
     protected IMomentClock Clock { get; init; }
-    protected AsyncLock AsyncLock { get; } = new (ReentryMode.CheckedPass);
+    protected AsyncLock AsyncLock { get; } = AsyncLock.New(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
     public IState<bool?> Cached => _cached;

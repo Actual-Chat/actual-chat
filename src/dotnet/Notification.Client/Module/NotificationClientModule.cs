@@ -15,13 +15,7 @@ public sealed class NotificationClientModule : HostModule
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
-        var fusionClient = services.AddFusion().AddRestEaseClient();
-        fusionClient.ConfigureHttpClient((c, name, o) => {
-            o.HttpClientActions.Add(client => {
-                client.DefaultRequestVersion = HttpVersion.Version30;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            });
-        });
-        fusionClient.AddReplicaService<INotifications, INotificationsClientDef>();
+        var fusion = services.AddFusion();
+        fusion.AddClient<INotifications>();
     }
 }

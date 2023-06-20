@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.Server.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 
@@ -48,7 +47,7 @@ public sealed class MobileAuthController : Controller
         var auth = Services.GetRequiredService<IAuth>();
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo?.GetGuestId().IsGuest != true) {
-            var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
+            var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
             var commander = Services.Commander();
             await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -79,7 +78,7 @@ public sealed class MobileAuthController : Controller
     public async Task<ActionResult> GetOrCreateSession(string? sid, CancellationToken cancellationToken)
     {
         var httpContext = HttpContext;
-        var sessionProvider = httpContext.RequestServices.GetRequiredService<ISessionProvider>();
+        var sessionResolver = httpContext.RequestServices.GetRequiredService<ISessionResolver>();
 
         var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
         var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
@@ -92,11 +91,11 @@ public sealed class MobileAuthController : Controller
         if (!sid.IsNullOrEmpty()
             && await auth.GetSessionInfo(new Session(sid), cancellationToken).ConfigureAwait(false) != null)
             session = new Session(sid);
-        session ??= sessionProvider.Session;
+        session ??= sessionResolver.Session;
 
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo?.GetGuestId().IsGuest != true) {
-            var setupSessionCommand = new SetupSessionCommand(session, ipAddress, userAgent);
+            var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
             var commander = Services.Commander();
             await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -309,7 +308,7 @@ public sealed class MobileAuthController : Controller
     public async Task SignOut(string sessionId, CancellationToken cancellationToken)
     {
         var session = new Session(sessionId);
-        await Commander.Call(new SignOutCommand(session), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new Auth_SignOut(session), cancellationToken).ConfigureAwait(false);
         await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
     }
 

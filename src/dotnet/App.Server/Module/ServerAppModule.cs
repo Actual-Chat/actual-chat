@@ -17,12 +17,14 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Stl.Diagnostics;
 using Stl.Fusion.Blazor;
-using Stl.Fusion.Bridge;
+using Stl.Fusion.Blazor.Authentication;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.Generators;
 using Stl.IO;
+using Stl.RestEase;
+using Stl.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
 
@@ -114,7 +116,7 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
             endpoints.MapAppHealth();
             endpoints.MapAppMetrics();
             endpoints.MapBlazorHub();
-            endpoints.MapFusionWebSocketServer();
+            endpoints.MapRpcServer();
             endpoints.MapControllers();
             endpoints.MapFallbackToPage("/_Host");
         });
@@ -140,9 +142,6 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
 
         // Fusion services
         var hostName = Dns.GetHostName().ToLowerInvariant();
-        services.AddSingleton(new PublisherOptions {
-            Id = $"{hostName}-{RandomStringGenerator.Default.Next(4, Alphabet.AlphaNumeric)}",
-        });
         services.AddSingleton(_ => new SessionMiddleware.Options() {
             RequestFilter = httpContext => {
                 // This part makes sure that SessionMiddleware
@@ -166,14 +165,15 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
-        var fusionClient = fusion.AddRestEaseClient();
-        fusionClient.ConfigureHttpClient((c, name, o) => {
+        fusionServer.AddAuthentication();
+
+        var restEase = services.AddRestEase();
+        restEase.ConfigureHttpClient((c, name, o) => {
             o.HttpClientActions.Add(client => {
                 client.DefaultRequestVersion = HttpVersion.Version30;
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
             });
         });
-        var fusionAuth = fusion.AddAuthentication();
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
@@ -190,7 +190,7 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         services.AddCors(options => {
             options.AddPolicy("Default", builder => {
-                builder.AllowAnyOrigin().WithFusionHeaders();
+                builder.AllowAnyOrigin();
                 builder.WithOrigins(
                         "http://0.0.0.0",
                         "https://0.0.0.0",
@@ -224,11 +224,6 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
             o.EnableForHttps = true;
             o.Providers.Add<BrotliCompressionProvider>();
         });
-        services.AddSingleton(new WebSocketServer.Options() {
-            ConfigureWebSocket = () => new WebSocketAcceptContext() {
-                DangerousEnableCompression = true,
-            },
-        });
 
         services.AddRouting();
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
@@ -239,7 +234,7 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         }).AddHubOptions(o => {
             o.MaximumParallelInvocationsPerClient = 4;
         });
-        fusionAuth.AddBlazor(); // Must follow services.AddServerSideBlazor()!
+        fusion.AddBlazor().AddAuthentication(); // Must follow services.AddServerSideBlazor()!
 
         // Swagger & debug tools
         /*

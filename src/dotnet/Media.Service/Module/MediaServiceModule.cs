@@ -47,7 +47,7 @@ public sealed class MediaServiceModule : HostModule<MediaSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<IMediaBackend, MediaBackend>();
+        fusion.AddService<IMediaBackend, MediaBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

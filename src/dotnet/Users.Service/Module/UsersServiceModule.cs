@@ -12,8 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders.Physical;
 using Newtonsoft.Json;
-using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework.Authentication;
+using Stl.Fusion.Authentication.Services;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
@@ -111,13 +110,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             db.AddEntityResolver<string, DbAvatar>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();
-
-            // DB authentication services
-            db.AddAuthentication<DbSessionInfo, DbUser, string>(auth => {
-                auth.ConfigureAuthService(_ => new() {
-                    MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
-                });
-            });
         });
 
         // Commander & Fusion
@@ -130,8 +122,8 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
                 return true;
             // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(EditUserCommand).Assembly
-                && OrdinalEquals(commandType.Namespace, typeof(EditUserCommand).Namespace))
+            if (commandAssembly == typeof(Auth_EditUser).Assembly
+                && OrdinalEquals(commandType.Namespace, typeof(Auth_EditUser).Namespace))
                 return true;
             if (commandAssembly == typeof(IAccounts).Assembly) // Users.Contracts assembly
                 return true;
@@ -140,18 +132,22 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         var fusion = services.AddFusion();
 
         // Auth
-        var fusionAuth = fusion.AddAuthentication();
-        services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
-        fusionAuth.AddServer(
-            signInControllerOptionsFactory: _ => new() {
-                DefaultScheme = GoogleDefaults.AuthenticationScheme,
-                SignInPropertiesBuilder = (_, properties) => {
-                    properties.IsPersistent = true;
-                },
-            },
-            serverAuthHelperOptionsFactory: _ => new() {
-                NameClaimKeys = Array.Empty<string>(),
+        fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
+            auth.ConfigureAuthService(_ => new() {
+                MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
+        });
+        services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
+        var fusionWebAuth = fusion.AddWebServer().AddAuthentication();
+        fusionWebAuth.ConfigureSignInController(_ => new() {
+            DefaultScheme = GoogleDefaults.AuthenticationScheme,
+            SignInPropertiesBuilder = (_, properties) => {
+                properties.IsPersistent = true;
+            },
+        });
+        fusionWebAuth.ConfigureServerAuthHelper(_ => new() {
+            NameClaimKeys = Array.Empty<string>(),
+        });
         commander.AddCommandService<AuthCommandFilters>();
         services.AddSingleton<ClaimMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
@@ -159,17 +155,17 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<ISystemProperties, SystemProperties>();
-        fusion.AddComputeService<IAccounts, Accounts>();
-        fusion.AddComputeService<IAccountsBackend, AccountsBackend>();
-        fusion.AddComputeService<IUserPresences, UserPresences>();
-        fusion.AddComputeService<IUserPresencesBackend, UserPresencesBackend>();
-        fusion.AddComputeService<IAvatars, Avatars>();
-        fusion.AddComputeService<IAvatarsBackend, AvatarsBackend>();
-        fusion.AddComputeService<IChatPositions, ChatPositions>();
-        fusion.AddComputeService<IChatPositionsBackend, ChatPositionsBackend>();
-        fusion.AddComputeService<IServerKvas, ServerKvas>();
-        fusion.AddComputeService<IServerKvasBackend, ServerKvasBackend>();
+        fusion.AddService<ISystemProperties, SystemProperties>();
+        fusion.AddService<IAccounts, Accounts>();
+        fusion.AddService<IAccountsBackend, AccountsBackend>();
+        fusion.AddService<IUserPresences, UserPresences>();
+        fusion.AddService<IUserPresencesBackend, UserPresencesBackend>();
+        fusion.AddService<IAvatars, Avatars>();
+        fusion.AddService<IAvatarsBackend, AvatarsBackend>();
+        fusion.AddService<IChatPositions, ChatPositions>();
+        fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
+        fusion.AddService<IServerKvas, ServerKvas>();
+        fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // Controllers, etc.

@@ -10,10 +10,11 @@ using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Micr
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sentry;
 using Stl.CommandR.Interception;
-using Stl.Fusion.Bridge.Interception;
+using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Interception;
 using Stl.Interception.Interceptors;
 using Stl.Interception.Internal;
+using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.App.Wasm;
 
@@ -26,7 +27,9 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandServiceInterceptor))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeServiceInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReplicaServiceInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcClientInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcRoutingInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientComputeServiceInterceptor))]
     public static async Task Main(string[] args)
     {
 #if DEBUG

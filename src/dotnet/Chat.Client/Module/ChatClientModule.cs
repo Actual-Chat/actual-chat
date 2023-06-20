@@ -15,17 +15,11 @@ public sealed class ChatClientModule : HostModule
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
-        var fusionClient = services.AddFusion().AddRestEaseClient();
-        fusionClient.ConfigureHttpClient((c, name, o) => {
-            o.HttpClientActions.Add(client => {
-                client.DefaultRequestVersion = HttpVersion.Version30;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            });
-        });
-        fusionClient.AddReplicaService<IChats, IChatsClientDef>();
-        fusionClient.AddReplicaService<IAuthors, IAuthorsClientDef>();
-        fusionClient.AddReplicaService<IRoles, IRolesClientDef>();
-        fusionClient.AddReplicaService<IMentions, IMentionsClientDef>();
-        fusionClient.AddReplicaService<IReactions, IReactionsClientDef>();
+        var fusion = services.AddFusion();
+        fusion.AddClient<IChats>();
+        fusion.AddClient<IAuthors>();
+        fusion.AddClient<IRoles>();
+        fusion.AddClient<IMentions>();
+        fusion.AddClient<IReactions>();
     }
 }

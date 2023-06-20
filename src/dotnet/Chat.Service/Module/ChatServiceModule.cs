@@ -70,26 +70,26 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         var fusion = services.AddFusion();
 
         // Chats
-        fusion.AddComputeService<IChats, Chats>();
-        fusion.AddComputeService<IChatsBackend, ChatsBackend>();
+        fusion.AddService<IChats, Chats>();
+        fusion.AddService<IChatsBackend, ChatsBackend>();
         commander.AddCommandService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
         // Authors
-        fusion.AddComputeService<IAuthors, Authors>();
-        fusion.AddComputeService<IAuthorsBackend, AuthorsBackend>();
+        fusion.AddService<IAuthors, Authors>();
+        fusion.AddService<IAuthorsBackend, AuthorsBackend>();
         commander.AddCommandService<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
         // Roles
-        fusion.AddComputeService<IRoles, Roles>();
-        fusion.AddComputeService<IRolesBackend, RolesBackend>();
+        fusion.AddService<IRoles, Roles>();
+        fusion.AddService<IRolesBackend, RolesBackend>();
 
         // Mentions
-        fusion.AddComputeService<IMentions, Mentions>();
-        fusion.AddComputeService<IMentionsBackend, MentionsBackend>();
+        fusion.AddService<IMentions, Mentions>();
+        fusion.AddService<IMentionsBackend, MentionsBackend>();
 
         // Reactions
-        fusion.AddComputeService<IReactions, Reactions>();
-        fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
+        fusion.AddService<IReactions, Reactions>();
+        fusion.AddService<IReactionsBackend, ReactionsBackend>();
 
         // ContentSaver
         services.AddResponseCaching();

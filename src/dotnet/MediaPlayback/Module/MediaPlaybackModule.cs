@@ -16,6 +16,6 @@ public sealed class MediaPlaybackModule : HostModule
         services.AddScoped<IPlaybackFactory>(c => new PlaybackFactory(c));
 
         var fusion = services.AddFusion();
-        fusion.AddComputeService<ActivePlaybackInfo>(ServiceLifetime.Scoped);
+        fusion.AddService<ActivePlaybackInfo>(ServiceLifetime.Scoped);
     }
 }

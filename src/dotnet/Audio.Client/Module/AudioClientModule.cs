@@ -16,14 +16,7 @@ public sealed class AudioClientModule : HostModule
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
-        var fusionClient = services.AddFusion().AddRestEaseClient();
-        fusionClient.ConfigureHttpClient((c, name, o) => {
-            o.HttpClientActions.Add(client => {
-                client.DefaultRequestVersion = HttpVersion.Version30;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            });
-        });
-
+        var fusion = services.AddFusion();
         services.AddScoped<AudioDownloader>(c => new AudioDownloader(c));
         services.AddScoped<AudioClient>(c => new AudioClient(c));
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());

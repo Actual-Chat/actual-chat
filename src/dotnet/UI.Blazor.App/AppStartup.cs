@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.WebSockets;
 using ActualChat.Audio.Module;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
@@ -18,7 +19,8 @@ using ActualChat.Users.UI.Blazor.Module;
 using Stl.Fusion.Client;
 using Stl.Generators;
 // ReSharper disable once RedundantUsingDirective
-using Stl.Interception.Interceptors; // Required for InterceptorBase configuration at Release
+using Stl.Interception.Interceptors;
+using Stl.RestEase; // Required for InterceptorBase configuration at Release
 
 namespace ActualChat.UI.Blazor.App
 {
@@ -39,10 +41,10 @@ namespace ActualChat.UI.Blazor.App
 
             // Fusion services
             var fusion = services.AddFusion();
-            var fusionClient = fusion.AddRestEaseClient();
+            var restEase = services.AddRestEase();
             var isWasm = appKind == AppKind.WasmApp;
             if (isWasm)
-                fusionClient.ConfigureHttpClient((c, name, o) => {
+                restEase.ConfigureHttpClient((c, name, o) => {
                     var urlMapper = c.GetRequiredService<UrlMapper>();
                     var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                     var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
@@ -53,7 +55,7 @@ namespace ActualChat.UI.Blazor.App
                     });
                 });
             else
-                fusionClient.ConfigureHttpClient((c, name, o) => {
+                restEase.ConfigureHttpClient((c, name, o) => {
                     var urlMapper = c.GetRequiredService<UrlMapper>();
                     var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                     var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
@@ -70,22 +72,18 @@ namespace ActualChat.UI.Blazor.App
                     });
                 });
 
-            fusionClient.ConfigureWebSocketChannel(c => {
+            fusion.Rpc.AddWebSocketClient(c => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
-                return new () {
-                    BaseUri = urlMapper.BaseUri,
-                    LogLevel = LogLevel.Information,
-                    MessageLogLevel = LogLevel.None,
-                    ClientWebSocketFactory = c1 => {
-                        var client = WebSocketChannelProvider.Options.DefaultClientWebSocketFactory(c1);
-                        if (!isWasm) {
-                            var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
-                            client.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
-                        }
-                        return client;
-                    },
-                };
+                return urlMapper.BaseUri.ToString();
             });
+            if (!isWasm) {
+                services.AddTransient<ClientWebSocket>(_ => {
+                    var ws = new ClientWebSocket();
+                    var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
+                    ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                    return ws;
+                });
+            }
 
             // Creating modules
             using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");
