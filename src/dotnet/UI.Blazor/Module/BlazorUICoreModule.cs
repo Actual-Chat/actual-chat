@@ -30,12 +30,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Fusion
         var fusion = services.AddFusion();
-        fusion.AddBlazor();
+        fusion.AddBlazor()
+            .AddAuthentication();
         if (appKind.IsClient())
             fusion.AddRpcPeerConnectionMonitor();
 
         // Authentication
-        fusion.AddAuthClient();
+        // fusion.AddAuthClient();
         services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(c));
 
         // Default update delay is 0.2s
