@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
+using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
 using Stl.Testing.Output;
@@ -57,6 +58,9 @@ public static class TestHostFactory
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(output);
                 services.AddSingleton<PostgreSqlPoolCleaner>();
+                var fusion = services.AddFusion();
+                var fusionServer = fusion.AddWebServer();
+                fusionServer.AddSessionMiddleware();
             },
             AppConfigurationBuilder = builder => {
                 ConfigureTestApp(builder, output);
