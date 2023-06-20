@@ -1,6 +1,5 @@
 using ActualChat.Testing.Host;
 using ActualChat.Users;
-using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -22,7 +21,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        await tester.Commander.Call(new SetupSessionCommand(session)).ConfigureAwait(false);
+        await tester.Commander.Call(new AuthBackend_SetupSession(session)).ConfigureAwait(false);
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default).ConfigureAwait(false);
         account.IsGuest.Should().BeTrue();
@@ -87,7 +86,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        await tester.Commander.Call(new SetupSessionCommand(session)).ConfigureAwait(false);
+        await tester.Commander.Call(new AuthBackend_SetupSession(session)).ConfigureAwait(false);
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default).ConfigureAwait(false);

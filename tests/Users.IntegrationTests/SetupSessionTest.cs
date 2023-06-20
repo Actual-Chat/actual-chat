@@ -41,7 +41,7 @@ public class SetupSessionTest : AppHostTestBase
 
         await Parallel.ForEachAsync(Enumerable.Range(0, 10), async (_, cancellationToken) => {
             var session = sessionFactory.CreateSession();
-            await commander.Call(new SetupSessionCommand(session), cancellationToken);
+            await commander.Call(new AuthBackend_SetupSession(session), cancellationToken);
             var sessionInfo = await auth.GetSessionInfo(session, cancellationToken);
             sessionInfo.Should().NotBeNull();
             sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
