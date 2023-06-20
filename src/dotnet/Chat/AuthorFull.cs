@@ -1,4 +1,5 @@
 using ActualChat.Users;
+using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -22,10 +23,10 @@ public sealed record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Vers
     public override int GetHashCode() => EqualityComparer.GetHashCode(this);
 }
 
-[DataContract]
-public sealed record AuthorDiff : RecordDiff
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record AuthorDiff : RecordDiff
 {
-    [DataMember] public Symbol? AvatarId { get; init; }
-    [DataMember] public bool? IsAnonymous { get; init; }
-    [DataMember] public bool? HasLeft { get; init; }
+    [DataMember, MemoryPackOrder(0)] public Symbol? AvatarId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public bool? IsAnonymous { get; init; }
+    [DataMember, MemoryPackOrder(2)] public bool? HasLeft { get; init; }
 }
