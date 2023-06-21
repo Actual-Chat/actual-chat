@@ -64,7 +64,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         else if (HostInfo.AppKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
             services.AddSingleton<RpcPeerFactory>(_
                 => static (hub, peerRef) => peerRef.IsServer
-                    ? throw StandardError.NotSupported("No server peers on the client")
+                    ? throw StandardError.NotSupported("No server peers on the client.")
                     : new RpcClientPeer(hub, peerRef) { CallLogLevel = LogLevel.Debug });
         }
         fusion.AddComputedGraphPruner();
