@@ -12,8 +12,8 @@ namespace ActualChat.Chat;
 public partial class ChatsUpgradeBackend
 {
     // [CommandHandler]
-    public virtual async Task<Chat> CreateAnnouncementsChat(
-        IChatsUpgradeBackend.CreateAnnouncementsChatCommand command,
+    public virtual async Task<Chat> OnCreateAnnouncementsChat(
+        ChatsUpgradeBackend_CreateAnnouncementsChat command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -61,7 +61,7 @@ public partial class ChatsUpgradeBackend
         if (creatorId.IsNone)
             throw StandardError.Constraint("Creator user not found.");
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId,
+        var changeCommand = new ChatsBackend_Change(chatId,
             null,
             new () {
                 Create = new ChatDiff {
@@ -77,7 +77,7 @@ public partial class ChatsUpgradeBackend
             .Require()
             .ConfigureAwait(false);
 
-        var changeAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+        var changeAnyoneRoleCmd = new RolesBackend_Change(chatId,
             anyoneRole.Id,
             null,
             new () {
@@ -110,7 +110,7 @@ public partial class ChatsUpgradeBackend
         }
 
         if (ownerAuthorIds.Length > 0) {
-            var changeOwnerRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+            var changeOwnerRoleCmd = new RolesBackend_Change(chatId,
                 ownerRole.Id,
                 null,
                 new () {
@@ -127,7 +127,7 @@ public partial class ChatsUpgradeBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateDefaultChat(IChatsUpgradeBackend.CreateDefaultChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnCreateDefaultChat(ChatsUpgradeBackend_CreateDefaultChat command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             // This command changes a lot of things directly, so we invalidate everything here
@@ -143,7 +143,7 @@ public partial class ChatsUpgradeBackend
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
         admin.Require(AccountFull.MustBeAdmin);
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
+        var changeCommand = new ChatsBackend_Change(chatId, null, new() {
             Create = new ChatDiff {
                 Title = "The Actual One",
                 IsPublic = true,
@@ -360,7 +360,7 @@ public partial class ChatsUpgradeBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateFeedbackTemplateChat(IChatsUpgradeBackend.CreateFeedbackTemplateChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnCreateFeedbackTemplateChat(ChatsUpgradeBackend_CreateFeedbackTemplateChat command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -410,7 +410,7 @@ public partial class ChatsUpgradeBackend
             creatorId = admin.Id;
         }
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId,
+        var changeCommand = new ChatsBackend_Change(chatId,
             null,
             new () {
                 Create = new ChatDiff {
@@ -429,7 +429,7 @@ public partial class ChatsUpgradeBackend
             .Require()
             .ConfigureAwait(false);
 
-        var changeAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+        var changeAnyoneRoleCmd = new RolesBackend_Change(chatId,
             anyoneRole.Id,
             null,
             new () {
@@ -462,7 +462,7 @@ public partial class ChatsUpgradeBackend
         }
 
         if (ownerAuthorIds.Length > 0) {
-            var changeOwnerRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+            var changeOwnerRoleCmd = new RolesBackend_Change(chatId,
                 ownerRole.Id,
                 null,
                 new () {

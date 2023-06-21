@@ -1,63 +1,72 @@
-﻿using Stl.Fusion.Blazor;
+﻿using MemoryPack;
+using Stl.Fusion.Blazor;
 
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract]
-public sealed record Media(
-    [property: DataMember] MediaId Id
-    ) : IHasId<MediaId>, IRequirementTarget
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record Media : IHasId<MediaId>, IRequirementTarget
 {
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
 
-    [DataMember] public string ContentId { get; init; } = "";
-
-    [DataMember] public string MetadataJson {
+    [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";
+    [DataMember, MemoryPackOrder(2)] public string MetadataJson {
         get => _metadata.Data;
         init => _metadata.Data = value;
     }
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ImmutableOptionSet Metadata {
         get => _metadata.Value;
         init => _metadata.Value = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public long Length {
         get => GetMetadataValue(0L);
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string FileName {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string ContentType {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public int Width {
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public int Height {
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);
     }
 
     public Media() : this(MediaId.None) { }
+    public Media(MediaId id)
+        => Id = id;
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    public Media(MediaId id, string contentId, string metadataJson)
+    {
+        Id = id;
+        ContentId = contentId;
+        MetadataJson = metadataJson;
+    }
 
     // Private methods
 

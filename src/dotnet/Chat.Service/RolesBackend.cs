@@ -114,7 +114,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Role> Change(IRolesBackend.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Role> Change(RolesBackend_Change command, CancellationToken cancellationToken)
     {
         var (chatId, roleId, expectedVersion, change) = command;
         var context = CommandContext.GetCurrent();

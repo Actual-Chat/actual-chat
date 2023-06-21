@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat;
 
 public interface IChange : IRequirementTarget
@@ -6,14 +8,17 @@ public interface IChange : IRequirementTarget
     bool IsValid();
 }
 
-[DataContract]
-public record Change<TCreate, TUpdate> : IChange
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record Change<TCreate, TUpdate> : IChange
 {
-    [DataMember] public Option<TCreate> Create { get; init; }
-    [DataMember] public Option<TUpdate> Update { get; init; }
-    [DataMember] public bool Remove { get; init; }
+    [DataMember, MemoryPackOrder(0)]
+    public Option<TCreate> Create { get; init; }
+    [DataMember, MemoryPackOrder(1)]
+    public Option<TUpdate> Update { get; init; }
+    [DataMember, MemoryPackOrder(2)]
+    public bool Remove { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChangeKind Kind {
         get {
             this.RequireValid();
@@ -55,4 +60,5 @@ public record Change<TCreate, TUpdate> : IChange
     }
 }
 
-public record Change<T> : Change<T, T>;
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record Change<T> : Change<T, T>;

@@ -1,17 +1,18 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Generators;
 
 namespace ActualChat;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<MediaId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<MediaId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<MediaId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct MediaId : ISymbolIdentifier<MediaId>
+public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
 {
     private const char Separator = ':';
 
@@ -19,22 +20,22 @@ public readonly struct MediaId : ISymbolIdentifier<MediaId>
 
     public static MediaId None => default;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Scope { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string LocalId { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public MediaId(Symbol id)
         => this = Parse(id);
     public MediaId(string? id)
