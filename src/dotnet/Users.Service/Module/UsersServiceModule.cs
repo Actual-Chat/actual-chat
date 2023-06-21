@@ -101,6 +101,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
+            db.AddOperations();
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
@@ -120,10 +121,12 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<UsersDbContext>))
                 return true;
-            // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
+
+            // 2. Make sure it's intact only for Stl.Fusion.Ext.* + local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(Auth_EditUser).Assembly
-                && OrdinalEquals(commandType.Namespace, typeof(Auth_EditUser).Namespace))
+            if (commandAssembly == typeof(Auth_EditUser).Assembly)
+                return true;
+            if (commandAssembly == typeof(AuthBackend_SetupSession).Assembly)
                 return true;
             if (commandAssembly == typeof(IAccounts).Assembly) // Users.Contracts assembly
                 return true;
