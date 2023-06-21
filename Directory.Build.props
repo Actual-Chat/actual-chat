@@ -34,7 +34,7 @@
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
     <!-- Generators -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
 
     <!-- Resources -->
