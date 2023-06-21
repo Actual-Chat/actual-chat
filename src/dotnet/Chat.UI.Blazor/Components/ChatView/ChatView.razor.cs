@@ -404,6 +404,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void OnRegionVisibilityChanged(IState<bool> state, StateEventKind eventKind)
         => _ = Dispatcher.InvokeAsync(() => {
+            if (_disposeTokenSource.IsCancellationRequested)
+                return;
             var isVisible = RegionVisibility.IsVisible.Value;
             if (isVisible) {
                 var readPosition = ReadPositionState!.Value.EntryLid;
