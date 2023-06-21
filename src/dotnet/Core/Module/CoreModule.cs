@@ -22,6 +22,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
     {
         base.InjectServices(services);
 
+        var appKind = HostInfo.AppKind;
+
         // Default binary serializer
         // ByteSerializer.Default = MessagePackByteSerializer.Default;
 
@@ -55,13 +57,13 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Fusion
         var fusion = services.AddFusion();
-        if (HostInfo.AppKind.IsServer()) {
+        if (appKind.IsServer()) {
             // It's quite important to make sure fusion.WithServiceMode call follows the very first
             // services.AddFusion call, otherwise every fusion.AddService(...) call that happens earlier
             // won't be affected by this mode change!
             fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
         }
-        else if (HostInfo.AppKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
+        else if (Constants.DebugMode.RpcClient && appKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
             services.AddSingleton<RpcPeerFactory>(_
                 => static (hub, peerRef) => peerRef.IsServer
                     ? throw StandardError.NotSupported("No server peers on the client.")
@@ -74,9 +76,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         services.AddScoped(c => new Features(c));
         fusion.AddService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
-        if (HostInfo.AppKind.IsServer())
+        if (appKind.IsServer())
             InjectServerServices(services);
-        if (HostInfo.AppKind.IsClient())
+        if (appKind.IsClient())
             InjectClientServices(services);
     }
 
