@@ -29,7 +29,7 @@
     }
 
     private Task React(Symbol emojiId) {
-        var command = new IReactions.ReactCommand(Session, new Reaction {
+        var command = new Reactions_React(Session, new Reaction {
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
         });

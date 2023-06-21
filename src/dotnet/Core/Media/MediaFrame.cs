@@ -1,11 +1,18 @@
+using ActualChat.Audio;
+using MemoryPack;
+
 namespace ActualChat.Media;
 
-[DataContract]
-public abstract class MediaFrame
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[MemoryPackUnion(0 ,typeof(AudioFrame))]
+public abstract partial class MediaFrame
 {
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public byte[] Data { get; init; } = Array.Empty<byte>();
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public abstract TimeSpan Offset { get; init; }
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public abstract TimeSpan Duration { get; }
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public abstract bool IsKeyFrame { get; }
 }

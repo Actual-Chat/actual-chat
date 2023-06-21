@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Users;
 
 public interface IUserPresencesBackend : IComputeService
@@ -6,12 +8,13 @@ public interface IUserPresencesBackend : IComputeService
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task CheckIn(CheckInCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record CheckInCommand(
-        [property: DataMember] UserId UserId,
-        [property: DataMember] Moment At,
-        [property: DataMember] bool IsActive
-    ) : ICommand<Unit>, IBackendCommand;
+    public Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record UserPresencesBackend_CheckIn(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId,
+    [property: DataMember, MemoryPackOrder(1)] Moment At,
+    [property: DataMember, MemoryPackOrder(2)] bool IsActive
+) : ICommand<Unit>, IBackendCommand;

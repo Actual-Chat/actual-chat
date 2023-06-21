@@ -1,17 +1,20 @@
-﻿namespace ActualChat.Feedback;
+﻿using MemoryPack;
+
+namespace ActualChat.Feedback;
 
 public interface IFeedbacks : IComputeService
 {
     [CommandHandler]
-    public Task CreateFeatureRequest(FeatureRequestCommand command, CancellationToken cancellationToken);
+    public Task OnCreateFeatureRequest(Feedbacks_FeatureRequest command, CancellationToken cancellationToken);
+}
 
-    [DataContract]
-    public sealed record FeatureRequestCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] string Feature
-        ) : ISessionCommand<Unit>
-    {
-        [DataMember] public int Rating { get; init; }
-        [DataMember] public string Comment { get; init; } = "";
-    }
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Feedbacks_FeatureRequest(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] string Feature
+) : ISessionCommand<Unit>
+{
+    [DataMember, MemoryPackOrder(2)] public int Rating { get; init; }
+    [DataMember, MemoryPackOrder(3)] public string Comment { get; init; } = "";
 }

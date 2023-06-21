@@ -36,7 +36,7 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<AvatarFull> Change(IAvatarsBackend.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AvatarFull> OnChange(AvatarsBackend_Change command, CancellationToken cancellationToken)
     {
         var (avatarId, expectedVersion, change) = command;
         if (Computed.IsInvalidating()) {

@@ -1,22 +1,24 @@
+using MemoryPack;
+using Microsoft.CodeAnalysis;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.Users;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed record AvatarFull(Symbol Id, long Version = 0) : Avatar(Id, Version)
+public sealed partial record AvatarFull(
+    [property: DataMember, MemoryPackOrder(7)] UserId UserId,
+    Symbol Id = default,
+    long Version = 0) : Avatar(Id, Version)
 {
     public static new Requirement<AvatarFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),
         (AvatarFull? a) => a is { Id.IsEmpty : false });
 
-    public static new AvatarFull None { get; } = new(Symbol.Empty, 0);
-    public static new AvatarFull Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
+    public static new AvatarFull None { get; } = new( UserId.None,Symbol.Empty, 0);
+    public static new AvatarFull Loading { get; } = new(UserId.None, Symbol.Empty, -1); // Should differ by ref. from None
 
-    [DataMember] public UserId UserId { get; init; }
-    [DataMember] public bool IsAnonymous { get; init; }
-
-    public AvatarFull() : this(Symbol.Empty) { }
+    [DataMember, MemoryPackOrder(8)] public bool IsAnonymous { get; init; }
 
     // Helpers
 

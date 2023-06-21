@@ -1,16 +1,17 @@
 using System.Numerics;
+using MemoryPack;
 
 namespace ActualChat.Mathematics;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct LinearMapDiff(
-    [property: DataMember(Order = 0)] LinearMap Suffix
+public readonly partial record struct LinearMapDiff(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] LinearMap Suffix
 ) : ICanBeNone<LinearMapDiff>
 {
     public static LinearMapDiff None { get; } = default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Suffix.IsEmpty;
 
     public static LinearMapDiff New(LinearMap map, LinearMap baseMap, Vector2 epsilon)

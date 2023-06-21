@@ -12,7 +12,7 @@ public static class AuthorsExt
         if (author is { HasLeft: false })
             return author;
 
-        var command = new IAuthors.JoinCommand(session, chatId);
+        var command = new Authors_Join(session, chatId);
         author = await authors.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);
         return author;
     }

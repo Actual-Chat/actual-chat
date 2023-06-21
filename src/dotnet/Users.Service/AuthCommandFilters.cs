@@ -83,7 +83,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
 
         // Follow-up actions
         var userId = new UserId(sessionInfo.UserId);
-        new IServerKvas.MigrateGuestKeysCommand(command.Session)
+        new ServerKvas_MigrateGuestKeys(command.Session)
             .EnqueueOnCompletion();
 
         // Raise events

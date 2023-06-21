@@ -19,7 +19,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
         => Task.FromResult(_userPresences.GetPresence(userId));
 
     // [CommandHandler]
-    public virtual async Task CheckIn(IUserPresencesBackend.CheckInCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             _userPresences.CheckIn(command.UserId, command.At, command.IsActive);

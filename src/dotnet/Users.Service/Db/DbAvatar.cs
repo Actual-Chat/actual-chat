@@ -26,8 +26,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public DbAvatar(AvatarFull model) => UpdateFrom(model);
 
     public AvatarFull ToModel()
-        => new(Id, Version) {
-            UserId = new UserId(UserId),
+        => new(new UserId(UserId), Id, Version) {
             Name = Name,
             MediaId = new MediaId(MediaId),
             Bio = Bio,

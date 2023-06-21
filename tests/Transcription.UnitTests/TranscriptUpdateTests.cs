@@ -9,7 +9,7 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void WithDiffTest()
     {
-        var transcript = new Transcript();
+        var transcript = Transcript.New();
         var diff = new TranscriptDiff(new StringDiff(0, "раз"), new LinearMapDiff(new LinearMap(0, 0, 3, 1.86f)));
         transcript += diff;
         diff = new(new StringDiff(0, " вышел зайчик погулять Вдруг откуда"), new LinearMapDiff(new LinearMap(23, 4f, 58, 8.34f)));

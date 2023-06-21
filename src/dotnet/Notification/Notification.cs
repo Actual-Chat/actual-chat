@@ -1,56 +1,55 @@
+using MemoryPack;
 using Stl.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Notification.Notification
 
 namespace ActualChat.Notification;
 
-[DataContract]
-public record Notification(
-    [property: DataMember] NotificationId Id,
-    [property: DataMember] long Version = 0
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record Notification(
+    [property: DataMember, MemoryPackOrder(0)] NotificationId Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>
 {
-    [DataMember] public string Title { get; init; } = "";
-    [DataMember] public string Content { get; init; } = "";
-    [DataMember] public string IconUrl { get; init; } = "";
-    [DataMember] public Moment CreatedAt { get; init; }
-    [DataMember] public Moment SentAt { get; init; }
-    [DataMember] public Moment? HandledAt { get; init; }
+    [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
+    [DataMember, MemoryPackOrder(3)] public string Content { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public string IconUrl { get; init; } = "";
+    [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(6)] public Moment SentAt { get; init; }
+    [DataMember, MemoryPackOrder(7)] public Moment? HandledAt { get; init; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public UserId UserId => Id.UserId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public NotificationKind Kind => Id.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public Symbol SimilarityKey => Id.SimilarityKey;
 
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public NotificationOption? Option { get; init; }
 
-    [DataMember]
+    [DataMember, MemoryPackOrder(8)]
     public ChatNotificationOption? ChatNotification {
         get => Option as ChatNotificationOption;
         init => Option ??= value;
     }
-    [DataMember]
+    [DataMember, MemoryPackOrder(9)]
     public ChatEntryNotificationOption? ChatEntryNotification {
         get => Option as ChatEntryNotificationOption;
         init => Option ??= value;
     }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsActive => HandledAt == null;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatId ChatId => ChatEntryNotification?.EntryId.ChatId ?? ChatNotification?.ChatId ?? default(ChatId);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatEntryId EntryId => ChatEntryNotification?.EntryId ?? default;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public AuthorId AuthorId => ChatEntryNotification?.AuthorId ?? default;
-
-    public Notification() : this(NotificationId.None) { }
 
     public Notification WithSimilar(Notification similar)
     {
@@ -67,13 +66,13 @@ public record Notification(
 
 public abstract record NotificationOption : IRequirementTarget;
 
-[DataContract]
-public record ChatNotificationOption(
-    [property: DataMember] ChatId ChatId
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record ChatNotificationOption(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
     ) : NotificationOption;
 
-[DataContract]
-public record ChatEntryNotificationOption(
-    [property: DataMember] ChatEntryId EntryId,
-    [property: DataMember] AuthorId AuthorId
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record ChatEntryNotificationOption(
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
     ) : NotificationOption;

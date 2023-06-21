@@ -1,12 +1,13 @@
 using ActualChat.Comparison;
+using MemoryPack;
 using Stl.Versioning;
 
 namespace ActualChat.Users;
 
-[DataContract]
-public record Account(
-    [property: DataMember] UserId Id,
-    [property: DataMember] long Version = 0
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record Account(
+    [property: DataMember, MemoryPackOrder(0)] UserId Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version = 0
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
     public static IdAndVersionEqualityComparer<Account, UserId> EqualityComparer { get; } = new();
@@ -21,18 +22,16 @@ public record Account(
         new(() => StandardError.Account.Guest()),
         (Account? a) => a?.IsGuestOrNone == false);
 
-    [DataMember] public AccountStatus Status { get; init; }
-    [DataMember] public Avatar Avatar { get; init; } = null!; // Populated only on reads
+    [DataMember, MemoryPackOrder(2)] public AccountStatus Status { get; init; }
+    [DataMember, MemoryPackOrder(3)] public Avatar Avatar { get; init; } = null!; // Populated only on reads
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsNone;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsGuest => Id.IsGuest;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsGuestOrNone => Id.IsGuestOrNone;
-
-    public Account() : this(UserId.None) { }
 
     // This record relies on version-based equality
     public virtual bool Equals(Account? other) => EqualityComparer.Equals(this, other);

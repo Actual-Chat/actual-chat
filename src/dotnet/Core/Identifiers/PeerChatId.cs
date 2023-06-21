@@ -1,38 +1,39 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<PeerChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<PeerChatId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<PeerChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct PeerChatId : ISymbolIdentifier<PeerChatId>
+public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
 {
     public static readonly string IdPrefix = "p-";
     public static PeerChatId None => default;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Parsed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public UserId UserId1 { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public UserId UserId2 { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public (UserId UserId1, UserId UserId2) UserIds => (UserId1, UserId2);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public PeerChatId(Symbol id) => this = Parse(id);
     public PeerChatId(string? id) => this = Parse(id);
     public PeerChatId(string? id, ParseOrNone _) => ParseOrNone(id);

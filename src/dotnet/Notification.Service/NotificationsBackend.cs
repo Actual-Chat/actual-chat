@@ -108,7 +108,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     // [CommandHandler]
-    public virtual async Task Notify(INotificationsBackend.NotifyCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -129,13 +129,13 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             notification = notification.WithSimilar(similar);
         }
 
-        var upsertCommand = new INotificationsBackend.UpsertCommand(notification);
+        var upsertCommand = new NotificationsBackend_Upsert(notification);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         await Send(userId, notification, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task Upsert(INotificationsBackend.UpsertCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var notification = command.Notification;
         var userId = notification.UserId.Require();
@@ -181,7 +181,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     // [CommandHandler]
-    public virtual async Task RemoveDevices(INotificationsBackend.RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveDevices(NotificationsBackend_RemoveDevices removeDevicesCommand, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
@@ -329,7 +329,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 SentAt = now,
                 ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
-            await new INotificationsBackend.NotifyCommand(notification)
+            await new NotificationsBackend_Notify(notification)
                 .Enqueue(cancellationToken)
                 .ConfigureAwait(false);
         }

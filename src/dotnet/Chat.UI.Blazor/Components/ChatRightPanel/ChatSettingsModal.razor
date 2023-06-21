@@ -240,7 +240,7 @@
             AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
             MediaId = _form.PictureId,
             };
-        var command = new IChats.ChangeCommand(Session, chat.Id, chat.Version, new() {
+        var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
         await UICommander.Run(command);
@@ -254,11 +254,9 @@
     }
 
     private async Task OnNewInviteClick() {
-        var invite = new Invite {
-            Remaining = 10000, // TODO: make it configurable
-            Details = new ChatInviteOption(ModalModel.Chat.Id),
-        };
-        invite = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+        // TODO: make it configurable
+        var invite = Invite.New(10000, new ChatInviteOption(ModalModel.Chat.Id));
+        invite = await UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
 

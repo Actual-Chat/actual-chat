@@ -21,7 +21,7 @@
     [Parameter] public bool ShowEntryKind { get; set; }
 
     private CancellationTokenSource? RestartCts { get; set; }
-    private Transcript Transcript { get; set; } = new();
+    private Transcript Transcript { get; set; } = Transcript.New();
     private string RetainedPart { get; set; } = "";
     private string ChangedPart { get; set; } = "";
 

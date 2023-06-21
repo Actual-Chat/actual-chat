@@ -23,9 +23,9 @@ public interface IAccountsClientDef
     [Get(nameof(GetFull))]
     Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);
     [Post(nameof(Update))]
-    Task Update([Body] IAccounts.UpdateCommand command, CancellationToken cancellationToken);
+    Task Update([Body] Accounts_Update command, CancellationToken cancellationToken);
     [Post(nameof(InvalidateEverything))]
-    Task InvalidateEverything([Body] IAccounts.InvalidateEverythingCommand command, CancellationToken cancellationToken);
+    Task InvalidateEverything([Body] Accounts_InvalidateEverything command, CancellationToken cancellationToken);
 }
 
 [BasePath("userPresences")]
@@ -34,7 +34,7 @@ public interface IUserPresencesClientDef
     [Get(nameof(Get))]
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
     [Post(nameof(CheckIn))]
-    Task CheckIn([Body] IUserPresences.CheckInCommand command, CancellationToken cancellationToken);
+    Task CheckIn([Body] UserPresences_CheckIn command, CancellationToken cancellationToken);
 }
 
 [BasePath("avatars")]
@@ -48,9 +48,9 @@ public interface IAvatarsClientDef
     Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
-    Task<AvatarFull> Change([Body] IAvatars.ChangeCommand command, CancellationToken cancellationToken);
+    Task<AvatarFull> Change([Body] Avatars_Change command, CancellationToken cancellationToken);
     [Post(nameof(SetDefault))]
-    Task SetDefault([Body] IAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
+    Task SetDefault([Body] Avatars_SetDefault command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatPositions")]
@@ -60,7 +60,7 @@ public interface IChatPositionsClientDef
     public Task<ChatPosition> GetOwn(Session session, ChatId chatId, ChatPositionKind kind, CancellationToken cancellationToken);
 
     [Post(nameof(Set))]
-    public Task Set([Body] IChatPositions.SetCommand command, CancellationToken cancellationToken);
+    public Task Set([Body] ChatPositions_Set command, CancellationToken cancellationToken);
 }
 
 [BasePath("serverKvas")]
@@ -70,9 +70,9 @@ public interface IServerKvasClientDef
     Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default);
 
     [Post(nameof(Set))]
-    Task Set([Body] IServerKvas.SetCommand command, CancellationToken cancellationToken = default);
+    Task Set([Body] ServerKvas_Set command, CancellationToken cancellationToken = default);
     [Post(nameof(SetMany))]
-    Task SetMany([Body] IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default);
+    Task SetMany([Body] ServerKvas_SetMany command, CancellationToken cancellationToken = default);
     [Post(nameof(MigrateGuestKeys))]
-    Task MigrateGuestKeys([Body] IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default);
+    Task MigrateGuestKeys([Body] ServerKvas_MigrateGuestKeys command, CancellationToken cancellationToken = default);
 }

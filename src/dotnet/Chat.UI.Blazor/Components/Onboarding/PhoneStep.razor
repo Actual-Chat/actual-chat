@@ -92,7 +92,7 @@
 
     protected override async Task Save() {
         var account = await Accounts.GetOwn(Session, default);
-        var command = new IAccounts.UpdateCommand(
+        var command = new Accounts_Update(
             Session,
             account with {
                 Phone = $"{_stepModel.Code} {_stepModel.Number}",

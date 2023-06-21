@@ -8,7 +8,7 @@ public static class TestAuthors
 
     public static Author New(string chatId, int authorLid, string authorName)
         => new (new AuthorId(new ChatId(chatId), authorLid, AssumeValid.Option)) {
-            Avatar = new Avatar {
+            Avatar = new (Symbol.Empty) {
                 Name = authorName,
             },
         };

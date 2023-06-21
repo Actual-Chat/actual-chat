@@ -55,7 +55,7 @@
     }
 
     private Task ToggleReaction(Symbol emojiId) {
-        return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
+        return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
         }));

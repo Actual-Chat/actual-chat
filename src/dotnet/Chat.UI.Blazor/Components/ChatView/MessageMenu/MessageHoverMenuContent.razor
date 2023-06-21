@@ -57,7 +57,7 @@
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
-        return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
+        return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Message.Entry.Id.ToTextEntryId(),
             EmojiId = Emoji.ThumbsUp,
         }));

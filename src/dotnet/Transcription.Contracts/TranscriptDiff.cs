@@ -1,13 +1,15 @@
+using MemoryPack;
+
 namespace ActualChat.Transcription;
 
-[DataContract]
-public sealed record TranscriptDiff(
-    [property: DataMember(Order = 0)] StringDiff TextDiff,
-    [property: DataMember(Order = 1)] LinearMapDiff TimeMapDiff)
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record TranscriptDiff(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] StringDiff TextDiff,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMapDiff TimeMapDiff)
 {
     public static TranscriptDiff None { get; } = new(StringDiff.None, LinearMapDiff.None);
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => TextDiff.IsNone && TimeMapDiff.IsNone;
 
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)

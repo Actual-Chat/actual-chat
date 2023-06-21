@@ -13,7 +13,7 @@
 
     protected override ComputedState<SearchMatch>.Options GetStateOptions()
         => new() {
-            InitialValue = new SearchMatch(Text),
+            InitialValue = SearchMatch.New(Text),
             UpdateDelayer = UpdateDelayer, // De-bounces the re-renders
             Category = GetStateCategory(),
         };

@@ -1,4 +1,8 @@
+using MemoryPack;
+
 namespace ActualChat.Users;
 
-[DataContract]
-public record UserPicture([property: DataMember] string? ContentId, [property: DataMember] string? Picture);
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record UserPicture(
+    [property: DataMember, MemoryPackOrder(0)] string? ContentId,
+    [property: DataMember, MemoryPackOrder(1)] string? Picture);

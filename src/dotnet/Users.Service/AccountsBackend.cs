@@ -66,8 +66,8 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task Update(
-        IAccountsBackend.UpdateCommand command,
+    public virtual async Task OnUpdate(
+        AccountsBackend_Update command,
         CancellationToken cancellationToken)
     {
         var (account, expectedVersion) = command;
@@ -124,8 +124,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     }
 
     private static AvatarFull GetDefaultAvatar(AccountFull account)
-        => new() {
-            UserId = account.Id,
+        => new(account.Id) {
             Name = account.FullName,
             Picture = DefaultUserPicture.Get(account.FullName),
             Bio = "",

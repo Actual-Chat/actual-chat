@@ -25,7 +25,7 @@ public class ChatOperationsTest : AppHostTestBase
         var commander = tester.Commander;
 
         var chatTitle = "test chat";
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = chatTitle,
                 Kind = ChatKind.Group,
@@ -103,14 +103,14 @@ public class ChatOperationsTest : AppHostTestBase
         var authors = tester.AppServices.GetRequiredService<IAuthors>();
 
         if (!isPublicChat) {
-            await commander.Call(new IInvites.UseCommand(session, inviteId));
+            await commander.Call(new Invites_Use(session, inviteId));
             await Task.Delay(1000); // Let the command complete
         }
 
         await authors.EnsureJoined(session, chatId, default);
         await ChatOperations.AssertJoined(tester, chatId);
 
-        var leaveCommand = new IAuthors.LeaveCommand(session, chatId);
+        var leaveCommand = new Authors_Leave(session, chatId);
         await commander.Call(leaveCommand);
 
         var permissions = await chats.GetRules(session, chatId, default);
@@ -127,7 +127,7 @@ public class ChatOperationsTest : AppHostTestBase
 
         // re-join again
         if (!isPublicChat) {
-            await commander.Call(new IInvites.UseCommand(session, inviteId));
+            await commander.Call(new Invites_Use(session, inviteId));
             await Task.Delay(1000); // Let the command complete
         }
         await authors.EnsureJoined(session, chatId, default);

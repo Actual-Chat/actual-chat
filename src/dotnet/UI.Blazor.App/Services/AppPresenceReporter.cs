@@ -100,7 +100,7 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private async Task CheckIn(bool isActive, CancellationToken cancellationToken)
     {
         try {
-            await Commander.Call(new IUserPresences.CheckInCommand(Session, isActive), cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new UserPresences_CheckIn(Session, isActive), cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = Now;
         }
         catch (Exception e) when (e is not OperationCanceledException) {

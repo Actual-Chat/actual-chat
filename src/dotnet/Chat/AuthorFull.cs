@@ -3,8 +3,8 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract]
-public sealed record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Version)
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Version)
 {
     public static new Requirement<AuthorFull> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Author>()),
@@ -13,10 +13,14 @@ public sealed record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Vers
     public static new AuthorFull None { get; } = new() { Avatar = Avatar.None };
     public static new AuthorFull Loading { get; } = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
-    [DataMember] public UserId UserId { get; init; }
-    [DataMember] public ImmutableArray<Symbol> RoleIds { get; init; } = ImmutableArray<Symbol>.Empty;
+    [DataMember, MemoryPackOrder(6)] public UserId UserId { get; init; }
+    [DataMember, MemoryPackOrder(7)] public ImmutableArray<Symbol> RoleIds { get; init; } = ImmutableArray<Symbol>.Empty;
 
-    public AuthorFull() : this(default, 0) { }
+    private AuthorFull() : this(default, 0) { }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    public AuthorFull(UserId userId, AuthorId id, long version = 0) : this(id, version)
+        => UserId = userId;
 
     // This record relies on version-based equality
     public bool Equals(AuthorFull? other) => EqualityComparer.Equals(this, other);

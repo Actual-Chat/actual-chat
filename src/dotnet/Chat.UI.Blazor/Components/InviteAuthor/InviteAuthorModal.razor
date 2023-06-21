@@ -147,7 +147,7 @@
             .Where(x => !x.IsExisting && x.IsChecked)
             .Select(x => x.Account.Id)
             .ToArray();
-        var createAuthorsCommand = new IAuthors.InviteCommand(Session, Chat.Id, userIds);
+        var createAuthorsCommand = new Authors_Invite(Session, Chat.Id, userIds);
         var (_, error) = await UICommander.Run(createAuthorsCommand, DisposeToken);
         if (error != null)
             return;

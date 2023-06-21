@@ -139,7 +139,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         lock (_lock)
             _deviceId.Value = deviceId;
 
-        var command = new INotifications.RegisterDeviceCommand(Session, deviceId, DeviceType.WebBrowser);
+        var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
         await UICommander.Run(command, cancellationToken).ConfigureAwait(false);
     }
 }

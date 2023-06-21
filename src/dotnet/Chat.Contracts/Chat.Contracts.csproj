@@ -5,6 +5,8 @@
     <ProjectReference Include="..\Chat\Chat.csproj" />
   </ItemGroup>
 
-
+  <ItemGroup>
+    <PackageReference Include="MemoryPack" />
+  </ItemGroup>
 
 </Project>

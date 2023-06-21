@@ -1,15 +1,17 @@
+using MemoryPack;
 using Microsoft.AspNetCore.Components;
 
 namespace ActualChat;
 
-[DataContract]
-public readonly struct LocalUrl : IEquatable<LocalUrl>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial struct LocalUrl : IEquatable<LocalUrl>
 {
     private readonly string _value;
 
-    [DataMember]
+    [DataMember, MemoryPackOrder(0)]
     public string Value => _value ?? "/";
 
+    [MemoryPackConstructor]
     public LocalUrl(string? value)
     {
         // Normalizing it

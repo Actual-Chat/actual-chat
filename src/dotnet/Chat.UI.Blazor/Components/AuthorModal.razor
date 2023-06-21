@@ -107,7 +107,7 @@
         => await AuthorUI.StartPeerChat(AuthorId);
 
     private async Task OnAvatarSelected(AvatarFull avatar) {
-        var command = new IAuthors.SetAvatarCommand(Session, AuthorId.ChatId, avatar.Id);
+        var command = new Authors_SetAvatar(Session, AuthorId.ChatId, avatar.Id);
         await UICommander.Run(command);
     }
 

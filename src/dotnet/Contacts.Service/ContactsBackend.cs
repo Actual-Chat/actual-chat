@@ -72,8 +72,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     }
 
     // [CommandHandler]
-    public virtual async Task<Contact?> Change(
-        IContactsBackend.ChangeCommand command,
+    public virtual async Task<Contact?> OnChange(
+        ContactsBackend_Change command,
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
@@ -149,7 +149,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     }
 
     // [CommandHandler]
-    public virtual async Task Touch(IContactsBackend.TouchCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken)
     {
         var id = command.Id;
         if (Computed.IsInvalidating()) {
@@ -204,7 +204,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var change = author.HasLeft
             ? new Change<Contact> { Remove = true }
             : new Change<Contact> { Create = new Contact(contactId) };
-        var command = new IContactsBackend.ChangeCommand(contactId, null, change);
+        var command = new ContactsBackend_Change(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -232,7 +232,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (now - contact.TouchedAt < Constants.Contacts.MinTouchInterval)
             return;
 
-        var command = new IContactsBackend.TouchCommand(contact.Id);
+        var command = new ContactsBackend_Touch(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 }

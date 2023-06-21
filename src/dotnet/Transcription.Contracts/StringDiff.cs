@@ -1,16 +1,17 @@
 using Cysharp.Text;
+using MemoryPack;
 
 namespace ActualChat.Transcription;
 
-[DataContract]
-public readonly record struct StringDiff(
-    [property: DataMember(Order = 0)] int Start,
-    [property: DataMember(Order = 1)] string? Suffix
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial record struct StringDiff(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] int Start,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] string? Suffix
     ) : ICanBeNone<StringDiff>
 {
     public static StringDiff None { get; } = default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => ReferenceEquals(Suffix, null);
 
     public static StringDiff New(string text, string baseText)

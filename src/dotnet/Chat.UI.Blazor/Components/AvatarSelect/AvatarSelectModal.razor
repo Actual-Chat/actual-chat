@@ -108,7 +108,7 @@
 
     private Avatar GenerateAnonymous() {
         var next = IdGenerator.Next();
-        return new Avatar {
+        return new (Symbol.Empty) {
             Name = RandomNameGenerator.Default.Generate(),
             Bio = "Someone anonymous",
             Picture = DefaultUserPicture.GetBoringAvatar(next),
@@ -134,9 +134,8 @@
 
     private async Task OnAnonymousSelected(Avatar anonymous) {
         var account = await Accounts.GetOwn(Session, default);
-        var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull() {
-                UserId = account.Id,
+        var command = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull>() {
+            Create = new AvatarFull(account.Id) {
                 IsAnonymous = true,
             }.WithMissingPropertiesFrom(anonymous),
         });

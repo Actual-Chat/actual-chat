@@ -152,7 +152,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                     chatId,
                     position,
                     fixedPosition);
-                var setCmd = new IChatPositionsBackend.SetCommand(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
+                var setCmd = new ChatPositionsBackend_Set(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
                 await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
             }
         }

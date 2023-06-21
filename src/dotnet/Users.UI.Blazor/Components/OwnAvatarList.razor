@@ -70,10 +70,8 @@
         if (Chat != null)
             throw StandardError.Constraint("Avatars can be added only on account page.");
 
-        var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull() {
-                UserId = Account.Id,
-            }.WithMissingPropertiesFrom(Account.Avatar),
+        var command = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull>() {
+            Create = new AvatarFull(Account.Id).WithMissingPropertiesFrom(Account.Avatar),
         });
         var (avatar, error) = await UICommander.Run(command);
         if (error != null)
@@ -86,7 +84,7 @@
         => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, ChatId, title));
 
     private async Task SetDefaultAvatar(AvatarFull avatar) {
-        var command = new IAvatars.SetDefaultCommand(Session, avatar.Id);
+        var command = new Avatars_SetDefault(Session, avatar.Id);
         await UICommander.Run(command);
     }
 }

@@ -1,23 +1,23 @@
+using MemoryPack;
+
 namespace ActualChat.Commands;
 
-[DataContract]
-public sealed record QueuedCommand(
-    [property: DataMember] Symbol Id,
-    [property: DataMember] long Version
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record QueuedCommand(
+    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version
 ) : IHasId<Symbol>
 {
-    public static IMomentClock Clock { get; set; }
+    public static IMomentClock Clock { get; set; } = MomentClockSet.Default.CoarseSystemClock;
 
-    [DataMember] public ICommand Command { get; init; } = null!;
-    [DataMember] public QueueId QueueId { get; init; }
-    [DataMember] public Moment CreatedAt { get; init; }
-    [DataMember] public Moment? StartedAt { get; init; }
-    [DataMember] public Moment? CompletedAt { get; init; }
-    [DataMember] public int TryIndex { get; init; }
-    [DataMember] public string Error { get; init; } = "";
-
-    static QueuedCommand()
-        => Clock = MomentClockSet.Default.CoarseSystemClock;
+    // TODO(AK): ICommand serialization looks suspicious
+    [DataMember, MemoryPackOrder(2)] [MemoryPackAllowSerialize] public ICommand Command { get; init; } = null!;
+    [DataMember, MemoryPackOrder(3)] public QueueId QueueId { get; init; }
+    [DataMember, MemoryPackOrder(4)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(5)] public Moment? StartedAt { get; init; }
+    [DataMember, MemoryPackOrder(6)] public Moment? CompletedAt { get; init; }
+    [DataMember, MemoryPackOrder(7)] public int TryIndex { get; init; }
+    [DataMember, MemoryPackOrder(8)] public string Error { get; init; } = "";
 
     public static Symbol NewId()
         => Ulid.NewUlid().ToString();

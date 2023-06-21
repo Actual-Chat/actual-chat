@@ -1,12 +1,13 @@
 using System.Numerics;
 using System.Text.RegularExpressions;
+using MemoryPack;
 
 namespace ActualChat.Transcription;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Transcript(
-    [property: DataMember(Order = 0)] string Text,
-    [property: DataMember(Order = 1)] LinearMap TimeMap)
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap)
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex ContentStartRegexFactory();
@@ -18,17 +19,17 @@ public sealed partial record Transcript(
     public static readonly Regex ContentEndRegex = ContentEndRegexFactory();
 
     public static Vector2 TimeMapEpsilon { get; } = new(0.1f, 0.1f);
-    public static Transcript Empty { get; } = new();
+    public static Transcript Empty { get; } = New();
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public int Length => Text.Length;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public Range<int> TextRange => new(0, Text.Length);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public Range<float> TimeRange => TimeMap.YRange;
 
-    public Transcript()
-        : this("", LinearMap.Zero) { }
+    public static Transcript New()
+        => new ("", LinearMap.Zero);
 
     public override string ToString()
         => $"`{Text}` + {TimeMap}";

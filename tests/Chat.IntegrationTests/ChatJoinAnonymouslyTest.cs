@@ -115,9 +115,8 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
         var account = await accounts.GetOwn(session, default).ConfigureAwait(false);
         account.IsGuest.Should().BeFalse();
 
-        var command = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull() {
-                UserId = account.Id,
+        var command = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull>() {
+            Create = new AvatarFull(account.Id) {
                 IsAnonymous = true,
                 Name = "Anonymous Bob",
             },
@@ -139,12 +138,11 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
         var session = tester.Session;
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);
-        var command = new IAvatars.ChangeCommand(session,
+        var command = new Avatars_Change(session,
             Symbol.Empty,
             null,
-            new Change<AvatarFull>() {
-                Create = new AvatarFull() {
-                    UserId = account.Id,
+            new Change<AvatarFull> {
+                Create = new AvatarFull(account.Id) {
                     IsAnonymous = true,
                     Name = RandomNameGenerator.Default.Generate(),
                 },

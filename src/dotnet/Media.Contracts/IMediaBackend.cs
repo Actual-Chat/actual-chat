@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Media;
+﻿using MemoryPack;
+
+namespace ActualChat.Media;
 
 public interface IMediaBackend : IComputeService
 {
@@ -6,11 +8,12 @@ public interface IMediaBackend : IComputeService
     public Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task<Media?> Change(ChangeCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] MediaId Id,
-        [property: DataMember] Change<Media> Change
-    ) : ICommand<Media?>, IBackendCommand;
+    public Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record MediaBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] MediaId Id,
+    [property: DataMember, MemoryPackOrder(1)] Change<Media> Change
+) : ICommand<Media?>, IBackendCommand;

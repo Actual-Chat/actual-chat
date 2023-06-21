@@ -6,5 +6,5 @@ namespace ActualChat.Feedback;
 public interface IFeedbacksClientDef
 {
     [Post(nameof(CreateFeatureRequest))]
-    Task CreateFeatureRequest([Body] IFeedbacks.FeatureRequestCommand command, CancellationToken cancellationToken);
+    Task CreateFeatureRequest([Body] Feedbacks_FeatureRequest command, CancellationToken cancellationToken);
 }

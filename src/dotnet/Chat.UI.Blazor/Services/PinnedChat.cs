@@ -1,10 +1,12 @@
+using MemoryPack;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract]
-public readonly record struct PinnedChat(
-    [property: DataMember] ChatId ChatId,
-    [property: DataMember] Moment Recency = default)
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial record struct PinnedChat(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] Moment Recency = default)
 {
     public static implicit operator PinnedChat(ChatId chatId) => new(chatId);
 

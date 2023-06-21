@@ -39,7 +39,7 @@ internal class Reactions : IReactions
     }
 
     // [CommandHandler]
-    public virtual async Task React(IReactions.ReactCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnReact(Reactions_React command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here

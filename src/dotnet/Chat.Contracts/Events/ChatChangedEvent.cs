@@ -1,9 +1,10 @@
 using ActualChat.Commands;
+using MemoryPack;
 
 namespace ActualChat.Chat.Events;
 
-[DataContract]
-public record ChatChangedEvent(
-    [property: DataMember] Chat Chat,
-    [property: DataMember] Chat? OldChat
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record ChatChangedEvent(
+    [property: DataMember, MemoryPackOrder(1)] Chat Chat,
+    [property: DataMember, MemoryPackOrder(2)] Chat? OldChat
 ) : EventCommand;

@@ -78,7 +78,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     {
         var account = await _accounts.GetOwn(_tester.Session, default);
 
-        var command = new IAccounts.UpdateCommand(
+        var command = new Accounts_Update(
             _adminSession,
             account with { Status = newStatus },
             account.Version);

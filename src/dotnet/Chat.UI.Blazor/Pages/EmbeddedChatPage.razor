@@ -84,7 +84,7 @@
             }
 
             // create new chat based on a template and redirect to the new clone
-            var command = new IChats.GetOrCreateFromTemplateCommand(Session, chatId);
+            var command = new Chats_GetOrCreateFromTemplate(Session, chatId);
             var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
                 throw StandardError.Unavailable("Unable to create new chat from template");

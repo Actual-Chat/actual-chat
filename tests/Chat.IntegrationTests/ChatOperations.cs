@@ -22,7 +22,7 @@ public static class ChatOperations
         var isPublicChat = chatDiff.IsPublic ?? false;
 
         var commander = tester.Commander;
-        var chat = await commander.Call(new IChats.ChangeCommand(session,
+        var chat = await commander.Call(new Chats_Change(session,
             default,
             null,
             new () {
@@ -34,11 +34,8 @@ public static class ChatOperations
         var inviteId = Symbol.Empty;
         if (!isPublicChat) {
             // to join private chat we need to generate invite code
-            var invite = new Invite.Invite {
-                Remaining = 10,
-                Details = new ChatInviteOption(chatId),
-            };
-            invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
+            var invite = Invite.Invite.New(10, new ChatInviteOption(chatId));
+            invite = await commander.Call(new Invites_Generate(session, invite));
             inviteId = invite.Id;
         }
 
@@ -60,7 +57,7 @@ public static class ChatOperations
         if (!isPublicChat) {
             canJoin.Should().BeFalse();
             // to join private chat we need to activate invite code first
-            await commander.Call(new IInvites.UseCommand(session, inviteId), true);
+            await commander.Call(new Invites_Use(session, inviteId), true);
 
             var c = await Computed.Capture(() => chats.GetRules(session, chatId, default));
             c = await c.When(x => x.CanJoin()).WaitAsync(TimeSpan.FromSeconds(3));
@@ -69,7 +66,7 @@ public static class ChatOperations
 
         canJoin.Should().BeTrue();
 
-        var command = new IAuthors.JoinCommand(session, chatId, AvatarId: avatarId, JoinAnonymously: joinAnonymously);
+        var command = new Authors_Join(session, chatId, AvatarId: avatarId, JoinAnonymously: joinAnonymously);
         var author = await commander.Call(command, true).ConfigureAwait(false);
         return author;
     }

@@ -12,11 +12,12 @@ public interface IReactions : IComputeService
         CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task React(ReactCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ReactCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] Reaction Reaction
-    ) : ISessionCommand<Unit>;
+    Task OnReact(Reactions_React command, CancellationToken cancellationToken);
 }
+
+[DataContract]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Reactions_React(
+    [property: DataMember] Session Session,
+    [property: DataMember] Reaction Reaction
+) : ISessionCommand<Unit>;

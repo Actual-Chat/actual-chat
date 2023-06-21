@@ -20,13 +20,13 @@ public class ServerKvasBackendClient : IKvas
 
     public Task Set(string key, string? value, CancellationToken cancellationToken = default)
     {
-        var command = new IServerKvasBackend.SetManyCommand(Prefix, (key, value));
+        var command = new ServerKvasBackend_SetMany(Prefix, (key, value));
         return Commander.Call(command, cancellationToken);
     }
 
     public Task SetMany((string Key, string? Value)[] items, CancellationToken cancellationToken = default)
     {
-        var command = new IServerKvasBackend.SetManyCommand(Prefix, items);
+        var command = new ServerKvasBackend_SetMany(Prefix, items);
         return Commander.Call(command, cancellationToken);
     }
 }
