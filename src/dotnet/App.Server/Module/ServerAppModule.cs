@@ -163,10 +163,12 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                 return true;
             },
         });
-        var fusion = services.AddFusion();
-        var fusionServer = fusion.AddWebServer();
-        fusionServer.AddAuthentication();
 
+        // Fusion web server
+        var fusion = services.AddFusion();
+        fusion.AddWebServer();
+
+        // RestEase client
         var restEase = services.AddRestEase();
         restEase.ConfigureHttpClient((c, name, o) => {
             o.HttpClientActions.Add(client => {

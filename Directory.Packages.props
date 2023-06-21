@@ -23,6 +23,7 @@
     <OpenTelemetryNpgsqlVersion>7.0.4</OpenTelemetryNpgsqlVersion>
     <SentryVersion>3.29.1</SentryVersion>
     <MemoryPackVersion>1.9.16</MemoryPackVersion>
+    <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">
     <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="7.0.2" />
@@ -43,8 +44,9 @@
     <PackageVersion Include="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha04" />
     <PackageVersion Include="MemoryPack" Version="$(MemoryPackVersion)" />
     <PackageVersion Include="MemoryPack.Core" Version="$(MemoryPackVersion)" />
-    <PackageVersion Include="MessagePack" Version="2.4.59" />
-    <PackageVersion Include="MessagePack.Annotations" Version="2.4.59" />
+    <PackageVersion Include="MemoryPack.Generator" Version="$(MemoryPackVersion)" />
+    <PackageVersion Include="MessagePack" Version="$(MessagePackVersion)" />
+    <PackageVersion Include="MessagePack.Annotations" Version="$(MessagePackVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Authorization" Version="$(AspNetCoreVersion)" />

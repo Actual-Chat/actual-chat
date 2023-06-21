@@ -52,6 +52,8 @@ public static class TestHostFactory
             },
             AppServicesBuilder = (host, services) => {
                 configureServices?.Invoke(services);
+
+                // The code below runs after module service registration & everything else
                 services.ConfigureLogging(output);
                 services.AddSingleton(new ServerAuthHelper.Options {
                     KeepSignedIn = true,
@@ -59,9 +61,6 @@ public static class TestHostFactory
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(output);
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                var fusion = services.AddFusion(RpcServiceMode.Server, true);
-                var fusionServer = fusion.AddWebServer();
-                fusionServer.AddSessionMiddleware();
             },
             AppConfigurationBuilder = builder => {
                 ConfigureTestApp(builder, output);

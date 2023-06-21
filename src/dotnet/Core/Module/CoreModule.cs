@@ -2,12 +2,10 @@
 using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using ActualChat.Internal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
-using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
 using Stl.Mathematics.Internal;
 using Stl.RestEase;
@@ -24,12 +22,14 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
     {
         base.InjectServices(services);
 
+        // Default binary serializer
+        ByteSerializer.Default = MessagePackByteSerializer.Default;
+
         // Common services
         services.AddTracer();
         services.AddSingleton(c => new StaticImportsInitializer(c));
         services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
-        services.AddSingleton(c => new UrlMapper(
-            c.GetRequiredService<HostInfo>()));
+        services.AddSingleton(c => new UrlMapper(c.GetRequiredService<HostInfo>()));
 
         // IArithmetics
         services.AddTypeMapper<IArithmetics>(map => map
@@ -55,6 +55,12 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Fusion
         var fusion = services.AddFusion();
+        if (HostInfo.AppKind.IsServer()) {
+            // It's quite important to make sure fusion.WithServiceMode call follows the very first
+            // services.AddFusion call, otherwise every fusion.AddService(...) call that happens earlier
+            // won't be affected by this mode change!
+            fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
+        }
         fusion.AddComputedGraphPruner();
         fusion.AddFusionTime();
 
