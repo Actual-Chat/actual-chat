@@ -72,7 +72,8 @@
 
         // Set ISessionProvider.Session
         if (!SessionId.IsNullOrEmpty()) {
-            var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
+            // var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
+            var session = new Session(SessionId);
             if (SessionResolver.HasSession) {
                 if (SessionResolver.Session != session) {
                     // No way to change Session other than page reload
