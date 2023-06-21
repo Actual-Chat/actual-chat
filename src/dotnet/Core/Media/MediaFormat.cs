@@ -5,7 +5,7 @@ namespace ActualChat.Media;
 [DataContract]
 public abstract record MediaFormat
 {
-    [MemoryPackOrder(0)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public abstract MediaType Type { get; }
 
     public abstract byte[] Serialize(int index = 0);

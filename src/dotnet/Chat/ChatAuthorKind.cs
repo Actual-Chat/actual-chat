@@ -1,9 +1,8 @@
 ﻿namespace ActualChat.Chat;
 
-[DataContract]
 public enum ChatAuthorKind
 {
-    [EnumMember] Any, /* Regular and Anonymous */
-    [EnumMember] RegularOnly,
+    Any, /* Regular and Anonymous */
+    RegularOnly,
     /* In future we can support chats that allows anonymous authors only */
 }

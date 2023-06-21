@@ -23,7 +23,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         base.InjectServices(services);
 
         // Default binary serializer
-        ByteSerializer.Default = MessagePackByteSerializer.Default;
+        // ByteSerializer.Default = MessagePackByteSerializer.Default;
 
         // Common services
         services.AddTracer();
