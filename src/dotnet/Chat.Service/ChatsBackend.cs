@@ -285,8 +285,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> Change(
-        IChatsBackend.ChangeCommand command,
+    public virtual async Task<Chat> OnChange(
+        ChatsBackend_Change command,
         CancellationToken cancellationToken)
     {
         var (chatId, expectedVersion, change, ownerId) = command;
@@ -351,7 +351,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     .EnsureJoined(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
 
-                var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
+                var createOwnersRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Owner,
                         Permissions = ChatPermissions.Owner,
@@ -362,7 +362,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 });
                 await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
+                var createAnyoneRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Anyone,
                         Permissions =
@@ -423,8 +423,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> UpsertEntry(
-        IChatsBackend.UpsertEntryCommand command,
+    public virtual async Task<ChatEntry> OnUpsertEntry(
+        ChatsBackend_UpsertEntry command,
         CancellationToken cancellationToken)
     {
         var entry = command.Entry;
@@ -487,8 +487,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<TextEntryAttachment> CreateAttachment(
-        IChatsBackend.CreateAttachmentCommand command,
+    public virtual async Task<TextEntryAttachment> OnCreateAttachment(
+        ChatsBackend_CreateAttachment command,
         CancellationToken cancellationToken)
     {
         var attachment = command.Attachment;
@@ -575,7 +575,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var authorName = readAuthor?.Avatar.Name.NullIfEmpty() ?? MentionMarkup.NotAvailableName;
 
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
+        var command = new ChatsBackend_UpsertEntry(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
             SystemEntry = new MembersChangedOption(author.Id, authorName, author.HasLeft),
         });
@@ -736,7 +736,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             .Require()
             .ConfigureAwait(false);
 
-        var changeCommand = new IRolesBackend.ChangeCommand(chatId,
+        var changeCommand = new RolesBackend_Change(chatId,
             ownerRole.Id,
             null,
             new Change<RoleDiff> {
@@ -800,7 +800,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chat.IsStored())
             return chat;
 
-        var command = new IChatsBackend.ChangeCommand(peerChatId, null, new() { Create = new ChatDiff() });
+        var command = new ChatsBackend_Change(peerChatId, null, new() { Create = new ChatDiff() });
         chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return chat;
     }

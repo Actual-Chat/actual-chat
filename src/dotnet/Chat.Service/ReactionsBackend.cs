@@ -46,7 +46,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     }
 
     // [CommandHandler]
-    public virtual async Task React(IReactionsBackend.ReactCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnReact(ReactionsBackend_React command, CancellationToken cancellationToken)
     {
         var reaction = command.Reaction;
         var entryId = reaction.EntryId;
@@ -157,7 +157,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
                 .AnyAsync(x => x.EntryId == entryId && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
             entry = entry with { HasReactions = hasReactions };
-            entry = await Commander.Call(new IChatsBackend.UpsertEntryCommand(entry), cancellationToken).ConfigureAwait(false);
+            entry = await Commander.Call(new ChatsBackend_UpsertEntry(entry), cancellationToken).ConfigureAwait(false);
         }
     }
 }

@@ -75,7 +75,7 @@ public class ChatActivityTest : AppHostTestBase
             ClientSideBeginsAt = clock.Now,
         };
         var commander = authors.GetCommander();
-        var createCommand = new IChatsBackend.UpsertEntryCommand(entry);
+        var createCommand = new ChatsBackend_UpsertEntry(entry);
         entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
 
         await testClock.Delay(2000, cancellationToken);
@@ -84,7 +84,7 @@ public class ChatActivityTest : AppHostTestBase
             EndsAt = clock.Now,
             StreamId = Symbol.Empty,
         };
-        var completeCommand = new IChatsBackend.UpsertEntryCommand(entry);
+        var completeCommand = new ChatsBackend_UpsertEntry(entry);
         await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

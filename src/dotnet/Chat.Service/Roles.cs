@@ -89,7 +89,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         var (session, chatId, roleId, expectedVersion, change) = command;
         await RequireOwner(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var changeCommand = new IRolesBackend.ChangeCommand(chatId, roleId, expectedVersion, change);
+        var changeCommand = new RolesBackend_Change(chatId, roleId, expectedVersion, change);
         return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

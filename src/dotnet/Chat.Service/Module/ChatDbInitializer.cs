@@ -78,7 +78,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         try {
             Log.LogInformation("There is no 'Announcements' chat, creating one");
-            var command = new IChatsUpgradeBackend.CreateAnnouncementsChatCommand();
+            var command = new ChatsUpgradeBackend_CreateAnnouncementsChat();
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("'Announcements' chat is created");
         }
@@ -98,7 +98,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         try {
             Log.LogInformation("There is no default chat, creating one");
-            var command = new IChatsUpgradeBackend.CreateDefaultChatCommand();
+            var command = new ChatsUpgradeBackend_CreateDefaultChat();
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Default chat is created");
         }
@@ -118,7 +118,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         try {
             Log.LogInformation("There is no 'Feedback' chat, creating one");
-            var command = new IChatsUpgradeBackend.CreateFeedbackTemplateChatCommand();
+            var command = new ChatsUpgradeBackend_CreateFeedbackTemplateChat();
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("'Feedback' chat is created");
         }
@@ -132,7 +132,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         try {
             Log.LogInformation("Fixing corrupted chat read positions");
-            var command = new IChatsUpgradeBackend.FixCorruptedReadPositionsCommand();
+            var command = new ChatsUpgradeBackend_FixCorruptedReadPositions();
             await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Done");
         }

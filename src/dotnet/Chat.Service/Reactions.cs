@@ -53,6 +53,6 @@ internal class Reactions : IReactions
             return;
 
         reaction = reaction with { AuthorId = author.Id };
-        await Commander.Call(new IReactionsBackend.ReactCommand(reaction), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new ReactionsBackend_React(reaction), cancellationToken).ConfigureAwait(false);
     }
 }

@@ -186,7 +186,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = chatId.IsNone ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId, expectedVersion, change.RequireValid());
+        var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
         if (change.Create.HasValue) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             account.Require(AccountFull.MustBeActive);
@@ -237,13 +237,13 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             textEntry = textEntry with { Content = text };
             if (repliedChatEntryId.IsSome(out var v))
                 textEntry = textEntry with { RepliedEntryLocalId = v };
-            var upsertCommand = new IChatsBackend.UpsertEntryCommand(textEntry);
+            var upsertCommand = new ChatsBackend_UpsertEntry(textEntry);
             textEntry = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
         }
         else {
             // Create
             var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
-            var upsertCommand = new IChatsBackend.UpsertEntryCommand(
+            var upsertCommand = new ChatsBackend_UpsertEntry(
                 new ChatEntry(textEntryId) {
                     AuthorId = author.Id,
                     Content = text,
@@ -259,7 +259,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     Index = index,
                     MediaId = command.Attachments[index],
                 };
-                var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
+                var createAttachmentCommand = new ChatsBackend_CreateAttachment(attachment);
                 await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -303,7 +303,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 return;
 
             entry1 = entry1 with { IsRemoved = true };
-            var upsertCommand = new IChatsBackend.UpsertEntryCommand(entry1);
+            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
             await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -342,7 +342,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var templateOwner = authorRoles.FirstOrDefault(x => x.Roles.Any(r => r.SystemRole == SystemRole.Owner));
 
         // clone template chat
-        var cloneCommand = new IChatsBackend.ChangeCommand(
+        var cloneCommand = new ChatsBackend_Change(
             ChatId.None,
             null,
             new Change<ChatDiff> {
@@ -397,7 +397,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .ToList();
 
         foreach (var (role, roleAuthorIds) in roleAuthors) {
-            var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(cloned.Id, default, null, new() {
+            var createOwnersRoleCmd = new RolesBackend_Change(cloned.Id, default, null, new() {
                 Create = new RoleDiff {
                     Picture = role.Picture,
                     Name = role.Name,

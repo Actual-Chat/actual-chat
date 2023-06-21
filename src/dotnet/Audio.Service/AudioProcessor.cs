@@ -197,7 +197,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
 
         var chatId = audioSegment.AudioRecord.ChatId;
         var entryId = new ChatEntryId(chatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
-        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
+        var command = new ChatsBackend_UpsertEntry(new ChatEntry(entryId) {
             AuthorId = audioSegment.Author.Id,
             Content = "",
             StreamId = audioSegment.StreamId,
@@ -224,7 +224,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             EndsAt = endsAt,
             ContentEndsAt = contentEndsAt,
         };
-        var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
+        var command = new ChatsBackend_UpsertEntry(audioEntry);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -237,7 +237,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
         Transcript? lastTranscript = null;
         ChatEntry? chatAudioEntry = null;
         ChatEntry? textEntry = null;
-        IChatsBackend.UpsertEntryCommand? command;
+        ChatsBackend_UpsertEntry? command;
 
         try {
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
@@ -259,7 +259,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
                         ? localId
                         : null,
                 };
-                command = new IChatsBackend.UpsertEntryCommand(textEntry);
+                command = new ChatsBackend_UpsertEntry(textEntry);
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
                     textEntry.Id,
@@ -281,7 +281,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
                     // TODO(AY): Maybe publish [Audio: ...] markup here
                     textEntry = textEntry with { IsRemoved = true };
                 }
-                command = new IChatsBackend.UpsertEntryCommand(textEntry);
+                command = new ChatsBackend_UpsertEntry(textEntry);
                 await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
             }
             // TODO(AY): Maybe publish [Audio: ...] markup here
