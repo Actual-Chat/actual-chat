@@ -50,14 +50,14 @@ public class ServerKvas : IServerKvas
     }
 
     // [CommandHandler]
-    public virtual async Task Set(IServerKvas.SetCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
         var (session, key, value) = command;
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
-        var setManyCommand = new IServerKvasBackend.SetManyCommand(prefix, (key, value));
+        var setManyCommand = new ServerKvasBackend_SetMany(prefix, (key, value));
         await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
 
         // More complex logic that moves session keys on demand
@@ -77,7 +77,7 @@ public class ServerKvas : IServerKvas
     }
 
     // [CommandHandler]
-    public virtual async Task SetMany(IServerKvas.SetManyCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSetMany(ServerKvas_SetMany command, CancellationToken cancellationToken = default)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -85,7 +85,7 @@ public class ServerKvas : IServerKvas
         var (session, items) = command;
         var backendItems = items.Select(i => (i.Key, i.Value)).ToArray();
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
-        var setManyCommand = new IServerKvasBackend.SetManyCommand(prefix, backendItems);
+        var setManyCommand = new ServerKvasBackend_SetMany(prefix, backendItems);
         await Commander.Call(setManyCommand, true, cancellationToken).ConfigureAwait(false);
 
         // More complex logic that moves session keys on demand
@@ -105,7 +105,7 @@ public class ServerKvas : IServerKvas
     }
 
     // [CommandHandler]
-    public virtual async Task MigrateGuestKeys(IServerKvas.MigrateGuestKeysCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task OnMigrateGuestKeys(ServerKvas_MigrateGuestKeys command, CancellationToken cancellationToken = default)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -188,12 +188,12 @@ public class ServerKvas : IServerKvas
 
         // Create missing keys in userPrefix
         await Commander.Call(
-            new IServerKvasBackend.SetManyCommand(toPrefix, movedKeys.Select(kv => (kv.Key, (string?) kv.Value)).ToArray()),
+            new ServerKvasBackend_SetMany(toPrefix, movedKeys.Select(kv => (kv.Key, (string?) kv.Value)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
         // Remove all keys in sessionPrefix
         await Commander.Call(
-            new IServerKvasBackend.SetManyCommand(fromPrefix, keys.Select(kv => (kv.Key, (string?) null)).ToArray()),
+            new ServerKvasBackend_SetMany(fromPrefix, keys.Select(kv => (kv.Key, (string?) null)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
 

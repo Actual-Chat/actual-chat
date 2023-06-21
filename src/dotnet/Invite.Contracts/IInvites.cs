@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Invite;
 
 public interface IInvites : IComputeService
@@ -8,27 +10,30 @@ public interface IInvites : IComputeService
     Task<ImmutableArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Invite> Generate(GenerateCommand command, CancellationToken cancellationToken);
+    Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<Invite> Use(UseCommand command, CancellationToken cancellationToken);
+    Task<Invite> OnUse(Invites_Use command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task Revoke(RevokeCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record GenerateCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] Invite Invite
-    ) : ISessionCommand<Invite>;
-
-    [DataContract]
-    public sealed record UseCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] string InviteId
-        ) : ISessionCommand<Invite>;
-
-    [DataContract]
-    public sealed record RevokeCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] string InviteId
-    ) : ISessionCommand<Unit>;
+    Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Invites_Generate(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] Invite Invite
+) : ISessionCommand<Invite>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Invites_Use(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] string InviteId
+) : ISessionCommand<Invite>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Invites_Revoke(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] string InviteId
+) : ISessionCommand<Unit>;

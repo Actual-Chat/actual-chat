@@ -12,11 +12,11 @@ public interface IInvitesClientDef
     Task<ImmutableArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Generate))]
-    Task<Invite> Generate([Body] IInvites.GenerateCommand command, CancellationToken cancellationToken);
+    Task<Invite> Generate([Body] Invites_Generate command, CancellationToken cancellationToken);
 
     [Post(nameof(Use))]
-    Task<Invite> Use([Body] IInvites.UseCommand command, CancellationToken cancellationToken);
+    Task<Invite> Use([Body] Invites_Use command, CancellationToken cancellationToken);
 
     [Post(nameof(Revoke))]
-    Task Revoke([Body] IInvites.RevokeCommand command, CancellationToken cancellationToken);
+    Task Revoke([Body] Invites_Revoke command, CancellationToken cancellationToken);
 }

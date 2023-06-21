@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Contacts;
 
 public interface IContactsBackend : IComputeService
@@ -8,19 +10,21 @@ public interface IContactsBackend : IComputeService
     public Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task<Contact?> Change(ChangeCommand command, CancellationToken cancellationToken);
+    public Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
-    public Task Touch(TouchCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] ContactId Id,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] Change<Contact> Change
-    ) : ICommand<Contact?>, IBackendCommand;
-
-    [DataContract]
-    public sealed record TouchCommand(
-        [property: DataMember] ContactId Id
-    ) : ICommand<Unit>, IBackendCommand;
+    public Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<Contact> Change
+) : ICommand<Contact?>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_Touch(
+    [property: DataMember, MemoryPackOrder(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand;

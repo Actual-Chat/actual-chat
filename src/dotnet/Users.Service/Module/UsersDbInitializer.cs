@@ -76,7 +76,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         account.Require();
         if (account.Status != AccountStatus.Active) {
             account = account with { Status = AccountStatus.Active };
-            var updateCommand = new IAccountsBackend.UpdateCommand(account, account.Version);
+            var updateCommand = new AccountsBackend_Update(account, account.Version);
             await commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
             account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         }
@@ -87,9 +87,8 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         var avatarPicture = isAdmin
             ? Constants.User.Admin.Picture
             : $"https://avatars.dicebear.com/api/bottts/{userId.Value.GetDjb2HashCode()}.svg";
-        var changeAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
-            Create = new AvatarFull {
-                UserId = account.Id,
+        var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
+            Create = new AvatarFull(account.Id) {
                 Name = name,
                 Bio = avatarBio,
                 Picture = avatarPicture,

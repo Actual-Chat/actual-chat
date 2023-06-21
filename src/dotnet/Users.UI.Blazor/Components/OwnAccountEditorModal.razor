@@ -75,7 +75,7 @@
 
     private async void OnSave() {
         var account = await Accounts.GetOwn(Session, default);
-        var updateAccountCommand = new IAccounts.UpdateCommand(
+        var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
                 Name = _form.Name,

@@ -24,7 +24,7 @@ public class ChatPositionsBackend: DbServiceBase<UsersDbContext>, IChatPositions
     }
 
     // [CommandHandler]
-    public virtual async Task Set(IChatPositionsBackend.SetCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSet(ChatPositionsBackend_Set command, CancellationToken cancellationToken)
     {
         var (userId, chatId, kind, position, force) = command;
         var context = CommandContext.GetCurrent();

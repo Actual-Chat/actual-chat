@@ -56,8 +56,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Invite> Generate(
-        IInvitesBackend.GenerateCommand command,
+    public virtual async Task<Invite> OnGenerate(
+        InvitesBackend_Generate command,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -91,8 +91,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Invite> Use(
-        IInvitesBackend.UseCommand command,
+    public virtual async Task<Invite> OnUse(
+        InvitesBackend_Use command,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -130,7 +130,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 throw StandardError.StateTransition("Your account is already active.");
 
             // Follow-up actions
-            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
+            new AccountsBackend_Update(account with { Status = AccountStatus.Active }, null)
                 .EnqueueOnCompletion();
             break;
         case ChatInviteOption chatInviteOption:
@@ -141,7 +141,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             dbContext.Add(dbActivationKey);
             context.Operation().Items.Set(dbActivationKey.Id);
 
-            var setCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id);
+            var setCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id);
             await Commander.Call(setCommand, true, cancellationToken).ConfigureAwait(false);
             break;
         default:
@@ -155,8 +155,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task Revoke(
-        IInvitesBackend.RevokeCommand command,
+    public virtual async Task OnRevoke(
+        InvitesBackend_Revoke command,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();

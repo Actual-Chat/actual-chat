@@ -46,7 +46,7 @@ public class Avatars : IAvatars
     }
 
     // [CommandHandler]
-    public virtual async Task<AvatarFull> Change(IAvatars.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AvatarFull> OnChange(Avatars_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!;
@@ -66,7 +66,7 @@ public class Avatars : IAvatars
             await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
         }
 
-        var changeCommand = new IAvatarsBackend.ChangeCommand(avatarId, expectedVersion, change);
+        var changeCommand = new AvatarsBackend_Change(avatarId, expectedVersion, change);
         avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
 
         if (avatar.IsAnonymous)
@@ -87,7 +87,7 @@ public class Avatars : IAvatars
     }
 
     // [CommandHandler]
-    public virtual async Task SetDefault(IAvatars.SetDefaultCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;

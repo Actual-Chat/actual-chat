@@ -15,7 +15,7 @@
 
     private async Task OnAccountStatusClick(AccountStatus newStatus) {
         var account = await Accounts.GetOwn(Session, default);
-        var command = new IAccounts.UpdateCommand(
+        var command = new Accounts_Update(
             Session,
             account with { Status = newStatus },
             account.Version);

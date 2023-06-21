@@ -1,17 +1,16 @@
+using MemoryPack;
 using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
-[DataContract]
-public readonly record struct HashedString(
-    [property: DataMember(Order = 0)] int HashCode,
-    [property: DataMember(Order = 0)] string Value)
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial record struct HashedString(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] int HashCode,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Value)
 {
-    public HashedString(string Value) : this(Value.GetDjb2HashCode(), Value) { }
-
     // Conversion
 
-    public static implicit operator HashedString(string value) => new(value);
+    public static implicit operator HashedString(string value) => new(value.GetDjb2HashCode(), value);
 
     public bool Equals(HashedString other)
         => HashCode == other.HashCode && OrdinalEquals(Value, other.Value);

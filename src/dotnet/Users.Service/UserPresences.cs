@@ -23,7 +23,7 @@ public class UserPresences : IUserPresences
         => await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
 
     // [CommandHandler]
-    public virtual async Task CheckIn(IUserPresences.CheckInCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;
@@ -34,7 +34,7 @@ public class UserPresences : IUserPresences
         if (!account.IsActive())
             return;
 
-        var backendCommand = new IUserPresencesBackend.CheckInCommand(account.Id, Now, isActive);
+        var backendCommand = new UserPresencesBackend_CheckIn(account.Id, Now, isActive);
         _ = Commander.Run(backendCommand, true, CancellationToken.None);
         _ = Auth.UpdatePresence(session, CancellationToken.None);
     }

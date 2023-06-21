@@ -1,8 +1,10 @@
+using MemoryPack;
+
 namespace ActualChat.Notification.Backend;
 
-[DataContract]
-public sealed record Device(
-    [property: DataMember] Symbol DeviceId,
-    [property: DataMember] DeviceType DeviceType,
-    [property: DataMember] Moment CreatedAt,
-    [property: DataMember] Moment? AccessedAt);
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record Device(
+    [property: DataMember, MemoryPackOrder(0)] Symbol DeviceId,
+    [property: DataMember, MemoryPackOrder(1)] DeviceType DeviceType,
+    [property: DataMember, MemoryPackOrder(2)] Moment CreatedAt,
+    [property: DataMember, MemoryPackOrder(3)] Moment? AccessedAt);

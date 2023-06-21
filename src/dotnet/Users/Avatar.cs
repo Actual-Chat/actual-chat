@@ -1,14 +1,15 @@
 ﻿using ActualChat.Comparison;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 namespace ActualChat.Users;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public record Avatar(
-    [property: DataMember] Symbol Id,
-    [property: DataMember] long Version = 0
+public partial record Avatar(
+    [property: DataMember, MemoryPackOrder(0)] Symbol Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     public static IdAndVersionEqualityComparer<Avatar, Symbol> EqualityComparer { get; } = new();
@@ -21,16 +22,14 @@ public record Avatar(
         new(() => StandardError.NotFound<Avatar>()),
         (Avatar? a) => a is { Id.IsEmpty : false });
 
-    [DataMember] public string Name { get; init; } = "";
-    [DataMember] public string Picture { get; init; } = "";
-    [DataMember] public MediaId MediaId { get; init; }
-    [IgnoreDataMember] public UserPicture UserPicture => new (Media?.ContentId, Picture);
-    [DataMember] public string Bio { get; init; } = "";
+    [DataMember, MemoryPackOrder(2)] public string Name { get; init; } = "";
+    [DataMember, MemoryPackOrder(3)] public string Picture { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public MediaId MediaId { get; init; }
+    [IgnoreDataMember, MemoryPackIgnore] public UserPicture UserPicture => new (Media?.ContentId, Picture);
+    [DataMember, MemoryPackOrder(5)] public string Bio { get; init; } = "";
 
     // Populated only on reads
-    [DataMember] public Media.Media? Media { get; init; }
-
-    public Avatar() : this(Symbol.Empty) { }
+    [DataMember, MemoryPackOrder(6)] public Media.Media? Media { get; init; }
 
     // Helpers
 

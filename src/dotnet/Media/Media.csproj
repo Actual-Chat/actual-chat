@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="Stl.Fusion"/>
+    <ProjectReference Include="..\Core\Core.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Core\Core.csproj"/>
+    <PackageReference Include="MemoryPack" />
+    <PackageReference Include="Stl.Fusion"/>
   </ItemGroup>
 
 </Project>

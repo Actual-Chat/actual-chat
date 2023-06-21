@@ -144,7 +144,7 @@
             MediaId = _form.PictureId,
             Picture = _form.PictureId.IsNone ? _form.PictureUrl : "",
         };
-        var command = new IAvatars.ChangeCommand(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
+        var command = new Avatars_Change(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
             Update = avatar,
         });
         var (_, error) = await UICommander.Run(command);
@@ -169,7 +169,7 @@
 
     private async Task SetDefaultAvatar(Symbol avatarId)
     {
-        var command = new IAvatars.SetDefaultCommand(Session, avatarId);
+        var command = new Avatars_SetDefault(Session, avatarId);
         await UICommander.Run(command);
     }
 
@@ -179,7 +179,7 @@
         if (author == null)
             return;
 
-        var command = new IAuthors.SetAvatarCommand(Session, ModalModel.ChatId, avatarId);
+        var command = new Authors_SetAvatar(Session, ModalModel.ChatId, avatarId);
         await UICommander.Run(command);
     }
 
@@ -187,7 +187,7 @@
         => CloseModal();
 
     private async Task OnDeleteAvatarClick() {
-        var command = new IAvatars.ChangeCommand(Session, ModalModel.AvatarId, null, new() {
+        var command = new Avatars_Change(Session, ModalModel.AvatarId, null, new() {
             Remove = true,
         });
         await UICommander.Run(command);

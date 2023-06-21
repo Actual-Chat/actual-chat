@@ -1,14 +1,15 @@
 using ActualChat.Kvas;
+using MemoryPack;
 
 namespace ActualChat.Users;
 
-[DataContract]
-public sealed record UserBubblesSettings : IHasOrigin
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record UserBubblesSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserBubblesSettings);
 
-    [DataMember] public ImmutableArray<string> ReadBubbles { get; init; } = ImmutableArray<string>.Empty;
-    [DataMember] public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(0)] public ImmutableArray<string> ReadBubbles { get; init; } = ImmutableArray<string>.Empty;
+    [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
     public UserBubblesSettings WithReadBubbles(params string[] bubbleRefs)
     {

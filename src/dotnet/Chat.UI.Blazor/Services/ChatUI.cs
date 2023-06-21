@@ -218,7 +218,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         if (contact.IsPinned == mustPin)
             return;
 
-        var command = new IContacts.ChangeCommand(Session, contact.Id, contact.Version, new Change<Contact>() {
+        var command = new Contacts_Change(Session, contact.Id, contact.Version, new Change<Contact>() {
             Update = contact with { IsPinned = mustPin },
         });
         _ = TuneUI.Play("pin-unpin-chat");
@@ -335,7 +335,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
                         return Task.CompletedTask;
                     }
 
-                    var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, new ChatPosition(position.EntryLid, position.Origin));
+                    var command = new ChatPositions_Set(Session, pChatId, ChatPositionKind.Read, new ChatPosition(position.EntryLid, position.Origin));
                     writeDebouncer.Throttle(command);
 
                     var cReadEntryLid = Computed.GetExisting(() => GetReadEntryLid(pChatId, default));

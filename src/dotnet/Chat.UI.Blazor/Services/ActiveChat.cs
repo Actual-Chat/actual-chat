@@ -1,13 +1,15 @@
+using MemoryPack;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract]
-public readonly record struct ActiveChat(
-    [property: DataMember] ChatId ChatId,
-    [property: DataMember] bool IsListening = false,
-    [property: DataMember] bool IsRecording = false,
-    [property: DataMember] Moment Recency = default,
-    [property: DataMember] Moment ListeningRecency = default)
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial record struct ActiveChat(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] bool IsListening = false,
+    [property: DataMember, MemoryPackOrder(2)] bool IsRecording = false,
+    [property: DataMember, MemoryPackOrder(3)] Moment Recency = default,
+    [property: DataMember, MemoryPackOrder(4)] Moment ListeningRecency = default)
 {
     public static implicit operator ActiveChat(ChatId chatId) => new(chatId);
 

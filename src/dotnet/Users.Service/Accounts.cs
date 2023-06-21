@@ -48,7 +48,7 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
     }
 
     // [CommandHandler]
-    public virtual async Task Update(IAccounts.UpdateCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnUpdate(Accounts_Update command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -56,13 +56,13 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         var (session, account, expectedVersion) = command;
 
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new IAccountsBackend.UpdateCommand(account, expectedVersion), cancellationToken)
+        await Commander.Call(new AccountsBackend_Update(account, expectedVersion), cancellationToken)
             .ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task InvalidateEverything(
-        IAccounts.InvalidateEverythingCommand command,
+    public virtual async Task OnInvalidateEverything(
+        Accounts_InvalidateEverything command,
         CancellationToken cancellationToken)
     {
         var (session, everywhere) = command;

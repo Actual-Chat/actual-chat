@@ -40,7 +40,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     // Command handlers
 
     // [CommandHandler]
-    public virtual async Task SetMany(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSetMany(ServerKvasBackend_SetMany command, CancellationToken cancellationToken = default)
     {
         var prefix = command.Prefix;
         if (prefix.IsNullOrEmpty())

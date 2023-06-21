@@ -221,12 +221,11 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             if (author.IsAnonymous) {
                 if (author.AvatarId.IsEmpty) {
                     // Creating a random avatar for anonymous authors w/o pre-selected avatar
-                    var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull> {
-                        Create = new AvatarFull {
-                            UserId = userId,
+                    var changeCommand = new AvatarsBackend_Change(Symbol.Empty, null, new Change<AvatarFull> {
+                        Create = new AvatarFull(userId) {
                             Name = RandomNameGenerator.Default.Generate(),
                             Bio = "Someone anonymous",
-                            IsAnonymous = true
+                            IsAnonymous = true,
                         },
                     });
                     var avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
@@ -252,7 +251,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
                     .ConfigureAwait(false);
                 var readPosition = new ChatPosition(chatTextIdRange.End - 1);
-                new IChatPositionsBackend.SetCommand(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
+                new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
                     .EnqueueOnCompletion();
             }
 
@@ -317,7 +316,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     private AvatarFull GetDefaultAvatar(AuthorFull author)
-        => new() {
+        => new(author.UserId) {
             Name = RandomNameGenerator.Default.Generate(author.Id),
             Bio = "",
             Picture = DefaultUserPicture.GetBoringAvatar(author.Id),

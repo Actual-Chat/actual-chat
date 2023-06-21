@@ -51,16 +51,16 @@ public interface IChatsClientDef
     Task<ChatEntry?> FindNext(Session session, ChatId chatId, long? startEntryId, string text, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
-    Task<Chat> Change([Body] IChats.ChangeCommand command, CancellationToken cancellationToken);
+    Task<Chat> Change([Body] Chats_Change command, CancellationToken cancellationToken);
 
     [Post(nameof(UpsertTextEntry))]
-    Task<ChatEntry> UpsertTextEntry([Body] IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken);
+    Task<ChatEntry> UpsertTextEntry([Body] Chats_UpsertTextEntry command, CancellationToken cancellationToken);
 
     [Post(nameof(RemoveTextEntry))]
-    Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
+    Task RemoveTextEntry([Body] Chats_RemoveTextEntry command, CancellationToken cancellationToken);
 
     [Post(nameof(GetOrCreateFromTemplate))]
-    Task<Chat> GetOrCreateFromTemplate([Body] IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken);
+    Task<Chat> GetOrCreateFromTemplate([Body] Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken);
 }
 
 [BasePath("authors")]
@@ -83,13 +83,13 @@ public interface IAuthorsClientDef
     Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Join))]
-    Task<AuthorFull> Join([Body] IAuthors.JoinCommand command, CancellationToken cancellationToken);
+    Task<AuthorFull> Join([Body] Authors_Join command, CancellationToken cancellationToken);
     [Post(nameof(Leave))]
-    Task Leave([Body] IAuthors.LeaveCommand command, CancellationToken cancellationToken);
+    Task Leave([Body] Authors_Leave command, CancellationToken cancellationToken);
     [Post(nameof(Invite))]
-    Task Invite([Body] IAuthors.InviteCommand command, CancellationToken cancellationToken);
+    Task Invite([Body] Authors_Invite command, CancellationToken cancellationToken);
     [Post(nameof(SetAvatar))]
-    Task SetAvatar([Body] IAuthors.SetAvatarCommand command, CancellationToken cancellationToken);
+    Task SetAvatar([Body] Authors_SetAvatar command, CancellationToken cancellationToken);
 }
 
 [BasePath("roles")]
@@ -106,7 +106,7 @@ public interface IRolesClientDef
     Task<ImmutableArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Post(nameof(Change))]
-    Task<Role> Change([Body] IRoles.ChangeCommand command, CancellationToken cancellationToken);
+    Task<Role> Change([Body] Roles_Change command, CancellationToken cancellationToken);
 }
 
 [BasePath("mentions")]
@@ -132,5 +132,5 @@ public interface IReactionsClientDef
         CancellationToken cancellationToken);
 
     [Post(nameof(React))]
-    Task React([Body] IReactions.ReactCommand command, CancellationToken cancellationToken);
+    Task React([Body] Reactions_React command, CancellationToken cancellationToken);
 }

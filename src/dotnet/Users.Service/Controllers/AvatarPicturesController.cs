@@ -50,7 +50,7 @@ public sealed class AvatarPicturesController : ControllerBase
             ContentType = file.ContentType,
         };
 
-        var changeCommand = new IMediaBackend.ChangeCommand(
+        var changeCommand = new MediaBackend_Change(
             mediaId,
             new Change<Media.Media> {
                 Create = media,

@@ -60,7 +60,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -108,7 +108,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -174,7 +174,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -239,7 +239,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -279,7 +279,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,

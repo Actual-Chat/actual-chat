@@ -81,7 +81,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     }
 
     // [CommandHandler]
-    public virtual async Task<Role> Change(IRoles.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here

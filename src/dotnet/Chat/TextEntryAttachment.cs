@@ -26,8 +26,13 @@ public sealed partial record TextEntryAttachment(
     public TextEntryAttachment() : this(Symbol.Empty) { }
 
     [MemoryPackConstructor]
-    public TextEntryAttachment(Symbol Id, long Version,
-        TextEntryId entryId, int index, MediaId mediaId, Media.Media media)
+    public TextEntryAttachment(
+        Symbol Id,
+        long Version,
+        TextEntryId entryId,
+        int index,
+        MediaId mediaId,
+        Media.Media media)
         : this(Id, Version)
     {
         EntryId = entryId;

@@ -1,8 +1,9 @@
 using ActualChat.Commands;
+using MemoryPack;
 
 namespace ActualChat.Users.Events;
 
-[DataContract]
-public record NewUserEvent(
-    [property: DataMember] UserId UserId
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record NewUserEvent(
+    [property: DataMember, MemoryPackOrder(1)] UserId UserId
 ) : EventCommand;

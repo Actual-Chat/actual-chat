@@ -180,14 +180,14 @@
             var relatedChatEntryId = relatedChatEntry?.Id ?? default;
             await ChatEditorUI.HideRelatedEntry(false);
 
-            IChats.UpsertTextEntryCommand cmd;
+            Chats_UpsertTextEntry cmd;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
                 if (relatedChatEntryId.IsNone)
                     throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
-                cmd = new IChats.UpsertTextEntryCommand(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
+                cmd = new Chats_UpsertTextEntry(Session, relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
             } else {
                 var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
-                cmd = new IChats.UpsertTextEntryCommand(Session, Chat.Id, null, text) {
+                cmd = new Chats_UpsertTextEntry(Session, Chat.Id, null, text) {
                     RepliedChatEntryId = repliedEntryLid,
                     Attachments = attachmentListSnapshot.Attachments,
                 };

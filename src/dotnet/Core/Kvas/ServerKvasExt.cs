@@ -6,7 +6,7 @@ public static class ServerKvasExt
         Session session, string key, string? value,
         CancellationToken cancellationToken = default)
     {
-        var command = new IServerKvas.SetCommand(session, key, value);
+        var command = new ServerKvas_Set(session, key, value);
         return serverKvas.GetCommander().Call(command, true, cancellationToken);
     }
 
@@ -14,7 +14,7 @@ public static class ServerKvasExt
         Session session, (string Key, string? Value)[] items,
         CancellationToken cancellationToken = default)
     {
-        var command = new IServerKvas.SetManyCommand(session, items);
+        var command = new ServerKvas_SetMany(session, items);
         return serverKvas.GetCommander().Call(command, true, cancellationToken);
     }
 }

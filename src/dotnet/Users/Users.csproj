@@ -5,4 +5,8 @@
     <ProjectReference Include="..\Media\Media.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MemoryPack" />
+  </ItemGroup>
+
 </Project>

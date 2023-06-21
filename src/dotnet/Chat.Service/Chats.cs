@@ -177,7 +177,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> Change(IChats.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -207,7 +207,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return chat;
     }
 
-    public virtual async Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -268,7 +268,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -309,7 +309,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> GetOrCreateFromTemplate(IChats.GetOrCreateFromTemplateCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -420,9 +420,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .Where(a => a != null)
             .FirstOrDefault(a => OrdinalEquals(a!.Name, Avatar.GuestName));
         if (guestAvatar == null) {
-            var createAvatarCommand = new IAvatars.ChangeCommand(session, Symbol.Empty, null, new Change<AvatarFull> {
-                Create = new AvatarFull {
-                    UserId = account.Id,
+            var createAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
+                Create = new AvatarFull(account.Id) {
                     Name = "Guest",
                 }.WithMissingPropertiesFrom(account.Avatar),
             });

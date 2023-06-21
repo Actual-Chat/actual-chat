@@ -62,7 +62,7 @@
 
     private async Task OnJoin() {
         if (!Model.HasMultipleAvatars) {
-            var command = new IAuthors.JoinCommand(Session, Chat.Id);
+            var command = new Authors_Join(Session, Chat.Id);
             await UICommander.Run(command);
             return;
         }
@@ -70,7 +70,7 @@
         await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
 
         async Task JoinWithAvatar(AvatarFull avatar) {
-            var command = new IAuthors.JoinCommand(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            var command = new Authors_Join(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
             await UICommander.Run(command);
         }
     }

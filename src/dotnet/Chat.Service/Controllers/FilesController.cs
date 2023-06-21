@@ -53,7 +53,7 @@ public sealed class FilesController : ControllerBase
             Height = size?.Height ?? 0,
         };
 
-        var changeCommand = new IMediaBackend.ChangeCommand(
+        var changeCommand = new MediaBackend_Change(
             mediaId,
             new Change<Media.Media> {
                 Create = media,

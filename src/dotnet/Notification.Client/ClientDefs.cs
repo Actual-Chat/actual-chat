@@ -12,7 +12,7 @@ public interface INotificationsClientDef
         Session session, Moment minSentAt, CancellationToken cancellationToken);
 
     [Post(nameof(Handle))]
-    public Task Handle([Body] INotifications.HandleCommand command, CancellationToken cancellationToken);
+    public Task Handle([Body] Notifications_Handle command, CancellationToken cancellationToken);
     [Post(nameof(RegisterDevice))]
-    Task RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
+    Task RegisterDevice([Body] Notifications_RegisterDevice command, CancellationToken cancellationToken);
 }

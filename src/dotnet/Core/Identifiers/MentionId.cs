@@ -1,39 +1,40 @@
 ﻿using System.ComponentModel;
 using ActualChat.Internal;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<MentionId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<MentionId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<MentionId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct MentionId : ISymbolIdentifier<MentionId>
+public readonly partial struct MentionId : ISymbolIdentifier<MentionId>
 {
     public static MentionId None => default;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public PrincipalId PrincipalId { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public PrincipalKind Kind => PrincipalId.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public AuthorId AuthorId => PrincipalId.IsAuthor(out var authorId) ? authorId : AuthorId.None;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public UserId UserId => PrincipalId.IsUser(out var userId) ? userId : UserId.None;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public MentionId(Symbol id)
         => this = Parse(id);
     public MentionId(string? id)

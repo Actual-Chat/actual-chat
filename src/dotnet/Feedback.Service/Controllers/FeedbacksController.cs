@@ -16,6 +16,6 @@ public sealed class FeedbacksController : ControllerBase, IFeedbacks
         Commander = commander;
     }
 
-    public Task CreateFeatureRequest(IFeedbacks.FeatureRequestCommand command, CancellationToken cancellationToken)
+    public Task OnCreateFeatureRequest(Feedbacks_FeatureRequest command, CancellationToken cancellationToken)
         => Commander.Call(command, cancellationToken);
 }

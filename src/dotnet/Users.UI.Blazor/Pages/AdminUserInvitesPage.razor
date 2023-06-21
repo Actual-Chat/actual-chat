@@ -28,10 +28,7 @@
         => Invites.ListUserInvites(Session, cancellationToken);
 
     private async Task OnNewInviteClick() {
-        var invite = new Invite() {
-            Remaining = 10,
-            Details = new UserInviteOption(),
-        };
-        _ = await UICommander.Run(new IInvites.GenerateCommand(Session, invite));
+        var invite = Invite.New(10, new UserInviteOption());
+        _ = await UICommander.Run(new Invites_Generate(Session, invite));
     }
 }

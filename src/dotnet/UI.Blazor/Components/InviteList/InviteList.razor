@@ -69,5 +69,5 @@
     }
 
     private Task Revoke(Invite invite)
-        => UICommander.Run(new IInvites.RevokeCommand(Session, invite.Id));
+        => UICommander.Run(new Invites_Revoke(Session, invite.Id));
 }

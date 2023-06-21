@@ -99,10 +99,8 @@
             return;
         }
 
-        var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
-            Create = new AvatarFull {
-                UserId = account.Id,
-            }.WithMissingPropertiesFrom(account.Avatar),
+        var createAvatarCommand = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull> {
+            Create = new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar),
         });
         var (newAvatar, error) = await UICommander.Run(createAvatarCommand);
         if (error != null)
@@ -110,7 +108,7 @@
 
         _stepModel.AvatarId = newAvatar.Id;
         _stepModel.Picture = newAvatar.Media?.ContentId ?? account.Avatar.Picture;
-        var setDefaultAvatarCommand = new IAvatars.SetDefaultCommand(Session, newAvatar.Id);
+        var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
     }
 
@@ -121,7 +119,7 @@
 
     protected override async Task Save() {
         var account = await Accounts.GetOwn(Session, default);
-        var updateAccountCommand = new IAccounts.UpdateCommand(
+        var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
                 Name = _stepModel.Name,
@@ -131,7 +129,7 @@
         await UICommander.Run(updateAccountCommand);
 
         var avatar = await Avatars.GetOwn(Session, _stepModel.AvatarId, default).Require();
-        var updateAvatarCommand = new IAvatars.ChangeCommand(
+        var updateAvatarCommand = new Avatars_Change(
             Session,
             _stepModel.AvatarId,
             avatar.Version,

@@ -22,7 +22,7 @@ internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Media?> Change(IMediaBackend.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
         var (mediaId, change) = command;
         if (Computed.IsInvalidating()) {

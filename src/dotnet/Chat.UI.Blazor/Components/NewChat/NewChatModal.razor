@@ -164,7 +164,7 @@
 
     private async Task OnCreate() {
         try {
-            var command = new IChats.ChangeCommand(Session, default, null, new() {
+            var command = new Chats_Change(Session, default, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Kind = ChatKind.Group,
@@ -181,7 +181,7 @@
                 .Where(contact => contact.Contact.Account != null)
                 .Select(contact => contact.Contact.Account!.Id)
                 .ToArray();
-            var createAuthorsCommand = new IAuthors.InviteCommand(Session, chat.Id, userIds);
+            var createAuthorsCommand = new Authors_Invite(Session, chat.Id, userIds);
             var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, CancellationToken.None);
             if (createAuthorsError != null)
                 return;

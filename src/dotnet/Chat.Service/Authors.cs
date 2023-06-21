@@ -137,7 +137,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task<AuthorFull> Join(IAuthors.JoinCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -165,7 +165,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             if (!chat.AllowGuestAuthors)
                 throw StandardError.Constraint("The chat does not allow to join with guest account.");
             if (joinAnonymously == false)
-                throw StandardError.Constraint(nameof(IAuthors.JoinCommand.JoinAnonymously)
+                throw StandardError.Constraint(nameof(Authors_Join.JoinAnonymously)
                     + " should be true or not be specified for guest account.");
         }
         else {
@@ -187,7 +187,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
         if (invite.HasValue) {
             // Remove the invite
-            var removeInviteCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null);
+            var removeInviteCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), null);
             await Commander.Call(removeInviteCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
@@ -195,7 +195,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task Leave(IAuthors.LeaveCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -217,7 +217,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task Invite(IAuthors.InviteCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -231,7 +231,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task SetAvatar(IAuthors.SetAvatarCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
