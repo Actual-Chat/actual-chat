@@ -101,7 +101,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db, db => {
-            db.AddOperations();
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
