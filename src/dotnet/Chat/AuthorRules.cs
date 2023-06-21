@@ -7,7 +7,7 @@ public sealed record AuthorRules(
     [property: DataMember] Symbol ChatId,
     [property: DataMember] AuthorFull? Author,
     [property: DataMember] AccountFull Account,
-    [property: DataMember] ChatPermissions Permissions = 0
+    [property: DataMember] ChatPermissions Permissions = default
     ) : IRequirementTarget
 {
     public static Requirement<AuthorRules> MustExist { get; } = Requirement.New(

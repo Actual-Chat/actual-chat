@@ -137,17 +137,18 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
         });
+        var fusionWebServer = fusion.AddWebServer().AddAuthentication();
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
-        var fusionWebAuth = fusion.AddWebServer().AddAuthentication();
-        fusionWebAuth.ConfigureSignInController(_ => new() {
+        fusionWebServer.ConfigureSignInController(_ => new() {
             DefaultScheme = GoogleDefaults.AuthenticationScheme,
             SignInPropertiesBuilder = (_, properties) => {
                 properties.IsPersistent = true;
             },
         });
-        fusionWebAuth.ConfigureServerAuthHelper(_ => new() {
+        fusionWebServer.ConfigureServerAuthHelper(_ => new() {
             NameClaimKeys = Array.Empty<string>(),
         });
+
         commander.AddCommandService<AuthCommandFilters>();
         services.AddSingleton<ClaimMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
