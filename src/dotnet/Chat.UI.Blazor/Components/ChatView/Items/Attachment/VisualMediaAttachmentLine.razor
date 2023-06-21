@@ -2,10 +2,8 @@
 
 @{
     var lineHeight = "";
-    var itemCls = "image-extra-large";
     var attachmentCls = "";
     if (ImageSize == ImageSize.Small) {
-        itemCls = "image-small";
         attachmentCls = "flex-1";
         if (IsFull) {
             lineHeight = "h-36 md:h-60";
@@ -15,24 +13,22 @@
             lineHeight = "h-fit max-h-48 md:max-h-none";
         }
     } else if (ImageSize == ImageSize.Medium) {
-        itemCls = "image-medium";
         if (IsFull)
             lineHeight = "h-24 md:h-40";
         else if (ImageList.Count == 1) {
             lineHeight = "h-fit max-h-48 md:max-h-none";
         }
     } else if (ImageSize == ImageSize.Large) {
-        itemCls = "image-large";
         if (IsFull)
             lineHeight = "h-24 md:h-40";
     } else if (ImageSize == ImageSize.Mixed) {
-        itemCls = "image-mixed";
         lineHeight = ImageList.Count switch {
             3 => "h-24 md:h-40",
             2 => "h-36 md:h-60",
             _ => "h-64 md:h-120",
         };
     }
+    var itemCls = $"image-{lineHeight.ToLower()}";
 }
 
 <div class="image-line @Class @lineHeight">
