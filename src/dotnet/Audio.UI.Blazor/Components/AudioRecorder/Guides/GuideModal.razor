@@ -52,10 +52,7 @@
 
     </Body>
     <Buttons>
-        <Button Class="btn-modal mobile" Click="OnCancel">
-            Cancel
-        </Button>
-        <Button Class="btn-modal mobile" Click="OnOkClick">
+        <Button Class="btn-modal" Click="OnOkClick">
             OK
         </Button>
     </Buttons>
@@ -69,9 +66,6 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    private void OnCancel()
-        => Modal.Close();
 
     private async Task OnOkClick() {
         ModalModel.WasPermissionRequested = await RecordingPermissionRequester.TryRequest();
