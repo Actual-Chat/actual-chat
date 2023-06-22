@@ -29,11 +29,7 @@ public class RegionVisibility : IDisposable
     }
 
     private void Update()
-    {
-        var newValue = IsRegionVisible.Value && IsDocumentVisible.Value;
-        if (_isVisible.Value != newValue)
-            _isVisible.Value = newValue;
-    }
+        => _isVisible.Value = IsRegionVisible.Value && IsDocumentVisible.Value;
 
     private void OnDependencyUpdated(IState<bool> state, StateEventKind eventKind)
         => Update();

@@ -406,6 +406,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         => _ = Dispatcher.InvokeAsync(() => {
             if (_disposeTokenSource.IsCancellationRequested)
                 return;
+
             var isVisible = RegionVisibility.IsVisible.Value;
             if (isVisible) {
                 var readPosition = ReadPositionState!.Value.EntryLid;
