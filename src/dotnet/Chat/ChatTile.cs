@@ -8,15 +8,15 @@ public sealed partial class ChatTile
     [DataMember, MemoryPackOrder(0)] public Range<long> IdTileRange { get; init; }
     [DataMember, MemoryPackOrder(1)] public bool IncludesRemoved { get; init; }
     [DataMember, MemoryPackOrder(2)] public Range<Moment> BeginsAtRange { get; init; }
-    [DataMember, MemoryPackOrder(3)] public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty; // Always sorted by Id!
+    [DataMember, MemoryPackOrder(3)] public ApiArray<ChatEntry> Entries { get; init; } = ApiArray<ChatEntry>.Empty; // Always sorted by Id!
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
-    public bool IsEmpty => Entries.Length == 0;
+    public bool IsEmpty => Entries.Count == 0;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatTile() { }
 
-    public ChatTile(Range<long> idTileRange, bool includesRemoved, ImmutableArray<ChatEntry> entries)
+    public ChatTile(Range<long> idTileRange, bool includesRemoved, ApiArray<ChatEntry> entries)
     {
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
         foreach (var entry in entries)
@@ -43,6 +43,6 @@ public sealed partial class ChatTile
         IdTileRange = idTile;
         IncludesRemoved = includesRemoved;
         BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
-        Entries = entries.ToImmutableArray();
+        Entries = entries.ToApiArray();
     }
 }

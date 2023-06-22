@@ -95,7 +95,7 @@
         var avatars = await avatarIds
             .Select(x => Avatars.GetOwn(Session, x, cancellationToken))
             .Collect();
-        var existingAvatars = avatars.SkipNullItems().ToImmutableArray();
+        var existingAvatars = avatars.SkipNullItems().ToApiArray();
         var anonymous = GetAnonymous();
         return new ViewModel(existingAvatars, selectedAvatarId, anonymous);
     }
@@ -157,7 +157,7 @@
 
     public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
 
-    public record ViewModel(ImmutableArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
-        public static readonly ViewModel None = new(ImmutableArray<AvatarFull>.Empty, Symbol.Empty, null);
+    public record ViewModel(ApiArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
+        public static readonly ViewModel None = new(ApiArray<AvatarFull>.Empty, Symbol.Empty, null);
     }
 }

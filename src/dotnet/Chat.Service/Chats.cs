@@ -139,7 +139,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -150,7 +150,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return authors
             .SkipNullItems()
             .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
-            .ToImmutableArray();
+            .ToApiArray();
     }
 
     // Not a [ComputeMethod]!
@@ -249,11 +249,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     Content = text,
                     RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
                 },
-                command.Attachments.Length > 0);
+                command.Attachments.Count > 0);
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             textEntryId = textEntry.Id.ToTextEntryId();
 
-            for (var index = 0; index < command.Attachments.Length; index++) {
+            for (var index = 0; index < command.Attachments.Count; index++) {
                 var attachment = new TextEntryAttachment {
                     EntryId = textEntryId,
                     Index = index,
@@ -392,7 +392,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             .GroupBy(x => x.Role.Id,
                 (_, xs) => {
                     var tuples = xs.ToList();
-                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToImmutableArray());
+                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToApiArray());
                 })
             .ToList();
 
@@ -403,7 +403,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     Name = role.Name,
                     SystemRole = role.SystemRole,
                     Permissions = role.Permissions,
-                    AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
+                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
                         AddedItems = roleAuthorIds,
                     },
                 },

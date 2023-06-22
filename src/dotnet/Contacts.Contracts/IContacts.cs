@@ -9,7 +9,7 @@ public interface IContacts : IComputeService
     [ComputeMethod]
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300)]
-    Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
+    Task<ApiArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);

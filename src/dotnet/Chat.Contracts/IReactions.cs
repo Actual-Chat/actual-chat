@@ -8,7 +8,7 @@ public interface IReactions : IComputeService
     Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<ReactionSummary>> ListSummaries(
+    Task<ApiArray<ReactionSummary>> ListSummaries(
         Session session,
         TextEntryId entryId,
         CancellationToken cancellationToken);

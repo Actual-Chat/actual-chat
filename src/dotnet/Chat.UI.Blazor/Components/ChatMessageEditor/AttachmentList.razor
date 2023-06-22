@@ -102,7 +102,7 @@
         var attachments = PopAttachments();
         StateHasChanged();
 
-        var mediaIds = attachments.Where(x => x.Uploaded).Select(x => x.MediaId).ToImmutableArray();
+        var mediaIds = attachments.Where(x => x.Uploaded).Select(x => x.MediaId).ToApiArray();
         return new (mediaIds, () => Rollback(attachments), InvokeClear);
 
         ImmutableList<Attachment> PopAttachments()
@@ -184,9 +184,9 @@
         private readonly Func<ValueTask> _confirm;
         private readonly Action _rollback;
         private bool _isRolledBack;
-        public ImmutableArray<MediaId> Attachments { get; }
+        public ApiArray<MediaId> Attachments { get; }
 
-        internal ResetIntent(ImmutableArray<MediaId> attachments, Action rollback, Func<ValueTask> confirm) {
+        internal ResetIntent(ApiArray<MediaId> attachments, Action rollback, Func<ValueTask> confirm) {
             Attachments = attachments;
             _rollback = rollback;
             _confirm = confirm;

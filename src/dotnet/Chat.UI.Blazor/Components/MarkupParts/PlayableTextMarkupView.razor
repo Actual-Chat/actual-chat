@@ -14,7 +14,7 @@
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
 <span class="@containerCls @colorCls">
-    @for (var i = 0; i < Markup.Words.Length; i++) {
+    @for (var i = 0; i < Markup.Words.Count; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
         var cls = GetPlayingClass(status);
@@ -156,8 +156,8 @@
         if (!playingAtNearbyRange.Overlaps(timeRange))
             return Model.None;
 
-        var map = new WordPlayback[Markup.Words.Length];
-        for (var i = 0; i < Markup.Words.Length; i++) {
+        var map = new WordPlayback[Markup.Words.Count];
+        for (var i = 0; i < Markup.Words.Count; i++) {
             var word = Markup.Words[i];
             var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
             map[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
@@ -167,7 +167,7 @@
         if (isEmpty)
             return Model.None;
 
-        for (var i = 0; i < Markup.Words.Length; i++) {
+        for (var i = 0; i < Markup.Words.Count; i++) {
             var prev = i > 0 ? map[i - 1] : WordPlayback.None;
             var current = map[i];
             var next = i < map.Length - 1 ? map[i + 1] : WordPlayback.None;

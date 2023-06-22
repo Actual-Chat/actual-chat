@@ -39,7 +39,7 @@
                     <ChatListSortButton />
                 </AdditionalButton>
                 <ChildContent>
-                    @for (var i = 0; i < ChatListFilter.All.Length; i++) {
+                    @for (var i = 0; i < ChatListFilter.All.Count; i++) {
                         var filter = ChatListFilter.All[i];
                         @RenderTab(filter, i)
                     }

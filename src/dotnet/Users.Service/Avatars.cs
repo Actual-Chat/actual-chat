@@ -38,7 +38,7 @@ public class Avatars : IAvatars
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
     {
         var kvasClient = ServerKvas.GetClient(session);
         var settings = await kvasClient.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);

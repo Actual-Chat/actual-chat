@@ -101,7 +101,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         var userKvas = serverKvasBackend.GetUserClient(account);
         var userAvatarSettings = new UserAvatarSettings() {
             DefaultAvatarId = avatar.Id,
-            AvatarIds = ImmutableArray.Create(avatar.Id),
+            AvatarIds = ApiArray.New(avatar.Id),
         };
         await userKvas.SetUserAvatarSettings(userAvatarSettings, cancellationToken).ConfigureAwait(false);
 

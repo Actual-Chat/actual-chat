@@ -121,7 +121,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         result.Count.Should().BeGreaterThan(0);
         result.Count.Should().BeLessThanOrEqualTo(2);
         result[0].Should().NotBeNull();
-        result[0].Entries.Length.Should().BeGreaterThan(3);
+        result[0].Entries.Count.Should().BeGreaterThan(3);
     }
 
     [Fact(Skip = "Flaky")]

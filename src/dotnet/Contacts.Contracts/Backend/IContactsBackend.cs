@@ -7,7 +7,7 @@ public interface IContactsBackend : IComputeService
     [ComputeMethod]
     public Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
+    public Task<ApiArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);

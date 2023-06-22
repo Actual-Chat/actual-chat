@@ -43,7 +43,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken)
     {
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
@@ -63,12 +63,12 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         if (!contactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
             contactIds.Add(announcementChatContactId);
 
-        // That's just a bit more efficient conversion than .Select().ToImmutableArray()
+        // That's just a bit more efficient conversion than .Select().ToApiArray()
         var result = new ContactId[contactIds.Count];
         for (var i = 0; i < contactIds.Count; i++)
             result[i] = new ContactId(contactIds[i]);
 
-        return ImmutableArray.Create(result);
+        return new ApiArray<ContactId>(result);
     }
 
     // [CommandHandler]

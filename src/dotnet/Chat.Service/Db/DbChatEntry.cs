@@ -85,7 +85,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
             RepliedEntryLocalId = RepliedChatEntryId!,
-            Attachments = attachments?.ToImmutableArray() ?? ImmutableArray<TextEntryAttachment>.Empty,
+            Attachments = attachments?.ToApiArray() ?? ApiArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null

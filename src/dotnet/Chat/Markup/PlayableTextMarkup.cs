@@ -11,15 +11,15 @@ public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) 
 
     private static readonly Regex WordRegex = WordRegexFactory();
 
-    private ImmutableArray<Word>? _words;
+    private ApiArray<Word>? _words;
 
     public Range<float> TextRange => (0, Text.Length);
     public Range<float> TimeRange => (TimeMap.TryMap(0f) ?? InfTime, TimeMap.TryMap(Text.Length) ?? InfTime);
-    public ImmutableArray<Word> Words => _words ??= GetWords();
+    public ApiArray<Word> Words => _words ??= GetWords();
 
     public PlayableTextMarkup() : this("", default) { }
 
-    private ImmutableArray<Word> GetWords()
+    private ApiArray<Word> GetWords()
     {
         var words = new List<Word>();
         var timeMap = TimeMap;
@@ -40,7 +40,7 @@ public sealed partial record PlayableTextMarkup(string Text, LinearMap TimeMap) 
                 break;
             }
         }
-        return words.ToImmutableArray();
+        return words.ToApiArray();
     }
 
     public record struct Word(

@@ -31,7 +31,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ReactionSummary>> List(
+    public virtual async Task<ApiArray<ReactionSummary>> List(
         TextEntryId entryId,
         CancellationToken cancellationToken)
     {
@@ -42,7 +42,7 @@ internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBacken
             .Where(x => x.EntryId == entryId && x.Count > 0)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbReactionSummaries.Select(x => x.ToModel()).ToImmutableArray();
+        return dbReactionSummaries.Select(x => x.ToModel()).ToApiArray();
     }
 
     // [CommandHandler]

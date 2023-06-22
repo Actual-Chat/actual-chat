@@ -8,7 +8,7 @@ public sealed partial record UserBubblesSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserBubblesSettings);
 
-    [DataMember, MemoryPackOrder(0)] public ImmutableArray<string> ReadBubbles { get; init; } = ImmutableArray<string>.Empty;
+    [DataMember, MemoryPackOrder(0)] public ApiArray<string> ReadBubbles { get; init; } = ApiArray<string>.Empty;
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
     public UserBubblesSettings WithReadBubbles(params string[] bubbleRefs)

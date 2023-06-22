@@ -8,14 +8,14 @@ public interface IRolesBackend : IComputeService
     Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Role>> List(
+    Task<ApiArray<Role>> List(
         ChatId chatId, AuthorId authorId,
         bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Role> Change(RolesBackend_Change command, CancellationToken cancellationToken);

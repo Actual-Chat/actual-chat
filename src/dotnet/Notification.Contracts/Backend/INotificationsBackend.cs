@@ -39,5 +39,5 @@ public sealed partial record NotificationsBackend_Upsert(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
-    [property: DataMember, MemoryPackOrder(0)] ImmutableArray<Symbol> DeviceIds
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<Symbol> DeviceIds
 ) : ICommand<Unit>, IBackendCommand;

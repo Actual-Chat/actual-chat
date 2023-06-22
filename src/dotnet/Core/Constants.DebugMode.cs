@@ -9,7 +9,7 @@ public static partial class Constants
     public static class DebugMode
     {
         // Core components
-        public static readonly bool RpcClient = false;
+        public static readonly bool RpcClient = true;
         public static readonly bool SignalR = false;
         public static readonly bool StoredState = false;
         public static readonly bool SyncedState = false;

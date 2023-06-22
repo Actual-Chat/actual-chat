@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-@if (Invites.Length > 0) {
+@if (Invites.Count > 0) {
     @foreach (var invite in Invites) {
         var link = GetLink(invite);
         var caption = GetCaption(invite);
@@ -49,7 +49,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
+    [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; } = ApiArray<Invite>.Empty;
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
     [Parameter] public bool AllowRevoke { get; init; }
     [Parameter] public string NewInviteId { get; init; } = "";

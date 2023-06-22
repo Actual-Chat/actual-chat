@@ -41,7 +41,7 @@ public class ChatOperationsTest : AppHostTestBase
         chat.IsPublic.Should().Be(isPublicChat);
 
         var chatRoles = await roles.List(session, chat.Id, default);
-        chatRoles.Length.Should().Be(2);
+        chatRoles.Count.Should().Be(2);
 
         var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
         owners.Name.Should().Be(SystemRole.Owner.ToString());
