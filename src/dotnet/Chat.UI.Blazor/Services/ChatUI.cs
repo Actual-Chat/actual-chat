@@ -218,9 +218,11 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         if (contact.IsPinned == mustPin)
             return;
 
-        var command = new Contacts_Change(Session, contact.Id, contact.Version, new Change<Contact>() {
-            Update = contact with { IsPinned = mustPin },
-        });
+        var changedContact = contact with { IsPinned = mustPin };
+        var change = contact.IsStored()
+            ? new Change<Contact>() { Update = changedContact }
+            : new Change<Contact>() { Create = changedContact };
+        var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
         _ = TuneUI.Play("pin-unpin-chat");
         await UICommander.Run(command).ConfigureAwait(false);
     }

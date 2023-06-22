@@ -24,8 +24,6 @@ public sealed partial record Contact(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ContactKind Kind => Id.ChatId.Kind == ChatKind.Peer ? ContactKind.User : ContactKind.Chat;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
-    public bool IsVirtual => Version == 0 || Id.IsNone;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public UserId OwnerId => Id.OwnerId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatId ChatId => Id.ChatId;
