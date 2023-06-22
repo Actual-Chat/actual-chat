@@ -84,14 +84,13 @@ public partial class History : IHasServices, IDisposable
     {
         Dispatcher.AssertAccess();
         try {
-            LocationChange(new LocationChangedEventArgs(Nav.Uri, true));
-
             var jsMethod = $"{BlazorUICoreModule.ImportName}.History.init";
             _backendRef = DotNetObjectReference.Create(this);
             if (initCalls != null) {
                 initCalls.Add(jsMethod);
-                initCalls.Add(1);
+                initCalls.Add(2);
                 initCalls.Add(_backendRef);
+                initCalls.Add(ItemIdFormatter.Format(_currentItem.Id));
             }
             else
                 await JS.InvokeVoidAsync(jsMethod, _backendRef);

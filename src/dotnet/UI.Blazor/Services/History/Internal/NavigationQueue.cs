@@ -67,7 +67,7 @@ public sealed class NavigationQueue
 
     internal async Task ProcessNext()
     {
-        await WhenLastEntryCompleted();
+        await WhenLastEntryCompleted().SilentAwait();
         if (_lastProcessedEntry is { WhenCompleted.IsCompleted: false })
             return; // Another call to ProcessNextInternal is doing the job already
 

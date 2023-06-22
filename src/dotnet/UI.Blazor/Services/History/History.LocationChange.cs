@@ -33,20 +33,21 @@ public partial class History
             var hasValidHistoryEntryState = existingItemId > 0;
             var existingItem = hasValidHistoryEntryState && GetItemById(existingItemId) is { } item ? item : null;
             if (existingItem != null) {
-                currentItem = _currentItem = existingItem;
-                if (!OrdinalEquals(uri, currentItem.Uri)) {
-                    Log.LogWarning(
-                        "LocationChange: Uri mismatch, expected: {Expected}, actual: {Actual} - fixed",
-                        currentItem.Uri, uri);
-                    currentItem = currentItem.WithUri(uri);
-                    ReplaceItem(ref currentItem);
+                if (OrdinalEquals(uri, existingItem.Uri)) {
+                    currentItem = _currentItem = existingItem;
+                    if (currentItem.OnNavigation is {IsNone: false} onNavigation) {
+                        DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);
+                        currentItem = currentItem with {OnNavigation = default};
+                        ReplaceItem(ref currentItem);
+                        _locationChangeRegion.ExitAction = onNavigation.Action;
+                        return;
+                    }
                 }
-                if (currentItem.OnNavigation is { IsNone: false } onNavigation) {
-                    DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);
-                    currentItem = currentItem with { OnNavigation = default };
-                    ReplaceItem(ref currentItem);
-                    _locationChangeRegion.ExitAction = onNavigation.Action;
-                    return;
+                else {
+                    // Navigation with keeping state but changing Uri happened
+                    currentItem = _currentItem = existingItem.WithUri(uri);
+                    ReplaceItem(ref currentItem, false);
+                    locationChangeKind = LocationChangeKind.NewUri;
                 }
             }
             else {

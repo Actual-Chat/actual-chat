@@ -131,8 +131,19 @@ class DataHrefGesture extends Gesture {
             TuneUI.play(tuneName);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
-        else
-            void History.navigateTo(href); // Internal URL
+        else {
+            const chatSwitchWithReplace = element.dataset['chatSwitchWithReplace'];
+            let mustReplace = false;
+            if (chatSwitchWithReplace) {
+                const url = new URL(location.href);
+                const path = url.pathname;
+                const prefix = '/chat/';
+                if (path.startsWith(prefix) && path.length > prefix.length) {
+                    mustReplace = true;
+                }
+            }
+            void History.navigateTo(href, mustReplace); // Internal URL
+        }
     }
 }
 
