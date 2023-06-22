@@ -132,7 +132,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    _ = History.NavigateTo(uriWithoutFragment);
+                    _ = History.NavigateTo(uriWithoutFragment, true);
                 }
                 finally {
                     cts.CancelAndDisposeSilently();
