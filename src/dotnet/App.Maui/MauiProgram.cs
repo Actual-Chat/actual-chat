@@ -141,7 +141,7 @@ public static partial class MauiProgram
         services.AddSingleton(HostInfo.Configuration);
         services.AddMauiDiagnostics(false);
 
-#if !WINDOWS
+#if IOS
         // HTTP client
         services.RemoveAll<IHttpClientFactory>();
         services.AddSingleton(c => new NativeHttpClientFactory(c));
