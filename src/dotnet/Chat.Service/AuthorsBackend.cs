@@ -93,13 +93,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ImmutableArray<AuthorId>.Empty;
+            return ApiArray<AuthorId>.Empty;
 
         if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToImmutableArray();
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
 
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
@@ -109,17 +109,17 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return authorIds.Select(x => new AuthorId(x)).ToImmutableArray();
+        return authorIds.Select(x => new AuthorId(x)).ToApiArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ImmutableArray<UserId>.Empty;
+            return ApiArray<UserId>.Empty;
 
         if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToImmutableArray();
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToApiArray();
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -129,7 +129,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return userIds.Select(x => new UserId(x)).ToImmutableArray();
+        return userIds.Select(x => new UserId(x)).ToApiArray();
     }
 
     // [CommandHandler]

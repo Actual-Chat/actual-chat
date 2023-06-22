@@ -22,7 +22,7 @@ public class ChatRecordingActivityReplica : IChatRecordingActivity
     public Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken)
         => _source.GetActiveChatEntries(cancellationToken);
 
-    public Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
+    public Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
         => _source.GetActiveAuthorIds(cancellationToken);
 
     public Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)

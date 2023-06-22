@@ -45,7 +45,7 @@ public class ChatMarkupHubExtTest
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment)
-                .ToImmutableArray(),
+                .ToApiArray(),
         };
 
         // act

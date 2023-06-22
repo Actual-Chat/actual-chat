@@ -34,7 +34,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = new UserId(UserId ?? Symbol.Empty, AssumeValid.Option),
             AvatarId = AvatarId ?? "",
             HasLeft = HasLeft,
-            RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToImmutableArray(),
+            RoleIds = Roles.Select(ar => (Symbol)ar.DbRoleId).ToApiArray(),
         };
         return result;
     }

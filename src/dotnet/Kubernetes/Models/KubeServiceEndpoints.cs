@@ -5,9 +5,9 @@ namespace ActualChat.Kubernetes;
 
 public record KubeServiceEndpoints(
     KubeService Service,
-    ImmutableArray<KubeEndpoint> Endpoints,
-    ImmutableArray<KubeEndpoint> ReadyEndpoints,
-    ImmutableArray<KubePort> Ports)
+    ApiArray<KubeEndpoint> Endpoints,
+    ApiArray<KubeEndpoint> ReadyEndpoints,
+    ApiArray<KubePort> Ports)
 {
     private readonly Dictionary<string, HashRing<string>> _hashRingCache = new(StringComparer.Ordinal);
 

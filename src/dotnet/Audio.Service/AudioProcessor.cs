@@ -73,7 +73,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
             var language = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
-            var languages = ImmutableArray.Create(language);
+            var languages = ApiArray.New(language);
 
             var author = await Authors
                 .EnsureJoined(record.Session, record.ChatId, cancellationToken)

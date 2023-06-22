@@ -100,7 +100,7 @@
                     </p>
                 }
             </div>
-            @if (entry.Attachments.Length > 0) {
+            @if (entry.Attachments.Count > 0) {
                 var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
                     <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>

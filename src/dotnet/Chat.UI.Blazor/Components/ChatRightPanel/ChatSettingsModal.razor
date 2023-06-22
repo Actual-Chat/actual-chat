@@ -82,11 +82,11 @@
                     }
                 } else {
                     var canInvite = m.Rules.CanInvite();
-                    var displayLinks = canInvite || m.Invites.Length > 0;
+                    var displayLinks = canInvite || m.Invites.Count > 0;
                     var title = canInvite ? "Manage links" : "Private links";
                     @if (displayLinks) {
                         <FormBlock Title="@title">
-                            @if (m.Invites.Length > 0) {
+                            @if (m.Invites.Count > 0) {
                                 <InviteList
                                     Invites="m.Invites"
                                     LinkFormat="join/{0}"
@@ -94,7 +94,7 @@
                                     AllowRevoke="true" />
                             }
                             @if (canInvite) {
-                                <Button IsDisabled="@(m.Invites.Length >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+                                <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
                                     <i class="icon-plus text-xl"></i>
                                     New private join link
                                 </Button>
@@ -216,7 +216,7 @@
         invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
-            .ToImmutableArray();
+            .ToApiArray();
         var link = Links.Chat(ModalModel.Chat.Id).ToDisplayUrl(UrlMapper);
         var allowEditIsTemplateChat = await Features.Get<UIFeatures.EnableTemplateChats, bool>(cancellationToken);
         return new() {
@@ -303,7 +303,7 @@
 
         public AuthorRules? Rules { get; init; }
         public DisplayUrl? Link { get; init; }
-        public ImmutableArray<Invite> Invites { get; init; } = ImmutableArray.Create<Invite>();
+        public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
         public bool AllowEditIsTemplate { get; init; }
     }
 

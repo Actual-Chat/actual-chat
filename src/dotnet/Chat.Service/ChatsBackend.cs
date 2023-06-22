@@ -116,7 +116,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else
             return AuthorRules.None(chatId);
 
-        var roles = ImmutableArray<Role>.Empty;
+        var roles = ApiArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
         if (isJoined) {
             var isGuest = account.IsGuestOrNone;
@@ -156,7 +156,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
-        var lastEntry = tile.Entries.Length > 0 ? tile.Entries[^1] : null;
+        var lastEntry = tile.Entries.Count > 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
     }
 
@@ -236,7 +236,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         if (!includeRemoved) {
             var fullTile = await GetTile(chatId, entryKind, idTileRange, true, cancellationToken).ConfigureAwait(false);
-            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToImmutableArray());
+            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToApiArray());
         }
 
         // If we're here, it's the smallest tile & includeRemoved = true
@@ -281,7 +281,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             })
             .Collect()
             .ConfigureAwait(false);
-        return new ChatTile(idTileRange, true, entries.ToImmutableArray());
+        return new ChatTile(idTileRange, true, entries.ToApiArray());
     }
 
     // [CommandHandler]
@@ -355,8 +355,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Owner,
                         Permissions = ChatPermissions.Owner,
-                        AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId>() {
-                            AddedItems = ImmutableArray<AuthorId>.Empty.Add(author.Id),
+                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                            AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                         },
                     },
                 });
@@ -741,8 +741,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             null,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
-                        AddedItems = ImmutableArray<AuthorId>.Empty.Add(author.Id),
+                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                     },
                 },
             });

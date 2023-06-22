@@ -46,7 +46,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Non-compute methods
 
@@ -97,8 +97,7 @@ public sealed partial record Chats_UpsertTextEntry(
     [property: DataMember, MemoryPackOrder(4)] Option<long?> RepliedChatEntryId = default
 ) : ISessionCommand<ChatEntry>
 {
-    [DataMember, MemoryPackOrder(5)] public ImmutableArray<MediaId> Attachments { get; set; } =
-        ImmutableArray<MediaId>.Empty;
+    [DataMember, MemoryPackOrder(5)] public ApiArray<MediaId> Attachments { get; set; } = ApiArray<MediaId>.Empty;
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

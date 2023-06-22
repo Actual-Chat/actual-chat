@@ -5,9 +5,9 @@ namespace ActualChat.Invite;
 public interface IInvites : IComputeService
 {
     [ComputeMethod]
-    Task<ImmutableArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken);
+    Task<ApiArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken);

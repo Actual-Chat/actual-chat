@@ -10,7 +10,7 @@ public interface IChatRecordingActivity : IDisposable
     [ComputeMethod]
     Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken);
 }
@@ -40,8 +40,8 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
         => Task.FromResult(_activeEntries);
 
     // [ComputeMethod]
-    public virtual Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
-        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToImmutableArray());
+    public virtual Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
+        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToApiArray());
 
     // [ComputeMethod]
     public virtual Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)

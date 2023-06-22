@@ -16,7 +16,7 @@ public sealed class OpenAudioSegment
     public AudioRecord AudioRecord { get; }
     public AudioSource Audio { get; }
     public Author Author { get; }
-    public ImmutableArray<Language> Languages { get; }
+    public ApiArray<Language> Languages { get; }
     public Task<Moment?> RecordedAt => _recordedAtSource.Task;
     public Task<TimeSpan> AudibleDuration => _audibleDurationSource.Task;
     public Task<ClosedAudioSegment> ClosedSegment => _closedSegmentSource.Task;
@@ -27,7 +27,7 @@ public sealed class OpenAudioSegment
         AudioRecord audioRecord,
         AudioSource audio,
         Author author,
-        ImmutableArray<Language> languages,
+        ApiArray<Language> languages,
         ILogger log)
     {
         Log = log;

@@ -54,7 +54,7 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ContactId>> ListIds(
+    public virtual async Task<ApiArray<ContactId>> ListIds(
         Session session,
         CancellationToken cancellationToken)
     {

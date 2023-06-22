@@ -33,7 +33,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
         await PseudoGetAll(searchKey).ConfigureAwait(false);
 
@@ -45,7 +45,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             .OrderByDescending(x => x.ExpiresOn)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbInvites.Select(x => x.ToModel()).ToImmutableArray();
+        return dbInvites.Select(x => x.ToModel()).ToApiArray();
     }
 
     // [ComputeMethod]

@@ -86,6 +86,7 @@ public static class Program
             .AddFilter(null, LogLevel.Information) // Default level
             .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning)
             .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
+            .AddFilter("Stl.Rpc", LogLevel.Debug)
             .AddFilter("ActualChat", LogLevel.Debug)
             .AddFilter("ActualChat.Audio", LogLevel.Debug)
             .AddFilter("ActualChat.Audio.UI.Blazor", LogLevel.Debug)

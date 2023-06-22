@@ -116,7 +116,7 @@
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
-        var authorSids = ImmutableArray<string>.Empty;
+        var authorSids = ApiArray<string>.Empty;
         Moment? playingAt = null;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
@@ -206,7 +206,7 @@
         public string ChatTitle { get; init; } = "";
         public ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
-        public ImmutableArray<string> AuthorSids { get; init; }
+        public ApiArray<string> AuthorSids { get; init; }
     }
 
     internal class RewindController

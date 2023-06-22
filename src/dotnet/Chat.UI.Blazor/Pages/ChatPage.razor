@@ -140,7 +140,7 @@
             } else {
                 canJoinAnonymously = chat.AllowAnonymousAuthors;
                 var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
-                hasMultipleAvatars = avatars.Length > 1 || canJoinAnonymously;
+                hasMultipleAvatars = avatars.Count > 1 || canJoinAnonymously;
             }
         }
 

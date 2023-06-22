@@ -9,9 +9,9 @@ public interface IAuthorsBackend : IComputeService
     [ComputeMethod]
     Task<AuthorFull?> GetByUserId(ChatId chatId, UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<AuthorFull> Upsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);

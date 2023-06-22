@@ -28,7 +28,7 @@ internal class Reactions : IReactions
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ReactionSummary>> ListSummaries(
+    public virtual async Task<ApiArray<ReactionSummary>> ListSummaries(
         Session session,
         TextEntryId entryId,
         CancellationToken cancellationToken)

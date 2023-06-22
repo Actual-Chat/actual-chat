@@ -3,12 +3,11 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class PlayableTextPalette
 {
     private const int HistoryLength = 10;
-    private static readonly ImmutableArray<PlayableTextColor> _colors
-        = ImmutableArray<PlayableTextColor>.Empty
-            .Add(PlayableTextColor.Blue)
-            .Add(PlayableTextColor.Purple)
-            .Add(PlayableTextColor.Cyan)
-            .Add(PlayableTextColor.Green);
+    private static readonly ApiArray<PlayableTextColor> _colors = new(
+        PlayableTextColor.Blue,
+        PlayableTextColor.Purple,
+        PlayableTextColor.Cyan,
+        PlayableTextColor.Green);
 
     private readonly List<PaletteColorLease> _leasingHistory = new (HistoryLength);
     private readonly Dictionary<PlayableTextColor, PaletteColorLease> _activeLeases = new ();

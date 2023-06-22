@@ -8,7 +8,7 @@ public class RecordDiffHandler<
     where TRecord : class
     where TDiff : RecordDiff, new()
 {
-    public ImmutableArray<RecordDiffPropertyInfo> Properties { get; init; }
+    public ApiArray<RecordDiffPropertyInfo> Properties { get; init; }
     public Func<TRecord, TRecord> Cloner { get; init; }
 
     public RecordDiffHandler(DiffEngine engine) : base(engine)
@@ -26,7 +26,7 @@ public class RecordDiffHandler<
                 .CreateInstance(Engine, pDiff, pRecord);
             properties.Add(property);
         }
-        Properties = properties.ToImmutableArray();
+        Properties = properties.ToApiArray();
         Cloner = ObjectExt.GetCloner<TRecord>();
     }
 

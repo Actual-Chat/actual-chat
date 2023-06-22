@@ -1,6 +1,6 @@
 @using System.Text.Encodings.Web
 @using ActualChat.Chat
-@inherits ComputedStateComponent<ImmutableArray<AvatarFull>>
+@inherits ComputedStateComponent<ApiArray<AvatarFull>>
 @{
     var avatars = State.Value;
 }
@@ -52,18 +52,18 @@
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
     [Parameter] public Chat? Chat { get; set; } = null;
 
-    protected override ComputedState<ImmutableArray<AvatarFull>>.Options GetStateOptions()
+    protected override ComputedState<ApiArray<AvatarFull>>.Options GetStateOptions()
         => new () {
-            InitialValue = ImmutableArray<AvatarFull>.Empty,
+            InitialValue = ApiArray<AvatarFull>.Empty,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<ImmutableArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ApiArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
         var avatars = await avatarIds
             .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
             .Collect();
-        return avatars.SkipNullItems().ToImmutableArray();
+        return avatars.SkipNullItems().ToApiArray();
     }
 
     private async Task OnAddNewAvatar() {

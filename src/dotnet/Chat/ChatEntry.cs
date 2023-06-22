@@ -38,7 +38,7 @@ public sealed partial record ChatEntry(
     [DataMember, MemoryPackOrder(21)] public long? VideoEntryId { get; init; }
     [DataMember, MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
     [DataMember, MemoryPackOrder(23)] public long? RepliedEntryLocalId { get; init; }
-    [DataMember, MemoryPackOrder(50)] public ImmutableArray<TextEntryAttachment> Attachments { get; init; } = ImmutableArray<TextEntryAttachment>.Empty;
+    [DataMember, MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
