@@ -16,6 +16,7 @@ public partial class MainPage
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
         cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", sessionId, baseUri.Host, "/");
         cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
+        cookie.IsHttpOnly = true;
         cookie.IsSecure = true;
         ctrl.CookieManager.AddOrUpdateCookie(cookie);
     }
