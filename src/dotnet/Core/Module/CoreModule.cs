@@ -119,6 +119,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         // Features
         fusion.AddClient<IServerFeaturesClient>();
         fusion.Rpc.Service<IServerFeaturesClient>().HasName(nameof(IServerFeatures));
-        fusion.AddService<IServerFeatures, ServerFeaturesClient>(RpcServiceMode.None);
+        fusion.AddService<IServerFeatures, ServerFeaturesClient>();
     }
 }
