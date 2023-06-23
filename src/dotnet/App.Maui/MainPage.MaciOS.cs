@@ -26,9 +26,10 @@ public partial class MainPage
             NSHttpCookie.KeyValue, session.Id.Value,
             NSHttpCookie.KeyPath, "/",
             NSHttpCookie.KeyDomain, domain,
-            NSHttpCookie.KeySameSitePolicy, "none");
-        // if (secure)
-        //     properties[NSHttpCookie.KeySecure] = NSObject.FromObject("TRUE");
+            NSHttpCookie.KeySameSitePolicy, "None",
+            NSHttpCookie.KeyVersion, "1");
+        if (isSecure)
+            properties[NSHttpCookie.KeySecure] = NSObject.FromObject("TRUE");
         PlatformWebView!.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(new NSHttpCookie(properties), null);
     }
 
