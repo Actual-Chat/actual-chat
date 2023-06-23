@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -8,4 +9,14 @@ public interface ISystemProperties : IComputeService
     Task<double> GetTime(CancellationToken cancellationToken);
     // Not a [ComputeMethod]!
     Task<string?> GetMinClientVersion(AppKind appKind, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    public Task OnInvalidateEverything(SystemProperties_InvalidateEverything command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record SystemProperties_InvalidateEverything(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] bool Everywhere = false
+) : ISessionCommand<Unit>;

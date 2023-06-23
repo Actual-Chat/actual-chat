@@ -30,7 +30,7 @@
     }
 
     private async Task OnInvalidateEverythingClick(bool everywhere) {
-        var command = new Accounts_InvalidateEverything(Session, everywhere);
+        var command = new SystemProperties_InvalidateEverything(Session, everywhere);
         await UICommander.Run(command);
     }
 
