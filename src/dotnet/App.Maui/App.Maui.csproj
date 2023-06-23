@@ -98,6 +98,7 @@
     <AndroidLinkTool>r8</AndroidLinkTool>
     <!-- Trimming & AOT options -->
     <EnableLLVM>False</EnableLLVM>
+    <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
