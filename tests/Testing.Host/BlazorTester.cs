@@ -40,6 +40,6 @@ public class BlazorTester : TestContext, IWebTester
     public ValueTask DisposeAsync()
     {
         Dispose(true);
-        return ValueTask.CompletedTask;
+        return default;
     }
 }

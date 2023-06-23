@@ -87,7 +87,7 @@
         => Position(menu.Id);
     public ValueTask Position(string menuId) {
         if (_jsMenuId != menuId)
-            return ValueTask.CompletedTask;
+            return default;
 
         return _jsRef.InvokeVoidAsync("positionById", menuId);
     }

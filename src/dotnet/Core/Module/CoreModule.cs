@@ -64,12 +64,16 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
         }
         else if (appKind.IsClient()) {
-            RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.None;
-            if (Constants.DebugMode.RpcClient && appKind.IsWasmApp() && HostInfo.IsDevelopmentInstance)
-                services.AddSingleton<RpcPeerFactory>(_
-                    => static (hub, peerRef) => peerRef.IsServer
-                        ? throw StandardError.NotSupported("No server peers on the client.")
-                        : new RpcClientPeer(hub, peerRef) { CallLogLevel = LogLevel.Debug });
+            if (appKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
+                if (Constants.DebugMode.RpcClient)
+                    services.AddSingleton<RpcPeerFactory>(_
+                        => static (hub, peerRef) => peerRef.IsServer
+                            ? throw StandardError.NotSupported("No server peers on the client.")
+                            : new RpcClientPeer(hub, peerRef) { CallLogLevel = LogLevel.Debug });
+            }
+            else {
+                RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.None;
+            }
         }
         fusion.AddComputedGraphPruner();
         fusion.AddFusionTime();
@@ -114,6 +118,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Features
         fusion.AddClient<IServerFeaturesClient>();
-        fusion.AddService<IServerFeatures, ServerFeaturesClient>();
+        fusion.Rpc.Service<IServerFeaturesClient>().HasName(nameof(IServerFeatures));
+        fusion.AddService<IServerFeatures, ServerFeaturesClient>(RpcServiceMode.None);
     }
 }

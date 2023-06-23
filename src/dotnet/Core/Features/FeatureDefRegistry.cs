@@ -16,6 +16,7 @@ public abstract class FeatureDefRegistry<TFeatureDef> : IFeatureDefRegistry
             var instance = featureType1.CreateInstance();
             if (instance is TFeatureDef featureDef)
                 return featureDef;
+
             throw StandardError.Internal(
                 $"Feature '{featureType1.GetName(true)}' is not assignable to '{typeof(TFeatureDef).GetName()}'.");
         });

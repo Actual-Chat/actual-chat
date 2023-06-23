@@ -5,7 +5,7 @@ using MemoryPack;
 namespace ActualChat.Collections;
 
 [DataContract, MemoryPackable(GenerateType.Collection)]
-public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>
+public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICloneable<ApiMap<TKey, TValue>>
     where TKey : notnull
 {
     public ApiMap() { }
@@ -17,6 +17,9 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>
     public ApiMap(int capacity) : base(capacity) { }
     public ApiMap(int capacity, IEqualityComparer<TKey>? comparer) : base(capacity, comparer) { }
     private ApiMap(SerializationInfo info, StreamingContext context) : base(info, context) { }
+
+    object ICloneable.Clone() => Clone();
+    public ApiMap<TKey, TValue> Clone() => new(this, Comparer);
 
     public override string ToString()
     {

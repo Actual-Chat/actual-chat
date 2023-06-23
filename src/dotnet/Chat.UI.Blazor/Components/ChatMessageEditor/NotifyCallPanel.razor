@@ -46,7 +46,7 @@
     [Inject] private Features Features { get; init; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
     public void Close() {

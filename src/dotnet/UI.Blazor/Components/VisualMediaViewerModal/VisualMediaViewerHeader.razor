@@ -50,8 +50,8 @@
     [Parameter] public string DownloadUrl { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
-        _isDownloadEnabled = await Features.Get<UIFeatures.EnableDownloadVisualMedia, bool>(CancellationToken.None);
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
+        _isDownloadEnabled = await Features.Get<Features_EnableDownloadVisualMediaUI, bool>(CancellationToken.None);
     }
 
     protected override async Task OnParametersSetAsync() {

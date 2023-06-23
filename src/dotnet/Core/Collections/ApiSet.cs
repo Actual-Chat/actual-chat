@@ -5,7 +5,7 @@ using MemoryPack;
 namespace ActualChat.Collections;
 
 [DataContract, MemoryPackable(GenerateType.Collection)]
-public sealed partial class ApiSet<T> : HashSet<T>
+public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 {
     public ApiSet() { }
     public ApiSet(IEnumerable<T> collection) : base(collection) { }
@@ -14,6 +14,9 @@ public sealed partial class ApiSet<T> : HashSet<T>
     public ApiSet(int capacity) : base(capacity) { }
     public ApiSet(int capacity, IEqualityComparer<T>? comparer) : base(capacity, comparer) { }
     private ApiSet(SerializationInfo info, StreamingContext context) : base(info, context) { }
+
+    object ICloneable.Clone() => Clone();
+    public ApiSet<T> Clone() => new(this);
 
     public override string ToString()
     {

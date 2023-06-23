@@ -30,7 +30,7 @@ public static class JSObjectReferenceExt
     public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsRef, string jsDisposeMethodName = "")
     {
         return ReferenceEquals(jsRef, null)
-            ? ValueTask.CompletedTask
+            ? default
             : DisposeSilentlyAsyncImpl(jsRef, jsDisposeMethodName);
 
         async ValueTask DisposeSilentlyAsyncImpl(IJSObjectReference jsRef1, string jsDisposeMethodName1)

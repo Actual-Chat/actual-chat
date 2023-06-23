@@ -27,7 +27,7 @@
 
     public ValueTask DisposeAsync() {
         RestartCts?.CancelAndDisposeSilently();
-        return ValueTask.CompletedTask;
+        return default;
     }
 
     protected override void OnParametersSet() {

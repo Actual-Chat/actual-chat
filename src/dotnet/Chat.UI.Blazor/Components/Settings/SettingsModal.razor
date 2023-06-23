@@ -88,7 +88,7 @@
 
     protected override async Task OnInitializedAsync() {
         WindowsSettings = Services.GetService<IWindowsSettings>();
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()

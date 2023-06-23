@@ -70,7 +70,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
                 RelatedEntryKind.Edit => "edit-message",
                 _ => "",
             };
-            return !tuneName.IsNullOrEmpty() ? TuneUI.Play(tuneName) : ValueTask.CompletedTask;
+            return !tuneName.IsNullOrEmpty() ? TuneUI.Play(tuneName) : default;
         }
     }
 

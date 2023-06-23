@@ -13,6 +13,13 @@ public readonly partial record struct ActiveChat(
 {
     public static implicit operator ActiveChat(ChatId chatId) => new(chatId);
 
+    public bool IsSameAs(ActiveChat other)
+        => ChatId == other.ChatId
+            && Recency == other.Recency
+            && ListeningRecency == other.ListeningRecency
+            && IsListening == other.IsListening
+            && IsRecording == other.IsRecording;
+
     // Equality must rely on Id only
     public bool Equals(ActiveChat other)
         => ChatId.Equals(other.ChatId);

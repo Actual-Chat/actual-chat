@@ -88,38 +88,36 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
         if (chatId.IsNone)
-            return ValueTask.CompletedTask;
+            return default;
 
         var now = Now;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
-            var oldActiveChats = activeChats;
             if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
                 chat = chat with {
                     IsListening = mustListen,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
-                activeChats = activeChats.AddOrUpdate(chat);
+                activeChats = activeChats.AddOrReplace(chat);
             }
             else if (mustListen)
                 activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now));
-            if (oldActiveChats != activeChats)
-                _ = UICommander.RunNothing();
-
             return activeChats;
         });
     }
 
     public ValueTask ClearListeningChats()
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
-            var oldActiveChats = activeChats;
-            foreach (var chat in oldActiveChats) {
-                if (chat.IsListening)
-                    activeChats = activeChats.AddOrUpdate(chat with { IsListening = false });
+            var newActiveChats = new List<ActiveChat>(activeChats.Count);
+            var isUpdated = false;
+            foreach (var chat in activeChats) {
+                if (chat.IsListening) {
+                    newActiveChats.Add(chat with { IsListening = false });
+                    isUpdated = true;
+                }
+                else
+                    newActiveChats.Add(chat);
             }
-            if (oldActiveChats != activeChats)
-                _ = UICommander.RunNothing();
-
-            return activeChats;
+            return isUpdated ? new ApiArray<ActiveChat>(newActiveChats) : activeChats;
         });
 
     [ComputeMethod] // Synced
@@ -133,19 +131,17 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
                 return activeChats;
 
             if (!oldChat.ChatId.IsNone)
-                activeChats = activeChats.AddOrUpdate(oldChat with {
+                activeChats = activeChats.AddOrReplace(oldChat with {
                     IsRecording = false,
                     Recency = Now,
                 });
             if (!chatId.IsNone) {
                 var newChat = new ActiveChat(chatId, true, true, Now);
-                activeChats = activeChats.AddOrUpdate(newChat);
+                activeChats = activeChats.AddOrReplace(newChat);
                 _ = TuneUI.Play("begin-recording");
             }
             else
                 _ = TuneUI.Play("end-recording");
-
-            _ = UICommander.RunNothing();
             return activeChats;
         });
 

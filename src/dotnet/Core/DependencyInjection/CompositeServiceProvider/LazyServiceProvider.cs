@@ -47,16 +47,16 @@ public sealed class LazyServiceProvider :
         IServiceProvider? lazyServices;
         // Double-check locking
         // ReSharper disable once InconsistentlySynchronizedField
-        if (_isDisposed) return ValueTask.CompletedTask;
+        if (_isDisposed) return default;
         lock (_lock) {
-            if (_isDisposed) return ValueTask.CompletedTask;
+            if (_isDisposed) return default;
 
             _isDisposed = true;
             lazyServices = _lazyServices;
             _lazyServices = null;
             WhenLazyServicesReady = Task.FromException<IServiceProvider>(new ObjectDisposedException(nameof(IServiceProvider)));
         }
-        return lazyServices?.SafelyDisposeAsync() ?? ValueTask.CompletedTask;
+        return lazyServices?.SafelyDisposeAsync() ?? default;
     }
 
     public object? GetService(Type serviceType)

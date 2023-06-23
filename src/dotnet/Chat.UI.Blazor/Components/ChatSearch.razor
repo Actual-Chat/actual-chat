@@ -27,7 +27,7 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        _isSearchEnabled = await Features.Get<UIFeatures.EnableChatMessageSearchUI, bool>(CancellationToken.None);
+        _isSearchEnabled = await Features.Get<Features_EnableChatMessageSearchUI, bool>(CancellationToken.None);
     }
 
     private async Task OnSearchTriggered(string text) {

@@ -81,7 +81,7 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
     {
         _disposer = x => {
             disposer.Invoke(x);
-            return ValueTask.CompletedTask;
+            return default;
         };
         return this;
     }

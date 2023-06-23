@@ -66,7 +66,7 @@
         var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
         var account = await Authors.GetAccount(Session, ChatId, AuthorId, cancellationToken);
         var canStartPeerChat = await AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         return new ComputedModel() {
             Author = author,

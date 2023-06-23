@@ -1,3 +1,5 @@
+using Microsoft.Toolkit.HighPerformance.Buffers;
+
 namespace ActualChat;
 
 public interface IFeatures : IComputeService
@@ -5,14 +7,14 @@ public interface IFeatures : IComputeService
     [ComputeMethod]
     Task<object?> Get(Type featureType, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken);
+    Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken);
 }
 
 public abstract class FeaturesBase : IFeatures
 {
     private ILogger? _log;
 
-    protected ITextSerializer Serializer { get; set; } = TypeDecoratingSerializer.Default;
+    protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IServiceProvider Services { get; }
@@ -39,10 +41,14 @@ public abstract class FeaturesBase : IFeatures
     }
 
     // [ComputeMethod]
-    public virtual async Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken)
+    public virtual async Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken)
     {
-        var value = await Get(featureTypeRef.Resolve(), cancellationToken).ConfigureAwait(false);
-        var json = Serializer.Write(value);
-        return json;
+        var featureType = featureTypeRef.Resolve();
+        var featureDef = Registry.Get(featureType);
+        var value = await Get(featureType, cancellationToken).ConfigureAwait(false);
+
+        using var buffer = new ArrayPoolBufferWriter<byte>(32);
+        Serializer.Write(buffer, value, featureDef.ResultType);
+        return buffer.WrittenSpan.ToArray();
     }
 }

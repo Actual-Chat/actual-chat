@@ -36,14 +36,14 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
     public ValueTask MarkCompleted(QueuedCommand command, CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _successCount);
-        return ValueTask.CompletedTask;
+        return default;
     }
 
     public ValueTask MarkFailed(QueuedCommand command, bool mustRetry, Exception? exception, CancellationToken cancellationToken)
     {
         if (!mustRetry) {
             Interlocked.Increment(ref _failureCount);
-            return ValueTask.CompletedTask;
+            return default;
         }
 
         Interlocked.Increment(ref _retryCount);

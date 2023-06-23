@@ -5,11 +5,14 @@ using MemoryPack;
 namespace ActualChat.Collections;
 
 [DataContract, MemoryPackable(GenerateType.Collection)]
-public sealed partial class ApiList<T> : List<T>
+public sealed partial class ApiList<T> : List<T>, ICloneable<ApiList<T>>
 {
     public ApiList() { }
     public ApiList(IEnumerable<T> collection) : base(collection) { }
     public ApiList(int capacity) : base(capacity) { }
+
+    object ICloneable.Clone() => Clone();
+    public ApiList<T> Clone() => new(this);
 
     public override string ToString()
     {

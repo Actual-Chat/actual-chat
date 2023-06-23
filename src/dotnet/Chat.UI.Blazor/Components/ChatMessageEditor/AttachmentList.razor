@@ -198,7 +198,7 @@
         }
 
         public ValueTask DisposeAsync() {
-            return !_isRolledBack ? _confirm() : ValueTask.CompletedTask;
+            return !_isRolledBack ? _confirm() : default;
         }
     }
 

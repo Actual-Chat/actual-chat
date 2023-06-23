@@ -20,7 +20,7 @@ internal class LocalFolderBlobStorage : IBlobStorage
     }
 
     public ValueTask DisposeAsync()
-        => ValueTask.CompletedTask;
+        => default;
 
     public Task<bool> Exists(string path, CancellationToken cancellationToken)
     {

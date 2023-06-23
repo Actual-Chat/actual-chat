@@ -24,7 +24,7 @@ internal class GoogleCloudBlobStorage : IBlobStorage
     public ValueTask DisposeAsync()
     {
         _client.Dispose();
-        return ValueTask.CompletedTask;
+        return default;
     }
 
     public async Task<bool> Exists(string path, CancellationToken cancellationToken)
