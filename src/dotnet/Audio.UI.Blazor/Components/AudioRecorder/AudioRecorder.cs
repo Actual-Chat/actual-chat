@@ -1,5 +1,6 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Hosting;
 using Stl.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
@@ -38,12 +39,18 @@ public class AudioRecorder : IAsyncDisposable
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         WhenInitialized = Initialize();
+        return;
 
         async Task Initialize()
         {
+            var hostInfo = services.GetRequiredService<HostInfo>();
+            // TODO(AK): register recorderId for the session
+            var recorderId = hostInfo is { Platform: Platform.iOS, AppKind: AppKind.MauiApp }
+                ? Session.Id.Value
+                : Constants.Recorder.DefaultId;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                    Session.Id)
+                    recorderId)
                 .ConfigureAwait(false);
         }
     }

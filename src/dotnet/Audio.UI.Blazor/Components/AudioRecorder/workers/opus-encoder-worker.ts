@@ -46,7 +46,7 @@ let vadState: 'voice' | 'silence' = 'silence';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
-let lastInitArguments: { sessionId: string, chatId: string, repliedChatEntryId: string } | null = null;
+let lastInitArguments: { recorderId: string, chatId: string, repliedChatEntryId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
@@ -116,8 +116,8 @@ const serverImpl: OpusEncoderWorker = {
         state = 'ended';
     },
 
-    start: async (sessionId: string, chatId: string, repliedChatEntryId: string): Promise<void> => {
-        lastInitArguments = { sessionId, chatId, repliedChatEntryId };
+    start: async (recorderId: string, chatId: string, repliedChatEntryId: string): Promise<void> => {
+        lastInitArguments = { recorderId, chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
         state = 'encoding';
@@ -212,14 +212,14 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 async function startRecording(): Promise<void> {
-    const { sessionId, chatId, repliedChatEntryId } = lastInitArguments;
+    const { recorderId, chatId, repliedChatEntryId } = lastInitArguments;
 
     recordingSubject?.complete(); // Just in case
     recordingSubject = new signalR.Subject<Uint8Array>();
     if (!encoder)
         encoder = new codecModule.Encoder();
     const preSkip = encoder.preSkip;
-    await hubConnection.send('ProcessAudio', sessionId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
+    await hubConnection.send('ProcessAudio', recorderId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
     processQueue('in');
 }
 

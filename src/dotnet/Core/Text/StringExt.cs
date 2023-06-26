@@ -27,6 +27,10 @@ public static partial class StringExt
 
     public static string RequireNonEmpty(this string? source, string name)
         => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
+    public static string? RequireNotEqual(this string? source, string target, string name)
+        => OrdinalEquals(source, target)
+            ? throw StandardError.Constraint($"{name} should not be {target}.")
+            : source;
     [return: NotNullIfNotNull("source")]
     public static string? RequireEmpty(this string? source, string name)
         => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");

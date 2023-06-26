@@ -9,7 +9,7 @@ import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-inf
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioRecorder {
-    private readonly sessionId: string;
+    private readonly recorderId: string;
 
     private static whenInitialized: Promise<void> | null;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
@@ -25,12 +25,12 @@ export class AudioRecorder {
     }
 
     /** Called by Blazor  */
-    public static create(sessionId: string) {
-        return new AudioRecorder(sessionId);
+    public static create(recorderId: string) {
+        return new AudioRecorder(recorderId);
     }
 
     public constructor(sessionId: string) {
-        this.sessionId = sessionId;
+        this.recorderId = sessionId;
         if (!AudioRecorder.whenInitialized)
             void AudioRecorder.init();
     }
@@ -145,7 +145,7 @@ export class AudioRecorder {
             }
             debugLog?.log(`startRecording(), after isWebsiteHasMicrophonePermissions`);
 
-            await opusMediaRecorder.start(this.sessionId, chatId, repliedChatEntryId);
+            await opusMediaRecorder.start(this.recorderId, chatId, repliedChatEntryId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')

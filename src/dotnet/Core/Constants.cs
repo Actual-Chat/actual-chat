@@ -78,4 +78,9 @@ public static partial class Constants
     {
         public static HashSet<AppKind> EnabledFor { get; } = new () {AppKind.MauiApp};
     }
+
+    public static class Recorder
+    {
+        public static string DefaultId = "default";
+    }
 }
