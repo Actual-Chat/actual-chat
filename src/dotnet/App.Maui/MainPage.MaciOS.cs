@@ -21,15 +21,22 @@ public partial class MainPage
 
     private void SetSessionCookie(string domain, Session session, bool isSecure)
     {
-        var properties = new NSDictionary(
-            NSHttpCookie.KeyName, "FusionAuth.SessionId",
-            NSHttpCookie.KeyValue, session.Id.Value,
-            NSHttpCookie.KeyPath, "/",
-            NSHttpCookie.KeyDomain, domain,
-            NSHttpCookie.KeySameSitePolicy, "none",
-            NSHttpCookie.KeyVersion, "1");
-        if (isSecure)
-            properties[NSHttpCookie.KeySecure] = NSObject.FromObject("TRUE");
+        var properties = isSecure
+            ? new NSDictionary(
+                NSHttpCookie.KeyName, "FusionAuth.SessionId",
+                NSHttpCookie.KeyValue, session.Id.Value,
+                NSHttpCookie.KeyPath, "/",
+                NSHttpCookie.KeyDomain, domain,
+                NSHttpCookie.KeySameSitePolicy, "none",
+                NSHttpCookie.KeyVersion, "1")
+            : new NSDictionary(
+                NSHttpCookie.KeyName, "FusionAuth.SessionId",
+                NSHttpCookie.KeyValue, session.Id.Value,
+                NSHttpCookie.KeyPath, "/",
+                NSHttpCookie.KeyDomain, domain,
+                NSHttpCookie.KeySameSitePolicy, "none",
+                NSHttpCookie.KeyVersion, "1",
+                NSHttpCookie.KeySecure,  NSObject.FromObject("TRUE"));
         PlatformWebView!.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(new NSHttpCookie(properties), null);
     }
 
