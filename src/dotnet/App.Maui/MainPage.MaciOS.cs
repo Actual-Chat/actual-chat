@@ -26,7 +26,7 @@ public partial class MainPage
             NSHttpCookie.KeyValue, session.Id.Value,
             NSHttpCookie.KeyPath, "/",
             NSHttpCookie.KeyDomain, domain,
-            NSHttpCookie.KeySameSitePolicy, "None",
+            NSHttpCookie.KeySameSitePolicy, "none",
             NSHttpCookie.KeyVersion, "1");
         if (isSecure)
             properties[NSHttpCookie.KeySecure] = NSObject.FromObject("TRUE");
