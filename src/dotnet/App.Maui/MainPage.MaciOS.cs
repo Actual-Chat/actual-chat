@@ -36,8 +36,8 @@ public partial class MainPage
                 NSHttpCookie.KeyDomain, domain,
                 NSHttpCookie.KeySameSitePolicy, "none",
                 NSHttpCookie.KeyVersion, "1",
-                NSHttpCookie.KeySecure,  NSObject.FromObject("TRUE"),
-                NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60*60*24*14)
+                NSHttpCookie.KeySecure,  new NSString ("1"),
+                NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60*60*24*7)
                 );
         PlatformWebView!.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(new NSHttpCookie(properties), null);
     }
