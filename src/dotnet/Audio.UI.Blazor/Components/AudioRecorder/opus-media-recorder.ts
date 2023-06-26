@@ -41,7 +41,7 @@ const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
 
 class ChatRecording {
     constructor(
-        public readonly sessionId: string,
+        public readonly recorderId: string,
         public readonly chatId: string
     ) { }
 }
@@ -108,10 +108,10 @@ export class OpusMediaRecorder {
         debugLog?.log(`<- init()`);
     }
 
-    public async start(sessionId: string, chatId: string, repliedChatEntryId: string): Promise<void> {
-        debugLog?.log('-> start(): #', chatId, 'sessionId=', sessionId);
-        if (!sessionId || !chatId)
-            throw new Error('start: sessionId or chatId is unspecified.');
+    public async start(recorderId: string, chatId: string, repliedChatEntryId: string): Promise<void> {
+        debugLog?.log('-> start(): #', chatId);
+        if (!recorderId || !chatId)
+            throw new Error('start: recorderId or chatId is unspecified.');
 
         await this.whenInitialized;
         debugLog?.log(`start(): awaited whenInitialized`);
@@ -262,11 +262,11 @@ export class OpusMediaRecorder {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();
             this.contextRef = contextRef;
-            this.state = new ChatRecording(sessionId, chatId);
+            this.state = new ChatRecording(recorderId, chatId);
 
             debugLog?.log(`start(): awaiting encoder worker start and vad worker reset ...`);
             await Promise.all([
-                this.encoderWorker.start(sessionId, chatId, repliedChatEntryId),
+                this.encoderWorker.start(recorderId, chatId, repliedChatEntryId),
                 this.vadWorker.reset(),
             ]);
         }

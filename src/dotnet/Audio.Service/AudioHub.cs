@@ -52,7 +52,7 @@ public class AudioHub : Hub
     }
 
     public async Task ProcessAudio(
-        string sessionId,
+        string recorderId,
         string chatId,
         string repliedChatEntryId,
         double clientStartOffset,
@@ -62,7 +62,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = SessionMiddleware.GetSession(httpContext).Require();
+        var session = SessionMiddleware.GetSession(httpContext) ?? GetSessionForRecorderId(recorderId).Require();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
@@ -85,4 +85,8 @@ public class AudioHub : Hub
 
     public Task<string> Ping()
         => Task.FromResult("Pong");
+
+    private Session GetSessionForRecorderId(string recorderId)
+        // TODO(AK): lookup session for provided recorderId
+        => new (recorderId.RequireNonEmpty(nameof(recorderId)).RequireNotEqual(Constants.Recorder.DefaultId, nameof(recorderId)));
 }
