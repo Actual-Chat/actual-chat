@@ -29,8 +29,8 @@ export class AudioRecorder {
         return new AudioRecorder(recorderId);
     }
 
-    public constructor(sessionId: string) {
-        this.recorderId = sessionId;
+    public constructor(recorderId: string) {
+        this.recorderId = recorderId;
         if (!AudioRecorder.whenInitialized)
             void AudioRecorder.init();
     }
