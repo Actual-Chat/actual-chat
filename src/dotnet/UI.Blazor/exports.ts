@@ -11,6 +11,7 @@ export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/History/history'
+export * from './Services/Caching/indexed-db';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';
@@ -19,7 +20,6 @@ export * from './Services/TuneUI/tune-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 export * from './Services/VibrationUI/vibration-ui';
-export * from './Services/ReplicaCache/replica-cache';
 
 export * from './Components/Bubble/bubble-host';
 export * from './Components/Clipboard/copy-trigger';

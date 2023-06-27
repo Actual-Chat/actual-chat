@@ -8,7 +8,7 @@ using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.Fusion.Client.Cache;
+using Stl.Fusion.Client.Caching;
 using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Diagnostics;
 
@@ -112,10 +112,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         InjectDiagnosticsServices(services);
 
-        // Force app replica cache store flushing just after updating value for Users.IAccounts.GetOwn
-        services.ConfigureAppReplicaCache(c =>
-            c.ForceFlush(typeof(Users.IAccounts), nameof(Users.IAccounts.GetOwn)));
-
         // IModalViews
         services.AddTypeMapper<IModalView>(map => map
             .Add<FeatureRequestModal.Model, FeatureRequestModal>()
@@ -126,17 +122,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddTypeMapper<IBannerView>();
 
         // Temporarily disabled for WASM due to bad performance
-        if (false && appKind.IsWasmApp()) {
-            services.AddSingleton<AppReplicaCacheConfigurator>();
-            services.AddSingleton<ClientComputedCache>(c => {
-                var store = new IndexedDbKeyValueStore(c).Start();
-                var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
-                var options = new AppReplicaCache.Options(store) {
-                    ShouldForceFlushAfterSet = configurator.ShouldForceFlushAfterSet,
-                };
-                return new AppReplicaCache(options, c);
-            });
+        if (appKind.IsWasmApp()) {
+            services.AddSingleton(_ => AppClientComputedCache.Options.Default);
+            services.AddSingleton(c => new IndexedDbClientComputedCache(
+                c.GetRequiredService<AppClientComputedCache.Options>(), c));
+            services.AddAlias<ClientComputedCache, IndexedDbClientComputedCache>();
         }
+
         // Test services
         if (IsDevelopmentInstance)
             fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);

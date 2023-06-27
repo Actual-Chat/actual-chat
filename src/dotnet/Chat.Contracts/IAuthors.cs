@@ -5,9 +5,9 @@ namespace ActualChat.Chat;
 
 public interface IAuthors : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Author?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<AuthorFull?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);

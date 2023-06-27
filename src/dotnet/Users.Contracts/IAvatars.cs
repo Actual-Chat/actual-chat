@@ -4,9 +4,9 @@ namespace ActualChat.Users;
 
 public interface IAvatars : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 10)]
+    [ComputeMethod(MinCacheDuration = 10), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 10)]
+    [ComputeMethod(MinCacheDuration = 10), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Avatar?> Get(Session session, Symbol avatarId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken);

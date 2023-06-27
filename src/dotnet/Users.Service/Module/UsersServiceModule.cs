@@ -139,9 +139,10 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
         });
-        var fusionWebServer = fusion.AddWebServer().AddAuthentication();
+        var fusionWebServer = fusion.AddWebServer();
+        fusionWebServer.AddMvc().AddControllers();
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
-        fusionWebServer.ConfigureSignInController(_ => new() {
+        fusionWebServer.ConfigureAuthEndpoint(_ => new() {
             DefaultScheme = GoogleDefaults.AuthenticationScheme,
             SignInPropertiesBuilder = (_, properties) => {
                 properties.IsPersistent = true;

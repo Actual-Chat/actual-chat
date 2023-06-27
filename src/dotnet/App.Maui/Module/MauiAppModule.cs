@@ -3,6 +3,8 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
+using Stl.Fusion.Client.Caching;
+using Stl.IO;
 
 namespace ActualChat.App.Maui.Module;
 
@@ -32,18 +34,11 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
 
         // Replica cache
-        // Temporarily disabled for MAUI due to issues there
-#if false
-        services.AddSingleton<AppReplicaCacheConfigurator>();
-        services.AddSingleton<ReplicaCache>(c => {
-            var dbPath = new FilePath(FileSystem.AppDataDirectory) & "ReplicaCache.db3";
-            var store = new SQLiteKeyValueStore(dbPath, c).Start();
-            var configurator = c.GetRequiredService<AppReplicaCacheConfigurator>();
-            var options = new AppReplicaCache.Options(store) {
-                ShouldForceFlushAfterSet = configurator.ShouldForceFlushAfterSet,
-            };
-            return new AppReplicaCache(options, c);
+        services.AddSingleton(_ => AppClientComputedCache.Options.Default with {
+            DbPath = new FilePath(FileSystem.AppDataDirectory) & "CCC.db3",
         });
-#endif
+        services.AddSingleton(c => new SQLiteClientComputedCache(
+            c.GetRequiredService<AppClientComputedCache.Options>(), c));
+        services.AddAlias<ClientComputedCache, SQLiteClientComputedCache>();
     }
 }

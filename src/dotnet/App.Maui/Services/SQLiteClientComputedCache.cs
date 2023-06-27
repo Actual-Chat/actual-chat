@@ -1,11 +1,16 @@
+using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.ObjectPool;
 using SQLite;
 using Stl.IO;
+using Stl.Rpc.Caching;
 
 namespace ActualChat.App.Maui.Services;
 
+#pragma warning disable MA0056
+#pragma warning disable MA0064
+
 // ReSharper disable once InconsistentNaming
-public class SQLiteKeyValueStore : FlushingKeyValueStore
+public sealed class SQLiteClientComputedCache : AppClientComputedCache
 {
     private const SQLiteOpenFlags DbOpenFlags =
         // Open the database in read/write mode
@@ -15,19 +20,20 @@ public class SQLiteKeyValueStore : FlushingKeyValueStore
         // Assume each connection is never used concurrently
         SQLiteOpenFlags.NoMutex;
 
+    private static readonly TextOrBytes? Null = default;
+
+    private readonly ILruCache<RpcCacheKey, TextOrBytes> _fetchCache;
     private readonly ObjectPool<SQLiteConnection>? _connections;
     private readonly SemaphoreSlim _semaphore;
 
-    public FilePath DbPath { get; }
-
-    public SQLiteKeyValueStore(FilePath dbPath, IServiceProvider services)
+    public SQLiteClientComputedCache(Options settings, IServiceProvider services)
+        : base(settings, services, false)
     {
-        Log = services.LogFor(GetType());
-        DbPath = dbPath;
+        _fetchCache = new ThreadSafeLruCache<RpcCacheKey, TextOrBytes>(128);
         _semaphore = new SemaphoreSlim(HardwareInfo.ProcessorCount);
 
         try {
-            var connectionsPolicy = new SQLiteConnectionPoolPolicy(DbPath, DbOpenFlags);
+            var connectionsPolicy = new SQLiteConnectionPoolPolicy(Settings.DbPath, DbOpenFlags);
             _connections = new DefaultObjectPool<SQLiteConnection>(connectionsPolicy, HardwareInfo.ProcessorCount + 2);
             var connection = _connections.Get();
             try {
@@ -42,50 +48,69 @@ public class SQLiteKeyValueStore : FlushingKeyValueStore
             _connections = null;
             Log.LogError(e, "Failed to initialize SQLite database");
         }
+
+        // ReSharper disable once VirtualMemberCallInConstructor
+        WhenInitialized = Initialize(settings.Version);
     }
 
-    protected override async ValueTask<string?> StorageGet(HashedString key, CancellationToken cancellationToken)
+    protected override async ValueTask<TextOrBytes?> Fetch(RpcCacheKey key, CancellationToken cancellationToken)
     {
         if (_connections == null)
             return null;
 
         var connection = await AcquireConnection(cancellationToken).ConfigureAwait(false);
         try {
-            var item = connection.Find<DbItem?>(key.Value);
-            return item?.Value;
+            var dbItem = connection.Find<DbItem?>(key.ToString());
+            return dbItem is { Value: var vValue } ? new TextOrBytes(vValue) : Null;
         }
         finally {
             ReleaseConnection(connection);
         }
     }
 
-    protected override async ValueTask StorageSet(HashedString key, string? value, CancellationToken cancellationToken)
+    public override void Set(RpcCacheKey key, TextOrBytes value)
+    {
+        if (_fetchCache.TryGetValue(key, out var cachedValue) && cachedValue.DataEquals(value))
+            return;
+
+        base.Set(key, value);
+    }
+
+    public override void Remove(RpcCacheKey key)
+    {
+        _fetchCache.Remove(key);
+        base.Remove(key);
+    }
+
+    public override async Task Clear(CancellationToken cancellationToken = default)
     {
         if (_connections == null)
             return;
 
         var connection = await AcquireConnection(cancellationToken).ConfigureAwait(false);
         try {
-            if (value == null)
-                connection.Delete<DbItem>(key.Value);
-            else {
-                var item = new DbItem { Key = key.Value, Value = value };
-                connection.InsertOrReplace(item);
-            }
+            connection.DeleteAll<DbItem>();
         }
         finally {
             ReleaseConnection(connection);
         }
     }
 
-    protected override async ValueTask StorageClear()
+    protected override async Task Flush(Dictionary<RpcCacheKey, TextOrBytes?> flushingQueue)
     {
         if (_connections == null)
             return;
 
         var connection = await AcquireConnection().ConfigureAwait(false);
         try {
-            connection.Table<DbItem>().Where(c => true).Delete();
+            foreach (var (key, value) in flushingQueue) {
+                if (value is not { } vValue)
+                    connection.Delete<DbItem>(key.ToString());
+                else {
+                    var item = new DbItem { Key = key.ToString(), Value = vValue.Bytes };
+                    connection.InsertOrReplace(item);
+                }
+            }
         }
         finally {
             ReleaseConnection(connection);
@@ -122,23 +147,23 @@ public class SQLiteKeyValueStore : FlushingKeyValueStore
     public sealed class DbItem
     {
         [PrimaryKey] public string Key { get; set; } = "";
-        public string Value { get; set; } = "";
+        public byte[] Value { get; set; } = null!;
     }
 
     // ReSharper disable once InconsistentNaming
     private sealed class SQLiteConnectionPoolPolicy : IPooledObjectPolicy<SQLiteConnection>
     {
-        public FilePath DbPath { get; }
-        public SQLiteOpenFlags DbOpenFlags { get; }
+        private FilePath DbPath { get; }
+        private SQLiteOpenFlags OpenFlags { get; }
 
-        public SQLiteConnectionPoolPolicy(FilePath dbPath, SQLiteOpenFlags dbOpenFlags)
+        public SQLiteConnectionPoolPolicy(FilePath dbPath, SQLiteOpenFlags openFlags)
         {
             DbPath = dbPath;
-            DbOpenFlags = dbOpenFlags;
+            OpenFlags = openFlags;
         }
 
         public SQLiteConnection Create()
-            => new (DbPath, DbOpenFlags);
+            => new (DbPath, OpenFlags);
 
         public bool Return(SQLiteConnection obj)
         {

@@ -4,9 +4,9 @@ namespace ActualChat.Users;
 
 public interface IAccounts : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 60)]
     Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken);

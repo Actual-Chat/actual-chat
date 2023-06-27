@@ -4,7 +4,7 @@
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Stl.Fusion.Server.Authentication
-@using Stl.Fusion.Server.Controllers
+@using Stl.Fusion.Server.Endpoints
 
 @inject IServiceProvider Services
 @inject ServerAuthHelper ServerAuthHelper
@@ -12,7 +12,7 @@
 @{
     await ServerAuthHelper.UpdateAuthState(HttpContext);
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
+    var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
     var session = ServerAuthHelper.Session;

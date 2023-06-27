@@ -28,7 +28,7 @@ public class ServerFeaturesClient : IServerFeatures
     // [ComputeMethod]
     public virtual Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken)
     {
-        featureTypeRef = featureTypeRef.TrimAssemblyVersion();
+        featureTypeRef = featureTypeRef.WithoutAssemblyVersions();
         return Client.GetData(featureTypeRef, cancellationToken);
     }
 }

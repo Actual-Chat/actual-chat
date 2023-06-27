@@ -6,16 +6,8 @@ namespace ActualChat.Users;
 
 public class SystemProperties : DbServiceBase<UsersDbContext>, ISystemProperties
 {
-    private const string MinMauiClientVersion = "0.121";
-    private const string MinWasmClientVersion = "0.121";
     private static readonly Task<string?> NullStringTask = Task.FromResult((string?)null);
-
-    private static readonly Dictionary<AppKind, string> MinClientVersions = new() {
-        { AppKind.MauiApp, MinMauiClientVersion },
-        { AppKind.WasmApp, MinWasmClientVersion },
-    };
-    private static readonly Dictionary<AppKind, Task<string?>> MinClientVersionTasks =
-        MinClientVersions.ToDictionary(kv => kv.Key, kv => Task.FromResult(kv.Value))!;
+    private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.Version);
 
     public SystemProperties(IServiceProvider services) : base(services) { }
 
@@ -23,10 +15,9 @@ public class SystemProperties : DbServiceBase<UsersDbContext>, ISystemProperties
     public Task<double> GetTime(CancellationToken cancellationToken)
         => Task.FromResult(Clocks.SystemClock.Now.EpochOffset.TotalSeconds);
 
-    // Not a [ComputeMethod]!
-    public Task<string?> GetMinClientVersion(AppKind appKind, CancellationToken cancellationToken)
-        => MinClientVersionTasks.GetValueOrDefault(appKind)
-            ?? NullStringTask;
+    // [ComputeMethod]
+    public virtual Task<string> GetApiVersion(CancellationToken cancellationToken)
+        => ApiVersionTask;
 
     // [CommandHandler]
     public virtual async Task OnInvalidateEverything(

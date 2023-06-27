@@ -4,10 +4,10 @@ namespace ActualChat.Chat;
 
 public interface IChats : IComputeService
 {
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<AuthorRules> GetRules(
         Session session,
         ChatId chatId,
@@ -19,7 +19,7 @@ public interface IChats : IComputeService
         ChatId chatId,
         CancellationToken cancellationToken);
 
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
@@ -29,7 +29,7 @@ public interface IChats : IComputeService
 
     // Note that it returns (firstId, lastId + 1) range!
     // Client-side methods always skips entries with IsRemoved flag
-    [ComputeMethod(MinCacheDuration = 60)]
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Range<long>> GetIdRange(
         Session session,
         ChatId chatId,
@@ -37,7 +37,7 @@ public interface IChats : IComputeService
         CancellationToken cancellationToken);
 
     // Client-side methods always skips entries with IsRemoved flag
-    [ComputeMethod(MinCacheDuration = 10)]
+    [ComputeMethod(MinCacheDuration = 10), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
@@ -45,7 +45,7 @@ public interface IChats : IComputeService
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Non-compute methods

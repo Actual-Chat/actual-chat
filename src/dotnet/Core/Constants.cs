@@ -4,6 +4,11 @@ namespace ActualChat;
 
 public static partial class Constants
 {
+    public static class Api
+    {
+        public static string Version { get; } = "0.8.2-alpha";
+    }
+
     public static class Chat
     {
         public static ChatId DefaultChatId { get; } = new("the-actual-one", default, default, AssumeValid.Option);

@@ -27,6 +27,11 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         // Default binary serializer
         // ByteSerializer.Default = MessagePackByteSerializer.Default;
 
+        // Default caching settings
+        ComputedOptions.ClientDefault = ComputedOptions.ClientDefault with {
+            // ClientCacheMode = ClientCacheMode.NoCache,
+        };
+
         // Common services
         services.AddTracer();
         services.AddSingleton(c => new StaticImportsInitializer(c));
