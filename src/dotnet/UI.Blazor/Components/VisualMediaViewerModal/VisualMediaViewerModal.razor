@@ -38,7 +38,6 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ILogger<VisualMediaViewerModal> Log { get; init; } = null!;
 
-
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
@@ -65,7 +64,6 @@
     [JSInvokable]
     public void Close()
         => CloseModal();
-
 
     public sealed record Model(
         string Url,
