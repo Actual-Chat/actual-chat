@@ -57,6 +57,7 @@ public static partial class Constants
     public static class Session
     {
         public static TimeSpan MinUpdatePresencePeriod { get; } = TimeSpan.FromHours(1);
+        public static TimeSpan SessionInfoUpdatePeriod { get; } = TimeSpan.FromHours(1);
     }
 
     public static class Presence

@@ -149,6 +149,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         });
         fusionWebServer.ConfigureServerAuthHelper(_ => new() {
             NameClaimKeys = Array.Empty<string>(),
+            SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
         });
 
         commander.AddCommandService<AuthCommandFilters>();
