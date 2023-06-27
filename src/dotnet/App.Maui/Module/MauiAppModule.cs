@@ -33,7 +33,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
 
-        // Replica cache
+        // ClientComputedCache
         services.AddSingleton(_ => AppClientComputedCache.Options.Default with {
             DbPath = new FilePath(FileSystem.AppDataDirectory) & "CCC.db3",
         });

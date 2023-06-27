@@ -121,8 +121,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // IBannerViews
         services.AddTypeMapper<IBannerView>();
 
-        // Temporarily disabled for WASM due to bad performance
-        if (appKind.IsWasmApp()) {
+        // ClientComputedCache:
+        // Temporarily disabled for WASM due to startup issues
+        if (false && appKind.IsWasmApp()) {
             services.AddSingleton(_ => AppClientComputedCache.Options.Default);
             services.AddSingleton(c => new IndexedDbClientComputedCache(
                 c.GetRequiredService<AppClientComputedCache.Options>(), c));
