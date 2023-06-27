@@ -14,6 +14,7 @@ public sealed partial record UserAvatarSettings
     {
         if (AvatarIds.Contains(avatarId))
             return this;
+
         return this with { AvatarIds = AvatarIds.Add(avatarId) };
     }
 

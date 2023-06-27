@@ -122,8 +122,7 @@
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
-                if (!authorSids.Contains(authorId))
-                    authorSids = authorSids.Add(authorId);
+                authorSids = authorSids.TryAdd(authorId);
             }
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
