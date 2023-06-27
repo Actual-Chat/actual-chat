@@ -128,7 +128,7 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
     {
         var index = IndexOf(item);
         if (index < 0)
-            return this;
+            return Add(item);
 
         var copy = Clone();
         copy.Items[index] = item;

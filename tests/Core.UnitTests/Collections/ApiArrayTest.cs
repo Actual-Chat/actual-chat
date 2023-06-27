@@ -34,4 +34,23 @@ public class ApiArrayTest : TestBase
         a[0].Should().Be(1);
     }
 
+
+    [Fact]
+    public void AddOrReplaceTest()
+    {
+        var a = Enumerable.Range(0, 5).ToApiArray();
+        a.Count.Should().Be(5);
+
+        a.AddOrReplace(6).Count.Should().Be(6);
+
+        a.Count.Should().Be(5);
+        a = a.Add(6);
+        a.Count.Should().Be(6);
+
+        a = a.AddOrReplace(6);
+        a.Count.Should().Be(6);
+
+        a = a.AddOrReplace(8);
+        a.Count.Should().Be(7);
+    }
 }
