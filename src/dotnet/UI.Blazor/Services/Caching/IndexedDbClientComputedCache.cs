@@ -13,15 +13,12 @@ public sealed class IndexedDbClientComputedCache : AppClientComputedCache
     private static readonly string SetManyJSName = $"{BlazorUICoreModule.ImportName}.IndexedDb.setMany";
     private static readonly string ClearJSName = $"{BlazorUICoreModule.ImportName}.IndexedDb.clear";
 
-    private readonly ILruCache<RpcCacheKey, TextOrBytes> _fetchCache;
-
     private IJSRuntime JS { get; }
 
     public IndexedDbClientComputedCache(Options settings, IServiceProvider services)
         : base(settings, services, false)
     {
         JS = services.GetRequiredService<IJSRuntime>();
-        _fetchCache = new ThreadSafeLruCache<RpcCacheKey, TextOrBytes>(128);
         // ReSharper disable once VirtualMemberCallInConstructor
         WhenInitialized = Initialize(settings.Version);
     }
@@ -29,28 +26,7 @@ public sealed class IndexedDbClientComputedCache : AppClientComputedCache
     protected override async ValueTask<TextOrBytes?> Fetch(RpcCacheKey key, CancellationToken cancellationToken)
     {
         var value = await JS.InvokeAsync<string?>(GetJSName, cancellationToken, key.ToString());
-        if (value == null) {
-            _fetchCache.Remove(key);
-            return Null;
-        }
-
-        var result = new TextOrBytes(Convert.FromBase64String(value));
-        _fetchCache[key] = result;
-        return result;
-    }
-
-    public override void Set(RpcCacheKey key, TextOrBytes value)
-    {
-        if (_fetchCache.TryGetValue(key, out var cachedValue) && cachedValue.DataEquals(value))
-            return;
-
-        base.Set(key, value);
-    }
-
-    public override void Remove(RpcCacheKey key)
-    {
-        _fetchCache.Remove(key);
-        base.Remove(key);
+        return value == null ? Null : new TextOrBytes(Convert.FromBase64String(value));
     }
 
     public override async Task Clear(CancellationToken cancellationToken = default)

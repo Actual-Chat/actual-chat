@@ -28,6 +28,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
 
+        // Just to test how it impacts the performance
+        // FusionComponentBase.DefaultParameterComparisonMode = ParameterComparisonMode.Standard;
+
         // Fusion
         var fusion = services.AddFusion();
         fusion.AddBlazor()
@@ -123,7 +126,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // ClientComputedCache:
         // Temporarily disabled for WASM due to startup issues
-        if (false && appKind.IsWasmApp()) {
+        if (appKind.IsWasmApp()) {
             services.AddSingleton(_ => AppClientComputedCache.Options.Default);
             services.AddSingleton(c => new IndexedDbClientComputedCache(
                 c.GetRequiredService<AppClientComputedCache.Options>(), c));

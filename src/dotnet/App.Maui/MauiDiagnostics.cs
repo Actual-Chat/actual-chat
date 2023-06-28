@@ -16,9 +16,11 @@ namespace ActualChat.App.Maui;
 
 public static class MauiDiagnostics
 {
-    private const string LogTag = "actual.chat";
+    private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(5);
+
     private static Exception? _configureLoggerException;
     private static SentryOptions? _sentryOptions;
+
     public static readonly ILoggerFactory LoggerFactory;
     public static readonly Tracer Tracer;
 
@@ -27,14 +29,20 @@ public static class MauiDiagnostics
         Log.Logger = CreateSerilogLoggerConfiguration().CreateLogger();
         Tracer.Default = Tracer = CreateTracer();
         LoggerFactory = new SerilogLoggerFactory(Log.Logger);
+
         DefaultLog = LoggerFactory.CreateLogger("ActualChat.Unknown");
         if (_configureLoggerException != null)
             DefaultLog.LogError(_configureLoggerException, "Failed to configure logger");
+
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = LoggerFactory.CreateLogger(typeof(WebMReader));
+
         if (_sentryOptions != null)
-            _ = LoadingUI.WhenAppLoaded
-                .ContinueWith(_ => InitSentrySdk(_sentryOptions), TaskScheduler.Default);
+            _ = Task.Run(async () => {
+                await LoadingUI.WhenAppLoaded.ConfigureAwait(false);
+                await Task.Delay(SentryStartDelay).ConfigureAwait(false);
+                InitSentrySdk(_sentryOptions);
+            });
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)

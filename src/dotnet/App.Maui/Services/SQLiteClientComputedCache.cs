@@ -22,16 +22,13 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
 
     private static readonly TextOrBytes? Null = default;
 
-    private readonly ILruCache<RpcCacheKey, TextOrBytes> _fetchCache;
     private readonly ObjectPool<SQLiteConnection>? _connections;
     private readonly SemaphoreSlim _semaphore;
 
     public SQLiteClientComputedCache(Options settings, IServiceProvider services)
         : base(settings, services, false)
     {
-        _fetchCache = new ThreadSafeLruCache<RpcCacheKey, TextOrBytes>(128);
         _semaphore = new SemaphoreSlim(HardwareInfo.ProcessorCount);
-
         try {
             var connectionsPolicy = new SQLiteConnectionPoolPolicy(Settings.DbPath, DbOpenFlags);
             _connections = new DefaultObjectPool<SQLiteConnection>(connectionsPolicy, HardwareInfo.ProcessorCount + 2);
@@ -66,20 +63,6 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
         finally {
             ReleaseConnection(connection);
         }
-    }
-
-    public override void Set(RpcCacheKey key, TextOrBytes value)
-    {
-        if (_fetchCache.TryGetValue(key, out var cachedValue) && cachedValue.DataEquals(value))
-            return;
-
-        base.Set(key, value);
-    }
-
-    public override void Remove(RpcCacheKey key)
-    {
-        _fetchCache.Remove(key);
-        base.Remove(key);
     }
 
     public override async Task Clear(CancellationToken cancellationToken = default)

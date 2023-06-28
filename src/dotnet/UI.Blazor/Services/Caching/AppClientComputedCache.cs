@@ -26,7 +26,7 @@ public abstract class AppClientComputedCache : FlushingClientComputedCache
 
     protected new Options Settings { get; }
     protected HashSet<(Symbol, Symbol)> ForceFlushFor;
-    protected bool DebugMode => Constants.DebugMode.ClientComputeCache;
+    protected bool DebugMode => Constants.DebugMode.ClientComputedCache;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     protected AppClientComputedCache(Options settings, IServiceProvider services, bool initialize = true)

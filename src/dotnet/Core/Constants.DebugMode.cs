@@ -16,7 +16,7 @@ public static partial class Constants
         public static readonly bool MarkupParser = false;
         public static readonly bool ServerFusionMonitor = false; // Applies only to dev server
         public static readonly bool DisableStaticFileCaching = false; // Applies only to dev server
-        public static readonly bool ClientComputeCache = false;
+        public static readonly bool ClientComputedCache = false;
 
         // UI services
         public static readonly bool History = false;
