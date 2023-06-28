@@ -13,8 +13,7 @@ public static class EndpointsExt
             endpoints.MapHealthChecks($"/healthz/{tag}",
                     new HealthCheckOptions {
                         Predicate = healthCheck => healthCheck.Tags.Contains(tag),
-                    })
-                .RequireHost("localhost");
+                    });
 
         return endpoints;
     }

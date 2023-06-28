@@ -158,6 +158,10 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                     return false;
                 if (requestPath.StartsWith("/signin-", StringComparison.Ordinal))
                     return false;
+                // skip healthz endpoints
+                if (requestPath.StartsWith("/health", StringComparison.Ordinal))
+                    return false;
+
                 return true;
             },
         });
