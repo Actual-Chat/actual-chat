@@ -2,9 +2,14 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
+    private ChatAudioUI ChatAudioUI { get; }
+
     public RealtimeChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
-        => PlayerKind = ChatPlayerKind.Realtime;
+    {
+        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
+        PlayerKind = ChatPlayerKind.Realtime;
+    }
 
     // ReSharper disable once RedundantAssignment
     protected override async Task Play(
@@ -48,8 +53,10 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                     continue;
             }
 
-            if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false))
+            if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false)) {
+                await ChatAudioUI.SetListeningState(ChatId, false);
                 return;
+            }
 
             // We don't move minPlayAt forward here only when sleep is detected,
             // coz if they simply track ServerClock.Now & ServerClock is somehow

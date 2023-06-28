@@ -67,12 +67,17 @@
     // Event handlers
 
     private void OnCancelClick()
-        => Modal.Close();
+        => Close(false);
 
-    private void OnContinueClick() {
+    private void OnContinueClick()
+        => Close(true);
+
+    private void Close(bool result) {
         var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmedSource;
-        whenConfirmed?.TrySetResult(default);
-
+        if (result)
+            whenConfirmed?.TrySetResult(default);
+         else
+            whenConfirmed?.TrySetCanceled();
         Modal.Close();
     }
 
