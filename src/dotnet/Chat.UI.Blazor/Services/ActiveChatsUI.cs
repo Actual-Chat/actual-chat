@@ -63,8 +63,11 @@ public class ActiveChatsUI
     }
 
     public ValueTask AddActiveChat(ChatId chatId)
-        => chatId.IsNone ? default
-            : UpdateActiveChats(c => c.AddOrReplace(new ActiveChat(chatId, false, false, Now)));
+        => chatId.IsNone
+            ? default
+            : UpdateActiveChats(c
+                => c.AddOrUpdate(new (chatId, false, false, Now),
+                    existing => existing with { Recency = Now }));
 
     public ValueTask RemoveActiveChat(ChatId chatId)
         => chatId.IsNone ? default
