@@ -125,13 +125,16 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
         => Contains(item) ? this : Add(item);
 
     public ApiArray<T> AddOrReplace(T item)
+        => AddOrUpdate(item, _ => item);
+
+    public ApiArray<T> AddOrUpdate(T item, Func<T, T> updater)
     {
         var index = IndexOf(item);
         if (index < 0)
             return Add(item);
 
         var copy = Clone();
-        copy.Items[index] = item;
+        copy.Items[index] = updater(copy.Items[index]);
         return copy;
     }
 
