@@ -17,6 +17,7 @@ namespace ActualChat.App.Maui;
 public static class MauiDiagnostics
 {
     private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(5);
+    private const string LogTag = "actual.chat";
 
     private static Exception? _configureLoggerException;
     private static SentryOptions? _sentryOptions;
