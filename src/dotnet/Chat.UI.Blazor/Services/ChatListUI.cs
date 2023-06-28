@@ -43,7 +43,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     public IServiceProvider Services { get; }
     public IMutableState<ChatListSettings> Settings => _settings;
     public Task WhenLoaded => _settings.WhenRead;
-    public IState<Trimmed<int>> UnreadChatsCount { get; private set; } = null!;
+    public IState<Trimmed<int>> UnreadChatCount { get; private set; } = null!;
 
     public ChatListUI(IServiceProvider services)
     {
@@ -70,10 +70,10 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     void INotifyInitialized.Initialized()
     {
-        UnreadChatsCount = StateFactory.NewComputed(
+        UnreadChatCount = StateFactory.NewComputed(
             new ComputedState<Trimmed<int>>.Options() {
                 UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(GetType(), nameof(UnreadChatsCount)),
+                Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },
             ComputeUnreadChatsCount);
         this.Start();

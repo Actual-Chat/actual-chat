@@ -12,7 +12,7 @@ public partial class ChatAudioUI
     {
         // Initialize audio
         var loadingUI = Services.GetRequiredService<LoadingUI>();
-        _ = loadingUI.WhenLoaded
+        _ = loadingUI.WhenRendered
             .ContinueWith(
                 _ => {
                     if (!cancellationToken.IsCancellationRequested)

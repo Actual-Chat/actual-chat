@@ -1,4 +1,3 @@
-using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
@@ -91,25 +90,26 @@ public class AppServiceStarter
         await autoNavigationUI.AutoNavigate(cancellationToken).ConfigureAwait(false);
     }
 
-    public Task AfterFirstRender(CancellationToken cancellationToken)
+    public Task AfterRender(CancellationToken cancellationToken)
         => Task.Run(async () => {
-            // Starting less important UI services
             Services.GetRequiredService<UIEventHub>();
 
+            // Starting less important UI services
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<SignOutReloader>().Start();
-            await StartHostedServices(cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<AppPresenceReporter>().Start();
+            Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetRequiredService<DebugUI>();
+            if (HostInfo.AppKind.IsClient()) {
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                await StartHostedServices(cancellationToken).ConfigureAwait(false);
+            }
         }, cancellationToken);
 
     // Private methods
 
     private async Task StartHostedServices(CancellationToken cancellationToken)
     {
-        if (!HostInfo.AppKind.IsClient())
-            return;
-
         using var _ = Tracer.Region();
         foreach (var hostedService in Services.HostedServices()) {
             Tracer.Point($"{nameof(StartHostedServices)}: starting {hostedService.GetType().Name}");

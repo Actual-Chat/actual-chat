@@ -8,19 +8,12 @@ public class MauiBlazorApp : AppBase
     protected override async Task OnInitializedAsync()
     {
         UI.Blazor.Services.LoadingUI.MarkAppCreated();
-        _ = LoadingUI.WhenLoaded.ContinueWith(OnLoaded, TaskScheduler.Default);
         var baseUri = AppSettings.BaseUri;
         var session = await SessionResolver.GetSession().ConfigureAwait(true);
         MainPage.Current!.SetupSessionCookie(baseUri, session);
 
         ScopedServices = Services;
         await base.OnInitializedAsync().ConfigureAwait(false);
-    }
-
-    private void OnLoaded(Task obj)
-    {
-        var badgeUpdater = Services.GetRequiredService<AppIconBadgeUpdater>();
-        badgeUpdater.Start();
     }
 
     protected override void Dispose(bool disposing)

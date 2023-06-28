@@ -1,14 +1,14 @@
 ﻿using Windows.Data.Xml.Dom;
 using Windows.UI.Notifications;
-using ActualChat.App.Maui.Services;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui;
 
-public class AppIconBadge : IAppIconBadge
+public class WindowsAppIconBadge : IAppIconBadge
 {
-    public void SetUnreadChatsCount(int count)
+    public void SetUnreadChatCount(int count)
     {
-        var badgeUpdater =	BadgeUpdateManager.CreateBadgeUpdaterForApplication();
+        var badgeUpdater = BadgeUpdateManager.CreateBadgeUpdaterForApplication();
         if (count <= 0)
             badgeUpdater.Clear();
         else {

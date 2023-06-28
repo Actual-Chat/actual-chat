@@ -1,10 +1,10 @@
 ﻿using ActualChat.Chat.UI.Blazor.Services;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IAppIconBadge
 {
-    void SetUnreadChatsCount(int count);
+    void SetUnreadChatCount(int count);
 }
 
 public class AppIconBadgeUpdater : WorkerBase
@@ -24,16 +24,18 @@ public class AppIconBadgeUpdater : WorkerBase
         var badge = Services.GetService<IAppIconBadge>();
         if (badge is null)
             return;
+
         var chatListUI = Services.GetRequiredService<ChatListUI>();
         var cChatsCount0 = await Computed
-            .Capture(() => chatListUI.UnreadChatsCount.Use(cancellationToken))
+            .Capture(() => chatListUI.UnreadChatCount.Use(cancellationToken))
             .ConfigureAwait(false);
         var changes = cChatsCount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cChatsCount in changes.ConfigureAwait(false)) {
             if (cChatsCount.HasError)
                 continue;
+
             var chatsCount = cChatsCount.Value;
-            badge.SetUnreadChatsCount(chatsCount.Value);
+            badge.SetUnreadChatCount(chatsCount.Value);
         }
     }
 }

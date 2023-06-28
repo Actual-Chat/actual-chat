@@ -30,7 +30,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await ChatListUI.UnreadChatsCount.Use(cancellationToken);
+        var count = await ChatListUI.UnreadChatCount.Use(cancellationToken);
         return new Model(count);
     }
 

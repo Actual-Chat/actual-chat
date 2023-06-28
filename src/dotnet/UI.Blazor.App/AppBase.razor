@@ -106,7 +106,8 @@
         LoadingUI.MarkLoaded();
         _readyToRender = true;
         StateHasChanged();
-        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
+
+        _ = AppServiceStarter.AfterRender(_disposeToken);
     }
 
     public void Dispose() {

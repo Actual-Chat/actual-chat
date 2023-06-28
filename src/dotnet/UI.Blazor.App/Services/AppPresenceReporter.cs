@@ -6,10 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppPresenceReporter : WorkerBase, IComputeService
 {
-    public record Options
-    {
-        public TimeSpan StartDelay { get; init; } = TimeSpan.FromSeconds(1);
-    }
+    public record Options;
 
     private Session? _session;
     private UserActivityUI? _userActivityUI;
@@ -40,8 +37,6 @@ public class AppPresenceReporter : WorkerBase, IComputeService
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        await Task.Delay(Settings.StartDelay, cancellationToken).ConfigureAwait(false);
-
         var cIsActive = await Computed.Capture(() => IsActive(cancellationToken)).ConfigureAwait(false);
         var prevIsActive = false;
         await foreach (var change in cIsActive.Changes(cancellationToken).ConfigureAwait(false)) {

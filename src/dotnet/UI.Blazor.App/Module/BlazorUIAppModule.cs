@@ -20,6 +20,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 
         services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
+        services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 
         var fusion = services.AddFusion();

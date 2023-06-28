@@ -30,7 +30,7 @@ public static partial class MauiProgram
 
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
-        services.AddTransient<IAppIconBadge>(_ => new AppIconBadge());
+        services.AddTransient<IAppIconBadge>(_ => new WindowsAppIconBadge());
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
         services.AddScoped<INotificationPermissions>(_ => new WindowsNotificationPermissions());
         services.AddTransient<IWindowsSettings>(_ => new WindowsSettings());
