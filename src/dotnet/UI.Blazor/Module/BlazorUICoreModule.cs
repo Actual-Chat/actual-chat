@@ -31,6 +31,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Just to test how it impacts the performance
         // FusionComponentBase.DefaultParameterComparisonMode = ParameterComparisonMode.Standard;
 
+
         // Fusion
         var fusion = services.AddFusion();
         fusion.AddBlazor()
