@@ -9,7 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
     public static readonly int ActiveItemCountWhenLoading = 2;
-    public static readonly int AllItemCountWhenLoading = 10;
+    public static readonly int AllItemCountWhenLoading = 14;
 
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
@@ -57,7 +57,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
         var type = GetType();
         var isClient = HostInfo.AppKind.IsClient();
-        _loadLimit = StateFactory.NewMutable(isClient ? AllItemCountWhenLoading : int.MaxValue,
+        _loadLimit = StateFactory.NewMutable(isClient ? 32 : int.MaxValue,
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
@@ -242,7 +242,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     private async Task IncreaseLoadLimit()
     {
-        await Task.Delay(TimeSpan.FromSeconds(0.25)).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(0.5)).ConfigureAwait(false);
         _ = Services.UICommander().RunNothing(); // No UI update delays in near term
         _loadLimit.Value = int.MaxValue;
         using (Computed.Invalidate())

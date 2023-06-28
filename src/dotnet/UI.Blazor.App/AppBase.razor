@@ -105,7 +105,9 @@
 
         await whenReadyToRender;
         LoadingUI.MarkLoaded();
+        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
         _readyToRender = true;
+        StateHasChanged();
     }
 
     public void Dispose() {
@@ -126,9 +128,4 @@
 
     protected override bool ShouldRender()
         => _readyToRender;
-
-    protected override void OnAfterRender(bool firstRender) {
-        if (_readyToRender)
-            _whenAfterFirstRender ??= AppServiceStarter.AfterFirstRender(_disposeToken);
-    }
 }

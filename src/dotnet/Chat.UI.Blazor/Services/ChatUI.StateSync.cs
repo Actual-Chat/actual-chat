@@ -6,7 +6,7 @@ public partial class ChatUI
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
             new(nameof(HardRedirectOnFixableChat), HardRedirectOnFixableChat),

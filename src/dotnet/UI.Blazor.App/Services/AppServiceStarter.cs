@@ -96,13 +96,11 @@ public class AppServiceStarter
             // Starting less important UI services
             Services.GetRequiredService<UIEventHub>();
 
-            await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<SignOutReloader>().Start();
             await StartHostedServices(cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<DebugUI>();
-
-            await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
 
     // Private methods

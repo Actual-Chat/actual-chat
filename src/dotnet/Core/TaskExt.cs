@@ -2,6 +2,21 @@ namespace ActualChat;
 
 public static class TaskExt
 {
+    // WithDelay
+
+    public static async Task WithDelay(this Task task, TimeSpan delay, CancellationToken cancellationToken = default)
+    {
+        await task.ConfigureAwait(false);
+        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task<T> WithDelay<T>(this Task<T> task, TimeSpan delay, CancellationToken cancellationToken = default)
+    {
+        var result = await task.ConfigureAwait(false);
+        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     // WithErrorHandler
 
     public static async Task WithErrorHandler(this Task task, Action<Exception> errorHandler)

@@ -319,8 +319,7 @@ public partial class ChatAudioUI
         yield return null;
 
         // No need to check last entry since monitoring has just started
-        await Task.Delay(options.CountdownInterval, cancellationToken)
-            .ConfigureAwait(false);
+        await Task.Delay(options.CountdownInterval, cancellationToken).ConfigureAwait(false);
 
         ChatEntry? prevLastEntry = null;
         while (!cancellationToken.IsCancellationRequested) {
@@ -346,8 +345,8 @@ public partial class ChatAudioUI
             if (timeToCountdown <= Epsilon) {
                 // continue counting down
                 yield return willBeIdleAt;
-                await Task.Delay(TimeSpanExt.Min(timeToStop, options.CheckInterval),
-                        cancellationToken)
+                await Task
+                    .Delay(TimeSpanExt.Min(timeToStop, options.CheckInterval), cancellationToken)
                     .ConfigureAwait(false);
             }
             else {
