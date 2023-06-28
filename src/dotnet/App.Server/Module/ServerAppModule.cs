@@ -18,10 +18,8 @@ using OpenTelemetry.Trace;
 using Stl.Diagnostics;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Blazor.Authentication;
-using Stl.Fusion.Client;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
-using Stl.Generators;
 using Stl.IO;
 using Stl.RestEase;
 using Stl.Rpc.Server;
@@ -160,6 +158,10 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                     return false;
                 if (requestPath.StartsWith("/signin-", StringComparison.Ordinal))
                     return false;
+                // skip healthz endpoints
+                if (requestPath.StartsWith("/health", StringComparison.Ordinal))
+                    return false;
+
                 return true;
             },
         });
