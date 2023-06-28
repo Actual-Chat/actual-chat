@@ -47,6 +47,8 @@ public sealed class MauiSessionProvider : ISessionResolver
             using var _ = Tracer.Region();
 
             var storedSid = await Read().ConfigureAwait(false);
+            ActualChat.UI.Blazor.AppInfo.StoredSession = storedSid ?? "!NO!";
+
             var validSid = await GetOrCreateSessionId(storedSid).ConfigureAwait(false);
             if (!OrdinalEquals(storedSid, validSid))
                 await Save(validSid).ConfigureAwait(false);
