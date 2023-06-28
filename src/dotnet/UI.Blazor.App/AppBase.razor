@@ -38,7 +38,6 @@
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private bool _readyToRender;
-    private Task? _whenAfterFirstRender;
     private Exception? _simulatedCrashError;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
@@ -105,9 +104,9 @@
 
         await whenReadyToRender;
         LoadingUI.MarkLoaded();
-        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
         _readyToRender = true;
         StateHasChanged();
+        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
     }
 
     public void Dispose() {

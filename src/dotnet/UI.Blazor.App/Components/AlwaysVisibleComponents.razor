@@ -21,6 +21,12 @@
 
 @code {
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] protected LoadingUI LoadingUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+            LoadingUI.MarkRendered();
+    }
 }

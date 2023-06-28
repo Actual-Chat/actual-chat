@@ -7,7 +7,7 @@ public class MauiBlazorApp : AppBase
 {
     protected override async Task OnInitializedAsync()
     {
-        LoadingUI.MarkAppCreated();
+        UI.Blazor.Services.LoadingUI.MarkAppCreated();
         _ = LoadingUI.WhenLoaded.ContinueWith(OnLoaded, TaskScheduler.Default);
         var baseUri = AppSettings.BaseUri;
         var session = await SessionResolver.GetSession().ConfigureAwait(true);

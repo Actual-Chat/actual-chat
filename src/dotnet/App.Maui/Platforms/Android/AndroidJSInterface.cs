@@ -23,10 +23,7 @@ internal class AndroidJSInterface : Java.Lang.Object
     [JavascriptInterface]
     [Export("DOMContentLoaded")]
     public void OnDOMContentLoaded()
-    {
-        _tracer.Point(nameof(OnDOMContentLoaded));
-        _webView.Post(LoadingUI.MarkAppDisplayed);
-    }
+        => _tracer.Point(nameof(OnDOMContentLoaded));
 
     [JavascriptInterface]
     [Export("postMessage")]

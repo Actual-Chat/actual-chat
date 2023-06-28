@@ -8,26 +8,26 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed class LoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
-    private static readonly TaskCompletionSource<Unit> _whenAppDisplayedSource = TaskCompletionSourceExt.New<Unit>();
-    private static readonly TaskCompletionSource<Unit> _whenAppLoadedSource = TaskCompletionSourceExt.New<Unit>();
+    private static readonly TaskCompletionSource _whenAppRenderedSource = new();
 
+    public static TimeSpan AppCreationTime { get; private set; }
     public static TimeSpan AppBuildTime { get; private set; }
-    public static TimeSpan AppDisplayTime { get; private set; }
-    public static Task WhenAppDisplayed => _whenAppDisplayedSource.Task;
-    public static Task WhenAppLoaded => _whenAppLoadedSource.Task;
+    public static Task WhenAppRendered => _whenAppRenderedSource.Task;
 
-    private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
-    private readonly TaskCompletionSource<Unit> _whenChatListLoadedSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenLoadedSource = new();
+    private readonly TaskCompletionSource _whenRenderedSource = new();
+    private readonly TaskCompletionSource _whenChatListLoadedSource = new();
     private bool _isLoadingOverlayRemoved;
 
     private IServiceProvider Services { get; }
     private HostInfo HostInfo { get; }
     private Tracer Tracer { get; }
 
-    public TimeSpan AppCreationTime { get; private set; }
     public TimeSpan LoadTime { get; private set; }
+    public TimeSpan RenderTime { get; private set; }
     public TimeSpan ChatListLoadTime { get; private set; }
     public Task WhenLoaded => _whenLoadedSource.Task;
+    public Task WhenRendered => _whenRenderedSource.Task;
     public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
     public LoadingUI(IServiceProvider services)
@@ -53,38 +53,43 @@ public sealed class LoadingUI
         StaticTracer.Point(nameof(MarkAppBuilt));
     }
 
-    public static void MarkAppDisplayed()
-    {
-        if (!_whenAppDisplayedSource.TrySetResult(default))
-            return;
-
-        AppDisplayTime = StaticTracer.Elapsed;
-        StaticTracer.Point(nameof(MarkAppDisplayed));
-    }
-
-    public void MarkAppCreated()
+    public static void MarkAppCreated()
     {
         if (AppCreationTime != default)
             return;
 
-        AppCreationTime = Tracer.Elapsed;
-        Tracer.Point(nameof(MarkAppCreated));
+        AppCreationTime = StaticTracer.Elapsed;
+        StaticTracer.Point(nameof(MarkAppCreated));
     }
 
     public void MarkLoaded()
     {
-        if (!_whenLoadedSource.TrySetResult(default))
+        if (!_whenLoadedSource.TrySetResult())
             return;
 
-        _whenAppLoadedSource.TrySetResult(default);
         LoadTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkLoaded));
+
+        // We want to make sure MarkRendered is called no matter what (e.g. even if render fails)
+        _ = Task.Delay(TimeSpan.FromSeconds(0.5)).ContinueWith(
+            _ => MarkRendered(),
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    public void MarkRendered()
+    {
+        if (!_whenRenderedSource.TrySetResult())
+            return;
+
+        RenderTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkRendered));
         RemoveLoadingOverlay();
+        _whenAppRenderedSource.TrySetResult();
     }
 
     public void MarkChatListLoaded()
     {
-        if (!_whenChatListLoadedSource.TrySetResult(default))
+        if (!_whenChatListLoadedSource.TrySetResult())
             return;
 
         ChatListLoadTime = Tracer.Elapsed;
