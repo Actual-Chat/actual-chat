@@ -17,6 +17,7 @@ internal static class MauiOSData
 
             os.Name ??= deviceInfo.Platform.ToString();
             os.Version ??= deviceInfo.VersionString;
+            // We need infor about Processor \ device name
 
             // TODO: fill in these
             // os.Build ??= ?
