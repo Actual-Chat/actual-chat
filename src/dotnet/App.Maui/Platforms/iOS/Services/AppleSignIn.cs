@@ -20,6 +20,7 @@ public sealed class AppleSignIn
         var code = result.Properties["authorization_code"];
         var email = result.Properties["email"];
         var name = result.Properties["name"];
-        await _mobileAuthClient.SignInApple(code, name, email).ConfigureAwait(true);
+        var userId = result.Properties["user_id"];
+        await _mobileAuthClient.SignInApple(code, name, email, userId).ConfigureAwait(true);
     }
 }
