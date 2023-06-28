@@ -162,8 +162,18 @@ public sealed class MobileAuthController : Controller
         [FromForm] IFormCollection request,
         CancellationToken cancellationToken)
     {
+        var userId = request["UserId"].ToString();
+        if (userId.IsNullOrEmpty())
+            throw StandardError.Constraint(nameof(userId), "null or empty");
+
         var code = request["Code"].ToString();
+        if (code.IsNullOrEmpty())
+            throw StandardError.Constraint(nameof(code), "null or empty");
+
         var sessionId = request["SessionId"].ToString();
+        if (sessionId.IsNullOrEmpty())
+            throw StandardError.Constraint(nameof(sessionId), "null or empty");
+
         var email = request["Email"].ToString();
         var name = request["Name"].ToString();
         var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
@@ -187,6 +197,7 @@ public sealed class MobileAuthController : Controller
         }
 
         var identity = new ClaimsIdentity(options.ClaimsIssuer);
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userId));
 
         if (!email.IsNullOrEmpty())
             identity.AddClaim(new Claim(ClaimTypes.Email, email));

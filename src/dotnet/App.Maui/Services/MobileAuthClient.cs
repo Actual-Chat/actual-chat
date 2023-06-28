@@ -25,7 +25,7 @@ public sealed class MobileAuthClient
         }
     }
 
-    public async Task<bool> SignInApple(string code, string name, string email)
+    public async Task<bool> SignInApple(string code, string name, string email, string userId)
     {
         var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInAppleWithCode";
@@ -35,6 +35,7 @@ public sealed class MobileAuthClient
                 new ("Name", name),
                 new ("Email", email),
                 new ("Code", code),
+                new ("UserId", userId),
             };
             var request = new HttpRequestMessage(HttpMethod.Post, requestUri) {
                 Content = new FormUrlEncodedContent(values),
