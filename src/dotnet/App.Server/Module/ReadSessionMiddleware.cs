@@ -1,4 +1,5 @@
-﻿using Stl.Fusion.Server.Authentication;
+﻿using ActualChat.Hosting;
+using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.App.Server.Module;
 
@@ -19,6 +20,7 @@ public sealed class ReadSessionMiddleware : IMiddleware, IHasServices
 
     public IAuth? Auth { get; }
     public ISessionResolver SessionResolver { get; }
+    public ClientInfoProvider ClientInfoProvider { get; }
 
     public ReadSessionMiddleware(Options settings, IServiceProvider services)
     {
@@ -29,6 +31,7 @@ public sealed class ReadSessionMiddleware : IMiddleware, IHasServices
         Auth = services.GetService<IAuth>();
         SessionResolver = services.GetRequiredService<ISessionResolver>();
         CookieSettings = services.GetRequiredService<SessionCookieOptions>();
+        ClientInfoProvider = services.GetRequiredService<ClientInfoProvider>();
     }
 
     public async Task InvokeAsync(HttpContext httpContext, RequestDelegate next)
@@ -50,30 +53,11 @@ public sealed class ReadSessionMiddleware : IMiddleware, IHasServices
             ? null
             : new Session(sessionId);
         var tenantId = Settings.TenantIdExtractor.Invoke(httpContext);
+        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
+        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
+            ? userAgentValues.FirstOrDefault() ?? ""
+            : "";
+        ClientInfoProvider.SetClientInfo(new ClientInfo(tenantId, userAgent, ipAddress));
         return originalSession?.WithTenantId(tenantId);
     }
-    //
-    // public async Task<Session> GetOrCreateSession(HttpContext httpContext)
-    // {
-    //     var cancellationToken = httpContext.RequestAborted;
-    //     var originalSession = GetSession(httpContext);
-    //     var tenantId = Settings.TenantIdExtractor.Invoke(httpContext);
-    //     var session = originalSession?.WithTenantId(tenantId);
-    //
-    //     if (session != null && Auth != null) {
-    //         var isSignOutForced = await Auth.IsSignOutForced(session, cancellationToken).ConfigureAwait(false);
-    //         if (isSignOutForced) {
-    //             await Settings.ForcedSignOutHandler(this, httpContext).ConfigureAwait(false);
-    //             session = null;
-    //         }
-    //     }
-    //     session ??= SessionFactory.CreateSession().WithTenantId(tenantId);
-    //
-    //     if (session != originalSession) {
-    //         var cookieName = Settings.Cookie.Name ?? "";
-    //         var responseCookies = httpContext.Response.Cookies;
-    //         responseCookies.Append(cookieName, session.Id, Settings.Cookie.Build(httpContext));
-    //     }
-    //     return session;
-    // }
 }

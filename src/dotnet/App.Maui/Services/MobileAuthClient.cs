@@ -3,31 +3,19 @@ namespace ActualChat.App.Maui.Services;
 public sealed class MobileAuthClient
 {
     private HttpClient HttpClient { get; }
-    private ILogger<MobileAuthClient> Log { get; }
+    private ISessionResolver SessionResolver { get; }
+    private ILogger Log { get; }
 
-    public MobileAuthClient(HttpClient httpClient, ILogger<MobileAuthClient> log)
+    public MobileAuthClient(IServiceProvider services)
     {
-        HttpClient = httpClient;
-        Log = log;
-    }
-
-    public async Task<string> GetOrCreateSessionId(string? sessionId = null)
-    {
-        try {
-            var requestUri = $"{AppSettings.BaseUrl}mobileAuth/getOrCreateSession/{sessionId}";
-            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "GetOrCreateSessionId failed - probably server is unreachable");
-            throw;
-        }
+        HttpClient = services.GetRequiredService<HttpClient>();
+        SessionResolver = services.GetRequiredService<ISessionResolver>();
+        Log = services.GetRequiredService<ILogger<MobileAuthClient>>();
     }
 
     public async Task<bool> SignInApple(string code, string name, string email, string userId)
     {
-        var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
+        var session = await SessionResolver.GetSession(CancellationToken.None);
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInAppleWithCode";
         try {
             var values = new List<KeyValuePair<string, string>> {
@@ -56,7 +44,7 @@ public sealed class MobileAuthClient
         if (code.IsNullOrEmpty())
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
 
-        var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
+        var session = await SessionResolver.GetSession(CancellationToken.None);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
@@ -71,7 +59,7 @@ public sealed class MobileAuthClient
 
     public async Task SignOut()
     {
-        var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
+        var session = await SessionResolver.GetSession(CancellationToken.None);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {

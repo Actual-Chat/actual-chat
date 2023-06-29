@@ -1,12 +1,11 @@
-using System.Net;
-using System.Security.Authentication;
-using ActualChat.UI.Blazor.App;
+using ActualChat.Users;
 
 namespace ActualChat.App.Maui.Services;
 
 public sealed class MauiSessionProvider : ISessionResolver
 {
     private const string SessionIdStorageKey = "Fusion.SessionId";
+    private const string SessionIdCreatedAtStorageKey = "Fusion.SessionId.CreatedAt";
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionProvider)];
     private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionProvider>();
 
@@ -35,54 +34,30 @@ public sealed class MauiSessionProvider : ISessionResolver
     }
 
     public MauiSessionProvider(IServiceProvider services)
-        => Services = services;
+    {
+        Services = services;
+        _ = RestoreOrCreateSession();
+    }
 
-    Task<Session> ISessionResolver.GetSession(CancellationToken cancellationToken)
-        => GetSession(cancellationToken);
-    public static Task<Session> GetSession(CancellationToken cancellationToken = default)
+    public Task<Session> GetSession(CancellationToken cancellationToken)
         => _sessionTask.WaitAsync(cancellationToken);
 
-    public static Task RestoreOrCreate()
+    private Task RestoreOrCreateSession()
         => Task.Run(async () => {
             using var _ = Tracer.Region();
 
             var storedSid = await Read().ConfigureAwait(false);
-            var validSid = await GetOrCreateSessionId(storedSid).ConfigureAwait(false);
-            if (!OrdinalEquals(storedSid, validSid))
-                await Save(validSid).ConfigureAwait(false);
+            if (storedSid == null) {
+                var createSessionCommand = new MobileSessions_Create();
+                var sessionId = await Services.Commander().Call(createSessionCommand);
+                await Store(sessionId).ConfigureAwait(false);
+                storedSid = sessionId;
+            }
 
-            var session = new Session(validSid);
+            var session = new Session(storedSid);
             _sessionSource.TrySetResult(session);
             return session;
         });
-
-    private static async Task<string> GetOrCreateSessionId(string? sid)
-    {
-        using var _ = Tracer.Region();
-        try {
-            // Manually configure HTTP client as we don't have it configured globally at DI level
-            using var httpClient = new HttpClient(new HttpClientHandler {
-                SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-                UseCookies = false,
-            }, true) {
-                DefaultRequestVersion = HttpVersion.Version30,
-                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-            };
-            var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
-            httpClient.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
-
-            var authClientLogger = MauiDiagnostics.LoggerFactory.CreateLogger<MobileAuthClient>();
-            var authClient = new MobileAuthClient(httpClient, authClientLogger);
-            return await authClient.GetOrCreateSessionId(sid).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogError(e, $"{nameof(GetOrCreateSessionId)} failed");
-            if (sid.IsNullOrEmpty())
-                throw;
-
-            return sid;
-        }
-    }
 
     private static async Task<string?> Read()
     {
@@ -108,7 +83,7 @@ public sealed class MauiSessionProvider : ISessionResolver
         return null;
     }
 
-    private static async Task Save(string sid)
+    private static async Task Store(string sid)
     {
         var storage = SecureStorage.Default;
         bool isSaved;

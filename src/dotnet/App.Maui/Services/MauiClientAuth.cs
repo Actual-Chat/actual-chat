@@ -1,17 +1,18 @@
-using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Services;
 
 internal sealed class MauiClientAuth : IClientAuth
 {
     private IServiceProvider Services { get; }
     private MobileAuthClient AuthClient { get; }
+    private ISessionResolver SessionResolver { get; }
     private ILogger Log { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
         Services = services;
+        SessionResolver = services.GetRequiredService<ISessionResolver>();
         Log = services.LogFor(GetType());
         AuthClient = services.GetRequiredService<MobileAuthClient>();
     }
@@ -40,7 +41,7 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        var session = await MauiSessionProvider.GetSession().ConfigureAwait(true);
+        var session = await SessionResolver.GetSession().ConfigureAwait(true);
         var sessionId = session.Id.Value;
         var uri = $"{AppSettings.BaseUrl}mobileauth/signin/{sessionId}/{scheme}";
         await OpenSystemBrowserForSignIn(uri).ConfigureAwait(false);

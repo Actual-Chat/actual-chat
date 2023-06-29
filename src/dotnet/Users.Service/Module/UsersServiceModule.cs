@@ -171,6 +171,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
+        fusion.AddService<IMobileSessions, MobileSessions>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // Controllers, etc.
