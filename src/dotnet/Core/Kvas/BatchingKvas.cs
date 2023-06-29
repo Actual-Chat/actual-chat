@@ -12,7 +12,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
         public Func<CancellationToken, Task>? ReadBatchDelayTaskFactory { get; init; } = null;
         public int ReadBatchConcurrencyLevel { get; init; } = 4;
         public int ReadBatchMaxSize { get; init; } = 64;
-        public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(100);
+        public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.25);
         public int FlushMaxItemCount { get; init; } = 64;
         public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
         public RetryDelaySeq FlushRetryDelays { get; init; } = new();
