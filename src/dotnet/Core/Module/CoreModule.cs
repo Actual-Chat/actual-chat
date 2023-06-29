@@ -108,6 +108,10 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         var fusion = services.AddFusion();
         fusion.AddService<IServerFeatures, ServerFeatures>();
+
+        // ClientInfo at the server
+        services.AddScoped<ClientInfo>(c => c.GetRequiredService<ClientInfoProvider>().ClientInfo);
+        services.AddScoped<ClientInfoProvider>(c => new ClientInfoProvider());
     }
 
     private void InjectClientServices(IServiceCollection services)

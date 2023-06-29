@@ -41,7 +41,6 @@ public static partial class MauiProgram
         try {
             const string baseUrl = "https://" + MauiConstants.Host + "/";
             AppSettings = new MauiAppSettings(baseUrl);
-            _ = MauiSessionProvider.RestoreOrCreate();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
@@ -124,7 +123,8 @@ public static partial class MauiProgram
         AppServices = services;
         LoadingUI.MarkAppBuilt();
         _ = Task.Run(async () => {
-            var session = await MauiSessionProvider.GetSession().ConfigureAwait(false);
+            var sessionResolver = services.GetRequiredService<ISessionResolver>();
+            var session = await sessionResolver.GetSession().ConfigureAwait(false);
             var appServiceStarter = services.GetRequiredService<AppServiceStarter>();
             _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);
         });

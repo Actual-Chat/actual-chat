@@ -21,9 +21,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         // Auth
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
         services.AddSingleton(c => new BaseUrlProvider(c.GetRequiredService<UrlMapper>().BaseUrl));
-        services.AddTransient(c => new MobileAuthClient(
-            c.GetRequiredService<HttpClient>(),
-            c.GetRequiredService<ILogger<MobileAuthClient>>()));
+        services.AddTransient(c => new MobileAuthClient(c));
 
         // UI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
