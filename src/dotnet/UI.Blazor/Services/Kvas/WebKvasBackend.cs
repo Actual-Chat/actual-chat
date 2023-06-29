@@ -22,7 +22,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         _clearName = $"{name}.clear";
     }
 
-    public async Task<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
+    public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         var values = await JS.InvokeAsync<string?[]>(_getManyName, cancellationToken, new object[] { keys });
         var result = new byte[]?[keys.Length];

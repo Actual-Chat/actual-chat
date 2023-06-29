@@ -12,6 +12,9 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
     public new record Options : AppClientComputedCache.Options
     {
         public FilePath DbPath { get; init; }
+
+        public Options()
+            => ReadBatchConcurrencyLevel = HardwareInfo.ProcessorCount.Clamp(1, 16);
     }
 
     private new Options Settings { get; }

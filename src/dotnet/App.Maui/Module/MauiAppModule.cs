@@ -46,6 +46,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
             var dbPath = appDataDir & "LocalSettings.db3";
             return new LocalSettings.Options() {
                 BackendOverride = new SQLiteBatchingKvasBackend(dbPath, "1.0", c),
+                ReadBatchConcurrencyLevel = HardwareInfo.ProcessorCount.Clamp(1, 16),
             };
         });
     }

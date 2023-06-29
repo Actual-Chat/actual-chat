@@ -9,7 +9,7 @@ public class TestBatchingKvasBackend : IBatchingKvasBackend
     public ITestOutputHelper? Out { get; init; }
     public Dictionary<Symbol, byte[]> Storage { get; init; } = new();
 
-    public Task<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
+    public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         byte[]?[] result;
         lock (Lock) {
@@ -20,7 +20,7 @@ public class TestBatchingKvasBackend : IBatchingKvasBackend
         }
         var actualDelay = PreciseDelay.Delay(TimeSpan.FromMilliseconds(3));
         Out?.WriteLine("Actual delay: {0}", actualDelay.ToShortString());
-        return Task.FromResult(result);
+        return ValueTask.FromResult(result);
     }
 
     public Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)

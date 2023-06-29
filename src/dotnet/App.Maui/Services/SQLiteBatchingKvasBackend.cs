@@ -11,53 +11,25 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 {
     public const string VersionKey = "(version)";
 
-    private readonly ObjectPool<SQLiteConnection>? _connections;
-    private readonly SemaphoreSlim _semaphore;
+    private readonly Task<ObjectPool<SQLiteConnection>?> _whenConnectionPoolReady;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
     private ILogger? Log => _log ??= Services.LogFor(GetType());
 
-    public Task WhenInitialized => Task.CompletedTask;
-
     public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services)
     {
         Services = services;
-        _semaphore = new SemaphoreSlim(HardwareInfo.ProcessorCount);
-        try {
-            var connectionsPolicy = new SQLiteConnectionPoolPolicy(dbPath);
-            _connections = new DefaultObjectPool<SQLiteConnection>(connectionsPolicy, HardwareInfo.ProcessorCount + 2);
-            var connection = _connections.Get();
-            try {
-                connection.EnableWriteAheadLogging();
-                var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
-                if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
-                    var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value;
-                    var existingVersionSpan = existingVersionBytes != null ? existingVersionBytes.AsSpan() : default;
-                    if (existingVersionBytes == null || !versionBytes.AsSpan().SequenceEqual(existingVersionSpan)) {
-                        _ = connection.DropTable<DbItem>();
-                        _ = connection.CreateTable<DbItem>();
-                    }
-                }
-                connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
-            }
-            finally {
-                _connections.Return(connection);
-            }
-        }
-        catch (Exception e) {
-            _connections = null;
-            Log?.LogError(e, "Failed to initialize SQLite database");
-        }
+        _whenConnectionPoolReady = Task.Run(() => Initialize(dbPath, version));
     }
 
-    public async Task<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
+    public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         var result = new byte[]?[keys.Length];
-        if (_connections == null)
+        var connection = await AcquireConnection().ConfigureAwait(false);
+        if (connection == null)
             return result;
 
-        var connection = await AcquireConnection(cancellationToken).ConfigureAwait(false);
         try {
             for (var i = 0; i < keys.Length; i++) {
                 var dbItem = connection.Find<DbItem?>(keys[i]);
@@ -72,10 +44,10 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     public async Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
-        if (_connections == null)
+        var connection = await AcquireConnection().ConfigureAwait(false);
+        if (connection == null)
             return;
 
-        var connection = await AcquireConnection(cancellationToken).ConfigureAwait(false);
         try {
             foreach (var (key, value) in updates) {
                 if (value == null)
@@ -91,10 +63,10 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     public async Task Clear(CancellationToken cancellationToken = default)
     {
-        if (_connections == null)
+        var connection = await AcquireConnection().ConfigureAwait(false);
+        if (connection == null)
             return;
 
-        var connection = await AcquireConnection(cancellationToken).ConfigureAwait(false);
         try {
             connection.DeleteAll<DbItem>();
         }
@@ -105,27 +77,42 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     // Private methods
 
-    private async ValueTask<SQLiteConnection> AcquireConnection(CancellationToken cancellationToken = default)
+    private ObjectPool<SQLiteConnection>? Initialize(FilePath dbPath, string version)
     {
-        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            return _connections!.Get();
+            var connectionsPolicy = new SQLiteConnectionPoolPolicy(dbPath);
+            var connectionCount = HardwareInfo.ProcessorCount + 2;
+            var connections = new DefaultObjectPool<SQLiteConnection>(connectionsPolicy, connectionCount);
+            var connection = connections.Get();
+            connection.EnableWriteAheadLogging();
+            var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
+            if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
+                var existingVersionBytes = connection.Find<DbItem>(VersionKey)?.Value ?? Array.Empty<byte>();
+                if (!versionBytes.AsSpan().SequenceEqual(existingVersionBytes.AsSpan())) {
+                    _ = connection.DropTable<DbItem>();
+                    _ = connection.CreateTable<DbItem>();
+                }
+            }
+            connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
+            connections.Return(connection);
+            return connections;
         }
-        catch {
-            _semaphore.Release();
-            throw;
+        catch (Exception e) {
+            Log?.LogError(e, "Failed to initialize SQLite database");
+            return null;
         }
     }
 
-    private void ReleaseConnection(SQLiteConnection connection)
+    private async ValueTask<SQLiteConnection?> AcquireConnection()
     {
-        try {
-            _connections!.Return(connection);
-        }
-        finally {
-            _semaphore.Release();
-        }
+        var connections = await _whenConnectionPoolReady.ConfigureAwait(false);
+        return connections?.Get();
     }
+
+    private void ReleaseConnection(SQLiteConnection connection)
+ #pragma warning disable VSTHRD002
+        => _whenConnectionPoolReady.Result!.Return(connection);
+ #pragma warning restore VSTHRD002
 
     // Nested types
 

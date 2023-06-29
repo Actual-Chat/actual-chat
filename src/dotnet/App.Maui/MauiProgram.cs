@@ -1,13 +1,13 @@
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog;
 
 namespace ActualChat.App.Maui;
