@@ -3,6 +3,7 @@ using System;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Users.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    partial class UsersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230629113105_DbKvasEntryToBytes2")]
+    partial class DbKvasEntryToBytes2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -157,10 +160,10 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("key");
 
-                    b.Property<byte[]>("Value")
+                    b.Property<byte[]>("NewValue")
                         .IsRequired()
                         .HasColumnType("bytea")
-                        .HasColumnName("value");
+                        .HasColumnName("new_value");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()

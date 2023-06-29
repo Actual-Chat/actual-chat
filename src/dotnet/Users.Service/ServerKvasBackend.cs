@@ -18,7 +18,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
             return null;
 
         var dbKvasEntry = await DbKvasEntryResolver.Get(prefix + key, cancellationToken).ConfigureAwait(false);
-        return dbKvasEntry?.NewValue;
+        return dbKvasEntry?.Value;
     }
 
     // [ComputeMethod]
@@ -34,7 +34,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
             .Where(e => e.Key.StartsWith(prefix))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], Value: e.NewValue)).ToApiList();
+        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], Value: e.Value)).ToApiList();
     }
 
     // Command handlers
@@ -75,15 +75,14 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
                     dbKvasEntry = new DbKvasEntry() {
                         Key = fullKey,
                         Version = VersionGenerator.NextVersion(),
-                        NewValue = value,
-                        Value = "",
+                        Value = value,
                     };
                     dbContext.KvasEntries.Add(dbKvasEntry);
                 }
                 else {
                     // Update
                     dbKvasEntry.Version = VersionGenerator.NextVersion(dbKvasEntry.Version);
-                    dbKvasEntry.NewValue = value;
+                    dbKvasEntry.Value = value;
                     dbContext.KvasEntries.Update(dbKvasEntry);
                 }
             }
