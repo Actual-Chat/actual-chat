@@ -10,7 +10,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
         public Func<IThreadSafeLruCache<Symbol, byte[]?>> ReadCacheFactory { get; init; } =
             () => new ThreadSafeLruCache<Symbol, byte[]?>(256);
         public Func<CancellationToken, Task>? ReadBatchDelayTaskFactory { get; init; } = null;
-        public int ReadBatchConcurrencyLevel { get; init; } = FusionSettings.Mode == FusionMode.Server ? 4 : 2;
+        public int ReadBatchConcurrencyLevel { get; init; } = 4;
         public int ReadBatchMaxSize { get; init; } = 64;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromMilliseconds(100);
         public int FlushMaxItemCount { get; init; } = 64;

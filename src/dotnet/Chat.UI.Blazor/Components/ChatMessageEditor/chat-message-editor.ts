@@ -6,11 +6,11 @@ import {
 } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
 import { throttle } from 'promises';
-import { Log } from 'logging';
+import { AttachmentList } from './attachment-list';
 import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
-import { LocalSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
-import { AttachmentList } from './attachment-list';
+import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
+import { Log } from 'logging';
 
 const { debugLog } = Log.get('MessageEditor');
 
@@ -141,7 +141,7 @@ export class ChatMessageEditor {
     public setChatId(chatId: string) {
         this.chatId = chatId;
         this.attachmentList.setChatId(chatId)
-        this.restoreDraft();
+        void this.restoreDraft();
     }
 
     // Event handlers
@@ -291,19 +291,18 @@ export class ChatMessageEditor {
         playbackWrapper.classList.replace('listen-off-to-on', 'listen-on');
     }
 
-    private saveDraft() {
+    private async saveDraft(): Promise<void> {
         if (!this.chatId)
             return;
 
         const text = this.markupEditor.getHtml();
-        const data = {
-            [`MessageDraft.${this.chatId}.Html`]: !!text ? text : null,
-        };
-        LocalSettings.setMany(data);
+        const keys = [`MessageDraft.${this.chatId}.Html`];
+        const values = [!!text ? text : null];
+        await localSettings.setMany(keys, values);
     }
 
-    private restoreDraft() {
-        const [html] = this.chatId && LocalSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
+    private async restoreDraft(): Promise<void> {
+        const [html] = this.chatId && await localSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
         this.markupEditor.setHtml(html ?? "", ScreenSize.isWide());
     }
 }

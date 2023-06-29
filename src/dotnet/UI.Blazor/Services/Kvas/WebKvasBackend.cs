@@ -11,24 +11,25 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
 
-    public Task WhenInitialized { get; }
-
     public WebKvasBackend(string name, IServiceProvider services)
     {
         Services = services;
-        JS = services.SafeJSRuntime();
+        JS = services.IsScoped()
+            ? services.SafeJSRuntime()
+            : services.JSRuntime();
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
-        WhenInitialized = Initialize(name);
     }
 
     public async Task<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         var values = await JS.InvokeAsync<string?[]>(_getManyName, cancellationToken, new object[] { keys });
         var result = new byte[]?[keys.Length];
-        for (var i = 0; i < values.Length; i++)
-            result[i] = Convert.FromBase64String(values[i] ?? "");
+        for (var i = 0; i < values.Length; i++) {
+            var value = values[i];
+            result[i] = value == null ? null : Convert.FromBase64String(value);
+        }
         return result;
     }
 
@@ -52,13 +53,4 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     public Task Clear(CancellationToken cancellationToken = default)
         => JS.InvokeVoidAsync(_clearName, cancellationToken).AsTask();
-
-    // Private methods
-
-    private async Task Initialize(string name)
-    {
-        var browserInit = Services.GetRequiredService<BrowserInit>();
-        await browserInit.WhenInitialized.ConfigureAwait(false);
-        await JS.InvokeVoidAsync($"{name}.whenInitialized");
-    }
 }

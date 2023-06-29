@@ -20,7 +20,7 @@ export class WebKvasBackend {
     }
 
     protected async init(): Promise<void> {
-        const expectedVersion = this.getExpectedVersion();
+        const expectedVersion = await this.getExpectedVersion();
         const version = await this.kvas.get(this.versionKey);
         if (version !== expectedVersion) {
             warnLog?.log(`${this.name}: reset ('${version}' != '${expectedVersion}')`);

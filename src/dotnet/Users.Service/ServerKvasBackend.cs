@@ -76,6 +76,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
                         Key = fullKey,
                         Version = VersionGenerator.NextVersion(),
                         NewValue = value,
+                        Value = "",
                     };
                     dbContext.KvasEntries.Add(dbKvasEntry);
                 }
