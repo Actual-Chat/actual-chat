@@ -4,8 +4,16 @@
 @implements IDisposable
 @{
     // We can't render anything till the moment a few key components completed the initialization
-    if (!_readyToRender)
+    if (!_readyToRender) {
+        if (_readyToPreRender) {
+            <Router @key="@RouterKey" AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+                <Found></Found>
+                <NotFound></NotFound>
+            </Router>
+        }
         return;
+    }
+
     if (_simulatedCrashError != null)
         throw _simulatedCrashError;
 }
@@ -13,7 +21,7 @@
 <ScreenSizeProvider>
     <AlwaysVisibleComponents/>
 
-    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+    <Router @key="@RouterKey" AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
         <Found Context="routeData">
             <RequirementChecker>
                 <Success>
@@ -32,12 +40,14 @@
 </ScreenSizeProvider>
 
 @code {
+    private static readonly object RouterKey = new();
     private static Assembly? UIAssembly { get; set; }
     private static Assembly[]? UIModuleAssemblies { get; set; }
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private bool _readyToRender;
+    private bool _readyToPreRender;
     private Exception? _simulatedCrashError;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
@@ -104,10 +114,17 @@
 
         await whenReadyToRender;
         LoadingUI.MarkLoaded();
+        _ = LoadingUI.WhenRendered.ContinueWith(
+            _ => AppServiceStarter.AfterRender(_disposeToken),
+            TaskScheduler.Default);
+
+        Services.GetRequiredService<UIEventHub>();
+        _readyToPreRender = true;
+        this.NotifyStateHasChanged();
+
+        await Task.Delay(TimeSpan.FromMilliseconds(50), _disposeToken);
         _readyToRender = true;
         StateHasChanged();
-
-        _ = AppServiceStarter.AfterRender(_disposeToken);
     }
 
     public void Dispose() {

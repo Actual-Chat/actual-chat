@@ -4,14 +4,14 @@ using MemoryPack;
 namespace ActualChat.Users;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record UserBubblesSettings : IHasOrigin
+public sealed partial record UserBubbleSettings : IHasOrigin
 {
-    public const string KvasKey = nameof(UserBubblesSettings);
+    public const string KvasKey = nameof(UserBubbleSettings);
 
     [DataMember, MemoryPackOrder(0)] public ApiArray<string> ReadBubbles { get; init; } = ApiArray<string>.Empty;
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
-    public UserBubblesSettings WithReadBubbles(params string[] bubbleRefs)
+    public UserBubbleSettings WithReadBubbles(params string[] bubbleRefs)
     {
         if (!bubbleRefs.Any())
             return this;

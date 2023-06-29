@@ -35,7 +35,7 @@ public class AppAutoNavigationUI : AutoNavigationUI
         try {
             Log.LogInformation("AutoNavigate to {Url}", url);
             await HandleNavigateTo(url, AutoNavigationReason.Initial)
-                .WaitAsync(TimeSpan.FromMilliseconds(250), cancellationToken)
+                .WaitAsync(TimeSpan.FromMilliseconds(333), cancellationToken)
                 .ConfigureAwait(false);
             Log.LogInformation("AutoNavigate to {Url}: completed", url);
         }

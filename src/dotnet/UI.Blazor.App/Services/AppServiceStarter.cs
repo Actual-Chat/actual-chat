@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
@@ -25,11 +26,12 @@ public class AppServiceStarter
             // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
             using var _1 = Tracer.Region();
             try {
+                // _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
                 var accounts = Services.GetRequiredService<IAccounts>();
                 var getOwnAccountTask = accounts.GetOwn(session, CancellationToken.None);
                 var contacts = Services.GetRequiredService<IContacts>();
                 var chats = Services.GetRequiredService<IChats>();
-                await getOwnAccountTask.ConfigureAwait(false);
+                var account = await getOwnAccountTask.ConfigureAwait(false);
                 // await contacts.ListIds(session, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception e) {
@@ -90,21 +92,19 @@ public class AppServiceStarter
         await autoNavigationUI.AutoNavigate(cancellationToken).ConfigureAwait(false);
     }
 
-    public Task AfterRender(CancellationToken cancellationToken)
-        => Task.Run(async () => {
-            Services.GetRequiredService<UIEventHub>();
-
-            // Starting less important UI services
+    public async Task AfterRender(CancellationToken cancellationToken)
+    {
+        // Starting less important UI services
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+        Services.GetRequiredService<SignOutReloader>().Start();
+        Services.GetRequiredService<AppPresenceReporter>().Start();
+        Services.GetRequiredService<AppIconBadgeUpdater>().Start();
+        Services.GetRequiredService<DebugUI>();
+        if (HostInfo.AppKind.IsClient()) {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-            Services.GetRequiredService<SignOutReloader>().Start();
-            Services.GetRequiredService<AppPresenceReporter>().Start();
-            Services.GetRequiredService<AppIconBadgeUpdater>().Start();
-            Services.GetRequiredService<DebugUI>();
-            if (HostInfo.AppKind.IsClient()) {
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-                await StartHostedServices(cancellationToken).ConfigureAwait(false);
-            }
-        }, cancellationToken);
+            await StartHostedServices(cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     // Private methods
 
@@ -117,33 +117,23 @@ public class AppServiceStarter
         }
     }
 
-    private void WarmupSerializer<T>(T value)
+    private void WarmupSystemJsonSerializer()
     {
-        var s = TextSerializer.Default;
-        var text = "";
+        Read<ThemeSettings>("{\"theme\":1,\"origin\":\"\"}");
+        Read<UserLanguageSettings>("{\"primary\":\"fr-FR\",\"secondary\":null,\"origin\":\"\"}");
+        Read<UserOnboardingSettings>("{\"isPhoneStepCompleted\":false,\"isAvatarStepCompleted\":true,\"lastShownAt\":\"1970-01-01T00:00:00.0000000Z\",\"origin\":\"\"}");
+        Read<UserBubbleSettings>("{\"readBubbles\":[\"x\"],\"origin\":\"\"}");
+        Read<ChatListSettings>("{\"order\":3,\"filterId\":\"\"}");
+        Read<ApiArray<ActiveChat>>("[{\"chatId\":\"dpwo1tm0tw\",\"isListening\":false,\"isRecording\":false,\"recency\":\"1970-01-01T00:00:00.0000000Z\",\"listeningRecency\":\"1970-01-01T00:00:00.0000000Z\"}]");
 
-        // Write
-        try {
-            text = s.Write(value);
-        }
-        catch {
-            // Intended
-        }
-
-        // Read
-        try {
-            _ = s.Read<T>(text);
-        }
-        catch {
-            // Intended
+        static void Read<T>(string json)
+        {
+            try {
+                SystemJsonSerializer.Default.Read<T>(json);
+            }
+            catch {
+                // Intended
+            }
         }
     }
-
-    private void WarmupReplicaService<T>()
-        where T: class, IComputeService
-        => Services.GetRequiredService<T>();
-
-    private void WarmupComputeService<T>()
-        where T: class, IComputeService
-        => Services.GetRequiredService<T>();
 }
