@@ -37,14 +37,33 @@
         _avatarClass = GetSizeClass();
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
-        var avatarPicture = Avatar.Media?.ContentId ?? Avatar.Picture;
-        if (avatarPicture.IsNullOrEmpty()) {
-            _avatarPictureUrl = DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString());
-        } else if (avatarPicture.StartsWith("http")) {
-            _avatarPictureUrl = avatarPicture;
-        } else {
-            var contentUrl = UrlMapper.ContentUrl(avatarPicture);
-            _avatarPictureUrl = UrlMapper.ImagePreview128Url(contentUrl);
+        _avatarPictureUrl = GetAvatarPictureUrl();
+    }
+
+    private string GetAvatarPictureUrl()
+    {
+        var contentId = Avatar.Media?.ContentId;
+        if (!contentId.IsNullOrEmpty()) {
+            var contentUrl = UrlMapper.ContentUrl(contentId);
+            return UrlMapper.ImagePreview128Url(contentUrl);
+        }
+
+        var avatarPicture = Avatar.Picture;
+        if (avatarPicture.IsNullOrEmpty())
+            return Default();
+
+        if (avatarPicture.OrdinalStartsWith(DefaultUserPicture.BoringAvatarsBaseUrl))
+            return UrlMapper.BoringAvatar(avatarPicture);
+
+        if (avatarPicture.StartsWith("http"))
+            return UrlMapper.ImagePreview128Url(avatarPicture);
+
+        return Default();
+
+        string Default()
+        {
+            var bordAvatarUrl = DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString());
+            return UrlMapper.BoringAvatar(bordAvatarUrl);
         }
     }
 
