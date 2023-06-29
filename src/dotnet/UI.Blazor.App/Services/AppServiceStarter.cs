@@ -53,7 +53,7 @@ public class AppServiceStarter
         var browserInit = Services.GetRequiredService<BrowserInit>();
         var session = Services.GetRequiredService<Session>();
         var sessionHash = session == Session.Default ? null : session.Hash; // Session.Default is used only in WASM
-        _ = browserInit.Initialize(sessionHash, async initCalls => {
+        _ = browserInit.Initialize(Constants.Api.Version, sessionHash, async initCalls => {
             await jsAppSettings.Initialize(initCalls).ConfigureAwait(false);
             await history.Initialize(initCalls).ConfigureAwait(false);
             await browserInfo.Initialize(initCalls).ConfigureAwait(false);

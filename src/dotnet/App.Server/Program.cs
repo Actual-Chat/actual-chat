@@ -16,6 +16,7 @@ internal static class Program
             Tracer.None;
 #endif
 
+        FusionSettings.Mode = FusionMode.Server;
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;

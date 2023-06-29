@@ -11,8 +11,9 @@ export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/History/history'
-export * from './Services/Caching/indexed-db';
+export * from './Services/Caching/client-computed-cache';
 export * from './Services/KeepAwakeUI/keep-awake-ui'
+export * from './Services/Kvas/web-kvas-backend';
 export * from './Services/ScreenSize/screen-size';
 export * from './Services/Settings/local-settings';
 export * from './Services/Settings/app-settings';

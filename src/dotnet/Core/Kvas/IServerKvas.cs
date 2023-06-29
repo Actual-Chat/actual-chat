@@ -5,7 +5,7 @@ namespace ActualChat.Kvas;
 public interface IServerKvas : IComputeService
 {
     [ComputeMethod]
-    Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default);
+    Task<byte[]?> Get(Session session, string key, CancellationToken cancellationToken = default);
 
     [CommandHandler]
     Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default);
@@ -20,14 +20,14 @@ public interface IServerKvas : IComputeService
 public partial record ServerKvas_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Key,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] string? Value
+    [property: DataMember(Order = 2), MemoryPackOrder(2)] byte[]? Value
 ) : ISessionCommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_SetMany(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, string? Value)[] Items
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, byte[]? Value)[] Items
 ) : ISessionCommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

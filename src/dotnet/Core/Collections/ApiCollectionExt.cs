@@ -1,3 +1,6 @@
+using System.Buffers;
+using Microsoft.Toolkit.HighPerformance.Buffers;
+
 namespace ActualChat.Collections;
 
 public static class ApiCollectionExt
@@ -10,10 +13,35 @@ public static class ApiCollectionExt
     public static ApiArray<T> ToApiArray<T>(this IEnumerable<T> source)
         => new(source);
 
+    public static async Task<ApiArray<TSource>> ToApiArrayAsync<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        CancellationToken cancellationToken = default)
+    {
+        var buffer = ArrayBuffer<TSource>.Lease(false);
+        try {
+            await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+                buffer.Add(item);
+            return buffer.Count == 0 ? default : new ApiArray<TSource>(buffer.ToArray());
+        }
+        finally {
+            buffer.Release();
+        }
+    }
+
     // ToApiList
 
     public static ApiList<T> ToApiList<T>(this IEnumerable<T> source)
         => new(source);
+
+    public static async Task<ApiList<TSource>> ToApiListAsync<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        CancellationToken cancellationToken = default)
+    {
+        var list = new ApiList<TSource>();
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+            list.Add(item);
+        return list;
+    }
 
     // ToApiMap
 

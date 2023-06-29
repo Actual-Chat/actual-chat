@@ -5,9 +5,9 @@ namespace ActualChat.Users;
 public interface IServerKvasBackend : IComputeService
 {
     [ComputeMethod]
-    Task<string?> Get(string prefix, string key, CancellationToken cancellationToken = default);
+    Task<byte[]?> Get(string prefix, string key, CancellationToken cancellationToken = default);
     [ComputeMethod]
-    Task<ImmutableList<(string Key, string Value)>> List(string prefix, CancellationToken cancellationToken = default);
+    Task<ApiList<(string Key, byte[] Value)>> List(string prefix, CancellationToken cancellationToken = default);
 
     [CommandHandler]
     Task OnSetMany(ServerKvasBackend_SetMany command, CancellationToken cancellationToken = default);
@@ -17,5 +17,5 @@ public interface IServerKvasBackend : IComputeService
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvasBackend_SetMany(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Prefix,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, string? Value)[] Items
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, byte[]? Value)[] Items
 ) : ICommand<Unit>, IBackendCommand;

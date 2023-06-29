@@ -11,15 +11,12 @@ public class ServerKvasClient : IKvas
         Session = session;
     }
 
-    public async ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
-    {
-        var result = await ServerKvas.Get(Session, key, cancellationToken).ConfigureAwait(false);
-        return result.IsSome(out var value) ? value : null;
-    }
+    public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
+        => ServerKvas.Get(Session, key, cancellationToken).ToValueTask();
 
-    public Task Set(string key, string? value, CancellationToken cancellationToken = default)
+    public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
         => ServerKvas.Set(Session, key, value, cancellationToken);
 
-    public Task SetMany((string Key, string? Value)[] items, CancellationToken cancellationToken = default)
+    public Task SetMany((string Key, byte[]? Value)[] items, CancellationToken cancellationToken = default)
         => ServerKvas.SetMany(Session, items, cancellationToken);
 }

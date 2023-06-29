@@ -112,7 +112,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!rules.CanRead() && chatId.Kind != ChatKind.Peer) {
             // Has invite = same as having read permission
             var activationKeyOpt = await ServerKvas
-                .Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+                .GetClient(session)
+                .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
                 .ConfigureAwait(false);
             if (activationKeyOpt.IsSome(out var activationKey)) {
                 var isValid = await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);

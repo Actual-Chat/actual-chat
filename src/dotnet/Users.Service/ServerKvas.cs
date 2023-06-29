@@ -20,11 +20,10 @@ public class ServerKvas : IServerKvas
     }
 
     // [ComputeMethod]
-    public virtual async Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default)
+    public virtual async Task<byte[]?> Get(Session session, string key, CancellationToken cancellationToken = default)
     {
         var prefix = await GetPrefix(session, cancellationToken).ConfigureAwait(false);
-        var result = await Backend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
-        return result == null ? default : Option<string>.Some(result);
+        return await Backend.Get(prefix, key, cancellationToken).ConfigureAwait(false);
 
         // More complex logic that moves session keys on demand
         /*
@@ -159,7 +158,7 @@ public class ServerKvas : IServerKvas
         return guestId.IsNone ? null : ServerKvasBackendExt.GetUserPrefix(guestId);
     }
 
-    private async ValueTask<Dictionary<string, string>?> TryMigrateKeys(
+    private async ValueTask<Dictionary<string, byte[]>?> TryMigrateKeys(
         string fromPrefix,
         string toPrefix,
         CancellationToken cancellationToken)
@@ -171,7 +170,7 @@ public class ServerKvas : IServerKvas
         }
 
         using var _ = Computed.SuspendDependencyCapture();
-        var movedKeys = new Dictionary<string, string>(StringComparer.Ordinal);
+        var movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var skippedKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (key, value) in keys) {
             var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
@@ -188,12 +187,12 @@ public class ServerKvas : IServerKvas
 
         // Create missing keys in userPrefix
         await Commander.Call(
-            new ServerKvasBackend_SetMany(toPrefix, movedKeys.Select(kv => (kv.Key, (string?) kv.Value)).ToArray()),
+            new ServerKvasBackend_SetMany(toPrefix, movedKeys.Select(kv => (kv.Key, (byte[]?) kv.Value)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
         // Remove all keys in sessionPrefix
         await Commander.Call(
-            new ServerKvasBackend_SetMany(fromPrefix, keys.Select(kv => (kv.Key, (string?) null)).ToArray()),
+            new ServerKvasBackend_SetMany(fromPrefix, keys.Select(kv => (kv.Key, (byte[]?) null)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
 

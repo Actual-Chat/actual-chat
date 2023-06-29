@@ -27,6 +27,7 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
+        FusionSettings.Mode = FusionMode.Client;
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
 

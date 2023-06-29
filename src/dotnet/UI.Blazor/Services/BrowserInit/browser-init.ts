@@ -7,12 +7,13 @@ const window = globalThis as undefined as Window;
 const sessionStorage = window.sessionStorage;
 
 export class BrowserInit {
+    public static apiVersion = "";
     public static sessionHash = "";
     public static windowId = "";
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
 
-    public static async init(sessionHash: string | null, calls: Array<unknown>): Promise<void> {
+    public static async init(apiVersion: string, sessionHash: string | null, calls: Array<unknown>): Promise<void> {
         if (this.whenInitialized.isCompleted()) {
             errorLog?.log('init: already initialized, skipping');
             return;
@@ -20,6 +21,7 @@ export class BrowserInit {
 
         try {
             infoLog?.log('-> init');
+            this.apiVersion = apiVersion;
             this.initSessionHash(sessionHash);
             this.initWindowId();
             this.initAndroid();

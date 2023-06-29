@@ -13,15 +13,15 @@ public class PrefixedKvas : IKvas
         FullPrefix = prefix + ".";
     }
 
-    public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
+    public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => Upstream.Get(FullPrefix + key, cancellationToken);
 
-    public Task Set(string key, string? value, CancellationToken cancellationToken = default)
+    public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
         => Upstream.Set(FullPrefix + key, value, cancellationToken);
 
-    public Task SetMany((string Key, string? Value)[] items, CancellationToken cancellationToken = default)
+    public Task SetMany((string Key, byte[]? Value)[] items, CancellationToken cancellationToken = default)
     {
-        var newItems = new (string Key, string? Value)[items.Length];
+        var newItems = new (string Key, byte[]? Value)[items.Length];
         for (var i = 0; i < items.Length; i++) {
             var (key, value) = items[i];
             newItems[i] = (FullPrefix + key, value);

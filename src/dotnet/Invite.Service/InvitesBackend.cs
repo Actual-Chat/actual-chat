@@ -11,16 +11,18 @@ namespace ActualChat.Invite;
 
 internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 {
+    private IAccounts? _accounts;
     private IChatsBackend? _chatsBackend;
+    private IServerKvas? _serverKvas;
 
-    private IAccounts Accounts { get; }
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IServerKvas ServerKvas => _serverKvas ??= Services.GetRequiredService<IServerKvas>();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
     private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
 
     public InvitesBackend(IServiceProvider services) : base(services)
     {
-        Accounts = services.GetRequiredService<IAccounts>();
         DbInviteResolver = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
         DbActivationKeyResolver = services.GetRequiredService<IDbEntityResolver<string, DbActivationKey>>();
     }
@@ -141,8 +143,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             dbContext.Add(dbActivationKey);
             context.Operation().Items.Set(dbActivationKey.Id);
 
-            var setCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id);
-            await Commander.Call(setCommand, true, cancellationToken).ConfigureAwait(false);
+            await ServerKvas.GetClient(session)
+                .Set(ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id, cancellationToken)
+                .ConfigureAwait(false);
             break;
         default:
             throw StandardError.Format<Invite>();

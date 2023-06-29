@@ -60,11 +60,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Settings
         services.AddSingleton(_ => new LocalSettings.Options());
-        services.AddScoped(c => new LocalSettingsBackend(c));
-        services.AddScoped(c => new LocalSettings(
-            c.GetRequiredService<LocalSettings.Options>(),
-            c.GetRequiredService<LocalSettingsBackend>(),
-            c.GetRequiredService<ILogger<LocalSettings>>()));
+        services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
             c.GetRequiredService<Session>()));
@@ -127,10 +123,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // ClientComputedCache:
         // Temporarily disabled for WASM due to startup issues
         if (appKind.IsWasmApp()) {
-            services.AddSingleton(_ => AppClientComputedCache.Options.Default);
-            services.AddSingleton(c => new IndexedDbClientComputedCache(
-                c.GetRequiredService<AppClientComputedCache.Options>(), c));
-            services.AddAlias<ClientComputedCache, IndexedDbClientComputedCache>();
+            services.AddSingleton(_ => new WebClientComputedCache.Options());
+            services.AddSingleton(c => new WebClientComputedCache(
+                c.GetRequiredService<WebClientComputedCache.Options>(), c));
+            services.AddAlias<IClientComputedCache, WebClientComputedCache>();
         }
 
         // Test services

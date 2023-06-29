@@ -2,8 +2,11 @@ namespace ActualChat.Kvas;
 
 public static class ServerKvasExt
 {
+    public static IKvas GetClient(this IServerKvas serverKvas, Session session)
+        => new ServerKvasClient(serverKvas, session);
+
     public static Task Set(this IServerKvas serverKvas,
-        Session session, string key, string? value,
+        Session session, string key, byte[]? value,
         CancellationToken cancellationToken = default)
     {
         var command = new ServerKvas_Set(session, key, value);
@@ -11,7 +14,7 @@ public static class ServerKvasExt
     }
 
     public static Task SetMany(this IServerKvas serverKvas,
-        Session session, (string Key, string? Value)[] items,
+        Session session, (string Key, byte[]? Value)[] items,
         CancellationToken cancellationToken = default)
     {
         var command = new ServerKvas_SetMany(session, items);

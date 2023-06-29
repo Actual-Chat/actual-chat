@@ -13,7 +13,7 @@ public class LazyWriter<T> : WorkerBase
     public Func<List<T>, Task> Implementation { get; init; } = _ => Task.CompletedTask;
     public Func<Exception, LogLevel> FlushErrorSeverityProvider { get; init; } = static _ => LogLevel.Error;
     public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
-    public ILogger Log { get; init; } = NullLogger.Instance;
+    public ILogger? Log { get; init; }
 
     public LazyWriter()
     {
@@ -104,7 +104,7 @@ public class LazyWriter<T> : WorkerBase
                     var retryDelay = FlushRetryDelays[failedTryCount];
                     var severity = FlushErrorSeverityProvider.Invoke(e);
                     if (severity != LogLevel.None)
-                        Log.Log(severity, e,
+                        Log?.Log(severity, e,
                             "Error #{ErrorCount} while flushing a batch of {ItemCount} items, will retry in {RetryDelay}",
                             failedTryCount, batch.Count, retryDelay.ToShortString());
                     await Clock.Delay(retryDelay, cancellationToken).ConfigureAwait(false);

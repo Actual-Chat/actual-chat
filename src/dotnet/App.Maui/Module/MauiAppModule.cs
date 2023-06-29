@@ -33,11 +33,11 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
 
         // ClientComputedCache
-        services.AddSingleton(_ => AppClientComputedCache.Options.Default with {
+        services.AddSingleton(_ => new SQLiteClientComputedCache.Options() {
             DbPath = new FilePath(FileSystem.AppDataDirectory) & "CCC.db3",
         });
         services.AddSingleton(c => new SQLiteClientComputedCache(
-            c.GetRequiredService<AppClientComputedCache.Options>(), c));
-        services.AddAlias<ClientComputedCache, SQLiteClientComputedCache>();
+            c.GetRequiredService<SQLiteClientComputedCache.Options>(), c));
+        services.AddAlias<IClientComputedCache, SQLiteClientComputedCache>();
     }
 }

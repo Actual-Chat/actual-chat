@@ -48,8 +48,10 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
                         bool mustSet;
                         lock (Lock) {
                             mustSet = Snapshot == initialSnapshot;
-                            if (mustSet)
+                            if (mustSet) {
                                 Set(value);
+                                computed = (StateBoundComputed<T>)Computed;
+                            }
                         }
                         if (mustSet)
                             DebugLog?.LogDebug("{State}: Read = {Result}", this, value);
@@ -96,29 +98,21 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 
     public record KvasOptions(IKvas Kvas, string Key) : Options
     {
-        public static ITextSerializer<T> DefaultSerializer { get; set; } =
-            SystemJsonSerializer.Default.ToTyped<T>();
-
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
-        public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
 
         internal override async ValueTask<Option<T>> Read(CancellationToken cancellationToken)
         {
-            var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
-            if (data == null)
+            var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
+            if (!valueOpt.IsSome(out var value))
                 return default;
 
-            var value = Serializer.Read(data);
             if (Corrector != null)
                 value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
             return value;
         }
 
         internal override Task Write(T value, CancellationToken cancellationToken)
-        {
-            var data = Serializer.Write(value);
-            return Kvas.Set(Key, data, cancellationToken);
-        }
+            => Kvas.Set(Key, value, cancellationToken);
     }
 }
 

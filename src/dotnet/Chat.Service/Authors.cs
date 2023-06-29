@@ -184,7 +184,9 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
+        var invite = await ServerKvas
+            .GetClient(session)
+            .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
         if (invite.HasValue) {
             // Remove the invite
             var removeInviteCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), null);

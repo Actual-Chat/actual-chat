@@ -37,6 +37,8 @@ public static class Program
 #endif
         Tracer.Point($"{nameof(Main)} started");
 
+        FusionSettings.Mode = FusionMode.Client;
+
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp);
         var sentrySdkDisposable = isSentryEnabled
