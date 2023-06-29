@@ -59,6 +59,16 @@ public static partial class Constants
         public const int FileCountLimit = 10;
     }
 
+    public static class Contacts
+    {
+        public static TimeSpan MinTouchInterval { get; } =  TimeSpan.FromSeconds(10);
+    }
+
+    public static class Recorder
+    {
+        public static string DefaultId = "default";
+    }
+
     public static class Session
     {
         public static TimeSpan MinUpdatePresencePeriod { get; } = TimeSpan.FromHours(1);
@@ -75,18 +85,10 @@ public static partial class Constants
         public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);
     }
 
-    public static class Contacts
-    {
-        public static TimeSpan MinTouchInterval { get; } =  TimeSpan.FromSeconds(10);
-    }
+    // Diagnostics, etc.
 
     public static class Sentry
     {
         public static HashSet<AppKind> EnabledFor { get; } = new () {AppKind.MauiApp};
-    }
-
-    public static class Recorder
-    {
-        public static string DefaultId = "default";
     }
 }

@@ -16,12 +16,6 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
         public string Version { get; init; } = Constants.Api.Version;
         public ImmutableHashSet<(Symbol, Symbol)> ForceFlushFor { get; init; } =
             ImmutableHashSet<(Symbol, Symbol)>.Empty.Add((nameof(IAccounts), nameof(IAccounts.GetOwn)));
-
-        public Options()
-        {
-            Version = Constants.Api.Version;
-            FlushDelay = TimeSpan.FromSeconds(0.25);
-        }
     }
 
     protected static TextOrBytes? Miss = default;
