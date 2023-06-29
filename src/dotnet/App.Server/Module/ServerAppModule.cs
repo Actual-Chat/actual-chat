@@ -105,7 +105,7 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         app.UseResponseCompression();
 
         // API controllers
-        app.UseFusionSession();
+        app.UseMiddleware<ReadSessionMiddleware>();
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
@@ -134,37 +134,15 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                 : TimeSpan.FromSeconds(30);
         });
 
+        // Session middleware and cookie settings
+        services.AddSingleton<SessionCookieOptions>(_ => SessionCookieOptions.Default);
+        services.AddSingleton<ReadSessionMiddleware.Options>(_ => ReadSessionMiddleware.Options.Default);
+        services.AddScoped<ReadSessionMiddleware>(c
+            => new ReadSessionMiddleware(c.GetRequiredService<ReadSessionMiddleware.Options>(), c));
+
         // Queues
         services.AddLocalCommandQueues();
         services.AddCommandQueueScheduler();
-
-        // Fusion services
-        var hostName = Dns.GetHostName().ToLowerInvariant();
-        services.AddSingleton(_ => new SessionMiddleware.Options() {
-            RequestFilter = httpContext => {
-                // This part makes sure that SessionMiddleware
-                // doesn't reset missing FusionAuth.SessionId cookie
-                // on POST redirect from Apple. Such a redirect
-                // violates Lax CORS policy, so cookies aren't sent
-                // with it, and thus if we do nothing, SessionMiddleware
-                // will reset the cookie.
-                //
-                // What we want is to just skip setting the cookie:
-                // cookies will be anyway available on redirect to
-                // /fusion/close, which happens right after the redirect
-                // to /signin-xxx.
-                var requestPath = httpContext.Request.Path.Value ?? "";
-                if (requestPath.StartsWith("signin-", StringComparison.Ordinal))
-                    return false;
-                if (requestPath.StartsWith("/signin-", StringComparison.Ordinal))
-                    return false;
-                // skip healthz endpoints
-                if (requestPath.StartsWith("/health", StringComparison.Ordinal))
-                    return false;
-
-                return true;
-            },
-        });
 
         // Fusion web server
         var fusion = services.AddFusion();
