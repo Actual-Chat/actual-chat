@@ -59,7 +59,7 @@ public class AppServicesAccessor
                     throw Errors.AlreadyInitialized(nameof(ScopedServices));
 
                 _scopedServices = value;
-                _whenScopedServicesReadySource.TrySetResult(default);
+                _whenScopedServicesReadySource.TrySetResult();
                 Log.LogDebug("ScopedServices ready");
             }
         }
@@ -78,7 +78,7 @@ public class AppServicesAccessor
                 return;
 
             var js = _scopedServices.GetRequiredService<IJSRuntime>();
-            _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>(); // Must go first
+            _whenScopedServicesReadySource = TaskCompletionSourceExt.New(); // Must go first
             _scopedServices = null;
             SafeJSRuntime.MarkDisconnected(js);
             AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");

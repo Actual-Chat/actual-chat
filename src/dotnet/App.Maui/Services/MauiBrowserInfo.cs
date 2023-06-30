@@ -31,7 +31,7 @@ public class MauiBrowserInfo : BrowserInfo
         var screenSize = isWide ? UI.Blazor.Services.ScreenSize.Medium : UI.Blazor.Services.ScreenSize.Small;
         Update(screenSize, !isMobile, false);
 
-        WhenReadySource.TrySetResult(default);
+        WhenReadySource.TrySetResult();
         return base.Initialize(initCalls);
     }
 
@@ -47,6 +47,6 @@ public class MauiBrowserInfo : BrowserInfo
         WindowId = initResult.WindowId;
         // We don't want to change any other properties here
 
-        WhenReadySource.TrySetResult(default);
+        WhenReadySource.TrySetResult();
     }
 }
