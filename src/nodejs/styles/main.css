@@ -93,7 +93,7 @@ input.input-underlined {
 .error-toast .toast-content {
     @apply flex;
     @apply text-base font-normal;
-    @apply break-words;
+    @apply break-all;
 }
 .error-toast .btn.btn-x {
     @apply flex-none;

@@ -28,8 +28,9 @@
 }
 
 .narrow .narrow-view__modal__position-bottom {
-    @apply absolute bottom-10 left-4 right-4;
-    @apply w-auto h-auto;
+    @apply absolute bottom-0 left-0 right-0;
+    @apply w-auto h-auto rounded-b-none;
+    min-height: 80vh;
 }
 
 .narrow .narrow-view__modal__position-stretch {
