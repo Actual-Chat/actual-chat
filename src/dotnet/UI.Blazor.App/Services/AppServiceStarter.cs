@@ -59,7 +59,7 @@ public class AppServiceStarter
         var browserInit = Services.GetRequiredService<BrowserInit>();
         var session = Services.GetRequiredService<Session>();
         var sessionHash = session == Session.Default ? null : session.Hash; // Session.Default is used only in WASM
-        _ = browserInit.Initialize(Constants.Api.Version, sessionHash, async initCalls => {
+        var browserInitTask = browserInit.Initialize(Constants.Api.Version, sessionHash, async initCalls => {
             await jsAppSettings.Initialize(initCalls).ConfigureAwait(false);
             await browserInfo.Initialize(initCalls).ConfigureAwait(false);
         });
@@ -73,7 +73,7 @@ public class AppServiceStarter
         // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
         //           coz tasks were started on Dispatcher thread already.
 
-        // Finishing w/ BrowserInfo, + this indicates BulkInit is completed
+        // Finishing w/ BrowserInfo
         await browserInfo.WhenReady.ConfigureAwait(false);
         Tracer.Point("BrowserInfo is ready");
 
@@ -85,8 +85,9 @@ public class AppServiceStarter
         await themeUI.WhenReady.ConfigureAwait(false);
         Tracer.Point("ThemeUI is ready");
 
-        // AutoNavigate automatically dispatches itself via Dispatcher
+        // Finishing with BrowserInit
         var autoNavigationUrl = await autoNavigationUrlTask.ConfigureAwait(false);
+        await browserInitTask.ConfigureAwait(false); // Must be completed before the next call
         await history.Initialize(autoNavigationUrl).ConfigureAwait(false);
     }
 

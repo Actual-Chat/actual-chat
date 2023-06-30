@@ -9,7 +9,11 @@ export class History {
     public static navigationManager: any
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public static init(backendRef1: DotNet.DotNetObject, url: string, historyEntryState: string): void {
+    public static init(
+        backendRef1: DotNet.DotNetObject,
+        url: string,
+        historyEntryState: string
+    ): void {
         this.backendRef = backendRef1;
         this.navigationManager = window.window['Blazor']._internal.navigationManager;
 
