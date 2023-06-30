@@ -46,7 +46,6 @@
 @code {
     protected Model? Rendered;
     protected ChatView ChatViewRef = null!;
-    protected bool IsFirstLoad = true;
 
     [Inject] protected Session Session { get; init; } = null!;
     [Inject] protected IAccounts Accounts { get; init; } = null!;
@@ -85,43 +84,39 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        if (ReferenceEquals(State.Value, Model.Loading)) {
-            // It's our very first load
-            if (!PanelsUI.Middle.IsVisible.Value) {
-                // Postpone chat loading when it's invisible
-                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
-            }
-        }
         try {
             var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var lastState = State.ValueOrDefault;
+            var lastChatId = lastState?.Chat.Id ?? ChatId.None;
             // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
-            var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-            // Let's delay chat loading when it it is invisible and it happens for the first time
-            if (IsFirstLoad) {
-                IsFirstLoad = false;
-                if (screenSize.IsNarrow()) {
-                    var panelsUI = Services.GetRequiredService<PanelsUI>();
-                    if (panelsUI.Left.IsVisible.Value) {
-                        Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
-                        await Task.Delay(TimeSpan.FromSeconds(0.75), cancellationToken);
-                    }
-                }
+
+            var isVeryFirstLoad = ReferenceEquals(lastState, Model.Loading);
+            if (isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value) {
+                // Postpone chat loading when it's invisible
+                Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken);
             try {
                 var chat = SpecialChat.NoChatSelected;
                 if (!chatId.IsNone) {
+                    var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
+                    if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow()) {
+                        // Postponing chat change to let left panel slide smoothly - don't change this delay!
+                        await Task.Delay(TimeSpan.FromSeconds(0.15), cancellationToken).ConfigureAwait(false);
+                    }
+
                     chat = await Chats.Get(Session, chatId, cancellationToken);
                     chat ??= SpecialChat.Unavailable;
                 }
                 var footer = await GetFooterModel(chat, account, cancellationToken);
-                return new Model(chat, account, footer, screenSize);
+                return new Model(chat, account, footer);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-                return new Model(SpecialChat.Unavailable, account, new(), screenSize);
+                return new Model(SpecialChat.Unavailable, account, new());
             }
         }
         finally {
@@ -174,8 +169,7 @@
     public sealed record Model(
         Chat Chat,
         AccountFull Account,
-        FooterModel Footer,
-        ScreenSize ScreenSize = ScreenSize.Unknown
+        FooterModel Footer
     ) {
         public static Model Loading { get; } =
             new(SpecialChat.Loading, AccountFull.Loading, new FooterModel());

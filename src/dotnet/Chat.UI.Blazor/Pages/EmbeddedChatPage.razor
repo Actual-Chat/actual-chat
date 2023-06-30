@@ -47,8 +47,6 @@
 </div>
 
 @code {
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override void OnInitialized() {
@@ -57,7 +55,7 @@
         base.OnInitialized();
     }
 
-    protected override async Task<ChatPage.Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
         // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
         // and moreover, we want to make sure ComputeState gets invalidated
@@ -69,7 +67,6 @@
         // };
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
-        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
         try {
@@ -78,9 +75,9 @@
                 chat = await Chats.Get(Session, chatId, cancellationToken);
                 chat ??= SpecialChat.Unavailable;
             }
-            if (chat is not {IsTemplate: true }) {
+            if (chat is not { IsTemplate: true }) {
                 var footer = await GetFooterModel(chat, account, cancellationToken);
-                return new (chat, account, footer, screenSize);
+                return new (chat, account, footer);
             }
 
             // create new chat based on a template and redirect to the new clone
@@ -99,11 +96,11 @@
             // Subscribe to chat changes
             newChat = await Chats.Get(Session, newChat.Id, cancellationToken);
             var newChatFooter = await GetFooterModel(newChat!, account, cancellationToken);
-            return new (newChat!, account, newChatFooter, screenSize);
+            return new (newChat!, account, newChatFooter);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            return new ChatPage.Model(SpecialChat.Unavailable, account, new(), screenSize);
+            return new Model(SpecialChat.Unavailable, account, new());
         }
     }
 }
