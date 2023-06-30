@@ -121,7 +121,7 @@ public sealed class NavigationQueue
     {
         private static readonly string TypeName = $"{nameof(NavigationQueue)}.{nameof(Entry)}";
 
-        private readonly TaskCompletionSource _whenCompletedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
         private CancellationTokenSource? _timeoutSource;
         private CancellationToken _timeoutToken;
 

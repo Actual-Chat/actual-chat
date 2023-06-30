@@ -23,7 +23,7 @@
     }
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
-        var now = await FusionTime.GetUtcNow(UpdatePeriod);
+        var now = await FusionTime.Now(UpdatePeriod);
         return GetText(now);
     }
 

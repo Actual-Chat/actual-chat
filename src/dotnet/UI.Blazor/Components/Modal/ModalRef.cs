@@ -6,8 +6,8 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 {
     private static long _lastId;
-    private readonly TaskCompletionSource<Unit> _whenShownSource = TaskCompletionSourceExt.New<Unit>();
-    private readonly TaskCompletionSource<Unit> _whenClosedSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenShownSource = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
     private RenderFragment _view = null!;
 
     public Symbol Id { get; }
@@ -40,9 +40,9 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     void IModalRefImpl.SetModal(Modal modal)
     {
         Modal = modal;
-        _whenShownSource.TrySetResult(default);
+        _whenShownSource.TrySetResult();
     }
 
     void IModalRefImpl.MarkClosed()
-        => _whenClosedSource.TrySetResult(default);
+        => _whenClosedSource.TrySetResult();
 }

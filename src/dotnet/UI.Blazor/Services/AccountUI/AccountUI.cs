@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 {
-    private readonly TaskCompletionSource<Unit> _whenLoadedSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
 
     private IServiceProvider Services { get; }
@@ -38,7 +38,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
             Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
         });
         if (!ReferenceEquals(initialOwnAccount, AccountFull.Loading))
-            _whenLoadedSource.TrySetResult(default);
+            _whenLoadedSource.TrySetResult();
     }
 
     void INotifyInitialized.Initialized()

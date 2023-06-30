@@ -7,7 +7,7 @@ public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, Play
 
 public abstract class TrackPlayer : ProcessorBase
 {
-    private readonly TaskCompletionSource<Unit> _whenCompletedSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly object _stateUpdateLock = new();
@@ -187,7 +187,7 @@ public abstract class TrackPlayer : ProcessorBase
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
             if (state.IsEnded)
-                _whenCompletedSource.TrySetResult(default);
+                _whenCompletedSource.TrySetResult();
         }
     }
 

@@ -4,7 +4,7 @@ public interface IMessageProcess
 {
     object UntypedMessage { get; }
     CancellationToken CancellationToken { get; }
-    Task<Unit> WhenStarted { get; }
+    Task WhenStarted { get; }
     Task<object?> WhenCompleted { get; }
 
     void MarkStarted();
@@ -25,12 +25,12 @@ public abstract class MessageProcess : IMessageProcess
         Func<object, CancellationToken, TaskCompletionSource<Unit>?, TaskCompletionSource<object?>?, object>>
         MessageProcessorCtorCache = new();
 
-    protected TaskCompletionSource<Unit> WhenStartedSource { get; init; } = null!;
+    protected TaskCompletionSource WhenStartedSource { get; init; } = null!;
     protected TaskCompletionSource<object?> WhenCompletedSource { get; init; } = null!;
 
     public abstract object UntypedMessage { get; }
     public CancellationToken CancellationToken { get; protected init; }
-    public Task<Unit> WhenStarted => WhenStartedSource.Task;
+    public Task WhenStarted => WhenStartedSource.Task;
     public Task<object?> WhenCompleted => WhenCompletedSource.Task;
 
     public abstract void MarkStarted();
@@ -70,24 +70,24 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
     public MessageProcess(
         object message,
         CancellationToken cancellationToken,
-        TaskCompletionSource<Unit>? whenStartedSource = null,
+        TaskCompletionSource? whenStartedSource = null,
         TaskCompletionSource<object?>? whenCompletedSource = null)
     {
         Message = (TMessage)message;
         CancellationToken = cancellationToken;
-        WhenStartedSource = whenStartedSource ?? TaskCompletionSourceExt.New<Unit>();
+        WhenStartedSource = whenStartedSource ?? TaskCompletionSourceExt.New();
         WhenCompletedSource = whenCompletedSource ?? TaskCompletionSourceExt.New<object?>();
     }
 
     public MessageProcess(
         TMessage message,
         CancellationToken cancellationToken,
-        TaskCompletionSource<Unit>? whenStartedSource = null,
+        TaskCompletionSource? whenStartedSource = null,
         TaskCompletionSource<object?>? whenCompletedSource = null)
     {
         Message = message;
         CancellationToken = cancellationToken;
-        WhenStartedSource = whenStartedSource ?? TaskCompletionSourceExt.New<Unit>();
+        WhenStartedSource = whenStartedSource ?? TaskCompletionSourceExt.New();
         WhenCompletedSource = whenCompletedSource ?? TaskCompletionSourceExt.New<object?>();
     }
 
@@ -95,14 +95,14 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
     {
         DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkStarted));
 
-        WhenStartedSource.TrySetResult(default);
+        WhenStartedSource.TrySetResult();
     }
 
     public override void MarkCompleted(Result<object?> result)
     {
         DefaultLog.LogDebug(nameof(MessageProcess<TMessage>) + "." + nameof(MarkCompleted) + " {Result}", result.ValueOrDefault);
 
-        WhenStartedSource.TrySetResult(default);
+        WhenStartedSource.TrySetResult();
         WhenCompletedSource.TrySetFromResult(result, CancellationToken);
     }
 

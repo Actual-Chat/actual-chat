@@ -27,12 +27,11 @@ public class AppServiceStarter
             using var _1 = Tracer.Region();
             try {
                 // _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
-                var accounts = Services.GetRequiredService<IAccounts>();
-                var getOwnAccountTask = accounts.GetOwn(session, CancellationToken.None);
-                var contacts = Services.GetRequiredService<IContacts>();
-                var chats = Services.GetRequiredService<IChats>();
-                var account = await getOwnAccountTask.ConfigureAwait(false);
-                // await contacts.ListIds(session, CancellationToken.None).ConfigureAwait(false);
+                var accountUI = Services.GetRequiredService<AccountUI>();
+                Services.GetRequiredService<ChatUI>();
+                Services.GetRequiredService<IContacts>();
+                Services.GetRequiredService<IChats>();
+                await accountUI.WhenLoaded.ConfigureAwait(false);
             }
             catch (Exception e) {
                 Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
@@ -43,21 +42,25 @@ public class AppServiceStarter
     {
         using var _1 = Tracer.Region();
 
-        var accountUI = Services.GetRequiredService<AccountUI>();
+        // Starting initial navigation URL resolving.
+        // This requires AccountUI.OwnAccount & ChatUI.SelectedChatId,
+        // so both of these services are started even earlier
+        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
+        var history = autoNavigationUI.History;
+        // Note that GetAutoNavigationUrl must start in Blazor Dispatcher
+        var autoNavigationUrlTask = autoNavigationUI.GetAutoNavigationUrl(cancellationToken);
 
-        // Creating History and BrowserInfo - this should be done as early as possible
+        // Creating core services - this should be done as early as possible
         var jsAppSettings = Services.GetRequiredService<JavaScriptAppSettings>();
-        var history = Services.GetRequiredService<History>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
 
-        // Initializing them both together
+        // Initializing them at once
         Tracer.Point("BulkInitUI.Invoke");
         var browserInit = Services.GetRequiredService<BrowserInit>();
         var session = Services.GetRequiredService<Session>();
         var sessionHash = session == Session.Default ? null : session.Hash; // Session.Default is used only in WASM
         _ = browserInit.Initialize(Constants.Api.Version, sessionHash, async initCalls => {
             await jsAppSettings.Initialize(initCalls).ConfigureAwait(false);
-            await history.Initialize(initCalls).ConfigureAwait(false);
             await browserInfo.Initialize(initCalls).ConfigureAwait(false);
         });
 
@@ -78,18 +81,13 @@ public class AppServiceStarter
         if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
             serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
 
-        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
-
         // Finishing w/ ThemeUI
         await themeUI.WhenReady.ConfigureAwait(false);
         Tracer.Point("ThemeUI is ready");
 
-        // Awaiting for account to be resolved
-        await accountUI.WhenLoaded.ConfigureAwait(false);
-        Tracer.Point("AccountUI is ready");
-
         // AutoNavigate automatically dispatches itself via Dispatcher
-        await autoNavigationUI.AutoNavigate(cancellationToken).ConfigureAwait(false);
+        var autoNavigationUrl = await autoNavigationUrlTask.ConfigureAwait(false);
+        await history.Initialize(autoNavigationUrl).ConfigureAwait(false);
     }
 
     public async Task AfterRender(CancellationToken cancellationToken)

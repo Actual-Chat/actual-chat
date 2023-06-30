@@ -13,7 +13,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeTokenSource = new();
-    private readonly TaskCompletionSource<Unit> _whenInitializedSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly Suspender _getDataSuspender = new();
 
     private long? _lastNavigateToEntryId;
@@ -72,7 +72,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             RegionVisibility.IsVisible.Updated += OnRegionVisibilityChanged;
         }
         finally {
-            _whenInitializedSource.SetResult(Unit.Default);
+            _whenInitializedSource.SetResult();
         }
     }
 

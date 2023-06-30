@@ -77,8 +77,8 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         StateFactory = services.StateFactory();
 
         var type = GetType();
-        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)) {
-            Corrector = FixChatId,
+        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(services.LocalSettings(), nameof(SelectedChatId)) {
+            Corrector = FixSelectedChatId,
         });
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
@@ -229,13 +229,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
     // Helpers
 
-    public async ValueTask<ChatId> GetDefaultChatId(CancellationToken cancellationToken = default)
-    {
-        await WhenLoaded.WaitAsync(cancellationToken);
-        var chatId = SelectedChatId.Value;
-        return chatId.IsNone ? Constants.Chat.AnnouncementsChatId : chatId;
-    }
-
     // This method fixes provided ChatId w/ PeerChatId.FixOwnerId, which replaces
     // a guest UserId there with OwnAccount.Id.
     // It must be used mainly in Navbar, which renders independently from ChatPage content,
@@ -292,6 +285,12 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     }
 
     // Private methods
+
+    private async ValueTask<ChatId> FixSelectedChatId(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        chatId = await FixChatId(chatId, cancellationToken).ConfigureAwait(false);
+        return chatId.IsNone ? Constants.Chat.AnnouncementsChatId : chatId;
+    }
 
     // Not compute method!
     private Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)

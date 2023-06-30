@@ -9,7 +9,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isVisible;
 
-    protected readonly TaskCompletionSource<Unit> WhenReadySource = TaskCompletionSourceExt.New<Unit>();
+    protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected DotNetObjectReference<IBrowserInfoBackend>? BackendRef;
     protected readonly object Lock = new();
 
@@ -87,7 +87,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         IsWebKit = initResult.IsWebKit;
         IsTouchCapable = initResult.IsTouchCapable;
         WindowId = initResult.WindowId;
-        WhenReadySource.TrySetResult(default);
+        WhenReadySource.TrySetResult();
     }
 
     [JSInvokable]

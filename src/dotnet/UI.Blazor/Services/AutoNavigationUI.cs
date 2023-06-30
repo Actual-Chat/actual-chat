@@ -4,108 +4,92 @@ namespace ActualChat.UI.Blazor.Services;
 
 public enum AutoNavigationReason
 {
-    Skip = 0,
-    Initial = 1,
-    SignIn = 2,
-    Other = 9,
+    Unknown = 0,
+    SignIn = 1,
     Notification = 10,
 }
 
 public abstract class AutoNavigationUI : IHasServices
 {
-    private readonly object _lock = new ();
-    private bool _autoNavigateStarted;
-    private readonly List<(LocalUrl Url, AutoNavigationReason Reason)> _initialNavigationTargets = new();
-
-    private History? _history;
     private AppBlazorCircuitContext? _blazorCircuitContext;
+    private List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
     protected ILogger Log { get; }
     protected ILogger? DebugLog { get; }
 
     public IServiceProvider Services { get; }
-    public History History => _history ??= Services.GetRequiredService<History>();
+    public History History { get; }
     public AppBlazorCircuitContext BlazorCircuitContext => _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
     public Dispatcher Dispatcher => BlazorCircuitContext.Dispatcher;
 
-    public Task? WhenAutoNavigated { get; private set; }
     public bool? InitialLeftPanelIsVisible { get; set; }
 
     protected AutoNavigationUI(IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
+        History = services.GetRequiredService<History>();
         DebugLog = Log.IfEnabled(LogLevel.Debug);
     }
 
-    public Task AutoNavigate(CancellationToken cancellationToken)
-        => WhenAutoNavigated ??= Dispatcher.InvokeAsync((Func<Task>)(() => {
-            LocalUrl url;
-            AutoNavigationReason reason;
-            lock (_lock) {
-                _autoNavigateStarted = true;
-                (url, reason) = _initialNavigationTargets.Count > 0
-                    ? _initialNavigationTargets.MaxBy(t => (int) t.Reason)
-                    : default;
-                Log.LogDebug("AutoNavigate: Targets.Count: {Count}, Url: {Url}, Reason: '{Reason}'",
-                    _initialNavigationTargets.Count, url, reason);
-            }
-            return HandleAutoNavigate(url, reason, cancellationToken);
-        }));
-
-    public void DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
+    public async ValueTask<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("DispatchNavigateTo({Url}, {Reason})", url, reason);
-        lock (_lock) {
-            if (!_autoNavigateStarted) {
-                DebugLog?.LogDebug("DispatchNavigateTo({Url}, {Reason}): enqueuing initial navigation target", url, reason);
-                _initialNavigationTargets.Add((url, reason));
-                return;
-            }
+        Dispatcher.AssertAccess();
+        var candidateUrl = (LocalUrl?)null;
+        if (_autoNavigationCandidates == null)
+            throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
+
+        if (_autoNavigationCandidates.Count > 0)
+            candidateUrl = _autoNavigationCandidates.MaxBy(t => (int) t.Reason).Url;
+        _autoNavigationCandidates = null;
+
+        var currentUrl = History.LocalUrl;
+        var url = candidateUrl ?? await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
+        url = await FixUrl(url, cancellationToken).ConfigureAwait(false);
+        if (url != currentUrl && url.IsChat()) {
+            // Original URL was either home or chat root page,
+            // so left panel must be open when PanelsUI is loaded
+            InitialLeftPanelIsVisible = true;
         }
-        if (BlazorCircuitContext.WhenReady.IsCompleted) {
-            if (Dispatcher.CheckAccess())
-                NavigateTo(url, reason);
-            else
-                _ = Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
-            return;
-        }
-        _ = BlazorCircuitContext.WhenReady.ContinueWith(_1 => {
-            if (Dispatcher.CheckAccess())
-                NavigateTo(url, reason);
-            else
-                _ = Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
-        }, TaskScheduler.Current);
+        return url;
     }
 
-    public void NavigateTo(LocalUrl url, AutoNavigationReason reason)
+    public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        if (reason == AutoNavigationReason.Skip)
-            throw new ArgumentOutOfRangeException(nameof(reason));
+        DebugLog?.LogDebug("DispatchNavigateTo({Url}, {Reason})", url, reason);
+        if (BlazorCircuitContext.WhenReady.IsCompleted)
+            return Dispatcher.CheckAccess()
+                ? NavigateTo(url, reason)
+                : Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
 
-        if (WhenAutoNavigated?.IsCompleted != true) {
-            DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): enqueuing initial navigation target", url, reason);
-            lock (_lock) {
-                if (!_autoNavigateStarted)
-                    _initialNavigationTargets.Add((url, reason));
-                else
-                    // TODO(DF): To think how better gracefully handle this case.
-                    Log.LogWarning("NavigateTo({Url}, {Reason}): enqueuing initial navigation target after auto navigation started", url, reason);
-            }
-            return;
+        return Task.Run(async () => {
+            await BlazorCircuitContext.WhenReady.ConfigureAwait(false);
+            await Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+        });
+    }
+
+    public Task NavigateTo(LocalUrl url, AutoNavigationReason reason)
+    {
+        Dispatcher.AssertAccess();
+        if (_autoNavigationCandidates == null)
+            return FixUrlAndNavigate(); // Initial navigation already happened
+
+        // Initial navigation haven't happened yet
+        DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): auto navigation candidate is added", url, reason);
+        _autoNavigationCandidates.Add((url, reason));
+        return History.WhenReady;
+
+        async Task FixUrlAndNavigate()
+        {
+            DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): processing", url, reason);
+            var cancellationToken = BlazorCircuitContext.StopToken;
+            url = await FixUrl(url, cancellationToken).ConfigureAwait(true);
+            await History.NavigateTo(url).SilentAwait();
         }
-
-        if (reason == AutoNavigationReason.Initial) {
-            DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): skipped (initial navigation is already completed)", url, reason);
-            return;
-        }
-
-        DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): processing", url, reason);
-        _ = HandleNavigateTo(url, reason);
     }
 
     // Protected methods
 
-    protected abstract Task HandleAutoNavigate(LocalUrl url, AutoNavigationReason reason, CancellationToken cancellationToken);
-    protected abstract Task HandleNavigateTo(LocalUrl url, AutoNavigationReason reason);
+    protected abstract ValueTask<LocalUrl> GetDefaultAutoNavigationUrl();
+    protected abstract ValueTask<LocalUrl> FixUrl(LocalUrl url, CancellationToken cancellationToken);
 }

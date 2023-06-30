@@ -75,7 +75,7 @@
     private void Close(bool result) {
         var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmedSource;
         if (result)
-            whenConfirmed?.TrySetResult(default);
+            whenConfirmed?.TrySetResult();
          else
             whenConfirmed?.TrySetCanceled();
         Modal.Close();

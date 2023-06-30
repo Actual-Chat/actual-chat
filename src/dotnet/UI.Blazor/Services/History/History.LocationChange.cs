@@ -10,6 +10,7 @@ public partial class History
     private void LocationChange(LocationChangedEventArgs eventArgs, bool mustReplace = false)
     {
         using var _1 = _locationChangeRegion.Enter();
+        _whenReadySource.TrySetResult();
         var historyEntryState = eventArgs.HistoryEntryState;
         var parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
         DebugLog?.LogDebug(

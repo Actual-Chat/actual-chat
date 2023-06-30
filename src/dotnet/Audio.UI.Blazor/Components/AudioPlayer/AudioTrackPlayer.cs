@@ -13,7 +13,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
-    private volatile TaskCompletionSource<Unit> _whenBufferLowSource = TaskCompletionSourceExt.New<Unit>();
+    private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
@@ -160,13 +160,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private void UpdateBufferState(bool isBufferLow)
     {
         if (isBufferLow) {
-            _whenBufferLowSource.TrySetResult(default);
+            _whenBufferLowSource.TrySetResult();
         }
         else {
             if (!_whenBufferLowSource.Task.IsCompleted)
                 return;
 
-            _whenBufferLowSource = TaskCompletionSourceExt.New<Unit>();
+            _whenBufferLowSource = TaskCompletionSourceExt.New();
         }
     }
 }

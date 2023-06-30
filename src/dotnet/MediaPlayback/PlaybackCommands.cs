@@ -13,7 +13,7 @@ public sealed class PlayTrackCommand : IPlaybackCommand
         new MessageProcess<PlayTrackCommand>(
             PlayNothing,
             default,
-            TaskCompletionSourceExt.New<Unit>().WithResult(default),
+            TaskCompletionSourceExt.New().WithResult(),
             TaskCompletionSourceExt.New<object?>().WithResult(null));
 
     public TrackInfo TrackInfo { get; }

@@ -19,7 +19,7 @@ public class JsonSerializationOutputTest : TestBase
         Dump(new UserBubbleSettings() { ReadBubbles = new ApiArray<string>("x") });
     }
 
-    public void Dump<T>(T instance)
+    private void Dump<T>(T instance)
     {
         var s = SystemJsonSerializer.Default;
         Out.WriteLine($"{typeof(T).GetName()}:");

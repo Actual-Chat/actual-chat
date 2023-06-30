@@ -9,7 +9,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private readonly object _lock = new();
     private readonly IMutableState<PermissionState> _state;
     private readonly IMutableState<string?> _deviceId;
-    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private History History { get; }
@@ -103,7 +103,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (!localUrl.IsChat())
             return;
 
-        AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
+        _ = AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
     public void UpdateNotificationStatus(PermissionState newState)
@@ -113,7 +113,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState == PermissionState.Granted)
             _ = EnsureDeviceRegistered(CancellationToken.None);
 
-        _whenReadySource.SetResult(Unit.Default);
+        _whenReadySource.SetResult();
     }
 
     [JSInvokable]
@@ -129,7 +129,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState == PermissionState.Granted)
             await EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
 
-        _whenReadySource.SetResult(Unit.Default);
+        _whenReadySource.SetResult();
     }
 
     public bool IsAlreadyThere(ChatId chatId)

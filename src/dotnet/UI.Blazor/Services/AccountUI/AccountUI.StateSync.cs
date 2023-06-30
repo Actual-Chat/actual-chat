@@ -32,7 +32,7 @@ public partial class AccountUI
 
             Log.LogDebug("SyncOwnAccount: new OwnAccount: {Account}", ownAccount);
             _ownAccount.Value = ownAccount;
-            if (!_whenLoadedSource.TrySetResult(default)) {
+            if (!_whenLoadedSource.TrySetResult()) {
                 // We don't publish this event for the initial account change
                 uiEventHub ??= Services.GetRequiredService<UIEventHub>();
                 var @event = new OwnAccountChangedEvent(ownAccount, oldAccount);

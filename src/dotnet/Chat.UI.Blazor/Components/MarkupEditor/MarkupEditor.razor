@@ -10,7 +10,7 @@
 </div>
 
 @code {
-    private TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
+    private TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     private MentionListManager? _lastMentionListManager;
     private Action<MentionSearchResult> _onMentionSelected;
 
@@ -68,7 +68,7 @@
             Ref,
             BlazorRef,
             Autofocus);
-        _whenReadySource.TrySetResult(default);
+        _whenReadySource.TrySetResult();
     }
 
     public async ValueTask<string> GetText() {

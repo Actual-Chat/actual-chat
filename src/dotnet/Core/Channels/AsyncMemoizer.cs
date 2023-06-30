@@ -180,17 +180,17 @@ public sealed class AsyncMemoizer<T>
 
     private class Buffer
     {
-        private readonly TaskCompletionSource<Unit> _whenOutdatedSource = TaskCompletionSourceExt.New<Unit>();
+        private readonly TaskCompletionSource _whenOutdatedSource = TaskCompletionSourceExt.New();
 
         public ReadOnlyMemory<Result<T>> Items { get; }
-        public Task<Unit> WhenOutdated => _whenOutdatedSource.Task;
+        public Task WhenOutdated => _whenOutdatedSource.Task;
         public bool IsCompleted => Items.Length > 0 && Items.Span[^1].HasError;
 
         public Buffer(ReadOnlyMemory<Result<T>> items)
             => Items = items;
 
         public void MarkOutdated()
-            => _whenOutdatedSource.TrySetResult(default);
+            => _whenOutdatedSource.TrySetResult();
 
         public async ValueTask<bool> TryCopyTo(
             ChannelWriter<T> channel,

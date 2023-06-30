@@ -60,7 +60,7 @@
 
 @code {
     private readonly object _lock = new();
-    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }
@@ -86,7 +86,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.AttachmentList.create",
                 BlazorRef,
                 FilePickerRef);
-            _whenReadySource.TrySetResult(default);
+            _whenReadySource.TrySetResult();
         }
     }
 

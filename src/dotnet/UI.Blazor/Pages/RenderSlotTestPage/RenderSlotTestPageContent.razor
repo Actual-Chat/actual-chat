@@ -34,5 +34,5 @@ Content: @DateTime.Now.ToString("F")
         };
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
-        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        => await FusionTime.Now(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
 }

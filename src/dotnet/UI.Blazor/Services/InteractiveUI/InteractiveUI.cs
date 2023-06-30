@@ -86,7 +86,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
                 activeDemand = new ActiveDemandModel(
                     ImmutableList.Create(operation),
                     modalRefTask,
-                    TaskCompletionSourceExt.New<Unit>());
+                    TaskCompletionSourceExt.New());
                 _activeDemand.Value = activeDemand;
             }
             else {
@@ -135,7 +135,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     public sealed record ActiveDemandModel(
         ImmutableList<string> Operations,
         Task<ModalRef> WhenModalRef,
-        TaskCompletionSource<Unit> WhenConfirmedSource)
+        TaskCompletionSource WhenConfirmedSource)
     {
         public Task WhenConfirmed => WhenConfirmedSource.Task;
     }

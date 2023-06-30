@@ -8,5 +8,5 @@
     [Parameter] public double UpdatePeriod { get; set; } = 1;
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
-        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(UpdatePeriod)).ConfigureAwait(false);
+        => await FusionTime.Now(TimeSpan.FromSeconds(UpdatePeriod)).ConfigureAwait(false);
 }

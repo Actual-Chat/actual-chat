@@ -1,13 +1,12 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class ThemeUI : WorkerBase
 {
     private readonly ISyncedState<ThemeSettings> _settings;
-    private readonly TaskCompletionSource<Unit> _whenReadySource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     // Nearly every service here is requested only when the theme is applied,
     // so it makes sense to postpone their resolution
     private HostInfo? _hostInfo;
@@ -44,7 +43,7 @@ public class ThemeUI : WorkerBase
             });
 
         // We don't have themes yet, so it's safe to indicate the theme is ready immediately
-        _whenReadySource.TrySetResult(default);
+        _whenReadySource.TrySetResult();
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -57,7 +56,7 @@ public class ThemeUI : WorkerBase
 
     private Task ApplyTheme(Theme theme)
         => Dispatcher.InvokeAsync(async () => {
-            _whenReadySource.TrySetResult(default);
+            _whenReadySource.TrySetResult();
             if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
                 return;
             if (_appliedTheme == theme)

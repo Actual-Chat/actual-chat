@@ -31,7 +31,7 @@ internal class MauiNetworkStatusListener : INetworkStatusListener
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var tcs = new TaskCompletionSource();
+        var tcs = TaskCompletionSourceExt.NewSynchronous();
 
         void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs args)
         {

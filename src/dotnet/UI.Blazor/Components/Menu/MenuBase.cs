@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 public abstract class MenuBase : ComponentBase, IMenu, IDisposable
 {
-    private readonly TaskCompletionSource _whenClosedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
 
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string[] Arguments { get; set; } = Array.Empty<string>();

@@ -12,13 +12,13 @@ else {
 }
 
 @code {
-    private RpcPeerConnectionMonitor? _connectionMonitor;
+    private RpcPeerStateMonitor? _monitor;
 
     [Inject] private Session Session { get; init; } = null!;
 
     protected override void OnInitialized() {
-        _connectionMonitor = Services.GetService<RpcPeerConnectionMonitor>();
-        _connectionMonitor?.Start();
+        _monitor = Services.GetService<RpcPeerStateMonitor>();
+        _monitor?.Start();
         base.OnInitialized();
     }
 
@@ -29,12 +29,15 @@ else {
         };
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
-        if (_connectionMonitor == null)
+        if (_monitor == null)
             return "";
 
         try {
-            var isConnected = await _connectionMonitor.IsConnected.Use(cancellationToken);
-            return (isConnected ?? true) ? "" : "Unknown error";
+            var state = await _monitor.State.Use(cancellationToken);
+            if (state == null)
+                return "";
+
+            return state.Error?.Message ?? "Unknown error";
         }
         catch (Exception e) {
             return e.Message;

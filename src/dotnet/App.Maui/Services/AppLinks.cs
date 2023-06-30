@@ -33,7 +33,7 @@ public static class AppLinks
         _ = WhenScopedServicesReady.ContinueWith(_ => {
             var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
             var autoNavigationUI = ScopedServices.GetRequiredService<AutoNavigationUI>();
-            autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
+            _ = autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
         }, TaskScheduler.Default);
     }
 }

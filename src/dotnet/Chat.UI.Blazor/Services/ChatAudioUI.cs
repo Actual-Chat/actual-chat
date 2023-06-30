@@ -9,7 +9,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private readonly IMutableState<Moment?> _audioStoppedAt;
-    private readonly TaskCompletionSource<Unit> _whenEnabledSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
     private ChatPlayers? _chatPlayers;
@@ -42,7 +42,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 
     private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
-    public Task<Unit> WhenEnabled => _whenEnabledSource.Task;
+    public Task WhenEnabled => _whenEnabledSource.Task;
     public IState<Moment?> AudioStoppedAt => _audioStoppedAt;
 
     public ChatAudioUI(IServiceProvider services)
@@ -64,7 +64,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 
     // ChatAudioUI is disabled until the moment user visits ChatPage
     public void Enable()
-        => _whenEnabledSource.TrySetResult(default);
+        => _whenEnabledSource.TrySetResult();
 
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)

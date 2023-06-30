@@ -14,7 +14,7 @@ public partial class History : IHasServices, IDisposable
     private Session? _session;
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<History>? _backendRef;
-    private readonly TaskCompletionSource<Unit> _whenReadySource;
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
 
     private ILogger Log { get; }
     private ILogger? DebugLog { get; }
@@ -71,7 +71,6 @@ public partial class History : IHasServices, IDisposable
             _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
-        _whenReadySource = TaskCompletionSourceExt.New<Unit>();
 
         if (!HostInfo.AppKind.IsTestServer())
             Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);
@@ -80,27 +79,13 @@ public partial class History : IHasServices, IDisposable
     public void Dispose()
         => _backendRef.DisposeSilently();
 
-    public async Task Initialize(List<object?>? initCalls = null)
+    public Task Initialize(LocalUrl autoNavigationUrl)
     {
-        Dispatcher.AssertAccess();
-        try {
-            var jsMethod = $"{BlazorUICoreModule.ImportName}.History.init";
-            _backendRef = DotNetObjectReference.Create(this);
-            if (initCalls != null) {
-                initCalls.Add(jsMethod);
-                initCalls.Add(2);
-                initCalls.Add(_backendRef);
-                initCalls.Add(ItemIdFormatter.Format(_currentItem.Id));
-            }
-            else
-                await JS.InvokeVoidAsync(jsMethod, _backendRef);
-
-            _whenReadySource.TrySetResult(default);
-        }
-        catch (Exception e) {
-            _whenReadySource.TrySetException(e);
-            throw;
-        }
+        _backendRef = DotNetObjectReference.Create(this);
+        _ = JS.InvokeVoidAsync(
+            $"{BlazorUICoreModule.ImportName}.History.init",
+            _backendRef, autoNavigationUrl.Value, ItemIdFormatter.Format(_currentItem.Id));
+        return WhenReady;
     }
 
     public void Register<TState>(TState defaultState, bool ignoreIfAlreadyRegistered = false)

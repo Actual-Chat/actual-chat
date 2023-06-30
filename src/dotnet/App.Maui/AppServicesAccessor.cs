@@ -12,7 +12,7 @@ public class AppServicesAccessor
     private static volatile MauiAppSettings? _appSettings;
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
-    private static volatile TaskCompletionSource<Unit> _whenScopedServicesReadySource = TaskCompletionSourceExt.New<Unit>();
+    private static volatile TaskCompletionSource _whenScopedServicesReadySource = TaskCompletionSourceExt.New();
 
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
 

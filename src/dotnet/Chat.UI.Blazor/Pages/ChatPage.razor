@@ -54,6 +54,7 @@
     [Inject] protected IAvatars Avatars { get; init; } = null!;
     [Inject] protected ChatUI ChatUI { get; init; } = null!;
     [Inject] protected ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] protected PanelsUI PanelsUI { get; init; } = null!;
     [Inject] protected BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] protected ILogger<ChatPage> Log { get; init; } = null!;
 
@@ -84,10 +85,13 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        // var computed = Computed.GetCurrent()!;
-        // computed.Invalidated += c => {
-        //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
-        // };
+        if (ReferenceEquals(State.Value, Model.Loading)) {
+            // It's our very first load
+            if (!PanelsUI.Middle.IsVisible.Value) {
+                // Postpone chat loading when it's invisible
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+            }
+        }
         try {
             var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
             // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);

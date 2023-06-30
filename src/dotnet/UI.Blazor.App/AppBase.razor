@@ -3,14 +3,15 @@
 @implements IRootComponent
 @implements IDisposable
 @{
-    // We can't render anything till the moment a few key components completed the initialization
     if (!_readyToRender) {
-        if (_readyToPreRender) {
-            <Router @key="@RouterKey" AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
-                <Found></Found>
-                <NotFound></NotFound>
-            </Router>
-        }
+        // We can't render anything till the moment a few key components completed the initialization,
+        // but we can render the Router to make sure its routing tables are initialized -
+        // Routing tables are cached, so another (actual) Router instance will reuse them;
+        // see RouteTableFactory.Create for details.
+        <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+            <Found></Found>
+            <NotFound></NotFound>
+        </Router>
         return;
     }
 
@@ -21,7 +22,7 @@
 <ScreenSizeProvider>
     <AlwaysVisibleComponents/>
 
-    <Router @key="@RouterKey" AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
         <Found Context="routeData">
             <RequirementChecker>
                 <Success>
@@ -40,14 +41,12 @@
 </ScreenSizeProvider>
 
 @code {
-    private static readonly object RouterKey = new();
     private static Assembly? UIAssembly { get; set; }
     private static Assembly[]? UIModuleAssemblies { get; set; }
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private bool _readyToRender;
-    private bool _readyToPreRender;
     private Exception? _simulatedCrashError;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
@@ -119,10 +118,6 @@
             TaskScheduler.Default);
 
         Services.GetRequiredService<UIEventHub>();
-        _readyToPreRender = true;
-        this.NotifyStateHasChanged();
-
-        await Task.Delay(TimeSpan.FromMilliseconds(50), _disposeToken);
         _readyToRender = true;
         StateHasChanged();
     }

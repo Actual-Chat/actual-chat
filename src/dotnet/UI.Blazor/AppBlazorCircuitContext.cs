@@ -4,7 +4,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
 {
     private static long _lastId;
     private readonly CancellationTokenSource _stopToken = new();
-    private readonly TaskCompletionSource<Unit> _whenReady = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenReady = TaskCompletionSourceExt.New();
 
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
@@ -28,7 +28,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
     }
 
     public void MarkReady()
-        => _whenReady.TrySetResult(default);
+        => _whenReady.TrySetResult();
 
     protected override void Dispose(bool disposing)
     {

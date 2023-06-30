@@ -9,7 +9,7 @@ public interface IStoredState<T> : IMutableState<T>
 
 public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 {
-    private readonly TaskCompletionSource<Unit> _whenReadSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenReadSource = TaskCompletionSourceExt.New();
 
     private Options Settings { get; }
     private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
@@ -62,7 +62,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
                         DebugLog?.LogDebug("{State}: Read: skipping (no value stored or read error)", this);
                 }
                 finally {
-                    _whenReadSource.TrySetResult(default);
+                    _whenReadSource.TrySetResult();
                 }
             });
         }

@@ -13,7 +13,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     where T: IHasOrigin
 {
     private readonly CancellationTokenSource _disposeTokenSource;
-    private readonly TaskCompletionSource<Unit> _whenFirstTimeReadSource = TaskCompletionSourceExt.New<Unit>();
+    private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
     private bool _mustKeepOriginOnSet;
 
     private MomentClockSet Clocks { get; }
@@ -179,7 +179,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
             }
             finally {
                 if (!WhenFirstTimeRead.IsCompleted)
-                    _whenFirstTimeReadSource.TrySetResult(default);
+                    _whenFirstTimeReadSource.TrySetResult();
             }
         }
 
