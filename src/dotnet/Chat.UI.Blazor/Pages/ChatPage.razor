@@ -105,7 +105,7 @@
                     var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
                     if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow()) {
                         // Postponing chat change to let left panel slide smoothly - don't change this delay!
-                        await Task.Delay(TimeSpan.FromSeconds(0.15), cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
                     }
 
                     chat = await Chats.Get(Session, chatId, cancellationToken);
