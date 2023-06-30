@@ -38,6 +38,17 @@ public partial class MainPage : ContentPage
             });
     }
 
+    public void Reset()
+    {
+        var app = _webView.RootComponents.Single(c => c.Selector == "#app");
+        _webView.RootComponents.Remove(app);
+        _webView.RootComponents.Add(
+            new RootComponent {
+                ComponentType = typeof(MauiBlazorApp),
+                Selector = "#app",
+            });
+    }
+
     public partial void SetupSessionCookie(Uri baseUri, Session session);
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e);
