@@ -56,4 +56,7 @@ public static partial class StandardError
         => new InternalError($"Configuration: {message}");
     public static Exception Internal(string message)
         => new InternalError(message);
+
+    public static Exception WrongSession(string message)
+        => new SessionError(message);
 }
