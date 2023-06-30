@@ -32,6 +32,77 @@ public sealed class MobileAuthController : Controller
         Commander = services.Commander();
     }
 
+    [Obsolete("Kept only for compatibility with the old API", true)]
+    [HttpGet("setupSession/{sessionId}")]
+    public async Task<ActionResult> SetupSession(string sessionId, CancellationToken cancellationToken)
+    {
+        var httpContext = HttpContext;
+        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
+        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
+            ? userAgentValues.FirstOrDefault() ?? ""
+            : "";
+
+        var session = new Session(sessionId);
+
+        var auth = Services.GetRequiredService<IAuth>();
+        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.GetGuestId().IsGuest != true) {
+            var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
+            var commander = Services.Commander();
+            await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+        sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+
+        using var sb = ZString.CreateStringBuilder();
+        sb.Append("SessionInfo: ");
+        sb.Append(sessionInfo != null ? sessionInfo.SessionHash : "no-session-info");
+        sb.AppendLine();
+        sb.Append("Account: ");
+        try {
+            var accounts = Services.GetRequiredService<IAccounts>();
+            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            sb.Append(account.Id.Value);
+        }
+        catch (Exception e) {
+            sb.Append(e);
+        }
+        return Content(sb.ToString());
+    }
+
+    [Obsolete("Kept only for compatibility with the old API", true)]
+    [HttpGet("getSession")]
+    public Task<ActionResult> GetSession(CancellationToken cancellationToken)
+        => GetOrCreateSession(null, cancellationToken);
+
+    [HttpGet("getOrCreateSession/{sid?}")]
+    public async Task<ActionResult> GetOrCreateSession(string? sid, CancellationToken cancellationToken)
+    {
+        var httpContext = HttpContext;
+        var sessionResolver = httpContext.RequestServices.GetRequiredService<ISessionResolver>();
+
+        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
+        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
+            ? userAgentValues.FirstOrDefault() ?? ""
+            : "";
+
+        var auth = Services.GetRequiredService<IAuth>();
+
+        Session? session = null;
+        if (!sid.IsNullOrEmpty()
+            && await auth.GetSessionInfo(new Session(sid), cancellationToken).ConfigureAwait(false) != null)
+            session = new Session(sid);
+        session ??= sessionResolver.Session;
+
+        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.GetGuestId().IsGuest != true) {
+            var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
+            var commander = Services.Commander();
+            await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        return Content(session.Id.Value);
+    }
+
     // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs
     [HttpGet("{scheme}")]
     public async Task Get([FromRoute] string scheme)
