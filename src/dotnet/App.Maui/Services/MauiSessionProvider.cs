@@ -88,8 +88,7 @@ public sealed class MauiSessionProvider : ISessionResolver
                     await Store(sessionId).ConfigureAwait(false);
                     var application = Application.Current;
                     application!.Dispatcher.Dispatch(()
-                        => application.MainPage = AppServices.GetRequiredService<MainPage>());
-
+                        => (application.MainPage as MainPage)?.Reset());
                 }
             }
         });

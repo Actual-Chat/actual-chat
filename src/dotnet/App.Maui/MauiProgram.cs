@@ -134,9 +134,7 @@ public static partial class MauiProgram
                 if (!t.IsFaulted || !(t.Exception?.InnerExceptions.Any(e => e is SessionError) ?? false))
                     return;
 
-                var application = Application.Current;
-                application!.Dispatcher.Dispatch(()
-                    => application.MainPage = AppServices.GetRequiredService<MainPage>());
+                // Do nothing for now, we already have processing for this case at MauiSessionProvider
             });
         });
     }
