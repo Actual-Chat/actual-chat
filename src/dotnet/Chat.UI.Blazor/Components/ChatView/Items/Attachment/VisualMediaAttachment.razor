@@ -3,7 +3,12 @@
 @{
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
-    var previewUrl = !attachment.IsVideo() ? UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier) : null;
+    string? previewUrl = null;
+    if (attachment.IsGif()) {
+        previewUrl = url; // currently image proxy fails on large gifs
+    } else if(attachment.IsImage()) {
+        previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
+    }
 }
 
 <div class="image-attachment @Class">
