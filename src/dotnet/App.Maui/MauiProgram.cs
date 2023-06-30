@@ -42,7 +42,7 @@ public static partial class MauiProgram
             const string baseUrl = "https://" + MauiConstants.Host + "/";
             AppSettings = new MauiAppSettings(baseUrl);
 
-            _ = MauiSessionProvider.TryToRestoreSession();
+            _ = MauiSessionProvider.TryRestoreSession();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
@@ -50,7 +50,7 @@ public static partial class MauiProgram
             // Normal start
             ConfigureApp(appBuilder, false);
             var app = appBuilder.Build();
-            AppServicesReady(app.Services);
+            AppServicesReady(app);
             return app;
 #else
             // Lazy start
@@ -120,15 +120,24 @@ public static partial class MauiProgram
         return Task.FromResult((IServiceProvider)appServices);
     }
 
-    private static void AppServicesReady(IServiceProvider services)
+    private static void AppServicesReady(MauiApp app)
     {
-        AppServices = services;
+        AppServices = app.Services;
         LoadingUI.MarkAppBuilt();
         _ = Task.Run(async () => {
-            var sessionResolver = services.GetRequiredService<ISessionResolver>();
+            var sessionResolver = AppServices.GetRequiredService<ISessionResolver>();
+            if (sessionResolver is MauiSessionProvider mauiSessionProvider)
+                _ = mauiSessionProvider.CreateOrValidateSession();
             var session = await sessionResolver.GetSession().ConfigureAwait(false);
-            var appServiceStarter = services.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);
+            var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
+            _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None).ContinueWith(t => {
+                if (!t.IsFaulted || !(t.Exception?.InnerExceptions.Any(e => e is SessionError) ?? false))
+                    return;
+
+                var application = Application.Current;
+                application!.Dispatcher.Dispatch(()
+                    => application.MainPage = AppServices.GetRequiredService<MainPage>());
+            });
         });
     }
 

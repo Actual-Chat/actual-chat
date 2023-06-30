@@ -33,6 +33,10 @@ public class AppServiceStarter
                 Services.GetRequiredService<IChats>();
                 await accountUI.WhenLoaded.ConfigureAwait(false);
             }
+            catch (SessionError e) {
+                Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
+                throw;
+            }
             catch (Exception e) {
                 Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
             }

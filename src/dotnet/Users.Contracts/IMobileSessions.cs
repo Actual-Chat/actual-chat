@@ -3,7 +3,10 @@
 public interface IMobileSessions : IComputeService
 {
     [ComputeMethod]
-    Task<string> Get(CancellationToken cancellationToken);
+    Task<string> Create(CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<string> Validate(string sessionId, CancellationToken cancellationToken);
 }
 
 

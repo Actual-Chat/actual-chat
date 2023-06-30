@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.App.Maui.Services;
@@ -9,40 +10,42 @@ public sealed class MauiSessionProvider : ISessionResolver
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionProvider)];
     private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionProvider>();
 
-    private static readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
-    private static readonly Task<Session> _sessionTask = _sessionSource.Task;
+    private static readonly object _lock = new ();
+    private static TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
 
-    private static Session Session {
+    private static TaskCompletionSource<Session> SessionSource {
         get {
-            if (!_sessionTask.IsCompleted)
-                throw StandardError.Internal("Session isn't initialized yet.");
-
- #pragma warning disable VSTHRD002
-            return _sessionTask.Result;
- #pragma warning restore VSTHRD002
+            lock (_lock)
+                return _sessionSource;
         }
     }
 
     public IServiceProvider Services { get; }
 
     // Explicit interface implementations
-    Task<Session> ISessionResolver.SessionTask => _sessionTask;
-    bool ISessionResolver.HasSession => _sessionTask.IsCompleted;
-    Session ISessionResolver.Session {
-        get => Session;
+    Task<Session> ISessionResolver.SessionTask => SessionSource.Task;
+    bool ISessionResolver.HasSession => SessionSource.Task.IsCompleted;
+
+    public Session Session {
+        get {
+            var sessionSourceTask = SessionSource.Task;
+            if (!sessionSourceTask.IsCompleted)
+                throw StandardError.Internal("Session isn't initialized yet.");
+
+ #pragma warning disable VSTHRD002
+            return sessionSourceTask.Result;
+ #pragma warning restore VSTHRD002
+        }
         set => throw StandardError.NotSupported<MauiSessionProvider>("Session can't be set explicitly with this provider.");
     }
 
     public MauiSessionProvider(IServiceProvider services)
-    {
-        Services = services;
-        _ = RestoreOrCreateSession();
-    }
+        => Services = services;
 
     public Task<Session> GetSession(CancellationToken cancellationToken)
-        => _sessionTask.WaitAsync(cancellationToken);
+        => SessionSource.Task.WaitAsync(cancellationToken);
 
-    public static Task TryToRestoreSession()
+    public static Task TryRestoreSession()
         => Task.Run(async () => {
             using var _ = Tracer.Region();
             var storedSid = await Read().ConfigureAwait(false);
@@ -50,21 +53,45 @@ public sealed class MauiSessionProvider : ISessionResolver
                 return;
 
             var session = new Session(storedSid);
-            _sessionSource.TrySetResult(session);
+            SessionSource.TrySetResult(session);
         });
 
-    private Task RestoreOrCreateSession()
+    public static void Reset(IServiceProvider services)
+    {
+        lock (_lock)
+            _sessionSource = TaskCompletionSourceExt.New<Session>();
+        var history = services.GetRequiredService<History>();
+        history.ForceReload(Links.Home);
+    }
+
+    public Task CreateOrValidateSession()
         => Task.Run(async () => {
             using var _ = Tracer.Region();
 
-            if (!_sessionSource.Task.IsCompleted) {
-                var mobileSessions = Services.GetRequiredService<IMobileSessions>();
-                var sessionId = await mobileSessions.Get(CancellationToken.None);
+            var mobileSessions = Services.GetRequiredService<IMobileSessions>();
+            if (!SessionSource.Task.IsCompleted) {
+                var sessionId = await mobileSessions.Create(CancellationToken.None);
                 await Store(sessionId).ConfigureAwait(false);
                 var session = new Session(sessionId);
-                _sessionSource.TrySetResult(session);
+                SessionSource.TrySetResult(session);
             }
+            else {
+                var storedSessionId = Session.Id.Value;
+                var sessionId = await mobileSessions.Validate(storedSessionId, CancellationToken.None);
+                if (!OrdinalEquals(sessionId, storedSessionId)) {
+                    // Update sessionId and reload MAUI App container
+                    lock (_lock) {
+                        var session = new Session(sessionId);
+                        _sessionSource = TaskCompletionSourceExt.New<Session>();
+                        _sessionSource.SetResult(session);
+                    }
+                    await Store(sessionId).ConfigureAwait(false);
+                    var application = Application.Current;
+                    application!.Dispatcher.Dispatch(()
+                        => application.MainPage = AppServices.GetRequiredService<MainPage>());
 
+                }
+            }
         });
 
     private static async Task<string?> Read()
