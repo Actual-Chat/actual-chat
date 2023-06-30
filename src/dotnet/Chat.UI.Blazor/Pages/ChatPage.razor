@@ -95,7 +95,7 @@
             if (isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value) {
                 // Postpone chat loading when it's invisible
                 Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(0.8), cancellationToken).ConfigureAwait(false);
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken);
