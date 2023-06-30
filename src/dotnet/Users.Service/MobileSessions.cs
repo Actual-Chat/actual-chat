@@ -19,8 +19,8 @@ public class MobileSessions : IMobileSessions
         Commander = services.Commander();
     }
 
-    // [CommandHandler]
-    public virtual async Task<string> Create(MobileSessions_Create command, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<string> Get(CancellationToken cancellationToken)
     {
         if (SessionResolver.HasSession && !SessionResolver.Session.IsDefault())
             return SessionResolver.Session.Id.Value;

@@ -12,7 +12,7 @@ public sealed class MauiSessionProvider : ISessionResolver
     private static readonly TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
     private static readonly Task<Session> _sessionTask = _sessionSource.Task;
 
-    public static Session Session {
+    private static Session Session {
         get {
             if (!_sessionTask.IsCompleted)
                 throw StandardError.Internal("Session isn't initialized yet.");
@@ -42,21 +42,29 @@ public sealed class MauiSessionProvider : ISessionResolver
     public Task<Session> GetSession(CancellationToken cancellationToken)
         => _sessionTask.WaitAsync(cancellationToken);
 
+    public static Task TryToRestoreSession()
+        => Task.Run(async () => {
+            using var _ = Tracer.Region();
+            var storedSid = await Read().ConfigureAwait(false);
+            if (storedSid == null)
+                return;
+
+            var session = new Session(storedSid);
+            _sessionSource.TrySetResult(session);
+        });
+
     private Task RestoreOrCreateSession()
         => Task.Run(async () => {
             using var _ = Tracer.Region();
 
-            var storedSid = await Read().ConfigureAwait(false);
-            if (storedSid == null) {
-                var createSessionCommand = new MobileSessions_Create();
-                var sessionId = await Services.Commander().Call(createSessionCommand);
+            if (!_sessionSource.Task.IsCompleted) {
+                var mobileSessions = Services.GetRequiredService<IMobileSessions>();
+                var sessionId = await mobileSessions.Get(CancellationToken.None);
                 await Store(sessionId).ConfigureAwait(false);
-                storedSid = sessionId;
+                var session = new Session(sessionId);
+                _sessionSource.TrySetResult(session);
             }
 
-            var session = new Session(storedSid);
-            _sessionSource.TrySetResult(session);
-            return session;
         });
 
     private static async Task<string?> Read()
