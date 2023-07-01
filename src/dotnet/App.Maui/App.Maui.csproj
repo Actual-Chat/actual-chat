@@ -79,6 +79,18 @@
     <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
   </PropertyGroup>-->
 
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
+    <!-- Common iOS and Android build properties -->
+    <!-- Trimmer settings -->
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <EventSourceSupport>false</EventSourceSupport>
+    <!-- This instructs trimmer to remove managed HTTP handler -->
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidKeyStore>True</AndroidKeyStore>
     <AndroidSigningKeyStore>myapp.keystore</AndroidSigningKeyStore>
@@ -86,7 +98,14 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
+    <!-- Performance-related settings -->
+    <!-- Slightly improves perf: -->
     <AndroidEnableSGenConcurrent>True</AndroidEnableSGenConcurrent>
+    <!-- Slightly improves startup perf: -->
+    <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
+    <!-- Doesn't improve perf / makes things worse:
+    <AndroidUseInterpreter>True</AndroidUseInterpreter>
+    -->
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
@@ -103,12 +122,6 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
-    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
-    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
-    <EventSourceSupport>false</EventSourceSupport>
-    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
-    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
   <!-- Android custom AOT profile -->
