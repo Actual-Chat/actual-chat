@@ -70,6 +70,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
         }
         else if (appKind.IsClient()) {
+            services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) {
+                Delays = RetryDelaySeq.Exp(1, 180),
+            });
             if (appKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
                 if (Constants.DebugMode.RpcClient)
                     services.AddSingleton<RpcPeerFactory>(_
