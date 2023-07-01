@@ -160,6 +160,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
+        services.AddSingleton<MobileSessions.Options>(_ => MobileSessions.Options.Default);
         fusion.AddService<ISystemProperties, SystemProperties>();
         fusion.AddService<IAccounts, Accounts>();
         fusion.AddService<IAccountsBackend, AccountsBackend>();
