@@ -15,7 +15,7 @@
                 <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
                     <ChatHeader @key="@chat" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
                 </div>
-                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
+                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10 bg-01">
                     @if (hasChat) {
                         <Banners @key="@chat" Chat="@chat"/>
                     }
