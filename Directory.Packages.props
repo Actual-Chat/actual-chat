@@ -142,6 +142,15 @@
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Ulid" Version="1.2.6" />
     <PackageVersion Include="ZString" Version="2.5.0" />
+    <!-- MAUI - Android -->
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.1.1.1" />
+    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.41.0.2" />
+    <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
+    <!-- MAUI - iOS -->
+    <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.2" />
+    <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
     <!-- TODO: Remove or migrate from these -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
@@ -188,14 +197,5 @@
     <!-- Generators -->
     <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.4" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Stl.Generators" Version="$(StlFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <!-- Android -->
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.1.1.1" />
-    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.41.0.2" />
-    <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
-    <!-- iOS -->
-    <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.2" />
-    <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
   </ItemGroup>
 </Project>
