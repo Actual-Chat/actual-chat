@@ -22,7 +22,7 @@ public abstract class MessageProcess : IMessageProcess
 {
     private static readonly ConcurrentDictionary<
         Type,
-        Func<object, CancellationToken, TaskCompletionSource<Unit>?, TaskCompletionSource<object?>?, object>>
+        Func<object, CancellationToken, TaskCompletionSource?, TaskCompletionSource<object?>?, object>>
         MessageProcessorCtorCache = new();
 
     protected TaskCompletionSource WhenStartedSource { get; init; } = null!;
@@ -41,7 +41,7 @@ public abstract class MessageProcess : IMessageProcess
     public static IMessageProcess New(
         object message,
         CancellationToken cancellationToken,
-        TaskCompletionSource<Unit>? whenStarted = null,
+        TaskCompletionSource? whenStarted = null,
         TaskCompletionSource<object?>? whenCompleted = null)
     {
         if (message == null)
@@ -49,13 +49,13 @@ public abstract class MessageProcess : IMessageProcess
 
         var ctor = MessageProcessorCtorCache.GetOrAdd(
             message.GetType(),
-            t => (Func<object, CancellationToken, TaskCompletionSource<Unit>?, TaskCompletionSource<object?>?, object>)
+            t => (Func<object, CancellationToken, TaskCompletionSource?, TaskCompletionSource<object?>?, object>)
                 typeof(MessageProcess<>)
                     .MakeGenericType(t)
                     .GetConstructorDelegate(
                         typeof(object),
                         typeof(CancellationToken),
-                        typeof(TaskCompletionSource<Unit>),
+                        typeof(TaskCompletionSource),
                         typeof(TaskCompletionSource<object>))!);
         return (IMessageProcess)ctor.Invoke(message, cancellationToken, whenStarted, whenCompleted);
     }
