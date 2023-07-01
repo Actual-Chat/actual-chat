@@ -24,7 +24,7 @@
 
         @if (m.StopRecordingAt != null) {
             <div class="c-text">Recording is stopping in </div>
-            <Countdown StopAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
+            <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
         }
     </div>
 </div>

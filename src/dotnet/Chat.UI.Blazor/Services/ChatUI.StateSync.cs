@@ -13,7 +13,7 @@ public partial class ChatUI
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
-        var retryDelays = new RetryDelaySeq(0.1, 1);
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
             from chain in baseChains
             select chain

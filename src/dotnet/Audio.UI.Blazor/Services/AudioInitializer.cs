@@ -35,6 +35,6 @@ public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
                     UrlMapper.BaseUrl);
             })
             .Log(Log)
-            .RetryForever(new RetryDelaySeq(0.5, 3), Log)
+            .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
             .RunIsolated();
 }

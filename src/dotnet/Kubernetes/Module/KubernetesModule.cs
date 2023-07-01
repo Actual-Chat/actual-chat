@@ -59,7 +59,7 @@ public sealed class KubernetesModule : HostModule<KubernetesSettings>
 
         static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         {
-            var retryDelays = new RetryDelaySeq(0.5, 10);
+            var retryDelays = RetryDelaySeq.Exp(0.5, 10);
             return HttpPolicyExtensions
                 .HandleTransientHttpError()
                 .WaitAndRetryAsync(5, retryAttempt => retryDelays[retryAttempt]);

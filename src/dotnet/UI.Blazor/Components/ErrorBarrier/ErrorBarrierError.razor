@@ -28,7 +28,7 @@
 </div>
 
 @code {
-    private static readonly RetryDelaySeq AutoReloadDelays = new(5, 60);
+    private static readonly RetryDelaySeq AutoReloadDelays = RetryDelaySeq.Exp(5, 60);
     private static readonly TimeSpan SilentReloadPeriod = TimeSpan.FromSeconds(0.2);
     private static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
     private const int SilentReloadCount = 5;

@@ -2,6 +2,7 @@ using System.Buffers;
 using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
+using Stl.Rpc;
 
 namespace ActualChat.Audio;
 
@@ -14,7 +15,7 @@ public class AudioClient : HubClientBase,
     public int StreamBufferSize { get; init; } = 64;
 
     public AudioClient(IServiceProvider services)
-        : base("api/hub/audio", services)
+        : base("api/hub/audio", services.GetRequiredService<RpcClientPeerReconnectDelayer>(), services)
         => AudioSourceLog = services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(

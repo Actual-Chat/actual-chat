@@ -2,6 +2,7 @@
 using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using ActualChat.Rpc;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.ObjectPool;
@@ -95,7 +96,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
     private void InjectServerServices(IServiceCollection services)
     {
-        services.AddSingleton<IContentSaver, ContentSaver>();
+        services.AddSingleton(c => new RpcClientPeerDependentReconnectDelayer(c));
+        services.AddSingleton<IContentSaver>(c => new ContentSaver(c.GetRequiredService<IBlobStorageProvider>()));
 
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty()) {

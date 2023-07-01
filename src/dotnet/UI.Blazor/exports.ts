@@ -29,7 +29,6 @@ export * from './Components/Feedback/feedback';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
-export * from './Components/ReconnectBanner/reconnect-banner';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';

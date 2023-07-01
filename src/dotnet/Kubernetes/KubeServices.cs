@@ -90,7 +90,7 @@ public class KubeServices : IKubeInfo
 
         protected override async Task OnRun(CancellationToken cancellationToken)
         {
-            var retries = new RetryDelaySeq(1, 10);
+            var retries = RetryDelaySeq.Exp(1, 10);
             var failureCount = 0;
             while (true) {
                 try {

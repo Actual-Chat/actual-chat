@@ -565,7 +565,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         // Let's delay fetching an author a bit
         Author? readAuthor = null;
-        var retrier = new Retrier(5, new RetryDelaySeq(0.25, 1));
+        var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
         while (retrier.NextOrThrow()) {
             await Clocks.CoarseCpuClock.Delay(retrier.Delay, cancellationToken).ConfigureAwait(false);
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, cancellationToken).ConfigureAwait(false);

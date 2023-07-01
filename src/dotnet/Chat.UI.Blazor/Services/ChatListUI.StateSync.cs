@@ -11,7 +11,7 @@ public partial class ChatListUI
             new($"{nameof(PushItems)}({ChatListKind.Active})", ct => PushItems(ChatListKind.Active, ct)),
             new($"{nameof(PushItems)}({ChatListKind.All})", ct => PushItems(ChatListKind.All, ct)),
         };
-        var retryDelays = new RetryDelaySeq(0.1, 1);
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
             from chain in baseChains
             select chain
