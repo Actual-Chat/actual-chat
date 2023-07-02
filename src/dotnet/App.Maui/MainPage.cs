@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Components.WebView;
 using ActualChat.App.Maui.Services;
+using ActualChat.UI.Blazor.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebView.Maui;
+using Microsoft.Maui.Platform;
 
 namespace ActualChat.App.Maui;
 
@@ -31,17 +34,6 @@ public partial class MainPage : ContentPage
         _webView.Loaded += OnWebViewLoaded;
         Content = _webView;
 
-        _webView.RootComponents.Add(
-            new RootComponent {
-                ComponentType = typeof(MauiBlazorApp),
-                Selector = "#app",
-            });
-    }
-
-    public void Reset()
-    {
-        var app = _webView.RootComponents.Single(c => c.Selector == "#app");
-        _webView.RootComponents.Remove(app);
         _webView.RootComponents.Add(
             new RootComponent {
                 ComponentType = typeof(MauiBlazorApp),

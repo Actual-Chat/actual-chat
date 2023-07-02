@@ -10,143 +10,135 @@ public sealed class MauiSessionResolver : ISessionResolver
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionResolver)];
     private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionResolver>();
 
-    private static readonly object _lock = new ();
-    private static TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
-
-    private static TaskCompletionSource<Session> SessionSource {
-        get {
-            lock (_lock)
-                return _sessionSource;
-        }
-    }
+    private static readonly object _lock = new();
+    private static volatile Task<Session?> _readSessionTask = Task.Run(ReadSession);
+    private static volatile TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
 
     public IServiceProvider Services { get; }
 
-    // Explicit interface implementations
-    Task<Session> ISessionResolver.SessionTask => SessionSource.Task;
-    bool ISessionResolver.HasSession => SessionSource.Task.IsCompleted;
-
+    public Task<Session> SessionTask => _sessionSource.Task;
+    public bool HasSession => SessionTask.IsCompleted;
     public Session Session {
         get {
-            var sessionSourceTask = SessionSource.Task;
-            if (!sessionSourceTask.IsCompleted)
-                throw StandardError.Internal("Session isn't initialized yet.");
+            try {
+                var sessionSourceTask = _sessionSource.Task;
+                if (!sessionSourceTask.IsCompleted)
+                    throw StandardError.Internal("Session isn't initialized yet.");
 
  #pragma warning disable VSTHRD002
-            return sessionSourceTask.Result;
+                return sessionSourceTask.Result;
  #pragma warning restore VSTHRD002
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Session isn't initialized yet.");
+                throw;
+            }
         }
-        set => throw StandardError.NotSupported<MauiSessionResolver>("Session can't be set explicitly with this provider.");
+        set {
+            try {
+                throw StandardError.NotSupported<MauiSessionResolver>(
+                    "Session can't be set explicitly with this provider.");
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Session can't be set explicitly with this provider.");
+                throw;
+            }
+        }
     }
+
+    public static Task Start()
+        => _readSessionTask;
 
     public MauiSessionResolver(IServiceProvider services)
         => Services = services;
 
     public Task<Session> GetSession(CancellationToken cancellationToken = default)
-        => SessionSource.Task.WaitAsync(cancellationToken);
+        => _sessionSource.Task.WaitAsync(cancellationToken);
 
-    public static Task TryRestoreSession()
+    public Task AcquireSession()
         => Task.Run(async () => {
-            using var _ = Tracer.Region();
-            var storedSid = await Read().ConfigureAwait(false);
-            if (storedSid == null)
-                return;
+            using var _1 = Tracer.Region();
 
-            var session = new Session(storedSid);
-            SessionSource.TrySetResult(session);
-        });
-
-    public static void Reset(IServiceProvider services)
-    {
-        lock (_lock)
-            _sessionSource = TaskCompletionSourceExt.New<Session>();
-        var history = services.GetRequiredService<History>();
-        history.ForceReload(Links.Home);
-    }
-
-    public Task CreateOrValidateSession()
-        => Task.Run(async () => {
-            using var _ = Tracer.Region();
+            if (HasSession)
+                return; // Nothing else to do
 
             var mobileSessions = Services.GetRequiredService<IMobileSessions>();
-            string sessionId;
-            if (!SessionSource.Task.IsCompleted) {
-                sessionId = await mobileSessions.Create(CancellationToken.None).ConfigureAwait(false);
-                await Store(sessionId).ConfigureAwait(false);
-                var session = new Session(sessionId);
-                SessionSource.TrySetResult(session);
+            var session = await _readSessionTask.ConfigureAwait(false);
+            if (session == null) {
+                // No session -> create one
+                var sessionId = await mobileSessions.Create(CancellationToken.None).ConfigureAwait(false);
+                session = new Session(sessionId);
+                _sessionSource.TrySetResult(session);
+                _ = Task.Run(() => StoreSession(session));
                 return;
             }
 
-            var storedSessionId = Session.Id.Value;
-            sessionId = await mobileSessions.Validate(storedSessionId, CancellationToken.None).ConfigureAwait(false);
-            if (!OrdinalEquals(sessionId, storedSessionId)) {
-                // Update sessionId and reload MAUI App container
-                lock (_lock) {
-                    var session = new Session(sessionId);
-                    _sessionSource = TaskCompletionSourceExt.New<Session>();
-                    _sessionSource.SetResult(session);
-                }
-                await Store(sessionId).ConfigureAwait(false);
-                var application = Application.Current;
-                application!.Dispatcher.Dispatch(()
-                    => (application.MainPage as MainPage)?.Reset());
+            // Session is there -> validate it
+            _sessionSource.TrySetResult(session); // Let's be optimists & restart if validation fails later
+            var validSessionId = await mobileSessions.Validate(session.Id, CancellationToken.None).ConfigureAwait(false);
+            var validSession = new Session(validSessionId);
+            if (session == validSession)
+                return;
+
+            // Session is invalid -> update it to valid + reload MAUI App container.
+            _ = Task.Run(() => StoreSession(validSession));
+            lock (_lock) {
+                _readSessionTask = Task.FromResult(validSession)!; // Just in case - we don't want to re-read it
+                _sessionSource = TaskCompletionSourceExt.New<Session>().WithResult(validSession);
             }
+            _ = Task.Run(async () => {
+                var scopedServices = await ScopedServicesTask.ConfigureAwait(true);
+                scopedServices.GetRequiredService<ReloadUI>().Reload();
+            });
         });
 
-    private static async Task<string?> Read()
+    private static async Task<Session?> ReadSession()
     {
+        using var _ = Tracer.Region();
         var storage = SecureStorage.Default;
         try {
-            var storedSessionId = await storage.GetAsync(SessionIdStorageKey).ConfigureAwait(false);
-            if (storedSessionId.IsNullOrEmpty())
-                Log.LogInformation("No stored Session ID");
-            else {
+            var sessionId = await storage.GetAsync(SessionIdStorageKey).ConfigureAwait(false);
+            if (!sessionId.IsNullOrEmpty()) {
                 Log.LogInformation("Successfully read stored Session ID");
-                return storedSessionId;
+                return new Session(sessionId);
             }
+            Log.LogInformation("No stored Session ID");
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             Log.LogWarning(e, "Failed to read stored Session ID");
             // ignored
             // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
             // TODO: configure selective backup, to prevent app crashes after re-installing
             // https://learn.microsoft.com/en-us/xamarin/essentials/secure-storage?tabs=android#selective-backup
         }
-
         return null;
     }
 
-    private static async Task Store(string sid)
+    private static async Task StoreSession(Session session)
     {
+        using var _ = Tracer.Region();
         var storage = SecureStorage.Default;
         bool isSaved;
-        try
-        {
+        try {
             if (storage.Remove(SessionIdStorageKey))
                 Log.LogInformation("Removed stored Session ID");
-            await storage.SetAsync(SessionIdStorageKey, sid).ConfigureAwait(false);
+            await storage.SetAsync(SessionIdStorageKey, session.Id.Value).ConfigureAwait(false);
             isSaved = true;
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             isSaved = false;
             Log.LogWarning(e, "Failed to store Session ID");
             // Ignored, see:
             // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
         }
 
-        if (!isSaved)
-        {
+        if (!isSaved) {
             Log.LogInformation("Second attempt to store Session ID");
-            try
-            {
+            try {
                 storage.RemoveAll();
-                await storage.SetAsync(SessionIdStorageKey, sid).ConfigureAwait(false);
+                await storage.SetAsync(SessionIdStorageKey, session.Id.Value).ConfigureAwait(false);
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log.LogWarning(e, "Failed to store Session ID (second attempt)");
                 // Ignored, see:
                 // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui

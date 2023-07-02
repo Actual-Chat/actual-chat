@@ -209,10 +209,11 @@ public class MainActivity : MauiAppCompatActivity
         if (url.IsNullOrEmpty())
             return;
 
-        _ = WhenScopedServicesReady.ContinueWith(_ => {
-            var notificationUI = ScopedServices.GetRequiredService<NotificationUI>();
+        _ = Task.Run(async () => {
+            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+            var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
             notificationUI.HandleNotificationNavigation(url);
-        }, TaskScheduler.Default);
+        });
     }
 
     public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener

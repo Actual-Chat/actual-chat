@@ -41,8 +41,7 @@ public static partial class MauiProgram
         try {
             const string baseUrl = "https://" + MauiConstants.Host + "/";
             AppSettings = new MauiAppSettings(baseUrl);
-
-            _ = MauiSessionResolver.TryRestoreSession();
+            _ = MauiSessionResolver.Start();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
@@ -126,16 +125,12 @@ public static partial class MauiProgram
         LoadingUI.MarkAppBuilt();
         _ = Task.Run(async () => {
             var sessionResolver = AppServices.GetRequiredService<ISessionResolver>();
-            if (sessionResolver is MauiSessionResolver mauiSessionProvider)
-                _ = mauiSessionProvider.CreateOrValidateSession();
-            var session = await sessionResolver.GetSession().ConfigureAwait(false);
-            var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None).ContinueWith(t => {
-                if (!t.IsFaulted || !(t.Exception?.InnerExceptions.Any(e => e is SessionError) ?? false))
-                    return;
+            if (sessionResolver is MauiSessionResolver mauiSessionResolver)
+                _ = mauiSessionResolver.AcquireSession();
 
-                // Do nothing for now, we already have processing for this case at MauiSessionProvider
-            });
+            var session = await sessionResolver.SessionTask.ConfigureAwait(false);
+            var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
+            _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);
         });
     }
 

@@ -67,9 +67,8 @@
         _disposeToken = _disposeTokenSource.Token;
     }
 
-    protected override async Task OnInitializedAsync() {
+    protected override void OnInitialized() {
         LoadingUI.MarkAppCreated();
-        using var _1 = Tracer.Region();
 
         // Hit StaticImportsInitializer to make sure DefaultLog is set
         Services.GetRequiredService<StaticImportsInitializer>();
@@ -77,28 +76,29 @@
         // Configure CircuitContext
         CircuitContext.RootComponent = this;
         ((AppBlazorCircuitContext)CircuitContext).MarkReady();
+    }
 
-        // Set ISessionProvider.Session
-        if (!SessionId.IsNullOrEmpty()) {
-            // var session = OSInfo.IsWebAssembly ? Session.Default : new Session(SessionId);
-            var session = new Session(SessionId);
-            if (SessionResolver.HasSession) {
-                if (SessionResolver.Session != session) {
-                    // No way to change Session other than page reload
-                    var nav = Services.GetRequiredService<NavigationManager>();
-                    nav.NavigateTo(nav.Uri, true);
-                    return;
-                }
-            }
-            else {
-                SessionResolver.Session = session;
-            }
-        }
+    protected override async Task OnInitializedAsync() {
+        using var _1 = Tracer.Region();
 
         var appKind = HostInfo.AppKind;
-        if (appKind.IsClient() && !appKind.IsMauiApp()) {
-            // MAUI app triggers this step earlier
-            _ = AppServiceStarter.PostSessionWarmup(SessionResolver.Session, CancellationToken.None);
+        if (!appKind.IsMauiApp()) {
+            // Set ISessionResolver.Session
+            if (!SessionId.IsNullOrEmpty())
+                throw new ArgumentOutOfRangeException(nameof(SessionId));
+
+            var session = new Session(SessionId);
+            if (!SessionResolver.HasSession) {
+                SessionResolver.Session = session;
+            } else if (SessionResolver.Session != session) {
+                // No way to change Session other than page reload
+                var nav = Services.GetRequiredService<NavigationManager>();
+                nav.NavigateTo(nav.Uri, true);
+                return;
+            }
+
+            if (appKind.IsClient()) // MAUI app does this earlier
+                _ = AppServiceStarter.PostSessionWarmup(SessionResolver.Session, CancellationToken.None);
         }
 
         var whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);

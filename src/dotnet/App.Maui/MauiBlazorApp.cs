@@ -1,5 +1,5 @@
-using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
@@ -7,13 +7,26 @@ public class MauiBlazorApp : AppBase
 {
     protected override async Task OnInitializedAsync()
     {
-        UI.Blazor.Services.LoadingUI.MarkAppCreated();
-        var baseUri = AppSettings.BaseUri;
-        var session = await SessionResolver.GetSession().ConfigureAwait(true);
-        MainPage.Current!.SetupSessionCookie(baseUri, session);
+        try {
+            var baseUri = AppSettings.BaseUri;
+            var session = await SessionResolver.SessionTask.ConfigureAwait(true);
+            MainPage.Current!.SetupSessionCookie(baseUri, session);
 
-        ScopedServices = Services;
-        await base.OnInitializedAsync().ConfigureAwait(false);
+            try {
+                ScopedServices = Services;
+            }
+            catch (Exception) {
+                Log.LogWarning("OnInitializedAsync: can't change ScopedServices - reloading");
+                DiscardScopedServices();
+                Services.GetRequiredService<ReloadUI>().Reload();
+                return; // No call to base.OnInitializedAsync() is intended here: reload is all we want
+            }
+            await base.OnInitializedAsync().ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "OnInitializedAsync failed");
+            throw;
+        }
     }
 
     protected override void Dispose(bool disposing)

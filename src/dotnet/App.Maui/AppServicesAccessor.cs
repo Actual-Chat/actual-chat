@@ -12,11 +12,12 @@ public class AppServicesAccessor
     private static volatile MauiAppSettings? _appSettings;
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
-    private static volatile TaskCompletionSource _whenScopedServicesReadySource = TaskCompletionSourceExt.New();
+    private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesTask =
+        TaskCompletionSourceExt.New<IServiceProvider>();
 
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
 
-    public static Task WhenScopedServicesReady => _whenScopedServicesReadySource.Task;
+    public static Task<IServiceProvider> ScopedServicesTask => _scopedServicesTask.Task;
 
     public static MauiAppSettings AppSettings {
         get => _appSettings ?? throw Errors.NotInitialized(nameof(AppSettings));
@@ -59,7 +60,7 @@ public class AppServicesAccessor
                     throw Errors.AlreadyInitialized(nameof(ScopedServices));
 
                 _scopedServices = value;
-                _whenScopedServicesReadySource.TrySetResult();
+                _scopedServicesTask.TrySetResult(value);
                 Log.LogDebug("ScopedServices ready");
             }
         }
@@ -74,14 +75,22 @@ public class AppServicesAccessor
     public static void DiscardScopedServices()
     {
         lock (_lock) {
-            if (_scopedServices == null)
+            var scopedServices = _scopedServices;
+            if (scopedServices == null)
                 return;
 
-            var js = _scopedServices.GetRequiredService<IJSRuntime>();
-            _whenScopedServicesReadySource = TaskCompletionSourceExt.New(); // Must go first
+            _scopedServicesTask.TrySetCanceled();
+            _scopedServicesTask = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
-            SafeJSRuntime.MarkDisconnected(js);
-            AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
+            try {
+                var js = scopedServices.GetService<IJSRuntime>();
+                if (js != null)
+                    SafeJSRuntime.MarkDisconnected(js);
+            }
+            catch {
+                // Intended
+            }
         }
+        AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
     }
 }

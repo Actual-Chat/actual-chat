@@ -80,6 +80,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new UIEventHub(c));
 
         // UI services
+        services.AddScoped(c => new ReloadUI(c));
         services.AddScoped(c => new LoadingUI(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c));

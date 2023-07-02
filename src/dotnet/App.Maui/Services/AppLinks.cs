@@ -30,10 +30,11 @@ public static class AppLinks
         if (!OrdinalIgnoreCaseEquals(uri.Host, MauiConstants.Host))
             return;
 
-        _ = WhenScopedServicesReady.ContinueWith(_ => {
+        _ = Task.Run(async () => {
+            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
             var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
-            var autoNavigationUI = ScopedServices.GetRequiredService<AutoNavigationUI>();
+            var autoNavigationUI = scopedServices.GetRequiredService<AutoNavigationUI>();
             _ = autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
-        }, TaskScheduler.Default);
+        });
     }
 }
