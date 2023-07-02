@@ -123,6 +123,9 @@
     <TrimMode>partial</TrimMode>
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
   </PropertyGroup>
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ActualChat" />
+  </ItemGroup>
 
   <!--
   Android AOT settings & AOT profile.
