@@ -79,8 +79,9 @@
     <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
   </PropertyGroup>-->
 
+  <!-- Common iOS and Android build properties -->
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
-    <!-- Common iOS and Android build properties -->
     <!-- Trimmer settings -->
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
     <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
@@ -91,6 +92,8 @@
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
+  <!-- Android build properties -->
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidKeyStore>True</AndroidKeyStore>
     <AndroidSigningKeyStore>myapp.keystore</AndroidSigningKeyStore>
@@ -98,10 +101,9 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
-    <!-- Performance-related settings -->
-    <!-- Slightly improves perf: -->
+    <!-- Performance-related -->
+    <EnableLLVM>False</EnableLLVM>
     <AndroidEnableSGenConcurrent>True</AndroidEnableSGenConcurrent>
-    <!-- Slightly improves startup perf: -->
     <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
     <!-- Doesn't improve perf / makes things worse:
     <AndroidUseInterpreter>True</AndroidUseInterpreter>
@@ -116,7 +118,6 @@
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
     <!-- Trimming & AOT options -->
-    <EnableLLVM>False</EnableLLVM>
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <PublishTrimmed>true</PublishTrimmed>
@@ -144,12 +145,14 @@
   </ItemGroup>
   -->
 
-  <!-- iOS runtime identifier & other fixes -->
+  <!-- iOS build properties -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+    <!-- Performance-related -->
+    <EnableSGenConc>True</EnableSGenConc>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
