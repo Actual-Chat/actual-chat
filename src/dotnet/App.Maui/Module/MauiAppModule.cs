@@ -16,7 +16,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
     protected override void InjectServices(IServiceCollection services)
     {
         // Session
-        services.AddScoped<ISessionResolver>(c => new MauiSessionProvider(c));
+        services.AddScoped<ISessionResolver>(c => new MauiSessionResolver(c));
 
         // Auth
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));

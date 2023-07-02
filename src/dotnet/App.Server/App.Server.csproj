@@ -65,6 +65,7 @@
     <Watch Remove="wwwroot\**\*.woff" />
     <Watch Remove="wwwroot\**\*.woff2" />
   </ItemGroup>
+  
   <!-- Copy Stl* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>

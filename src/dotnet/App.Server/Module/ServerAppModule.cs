@@ -105,7 +105,6 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         app.UseResponseCompression();
 
         // API controllers
-        app.UseMiddleware<ReadSessionMiddleware>();
         app.UseRouting();
         app.UseCors("Default");
         app.UseResponseCaching();
@@ -134,28 +133,9 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                 : TimeSpan.FromSeconds(30);
         });
 
-        // Session middleware and cookie settings
-        services.AddSingleton<SessionCookieOptions>(_ => SessionCookieOptions.Default);
-        services.AddSingleton<ReadSessionMiddleware.Options>(_ => ReadSessionMiddleware.Options.Default);
-        services.AddScoped<ReadSessionMiddleware>(c
-            => new ReadSessionMiddleware(c.GetRequiredService<ReadSessionMiddleware.Options>(), c));
-
         // Queues
         services.AddLocalCommandQueues();
         services.AddCommandQueueScheduler();
-
-        // Fusion web server
-        var fusion = services.AddFusion();
-        fusion.AddWebServer();
-
-        // RestEase client
-        var restEase = services.AddRestEase();
-        restEase.ConfigureHttpClient((c, name, o) => {
-            o.HttpClientActions.Add(client => {
-                client.DefaultRequestVersion = HttpVersion.Version30;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            });
-        });
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
@@ -216,17 +196,6 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         }).AddHubOptions(o => {
             o.MaximumParallelInvocationsPerClient = 4;
         });
-        fusion.AddBlazor().AddAuthentication(); // Must follow services.AddServerSideBlazor()!
-
-        // Swagger & debug tools
-        /*
-        services.AddSwaggerGen(c => {
-            c.SwaggerDoc("v1",
-                new OpenApiInfo {
-                    Title = "ActualChat API", Version = "v1",
-                });
-        });
-        */
 
         // OpenTelemetry
         services.AddSingleton<OtelMetrics>();

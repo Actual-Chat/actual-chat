@@ -5,11 +5,11 @@
 <OnUIEvent TEvent="OwnAccountChangedEvent" Handler="@OnOwnAccountChanged"/>
 
 @code {
-    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
     [Parameter] public string? SourceUrl { get; set; } = null;
     [Parameter] public string TargetUrl { get; set; } = "";
+    [Parameter] public bool MustReplace { get; set; }
 
     private Task OnOwnAccountChanged(OwnAccountChangedEvent @event, CancellationToken cancellationToken) {
         var (account, oldAccount) = @event;
@@ -22,7 +22,7 @@
             return Task.CompletedTask;
 
         var targetUrl = new LocalUrl(TargetUrl);
-        AutoNavigationUI.NavigateTo(targetUrl, AutoNavigationReason.SignIn);
+        History.NavigateTo(targetUrl, MustReplace);
         return Task.CompletedTask;
     }
 }

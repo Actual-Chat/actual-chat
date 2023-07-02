@@ -1,29 +1,26 @@
 using ActualChat.Transcription;
+using ActualChat.Web;
 using Microsoft.AspNetCore.SignalR;
-using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.Audio;
 
 public class AudioHub : Hub
 {
+    private IServiceProvider Services { get; }
     private IAudioProcessor AudioProcessor { get; }
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
-    private SessionMiddleware SessionMiddleware { get; }
+    private SessionCookies SessionCookies { get; }
     private OtelMetrics Metrics { get; }
 
-    public AudioHub(
-        IAudioProcessor audioProcessor,
-        IAudioStreamServer audioStreamServer,
-        ITranscriptStreamServer transcriptStreamServer,
-        SessionMiddleware sessionMiddleware,
-        OtelMetrics metrics)
+    public AudioHub(IServiceProvider services)
     {
-        AudioProcessor = audioProcessor;
-        AudioStreamServer = audioStreamServer;
-        TranscriptStreamServer = transcriptStreamServer;
-        SessionMiddleware = sessionMiddleware;
-        Metrics = metrics;
+        Services = services;
+        Metrics = services.GetRequiredService<OtelMetrics>();
+        AudioProcessor = services.GetRequiredService<IAudioProcessor>();
+        AudioStreamServer = services.GetRequiredService<IAudioStreamServer>();
+        TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
+        SessionCookies = services.GetRequiredService<SessionCookies>();
     }
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
@@ -62,7 +59,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = SessionMiddleware.GetSession(httpContext) ?? GetSessionForRecorderId(recorderId).Require();
+        var session = SessionCookies.Read(httpContext) ?? GetSession(recorderId).RequireValid();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
@@ -86,7 +83,12 @@ public class AudioHub : Hub
     public Task<string> Ping()
         => Task.FromResult("Pong");
 
-    private Session GetSessionForRecorderId(string recorderId)
-        // TODO(AK): lookup session for provided recorderId
-        => new (recorderId.RequireNonEmpty(nameof(recorderId)).RequireNotEqual(Constants.Recorder.DefaultId, nameof(recorderId)));
+    private Session GetSession(string recorderId)
+    {
+        // TODO(AK): Security: migrate to session lookup / decryption here
+        recorderId = recorderId
+            .RequireNonEmpty(nameof(recorderId))
+            .RequireNotEqual(Constants.Recorder.DefaultId, nameof(recorderId));
+        return new(recorderId);
+    }
 }

@@ -26,7 +26,6 @@ public class AudioRecorder : IAsyncDisposable
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
 
-
     public AudioRecorder(IServiceProvider services)
     {
         Log = services.LogFor<AudioRecorder>();

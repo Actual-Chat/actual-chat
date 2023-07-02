@@ -33,7 +33,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Fusion
         var fusion = services.AddFusion();
-        fusion.AddBlazor().AddAuthentication();
+        fusion.AddBlazor();
+        // The only thing we use from fusion.AddBlazor().AddAuthentication():
+        services.AddScoped(c => new ClientAuthHelper(c));
         if (appKind.IsClient())
             fusion.AddRpcPeerStateMonitor();
 

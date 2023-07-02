@@ -3,12 +3,12 @@ using ActualChat.Users;
 
 namespace ActualChat.App.Maui.Services;
 
-public sealed class MauiSessionProvider : ISessionResolver
+public sealed class MauiSessionResolver : ISessionResolver
 {
     private const string SessionIdStorageKey = "Fusion.SessionId";
     private const string SessionIdCreatedAtStorageKey = "Fusion.SessionId.CreatedAt";
-    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionProvider)];
-    private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionProvider>();
+    private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSessionResolver)];
+    private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSessionResolver>();
 
     private static readonly object _lock = new ();
     private static TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
@@ -36,13 +36,13 @@ public sealed class MauiSessionProvider : ISessionResolver
             return sessionSourceTask.Result;
  #pragma warning restore VSTHRD002
         }
-        set => throw StandardError.NotSupported<MauiSessionProvider>("Session can't be set explicitly with this provider.");
+        set => throw StandardError.NotSupported<MauiSessionResolver>("Session can't be set explicitly with this provider.");
     }
 
-    public MauiSessionProvider(IServiceProvider services)
+    public MauiSessionResolver(IServiceProvider services)
         => Services = services;
 
-    public Task<Session> GetSession(CancellationToken cancellationToken)
+    public Task<Session> GetSession(CancellationToken cancellationToken = default)
         => SessionSource.Task.WaitAsync(cancellationToken);
 
     public static Task TryRestoreSession()
@@ -69,27 +69,28 @@ public sealed class MauiSessionProvider : ISessionResolver
             using var _ = Tracer.Region();
 
             var mobileSessions = Services.GetRequiredService<IMobileSessions>();
+            string sessionId;
             if (!SessionSource.Task.IsCompleted) {
-                var sessionId = await mobileSessions.Create(CancellationToken.None);
+                sessionId = await mobileSessions.Create(CancellationToken.None).ConfigureAwait(false);
                 await Store(sessionId).ConfigureAwait(false);
                 var session = new Session(sessionId);
                 SessionSource.TrySetResult(session);
+                return;
             }
-            else {
-                var storedSessionId = Session.Id.Value;
-                var sessionId = await mobileSessions.Validate(storedSessionId, CancellationToken.None);
-                if (!OrdinalEquals(sessionId, storedSessionId)) {
-                    // Update sessionId and reload MAUI App container
-                    lock (_lock) {
-                        var session = new Session(sessionId);
-                        _sessionSource = TaskCompletionSourceExt.New<Session>();
-                        _sessionSource.SetResult(session);
-                    }
-                    await Store(sessionId).ConfigureAwait(false);
-                    var application = Application.Current;
-                    application!.Dispatcher.Dispatch(()
-                        => (application.MainPage as MainPage)?.Reset());
+
+            var storedSessionId = Session.Id.Value;
+            sessionId = await mobileSessions.Validate(storedSessionId, CancellationToken.None).ConfigureAwait(false);
+            if (!OrdinalEquals(sessionId, storedSessionId)) {
+                // Update sessionId and reload MAUI App container
+                lock (_lock) {
+                    var session = new Session(sessionId);
+                    _sessionSource = TaskCompletionSourceExt.New<Session>();
+                    _sessionSource.SetResult(session);
                 }
+                await Store(sessionId).ConfigureAwait(false);
+                var application = Application.Current;
+                application!.Dispatcher.Dispatch(()
+                    => (application.MainPage as MainPage)?.Reset());
             }
         });
 

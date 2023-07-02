@@ -9,7 +9,7 @@
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
-<AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" />
+<AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" MustReplace="true" />
 
 <RenderIntoSlot Name="MainHeader">
     <ChatHeader @key="@chat" Chat="@chat" />
