@@ -87,7 +87,7 @@ public static class MauiDiagnostics
         // Set defaults for options that are different for MAUI.
         options.AutoSessionTracking = true;
         options.DetectStartupTime = StartupTimeDetectionMode.Fast;
-        options.CacheDirectoryPath = Microsoft.Maui.Storage.FileSystem.CacheDirectory;
+        options.CacheDirectoryPath = FileSystem.CacheDirectory;
 
         // Global Mode makes sense for client apps
         options.IsGlobalModeEnabled = true;

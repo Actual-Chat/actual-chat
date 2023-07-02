@@ -15,7 +15,7 @@ public sealed class MobileAuthClient
 
     public async Task<bool> SignInApple(string code, string name, string email, string userId)
     {
-        var session = await SessionResolver.GetSession(CancellationToken.None);
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInAppleWithCode";
         try {
             var values = new List<KeyValuePair<string, string>> {
@@ -44,7 +44,7 @@ public sealed class MobileAuthClient
         if (code.IsNullOrEmpty())
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
 
-        var session = await SessionResolver.GetSession(CancellationToken.None);
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
@@ -59,7 +59,7 @@ public sealed class MobileAuthClient
 
     public async Task SignOut()
     {
-        var session = await SessionResolver.GetSession(CancellationToken.None);
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
         var sessionId = session.Id.Value;
         var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {

@@ -47,11 +47,19 @@ public static class SentryMauiAppBuilderExtensions
         Action<SentryMauiOptions>? configureOptions)
     {
         var services = builder.Services;
-        services.Configure<SentryMauiOptions>(options =>
-            builder.Configuration.GetSection("Sentry").Bind(options));
+        try {
+ #pragma warning disable IL2026
+            services.Configure<SentryMauiOptions>(options =>
+                builder.Configuration.GetSection("Sentry").Bind(options));
+ #pragma warning restore IL2026
 
-        if (configureOptions != null)
-            services.Configure(configureOptions);
+            if (configureOptions != null)
+                services.Configure(configureOptions);
+        }
+        catch {
+            // Intended: we should go on when Sentry configuration fails somehow
+            return builder;
+        }
 
         services.AddLogging();
         services.AddSingleton<ILoggerProvider, SentryLoggerProvider>();
