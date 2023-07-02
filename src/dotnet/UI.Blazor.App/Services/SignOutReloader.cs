@@ -1,6 +1,8 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
+using Stl.Fusion.Client.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -24,19 +26,20 @@ public class SignOutReloader : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var session = Services.GetRequiredService<Session>();
-        var auth = Services.GetRequiredService<IAuth>();
+        var account = Services.GetRequiredService<IAccounts>();
 
         var updateDelayer = FixedDelayer.Instant;
         while (true) {
             while (true) {
                 try {
-                    var cAuthInfo0 = await Computed
-                        .Capture(() => auth.GetAuthInfo(session, cancellationToken))
+                    var cAccount = await Computed
+                        .Capture(() => account.GetOwn(session, cancellationToken))
                         .ConfigureAwait(false);
+                    cAccount = await cAccount.UpdateIfCached(cancellationToken).ConfigureAwait(false);
 
                     // Wait for sign-in unless already signed in
-                    if (cAuthInfo0.ValueOrDefault?.IsAuthenticated() != true) {
-                        await cAuthInfo0.When(i => i?.IsAuthenticated() ?? false, updateDelayer, cancellationToken).ConfigureAwait(false);
+                    if (cAccount.Value.IsGuestOrNone) {
+                        await cAccount.When(x => !x.IsGuestOrNone, updateDelayer, cancellationToken).ConfigureAwait(false);
                         await UICommander.RunNothing().ConfigureAwait(false); // Reset all update delays
                     }
 
@@ -44,14 +47,15 @@ public class SignOutReloader : WorkerBase
                     _ = History.Dispatcher.InvokeAsync(() => onboardingUI.TryShow());
 
                     // Wait for sign-out
-                    await cAuthInfo0.When(i => !(i?.IsAuthenticated() ?? false), updateDelayer, cancellationToken).ConfigureAwait(false);
+                    await cAccount.When(x => x.IsGuestOrNone, updateDelayer, cancellationToken).ConfigureAwait(false);
                     break;
                 }
                 catch (OperationCanceledException) {
                     throw;
                 }
                 catch {
-                    // Intended
+                    // Just in case: we don't want rapid iterations on errors here
+                    await Task.Delay(250, cancellationToken).ConfigureAwait(false);
                 }
             }
 
