@@ -2,7 +2,7 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using Stl.Fusion.Client.Interception;
+using Stl.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -11,7 +11,6 @@ public class SignOutReloader : WorkerBase
     private IServiceProvider Services { get; }
     private History History { get; }
     private UICommander UICommander { get; }
-    private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
     public SignOutReloader(IServiceProvider services)
@@ -20,7 +19,6 @@ public class SignOutReloader : WorkerBase
         Log = services.LogFor(GetType());
         History = services.GetRequiredService<History>();
         UICommander = Services.UICommander();
-        Clocks = services.Clocks();
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -60,7 +58,12 @@ public class SignOutReloader : WorkerBase
             }
 
             Log.LogInformation("Forcing reload on sign-out");
-            _ = History.Dispatcher.InvokeAsync(() => {
+            _ = History.Dispatcher.InvokeAsync(async () => {
+                var clientComputedCache = Services.GetService<IClientComputedCache>();
+                if (clientComputedCache != null) {
+                    // Clear computed cache on sign-out to evict cached account from there
+                    await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
+                }
                 if (History.HostInfo.AppKind.IsMauiApp()) {
                     // MAUI scenario:
                     // - Go to home page (we don't handle forced sign-out here yet)
