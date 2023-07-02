@@ -84,7 +84,7 @@
         var appKind = HostInfo.AppKind;
         if (!appKind.IsMauiApp()) {
             // Set ISessionResolver.Session
-            if (!SessionId.IsNullOrEmpty())
+            if (SessionId.IsNullOrEmpty())
                 throw new ArgumentOutOfRangeException(nameof(SessionId));
 
             var session = new Session(SessionId);
