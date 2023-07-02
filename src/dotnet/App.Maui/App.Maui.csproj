@@ -117,8 +117,7 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
-    <!-- Trimming & AOT options -->
-    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <!-- Trimming -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
@@ -126,10 +125,12 @@
 
   <!-- Android custom AOT profile -->
 
-  <PropertyGroup>
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <AndroidAotProfile Include="custom.aprof" />
   </ItemGroup>
 
