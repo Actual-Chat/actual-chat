@@ -148,6 +148,7 @@
   <!-- iOS build properties -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
@@ -163,7 +164,6 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
-    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignProvision>App Store Dev</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
