@@ -103,7 +103,7 @@
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
     <!-- Performance-related -->
     <!-- ~ -200ms -->
-    <AndroidUseInterpreter>true</AndroidUseInterpreter>
+    <AndroidUseInterpreter>false</AndroidUseInterpreter>
     <!-- ~ -50-100ms + makes the the startup time more stable -->
     <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
     <!-- ~ -100ms -->
