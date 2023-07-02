@@ -2,7 +2,7 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @{
-    if (!HostInfo.IsDevelopmentInstance)
+    if (UrlMapper.IsActualChat && AccountUI.OwnAccount.ValueOrDefault?.IsAdmin != true)
         return;
 
     var appBuildTime = (int)LoadingUI.AppBuildTime.TotalMilliseconds;
@@ -22,6 +22,7 @@
 }
 
 @code {
-    [Inject] HostInfo HostInfo { get; init; } = null!;
+    [Inject] UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] AccountUI AccountUI { get; init; } = null!;
     [Inject] LoadingUI LoadingUI { get; init; } = null!;
 }
