@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -8,17 +9,20 @@ public sealed class AvatarPicturesController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private ICommander Commander { get; }
+    private SessionCookies SessionCookies { get; }
     private ISessionResolver SessionResolver { get; }
     private IAuth Auth { get; }
 
     public AvatarPicturesController(
         IContentSaver contentSaver,
         ICommander commander,
+        SessionCookies sessionCookies,
         ISessionResolver sessionResolver,
         IAuth auth)
     {
         ContentSaver = contentSaver;
         Commander = commander;
+        SessionCookies = sessionCookies;
         SessionResolver = sessionResolver;
         Auth = auth;
     }
@@ -40,7 +44,15 @@ public sealed class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Chat.FileSizeLimit)
             return BadRequest("Image is too big");
 
-        var user = await Auth.GetUser(SessionResolver.Session, cancellationToken).ConfigureAwait(false);
+        var session = SessionCookies.Read(HttpContext);
+        if (session is null)
+            return Forbid();
+
+        SessionResolver.Session = session;
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return Forbid();
+
         var mediaId = new MediaId(user!.Id, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
         var media = new Media.Media(mediaId) {
