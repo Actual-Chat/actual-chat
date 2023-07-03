@@ -8,10 +8,12 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed class LoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
+    private static readonly TaskCompletionSource _whenViewCreatedSource = new();
     private static readonly TaskCompletionSource _whenAppRenderedSource = new();
 
     public static TimeSpan AppCreationTime { get; private set; }
     public static TimeSpan AppBuildTime { get; private set; }
+    public static Task WhenViewCreated => _whenViewCreatedSource.Task;
     public static Task WhenAppRendered => _whenAppRenderedSource.Task;
 
     private readonly TaskCompletionSource _whenLoadedSource = new();
@@ -36,7 +38,6 @@ public sealed class LoadingUI
         Tracer = services.Tracer(GetType());
         HostInfo = Services.GetRequiredService<HostInfo>();
         if (HostInfo.AppKind.IsMauiApp()) {
-            _isLoadingOverlayRemoved = true; // This overlay isn't used in MAUI apps
             if (StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
                 // This is to make sure first scope's timings in MAUI are relative to app start
                 Tracer = StaticTracer[GetType()];
@@ -51,6 +52,14 @@ public sealed class LoadingUI
 
         AppBuildTime = StaticTracer.Elapsed;
         StaticTracer.Point(nameof(MarkAppBuilt));
+    }
+
+    public static void MarkViewCreated()
+    {
+        if (!_whenViewCreatedSource.TrySetResult())
+            return;
+
+        StaticTracer.Point(nameof(MarkViewCreated));
     }
 
     public static void MarkAppCreated()
@@ -83,8 +92,8 @@ public sealed class LoadingUI
 
         RenderTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkRendered));
-        RemoveLoadingOverlay();
         _whenAppRenderedSource.TrySetResult();
+        RemoveLoadingOverlay();
     }
 
     public void MarkChatListLoaded()

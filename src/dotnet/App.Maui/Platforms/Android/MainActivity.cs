@@ -236,7 +236,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         private static bool _splashRemoved; // Iron pants to prevent splash screen displayed after app is taken back from background.
         private readonly AView _contentView;
-        private readonly Task _whenSplashRemoved = LoadingUI.WhenAppRendered; // .WithDelay(TimeSpan.FromSeconds(0.1));
+        private readonly Task _whenSplashRemoved = LoadingUI.WhenViewCreated.WithDelay(TimeSpan.FromMilliseconds(50));
 
         public SplashScreenDelayer(AView contentView)
             => _contentView = contentView;

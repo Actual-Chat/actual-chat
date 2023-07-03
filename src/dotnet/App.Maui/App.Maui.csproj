@@ -128,25 +128,25 @@
   </ItemGroup>
 
   <!--
-  Android AOT settings & AOT profile.
-  !!! AOT is unused due to bad perf (~ 1.5x slower startup).
+  Android AOT settings & AOT profile
   -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <AotAssemblies>false</AotAssemblies>
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <AndroidAotEnableLazyLoad>false</AndroidAotEnableLazyLoad>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <AndroidAotEnableLazyLoad>true</AndroidAotEnableLazyLoad>
   </PropertyGroup>
   <PropertyGroup>
     <!--
     This option kinda duplicates AndroidUseDefaultAotProfile,
     so we're using both - just in case.
     -->
-    <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
-    <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
+    <MauiUseDefaultAotProfile>true</MauiUseDefaultAotProfile>
+    <AndroidUseDefaultAotProfile>true</AndroidUseDefaultAotProfile>
   </PropertyGroup>
   <ItemGroup>
-    <AndroidAotProfile Include="custom.aprof" />
+    <!--
+    <AndroidAotProfile Include="custom-inc.aprof" />
+    -->
   </ItemGroup>
 
   <!-- Uncomment to profile Android app -->
