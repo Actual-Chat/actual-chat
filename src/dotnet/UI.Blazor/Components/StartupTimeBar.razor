@@ -2,6 +2,8 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @{
+    if (HostInfo.AppKind.IsServer())
+        return;
     if (UrlMapper.IsActualChat && AccountUI.OwnAccount.ValueOrDefault?.IsAdmin != true)
         return;
 
@@ -10,18 +12,19 @@
     var loadTime = (int)LoadingUI.LoadTime.TotalMilliseconds;
     var renderTime = (int)LoadingUI.RenderTime.TotalMilliseconds;
     var chatListLoadedTime = (int)LoadingUI.ChatListLoadTime.TotalMilliseconds;
+    if (loadTime <= 0)
+        return;
 }
 
-@if (loadTime > 0) {
-    <div class="blazor-mode-toggle px-1">
-        @if (appBuildTime > 0) {
-            @(appBuildTime + "/")
-        }
-        @($"{appCreationTime}/{loadTime}+{renderTime-loadTime}/{chatListLoadedTime}ms")
-    </div>
-}
+<div class="blazor-mode-toggle px-1">
+    @if (appBuildTime > 0) {
+        @(appBuildTime + "/")
+    }
+    @($"{appCreationTime}/{loadTime}+{renderTime-loadTime}/{chatListLoadedTime}ms")
+</div>
 
 @code {
+    [Inject] HostInfo HostInfo { get; init; } = null!;
     [Inject] UrlMapper UrlMapper { get; init; } = null!;
     [Inject] AccountUI AccountUI { get; init; } = null!;
     [Inject] LoadingUI LoadingUI { get; init; } = null!;
