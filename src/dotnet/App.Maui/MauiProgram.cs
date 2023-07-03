@@ -94,7 +94,7 @@ public static partial class MauiProgram
 
         // Core MAUI services
         services.AddMauiBlazorWebView();
-#if true || DEBUG
+#if DEBUG
         // Temporarily allow developer tools for all configurations
         services.AddBlazorWebViewDeveloperTools();
 #endif
