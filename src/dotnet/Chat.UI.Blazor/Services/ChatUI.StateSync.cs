@@ -1,26 +1,26 @@
-﻿using ActualChat.UI.Blazor.Services;
-
-namespace ActualChat.Chat.UI.Blazor.Services;
+﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatUI
 {
     // All state sync logic should be here
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
             new(nameof(HardRedirectOnFixableChat), HardRedirectOnFixableChat),
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
-        var retryDelays = new RetryDelaySeq(100, 1000);
-        return (
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+        await (
             from chain in baseChains
             select chain
-                .RetryForever(retryDelays, Log)
-                // .LogBoundary(LogLevel.Debug, Log)
-            ).RunIsolated(cancellationToken);
+                .Log(LogLevel.Debug, DebugLog)
+                .RetryForever(retryDelays, DebugLog)
+            ).RunIsolated(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
@@ -32,7 +32,7 @@ public partial class ChatUI
             if (newChatId == oldChatId)
                 continue;
 
-            Log.LogDebug("InvalidateSelectedChatDependencies: *");
+            DebugLog?.LogDebug("InvalidateSelectedChatDependencies: *");
             using (Computed.Invalidate()) {
                 _ = IsSelected(oldChatId);
                 _ = IsSelected(newChatId);
@@ -62,7 +62,7 @@ public partial class ChatUI
 
         // Quite rare case, so it's sub-optimal to resolve this dependency in .ctor
         var redirectUrl = cRedirectUrl.Value;
-        _ = History.HardNavigateTo(redirectUrl);
+        History.ForceReload(redirectUrl);
     }
 
     [ComputeMethod]
@@ -83,7 +83,7 @@ public partial class ChatUI
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
-                Log.LogDebug("PushKeepAwakeState: *");
+                DebugLog?.LogDebug("PushKeepAwakeState: *");
                 await KeepAwakeUI.SetKeepAwake(mustKeepAwake).ConfigureAwait(false);
                 lastMustKeepAwake = mustKeepAwake;
             }

@@ -36,14 +36,12 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     public IServiceProvider Services => ModalUI.Services;
-    public ModalOptions DefaultOptions { get; private set; } = null!;
     public IReadOnlyCollection<ModalRef> Refs => _refs;
 
     public event Action? OnModalClosed;
 
     protected override void OnInitialized()
     {
-        DefaultOptions = (Services.GetService<ModalOptions>() ?? new()).WithDefaults(ModalOptions.Default);
         History.Register(new OwnHistoryState(this, ImmutableSortedSet<Symbol>.Empty));
         ((IHasAcceptor<ModalHost>)ModalUI).Acceptor.Accept(this);
     }
@@ -53,7 +51,7 @@
 
     public ModalRef Show(ModalOptions options, object model, RenderFragment content)
     {
-        options = options.WithDefaults(DefaultOptions);
+        options = options.WithImplicit();
         var modalRef = new ModalRef(options, model, this);
         var modalRefImpl = (IModalRefImpl)modalRef;
         var view = new RenderFragment(builder => {
@@ -71,30 +69,48 @@
         return modalRef;
     }
 
-    public bool Close(Symbol id, bool forceClose = false) {
+    public bool Close(Symbol id, bool force)
+    {
         var modalRef = FindRef(id);
         if (modalRef == null)
             return true;
 
-        var mustClose = forceClose || modalRef.Model is not IOptionallyClosable oc || oc.CanBeClosed;
+        if (!CloseInternal(modalRef, force))
+            return false;
+
+        OnModalClosed?.Invoke();
+        History.Save<OwnHistoryState>();
+        StateHasChanged();
+        return true;
+    }
+
+    public bool CloseAll(bool force)
+    {
+        var modalRefs = _refs;
+        for (var i = modalRefs.Count - 1; i >= 0; i--) {
+            var modalRef = modalRefs[i];
+            if (!CloseInternal(modalRef, force))
+                break;
+        }
+        if (_refs == modalRefs)
+            return false;
+
+        OnModalClosed?.Invoke();
+        History.Save<OwnHistoryState>();
+        StateHasChanged();
+        return true;
+    }
+
+    // Private methods
+
+    private bool CloseInternal(ModalRef modalRef, bool force)
+    {
+        var mustClose = force || modalRef.Model is not IOptionallyClosable oc || oc.CanBeClosed;
         if (!mustClose)
             return false;
 
         _refs = _refs.Remove(modalRef);
-        History.Save<OwnHistoryState>();
-        StateHasChanged();
         ((IModalRefImpl)modalRef).MarkClosed();
-        OnModalClosed?.Invoke();
-        return true;
-    }
-
-    public bool CloseAll(bool forceClose = false) {
-        var modalRefs = _refs;
-        for (var i = modalRefs.Count - 1; i >= 0; i--) {
-            var modalRef = modalRefs[i];
-            if (!modalRef.Close(forceClose))
-                return false;
-        }
         return true;
     }
 
@@ -113,15 +129,17 @@
                 ModalIds = Host._refs.Select(x => x.Id).ToList(),
             };
 
-        public override void Apply(HistoryTransition transition) {
+        public override void Apply(HistoryTransition transition)
+        {
             var isHistoryMove = transition.LocationChangeKind is LocationChangeKind.HistoryMove;
             var modalIds = isHistoryMove ? ModalIds : ImmutableSortedSet<Symbol>.Empty;
             var modalRefs = Host._refs;
             for (var i = modalRefs.Count - 1; i >= 0; i--) {
                 var modalRef = modalRefs[i];
                 if (!modalIds.Contains(modalRef.Id)) {
-                    if (!modalRef.Close())
+                    if (!Host.CloseInternal(modalRef, false))
                         return;
+                    Host.StateHasChanged();
                 }
             }
         }

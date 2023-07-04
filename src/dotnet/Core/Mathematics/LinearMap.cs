@@ -1,16 +1,19 @@
 using System.Numerics;
+using MemoryPack;
 
 namespace ActualChat.Mathematics;
 
-[DataContract]
-public readonly struct LinearMap
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial struct LinearMap
 {
+    public static LinearMap Zero { get; } = new(Vector2.Zero);
+
     private readonly float[]? _data;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public float[] Data => _data ?? Array.Empty<float>();
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ReadOnlySpan<Vector2> Points {
         get {
             var data = _data;
@@ -23,23 +26,26 @@ public readonly struct LinearMap
         }
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public int Length => _data == null ? 0 : _data.Length >> 1;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsEmpty => _data == null || _data.Length == 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Range<float> XRange => new(Points[0].X, Points[^1].X);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Range<float> YRange => new(Points[0].Y, Points[^1].Y);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    public bool IsDegenerate => Data.Length < 4;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    public Range<float> XRange => IsEmpty ? default : new Range<float>(Points[0].X, Points[^1].X);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    public Range<float> YRange => IsEmpty ? default : new Range<float>(Points[0].Y, Points[^1].Y);
 
     public Vector2 this[int index] => Points[index];
     public LinearMap this[Range range] => new(Points[range]);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public LinearMap(params float[] data)
     {
-        if (0 != (data.Length & 1))
+        if ((data.Length & 1) != 0)
             throw new ArgumentOutOfRangeException(nameof(data));
+
         _data = data;
     }
 
@@ -79,18 +85,10 @@ public readonly struct LinearMap
         => $"{{{ Data.ToDelimitedString() }}}";
 
     public bool IsValid()
-    {
-        var points = Points;
-        return points.IsStrictlyIncreasingXSequence()
-            || points.Length == 2 && points[0] == points[1];
-    }
+        => Points.IsStrictlyIncreasingXSequence();
 
     public bool IsInversionValid()
-    {
-        var points = Points;
-        return points.IsStrictlyIncreasingYSequence()
-            || (points.Length == 2 && points[0] == points[1]);
-    }
+        => Points.IsStrictlyIncreasingYSequence();
 
     public LinearMap RequireValid(bool requireInvertible = false)
     {
@@ -101,32 +99,60 @@ public readonly struct LinearMap
         return this;
     }
 
-    public float? TryMap(float value)
+    public float? TryMap(float x, out int indexOfLowerOrEqualX)
     {
         var points = Points;
-        var i = points.IndexOfLowerOrEqualX(value);
-        if (i < 0)
-            return null;
-        var p0 = points[i];
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        if (p0.X == value)
-            return p0.Y;
-        if (i == Length - 1)
+        indexOfLowerOrEqualX = points.IndexOfLowerOrEqualX(x);
+        if (indexOfLowerOrEqualX < 0)
             return null;
 
-        var p1 = points[i + 1];
-        var k = (value - p0.X) / (p1.X - p0.X);
+        var p0 = points[indexOfLowerOrEqualX];
+        if (indexOfLowerOrEqualX == Length - 1)
+            return x > p0.X ? null : p0.Y;
+
+        var p1 = points[indexOfLowerOrEqualX + 1];
+        var dx = p1.X - p0.X;
+        if (dx <= 0)
+            return p0.X;
+
+        var k = (x - p0.X) / dx;
+        return p0.Y + (k * (p1.Y - p0.Y));
+    }
+
+    public float? TryMap(float value)
+        => TryMap(value, out _);
+
+    public float Map(float x, out int indexOfLowerOrEqualX)
+    {
+        var points = Points;
+        indexOfLowerOrEqualX = points.IndexOfLowerOrEqualX(x);
+        if (indexOfLowerOrEqualX < 0)
+            return Points.Length == 0 ? 0 : Points[0].Y;
+
+        var p0 = points[indexOfLowerOrEqualX];
+        if (indexOfLowerOrEqualX == Length - 1)
+            return p0.Y;
+
+        var p1 = points[indexOfLowerOrEqualX + 1];
+        var dx = p1.X - p0.X;
+        if (dx <= 0)
+            return p0.X;
+
+        var k = (x - p0.X) / dx;
         return p0.Y + (k * (p1.Y - p0.Y));
     }
 
     public float Map(float value)
-        => TryMap(value) ?? throw new ArgumentOutOfRangeException(nameof(value), "Can't map provided value.");
+        => Map(value, out _);
 
     public LinearMap Move(float xOffset, float yOffset)
         => Move(new Vector2(xOffset, yOffset));
 
     public LinearMap Move(Vector2 offset)
     {
+        if (Data.Length == 0)
+            return this;
+
         var data = Data;
         var newData = new float[data.Length];
         for (var i = 0; i < data.Length; i++) {
@@ -137,10 +163,67 @@ public readonly struct LinearMap
         return new LinearMap(newData);
     }
 
+    public LinearMap GetPrefix(float x, float xEpsilon = 0)
+    {
+        var splitPoint = new Vector2(x, Map(x, out var indexOfLowerOrEqualX));
+        if (indexOfLowerOrEqualX < 0)
+            return new LinearMap(splitPoint);
+        if (indexOfLowerOrEqualX == Length - 1)
+            return this;
+
+        var i2 = indexOfLowerOrEqualX << 1;
+        return new LinearMap(Data[..i2]).TryAppend(splitPoint, xEpsilon);
+    }
+
+    public LinearMap GetSuffix(float x, float xEpsilon = 0)
+    {
+        var splitPoint = new Vector2(x, Map(x, out var indexOfLowerOrEqualX));
+        if (indexOfLowerOrEqualX < 0)
+            return this;
+        if (indexOfLowerOrEqualX == Length - 1)
+            return new LinearMap(splitPoint);
+
+        var i2 = indexOfLowerOrEqualX << 1;
+        return new LinearMap(Data[i2..]).TryPrepend(splitPoint, xEpsilon);
+    }
+
+    public (LinearMap Prefix, LinearMap Suffix) Split(float x, float xEpsilon = 0)
+    {
+        var splitPoint = new Vector2(x, Map(x, out var indexOfLowerOrEqualX));
+        if (indexOfLowerOrEqualX < 0)
+            return (new LinearMap(splitPoint), this);
+        if (indexOfLowerOrEqualX == Length - 1)
+            return (this, new LinearMap(splitPoint));
+
+        var i2 = indexOfLowerOrEqualX << 1;
+        var prefix = new LinearMap(Data[..i2]).TryAppend(splitPoint, xEpsilon);
+        var suffix = new LinearMap(Data[i2..]).TryPrepend(splitPoint, xEpsilon);
+        return (prefix, suffix);
+    }
+
+    public LinearMap Prepend(Vector2 point)
+    {
+        var data = Data;
+        if (data.Length == 0)
+            return new LinearMap(point);
+
+        var newData = new float[data.Length + 2];
+        data.AsSpan().CopyTo(newData.AsSpan(1));
+        newData[0] = point.X;
+        newData[1] = point.Y;
+        return new LinearMap(newData);
+    }
+
+    public LinearMap TryPrepend(Vector2 point, float xEpsilon = 0)
+        => IsEmpty || point.X <= Points[0].X - xEpsilon
+            ? Prepend(point)
+            : this;
+
     public LinearMap Append(Vector2 point)
     {
         var data = Data;
-        if (data.Length == 0) return new LinearMap(point);
+        if (data.Length == 0)
+            return new LinearMap(point);
 
         var newData = new float[data.Length + 2];
         data.AsSpan().CopyTo(newData);
@@ -154,30 +237,54 @@ public readonly struct LinearMap
             ? Append(point)
             : this;
 
-    public LinearMap TrySimplifyToPoint(float minSourceDistance = 1e-6f, float minTargetDistance = 1e-6f)
+
+    public LinearMap AppendOrUpdateSuffix(LinearMap suffix, float xEpsilon = 0)
+    {
+        if (suffix.IsEmpty)
+            return this;
+
+        suffix.RequireValid();
+        var points = Points;
+        var i = points.IndexOfLowerOrEqualX(suffix[0].X - xEpsilon);
+        if (i < 0)
+            return suffix;
+        if (points[i].X < suffix[0].X)
+            return new LinearMap(points[..(i + 1)], suffix.Points);
+
+        return i == 0 ? suffix : new LinearMap(points[..i], suffix.Points);
+    }
+
+    public LinearMap TrySimplifyToPoint(Vector2 epsilon)
     {
         if (Length != 2)
             return this;
+
         var d = this[0] - this[1];
-        return Math.Abs(d.X) >= minSourceDistance || Math.Abs(d.Y) >= minTargetDistance
-            ? this
-            : new LinearMap(this[0]);
+        return Math.Abs(d.X) <= epsilon.X && Math.Abs(d.Y) <= epsilon.Y
+            ? new LinearMap(this[0])
+            : this;
     }
 
-    public LinearMap Simplify(float yEpsilon)
+    public LinearMap Simplify(Vector2 epsilon)
     {
         var points = Points;
         if (points.Length <= 2)
             return this;
+
         var pStart = points[0];
         var newData = new List<float>() { pStart.X, pStart.Y };
         var lastI = 0;
         for (var i = 1; i < points.Length - 1; i++) {
             var (p0, p, p1) = (this[lastI], this[i], this[i + 1]);
-            var k = (p.X - p0.X) / (p1.X - p0.X);
-            var y = p0.Y + k * (p1.Y - p0.Y);
-            if (Math.Abs(p.Y - y) < yEpsilon)
+            var dX = p1.X - p0.X;
+            if (Math.Abs(dX) < epsilon.X)
                 continue;
+
+            var k = (p.X - p0.X) / dX;
+            var y = p0.Y + k * (p1.Y - p0.Y);
+            if (Math.Abs(p.Y - y) < epsilon.Y)
+                continue;
+
             newData.Add(p.X);
             newData.Add(p.Y);
             lastI = i;
@@ -186,16 +293,5 @@ public readonly struct LinearMap
         newData.Add(pEnd.X);
         newData.Add(pEnd.Y);
         return new LinearMap(newData.ToArray());
-    }
-
-    public LinearMap AppendOrUpdateTail(LinearMap tail, float xEpsilon)
-    {
-        tail.RequireValid();
-        var points = Points;
-        var i = points.IndexOfLowerOrEqualX(tail[0].X - xEpsilon);
-        if (i < 0)
-            return tail;
-        var cutIndex = i + 1;
-        return new LinearMap(points[..cutIndex], tail.Points);
     }
 }

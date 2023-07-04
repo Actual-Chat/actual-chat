@@ -1,0 +1,64 @@
+.image-viewer-modal.modal-frame {
+    @apply flex-y justify-center gap-y-0 p-0 md:my-14;
+    @apply w-full md:w-fit md:max-w-full h-full overflow-hidden;
+    @apply bg-transparent;
+    @apply border-none rounded-none shadow-none;
+}
+
+/*Image viewer header*/
+.image-viewer-header {
+    @apply absolute top-0 z-20;
+    @apply flex-x;
+    @apply min-h-14 w-full px-3 md:px-2;
+    @apply bg-black md:bg-transparent;
+    @apply backdrop-blur-none md:backdrop-blur-lg;
+}
+.image-viewer-header .image-header-btn.btn.btn-round.mobile {
+    @apply flex md:hidden;
+    @apply min-h-10 max-h-10 min-w-10 max-w-10;
+}
+.image-viewer-header .image-header-btn.btn.btn-round.desktop {
+    @apply hidden md:flex;
+}
+.image-viewer-header .image-header-btn .btn-content {
+    @apply bg-transparent text-05 min-h-10 max-h-10 min-w-10 max-w-10;
+}
+.image-viewer-header .image-header-btn .btn-content i {
+    @apply text-3xl md:text-2xl;
+}
+body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-content {
+    @apply bg-06 text-04;
+}
+
+/*Image viewer footer*/
+.image-viewer-footer {
+    @apply absolute flex-x bottom-0 min-h-14 w-full justify-center items-center;
+    @apply bg-black md:bg-transparent backdrop-blur-lg;
+}
+.image-viewer-footer .show-original-button {
+    @apply -mt-4 underline underline-offset-2;
+    @apply text-icons-02 text-sm font-normal;
+    @apply hover:text-04;
+    @apply cursor-pointer;
+}
+
+.image-viewer-modal.modal-frame {
+    @apply flex-y w-full md:w-fit md:min-w-20 max-w-full justify-center items-center p-0;
+    @apply overflow-hidden;
+}
+
+.image-viewer-modal .image-viewer-content {
+    @apply absolute flex-y max-h-fit;
+    @apply justify-center items-center md:backdrop-blur-md;
+}
+
+.image-viewer-modal .image-viewer-content img, .image-viewer-modal .image-viewer-content video {
+    @apply flex-auto w-fit max-w-full;
+    @apply object-contain;
+    max-height: calc(100vh - 7rem); /* screen height - close button height */
+}
+
+body.narrow .image-viewer-modal .image-viewer-content img,
+body.narrow .image-viewer-modal .image-viewer-content video {
+    max-height: 100vh;
+}

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,7 +42,7 @@
 
     input,
     textarea {
-        @apply bg-01 text-02 border-bg-03;
+        @apply bg-01 text-02 border-accent;
     }
     input {
         @apply h-12 md:h-8;
@@ -66,6 +67,9 @@
         @apply bg-01;
         @apply font-mono;
     }
+     code * {
+         @apply font-mono;
+     }
 
     h1, h2, h3, h4, h5, h6 {
         @apply font-semibold leading-loose;

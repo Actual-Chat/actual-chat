@@ -5,7 +5,7 @@ public class AudioRecordTest
     [Fact]
     public void SessionPropertyTest()
     {
-        var r = new AudioRecord(null!, new ChatId("chatId"), 0);
+        var r = AudioRecord.New(null!, new ChatId("chatId"), 0, ChatEntryId.None);
         r.Session.Should().BeNull();
         r = r with { Session = new Session("1234567890abcdef") };
         r.Session.Should().Be(r.Session);

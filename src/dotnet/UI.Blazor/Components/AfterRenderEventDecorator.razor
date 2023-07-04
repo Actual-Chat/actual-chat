@@ -1,9 +1,0 @@
-@ChildContent
-
-@code {
-    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
-    [Parameter, EditorRequired] public Action<bool> AfterRenderCallback { get; set; } = null!;
-
-    protected override void OnAfterRender(bool firstRender)
-        => AfterRenderCallback.Invoke(firstRender);
-}

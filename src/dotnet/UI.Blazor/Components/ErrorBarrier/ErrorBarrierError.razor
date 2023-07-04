@@ -28,7 +28,7 @@
 </div>
 
 @code {
-    private static readonly RetryDelaySeq AutoReloadDelays = new(5, 60);
+    private static readonly RetryDelaySeq AutoReloadDelays = RetryDelaySeq.Exp(5, 60);
     private static readonly TimeSpan SilentReloadPeriod = TimeSpan.FromSeconds(0.2);
     private static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
     private const int SilentReloadCount = 5;
@@ -42,7 +42,9 @@
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ErrorBarrier Barrier { get; set; } = null!;
+    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // ReSharper disable once RedundantNameQualifier
+    [Parameter, EditorRequired] public ActualChat.UI.Blazor.Components.ErrorBarrier Barrier { get; set; } = null!;
     [Parameter, EditorRequired] public ErrorBarrierKind Kind { get; set; }
     [Parameter, EditorRequired] public int ErrorCount { get; set; }
     [Parameter, EditorRequired] public bool MustAutoReload { get; set; }

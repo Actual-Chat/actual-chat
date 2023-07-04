@@ -2,44 +2,54 @@ namespace ActualChat.Audio;
 
 public static class AudioSourceExt
 {
-    public static AudioSource Concat(this AudioSource left, AudioSource right, CancellationToken cancellationToken)
+    public static AudioSource Concat(
+        this AudioSource first,
+        AudioSource second,
+        CancellationToken cancellationToken = default)
         => new (
-            left.CreatedAt,
-            left.Format,
-            left.GetFrames(cancellationToken).Concat(right.GetFrames(cancellationToken)),
+            first.CreatedAt,
+            first.Format,
+            first.GetFrames(cancellationToken).Concat(second.GetFrames(cancellationToken)),
             TimeSpan.Zero,
-            left.Log,
+            first.Log,
             cancellationToken);
 
-    public static AudioSource ConcatUntil(this AudioSource left, AudioSource right, TimeSpan duration, CancellationToken cancellationToken)
+    public static AudioSource ConcatUntil(
+        this AudioSource first,
+        AudioSource second,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
         => new (
-            left.CreatedAt,
-            left.Format,
-            left.GetFrames(cancellationToken).ConcatUntil(right.GetFrames(cancellationToken), duration),
+            first.CreatedAt,
+            first.Format,
+            first.GetFrames(cancellationToken).ConcatUntil(second.GetFrames(cancellationToken), duration),
             TimeSpan.Zero,
-            left.Log,
+            first.Log,
             cancellationToken);
 
-    public static AudioSource Take(this AudioSource left, TimeSpan duration, CancellationToken cancellationToken)
+    public static AudioSource Take(
+        this AudioSource source,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
         => new (
-            left.CreatedAt,
-            left.Format,
-            left.GetFrames(cancellationToken).TakeWhile(f => f.Offset < duration),
+            source.CreatedAt,
+            source.Format,
+            source.GetFrames(cancellationToken).TakeWhile(f => f.Offset < duration),
             TimeSpan.Zero,
-            left.Log,
+            source.Log,
             cancellationToken);
 
     public static async IAsyncEnumerable<AudioFrame> Concat(
-        this IAsyncEnumerable<AudioFrame> left,
-        IAsyncEnumerable<AudioFrame> right)
+        this IAsyncEnumerable<AudioFrame> first,
+        IAsyncEnumerable<AudioFrame> second)
     {
-        var nextOffset = 0L;
-        await foreach (var frame in left.ConfigureAwait(false)) {
-            nextOffset = frame.Offset.Ticks + frame.Duration.Ticks;
+        var nextOffset = TimeSpan.Zero;
+        await foreach (var frame in first.ConfigureAwait(false)) {
+            nextOffset = frame.Offset + frame.Duration;
             yield return frame;
         }
-        await foreach (var frame in right.ConfigureAwait(false)) {
-            var offset = frame.Offset.Add(TimeSpan.FromTicks(nextOffset));
+        await foreach (var frame in second.ConfigureAwait(false)) {
+            var offset = frame.Offset + nextOffset;
             yield return new AudioFrame {
                 Offset = offset,
                 Data = frame.Data,
@@ -48,17 +58,17 @@ public static class AudioSourceExt
     }
 
     public static async IAsyncEnumerable<AudioFrame> ConcatUntil(
-        this IAsyncEnumerable<AudioFrame> left,
-        IAsyncEnumerable<AudioFrame> right,
+        this IAsyncEnumerable<AudioFrame> first,
+        IAsyncEnumerable<AudioFrame> second,
         TimeSpan duration)
     {
-        var nextOffset = 0L;
-        await foreach (var frame in left.ConfigureAwait(false)) {
-            nextOffset = frame.Offset.Ticks + frame.Duration.Ticks;
+        var nextOffset = TimeSpan.Zero;
+        await foreach (var frame in first.ConfigureAwait(false)) {
+            nextOffset = frame.Offset + frame.Duration;
             yield return frame;
         }
-        await foreach (var frame in right.ConfigureAwait(false)) {
-            var offset = frame.Offset.Add(TimeSpan.FromTicks(nextOffset));
+        await foreach (var frame in second.ConfigureAwait(false)) {
+            var offset = frame.Offset + nextOffset;
             if (offset > duration)
                 yield break;
 

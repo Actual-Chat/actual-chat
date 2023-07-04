@@ -1,27 +1,38 @@
 import { delayAsync, PromiseSourceWithTimeout, ResolvedPromise } from 'promises';
 import { Disposable } from 'disposable';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'Rpc';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog, errorLog } = Log.get('Rpc');
 
 export type RpcNoWait = symbol;
 export const rpcNoWait : RpcNoWait = Symbol('RpcNoWait');
 
+export interface RpcTimeout {
+    type: 'rpc-timeout',
+    timeoutMs: number;
+}
+
 export class RpcCall {
+    public readonly timeoutMs?: number;
+
     constructor(
         public id: number,
         public readonly method: string,
         public readonly args: unknown[],
+        timeoutMs?: number,
         public readonly noWait: boolean = false,
     ) {
+        this.timeoutMs = timeoutMs ?? null;
         if (args?.length > 0) {
             const lastArg = args[args.length - 1];
             if (lastArg == rpcNoWait) {
                 args.pop();
                 this.noWait = true;
+            }
+            else if (lastArg['type'] && lastArg['type'] === 'rpc-timeout') {
+                args.pop();
+                const rpcTimeout = lastArg as RpcTimeout;
+                this.timeoutMs = rpcTimeout.timeoutMs;
             }
         }
     }
@@ -235,10 +246,10 @@ export function rpcClient<TService extends object>(
                 if (isDisposed)
                     throw new Error(`${name}.call: already disposed.`);
 
-                const rpcCall = new RpcCall(nextRpcPromiseId++, method, args);
+                const rpcCall = new RpcCall(nextRpcPromiseId++, method, args, timeoutMs);
                 const rpcPromise = rpcCall.noWait ? RpcPromise.Void : new RpcPromise<unknown>(rpcCall.id);
-                if (timeoutMs && !rpcCall.noWait)
-                    rpcPromise.setTimeout(timeoutMs);
+                if (rpcCall.timeoutMs && !rpcCall.noWait)
+                    rpcPromise.setTimeout(rpcCall.timeoutMs);
 
                 const transferables = getTransferables(args);
                 debugLog?.log(`${name}.call:`, rpcCall, ', transfer:', transferables);

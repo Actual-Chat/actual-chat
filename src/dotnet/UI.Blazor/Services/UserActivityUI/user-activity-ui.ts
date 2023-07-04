@@ -1,45 +1,57 @@
-import { EventHandler } from 'event-handling';
-import { Interactive } from 'interactive';
-import { Log, LogLevel, LogScope } from 'logging';
+import { DocumentEvents } from 'event-handling';
+import { delayAsync, throttle } from "promises";
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'UserActivityUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
+const { debugLog } = Log.get('UserActivityUI');
+
+const PostInteractionActivityPeriodMs = 30_000;
 
 export class UserActivityUI {
-    private _blazorRef: DotNet.DotNetObject;
-    private readonly _handler: EventHandler<Event>;
-    private _lastActiveAt: Date = new Date();
-    private _shouldNotify: boolean;
+    private static _blazorRef: DotNet.DotNetObject;
+    private static _activityPeriodMs: number;
+    private static _activeUntil: number = Date.now() + PostInteractionActivityPeriodMs;
+    private static notifyBackendThrottled: () => void;
 
-    public static create(blazorRef: DotNet.DotNetObject) {
-        return new UserActivityUI(blazorRef);
-    }
+    public static get activeUntil() { return this._activeUntil; }
 
-    constructor(blazorRef: DotNet.DotNetObject) {
+    public static init(blazorRef: DotNet.DotNetObject, activityPeriodMs: number, notifyPeriodMs: number) {
         this._blazorRef = blazorRef;
-        this._handler = Interactive.interactionEvents.add(() => this.onInteracted())
+        this._activityPeriodMs = activityPeriodMs;
+        this.notifyBackendThrottled = throttle(() => this.notifyBackend(), notifyPeriodMs);
+
+        const documentEvents = DocumentEvents.passive;
+        documentEvents.visibilityChange$.subscribe(_ => {
+            if (!document.hidden)
+                this.onInteraction();
+            else
+                this.onInteraction(0, true);
+        })
+        documentEvents.pointerMove$.subscribe(_ => this.onInteraction());
+        documentEvents.pointerDown$.subscribe(_ => this.onInteraction());
+        documentEvents.keyDown$.subscribe(_ => this.onInteraction());
+
+        (async () => {
+            await delayAsync(1000);
+            this.onInteraction();
+        })();
     }
 
-    public dispose() {
-        this._handler.dispose();
-    }
-
-    public getLastActiveAt() : Date {
-        return this._lastActiveAt;
-    }
-
-    public subscribeForNext() {
-        this._shouldNotify = true;
-    }
-
-    private async onInteracted() {
-        debugLog?.log(`onInteracted: user interaction happened`);
-        this._lastActiveAt = new Date();
-        if (!this._shouldNotify)
+    private static onInteraction(activityPeriodMs?: number, force = false): void {
+        activityPeriodMs ??= this._activityPeriodMs;
+        const newActiveUntil = Date.now() + activityPeriodMs;
+        if (!force && this._activeUntil > newActiveUntil)
             return;
 
-        this._shouldNotify = false;
-        debugLog?.log(`onInteracted: notifying server about user activity`);
-        await this._blazorRef.invokeMethodAsync('OnInteracted');
+        this._activeUntil = newActiveUntil;
+        this.notifyBackendThrottled();
+    }
+
+    private static notifyBackend = async () => {
+        const willBeActiveForMs = this._activeUntil - Date.now();
+        if (willBeActiveForMs <= 0)
+            return;
+
+        debugLog?.log(`notifyBackend`);
+        await this._blazorRef.invokeMethodAsync('OnInteraction', willBeActiveForMs);
     }
 }

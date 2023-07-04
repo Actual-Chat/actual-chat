@@ -1,28 +1,80 @@
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatList.Model>
 @{
-    if (Chats == null || Chats.Count == 0)
+    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {List}", Kind);
+    var m = _rendered = State.Value;
+    if (m is { ChatCount: 0, IsSearchModeOn: false })
         return;
 }
 
-<div class="@GetCss(Kind) chat-list">
-    @foreach (var chat in Chats) {
-        <ChatListItem @key="@chat" ChatInfo="@chat" ListKind="@Kind"/>
-    }
-</div>
-@if (Kind == ChatListKind.Pinned) {
-    <div class="mx-4 mb-2 border-b border-bg-04"></div>
+@if (Kind == ChatListKind.Active) {
+    var title = "Recent Chats" + (m.IsSearchModeOn ? " — filtered on search" : "");
+    <div class="active-chats"
+         data-bubble="@(BubbleRef.New<RecentChatsBubble>())"
+         data-bubble-priority="202"
+         data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        <div class="text-sm font-medium px-2 pb-2" data-tooltip="Your active or recently used chats, 3 at most">@title</div>
+
+        <div class="chat-list chat-list-active">
+            @for (var i = 0; i < m.ChatCount; i++) {
+                <ChatListItem ListKind="@Kind" Index="@i" />
+            }
+        </div>
+    </div>
+} else {
+    @* ChatListKind.All *@
+    <div class="chat-list chat-list-all">
+        @for (var i = 0; i < m.ChatCount; i++) {
+            if (i == 0) {
+                <ChatListItem
+                    ListKind="@Kind"
+                    Index="@i"
+                    data-bubble="@(BubbleRef.New<ChatListItemBubble>())"
+                    data-bubble-priority="204"
+                    data-bubble-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                </ChatListItem>
+            } else {
+                <ChatListItem ListKind="@Kind" Index="@i"/>
+            }
+        }
+    </div>
+}
+@if (m.ChatCount > 0) {
+    @FooterDelimiter
 }
 
 @code {
-    [Parameter, EditorRequired] public ChatListKind Kind { get; set; } = ChatListKind.Active;
-    [Parameter, EditorRequired] public List<ChatInfo>? Chats { get; set; }
+    private Model _rendered;
 
-    private string GetCss(ChatListKind kind)
-        => kind switch {
-            ChatListKind.Pinned => "chat-list-pinned",
-            ChatListKind.Unpinned => "chat-list-unpinned",
-            ChatListKind.Active => "chat-list-active",
-            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-            };
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+    [Parameter] public RenderFragment? FooterDelimiter { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(ChatListUI.GetCountWhenLoading(Kind), false, true),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatCount = await ChatListUI.GetCount(Kind);
+        if (Kind != ChatListKind.Active)
+            return new Model(chatCount);
+
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        return new Model(chatCount, !searchPhrase.IsEmpty);
+    }
+
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
+
+    public record struct Model(
+        int ChatCount,
+        bool IsSearchModeOn = false,
+        bool IsLoading = false);
 }

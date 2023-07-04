@@ -24,8 +24,8 @@ public class BlazorTester : TestContext, IWebTester
 
         var sessionFactory = AppServices.SessionFactory();
         Session = sessionFactory.CreateSession();
-        var sessionProvider = ScopedAppServices.GetRequiredService<ISessionProvider>();
-        sessionProvider.Session = Session;
+        var sessionResolver = ScopedAppServices.GetRequiredService<ISessionResolver>();
+        sessionResolver.Session = Session;
 
         Services.AddTransient(_ => ScopedAppServices.StateFactory());
     }
@@ -40,6 +40,6 @@ public class BlazorTester : TestContext, IWebTester
     public ValueTask DisposeAsync()
     {
         Dispose(true);
-        return ValueTask.CompletedTask;
+        return default;
     }
 }

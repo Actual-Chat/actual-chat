@@ -12,9 +12,11 @@
     @apply border-y-2 border-bg-04;
     @apply bg-01 text-03;
 }
-.mention-list:not(:has(.mention-list-item)) {
-    @apply hidden;
+/* Firefox workaround: it somehow displays the border otherwise */
+.mention-list.hidden {
+    @apply border-y-0;
 }
+
 .mention-list .mention-list-item {
     @apply flex-none truncate cursor-pointer;
 }

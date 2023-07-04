@@ -1,34 +1,37 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class ThemeUI : WorkerBase
 {
     private readonly ISyncedState<ThemeSettings> _settings;
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    // Nearly every service here is requested only when the theme is applied,
+    // so it makes sense to postpone their resolution
+    private HostInfo? _hostInfo;
+    private Dispatcher? _dispatcher;
+    private IJSRuntime? _js;
+    private ILogger? _log;
+
     private Theme _appliedTheme = Theme.Light;
 
-    private ILogger Log { get; }
-    private HostInfo HostInfo { get; }
-    private Dispatcher Dispatcher { get; }
-    private IJSRuntime JS { get; }
-    private Tracer Tracer { get; }
+    private IServiceProvider Services { get; }
+    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
         get => _settings.Value.Theme;
         set => _settings.Value = new ThemeSettings(value);
     }
-    public Task WhenReady { get; }
+    public Task WhenReady => _whenReadySource.Task;
 
     public ThemeUI(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
-        Tracer = services.Tracer(GetType());
-        HostInfo = services.GetRequiredService<HostInfo>();
-        Dispatcher = services.GetRequiredService<Dispatcher>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        Services = services;
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.AccountSettings().WithPrefix(nameof(ThemeUI));
@@ -38,39 +41,40 @@ public class ThemeUI : WorkerBase
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-        WhenReady = TaskSource.New<Unit>(true).Task;
+
+        // We don't have themes yet, so it's safe to indicate the theme is ready immediately
+        _whenReadySource.TrySetResult();
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Tracer.Point("RunInternal");
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        Tracer.Point("WhenFirstTimeRead");
+
         await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
             await ApplyTheme(cTheme.Value.Theme);
     }
 
     private Task ApplyTheme(Theme theme)
-    {
-        Tracer.Point("ApplyTheme");
-        return Dispatcher.InvokeAsync(async () => {
-            Tracer.Point("ApplyTheme - inside Dispatcher.InvokeAsync");
-            if (!WhenReady.IsCompleted)
-                TaskSource.For((Task<Unit>)WhenReady).TrySetResult(default);
-
+        => Dispatcher.InvokeAsync(async () => {
+            _whenReadySource.TrySetResult();
             if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
                 return;
             if (_appliedTheme == theme)
                 return;
 
+            var oldTheme = _appliedTheme;
             _appliedTheme = theme;
             try {
-                using var _ = Tracer.Region("ThemeUI.ApplyTheme - JS call");
-                await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.ThemeUI.applyTheme", theme.ToString());
+                // Ideally we don't want to use any external JS here,
+                // coz this code may start before BulkInitUI completes
+                var script = $"""
+                document.body.classList.remove('{oldTheme.ToCssClass()}');
+                document.body.classList.add('{theme.ToCssClass()}');
+                """;
+                await JS.EvalVoid(script).ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Failed to apply the new theme");
             }
         });
-    }
 }

@@ -1,0 +1,13 @@
+.maui-splash-screen {
+    @apply grow flex flex-col justify-center items-center;
+    background: #0036a3;
+}
+
+.maui-splash-screen .logo {
+    max-width: 20%;
+    max-height: 20%;
+}
+
+.maui-splash-screen .label {
+    color: white;
+}

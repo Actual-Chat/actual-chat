@@ -1,15 +1,16 @@
+using MemoryPack;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
-[DataContract]
-public sealed record Mention : IHasId<Symbol>, IRequirementTarget
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
 {
-    [DataMember] public Symbol Id { get; init; }
-    [DataMember] public ChatEntryId EntryId { get; init; }
-    [DataMember] public Symbol MentionId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; }
+    [DataMember, MemoryPackOrder(1)] public ChatEntryId EntryId { get; init; }
+    [DataMember, MemoryPackOrder(2)] public MentionId MentionId { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatId ChatId => EntryId.ChatId;
 }

@@ -1,0 +1,31 @@
+﻿@inherits ComputedStateComponent<ComputeStateTestComponent.Model>
+
+@{
+    var mParent = ParentModel;
+    var m = State.ValueOrDefault;
+}
+
+
+<h3>@mParent.Value</h3>
+<h2>Own state value is</h2>
+<h3>@m.Value</h3>
+
+@code {
+
+    [Inject] ComputeStateTestService TestService { get; init; } = null!;
+
+    [CascadingParameter] ComputeStateTestComponent.Model ParentModel { get; init; }
+
+    protected override ComputedState<ComputeStateTestComponent.Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = ComputeStateTestComponent.Model.None,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<ComputeStateTestComponent.Model> ComputeState(CancellationToken cancellationToken) {
+
+        var value = await TestService.State.Use(cancellationToken);
+        return new(value);
+    }
+}

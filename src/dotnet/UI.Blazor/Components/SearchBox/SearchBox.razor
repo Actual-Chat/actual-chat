@@ -24,10 +24,10 @@
     [Parameter] public EventCallback<string> TextChanged { get; set; }
 
     public ValueTask Focus()
-        => _inputRef?.Focus() ?? ValueTask.CompletedTask;
+        => _inputRef?.Focus() ?? default;
 
     public ValueTask Cancel()
-        => _inputRef?.Clear() ?? ValueTask.CompletedTask;
+        => _inputRef?.Clear() ?? default;
 
     private Task OnInput(string text)
         => TextChanged.InvokeAsync(text);

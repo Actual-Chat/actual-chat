@@ -1,52 +1,38 @@
 import { Observable } from 'rxjs';
-import { EventHandler, EventHandlerSet } from 'event-handling';
-import { Log, LogLevel, LogScope } from 'logging';
+import { EventHandlerSet } from 'event-handling';
+import { Log } from 'logging';
 import { Versioning } from 'versioning';
 
-const LogScope: LogScope = 'OnDeviceAwake';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('OnDeviceAwake');
 
 export class OnDeviceAwake {
-    public static readonly events = new EventHandlerSet<void>(handlers => ensureWorker(handlers));
-    public static readonly event$ = new Observable<void>(subject => {
-        const handler = this.events.add(() => subject.next());
+    private static _totalSleepDurationMs = 0;
+    private static _worker: Worker = null;
+
+    public static get totalSleepDurationMs(): number { return this._totalSleepDurationMs; }
+    public static readonly events = new EventHandlerSet<number>();
+    public static readonly event$ = new Observable<number>(subject => {
+        const handler = this.events.add(x => subject.next(x));
         return () => handler.dispose();
     })
-}
 
-let worker: Worker = null;
+    public static init(): void {
+        debugLog?.log(`init`);
+        const onSleepDetected = (event: MessageEvent<number>) => {
+            this._totalSleepDurationMs = event.data;
+            debugLog?.log(`onSleepDetected: total sleep duration:`, this._totalSleepDurationMs / 1000, 'seconds');
+            OnDeviceAwake.events.triggerSilently(event.data);
+        };
 
-const onWakeUp = () => {
-    debugLog?.log(`onWakeUp`);
-    OnDeviceAwake.events.triggerSilently();
-};
+        const onWorkerError = (error: ErrorEvent) => {
+            errorLog?.log(`onWorkerError: unhandled error:`, error)
+        };
 
-const onWorkerError = (error: ErrorEvent) => {
-    errorLog?.log(`onWorkerError: unhandled error:`, error)
-};
-
-const createWorker = () => {
-    const workerPath = Versioning.mapPath('/dist/onDeviceAwakeWorker.js');
-    const worker = new Worker(workerPath);
-    worker.onmessage = onWakeUp;
-    worker.onerror = onWorkerError;
-    return worker;
-}
-
-const ensureWorker = (handlers: Set<EventHandler<void>>) => {
-    const requiresWorker = handlers.size != 0;
-    const hasWorker = worker != null;
-    if (requiresWorker == hasWorker)
-        return;
-
-    if (requiresWorker) {
-        debugLog?.log(`ensureWorker: creating worker`);
-        worker = createWorker();
-    } else {
-        debugLog?.log(`ensureWorker: terminating worker`);
-        worker.terminate();
-        worker = null;
+        const workerPath = Versioning.mapPath('/dist/onDeviceAwakeWorker.js');
+        this._worker = new Worker(workerPath);
+        this._worker.onmessage = onSleepDetected;
+        this._worker.onerror = onWorkerError;
     }
-};
+}
+
+OnDeviceAwake.init();

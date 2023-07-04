@@ -1,0 +1,49 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@{
+    var lineHeight = "";
+    var attachmentCls = "";
+    if (ImageSize == ImageSize.Small) {
+        attachmentCls = "flex-1";
+        if (IsFull) {
+            lineHeight = "h-36 md:h-60";
+        } else if (ImageList.Count == 3) {
+            lineHeight = "h-48 md:h-80";
+        } else if (ImageList.Count == 2) {
+            lineHeight = "h-fit max-h-48 md:max-h-none";
+        }
+    } else if (ImageSize == ImageSize.Medium) {
+        if (IsFull)
+            lineHeight = "h-24 md:h-40";
+        else if (ImageList.Count == 1) {
+            lineHeight = "h-fit max-h-48 md:max-h-none";
+        }
+    } else if (ImageSize == ImageSize.Large) {
+        if (IsFull)
+            lineHeight = "h-24 md:h-40";
+    } else if (ImageSize == ImageSize.Mixed) {
+        lineHeight = ImageList.Count switch {
+            3 => "h-24 md:h-40",
+            2 => "h-36 md:h-60",
+            _ => "h-64 md:h-120",
+        };
+    }
+    var itemCls = $"image-{lineHeight.ToLower()}";
+}
+
+<div class="image-line @Class @lineHeight">
+    @foreach (var item in ImageList) {
+        <div class="image-item @itemCls">
+            <VisualMediaAttachment Attachment="@item.Attachment" ChatEntry="@ChatEntry" Class="@attachmentCls"/>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<VisualMediaAttachmentList.ImageItem> ImageList { get; set; } = null!;
+    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool IsFull { get; set; }
+    [Parameter] public ImageSize ImageSize { get; set; }
+}

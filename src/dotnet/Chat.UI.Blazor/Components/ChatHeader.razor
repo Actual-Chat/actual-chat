@@ -1,51 +1,57 @@
 @using ActualChat.Contacts
 @inherits FusionComponentBase
 @{
-    var canInvite = Chat.Rules.CanInvite();
-    var isUnavailable = ReferenceEquals(Chat, Chat.None);
+    var chat = Chat;
 }
 <div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
-    <div>
-        <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
-            <i class="icon-arrow-left text-2xl"></i>
-        </ButtonRound>
-    </div>
-    <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 md:pl-2 overflow-hidden">
-        <ChatIcon Chat="Chat"/>
-        <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
-            <div class="flex-y self-center truncate">
-                <div class="text-01 font-medium truncate">@Chat.Title</div>
-                <div class="text-icons-02">@_subTitle</div>
-            </div>
-            <div class="flex-1"></div>
-            <div class="flex-none flex-x items-center gap-x-3 px-0.5">
-                <ChatActivities/>
-            </div>
+    @if (IsLeftNavigateButtonVisible) {
+        <div>
+            <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
+                <i class="icon-arrow-left text-2xl"></i>
+            </ButtonRound>
         </div>
+    }
+    <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 md:pl-2 overflow-hidden">
+        @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
+            <ChatIcon Chat="@chat"/>
+            <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
+                <div class="flex-y self-center truncate">
+                    <div class="text-01 font-medium truncate">@chat.Title</div>
+                    <div class="text-icons-02"></div>
+                </div>
+                <div class="flex-1"></div>
+                <div class="flex-none flex-x items-center gap-x-3 px-0.5">
+                    <ChatActivities @key="@chat" Chat="@chat"/>
+                </div>
+            </div>
+        }
     </div>
-    @if (!isUnavailable) {
+    @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel ml-2">
             <div class="flex-x gap-x-1">
-                <ChatSearch/>
+                <ChatSearch @key="@chat" Chat="@chat"/>
             </div>
-            <ChatHeaderRightPanelToggle OnClick="OnSwitchRightPanelClick"/>
+            @if (IsRightNavigateButtonVisible) {
+                <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
+            }
         </div>
     }
 </div>
 
 @code {
-    private string _subTitle = " ";
-
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
+    [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 
     private void OnSwitchRightPanelClick()
-        => RightPanelUI.Toggle();
+        => PanelsUI.Right.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => NavbarUI.SetIsVisible(true);
+        => PanelsUI.Left.SetIsVisible(true);
 }

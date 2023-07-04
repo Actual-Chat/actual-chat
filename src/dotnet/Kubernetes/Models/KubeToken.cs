@@ -20,10 +20,10 @@ public sealed class KubeToken : WorkerBase
 
         var value = IsEmulated ? "" : File.ReadAllText(Path);
         State = services.StateFactory().NewMutable(value.Trim());
-        Start();
+        this.Start();
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         if (IsEmulated)
             return;

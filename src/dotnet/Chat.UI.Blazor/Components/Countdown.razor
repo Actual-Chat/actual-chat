@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using Cysharp.Text
 @inherits ComputedStateComponent<string>
 @{
     var m = State.Value;
@@ -11,17 +12,23 @@
 @code {
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Moment StopAt { get; set; }
-    [Parameter] public string Format { get; set; } = "mm\\:ss";
-    [Parameter] public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(0.9);
+    [Parameter, EditorRequired] public Moment EndsAt { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Format { get; set; } = "{0:mm\\:ss}";
+    [Parameter] public double UpdatePeriod { get; set; } = 1;
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
-        if (StopAt <= Clocks.CpuClock.Now)
-            return Task.FromResult("");
+        var remaining = (EndsAt - Clocks.CpuClock.Now).Positive();
+        var result = ZString.Format(Format, remaining);
+        if (remaining > TimeSpan.Zero)
+            Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);
 
-        var result = (Clocks.CpuClock.Now - StopAt).ToString(Format);
-        Computed.GetCurrent()!.Invalidate(UpdateInterval);
         return Task.FromResult(result);
     }
 }

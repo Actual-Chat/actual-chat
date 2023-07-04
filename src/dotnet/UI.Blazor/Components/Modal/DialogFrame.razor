@@ -1,46 +1,44 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@implements IAsyncDisposable
 
-<ModalFrame
-    Class="@Class" Title="@Title"
-    CloseButtonClass="@CloseButtonClass"
-    HasHeader="@HasHeader"
-    HasCloseButton="@HasCloseButton"
-    NoNarrowHeader="@NoNarrowHeader">
-    <div class="dialog-body">
-        @Body
-    </div>
-    <div class="dialog-buttons @ButtonsClass">
-        @Buttons
-    </div>
+@{
+    var settings = NarrowViewSettings;
+    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.IsSubmitDefined);
+    var showButtons = ScreenSize.IsWide() || !hideButtonsInNarrowView;
+    var positionClass = settings.Position == DialogFramePosition.Bottom
+        ? "narrow-view__modal__position-bottom"
+        : "narrow-view__modal__position-stretch";
+    var cls = Class + " " + positionClass;
+}
+
+<ModalFrame Class="@cls">
+    <Header>
+        @if (HasHeader) {
+            <DialogHeader DialogFrame="@this" Title="@Title" HasCloseButton="@HasCloseButton"/>
+        }
+    </Header>
+    <ChildContent>
+        <div class="dialog-body custom-scrollbar">
+            @Body
+        </div>
+        @if (Buttons != null && showButtons && Buttons != RenderFragments.Null) {
+            <div class="dialog-buttons @ButtonsClass">
+                @Buttons
+            </div>
+        }
+    </ChildContent>
 </ModalFrame>
 
 @code {
-    private IAsyncDisposable? _escapeSubscription;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    [Inject] private Escapist Escapist { get; init; } = null!;
-
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
-    [Parameter] public string CloseButtonClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public bool HasEscapeHandler { get; set; } = true;
-    [Parameter] public bool NoNarrowHeader { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public ElementReference? Ref { get; set; }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender && HasEscapeHandler)
-            _escapeSubscription = await Escapist.Subscribe(() => _ = Modal.Close());
-    }
-
-    public async ValueTask DisposeAsync() {
-        if (_escapeSubscription != null)
-            await _escapeSubscription.DisposeAsync().ConfigureAwait(false);
-    }
+    [Parameter] public DialogFrameNarrowViewSettings NarrowViewSettings { get; set; } = DialogFrameNarrowViewSettings.Bottom;
 }

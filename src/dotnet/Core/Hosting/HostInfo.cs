@@ -16,16 +16,18 @@ public sealed record HostInfo
     public static Symbol DevelopmentEnvironment { get; } = Environments.Development;
 
     public AppKind AppKind { get; init; }
+    public ClientKind ClientKind { get; init; }
     public Symbol Environment { get; init; } = Environments.Development;
     public IConfiguration Configuration { get; init; } = null!;
     public ImmutableHashSet<Symbol> RequiredServiceScopes => _requiredServiceScopes ??= AppKind.GetRequiredServiceScopes();
 
     public string BaseUrl {
         get {
-            if (!string.IsNullOrEmpty(_baseUrl))
+            if (!_baseUrl.IsNullOrEmpty())
                 return _baseUrl;
             if (BaseUrlProvider == null)
                 throw StandardError.Constraint<InvalidOperationException>("BaseUrlProvider is not specified");
+
             return BaseUrlProvider();
         }
         init => _baseUrl = value;

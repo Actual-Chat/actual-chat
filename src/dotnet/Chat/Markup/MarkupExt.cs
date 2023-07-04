@@ -3,9 +3,12 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
-public static class MarkupExt
+public static partial class MarkupExt
 {
-    private static readonly Regex WhitespaceRe = new (@"\s+", RegexOptions.Compiled);
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegexFactory();
+
+    private static readonly Regex WhitespaceRegex = WhitespaceRegexFactory();
 
     public static string ToReadableText(this Markup markup, MarkupConsumer consumer)
         => markup.ToReadableText(consumer.GetTrimLength());
@@ -23,7 +26,7 @@ public static class MarkupExt
     public static string ToReadableText(this Markup markup)
     {
         var text = MarkupFormatter.ReadableUnstyled.Format(markup);
-        text = WhitespaceRe.Replace(text, " ").Trim();
+        text = WhitespaceRegex.Replace(text, " ").Trim();
         return text;
     }
 }

@@ -1,9 +1,14 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IChatsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatNews> GetNews(
@@ -43,29 +48,31 @@ public interface IChatsBackend : IComputeService
     // Commands
 
     [CommandHandler]
-    Task<Chat> Change(ChangeCommand command, CancellationToken cancellationToken);
+    Task<Chat> OnChange(ChatsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ChatEntry> UpsertEntry(UpsertEntryCommand command, CancellationToken cancellationToken);
+    Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<TextEntryAttachment> CreateAttachment(CreateAttachmentCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] Change<ChatDiff> Change,
-        [property: DataMember] UserId OwnerId = default
-    ) : ICommand<Chat>, IBackendCommand;
-
-    [DataContract]
-    public sealed record UpsertEntryCommand(
-        [property: DataMember] ChatEntry Entry,
-        [property: DataMember] bool HasAttachments = false
-    ) : ICommand<ChatEntry>, IBackendCommand;
-
-    [DataContract]
-    public sealed record CreateAttachmentCommand(
-        [property: DataMember]
-        TextEntryAttachment Attachment
-    ) : ICommand<TextEntryAttachment>, IBackendCommand;
+    Task<TextEntryAttachment> OnCreateAttachment(ChatsBackend_CreateAttachment command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_CreateAttachment(
+    [property: DataMember, MemoryPackOrder(0)] TextEntryAttachment Attachment
+) : ICommand<TextEntryAttachment>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<ChatDiff> Change,
+    [property: DataMember, MemoryPackOrder(3)] UserId OwnerId = default
+) : ICommand<Chat>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_UpsertEntry(
+    [property: DataMember, MemoryPackOrder(0)] ChatEntry Entry,
+    [property: DataMember, MemoryPackOrder(1)] bool HasAttachments = false
+) : ICommand<ChatEntry>, IBackendCommand;

@@ -1,15 +1,16 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
+using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
-using Blazored.SessionStorage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.Fusion.Bridge.Interception;
+using Stl.Fusion.Client.Caching;
+using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Diagnostics;
-using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
 
@@ -18,38 +19,29 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {
     public static string ImportName => "ui";
 
-    public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
-    [ServiceConstructor]
-    public BlazorUICoreModule(IPluginHost plugins) : base(plugins) { }
+    public BlazorUICoreModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         var appKind = HostInfo.AppKind;
         if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
 
-        // Third-party Blazor components
-        services.AddBlazoredSessionStorage();
-
-        // TODO(AY): Remove ComputedStateComponentOptions.SynchronizeComputeState from default options
-        ComputedStateComponent.DefaultOptions =
-            ComputedStateComponentOptions.RecomputeOnParametersSet
-            | ComputedStateComponentOptions.SynchronizeComputeState;
+        // Just to test how it impacts the performance
+        // FusionComponentBase.DefaultParameterComparisonMode = ParameterComparisonMode.Standard;
 
         // Fusion
         var fusion = services.AddFusion();
-        fusion.AddBackendStatus();
-        fusion.AddBlazorUIServices();
+        fusion.AddBlazor();
+        // The only thing we use from fusion.AddBlazor().AddAuthentication():
+        services.AddScoped(c => new ClientAuthHelper(c));
+        if (appKind.IsClient())
+            fusion.AddRpcPeerStateMonitor();
 
         // Authentication
-        fusion.AddAuthentication();
-        services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(
-            c.GetRequiredService<IAuth>(),
-            c.GetRequiredService<ISessionResolver>(),
-            c.GetRequiredService<ICommander>(),
-            c.GetRequiredService<IJSRuntime>()));
-        services.RemoveAll<PresenceReporter>(); // We replace it with our own one further
+        // fusion.AddAuthClient();
+        services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(c));
 
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));
@@ -61,70 +53,87 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
-        services.AddScoped<DisposeMonitor>(_ => new DisposeMonitor());
-        services.AddScoped<BrowserInfo>(c => new BrowserInfo(c));
+        services.AddScoped(_ => new DisposeMonitor());
+        services.AddScoped(c => new SafeJSRuntime(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new BrowserInit(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new JavaScriptAppSettings(c));
+        services.AddScoped(c => new BrowserInfo(c));
 
         // Settings
-        services.AddSingleton<LocalSettings.Options>(_ => new LocalSettings.Options());
-        services.AddScoped<LocalSettingsBackend>(c => new LocalSettingsBackend(c));
-        services.AddScoped<LocalSettings>(c => new LocalSettings(
-            c.GetRequiredService<LocalSettings.Options>(),
-            c.GetRequiredService<LocalSettingsBackend>(),
-            c.GetRequiredService<ILogger<LocalSettings>>()));
-        services.AddScoped<AccountSettings>(c => new AccountSettings(
+        services.AddSingleton(_ => new LocalSettings.Options());
+        services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
+        services.AddScoped(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
             c.GetRequiredService<Session>()));
-        if (appKind.IsServer())
+        if (appKind.IsServer()) {
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
-        else
+            MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
+        }
+        else {
             services.AddScoped<TimeZoneConverter>(c => new ClientSizeTimeZoneConverter(c)); // WASM
+            services.AddHostedService(c => new ServerTimeSync(c));
+        }
         services.AddScoped<ComponentIdGenerator>(_ => new ComponentIdGenerator());
-        services.AddScoped<RenderVars>(c => new RenderVars(
-            c.GetRequiredService<IStateFactory>()));
+        services.AddScoped<RenderVars>(_ => new RenderVars());
 
         // UI events
-        services.AddScoped<LoadingUI>(c => new LoadingUI(c));
-        services.AddScoped<UILifetimeEvents>(c => new UILifetimeEvents(
-            c.GetRequiredService<IEnumerable<Action<UILifetimeEvents>>>()));
-        services.AddScoped<UIEventHub>(c => new UIEventHub(c));
+        services.AddScoped(c => new UIEventHub(c));
 
-        // General UI services
-        services.AddScoped<ClipboardUI>(c => new ClipboardUI(
-            c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<InteractiveUI>(c => new InteractiveUI(c));
-        services.AddScoped<ErrorUI>(c => new ErrorUI(
-            c.GetRequiredService<UIActionTracker>()));
-        services.AddScoped<History>(c => new History(c));
-        services.AddScoped<HistoryItemIdFormatter>(_ => new HistoryItemIdFormatter());
-        services.AddScoped<AutoNavigationUI>(c => new AutoNavigationUI(c));
-        services.AddScoped<ModalUI>(c => new ModalUI(c));
-        services.AddScoped<BannerUI>(c => new BannerUI(c));
-        services.AddScoped<FocusUI>(c => new FocusUI(
-            c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<KeepAwakeUI>(c => new KeepAwakeUI(c));
-        services.AddScoped<UserActivityUI>(c => new UserActivityUI(c));
-        services.AddScoped<Escapist>(c => new Escapist(
-            c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped<TuneUI>(c => new TuneUI(c));
-        services.AddScoped<VibrationUI>(c => new VibrationUI(c));
-        fusion.AddComputeService<ILiveTime, LiveTime>(ServiceLifetime.Scoped);
+        // UI services
+        services.AddScoped(c => new ReloadUI(c));
+        services.AddScoped(c => new LoadingUI(c));
+        services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new InteractiveUI(c));
+        services.AddScoped(c => new ErrorUI(c.GetRequiredService<UIActionTracker>()));
+        services.AddScoped(c => new History(c));
+        services.AddScoped(c => new BackButtonHandler());
+        services.AddScoped(_ => new HistoryItemIdFormatter());
+        services.AddScoped(c => new ModalUI(c));
+        services.AddScoped(c => new BannerUI(c));
+        services.AddScoped(c => new FocusUI(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new KeepAwakeUI(c));
+        services.AddScoped(c => new DeviceAwakeUI(c));
+        services.AddScoped(c => (ISleepDurationProvider)c.GetRequiredService<DeviceAwakeUI>());
+        services.AddScoped(c => new UserActivityUI(c));
+        services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new TuneUI(c));
+        services.AddScoped(c => new VibrationUI(c));
+        services.AddScoped(c => new BubbleUI(c));
+        fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
-        services.AddScoped<ThemeUI>(c => new ThemeUI(c));
-        services.AddScoped<FeedbackUI>(c => new FeedbackUI(c));
-        services.AddScoped<ImageViewerUI>(c => new ImageViewerUI(
-            c.GetRequiredService<ModalUI>()));
-        fusion.AddComputeService<AccountUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<SearchUI>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new ThemeUI(c));
+        services.AddScoped(c => new FeedbackUI(c));
+        services.AddScoped(c => new VisualMediaViewerUI(c.GetRequiredService<ModalUI>()));
+        fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
+        fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
-        services.TryAddScoped<IClientAuth>(c => new WebClientAuth(c));
-
-        // Initializes History
-        services.ConfigureUILifetimeEvents(
-            events => events.OnCircuitContextCreated += c => c.GetRequiredService<History>());
+        services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
 
         InjectDiagnosticsServices(services);
+
+        // IModalViews
+        services.AddTypeMapper<IModalView>(map => map
+            .Add<FeatureRequestModal.Model, FeatureRequestModal>()
+            .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
+            .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
+        );
+        // IBannerViews
+        services.AddTypeMapper<IBannerView>();
+
+        // ClientComputedCache:
+        // Temporarily disabled for WASM due to startup issues
+        if (appKind.IsWasmApp()) {
+            services.AddSingleton(_ => new WebClientComputedCache.Options());
+            services.AddSingleton(c => new WebClientComputedCache(
+                c.GetRequiredService<WebClientComputedCache.Options>(), c));
+            services.AddAlias<IClientComputedCache, WebClientComputedCache>();
+        }
+
+        // Test services
+        if (IsDevelopmentInstance)
+            fusion.AddService<ComputeStateTestService>(ServiceLifetime.Scoped);
     }
 
     private void InjectDiagnosticsServices(IServiceCollection services)
@@ -137,8 +146,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         var isWasmApp = appKind.IsWasmApp();
 
         services.AddScoped(c => new DebugUI(c));
-        services.ConfigureUILifetimeEvents(
-            events => events.OnCircuitContextCreated += c => c.GetRequiredService<DebugUI>());
 
         if (isClient) {
             services.AddSingleton(c => new TaskMonitor(c));
@@ -149,7 +156,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
                 SleepPeriod = isDev ? TimeSpan.Zero : TimeSpan.FromMinutes(5).ToRandom(0.2),
                 CollectPeriod = TimeSpan.FromSeconds(isDev ? 10 : 60),
                 AccessFilter = isWasmApp
-                    ? static computed => computed.Input.Function is IReplicaMethodFunction
+                    ? static computed => computed.Input.Function is IClientComputeMethodFunction
                     : static _ => true,
                 AccessStatisticsPreprocessor = StatisticsPreprocessor,
                 RegistrationStatisticsPreprocessor = StatisticsPreprocessor,

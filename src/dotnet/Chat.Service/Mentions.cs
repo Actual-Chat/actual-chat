@@ -23,6 +23,6 @@ internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
         if (author == null)
             return null;
 
-        return await Backend.GetLast(chatId, $"a:{author.Id}", cancellationToken).ConfigureAwait(false);
+        return await Backend.GetLast(chatId, new MentionId(author.Id, AssumeValid.Option), cancellationToken).ConfigureAwait(false);
     }
 }

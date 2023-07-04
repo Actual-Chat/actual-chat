@@ -1,12 +1,14 @@
 using ActualChat.Media;
+using MemoryPack;
 
 namespace ActualChat.Audio;
 
-[DataContract]
-public class AudioFrame : MediaFrame
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial class AudioFrame : MediaFrame
 {
-    [DataMember(Order = 1)]
+    [DataMember(Order = 4), MemoryPackOrder(4)]
     public override TimeSpan Offset { get; init; }
+
     public override TimeSpan Duration => TimeSpan.FromMilliseconds(20);
     public override bool IsKeyFrame => true;
 }

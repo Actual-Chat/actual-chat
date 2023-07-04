@@ -2,6 +2,7 @@
 @using ActualChat.Hosting
 @using ActualChat.Users
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>System Test Page</MainHeader>
 
 <p>AgentId: <b>@(AgentInfo.Id)</b></p>
@@ -29,7 +30,7 @@
     }
 
     private async Task OnInvalidateEverythingClick(bool everywhere) {
-        var command = new IAccounts.InvalidateEverythingCommand(Session, everywhere);
+        var command = new SystemProperties_InvalidateEverything(Session, everywhere);
         await UICommander.Run(command);
     }
 

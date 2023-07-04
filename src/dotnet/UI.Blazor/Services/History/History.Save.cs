@@ -4,15 +4,16 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
 {
-    private readonly LocalValue<bool> _isSaveSuppressed;
-    private readonly LockedRegionWithExitAction _saveRegion;
+    private readonly RegionalValue<bool> _isSaveSuppressed;
+    private readonly NoRecursionRegion _saveRegion;
 
-    public HistoryItem? Save()
+    public HistoryItem Save()
     {
+        Dispatcher.AssertAccess();
         using var _ = _saveRegion.Enter();
         if (_isSaveSuppressed.Value) {
             DebugLog?.LogDebug("Save: suppressed");
-            return null;
+            return HistoryItem.Null;
         }
         DebugLog?.LogDebug("Save");
 
@@ -28,13 +29,15 @@ public partial class History
         return EndSave(item, baseItem);
     }
 
-    public HistoryItem? Save<TState>() => Save(typeof(TState));
-    public HistoryItem? Save(Type stateType)
+    public HistoryItem Save<TState>()
+        => Save(typeof(TState));
+    public HistoryItem Save(Type stateType)
     {
+        Dispatcher.AssertAccess();
         using var _ = _saveRegion.Enter();
         if (_isSaveSuppressed.Value) {
             DebugLog?.LogDebug("Save {StateType}: suppressed", stateType.GetName(true));
-            return null;
+            return HistoryItem.Null;
         }
         DebugLog?.LogDebug("Save {StateType}:", stateType.GetName(true));
 
@@ -50,7 +53,7 @@ public partial class History
 
     // Private methods
 
-    private HistoryItem? EndSave(HistoryItem item, HistoryItem baseItem)
+    private HistoryItem EndSave(HistoryItem item, HistoryItem baseItem)
     {
         DebugLog?.LogDebug(
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
@@ -78,16 +81,16 @@ public partial class History
                 BackItemId = baseItem.Id,
             };
             AddItem(ref item);
-            _saveRegion.ExitAction = () => AddNavigationHistoryEntry(item);
-            DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
+            _saveRegion.ExitAction = () => _ = AddHistoryEntry(item, true);
+            DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", item.ToString());
             break;
         case < 0:
             // Backward state
-            var backItem = GetItemByIdUnsafe(baseItem.BackItemId);
+            var backItem = GetItemById(baseItem.BackItemId);
             if (backItem != null && backItem.IsIdenticalTo(item)) {
                 item = _currentItem = backItem;
-                _saveRegion.ExitAction = NavigateBack;
-                DebugLog?.LogDebug("EndSave: +NavigateBack");
+                _saveRegion.ExitAction = () => _ = NavigateBack(true);
+                DebugLog?.LogDebug("EndSave: +NavigateBack({Item})", item.ToString());
             }
             else
                 EndSave(ref item);
@@ -100,8 +103,8 @@ public partial class History
     {
         if (ReplaceItem(ref item, out var _)) {
             var itemCopy = item;
-            _saveRegion.ExitAction = () => AddNavigationHistoryEntry(itemCopy);
-            DebugLog?.LogDebug("EndSave: +AddNavigationHistoryEntry");
+            _saveRegion.ExitAction = () => _ = AddHistoryEntry(itemCopy, true);
+            DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", itemCopy.ToString());
         }
         else
             DebugLog?.LogDebug("EndSave: done");

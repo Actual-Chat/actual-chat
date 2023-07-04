@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:7.0.0-bullseye-slim-amd64 as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:7.0.4-bullseye-slim-amd64 as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -9,9 +9,10 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+RUN apt update && apt install -y ffmpeg && apt clean
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0.100-bullseye-slim-amd64 as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:7.0.202-bullseye-slim-amd64 as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \

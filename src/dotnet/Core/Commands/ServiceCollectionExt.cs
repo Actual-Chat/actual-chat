@@ -14,10 +14,7 @@ public static class ServiceCollectionExt
             services.AddSingleton<ICommandQueues, LocalCommandQueues>();
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
-        if (optionsBuilder != null)
-            services.AddSingleton(optionsBuilder);
-        else
-            services.TryAddSingleton(static _ => new LocalCommandQueues.Options());
+        services.AddSingleton(optionsBuilder ?? (static _ => new LocalCommandQueues.Options()));
         return services;
     }
 

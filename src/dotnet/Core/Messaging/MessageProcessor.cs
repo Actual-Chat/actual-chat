@@ -18,8 +18,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 {
     protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
-    public int QueueSize { get; init; } = Constants.Queues.MessageProcessorQueueDefaultSize;
-    public int MaxProcessCallDurationMs { get; init; } = Constants.Queues.MessageProcessorMaxProcessCallDurationMs;
+    public int QueueSize { get; init; } = Constants.MessageProcessing.QueueSize;
+    public TimeSpan ProcessCallTimeout { get; init; } = Constants.MessageProcessing.ProcessCallTimeout;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
 
     protected MessageProcessorBase(CancellationTokenSource? stopTokenSource = null)
@@ -39,12 +39,13 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));
-        Start();
+
+        this.Start();
         var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
         try {
             var queueTask = Queue!.Writer.WriteAsync(process, cancellationToken);
             if (!queueTask.IsCompletedSuccessfully)
-                queueTask.AsTask().ContinueWith(async queueTask1 => {
+                _ = queueTask.AsTask().ContinueWith(async queueTask1 => {
                     try {
                         await queueTask1.ConfigureAwait(false);
                     }
@@ -61,17 +62,18 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     public Task Complete(CancellationToken cancellationToken = default)
     {
-        Start();
+        this.Start();
         Queue!.Writer.TryComplete();
         return WhenRunning == null ? Task.CompletedTask : WhenRunning.WaitAsync(cancellationToken);
     }
 
     protected abstract Task<object?> Process(TMessage message, CancellationToken cancellationToken);
 
-    protected override Task OnStarting(CancellationToken cancellationToken)
+    protected override Task OnStart(CancellationToken cancellationToken)
     {
         if (Queue != null!)
             return Task.CompletedTask;
+
         Queue = Channel.CreateBounded<IMessageProcess<TMessage>>(
             new BoundedChannelOptions(QueueSize) {
                 SingleReader = true,
@@ -82,20 +84,22 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         return Task.CompletedTask;
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
-            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(RunInternal) + " cycle");
+            DefaultLog.LogDebug(nameof(MessageProcessor<TMessage>) + "." + nameof(OnRun) + " cycle");
             var message = process.Message;
             process.MarkStarted();
             Task<object?>? processTask = null;
             try {
                 process.CancellationToken.ThrowIfCancellationRequested();
-                processTask = Process(message, process.CancellationToken);
-                var result = await processTask
-                    .WaitAsync(TimeSpan.FromMilliseconds(MaxProcessCallDurationMs), process.CancellationToken)
-                    .ConfigureAwait(false);
+                object? result;
+                using (var cts = process.CancellationToken.CreateLinkedTokenSource()) {
+                    cts.CancelAfter(ProcessCallTimeout);
+                    processTask = Process(message, cts.Token);
+                    result = await processTask.ConfigureAwait(false);
+                }
                 if (result is Task<object?> resultTask) {
                     // Special case: Process may return Task<Task<object?>>,
                     // in this case we assume the rest of the processing will

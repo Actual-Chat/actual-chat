@@ -15,18 +15,18 @@ public class ServerKvasBackendClient : IKvas
         Commander = serverKvasBackend.GetCommander();
     }
 
-    public ValueTask<string?> Get(string key, CancellationToken cancellationToken = default)
+    public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => ServerKvasBackend.Get(Prefix, key, cancellationToken).ToValueTask();
 
-    public Task Set(string key, string? value, CancellationToken cancellationToken = default)
+    public Task Set(string key, byte[]? value, CancellationToken cancellationToken = default)
     {
-        var command = new IServerKvasBackend.SetManyCommand(Prefix, (key, value));
+        var command = new ServerKvasBackend_SetMany(Prefix, (key, value));
         return Commander.Call(command, cancellationToken);
     }
 
-    public Task SetMany((string Key, string? Value)[] items, CancellationToken cancellationToken = default)
+    public Task SetMany((string Key, byte[]? Value)[] items, CancellationToken cancellationToken = default)
     {
-        var command = new IServerKvasBackend.SetManyCommand(Prefix, items);
+        var command = new ServerKvasBackend_SetMany(Prefix, items);
         return Commander.Call(command, cancellationToken);
     }
 }

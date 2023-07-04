@@ -9,16 +9,16 @@
 </RenderIntoSlot>
 
 @if (second / 3 % 2 == 0) {
-    <RenderIntoStack Name="TestFooter" MustPrepend="true">
+    <RenderIntoStack Name="TestFooter" Key="f1" MustPrepend="true">
         Footer 3/2: <TestTimer UpdatePeriod="3"/>
     </RenderIntoStack>
 }
 @if (second / 5 % 2 == 0) {
-    <RenderIntoStack Name="TestFooter" MustPrepend="true">
+    <RenderIntoStack Name="TestFooter" Key="f2" MustPrepend="true">
         Footer 5/2: <TestTimer UpdatePeriod="5"/>
     </RenderIntoStack>
 }
-<RenderIntoStack Name="TestFooter" Order="1">
+<RenderIntoStack Name="TestFooter" Key="f3" Order="1">
     Footer 1: <TestTimer UpdatePeriod="1"/>
 </RenderIntoStack>
 
@@ -34,5 +34,5 @@ Content: @DateTime.Now.ToString("F")
         };
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
-        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        => await FusionTime.Now(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
 }

@@ -5,7 +5,10 @@
 
 @if (isVisible) {
     <ButtonRound
-        Click="OnClick"
+        data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
+        data-bubble-priority="401"
+        data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
+        Click="Click"
         Class="transparent btn-md"
         Tooltip="Chat properties"
         TooltipPosition="FloatingPosition.Bottom">
@@ -14,9 +17,9 @@
 }
 
 @code {
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() {
@@ -25,5 +28,5 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await RightPanelUI.IsVisible.Use(cancellationToken);
+        => await PanelsUI.Right.IsVisible.Use(cancellationToken);
 }

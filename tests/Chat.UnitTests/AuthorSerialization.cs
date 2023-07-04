@@ -8,7 +8,7 @@ public class AuthorSerialization
     public void BasicTest()
     {
         var ca = new AuthorFull(new AuthorId(new ChatId("testChatId"), 0, AssumeValid.Option)) {
-            Avatar = new Avatar() {
+            Avatar = new (Symbol.Empty) {
                 Name = "Alex",
             },
         };

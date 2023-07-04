@@ -1,41 +1,55 @@
 @using ActualChat.Chat.UI.Blazor.Module
+@implements IAttachmentListBackend
+@implements IAsyncDisposable
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-@if (Attachments.Length > 0) {
+<input @ref="FilePickerRef" type="file" hidden multiple/>
+
+@if (_attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="flex-1 flex-x justify-between p-2 pb-0">
             <span class="flex font-medium items-center min-h-6">
-                @Attachments.Length file@(Attachments.Length == 0 ? "" : "s")
+                @_attachments.Count file@(_attachments.Count == 0 ? "" : "s")
             </span>
-            <Button Class="btn-sm clear-attachments-btn" Click="@ClearClick">
+            <Button Class="btn-sm clear-attachments-btn" Click="_ => Clear()">
                 Remove all
             </Button>
         </div>
         <ul class="attachment-list custom-scrollbar-x">
-            @foreach (var attachment in Attachments) {
+            @foreach (var attachment in _attachments) {
+                var uploadStyle = $"width: {attachment.Progress}%;";
+                var uploadProgressClass = "attachment-upload-progress";
+                if (attachment.Uploaded) {
+                    uploadProgressClass += " attachment-upload-completed";
+                }
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
                         <div class="attachment-item">
-                            <ButtonSquare Click="@(() => RemoveClick.InvokeAsync(attachment))" Class="remove-attachment-btn">
+                            <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn">
                                 <i class="icon-trash03 text-2xl font-thin text-04"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
                                 <img src="@attachment.Url" alt="image"/>
+                            } else if (attachment.IsVideo) {
+                                <video preload="metadata">
+                                    <source src="@attachment.Url#t=0.5" />
+                                </video>
                             } else {
                                 <div class="flex items-center justify-center p-3">
-                                    <img src="/dist/images/attachment.svg" alt="attachment" class="h-12">
+                                    <img draggable="false" src="/dist/images/attachment.svg" alt="attachment" class="h-12">
                                 </div>
                             }
                         </div>
                         <div class="attachment-filename" title="@attachment.FileName">
                             @attachment.FileName
                         </div>
+                        <div class="@uploadProgressClass" style="@uploadStyle"></div>
                     </div>
                 </li>
             }
-            @if (Attachments.Length < 10) {
+            @if (_attachments.Count < 10) {
                 <li class="attachment-wrapper flex min-w-34 justify-center">
-                    <ButtonRound Class="add-attachment" Click="@(() => ShowFilePicker())">
+                    <ButtonRound Class="add-attachment" Click="@OnAddClick">
                         <i class="icon-plus text-2xl text-icons-01"></i>
                     </ButtonRound>
                 </li>
@@ -45,46 +59,153 @@
 }
 
 @code {
-    private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
+    private readonly object _lock = new();
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
+    private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
+    private ElementReference FilePickerRef { get; set; }
 
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter] public EventCallback<Attachment> RemoveClick { get; set; }
-    [Parameter] public EventCallback ClearClick { get; set; }
-    [Parameter] public EventCallback PostClick { get; set; }
-    [Parameter] public IJSObjectReference JSRef { get; set; } = null!;
+    public IJSObjectReference JSRef { get; private set; } = null!;
+    public Task WhenReady => _whenReadySource.Task;
+    public bool IsUploading => _attachments.Any(x => !x.Uploaded);
 
-    public ImmutableArray<Attachment> Attachments {
-        get => _attachments;
-        set {
-            if (_attachments == value)
-                return;
-            _attachments = value;
-            StateHasChanged();
+    public async ValueTask DisposeAsync() {
+        _whenReadySource.TrySetCanceled();
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IAttachmentListBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.AttachmentList.create",
+                BlazorRef,
+                FilePickerRef);
+            _whenReadySource.TrySetResult();
         }
     }
 
-    public bool Add(int id, string url, string? fileName, string? fileType, int length) {
-        if (length > Constants.Attachments.FileSizeLimit) {
-            ErrorUI.ShowError("File is too big. Max file size: 8Mb.");
-            return false;
+    public async Task Clear() {
+        lock (_lock)
+            _attachments = ImmutableList<Attachment>.Empty;
+
+        await InvokeClear();
+        StateHasChanged();
+    }
+
+    public ResetIntent PopSnapshot() {
+        var attachments = PopAttachments();
+        StateHasChanged();
+
+        var mediaIds = attachments.Where(x => x.Uploaded).Select(x => x.MediaId).ToApiArray();
+        return new (mediaIds, () => Rollback(attachments), InvokeClear);
+
+        ImmutableList<Attachment> PopAttachments()
+        {
+            lock (_lock) {
+                var backup = _attachments;
+                _attachments = ImmutableList<Attachment>.Empty;
+                return backup;
+            }
         }
-        if (Attachments.Length >= Constants.Attachments.FileCountLimit) {
-            ErrorUI.ShowError("Too many files. Max allowed number is 10.");
+    }
+
+    private void Rollback(ImmutableList<Attachment> attachments)
+    {
+        lock (_lock)
+            _attachments = attachments;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length) {
+        var error = TryAdd();
+        if (error != null) {
+            ErrorUI.ShowError(error);
             return false;
         }
 
-        Attachments = Attachments.Add(new Attachment {
-            Id = id,
-            Url = url,
-            FileName = fileName ?? "",
-            FileType = fileType ?? "",
-            Length = length,
-        });
         StateHasChanged();
         return true;
+
+        Exception? TryAdd() {
+            if (length > Constants.Attachments.FileSizeLimit)
+                return StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
+
+            if (_attachments.Count >= Constants.Attachments.FileCountLimit)
+                return StandardError.Constraint("Too many files. Max allowed number is 10.");
+
+            _attachments = _attachments.Add(new(id, url, fileName ?? "", fileType ?? "", length));
+            return null;
+        }
     }
 
-    private ValueTask ShowFilePicker()
-        => JSRef.InvokeVoidAsync("showFilePicker");
+    [JSInvokable]
+    public void OnUploadProgress(int id, int progress) {
+        UpdateAttachment(id, x => x with { Progress = progress });
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnUploadSucceed(int id, MediaId mediaId) {
+        UpdateAttachment(id, x => x with { MediaId = mediaId });
+        StateHasChanged();
+    }
+
+    private Task OnAddClick()
+        => JSRef.InvokeVoidAsync("showFilePicker").AsTask();
+
+    private Task OnRemoveClick(Attachment attachment) {
+        lock (_lock)
+            _attachments = _attachments.Remove(attachment);
+
+        return JSRef.InvokeVoidAsync("remove", attachment.Id).AsTask();
+    }
+
+    private void UpdateAttachment(int id, Func<Attachment, Attachment> updater) {
+        lock (_lock) {
+            var i = _attachments.FindIndex(x => x.Id == id);
+            if (i < 0)
+                return;
+
+            _attachments = _attachments.SetItem(i, updater(_attachments[i]));
+        }
+    }
+
+    private ValueTask InvokeClear()
+        => JSRef.InvokeVoidAsync("clear");
+
+    public sealed class ResetIntent : IAsyncDisposable {
+        private readonly Func<ValueTask> _confirm;
+        private readonly Action _rollback;
+        private bool _isRolledBack;
+        public ApiArray<MediaId> Attachments { get; }
+
+        internal ResetIntent(ApiArray<MediaId> attachments, Action rollback, Func<ValueTask> confirm) {
+            Attachments = attachments;
+            _rollback = rollback;
+            _confirm = confirm;
+        }
+
+        public void Rollback() {
+            _rollback();
+            _isRolledBack = true;
+        }
+
+        public ValueTask DisposeAsync() {
+            return !_isRolledBack ? _confirm() : default;
+        }
+    }
+
+    private record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default)
+    {
+        public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
+        public bool IsVideo => FileType?.OrdinalIgnoreCaseStartsWith("video") ?? false;
+        public bool Uploaded => Progress == 100 && !MediaId.IsNone;
+    }
 }

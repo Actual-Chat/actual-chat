@@ -40,7 +40,7 @@
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsLoading && State.Value.AudioState.IsListening;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -71,7 +71,6 @@
         ChatAudioState AudioState,
         bool IsSpeakerphoneOn = false
     ) {
-        public static Model Loading { get; } = new(Chat.Loading, ChatAudioState.None);
-        public static Model None { get; } = new(Chat.None, ChatAudioState.None);
+        public static Model Loading { get; } = new(SpecialChat.Loading, ChatAudioState.None);
     }
 }

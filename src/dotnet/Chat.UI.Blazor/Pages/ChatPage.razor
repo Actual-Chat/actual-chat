@@ -1,106 +1,75 @@
 @page "/chat/{ChatSid}"
 @page "/chat"
-@using System.Diagnostics.CodeAnalysis
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ListViewLayout
 @{
-    var m = _rendered = State.Value;
+    var m = Rendered = State.Value;
     var chat = m.Chat;
-    var chatOrNone = m.Chat ?? Chat.None;
-    var chatOrLoading = ReferenceEquals(m, Model.Loading) ? Chat.Loading : chatOrNone;
+    var hasChat = !chat.Id.IsNone;
+    // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
-@* @key=...below ensures child components are recreated on navigation to another chat *@
+<AutoNavigateOnSignIn SourceUrl="@Links.Chats" TargetUrl="@Links.Chats" MustReplace="true" />
 
 <RenderIntoSlot Name="MainHeader">
-    <CascadingValue Value="@chatOrLoading">
-        <ChatHeader/>
-    </CascadingValue>
+    <ChatHeader @key="@chat" Chat="@chat" />
+</RenderIntoSlot>
+
+<RenderIntoSlot Name="MainFooter">
+    <ChatFooter ChatPageModel="@m" />
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
-    @if (chat != null) {
-        <CascadingValue Value="@chat">
-            <Banners/>
-        </CascadingValue>
+    @if (hasChat) {
+        <Banners @key="@chat" Chat="@chat"/>
     }
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    @if (chat != null) {
-        <CascadingValue Value="@chat">
-            <ChatRightPanel/>
-        </CascadingValue>
+    @if (hasChat) {
+        <ChatRightPanel @key="@chat" Chat="@chat"/>
     }
 </RenderIntoSlot>
 
-<RenderIntoSlot Name="MainFooter">
-    <CascadingValue Value="@chatOrLoading">
-        <ChatFooter/>
-    </CascadingValue>
-</RenderIntoSlot>
-
-@if (ReferenceEquals(m, Model.Loading)) {
+@if (ReferenceEquals(chat, SpecialChat.Loading)) {
+    <chat-view-skeleton count="15" />
     return;
 }
-@if (m.ChatId.IsNone) {
+@if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
-} else if (chat == null) {
+} else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
     <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
 } else {
-    <CascadingValue Value="chat" @key="chat.Id.Value">
-        <ChatView @ref="_chatViewRef" />
-    </CascadingValue>
+    <ChatView @ref="ChatViewRef" @key="@chat" Chat="@chat"/>
 }
 
 @code {
-    private Model? _rendered;
-    private ChatView _chatViewRef = null!;
-    private bool _canRedirectToAnnouncementsChat = true;
+    protected Model? Rendered;
+    protected ChatView ChatViewRef = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private AutoNavigationUI AutoNavigationUI { get; init; } = null!;
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] private ILogger<ChatPage> Log { get; init; } = null!;
+    [Inject] protected Session Session { get; init; } = null!;
+    [Inject] protected IAccounts Accounts { get; init; } = null!;
+    [Inject] protected IChats Chats { get; init; } = null!;
+    [Inject] protected IAvatars Avatars { get; init; } = null!;
+    [Inject] protected ChatUI ChatUI { get; init; } = null!;
+    [Inject] protected ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] protected PanelsUI PanelsUI { get; init; } = null!;
+    [Inject] protected BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] protected ILogger<ChatPage> Log { get; init; } = null!;
 
     [Parameter] public string? ChatSid { get; set; }
 
-    protected override bool ShouldRender()
-        => ReferenceEquals(_rendered, null)
-            || State.HasError
-            || !ReferenceEquals(_rendered, State.Value);
-
-    protected override Task OnInitializedAsync() {
-        AutoNavigationUI.MustNavigateToChatsOnSignIn = false;
+    protected override void OnInitialized() {
         ChatAudioUI.Enable();
-        return ChatUI.WhenLoaded; // Nothing happens until we load everything
+        // We need to call SelectChat() before ComputeState starts working,
+        // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
+        SelectChat();
+        base.OnInitialized();
     }
 
-    protected override async Task OnParametersSetAsync() {
-        var chatSid = ChatSid ?? "";
-        var chatId = new ChatId(chatSid, ParseOrNone.Option);
-        if (chatSid == "") {
-            await ChatUI.WhenLoaded;
-            chatId = ChatUI.SelectedChatId.Value;
-            if (chatId.IsNone && _canRedirectToAnnouncementsChat) {
-                _canRedirectToAnnouncementsChat = false;
-                chatId = Constants.Chat.AnnouncementsChatId;
-            }
-            if (!chatId.IsNone)
-                History.NavigateTo(Links.Chat(chatId));
-        }
-
-        ChatUI.SelectChat(chatId);
-        // No need to call base.OnParametersSetAsync() here, coz
-        // FixChatId calls ChatUI.SelectChat(...), which triggers
-        // UICommander.RunNothing() anyway
+    protected override Task OnParametersSetAsync() {
+        SelectChat();
+        return base.OnParametersSetAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -110,55 +79,110 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var model = await ComputeStateInternal(cancellationToken);
-
-        // Ideally we want to return exactly the same model as it was last time,
-        // coz otherwise some of components depending on its internals (e.g. lots of them depend on Chat)
-        // re-render solely because the reference to it was changed.
-        return model.IsIdenticalTo(_rendered) ? _rendered : model;
-    }
-
-    private async Task<Model> ComputeStateInternal(CancellationToken cancellationToken)
-    {
         // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
         // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
         // and moreover, we want to make sure ComputeState gets invalidated
-        // specifically when SelectedChatId changes, not when ChatSid changes.
+        // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken);
-        if (chatId.IsNone) // Kinda weird case: this should never happen due to code in OnParametersSetAsync
-            return Model.None(screenSize);
-
-        var account = await Accounts.GetOwn(Session, cancellationToken);
         try {
-            var chat = await Chats.Get(Session, chatId, cancellationToken);
-            return new Model(chatId, chat, account, screenSize);
+            var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var lastState = State.ValueOrDefault;
+            var lastChatId = lastState?.Chat.Id ?? ChatId.None;
+            // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+
+
+            var isVeryFirstLoad = ReferenceEquals(lastState, Model.Loading);
+            if (isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value) {
+                // Postpone chat loading when it's invisible
+                Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
+                await Task.Delay(TimeSpan.FromSeconds(0.8), cancellationToken).ConfigureAwait(false);
+            }
+
+            var account = await Accounts.GetOwn(Session, cancellationToken);
+            try {
+                var chat = SpecialChat.NoChatSelected;
+                if (!chatId.IsNone) {
+                    var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
+                    if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow()) {
+                        // Postponing chat change to let left panel slide smoothly - don't change this delay!
+                        if (OSInfo.IsAndroid) // This is necessary only for Android
+                            await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
+                    }
+
+                    chat = await Chats.Get(Session, chatId, cancellationToken);
+                    chat ??= SpecialChat.Unavailable;
+                }
+                var footer = await GetFooterModel(chat, account, cancellationToken);
+                return new Model(chat, account, footer);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+                return new Model(SpecialChat.Unavailable, account, new());
+            }
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            return new Model(chatId, null, account, screenSize);
+        finally {
+            // Log.LogDebug("ComputeState() - exit: {Computed}", computed.DebugDump());
         }
+    }
+
+    protected async ValueTask<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
+        var otherUserId = chat.Id.IsPeerChat(out var peerChatId)
+            ? peerChatId.UserIds.OtherThan(account.Id)
+            : default;
+        var canPost = chat.Rules.CanWrite();
+        var canJoin = !canPost && chat.Rules.CanJoin();
+        var hasMultipleAvatars = false;
+        var canJoinWithGuestAccount = false;
+        var canJoinAnonymously = false;
+        if (canJoin) {
+            if (account.IsGuestOrNone) {
+                canJoinWithGuestAccount = chat.AllowGuestAuthors;
+            } else {
+                canJoinAnonymously = chat.AllowAnonymousAuthors;
+                var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+                hasMultipleAvatars = avatars.Count > 1 || canJoinAnonymously;
+            }
+        }
+
+        return new() {
+            OtherUserId = otherUserId,
+            IsGuest = account.IsGuestOrNone,
+            CanPost = canPost,
+            CanJoin = canJoin,
+            HasMultipleAvatars = hasMultipleAvatars,
+            CanJoinWithGuestAccount = canJoinWithGuestAccount,
+            CanJoinAnonymously = canJoinAnonymously,
+        };
+    }
+
+    protected override bool ShouldRender()
+        => ReferenceEquals(Rendered, null)
+            || State.HasError
+            || State.Value != Rendered;
+
+    protected void SelectChat() {
+        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
+        ChatUI.SelectChat(chatId);
     }
 
     // Nested types
 
     public sealed record Model(
-        ChatId ChatId,
-        Chat? Chat,
+        Chat Chat,
         AccountFull Account,
-        ScreenSize ScreenSize = ScreenSize.Unknown
+        FooterModel Footer
     ) {
-        public static Model Loading { get; } = new(default, null, AccountFull.Loading); // Should differ by ref. from None
-        public static Model None(ScreenSize screenSize) => new(default, null, AccountFull.None, screenSize);
+        public static Model Loading { get; } =
+            new(SpecialChat.Loading, AccountFull.Loading, new FooterModel());
+    }
 
-        public bool IsIdenticalTo([NotNullWhen(true)] Model? other) {
-            if (other == null)
-                return false;
-            return ChatId == other.ChatId
-                   && ReferenceEquals(Chat, other.Chat)
-                   && ReferenceEquals(Account, other.Account)
-                   && ScreenSize == other.ScreenSize;
-        }
+    public sealed record FooterModel {
+        public UserId OtherUserId { get; init; }
+        public bool IsGuest { get; init; }
+        public bool CanPost { get; init; }
+        public bool CanJoin { get; init; }
+        public bool HasMultipleAvatars { get; init; }
+        public bool CanJoinWithGuestAccount { get; init; }
+        public bool CanJoinAnonymously { get; init; }
     }
 }

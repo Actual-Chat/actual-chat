@@ -1,19 +1,34 @@
+@implements IDisposable
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<RenderIntoSlot?>
+@{
+    var items = _slot?.Value;
+    if (items == null || items.Count == 0)
+        return;
 
-@State.Value?.ChildContent
+    var item = items[^1];
+}
+
+@item.ChildContent
 
 @code {
+    private RenderVar<List<RenderIntoSlot>>? _slot;
+    private Action<RenderVar>? _onSlotChanged;
+
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
 
-    protected override ComputedState<RenderIntoSlot?>.Options GetStateOptions()
-        => new () {
-            UpdateDelayer = FixedDelayer.Instant,
-            Category = GetStateCategory(),
-        };
+    protected override void OnInitialized() {
+        _onSlotChanged = OnSlotChanged;
+        _slot = RenderVars.RenderSlot(Name);
+        _slot.Changed += _onSlotChanged;
+    }
 
-    protected override async Task<RenderIntoSlot?> ComputeState(CancellationToken cancellationToken)
-        => await RenderVars.RenderSlot(Name).Use(cancellationToken);
+    public void Dispose() {
+        if (_slot != null)
+            _slot.Changed -= _onSlotChanged;
+    }
+
+    private void OnSlotChanged(RenderVar _)
+        => StateHasChanged();
 }

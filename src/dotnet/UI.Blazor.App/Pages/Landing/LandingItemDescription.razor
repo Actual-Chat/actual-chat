@@ -1,4 +1,4 @@
-<div class="flex-y justify-center md:w-1/2 md:gap-y-4">
+<div class="flex-y justify-center md:w-1/2 md:gap-y-4 @Class">
     @if (!Title.IsNullOrEmpty()) {
         <h1 class="title-text @TitleClass">
             @Title
@@ -10,5 +10,6 @@
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string TitleClass { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

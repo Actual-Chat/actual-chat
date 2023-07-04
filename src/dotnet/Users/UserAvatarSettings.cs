@@ -1,17 +1,20 @@
+using MemoryPack;
+
 namespace ActualChat.Users;
 
-[DataContract]
-public sealed record UserAvatarSettings
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record UserAvatarSettings
 {
     public const string KvasKey = nameof(UserAvatarSettings);
 
-    [DataMember] public ImmutableArray<Symbol> AvatarIds { get; init; } = ImmutableArray<Symbol>.Empty;
-    [DataMember] public Symbol DefaultAvatarId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public ApiArray<Symbol> AvatarIds { get; init; } = ApiArray<Symbol>.Empty;
+    [DataMember, MemoryPackOrder(1)] public Symbol DefaultAvatarId { get; init; }
 
     public UserAvatarSettings WithAvatarId(Symbol avatarId)
     {
         if (AvatarIds.Contains(avatarId))
             return this;
+
         return this with { AvatarIds = AvatarIds.Add(avatarId) };
     }
 

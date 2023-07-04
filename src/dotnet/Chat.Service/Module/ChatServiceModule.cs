@@ -4,36 +4,29 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
-using ActualChat.Commands;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
-using Stl.Redis;
 
 namespace ActualChat.Chat.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ChatServiceModule : HostModule<ChatSettings>
+public sealed class ChatServiceModule : HostModule<ChatSettings>
 {
-    public ChatServiceModule(IPluginInfoProvider.Query _) : base(_) { }
+    public ChatServiceModule(IServiceProvider services) : base(services) { }
 
-    [ServiceConstructor]
-    public ChatServiceModule(IPluginHost plugins) : base(plugins) { }
-
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<ChatDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db, db => {
             // DbChat
@@ -77,30 +70,32 @@ public class ChatServiceModule : HostModule<ChatSettings>
         var fusion = services.AddFusion();
 
         // Chats
-        fusion.AddComputeService<IChats, Chats>();
-        fusion.AddComputeService<IChatsBackend, ChatsBackend>();
+        fusion.AddService<IChats, Chats>();
+        fusion.AddService<IChatsBackend, ChatsBackend>();
         commander.AddCommandService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
         // Authors
-        fusion.AddComputeService<IAuthors, Authors>();
-        fusion.AddComputeService<IAuthorsBackend, AuthorsBackend>();
+        fusion.AddService<IAuthors, Authors>();
+        fusion.AddService<IAuthorsBackend, AuthorsBackend>();
         commander.AddCommandService<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
         // Roles
-        fusion.AddComputeService<IRoles, Roles>();
-        fusion.AddComputeService<IRolesBackend, RolesBackend>();
+        fusion.AddService<IRoles, Roles>();
+        fusion.AddService<IRolesBackend, RolesBackend>();
 
         // Mentions
-        fusion.AddComputeService<IMentions, Mentions>();
-        fusion.AddComputeService<IMentionsBackend, MentionsBackend>();
+        fusion.AddService<IMentions, Mentions>();
+        fusion.AddService<IMentionsBackend, MentionsBackend>();
 
         // Reactions
-        fusion.AddComputeService<IReactions, Reactions>();
-        fusion.AddComputeService<IReactionsBackend, ReactionsBackend>();
+        fusion.AddService<IReactions, Reactions>();
+        fusion.AddService<IReactionsBackend, ReactionsBackend>();
 
         // ContentSaver
         services.AddResponseCaching();
         commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+        services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
+        services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
 
         // ChatMarkupHub
         services.AddSingleton(c =>
@@ -108,6 +103,5 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-        services.TryAddSingleton<OtelMetrics>();
     }
 }

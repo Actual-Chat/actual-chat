@@ -2,19 +2,21 @@
 @inherits MenuBase
 
 @if (_chatMessageModel != null) {
-    <MessageHoverMenuContent Message="@_chatMessageModel"/>
+    <MessageHoverMenuContent Message="@_chatMessageModel" IsSystem="@_isSystem"/>
 }
 
 @code {
     private ChatMessageModel? _chatMessageModel;
+    private bool _isSystem;
 
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
-        if (Arguments is not [ var sEntryId ])
+        if (Arguments is not [ var sEntryId, var sIsSystem ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
+        _isSystem = bool.Parse(sIsSystem);
         var entryId = new TextEntryId(sEntryId);
         var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
         _chatMessageModel = entry != null

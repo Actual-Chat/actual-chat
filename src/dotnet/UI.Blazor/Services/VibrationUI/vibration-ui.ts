@@ -1,11 +1,8 @@
 import { delayAsync } from 'promises';
 import { Interactive } from 'interactive';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'VibrationUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog } = Log.get('VibrationUI');
 
 export class VibrationUI {
     public static vibrate(durationMs: number = 20): void {

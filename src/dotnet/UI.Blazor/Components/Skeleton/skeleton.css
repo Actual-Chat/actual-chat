@@ -1,0 +1,77 @@
+.thin-left-skeleton-panel {
+    @apply flex-y;
+    @apply px-0.5 md:px-4.5;
+    @apply bg-04;
+    width: 7.5rem;
+}
+body.narrow .thin-left-skeleton-panel {
+    @apply hidden;
+    width: auto;
+}
+.thin-left-skeleton-panel .skeleton-panel-body {
+    @apply items-end gap-y-3 md:gap-y-2;
+}
+body.narrow .thin-left-skeleton-panel .skeleton-panel-body {
+    padding-left: 0.4rem;
+    padding-right: 0.5rem;
+}
+.wide-left-skeleton-panel {
+    @apply flex-y;
+    @apply bg-03;
+    @apply border-r border-bg-04;
+    @apply w-full md:w-80;
+}
+body.narrow .wide-left-skeleton-panel {
+    @apply hidden;
+    width: 100%;
+}
+.wide-left-skeleton-panel .skeleton-panel-body {
+    @apply gap-y-0.5 overflow-auto;
+    @apply p-2;
+    @apply custom-scrollbar;
+}
+
+.chat-skeleton-panel {
+    @apply flex-1 flex-y;
+}
+.right-skeleton-panel {
+    @apply hidden md:flex-y;
+    @apply bg-02;
+    @apply border-l border-bg-04;
+    @apply w-full md:w-80;
+}
+.skeleton-panel-header {
+    @apply min-h-14;
+}
+.skeleton-panel-body {
+    @apply flex-1 flex-y;
+}
+.skeleton-panel-footer {
+    @apply sticky bottom-0;
+    @apply flex-none flex-x items-center justify-center;
+    @apply min-h-14 md:min-h-16;
+}
+.chat-skeleton-panel .skeleton-panel-footer {
+    @apply flex-x gap-x-2.5;
+    @apply px-3;
+}
+body.narrow .chat-skeleton-panel .skeleton-panel-footer {
+    min-height: 9.5rem;
+}
+body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
+    @apply justify-end;
+}
+.chat-skeleton-panel .skeleton-panel-body {
+    @apply p-2 md:pr-8;
+    @apply overflow-y-auto;
+}
+body.narrow .chat-skeleton-panel .skeleton-panel-footer {
+    @apply p-0;
+    @apply bg-03;
+}
+.chat-skeleton-panel .skeleton-panel-body::-webkit-scrollbar {
+    @apply hidden;
+}
+.chat-view-footer {
+    @apply flex-1;
+}

@@ -46,8 +46,8 @@
 
 <SideNav
     Side="SideNavSide.Right"
-    IsOpen="@RightPanelUI.IsVisible.Value"
-    VisibilityChanged="@(isOpen => RightPanelUI.SetIsVisible(isOpen))">
+    IsOpen="@PanelsUI.Right.IsVisible.Value"
+    VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="docs-right-panel">
         <DocsRightPanelHeader/>
         <div class="flex flex-col overflow-y-auto custom-scrollbar">
@@ -59,7 +59,7 @@
 </SideNav>
 
 @code {
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

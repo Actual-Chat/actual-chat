@@ -1,7 +1,6 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'FocusUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
+const { debugLog } = Log.get('FocusUI');
 
 export class FocusUI {
     public static focus(targetRef: HTMLElement): void {

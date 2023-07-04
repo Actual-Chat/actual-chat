@@ -7,6 +7,7 @@
     <ProjectReference Include="..\..\src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Transcription.Service\Transcription.Service.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
+    <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
 
   <ItemGroup>

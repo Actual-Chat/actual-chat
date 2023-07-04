@@ -5,27 +5,20 @@ namespace ActualChat.App.Maui;
 
 public partial class MauiBlazorWebViewHandler
 {
-    protected override void ConnectHandler(Android.Webkit.WebView platformView)
+    protected override void ConnectHandler(WebView platformView)
     {
-        _trace.Point("ConnectHandler");
-        Log.LogDebug("ConnectHandler");
+        Tracer.Point(nameof(ConnectHandler));
+        Log.LogDebug(nameof(ConnectHandler));
 
         base.ConnectHandler(platformView);
-        var baseUri = UrlMapper.BaseUri;
-        var sessionId = AppSettings.SessionId;
 
         platformView.Settings.JavaScriptEnabled = true;
-        var cookieManager = CookieManager.Instance!;
-        // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
-        cookieManager.SetAcceptCookie(true);
-        cookieManager.SetAcceptThirdPartyCookies(platformView, true);
-        var sessionCookieValue = $"FusionAuth.SessionId={sessionId}; path=/; secure; samesite=none; httponly";
-        cookieManager.SetCookie("https://" + "0.0.0.0", sessionCookieValue);
-        cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
-        var jsInterface = new JavascriptToAndroidInterface(this, platformView);
+
+        var jsInterface = new AndroidJSInterface(this, platformView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");
-        platformView.SetWebViewClient(new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
+        platformView.SetWebViewClient(
+            new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
     }
 
     private class WebViewClientOverride : WebViewClient

@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @page "/test/markup-editor"
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>Markup Editor Test Page</MainHeader>
 
 <EditForm Model="@this" class="flex-y gap-y-4">

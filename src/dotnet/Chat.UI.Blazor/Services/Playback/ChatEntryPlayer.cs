@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
 
@@ -40,30 +41,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
         AudioStreamer = services.GetRequiredService<IAudioStreamer>();
     }
 
-    protected override async Task DisposeAsyncCore()
-    {
-        // Default scheduler is used from here
-
-        // This method starts inside 'lock (Lock)' block - see ProcessorBase.DisposeAsync,
-        // so we don't need to acquire this lock here to access EntryPlaybackTasks.
-        var entryPlaybackTasks = EntryPlaybackTasks.ToList();
-        try {
-            await Task.WhenAll(entryPlaybackTasks).ConfigureAwait(false);
-        }
-        finally {
-            Abort();
-            if (Playback.IsPlaying.Value) {
-                var stopProcess = Playback.Stop(CancellationToken.None);
-                try {
-                    await stopProcess.WhenCompleted.ConfigureAwait(false);
-                }
-                catch (Exception e) {
-                    if (e is not OperationCanceledException)
-                        Log.LogError(e, "Failed to stop playback in chat #{ChatId}", ChatId);
-                }
-            }
-        }
-    }
+    protected override Task DisposeAsyncCore()
+        => Abort();
 
     public async Task WhenDonePlaying()
     {
@@ -80,14 +59,14 @@ public sealed class ChatEntryPlayer : ProcessorBase
 
     public void EnqueueEntry(ChatEntry entry, TimeSpan skipTo, Moment? playAt = null)
     {
-        var resultSource = TaskSource.New<Unit>(true);
+        var resultSource = TaskCompletionSourceExt.New<Unit>();
         lock (Lock) {
             if (StopToken.IsCancellationRequested)
                 return; // This entry starting after Dispose or Abort
             EntryPlaybackTasks.Add(resultSource.Task);
         }
 
-        BackgroundTask.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             try {
                 var playProcess = await EnqueueEntry(entry, skipTo, playAt ?? Clocks.CpuClock.Now, StopToken).ConfigureAwait(false);
                 await playProcess.WhenCompleted.ConfigureAwait(false);
@@ -104,14 +83,14 @@ public sealed class ChatEntryPlayer : ProcessorBase
         }, CancellationToken.None);
     }
 
-    public void Abort()
+    public async Task Abort()
     {
         try {
-            if (!StopTokenSource.IsCancellationRequested)
-                StopTokenSource.Cancel();
+            await Playback.Abort().WhenCompleted.ConfigureAwait(false);
         }
-        catch {
-            // Intended
+        catch (Exception e) {
+            if (e is not OperationCanceledException)
+                Log.LogError(e, "Failed to abort playback in chat #{ChatId}", ChatId);
         }
     }
 
@@ -124,6 +103,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         try {
+            var audioInitializer = Services.GetRequiredService<AudioInitializer>();
+            await audioInitializer.WhenInitialized.ConfigureAwait(false);
+
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Kind != ChatEntryKind.Audio)
                 throw StandardError.NotSupported($"The entry's Type must be {ChatEntryKind.Audio}.");

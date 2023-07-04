@@ -2,7 +2,7 @@
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
   <PropertyGroup>
-    <TargetFramework Condition ="!$(MSBuildProjectName.Contains('.Maui'))">net7.0</TargetFramework>
+    <TargetFramework Condition="!$(MSBuildProjectName.Contains('.Maui'))">net7.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -76,7 +76,7 @@
     <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
-    <!-- VSTHRD103: StateHasChanged synchronously blocks. Await StateHasChangedAsync instead. -->
+    <!-- VSTHRD103: StateHasChanged synchronously blocks. Await NotifyStateHasChanged instead. -->
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
     <NoWarn>$(NoWarn);CS1591;CS8669;MA0009;MA0018;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
 

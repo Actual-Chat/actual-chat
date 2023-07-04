@@ -1,3 +1,3 @@
 namespace ActualChat.UI.Blazor.Events;
 
-public record ShowSettingsEvent : IUIEvent;
+public sealed record ShowSettingsEvent : IUIEvent;

@@ -1,10 +1,7 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { timerQueue } from 'timerQueue';
 
-const LogScope: LogScope = 'WarmUpAudioWorkletProcessor';
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
-
+const { warnLog } = Log.get('WarmUpAudioWorkletProcessor');
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /**
  * Produces silence. We use the worklet to warm up a browser's audio pipeline.
@@ -50,6 +47,4 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
     };
 }
 
-// @ts-expect-error - registerProcessor exists
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('warmUpWorklet', WarmUpAudioWorkletProcessor);

@@ -1,8 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<label class="@Class radio">
+<label class="@Class radio"
+       data-input-checked="@IsChecked"
+       data-input-disabled="@IsDisabled">
     <span class="x">&nbsp;</span>
-    <input type="radio" id="@Id" name="@Name" disabled="@IsDisabled" value="@Value" @onchange="Change" checked="@IsChecked">
+    <input type="radio"
+           id="@Id" name="@Name" disabled="@IsDisabled" value="@Value" checked="@IsChecked"
+           @onchange="@Change">
     @if (LabelContent != null) {
         <div class="c-label">@LabelContent</div>
     } else if (!Label.IsNullOrEmpty()) {

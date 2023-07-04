@@ -17,10 +17,19 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public string Title { get; set; } = "";
     public ChatKind Kind { get; set; }
+    [Obsolete("Use MediaId")]
     public string Picture { get; set; } = "";
+    public string MediaId { get; set; } = "";
+
+    // Template info for embedded chats
+    public bool IsTemplate { get; set; }
+    public string? TemplateId { get; set; }
+    public string? TemplatedForUserId { get; set; }
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
+    public bool AllowGuestAuthors { get; set; }
+    public bool AllowAnonymousAuthors { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
@@ -31,8 +40,17 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         => new(new ChatId(Id), Version) {
             Title = Title,
             CreatedAt = CreatedAt,
+            IsTemplate = IsTemplate,
+            TemplateId = TemplateId.IsNullOrEmpty()
+                ? null
+                :new ChatId(TemplateId),
+            TemplatedForUserId = TemplatedForUserId.IsNullOrEmpty()
+                ? null
+                : new UserId(TemplatedForUserId),
             IsPublic = IsPublic,
-            Picture = Picture,
+            AllowGuestAuthors = AllowGuestAuthors,
+            AllowAnonymousAuthors = AllowAnonymousAuthors,
+            MediaId = new MediaId(MediaId),
         };
 
     public void UpdateFrom(Chat model)
@@ -45,8 +63,13 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Version = model.Version;
         Title = model.Title;
         CreatedAt = model.CreatedAt;
+        IsTemplate = model.IsTemplate;
+        TemplateId = model.TemplateId;
+        TemplatedForUserId = model.TemplatedForUserId;
         IsPublic = model.IsPublic;
+        AllowGuestAuthors = model.AllowGuestAuthors;
+        AllowAnonymousAuthors = model.AllowAnonymousAuthors;
         Kind = model.Kind;
-        Picture = model.Picture;
+        MediaId = model.MediaId;
     }
 }

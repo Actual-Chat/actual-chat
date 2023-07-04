@@ -6,6 +6,7 @@
     var m = State.Value;
 }
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>Features Test Page</MainHeader>
 
 <p>Client user: @(m.ClientUser?.Name ?? "n/a")</p>
@@ -26,9 +27,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
         => new() {
-            ClientUser = await Features.Get<TestFeatures.ClientUser, User?>(cancellationToken),
-            ServerTime = await Features.Get<TestFeatures.ServerTime, Moment>(cancellationToken),
-            EnableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken),
+            ClientUser = await Features.Get<TestFeature_ClientUser, User?>(cancellationToken),
+            ServerTime = await Features.Get<TestFeature_ServerTime, Moment>(cancellationToken),
+            EnableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken),
             Environment = HostInfo.Environment.Value,
         };
 

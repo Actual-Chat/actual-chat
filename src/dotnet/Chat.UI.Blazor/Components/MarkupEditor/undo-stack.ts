@@ -1,10 +1,7 @@
 import { throttle, ResettableFunc } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'UndoStack';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('UndoStack');
 
 export class UndoStack<T> {
     private items: Array<T> = new Array<T>();

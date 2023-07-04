@@ -7,25 +7,32 @@ public class TestBatchingKvasBackend : IBatchingKvasBackend
     private object Lock => Storage;
 
     public ITestOutputHelper? Out { get; init; }
-    public Dictionary<Symbol, string> Storage { get; init; } = new();
+    public Dictionary<Symbol, byte[]> Storage { get; init; } = new();
 
-    public Task<string?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
+    public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
+        byte[]?[] result;
         lock (Lock) {
             Out?.WriteLine($"GetMany: {keys.ToDelimitedString(", ")}");
-            var result = new string?[keys.Length];
+            result = new byte[]?[keys.Length];
             for (var i = 0; i < keys.Length; i++)
                 result[i] = Storage.GetValueOrDefault(keys[i]);
-            var (actualDelay, spinCount) = PreciseDelay.Delay(TimeSpan.FromMilliseconds(3));
-            Out?.WriteLine("Actual delay: {0} ({1} spins)", actualDelay.ToShortString(), spinCount);
-            return Task.FromResult(result);
         }
+        var actualDelay = PreciseDelay.Delay(TimeSpan.FromMilliseconds(3));
+        Out?.WriteLine("Actual delay: {0}", actualDelay.ToShortString());
+        return ValueTask.FromResult(result);
     }
 
-    public Task SetMany(List<(string Key, string? Value)> updates, CancellationToken cancellationToken = default)
+    public Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
         lock (Lock) {
-            Out?.WriteLine($"SetMany: {updates.Select(u => $"({u.Key} = {u.Value})").ToDelimitedString(", ")}");
+            if (Out != null) {
+                var sUpdates = updates
+                    .Select(u => $"({u.Key} = {(u.Value == null ? "null" : new TextOrBytes(u.Value))})")
+                    .ToDelimitedString(", ");
+                Out.WriteLine($"SetMany: {sUpdates}");
+            }
+
             foreach (var (key, value) in updates) {
                 if (value == null)
                     Storage.Remove(key);
@@ -34,5 +41,14 @@ public class TestBatchingKvasBackend : IBatchingKvasBackend
             }
             return Task.CompletedTask;
         }
+    }
+
+    public Task Clear(CancellationToken cancellationToken = default)
+    {
+        Out?.WriteLine("Clear");
+        lock (Lock) {
+            Storage.Clear();
+        }
+        return Task.CompletedTask;
     }
 }

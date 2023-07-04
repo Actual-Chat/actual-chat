@@ -2,24 +2,43 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-@if (Invites.Length > 0) {
+@if (Invites.Count > 0) {
     @foreach (var invite in Invites) {
         var link = GetLink(invite);
+        var caption = GetCaption(invite);
+        var isNew = !NewInviteId.IsNullOrEmpty() && invite.Id.Equals(NewInviteId);
 
-        <div class="flex-x items-center p-2 pt-1 pr-1 rounded hover:bg-02">
-
-            <CopyToClipboard
-                Class="flex-auto"
-                Caption="@invite.Id"
-                Text="@link.AbsoluteUrl"/>
-            <div class="flex-auto text-xxs ml-2">
-                @if (invite.Remaining > 1) {
-                    <span><b>@(invite.Remaining)</b> activations remaining, </span>
+        <div class="invite-list-item">
+            <div class="link">
+                <TileItem>
+                    <Icon>
+                        <i class="icon-link-2 text-2xl"></i>
+                    </Icon>
+                    <Content>
+                        @link.ShortAbsoluteUrl
+                        @if (isNew) {
+                            <sup class="text-badge ml-0.5">new</sup>
+                        }
+                    </Content>
+                    <Caption>
+                        @caption
+                    </Caption>
+                </TileItem>
+            </div>
+            <div class="actions">
+                @if (AllowRevoke) {
+                    <Button Class="btn-modal" Click="@(() => Revoke(invite))">
+                        <i class="icon-trash03 text-xl"></i>
+                        Revoke
+                    </Button>
                 }
-                <span>
-                    exp. <LiveTimeDeltaText Moment="@invite.ExpiresOn"/>
-                </span>
-
+                <CopyTrigger Tooltip="Copy" CopyText="@link.AbsoluteUrl">
+                    <Button Class="btn-modal w-full">
+                        <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                        <i class="copied-hint fa fa-check text-lg" aria-hidden="true"></i>
+                        Copy
+                    </Button>
+                </CopyTrigger>
             </div>
         </div>
     }
@@ -27,12 +46,28 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ImmutableArray<Invite> Invites { get; set; } = ImmutableArray<Invite>.Empty;
+    [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; } = ApiArray<Invite>.Empty;
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
+    [Parameter] public bool AllowRevoke { get; init; }
+    [Parameter] public string NewInviteId { get; init; } = "";
 
     private DisplayUrl GetLink(Invite invite)
         => Links.Invite(LinkFormat, invite.Id).ToDisplayUrl(UrlMapper);
+
+    private string GetCaption(Invite invite) {
+        switch (invite.Details.Option) {
+            case UserInviteOption:
+                return "User invite link";
+            case ChatInviteOption:
+                return "Private join link";
+            default:
+                return "Unknown link";
+        }
+    }
+
+    private Task Revoke(Invite invite)
+        => UICommander.Run(new Invites_Revoke(Session, invite.Id));
 }

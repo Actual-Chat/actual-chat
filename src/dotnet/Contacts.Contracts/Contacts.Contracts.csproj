@@ -5,4 +5,8 @@
     <ProjectReference Include="..\Contacts\Contacts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MemoryPack" />
+  </ItemGroup>
+
 </Project>

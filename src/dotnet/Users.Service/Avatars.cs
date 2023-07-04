@@ -20,11 +20,13 @@ public class Avatars : IAvatars
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken)
     {
-        var avatarIds = await ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
-        if (!avatarIds.Contains(avatarId))
+        var avatar = await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+        if (avatar == null)
             return null;
 
-        var avatar = await Backend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (avatar.UserId != account.Id)
+            return null;
         return avatar;
     }
 
@@ -36,7 +38,7 @@ public class Avatars : IAvatars
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
     {
         var kvasClient = ServerKvas.GetClient(session);
         var settings = await kvasClient.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
@@ -44,7 +46,7 @@ public class Avatars : IAvatars
     }
 
     // [CommandHandler]
-    public virtual async Task<AvatarFull> Change(IAvatars.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AvatarFull> OnChange(Avatars_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!;
@@ -64,8 +66,11 @@ public class Avatars : IAvatars
             await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
         }
 
-        var changeCommand = new IAvatarsBackend.ChangeCommand(avatarId, expectedVersion, change);
+        var changeCommand = new AvatarsBackend_Change(avatarId, expectedVersion, change);
         avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        if (avatar.IsAnonymous)
+            return avatar; // We don't account anonymous avatars in the list
 
         cancellationToken = default; // We don't cancel anything from here
         var kvas = ServerKvas.GetClient(session);
@@ -82,7 +87,7 @@ public class Avatars : IAvatars
     }
 
     // [CommandHandler]
-    public virtual async Task SetDefault(IAvatars.SetDefaultCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;

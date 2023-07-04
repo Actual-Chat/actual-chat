@@ -1,13 +1,17 @@
 @using System.ComponentModel.DataAnnotations
 @implements IModalView<OwnAccountEditorModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
     if (ReferenceEquals(_account, AccountFull.Loading))
         return;
 }
 
-<Form @ref="@_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="Edit account" Class="own-account-editor-modal" ButtonsClass="full-width" HasCloseButton="true">
+<Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame
+        Class="own-account-editor-modal"
+        Title="Edit account"
+        HasCloseButton="true"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
+        ButtonsClass="full-width">
         <Body>
         <DataAnnotationsValidator/>
         <ValidationSummary/>
@@ -71,7 +75,7 @@
 
     private async void OnSave() {
         var account = await Accounts.GetOwn(Session, default);
-        var updateAccountCommand = new IAccounts.UpdateCommand(
+        var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
                 Name = _form.Name,

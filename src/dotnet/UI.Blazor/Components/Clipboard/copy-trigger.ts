@@ -1,9 +1,7 @@
 import { fromEvent, Subject, takeUntil, switchMap, tap, delay } from 'rxjs';
-import { Log, LogLevel, LogScope } from 'logging';
-import { stopEvent } from 'event-handling';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'CopyTrigger';
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { errorLog } = Log.get('CopyTrigger');
 
 export class CopyTrigger {
     private readonly triggerElementRef: HTMLElement;

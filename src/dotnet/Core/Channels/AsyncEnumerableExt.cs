@@ -86,6 +86,30 @@ public static class AsyncEnumerableExt
         }
     }
 
+    public static async IAsyncEnumerable<T> TakeWhile<T>(
+        this IAsyncEnumerable<T> source,
+        Task whileTask,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (whileTask.IsCompleted)
+            yield break;
+
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
+
+        var hasNextTask = enumerator.MoveNextAsync();
+        while (true) {
+            if (!hasNextTask.IsCompleted)
+                await Task.WhenAny(whileTask, hasNextTask.AsTask()).ConfigureAwait(false);
+
+            if (whileTask.IsCompleted || !await hasNextTask.ConfigureAwait(false))
+                yield break;
+
+            yield return enumerator.Current;
+            hasNextTask = enumerator.MoveNextAsync();
+        }
+    }
+
     public static IAsyncEnumerable<T> WithUsedEnumerator<T>(
         this IAsyncEnumerable<T> source,
         IAsyncEnumerator<T> usedEnumerator,
@@ -180,12 +204,11 @@ public static class AsyncEnumerableExt
         return (matched.Reader.ReadAllAsync(cancellationToken), notMatched.Reader.ReadAllAsync(cancellationToken));
     }
 
-
     public static (Task<TSource> HeadTask, IAsyncEnumerable<TSource> Tail) SplitHead<TSource>(
         this IAsyncEnumerable<TSource> source,
         CancellationToken cancellationToken)
     {
-        var headTaskSource = TaskSource.New<TSource>(true);
+        var headSource = TaskCompletionSourceExt.New<TSource>();
         var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
             SingleWriter = true,
             SingleReader = true,
@@ -198,7 +221,7 @@ public static class AsyncEnumerableExt
                 await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
                     if (isHead) {
                         isHead = false;
-                        headTaskSource.SetResult(item);
+                        headSource.SetResult(item);
                     }
                     else
                         await notMatched.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
@@ -208,14 +231,14 @@ public static class AsyncEnumerableExt
             }
             finally {
                 if (error != null)
-                    headTaskSource.TrySetException(error);
+                    headSource.TrySetException(error);
                 else
-                    headTaskSource.TrySetCanceled();
+                    headSource.TrySetCanceled();
                 notMatched.Writer.TryComplete(error);
             }
         }, cancellationToken);
 
-        return (headTaskSource.Task, notMatched.Reader.ReadAllAsync(cancellationToken));
+        return (headSource.Task, notMatched.Reader.ReadAllAsync(cancellationToken));
     }
 
     public static async IAsyncEnumerable<List<TSource>> Chunk<TSource>(
@@ -223,8 +246,6 @@ public static class AsyncEnumerableExt
         int count,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (source == null)
-            throw new ArgumentNullException(nameof(source));
         if (count <= 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
@@ -251,94 +272,88 @@ public static class AsyncEnumerableExt
     /// </summary>
     /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
     /// <param name="source">Observable sequence.</param>
-    /// <param name="otherSources">Observable sequences.</param>
+    /// <param name="sources">Observable sequences.</param>
     /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="otherSources"/> is null.</exception>
-    public static IAsyncEnumerable<TSource> Merge<TSource>(this IAsyncEnumerable<TSource> source, params IAsyncEnumerable<TSource>[] otherSources)
+    /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
+    public static IAsyncEnumerable<TSource> Merge<TSource>(this IAsyncEnumerable<TSource> source, params IAsyncEnumerable<TSource>[] sources)
+        => Merge(source, sources, CancellationToken.None);
+
+    public static async IAsyncEnumerable<TSource> Merge<TSource>(
+        IAsyncEnumerable<TSource> source,
+        IAsyncEnumerable<TSource>[] sources,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (otherSources == null)
-            throw new ArgumentNullException(nameof(otherSources));
+        var count = sources.Length + 1;
+        var enumerators = new IAsyncEnumerator<TSource>?[count];
+        var moveNextTasks = new ValueTask<bool>[count];
+        var errors = null as List<Exception>;
+        try {
+            var sourceEnumerator = source.GetAsyncEnumerator(cancellationToken);
+            enumerators[0] = sourceEnumerator;
+            moveNextTasks[0] = sourceEnumerator.MoveNextAsync();
 
-        return Core(source, otherSources);
+            for (var i = 1; i < count; i++) {
+                var enumerator = sources[i - 1].GetAsyncEnumerator(cancellationToken);
+                enumerators[i] = enumerator;
+                moveNextTasks[i] = enumerator.MoveNextAsync();
+            }
 
-        static async IAsyncEnumerable<TSource> Core(
-            IAsyncEnumerable<TSource> source,
-            IAsyncEnumerable<TSource>[] sources,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            var count = sources.Length + 1;
-
-            var enumerators = new IAsyncEnumerator<TSource>?[count];
-            var moveNextTasks = new ValueTask<bool>[count];
-            var errors = null as List<Exception>;
-            try {
-                var sourceEnumerator = source.GetAsyncEnumerator(cancellationToken);
-                enumerators[0] = sourceEnumerator;
-                moveNextTasks[0] = sourceEnumerator.MoveNextAsync();
-
-                for (var i = 1; i < count; i++) {
-                    var enumerator = sources[i - 1].GetAsyncEnumerator(cancellationToken);
-                    enumerators[i] = enumerator;
-                    moveNextTasks[i] = enumerator.MoveNextAsync();
+            var completedTask = TaskExt.WhenAny(moveNextTasks);
+            int active = count;
+            while (active > 0) {
+                var index = await completedTask;
+                var enumerator = enumerators[index];
+                var moveNextTask = moveNextTasks[index];
+                bool moved = false;
+                try {
+                    moved = await moveNextTask.ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    errors ??= new List<Exception>();
+                    errors.Add(e);
                 }
 
-                var completedTask = TaskExt.WhenAny(moveNextTasks);
-                int active = count;
-                while (active > 0) {
-                    var index = await completedTask;
-                    var enumerator = enumerators[index];
-                    var moveNextTask = moveNextTasks[index];
-                    bool moved = false;
-                    try {
-                        moved = await moveNextTask.ConfigureAwait(false);
-                    }
-                    catch (Exception e) {
-                        errors ??= new List<Exception>();
-                        errors.Add(e);
-                    }
+                if (!moved) {
+                    enumerators[index] = null!; // NB: Avoids attempt at double dispose in finally if disposing fails.
 
-                    if (!moved) {
-                        enumerators[index] = null!; // NB: Avoids attempt at double dispose in finally if disposing fails.
+                    if (enumerator != null)
+                        await enumerator.DisposeAsync().ConfigureAwait(false);
 
-                        if (enumerator != null)
-                            await enumerator.DisposeAsync().ConfigureAwait(false);
+                    active--;
+                }
+                else {
+                    if (enumerator == null) continue;
 
-                        active--;
-                    }
-                    else {
-                        if (enumerator == null) continue;
+                    var item = enumerator.Current;
+                    completedTask.Replace(index, enumerator.MoveNextAsync());
 
-                        var item = enumerator.Current;
-                        completedTask.Replace(index, enumerator.MoveNextAsync());
-
-                        yield return item;
-                    }
+                    yield return item;
                 }
             }
-            finally {
-                for (var i = count - 1; i >= 0; i--) {
-                    var enumerator = enumerators[i];
-
-                    try {
-                        if (enumerator != null)
-                            await enumerator.DisposeAsync().ConfigureAwait(false);
-                    }
-                    catch (Exception ex) {
-                        errors ??= new List<Exception>();
-                        errors.Add(ex);
-                    }
-                }
-            }
-            if (errors != null)
-                switch (errors.Count) {
-                case 1:
-                    throw errors[0];
-                case > 1 when errors.All(e => e is OperationCanceledException):
-                    throw errors[0];
-                case > 1:
-                    throw new AggregateException(errors);
-                }
         }
+        finally {
+            for (var i = count - 1; i >= 0; i--) {
+                var enumerator = enumerators[i];
+
+                try {
+                    if (enumerator != null)
+                        await enumerator.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) {
+                    errors ??= new List<Exception>();
+                    errors.Add(ex);
+                }
+            }
+        }
+        if (errors != null)
+            switch (errors.Count) {
+            case 1:
+                throw errors[0];
+            case > 1 when errors.All(e => e is OperationCanceledException):
+                throw errors[0];
+            case > 1:
+                throw new AggregateException(errors);
+            }
     }
 
     public static async IAsyncEnumerable<TSource> Buffer<TSource>(
@@ -346,8 +361,6 @@ public static class AsyncEnumerableExt
         int count,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (source == null)
-            throw new ArgumentNullException(nameof(source));
         if (count <= 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
@@ -416,7 +429,7 @@ public static class AsyncEnumerableExt
     public static async IAsyncEnumerable<TSource> Prepend<TSource>(this IAsyncEnumerable<TSource> source, Task<TSource> elementTask)
     {
         if (source == null)
-            throw StandardError.Constraint(nameof(Prepend), "source is null");
+            throw StandardError.Constraint(nameof(Prepend), "source is null.");
 
         yield return await elementTask.ConfigureAwait(false);
 

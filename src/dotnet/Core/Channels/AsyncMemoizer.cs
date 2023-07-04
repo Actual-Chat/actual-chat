@@ -71,11 +71,13 @@ public sealed class AsyncMemoizer<T>
         var success = await buffer.TryCopyTo(channel, 0, cancellationToken).ConfigureAwait(false);
         if (!success)
             return;
+
         while (await _newTargets.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
         while (_newTargets.Writer.TryWrite((channel, skipCount)))
             return;
+
         if (!WriteTask.IsCompleted)
-            await WriteTask.SuppressCancellation().ConfigureAwait(false);
+            await WriteTask.SuppressCancellationAwait(false);
         await _buffer.TryCopyTo(channel, skipCount, cancellationToken).ConfigureAwait(false);
     }
 
@@ -95,6 +97,7 @@ public sealed class AsyncMemoizer<T>
                 while (!result.HasError && _bufferWriter.FreeCapacity > 0) {
                     if (!readTask.IsCompleted)
                         break;
+
                     result = await readTask.ConfigureAwait(false); // Sync wait
                     memory.Span[index++] = result;
                     _bufferWriter.Advance(1);
@@ -124,11 +127,11 @@ public sealed class AsyncMemoizer<T>
         var newTargetsReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
         while (newTargetsReadTask != null || !buffer.IsCompleted) {
             if (newTargetsReadTask != null)
-                await Task.WhenAny(newTargetsReadTask, buffer.WhenOutdatedTask).ConfigureAwait(false);
+                await Task.WhenAny(newTargetsReadTask, buffer.WhenOutdated).ConfigureAwait(false);
             else
-                await buffer.WhenOutdatedTask.ConfigureAwait(false);
+                await buffer.WhenOutdated.ConfigureAwait(false);
 
-            if (buffer.WhenOutdatedTask.IsCompleted)
+            if (buffer.WhenOutdated.IsCompleted)
                 // No need to await for WhenOutdatedTask - it never fails or gets cancelled
                 buffer = await SwitchToNewBuffer(buffer).ConfigureAwait(false);
 
@@ -177,18 +180,17 @@ public sealed class AsyncMemoizer<T>
 
     private class Buffer
     {
+        private readonly TaskCompletionSource _whenOutdatedSource = TaskCompletionSourceExt.New();
+
         public ReadOnlyMemory<Result<T>> Items { get; }
-        public Task<Unit> WhenOutdatedTask { get; }
+        public Task WhenOutdated => _whenOutdatedSource.Task;
         public bool IsCompleted => Items.Length > 0 && Items.Span[^1].HasError;
 
         public Buffer(ReadOnlyMemory<Result<T>> items)
-        {
-            Items = items;
-            WhenOutdatedTask = TaskSource.New<Unit>(true).Task;
-        }
+            => Items = items;
 
         public void MarkOutdated()
-            => TaskSource.For(WhenOutdatedTask).TrySetResult(default);
+            => _whenOutdatedSource.TrySetResult();
 
         public async ValueTask<bool> TryCopyTo(
             ChannelWriter<T> channel,

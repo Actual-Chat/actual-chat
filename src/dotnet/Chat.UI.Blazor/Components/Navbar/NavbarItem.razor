@@ -5,12 +5,16 @@
 }
 
 <div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
-    @if (Url.IsNullOrEmpty()) {
+    @if (Url.IsNullOrEmpty()) { /* IsSelected is needed to make sure click events work on iOS */
         <div class="navbar-item-content">
             @ChildContent
         </div>
+    } else if (IsSelected) {
+        <div class="navbar-item-content" @onclick="@OnSelectedClick">
+            @ChildContent
+        </div>
     } else {
-        <div class="navbar-item-content" data-href="@Url">
+        <div class="navbar-item-content" data-href="@Url" data-href-tune="select-navbar-item" data-chat-switch-with-replace="true">
             @ChildContent
         </div>
     }
@@ -20,6 +24,8 @@
 </div>
 
 @code {
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public string Url { get; set; } = "";
@@ -27,4 +33,15 @@
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> Attributes { get; set; } = new();
+
+    private void OnSelectedClick() {
+        // Navigation doesn't happen when we click on the current URL,
+        // but we still need to pretend it is happening.
+
+        var tuneUI = Services.GetRequiredService<TuneUI>();
+        _ = tuneUI.Play("select-navbar-item");
+
+        var panelsUI = Services.GetRequiredService<PanelsUI>();
+        panelsUI.HidePanels();
+    }
 }

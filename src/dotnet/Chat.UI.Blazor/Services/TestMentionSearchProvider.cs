@@ -1,4 +1,5 @@
 using ActualChat.Search;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -9,11 +10,11 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
     public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {
         var searchPhrase = filter.ToSearchPhrase(true, true);
-        var mentions = Names.Select(name => new { name, searchMatch = searchPhrase.GetMatch(name) })
+        var mentions = Authors.Select(author => new { author, searchMatch = searchPhrase.GetMatch(author.Name) })
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(@t => t.searchMatch.Rank)
-            .ThenBy(x => x.name, StringComparer.Ordinal)
-            .Select(x => new MentionSearchResult(x.name, x.searchMatch))
+            .ThenBy(x => x.author.Name, StringComparer.Ordinal)
+            .Select(x => new MentionSearchResult(new MentionId(x.author.AuthorId, AssumeValid.Option), x.searchMatch, new (null, DefaultUserPicture.GetBoringAvatar(x.author.AuthorId))))
             .Take(limit)
             .ToArray();
         return Task.FromResult(mentions);
@@ -424,4 +425,8 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
         "Ziro the Hutt",
         "Zuckuss",
     };
+
+    private static (AuthorId AuthorId, string Name)[] Authors { get; } = Names
+        .Select((name, i) => (new AuthorId(new ChatId(Generate.Option), i, AssumeValid.Option), name))
+        .ToArray();
 }

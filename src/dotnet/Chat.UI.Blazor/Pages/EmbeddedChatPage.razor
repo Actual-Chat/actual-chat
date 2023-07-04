@@ -1,0 +1,106 @@
+@page "/embedded/{ChatSid}"
+@inherits ChatPage
+@layout BaseLayout
+@{
+    var m = Rendered = State.Value;
+    var chat = m.Chat;
+    var hasChat = !m.Chat.Id.IsNone;
+    // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
+}
+
+<div class="page-with-header-and-footer h-full w-full flex-x">
+    <ErrorBarrier>
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
+            <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
+                <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
+                    <ChatHeader @key="@chat" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
+                </div>
+                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10 bg-01">
+                    @if (hasChat) {
+                        <Banners @key="@chat" Chat="@chat"/>
+                    }
+                </div>
+                <div class="flex-1 flex-x h-full overflow-hidden">
+                    <div class="flex-1 -flex-y h-full overflow-hidden relative">
+                        <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
+                            <ChatFooter ChatPageModel="@m" />
+                        </div>
+                        <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
+                            <RenderStack Name="SubFooter"/>
+                        </div>
+                        <div class="layout-body flex-1 custom-scrollbar">
+                            @if (ReferenceEquals(chat, SpecialChat.Loading)) {
+                                <chat-view-skeleton count="15" />
+                            } else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
+                                <NoChatSelected/>
+                            } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
+                                <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+                            } else {
+                                <ChatView @ref="ChatViewRef" @key="@chat" Chat="@chat"/>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </RegionVisibilityProvider>
+    </ErrorBarrier>
+</div>
+
+@code {
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        PanelsUI.Left.SetIsVisible(false);
+        PanelsUI.Right.SetIsVisible(false);
+        base.OnInitialized();
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        // We intentionally use ChatUI.SelectedChatId rather than ChatSid here,
+        // coz OnSetParametersAsync anyway propagates ChatSid to SelectedChatId,
+        // and moreover, we want to make sure ComputeState gets invalidated
+        // specifically when SelectedChatId changes (vs when ChatSid changes).
+
+        // var computed = Computed.GetCurrent()!;
+        // computed.Invalidated += c => {
+        //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
+        // };
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+
+        var account = await Accounts.GetOwn(Session, cancellationToken);
+        try {
+            var chat = SpecialChat.NoChatSelected;
+            if (!chatId.IsNone) {
+                chat = await Chats.Get(Session, chatId, cancellationToken);
+                chat ??= SpecialChat.Unavailable;
+            }
+            if (chat is not { IsTemplate: true }) {
+                var footer = await GetFooterModel(chat, account, cancellationToken);
+                return new (chat, account, footer);
+            }
+
+            // create new chat based on a template and redirect to the new clone
+            var command = new Chats_GetOrCreateFromTemplate(Session, chatId);
+            var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+            if (createChatError != null)
+                throw StandardError.Unavailable("Unable to create new chat from template");
+
+            // Short delay to process invalidation
+            await Task.Delay(TimeSpan.FromSeconds(0.25), cancellationToken);
+
+            // Set new ChatId
+            ChatSid = newChat.Id;
+            SelectChat();
+
+            // Subscribe to chat changes
+            newChat = await Chats.Get(Session, newChat.Id, cancellationToken);
+            var newChatFooter = await GetFooterModel(newChat!, account, cancellationToken);
+            return new (newChat!, account, newChatFooter);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+            return new Model(SpecialChat.Unavailable, account, new());
+        }
+    }
+}

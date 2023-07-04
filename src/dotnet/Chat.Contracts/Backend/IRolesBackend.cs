@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IRolesBackend : IComputeService
@@ -6,23 +8,24 @@ public interface IRolesBackend : IComputeService
     Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Role>> List(
+    Task<ApiArray<Role>> List(
         ChatId chatId, AuthorId authorId,
         bool isGuest, bool isAnonymous,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<Role>> ListSystem(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Role> Change(ChangeCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] RoleId RoleId,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] Change<RoleDiff> Change
-    ) : ICommand<Role>, IBackendCommand;
+    Task<Role> Change(RolesBackend_Change command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record RolesBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] RoleId RoleId,
+    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(3)] Change<RoleDiff> Change
+) : ICommand<Role>, IBackendCommand;

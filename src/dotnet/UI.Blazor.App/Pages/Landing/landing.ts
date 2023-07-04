@@ -6,15 +6,49 @@ import { stopEvent } from 'event-handling';
 import { Timeout } from 'timeout';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
-import { Log, LogLevel, LogScope } from 'logging';
-const LogScope: LogScope = 'Landing';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+import { Log } from 'logging';
+
+const { debugLog } = Log.get('Landing');
 
 enum ScrollBlock {
     start = 'start',
     end = 'end',
+}
+
+class Carousel {
+    carousel: Element;
+    order: number;
+    currentSlideOrder: number;
+    prevSlideOrder: number;
+    nextSlideOrder: number;
+    sideLeft: Element;
+    sideRight: Element;
+    arrowLeft: Element;
+    arrowRight: Element;
+    dots: NodeListOf<Element>;
+
+    constructor(
+        carousel: Element,
+        order: number,
+        currentSlideOrder: number,
+        prevSlideOrder: number,
+        nextSlideOrder: number,
+        sideLeft: Element,
+        sideRight: Element,
+        arrowLeft: Element,
+        arrowRight: Element,
+        dots: NodeListOf<Element>) {
+        this.carousel = carousel;
+        this.order = order;
+        this.currentSlideOrder = currentSlideOrder;
+        this.prevSlideOrder = prevSlideOrder;
+        this.nextSlideOrder = nextSlideOrder;
+        this.sideLeft = sideLeft;
+        this.sideRight = sideRight;
+        this.arrowLeft = arrowLeft;
+        this.arrowRight = arrowRight;
+        this.dots = dots;
+    }
 }
 
 export class Landing {
@@ -36,7 +70,7 @@ export class Landing {
     ) {
         this.header = landing.querySelector('.landing-header');
         landing.querySelectorAll('.landing-links').forEach(e => this.links.push(e as HTMLElement));
-        landing.querySelectorAll('.page').forEach(e => this.pages.push(e as HTMLElement));
+        landing.querySelectorAll('.scrollable').forEach(e => this.pages.push(e as HTMLElement));
 
         this.scrollContainer = getScrollContainer(this.pages[0]);
 
@@ -59,6 +93,18 @@ export class Landing {
                 takeUntil(this.disposed$),
                 debounceTime(100),
             ).subscribe(() => this.onScroll(false));
+
+        const plug = this.landing.querySelector('.landing-video-plug') as HTMLImageElement;
+        const video = this.landing.querySelector('.landing-video') as HTMLVideoElement;
+        if (video != null) {
+            video.play().then(() => {
+                plug.classList.remove('flex');
+                plug.hidden = true;
+                video.hidden = false;
+            });
+        }
+
+        this.initCarousels();
     }
 
     public dispose() {
@@ -67,6 +113,132 @@ export class Landing {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private initCarousels() {
+        const carousels = this.landing.querySelectorAll('.carousel');
+        carousels.forEach(c => {
+            let id = c.getAttribute('id');
+            let carouselOrder = Number(id.split('-')[1]);
+            let currentSlideOrder = 1;
+            let sideLeft = c.querySelector('.c-side-left');
+            let sideRight = c.querySelector('.c-side-right');
+            let arrowLeft = sideLeft.querySelector('.arrow');
+            let arrowRight = sideRight.querySelector('.arrow');
+            let dots = c.querySelectorAll('.carousel-dot');
+            dots[0].classList.add('active');
+            let carousel = new Carousel(
+                c,
+                carouselOrder,
+                currentSlideOrder,
+                currentSlideOrder - 1,
+                currentSlideOrder + 1,
+                sideLeft,
+                sideRight,
+                arrowLeft,
+                arrowRight,
+                dots);
+
+            this.onDotClick(carousel);
+            this.updateControls(carousel);
+            let carouselContent = c.querySelector('.carousel-content');
+
+            fromEvent(carousel.sideRight, 'click')
+                .pipe(
+                    takeUntil(this.disposed$),
+                    debounceTime(500),
+                ).subscribe(() => this.onArrowClick(carousel, false));
+
+            fromEvent(carousel.sideLeft, 'click')
+                .pipe(
+                    takeUntil(this.disposed$),
+                    debounceTime(500),
+                ).subscribe(() => this.onArrowClick(carousel, true));
+
+            fromEvent(carouselContent, 'scroll')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.updateControls(carousel));
+        })
+    }
+
+    private onDotClick(carousel: Carousel) {
+        const content = carousel.carousel.querySelector('.carousel-content');
+        carousel.dots.forEach(dot => {
+            let slideId = dot.getAttribute('id').replace('dot-', '');
+            let slide = carousel.carousel.querySelector(`#${slideId}`)
+            if (slide != null) {
+                let slideLeft = slide.getBoundingClientRect().left;
+                const options = {
+                    behavior: 'smooth',
+                    left: slideLeft,
+                } as ScrollToOptions;
+                fromEvent(dot, 'click')
+                    .pipe(takeUntil(this.disposed$))
+                    .subscribe(() => content.scrollTo(options));
+            }
+        })
+    }
+
+    private updateControls(carousel: Carousel) {
+        this.getCurrentSlide(carousel);
+        let currentDotId = `dot-slide-${carousel.order}-${carousel.currentSlideOrder}`;
+        carousel.dots.forEach(d => {
+            let dotId = d.getAttribute('id');
+            if (dotId == currentDotId) {
+                if (!d.classList.contains('active')) {
+                    d.classList.add('active');
+                }
+            } else {
+                d.classList.remove('active');
+            }
+        });
+
+        if (carousel.currentSlideOrder == 1 && !carousel.arrowLeft.classList.contains('!hidden')) {
+            carousel.arrowLeft.classList.add('!hidden');
+            carousel.sideLeft.classList.add('cursor-default');
+        } else {
+            carousel.arrowLeft.classList.remove('!hidden');
+            carousel.sideLeft.classList.remove('cursor-default');
+        }
+        if (carousel.currentSlideOrder == carousel.dots.length) {
+            carousel.arrowRight.classList.add('!hidden');
+            carousel.sideRight.classList.add('cursor-default');
+        } else {
+            carousel.arrowRight.classList.remove('!hidden');
+            carousel.sideRight.classList.remove('cursor-default');
+        }
+    }
+
+    private getCurrentSlide(carousel: Carousel) {
+        let content = carousel.carousel.querySelector('.carousel-content');
+        let slides = content.querySelectorAll('.carousel-page');
+        slides.forEach(s => {
+            let rect = s.getBoundingClientRect();
+            if (rect.left >= 0 && rect.left < content.getBoundingClientRect().right) {
+                let currentSlideOrder = Number(s.getAttribute('id').split('-')[2]);
+                carousel.currentSlideOrder = currentSlideOrder;
+                carousel.prevSlideOrder = currentSlideOrder - 1;
+                carousel.nextSlideOrder = currentSlideOrder + 1;
+            }
+        });
+    }
+
+    private onArrowClick(carousel: Carousel, previous: boolean) {
+        let slideId = previous
+                          ? `slide-${carousel.order}-${carousel.prevSlideOrder}`
+                          : `slide-${carousel.order}-${carousel.nextSlideOrder}`;
+        let multiplier = previous ? carousel.prevSlideOrder: carousel.nextSlideOrder;
+
+        let next = carousel.carousel.querySelector(`#${slideId}`);
+        let content = carousel.carousel.querySelector('.carousel-content');
+        if (next != null) {
+            let nextLeft = next.getBoundingClientRect().left;
+            const options = {
+                behavior: 'smooth',
+                left: Math.abs(nextLeft) * (multiplier - 1),
+            } as ScrollToOptions;
+            content.scrollTo(options);
+        }
     }
 
     private updateHeader(): void {
@@ -147,9 +319,9 @@ export class Landing {
     private onScreenSizeChange() {
         const h = window.innerHeight;
         const w = window.innerWidth;
-        const hvRatio = h / w;
-        document.documentElement.style.setProperty('--vh', `${h}px`);
-        let useFullScreenPages = ScreenSize.isNarrow() ? (hvRatio >= 1.85 && hvRatio <= 2.25) : (h >= 700);
+        const hwRatio = h / w;
+        document.documentElement.style.setProperty('--wh', `${h}px`);
+        let useFullScreenPages = ScreenSize.isNarrow() ? (hwRatio >= 1.8 && hwRatio <= 2.5) : (h >= 700);
         if (useFullScreenPages)
             this.landing.classList.remove('no-full-screen-pages');
         else

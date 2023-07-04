@@ -14,7 +14,7 @@
 
     [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
-    [Parameter] public EventCallback<string> Uploaded { get; set; }
+    [Parameter] public EventCallback<MediaContent> Uploaded { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> InputAttributes { get; set; } = new();
@@ -37,16 +37,17 @@
     }
 
     [JSInvokable]
-    public async Task OnUploaded(string contentId) {
-        await Uploaded.InvokeAsync(contentId).ConfigureAwait(false);
+    public async Task OnUploaded(MediaContent mediaContent) {
+        await Uploaded.InvokeAsync(mediaContent).ConfigureAwait(false);
     }
 
     [JSInvokable]
     public void OnInvalidSize() {
-        if (!MaxSize.HasValue) return;
+        if (!MaxSize.HasValue)
+            return;
+
         var size = FileSizeFormatter.Format(MaxSize.Value);
-        var message = $"File is too big. Max file size: {size}.";
-        ErrorUI.ShowError(message);
+        ErrorUI.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
     }
 
     public async ValueTask DisposeAsync() {

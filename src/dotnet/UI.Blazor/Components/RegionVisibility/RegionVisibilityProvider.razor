@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@implements IDisposable
+
+<CascadingValue Value="@_regionVisibility" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private RegionVisibility? _regionVisibility = null!;
+
+    [Inject] public IServiceProvider Services { get; init; } = null!;
+
+    [Parameter, EditorRequired] public IState<bool> IsRegionVisible { get; set; } = null!;
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _regionVisibility = new RegionVisibility(Services, IsRegionVisible);
+
+    public void Dispose()
+        => _regionVisibility?.Dispose();
+}

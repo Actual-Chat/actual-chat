@@ -18,7 +18,7 @@ public sealed class AudioOutputController : IAudioOutputController
 
     public AudioOutputController(IServiceProvider services)
     {
-        var stateFactory = services.GetRequiredService<IStateFactory>();
+        var stateFactory = services.StateFactory();
         var type = GetType();
         _isAudioOn = stateFactory.NewMutable(
             false,

@@ -3,7 +3,8 @@
     var link = new LocalUrl(Link).ToDisplayUrl(UrlMapper);
 }
 
-<TileItem IsHoverable="IsHoverable">
+<TileItem IsHoverable="IsHoverable"
+          @attributes="@AdditionalAttributes">
     <Icon>
         <i class="icon-link-2 text-xl"></i>
     </Icon>
@@ -28,4 +29,6 @@
     [Parameter, EditorRequired] public string Link { get; set; } = "";
     [Parameter] public string Caption { get; set; } = "";
     [Parameter] public bool IsHoverable { get; set; } = true;
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 }

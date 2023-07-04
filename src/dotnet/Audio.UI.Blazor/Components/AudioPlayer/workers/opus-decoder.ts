@@ -6,15 +6,11 @@ import { Decoder } from '@actual-chat/codec/codec.debug';
 import { AsyncDisposable, Disposable } from 'disposable';
 import { AsyncProcessor } from 'async-processor';
 import { rpcClient, rpcNoWait } from 'rpc';
-import { FeederAudioWorklet, FeederAudioWorkletEventHandler } from '../worklets/feeder-audio-worklet-contract';
+import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
-import { Log, LogLevel, LogScope } from 'logging';
-import 'logging-init';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'OpusDecoder';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusDecoder');
 const enableFrequentDebugLog = false;
 
 /// #if MEM_LEAK_DETECTION
@@ -42,7 +38,7 @@ export class OpusDecoder implements AsyncDisposable {
     private constructor(streamId: string, decoder: Decoder, feederWorkletPort: MessagePort) {
         this.streamId = streamId;
         this.processor = new AsyncProcessor<Uint8Array | 'end'>('OpusDecoder', item => this.process(item));
-        this.feederWorklet = rpcClient<FeederAudioWorklet>(`${LogScope}.feederNode`, feederWorkletPort);
+        this.feederWorklet = rpcClient<FeederAudioWorklet>(`${logScope}.feederNode`, feederWorkletPort);
         this.decoder = decoder;
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
     }

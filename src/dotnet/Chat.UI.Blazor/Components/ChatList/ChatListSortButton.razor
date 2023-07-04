@@ -1,0 +1,42 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatListSortButton.Model>
+
+@{
+    var m = State.Value;
+    var order = m.SortOrder;
+}
+
+<ButtonRound
+    Class="chat-list-sort-btn btn-sm"
+    data-bubble="@(BubbleRef.New<ChatListTabsBubble>())"
+    data-bubble-priority="203"
+    data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+    data-menu="@(MenuRef.New<ChatListSortMenu>())"
+    data-menu-trigger="@MenuTrigger.Primary"
+    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+    <i class="@order.GetIcon() text-2xl"></i>
+</ButtonRound>
+
+@code {
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await ChatListUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        return new Model {
+            SortOrder = settings.Order,
+        };
+    }
+
+    public sealed record Model {
+        public static Model Loading { get; } = new();
+
+        public ChatListOrder SortOrder { get; init; }
+    }
+
+}

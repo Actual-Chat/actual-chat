@@ -1,11 +1,8 @@
 import { delayAsync } from 'promises';
 import { VibrationUI } from '../VibrationUI/vibration-ui';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'TuneUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog } = Log.get('TuneUI');
 
 export class TuneUI {
     public static readonly vibrationTunes: { [key: string]: Array<number> } = {
@@ -13,6 +10,7 @@ export class TuneUI {
         'cancel': [20],
         'open-modal': [20],
         'close-modal': [20],
+        'select-navbar-item': [],
         // Recording
         'begin-recording': [100,50,50],
         'end-recording': [100],
@@ -22,7 +20,6 @@ export class TuneUI {
         'stop-historical-playback': [20],
         'stop-realtime-playback': [20],
         // Chat UI
-        'select-chat': [20],
         'pin-unpin-chat': [50],
         // ChatMessageEditor
         'send-message': [50],
@@ -41,7 +38,7 @@ export class TuneUI {
         if (this.vibrationTunes[tuneName])
             return this.playVibration(tuneName);
 
-        throw new Error(`${LogScope}.playAndWait: not supported yet.`);
+        throw new Error(`${logScope}.playAndWait: not supported yet.`);
     }
 
     // Private methods

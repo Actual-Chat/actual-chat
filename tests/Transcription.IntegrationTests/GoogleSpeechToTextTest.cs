@@ -77,15 +77,13 @@ public class GoogleSpeechToTextTest : TestBase
         _ = BackgroundTask.Run(() => PushAudio(resultStream, recognizeRequests, streamingRecognitionConfig),
             Log,
             "Error");
-        var sw = new Stopwatch();
-        sw.Start();
+        var startedAt = CpuTimestamp.Now;
         // var firstResponse = await recognizeResponses.FirstAsync();
         var first = false;
         await foreach (var streamingRecognizeResponse in recognizeResponses) {
             if (!first) {
                 first = true;
-                sw.Stop();
-                Out.WriteLine("First transcription received in: {0} ms", sw.ElapsedMilliseconds);
+                Out.WriteLine($"First transcription received in: {startedAt}");
                 Out.WriteLine(streamingRecognizeResponse.ToString());
             }
 
@@ -116,10 +114,10 @@ public class GoogleSpeechToTextTest : TestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = webMStream ?? fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 

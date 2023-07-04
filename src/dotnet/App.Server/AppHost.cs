@@ -59,45 +59,37 @@ public class AppHost : IDisposable
             || type?.IsAssignableTo(typeof(IAsyncDisposable)) == true ? type : null;
     }
 
-    public virtual async Task Initialize(CancellationToken cancellationToken = default)
+    public virtual async Task InvokeDbInitializers(CancellationToken cancellationToken = default)
     {
-        var log = Host.Services.LogFor(GetType());
+        // InitializeSchema
+        await InvokeDbInitializers(
+            nameof(IDbInitializer.InitializeSchema),
+            (x, ct) => x.InitializeSchema(ct),
+            cancellationToken
+        ).ConfigureAwait(false);
 
-        async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
-        {
-            DbInitializer.Current = dbInitializer;
-            var dbInitializerName = dbInitializer.GetType().GetName();
-            try {
-                log.LogInformation("{DbInitializer} started", dbInitializerName);
-                await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
-                log.LogInformation("{DbInitializer} completed", dbInitializerName);
-                taskSource.TrySetResult(default);
-            }
-            catch (OperationCanceledException) {
-                taskSource.TrySetCanceled(cancellationToken);
-                throw;
-            }
-            catch (Exception e) {
-                log.LogError(e, "{DbInitializer} failed", dbInitializerName);
-                taskSource.TrySetException(e);
-                throw;
-            }
-            finally {
-                DbInitializer.Current = null;
-            }
-        }
+        // InitializeData
+        await InvokeDbInitializers(
+            nameof(IDbInitializer.InitializeData),
+            (x, ct) => x.InitializeData(ct),
+            cancellationToken
+        ).ConfigureAwait(false);
 
-        var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
-            .ToDictionary(i => i, _ => TaskSource.New<bool>(true));
-        var initializeTasks = initializeTaskSources
-            .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
-        foreach (var (dbInitializer, _) in initializeTasks)
-            dbInitializer.InitializeTasks = initializeTasks;
-        var tasks = initializeTaskSources
-            .Select(kv => InitializeOne(kv.Key, kv.Value))
-            .ToArray();
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-        // await Task.Delay(100, cancellationToken); // Just in case
+        // RepairData
+        await InvokeDbInitializers(
+            nameof(IDbInitializer.RepairData),
+            x => x.ShouldRepairData,
+            (x, ct) => x.RepairData(ct),
+            cancellationToken
+        ).ConfigureAwait(false);
+
+        // VerifyData
+        await InvokeDbInitializers(
+            nameof(IDbInitializer.VerifyData),
+            x => x.ShouldVerifyData,
+            (x, ct) => x.VerifyData(ct),
+            cancellationToken
+        ).ConfigureAwait(false);
     }
 
     public virtual Task Run(CancellationToken cancellationToken = default)
@@ -109,7 +101,7 @@ public class AppHost : IDisposable
     public virtual Task Stop(CancellationToken cancellationToken = default)
         => Host.StopAsync(cancellationToken);
 
-    // Protected methods
+    // Protected & private methods
 
     protected virtual void ConfigureHostConfiguration(IConfigurationBuilder cfg)
     {
@@ -145,4 +137,63 @@ public class AppHost : IDisposable
         WebHostBuilderContext webHost,
         IServiceCollection services)
         => AppServicesBuilder?.Invoke(webHost, services);
+
+    private Task InvokeDbInitializers(
+        string name,
+        Func<IDbInitializer, CancellationToken, Task> invoker,
+        CancellationToken cancellationToken)
+        => InvokeDbInitializers(name, _ => true, invoker, cancellationToken);
+
+    private async Task InvokeDbInitializers(
+        string name,
+        Func<IDbInitializer, bool> mustInvokePredicate,
+        Func<IDbInitializer, CancellationToken, Task> invoker,
+        CancellationToken cancellationToken)
+    {
+        var log = Host.Services.LogFor(GetType());
+        var runningTaskSources = Host.Services.GetServices<IDbInitializer>()
+            .ToDictionary(x => x, _ => TaskCompletionSourceExt.New<bool>());
+        var runningTasks = runningTaskSources
+            .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
+        foreach (var (dbInitializer, _) in runningTasks)
+            dbInitializer.RunningTasks = runningTasks;
+        var tasks = runningTaskSources
+            .Select(kv => mustInvokePredicate.Invoke(kv.Key) ? InvokeOne(kv.Key, kv.Value) : Task.CompletedTask)
+            .ToArray();
+
+        try {
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+        finally {
+            foreach (var (dbInitializer, _) in runningTasks)
+                dbInitializer.RunningTasks = null!;
+        }
+        return;
+
+        async Task InvokeOne(IDbInitializer dbInitializer, TaskCompletionSource<bool> initializedSource)
+        {
+            using var _ = dbInitializer.Activate();
+            var dbInitializerName = $"{dbInitializer.GetType().GetName()}.{name}";
+            try {
+                log.LogInformation("{DbInitializer} started", dbInitializerName);
+                var task = invoker.Invoke(dbInitializer, cancellationToken);
+                if (task.IsCompletedSuccessfully)
+                    log.LogInformation("{DbInitializer} completed synchronously (skipped?)", dbInitializerName);
+                else {
+                    await task.ConfigureAwait(false);
+                    log.LogInformation("{DbInitializer} completed", dbInitializerName);
+                }
+                initializedSource.TrySetResult(default);
+            }
+            catch (OperationCanceledException) {
+                initializedSource.TrySetCanceled(cancellationToken);
+                throw;
+            }
+            catch (Exception e) {
+                log.LogError(e, "{DbInitializer} failed", dbInitializerName);
+                initializedSource.TrySetException(e);
+                throw;
+            }
+        }
+    }
 }

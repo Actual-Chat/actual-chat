@@ -4,18 +4,15 @@ using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
 using Polly;
 using Polly.Extensions.Http;
-using Stl.Plugins;
 
 namespace ActualChat.Kubernetes.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class KubernetesModule : HostModule<KubernetesSettings>
+public sealed class KubernetesModule : HostModule<KubernetesSettings>
 {
-    public KubernetesModule(IPluginInfoProvider.Query _) : base(_) { }
-    [ServiceConstructor]
-    public KubernetesModule(IPluginHost plugins) : base(plugins) { }
+    public KubernetesModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
@@ -62,7 +59,7 @@ public class KubernetesModule : HostModule<KubernetesSettings>
 
         static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         {
-            var retryDelays = new RetryDelaySeq(0.5, 10);
+            var retryDelays = RetryDelaySeq.Exp(0.5, 10);
             return HttpPolicyExtensions
                 .HandleTransientHttpError()
                 .WaitAndRetryAsync(5, retryAttempt => retryDelays[retryAttempt]);

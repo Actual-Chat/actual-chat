@@ -4,40 +4,42 @@ namespace ActualChat;
 
 public static partial class Constants
 {
-    public static HostInfo HostInfo { get; set; } = new ();
+    public static HostInfo HostInfo { get; set; } = new();
 
     public static class DebugMode
     {
         // Core components
-        public static bool SignalR { get; } = false;
-        public static bool StoredState { get; } = false;
-        public static bool SyncedState { get; } = false;
-        public static bool MarkupParser { get; } = false;
-        public static bool ServerFusionMonitor { get; } = false; // Applies only to dev server
-        public static bool DisableStaticFileCaching { get; } = false; // Applies only to dev server
+        public static readonly bool RpcClient = false;
+        public static readonly bool SignalR = false;
+        public static readonly bool StoredState = false;
+        public static readonly bool SyncedState = false;
+        public static readonly bool MarkupParser = false;
+        public static readonly bool ServerFusionMonitor = false; // Applies only to dev server
+        public static readonly bool DisableStaticFileCaching = false; // Applies only to dev server
+        public static readonly bool ClientComputedCache = false;
 
         // UI services
-        public static bool VirtualList { get; } = false;
-        public static bool History { get; } = false;
-        public static bool ChatUI { get; } = false;
+        public static readonly bool History = true;
+        public static readonly bool ChatUI = false;
 
         // Audio
-        public static bool WebMReader { get; } = false;
-        public static bool AudioSource { get; } = false;
-        public static bool AudioProcessor { get; } = true;
-        public static bool AudioPlayback { get; } = false;
-        public static bool AudioPlaybackPlayMyOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.AppKind != AppKind.MauiApp;
-        public static bool AudioRecording { get; } = true;
-        public static bool AudioRecordingStream { get; } = false;
-        public static bool AudioStreamProxy { get; } = true;
+        public static readonly bool WebMReader = false;
+        public static readonly bool AudioSource = false;
+        public static readonly bool AudioProcessor = false;
+        public static readonly bool AudioPlayback = false;
+        public static bool AudioPlaybackPlayMyOwnAudio
+            => HostInfo.IsDevelopmentInstance && HostInfo.AppKind != AppKind.MauiApp;
+        public static readonly bool AudioRecording = false;
+        public static readonly bool AudioRecordingStream = false;
+        public static readonly bool AudioStreamProxy = false;
 
         // Transcription
-        public static bool Transcription { get; } = false;
-        public static bool TranscriberAny { get; } = false;
-        public static bool TranscriberGoogle { get; } = true;
-        public static bool TranscriptStreamProxy { get; } = false;
+        public static readonly bool Transcription = false;
+        public static readonly bool TranscriberAny = false;
+        public static readonly bool TranscriberGoogle = false;
+        public static readonly bool TranscriptStreamProxy = false;
 
         // Misc.
-        public static bool KubeEmulation { get; } = false;
+        public static readonly bool KubeEmulation = false;
     }
 }

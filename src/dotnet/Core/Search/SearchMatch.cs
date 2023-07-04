@@ -1,22 +1,25 @@
+using MemoryPack;
+
 namespace ActualChat.Search;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract]
-public readonly record struct SearchMatch(
-    [property: DataMember(Order = 0)] string Text,
-    [property: DataMember(Order = 1)] double Rank,
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial record struct SearchMatch(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,
     SearchMatchPart[] Parts)
 {
-    public static SearchMatch Empty { get; } = new("");
+    public static SearchMatch Empty { get; } = New("");
 
     private readonly SearchMatchPart[]? _parts = Parts;
 
-    [DataMember(Order = 2)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public SearchMatchPart[] Parts {
         get => _parts ?? Array.Empty<SearchMatchPart>();
         init => _parts = value;
     }
 
+    [MemoryPackIgnore]
     public IEnumerable<SearchMatchPart> PartsWithGaps {
         get {
             var lastIndex = 0;
@@ -32,9 +35,8 @@ public readonly record struct SearchMatch(
         }
     }
 
-    public SearchMatch(string? text)
-        : this(text ?? "", 0, Array.Empty<SearchMatchPart>())
-    { }
+    public static SearchMatch New(string? text)
+        => new(text ?? "", 0, Array.Empty<SearchMatchPart>());
 
     public override string ToString()
     {

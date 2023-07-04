@@ -1,113 +1,149 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatState>
+@inherits ComputedStateComponent<ChatListItem.Model>
 @{
-    var m = _rendered = State.Value;
-    var chat = m.Chat;
-    var info = m.Info;
-    var lastTextEntry = info.LastTextEntry;
-    var audioState = m.AudioState;
+    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+
+    var chatState = m.ChatState;
+    var chat = chatState.Chat;
+    var chatInfo = chatState.Info;
+    var lastTextEntry = chatInfo.LastTextEntry;
+    var audioState = chatState.AudioState;
 }
 
-<NavbarItem
-    Url="@($"/chat/{chat.Id}")"
-    IsSelected="@m.IsSelected"
-    data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
-    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-    <ChildContent>
-        <div class="flex-1 flex-x items-center gap-x-2" @onclick="@OnClick">
-            <ChatIcon Chat="m.Chat"/>
-            <div class="grid justify-start items-start gap-y-1">
-                <span class="text-headline-1 text-02 truncate">
-                    <SearchUIHighlighter Text="@m.Chat.Title"/>
-                </span>
-                @if (lastTextEntry != null) {
-                    <div class="text-xs text-03 truncate">
-                        @if (m.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
-                            <span>
-                                <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
-                            </span>
-                        }
-                        @info.LastTextEntryText
+@if (m == Model.Loading) {
+    <ChatListItemSkeleton />
+}
+else {
+    <NavbarItem
+        Url="@($"/chat/{chat.Id}")"
+        IsSelected="@chatState.IsSelected"
+        data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
+        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+        @attributes="@Attributes">
+        <ChildContent>
+            <div class="flex-1 flex-x items-center gap-x-2">
+                <ChatIcon Chat="chatState.Chat"/>
+                <div class="grid justify-start items-start gap-y-1">
+                    <span class="text-headline-1 text-02 truncate">
+                        <SearchUIHighlighter Text="@chatState.Chat.Title"/>
+                    </span>
+                    @if (lastTextEntry != null) {
+                        <div class="text-xs text-03 truncate">
+                            @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                                <span>
+                                    <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                                </span>
+                            }
+                            @chatInfo.LastTextEntryText
+                        </div>
+                    }
+                </div>
+            </div>
+        </ChildContent>
+        <Ending>
+            @{
+                var isWide = ScreenSize.IsWide();
+                var isActiveChatList = ListKind == ChatListKind.Active;
+                var isListeningOrRecording = chatState.IsListening || chatState.IsRecording;
+                var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
+                var hasMenu = !isActiveChatList && isWide;
+                var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
+            }
+            <UnreadCountWithTime
+                Value="@chatState.Info.UnreadCount"
+                LastEntry="@chatState.Info.LastTextEntry"
+                HideLastEntryTime="@isListeningOrRecording"
+                NotificationMode="@chatState.Info.UserSettings.NotificationMode"
+                HasMentions="chatState.Info.HasUnreadMentions"/>
+            <div class="@(isHoverable ? "hoverable" : "") slot">
+                @if (hasButtons) {
+                    @if (chatState.IsRecording) {
+                        <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
+                    }
+                    <div class="@(hasMenu ? "" : "pr-1")">
+                        <ChatListListenToggle AudioState="@audioState" Class="blackout"/>
+                    </div>
+                }
+                @if (hasMenu) {
+                    <div
+                        class="menu"
+                        data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+
+                        <ButtonRound Class="blackout" ContentClass="!bg-transparent">
+                            <i class="icon-more-vertical text-2xl"></i>
+                        </ButtonRound>
                     </div>
                 }
             </div>
-        </div>
-    </ChildContent>
-    <Ending>
-        @{
-            var isWide = ScreenSize.IsWide();
-            var isActiveChatList = ListKind == ChatListKind.Active;
-            var isListeningOrRecording = m.IsListening || m.IsRecording;
-            var hasButtons = isWide || isActiveChatList || isListeningOrRecording;
-            var hasMenu = !isActiveChatList && isWide;
-            var isHoverable = isWide && !isActiveChatList && !isListeningOrRecording;
-        }
-        <UnreadCountWithTime
-            Value="@m.Info.UnreadCount"
-            LastEntry="@m.Info.LastTextEntry"
-            HideLastEntryTime="@isListeningOrRecording"
-            NotificationMode="@m.Info.UserSettings.NotificationMode"
-            HasMentions="m.Info.HasUnreadMentions"/>
-        <div class="@(isHoverable ? "hoverable" : "") slot">
-            @if (hasButtons) {
-                @if (m.IsRecording) {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="@audioState.IsRecording" Class="blackout"/>
-                }
-                <div class="@(hasMenu ? "" : "pr-1")">
-                    <ChatListListenToggle AudioState="@audioState" Class="blackout"/>
-                </div>
-            }
-            @if (hasMenu) {
-                <div
-                    class="menu"
-                    data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
-                    data-menu-trigger="@MenuTrigger.Primary"
-                    data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-
-                    <ButtonRound Class="blackout" ContentClass="!bg-transparent">
-                        <i class="icon-more-vertical text-2xl"></i>
-                    </ButtonRound>
-                </div>
-            }
-        </div>
-    </Ending>
-</NavbarItem>
+        </Ending>
+    </NavbarItem>
+}
+@if (m.IsLastItemInBlock) {
+    <div class="mx-2 my-1.5 border-b border-bg-04"></div>
+}
 
 @code {
-    private ChatState? _rendered;
-
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; init; }
-    [Parameter, EditorRequired] public ChatInfo ChatInfo { get; init; } = null!;
-    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; }
 
-    protected override bool ShouldRender()
-        => State.HasError || !ReferenceEquals(_rendered, State.Value);
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
+    [Parameter, EditorRequired] public int Index { get; init; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> Attributes { get; set; } = new();
 
-    protected override ComputedState<ChatState>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new ChatState(ChatInfo, new ChatAudioState(ChatInfo.Id)),
+            InitialValue = Model.Loading,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<ChatState> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var chatId = await ChatUI.FixChatId(ChatInfo.Id, cancellationToken).ConfigureAwait(false);
+        // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
+        // Properties are copied to local vars because of this.
+        var listKind = ListKind;
+        var index = Index;
+
+        var chatId = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
+        if (chatId.IsNone)
+            return Model.Loading;
+
+        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chatInfo == null)
+            return Model.None;
+
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        return chatState ?? ChatState.None;
+        if (chatState == null)
+            return Model.None;
+
+        var isLastItemInBlock = false;
+        if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
+            var nextChatId = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
+            var nextChatInfo = nextChatId.IsNone ? null
+                : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
+            if (nextChatInfo != null)
+                isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
+        }
+
+        return new Model {
+            ChatState = chatState,
+            IsLastItemInBlock = isLastItemInBlock,
+        };
     }
 
-    private async Task OnClick() {
-        var tuneUI = ChatUI.Services.GetRequiredService<TuneUI>();
-        _ = tuneUI.Play("select-chat");
+    public sealed record Model {
+        public static Model Loading { get; } = new() { ChatState = ChatState.Loading };
+        public static Model None { get; } = new() { ChatState = ChatState.None };
 
-        if (ScreenSize.IsWide() || !State.Value.IsSelected)
-            return;
-
-        // This part hides Navbar when you click on selected chat
-        await Task.Delay(TimeSpan.FromMilliseconds(100));
-        var navbarUI = ChatUI.Services.GetRequiredService<NavbarUI>();
-        navbarUI.SetIsVisible(false);
+        public ChatState ChatState { get; init; } = ChatState.None;
+        public bool IsLastItemInBlock { get; init; }
     }
 }

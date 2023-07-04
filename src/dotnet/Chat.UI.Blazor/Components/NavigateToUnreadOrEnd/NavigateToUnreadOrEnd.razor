@@ -2,6 +2,8 @@
 @inherits ComputedStateComponent<NavigateToUnreadOrEnd.Model>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
     _animator.State = m.IsVisible;
     if (_animator.MustHideComponent)
         return;
@@ -22,7 +24,6 @@
 
 @code {
     private ShowHideAnimator _animator = null!;
-    private IMutableState<bool> _overrideToZero = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -30,15 +31,12 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public bool IsVisible { get; set; }
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
+    [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     protected override void OnInitialized() {
 
         _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
-        _overrideToZero = StateFactory.NewMutable(
-            false,
-            StateCategories.Get(GetType(), nameof(_overrideToZero)));
         base.OnInitialized();
     }
 
@@ -50,13 +48,24 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             InitialValue = Model.Invisible,
+            UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = new ChatId(ChatSid, ParseOrNone.Option);
-        if (!IsVisible || chatId.IsNone)
+        if (chatId.IsNone)
+            return Model.None;
+
+        var isContainerVisible = await RegionVisibility.IsVisible.Use(cancellationToken);
+        if (!isContainerVisible)
+            return Model.None;
+
+        var itemVisibility = await ChatView.ItemVisibility.Use(cancellationToken);
+        var isVisible = !itemVisibility.IsEndAnchorVisible;
+        if (!isVisible)
             return Model.Invisible;
+
 
         var chat = await ChatUI.Get(chatId, cancellationToken);
         if (chat == null)
@@ -66,30 +75,9 @@
         if (lastEntryId.IsNone)
             return Model.Invisible;
 
-        var unreadCount = await GetUnreadCount(chatId, cancellationToken);
+        var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken);
         var isAboveUnread = await IsViewportAboveUnreadEntryState(cancellationToken);
         return new(true, lastEntryId, unreadCount, isAboveUnread);
-    }
-
-    private async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken) {
-        var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken);
-        if (unreadCount == 0) {
-            _overrideToZero.Value = true;
-            return 0;
-        }
-
-        // Switch from zero to positive value with delay 1 second.
-        if (_overrideToZero.Value) {
-            var snapshot = _overrideToZero.Snapshot;
-            _ = Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None)
-                .ContinueWith(_ => {
-                    if (_overrideToZero.Snapshot == snapshot) // Only first task like this one will "win"
-                        _overrideToZero.Value = false;
-                }, TaskScheduler.Default);
-        }
-
-        var overrideToZero = await _overrideToZero.Use(cancellationToken);
-        return overrideToZero ? 0 : unreadCount;
     }
 
     private async Task<bool> IsViewportAboveUnreadEntryState(CancellationToken cancellationToken) {
@@ -113,6 +101,7 @@
 
     public sealed record Model(bool IsVisible, ChatEntryId LastEntryId, Trimmed<int> UnreadCount, bool IsAboveUnreadEntry)
     {
+        public static Model None { get; } = new(false, default, default, default);
         public static Model Invisible { get; } = new(false, default, default, default);
     }
 }

@@ -1,0 +1,100 @@
+@{
+    string headerTitle;
+    var nameTitle = "Name";
+    if (IsOwn) {
+        if (Author.IsAnonymous) {
+            headerTitle = "Your profile (Anonymous)";
+            nameTitle = "";
+        } else {
+            headerTitle = "Your profile";
+        }
+    }
+    else if (Author.IsAnonymous) {
+        headerTitle = "Anonymous author";
+        nameTitle = "";
+    } else
+        headerTitle = Author.Avatar.Name;
+}
+
+<Tile>
+    <TileItem IsHoverable="false" Class="header-tile-item">
+        <Content>
+            @headerTitle
+        </Content>
+        <Right>
+            <ButtonX Class="btn-sm" Click="@(_ => Modal.Close())"/>
+        </Right>
+    </TileItem>
+
+    <TileItem IsHoverable="false" Class="first-tile-item my-2">
+        <Icon>
+            @if (Author.IsAnonymous) {
+                <AnonymousIcon Class="w-12 h-12"></AnonymousIcon>
+            } else {
+                <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size12" ShowPresence="true" ShowRecording="true"/>
+            }
+        </Icon>
+        <Right>
+        </Right>
+        <Content>
+            @if (Author.IsAnonymous) {
+                <span class="avatar-name truncate font-medium text-title-1 text-01">
+                    Anonymous
+                </span>
+            } else {
+                <AuthorName AuthorSid="@Author.Id" Class="text-01 font-medium text-title-1" ShowDetailsOnClick="false"/>
+            }
+        </Content>
+        <Caption>
+            @nameTitle
+        </Caption>
+    </TileItem>
+
+    @if (Author.IsAnonymous) {
+        <TileItem>
+            <Icon>
+                <i class="icon-at text-xl"></i>
+            </Icon>
+            <Content>
+                @Author.Avatar.Name
+            </Content>
+            <Caption>
+                Username
+            </Caption>
+        </TileItem>
+    }
+
+    @if (!IsOwn && Author.IsAnonymous) {
+        <TileItem Class="anonymous-bio">
+            <Icon>
+                <i class="icon-alert-triangle text-xl"></i>
+            </Icon>
+            <Content>
+                This author is anonymous,
+                so you can't message them directly.
+            </Content>
+            <Caption>
+            </Caption>
+        </TileItem>
+    }
+
+    @if (!Author.IsAnonymous && !Author.Avatar.Bio.IsNullOrEmpty()) {
+        <TileItem>
+            <Icon>
+                <i class="icon-person text-xl"></i>
+            </Icon>
+            <Content>
+                @Author.Avatar.Bio
+            </Content>
+            <Caption>
+                Bio
+            </Caption>
+        </TileItem>
+    }
+</Tile>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsOwn { get; set; }
+}

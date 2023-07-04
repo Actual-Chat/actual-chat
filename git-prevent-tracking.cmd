@@ -5,3 +5,5 @@
 :;# google-services.json config files are stored separately. If we change them locally, we don't want they are tracked in the repo.
 git update-index --skip-worktree ./src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.dev
 git update-index --skip-worktree ./src/dotnet/App.Maui/Platforms/Android/Resources/google-services.json.prod
+git update-index --skip-worktree ./src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.dev
+git update-index --skip-worktree ./src/dotnet/App.Maui/Platforms/iOS/GoogleService-Info.plist.prod

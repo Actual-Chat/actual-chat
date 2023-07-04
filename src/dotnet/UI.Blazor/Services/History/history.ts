@@ -1,25 +1,40 @@
 import { PromiseSource } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'History';
-const log = Log.get(LogScope, LogLevel.Info);
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { infoLog } = Log.get('History');
 
 export class History {
     private static backendRef: DotNet.DotNetObject = null;
+
+    public static navigationManager: any
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public static init(backendRef1: DotNet.DotNetObject): void {
+    public static init(
+        backendRef1: DotNet.DotNetObject,
+        url: string,
+        historyEntryState: string
+    ): void {
         this.backendRef = backendRef1;
+        this.navigationManager = window.window['Blazor']._internal.navigationManager;
+
+        const options = {
+            forceLoad : false,
+            replaceHistoryEntry : true,
+            historyEntryState : historyEntryState
+        };
+        this.navigationManager.navigateTo(url, options);
         this.whenReady.resolve(undefined);
         globalThis["App"]["history"] = this;
     }
 
-    public static async navigateTo(uri: string, mustAddHistoryItem: boolean = false): Promise<void> {
-        log?.log(`navigateTo:`, uri);
+    public static async navigateTo(
+        uri: string,
+        mustReplace: boolean = false,
+        force: boolean = false,
+        addInFront: boolean = false
+    ): Promise<void> {
+        infoLog?.log(`navigateTo:`, uri, mustReplace, force, addInFront);
         await this.whenReady;
-        await this.backendRef.invokeMethodAsync('NavigateTo', uri, mustAddHistoryItem);
+        await this.backendRef.invokeMethodAsync('NavigateTo', uri, mustReplace, force, addInFront);
     };
 }

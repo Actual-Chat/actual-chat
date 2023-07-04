@@ -1,19 +1,34 @@
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
 @{
-    var slotState = RenderVars.RenderSlot(Name);
-    var slotComputed = slotState.Computed;
-    if (slotComputed.Value == this)
-        slotComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
-    else
-        slotState.Value = this;
+    if (_slot != null) {
+        _slot.NotifyChanged();
+        return;
+    }
+
+    _slot = RenderVars.RenderSlot(Name);
+    _slot.Value.Add(this);
+    _slot.NotifyChanged();
 }
 @code {
+    private RenderVar<List<RenderIntoSlot>>? _slot;
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    public void Dispose()
-        => RenderVars.RenderSlot(Name).Value = null;
+    public void Dispose() {
+        if (_slot == null)
+            return;
+
+        if (!_slot.Value.Remove(this)) {
+            var log = Services.LogFor(GetType());
+            log.LogWarning("Couldn't remove RenderIntoSlot with Name = '{Name}'", Name);
+            return;
+        }
+
+        _slot.NotifyChanged();
+    }
 }

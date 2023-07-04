@@ -1,12 +1,8 @@
 import Denque from 'denque';
 import { PromiseSource } from 'promises';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'AsyncProcessor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('AsyncProcessor');
 
 export class AsyncProcessor<T> {
     private readonly queue = new Denque<T>();

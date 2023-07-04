@@ -12,7 +12,7 @@
 <span class="@Class live-time-text" title="@tooltip">@m</span>
 
 @code {
-    [Inject] private ILiveTime LiveTime { get; init; } = null!;
+    [Inject] private LiveTime LiveTime { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";

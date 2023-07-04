@@ -1,53 +1,26 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@implements IDisposable
-@using ActualChat.Hosting
-@using ActualChat.UI.Blazor.Services
-@{
-    var isSelected = NavbarUI.SelectedGroupId == Id;
-    var selectedClass = isSelected ? "selected" : "";
-    var buttonClass = $"{(isSelected ? "on" : "")} {Class}";
-}
 
-<div class="navbar-button @selectedClass @Class">
-    <LeftLine/>
+<div class="navbar-button @Class"
+     @attributes="@AdditionalAttributes">
     <ButtonSquare
-        Click="@OnClick"
-        Class="@buttonClass"
+        Click="@Click"
+        Class="@ButtonClass"
         Tooltip="@Tooltip"
         ContentClass="navbar-button-content"
         TooltipPosition="@TooltipPosition">
         @ChildContent
     </ButtonSquare>
-    <div class="w-[5px]">
-    </div>
-    @if (ShowBadge && BadgeContent != null) {
-        <Badge>@BadgeContent</Badge>
-    }
+    @Ending
 </div>
 
 @code {
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-
-    [Parameter, EditorRequired] public string Id { get; set; } = "";
-    [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
-    [Parameter] public bool ShowBadge { get; set; }
+    [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
-    [Parameter] public FloatingPosition TooltipPosition { get; set; }
+    [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public RenderFragment? BadgeContent { get; set; }
-
-    protected override void OnInitialized()
-        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
-
-    public void Dispose()
-        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
-
-    private void OnClick()
-        => NavbarUI.SelectGroup(Id, Title);
-
-    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
-        => StateHasChanged();
+    [Parameter] public RenderFragment? Ending { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 }

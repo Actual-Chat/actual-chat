@@ -5,8 +5,9 @@ namespace ActualChat.UI.Blazor.Components;
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 {
-    private readonly TaskSource<Unit> _whenShownSource = TaskSource.New<Unit>(true);
-    private readonly TaskSource<Unit> _whenClosedSource = TaskSource.New<Unit>(true);
+    private static long _lastId;
+    private readonly TaskCompletionSource _whenShownSource = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenClosedSource = TaskCompletionSourceExt.New();
     private RenderFragment _view = null!;
 
     public Symbol Id { get; }
@@ -20,14 +21,14 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
 
     public ModalRef(ModalOptions options, object model, ModalHost host)
     {
-        Id = $"modal-{Ulid.NewUlid().ToString()}";
+        Id = $"Modal-{model.GetType().GetName()}-{Interlocked.Increment(ref _lastId)}";
         Options = options;
         Model = model;
         Host = host;
     }
 
-    public bool Close(bool forceClose = false)
-        => Host.Close(Id, forceClose);
+    public bool Close(bool force = false)
+        => Host.Close(Id, force);
 
     // IModalRefImpl implementation
 
@@ -39,9 +40,9 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     void IModalRefImpl.SetModal(Modal modal)
     {
         Modal = modal;
-        _whenShownSource.TrySetResult(default);
+        _whenShownSource.TrySetResult();
     }
 
     void IModalRefImpl.MarkClosed()
-        => _whenClosedSource.TrySetResult(default);
+        => _whenClosedSource.TrySetResult();
 }

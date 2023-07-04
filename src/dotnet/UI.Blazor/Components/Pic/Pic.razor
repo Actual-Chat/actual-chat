@@ -30,7 +30,7 @@
     private bool _hasPicture;
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
@@ -62,7 +62,7 @@
 
         if (EnableImagePreview) {
             var url = UrlMapper.ContentUrl(ContentId);
-            await ImageViewerUI.Show(url);
+            await VisualMediaViewerUI.Show(url);
         }
     }
 }

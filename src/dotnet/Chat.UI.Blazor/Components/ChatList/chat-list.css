@@ -15,6 +15,10 @@
                                 btn - [...] hover menu
 */
 
+.navbar-chats {
+    will-change: custom; /* Ensures its own composition layer */
+}
+
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
@@ -24,6 +28,15 @@
 }
 .active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
+}
+
+/* Tabs */
+.navbar-chats .tab-panel-tabs .chats-tab {
+    @apply flex-y h-full;
+    @apply overflow-y-visible md:overflow-y-auto custom-scrollbar;
+}
+.navbar-chats .tab-panel-tabs .c-container .c-badge {
+    @apply flex-x items-center justify-center;
 }
 
 /* Sort button */
@@ -44,10 +57,10 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 .chat-list.chat-list-active {
     @apply flex-1;
 }
-.chat-list.chat-list-pinned {
-    @apply flex-none pb-2 px-2;
+.chat-list.chat-list-all {
+    @apply flex-1 p-2;
 }
-.chat-list.chat-list-unpinned {
+.chat-list.chat-list-skeleton {
     @apply flex-1 px-2;
 }
 
@@ -65,7 +78,12 @@ body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {
 }
 .chat-list .navbar-item .recording-in-chat.on .btn-content,
 body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on .btn-content {
-    @apply text-recorder-on;
+    @apply text-icons-04;
+}
+
+/* Hide avatar name skeletons - otherwise they're blinking on refresh */
+.chat-list .navbar-item-content .avatar-name.skeleton {
+    @apply hidden;
 }
 
 /* Menu */

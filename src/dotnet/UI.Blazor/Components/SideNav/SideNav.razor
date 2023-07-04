@@ -2,13 +2,13 @@
 @using ActualChat.UI.Blazor.Components.SideNav
 @implements IAsyncDisposable
 
-<div @ref="ElementRef" class="@_class">
-    <div class="side-nav-drawer"></div>
+<div @ref="ElementRef" class="@_class" data-side-nav="@_attribute">
     @ChildContent
 </div>
 
 @code {
     private string _class = "";
+    private string _attribute = "";
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
@@ -26,9 +26,9 @@
         _class += Side == SideNavSide.Left
             ? " side-nav-left"
             : " side-nav-right";
-        _class += IsOpen
-            ? " open"
-            : " closed";
+        _attribute = IsOpen
+            ? "open"
+            : "closed";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

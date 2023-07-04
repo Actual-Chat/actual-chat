@@ -6,8 +6,8 @@ public record MarkupValidator : MarkupVisitor<bool>
 
     public static MarkupValidator ContainsAnyMention { get; } = new(m => m is MentionMarkup, AggregationMode.Any);
 
-    public static MarkupValidator ContainsMention(string id)
-        => new(m => m is MentionMarkup mention && OrdinalEquals(mention.Id, id), AggregationMode.Any);
+    public static MarkupValidator ContainsMention(MentionId id)
+        => new(m => m is MentionMarkup mention && mention.Id == id, AggregationMode.Any);
 
     private readonly Func<Markup, bool> _predicate;
     private readonly AggregationMode _aggregationMode;

@@ -2,30 +2,39 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.App.Server.Pages
 @using ActualChat.Hosting
+@using ActualChat.Web
+@using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Stl.Fusion.Server.Authentication
-@using Stl.Fusion.Server.Controllers
+@using Stl.Fusion.Server.Endpoints
 
 @inject IServiceProvider Services
 @inject ServerAuthHelper ServerAuthHelper
+@inject ISessionResolver SessionResolver
+@inject SessionCookies SessionCookies
 @inject HostInfo HostInfo
 @{
-    await ServerAuthHelper.UpdateAuthState(HttpContext);
+    if (!SessionResolver.HasSession)
+        SessionResolver.Session = SessionCookies.ReadOrWriteNew(HttpContext);
+
+    var session = SessionResolver.Session;
+    await ServerAuthHelper.UpdateAuthState(session, HttpContext);
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
+    var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
-    var session = ServerAuthHelper.Session;
-    var blazorUtilsVersion = GetBlazorJsVersion();
+    var blazorScriptsHash = GetBlazorScriptsHash();
     Layout = null;
-    // TODO: add HeadOutlet component (to edit <head>)
-    // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
 
-    string GetBlazorJsVersion()
+    string GetBlazorScriptsHash()
     {
         if (HostInfo.IsDevelopmentInstance)
             return "";
-        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions).Assembly.GetInformationalVersion().RequireNonEmpty("blazor extensions assembly version");
-        return $".{version.GetSHA1HashCode().ToLower()}";
+
+        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions)
+            .Assembly
+            .GetInformationalVersion()
+            .RequireNonEmpty("Blazor extensions assembly version");
+        return "." + version.GetSHA1HashCode().ToLower();
     }
 }
 
@@ -42,26 +51,25 @@
     <meta name="theme-color" content="#444444">
     <title>Actual Chat</title>
     <base href="~/"/>
-    <link rel="preload" href="/dist/fonts/forkawesome-webfont.woff2" as="font" crossorigin />
-    <link rel="preload" href="/dist/fonts/icon.woff2?t=1676632870137" as="font" crossorigin />
+    @* The version of icon.woff2 must match the version in icons.css! *@
+    <link rel="preload" href="/dist/fonts/icon.woff2?t=1684754457696" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Regular.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
-    <link rel="preload" href="/dist/onDeviceAwakeWorker.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/opusDecoderWorker.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/opusEncoderWorker.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/warmUpWorklet.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/vadWorker.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/feederWorklet.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/opusEncoderWorklet.js" as="script" asp-append-version="true" crossorigin />
-    <link rel="preload" href="/dist/vadWorklet.js" as="script" asp-append-version="true" crossorigin />
-    <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
+    <link rel="prefetch" href="/dist/onDeviceAwakeWorker.js" as="worker" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/opusDecoderWorker.js" as="worker" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/opusEncoderWorker.js" as="worker" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/warmUpWorklet.js" as="audioworklet" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/vadWorker.js" as="worker" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/feederWorklet.js" as="audioworklet" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/opusEncoderWorklet.js" as="audioworklet" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/vadWorklet.js" as="audioworklet" asp-append-version="true" crossorigin />
     <link rel="prefetch" href="/dist/wasm/codec.wasm" as="fetch" asp-append-version="true" crossorigin />
-    <link rel="prefetch" href="/dist/wasm/soxr_wasm.wasm" as="fetch" asp-append-version="true" crossorigin />
-    <link rel="prefetch" href="/dist/wasm/ort-wasm-simd.wasm" as="fetch" asp-append-version="true" crossorigin />
+    <link rel="prefetch" href="/dist/wasm/webrtc-vad.wasm" as="fetch" asp-append-version="true" crossorigin />
     <link rel="prefetch" href="/dist/wasm/vad.bin" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
-    <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js" asp-append-version="true"></script>
+    <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
+    <script src="_content/Stl.Fusion.Blazor.Authentication/scripts/fusionAuth.js" asp-append-version="true"></script>
     <script>
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";
@@ -69,86 +77,49 @@
             environment: '@(HostInfo.Environment.Value)',
             baseUri: null,
             sessionHash: '@(session.Hash)',
-            windowId: null,
-            initPage: function (baseUri, sessionHash) {
-                throw Error("Internal error: App.initPage is available only in mobile apps.");
-            },
             postMessage: function (data) {
                 throw Error("Internal error: App.postMessage is available only in mobile apps.");
-            }
-        }
-
-        // Set App.windowId
-        window.addEventListener("beforeunload", function (e) {
-            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
-            windowIds.push(window.App.windowId);
-            window.sessionStorage.windowIds = JSON.stringify(windowIds);
-            return null;
-        });
-        window.addEventListener("load", function (e) {
-            let windowIds = JSON.parse(window.sessionStorage.windowIds ?? "[]");
-            windowIds = windowIds.filter(function(value, i, a) { return value != null; });
-            window.App.windowId = windowIds.pop();
-            if (window.App.windowId == null)
-                window.App.windowId = '@(session.Hash)-' + Math.random().toString(36).slice(2).substring(0, 6);
-            else
-                window.sessionStorage.windowIds = JSON.stringify(windowIds);
-            return null;
+            },
+            whenBundleReady: null,
+            markBundleReady: function() { },
+            browserInit: async function(apiVersion, sessionHash, calls) {
+                await window.App.whenBundleReady;
+                await window.ui.BrowserInit.init(apiVersion, sessionHash, calls);
+            },
+        };
+        window.App.whenBundleReady = new Promise((resolve, _) => {
+            window.App.markBundleReady = resolve;
         });
     </script>
+    <script async src="/dist/bundle.js" asp-append-version="true"></script>
+    @if (isServerSideBlazor) {
+        <component type="typeof(Microsoft.AspNetCore.Components.Web.HeadOutlet)" render-mode="ServerPrerendered"/>
+    }
 </head>
-<body>
-<div id="blazor-error-ui" class="hidden fixed inset-x-0 md:inset-x-1/4 mt-16 mx-2" style="z-index: 100000;">
-    <div class="flex w-full justify-center">
-        <div class="flex flex-1 max-w-3xl bg-error rounded-md shadow-lg">
-            <div class="bg-error w-16 text-error-toast-text rounded-l-md justify-center flex items-center">
-                <i class="fa fa-2x fa-exclamation-triangle"></i>
-            </div>
-            <div class="h-full flex-1 flex border-error">
-                <div class="flex-1 px-4 py-1 break-words">
-                    <p class="text-error-toast-text font-bold text-lg">Error</p>
-                    <p class="text-error-toast-text">
-                        <environment include="Staging,Production">
-                            An error has occurred. This application may no longer respond until reloaded.
-                        </environment>
-                        <environment include="Development">
-                            An unhandled exception has occurred. See browser dev tools for details.
-                        </environment>
-                    </p>
-                </div>
-                <div class="flex-col grid items-center bg-error text-error-toast-text rounded-r-md p-2">
-                    <div class="block dismiss cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" class="w-5 h-5 fill-current">
-                            <path d="M23.954 21.03l-9.184-9.095 9.092-9.174-2.832-2.807-9.09 9.179-9.176-9.088-2.81 2.81 9.186 9.105-9.095 9.184 2.81 2.81 9.112-9.192 9.18 9.1z"/>
-                        </svg>
-                    </div>
 
-                    <div class="block reload cursor-pointer mt-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current" viewBox="0 0 26 26">
-                            <path d="M13.5 2c-5.621 0-10.211 4.443-10.475 10h-3.025l5 6.625 5-6.625h-2.975c.257-3.351 3.06-6 6.475-6 3.584 0 6.5 2.916 6.5 6.5s-2.916 6.5-6.5 6.5c-1.863 0-3.542-.793-4.728-2.053l-2.427 3.216c1.877 1.754 4.389 2.837 7.155 2.837 5.79 0 10.5-4.71 10.5-10.5s-4.71-10.5-10.5-10.5z"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
+<body class="app-web @(isServerSideBlazor ? "app-server" : "app-wasm")">
+
+@if (!isServerSideBlazor && !isCloseWindowRequest) {
+    <div id="until-ui-is-ready" class="loading-overlay hidden">
+        <div class="c-box">
+            <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="loading">
         </div>
+        <div class="c-rotating-bg"></div>
     </div>
-</div>
-
-<div id="components-reconnect-modal">
-    <div class="loading">
-        <div class="loading-caption">Unable to connect to server. Reconnecting...</div>
-        <div class="loading-progress-ring"></div>
-    </div>
-</div>
+}
 
 @if (isCloseWindowRequest) {
     <script>
-    	setTimeout(function () {
-    		window.close();
-    	}, 500)
+        setTimeout(function () {
+            @*
+           // NOTE(AY): This isn't necessary after switching to SessionCookies
+           window.opener && window.opener.location.reload(false);
+           *@
+            window.close();
+        }, 500)
     </script>
     <div class="alert alert-primary">
-    	@(closeWindowFlowName) completed, you can close this window.
+        @(closeWindowFlowName) completed, you can close this window.
     </div>
 } else {
     <app id="app" class="flex flex-col h-full">
@@ -156,34 +127,21 @@
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
-    <script src="/dist/bundle.js" asp-append-version="true"></script>
-    @if (isServerSideBlazor) {
-        <script src="_framework/blazor.server@(blazorUtilsVersion).js" autostart="false"></script>
-        <script>
-            (function () {
-                async function attemptReload() {
-                    try{
-                        await fetch('');
-                        location.reload();
-                    }
-                    catch{}
-                }
-                const observer = new MutationObserver((mutations, observer) => {
-                    mutations.forEach(mutation => {
-                        const classList = mutation.target.classList;
-                        if (classList.contains('components-reconnect-rejected')) {
-                            attemptReload();
-                            window.setInterval(attemptReload, 2000);
-                            observer.disconnect();
-                        }
-                    });
-                });
-                const reconnectModal = document.getElementById('components-reconnect-modal');
-                if (reconnectModal !== null) {
-                    observer.observe(reconnectModal, { attributes: true, subtree: true });
-                }
-            }());
+    <!-- This block must go right after app, otherwise page content won't be blurred -->
+    <div id="components-reconnect-modal"></div>
+    <div id="blazor-error-ui"></div>
+    <div id="app-connection-state" class="reconnect-overlay" style="display: none">
+        <div class="c-bg"></div>
+        <div class="c-circle-blur"></div>
+        <div class="c-circle">
+            <img draggable="false" src="/dist/images/loading-cat.svg" alt="loading">
+            <span class="c-text">Reconnecting...</span>
+        </div>
+    </div>
 
+    @if (isServerSideBlazor) {
+        <script src="_framework/blazor.server@(blazorScriptsHash).js" autostart="false"></script>
+        <script>
             Blazor.start({
                 reconnectionOptions: {
                      maxRetries: @(blazorMaxReconnectRetries),
@@ -193,7 +151,7 @@
             </script>
     }
     else {
-        <script src="_framework/blazor.webassembly@(blazorUtilsVersion).js"></script>
+        <script src="_framework/blazor.webassembly@(blazorScriptsHash).js"></script>
     }
 }
 </body>

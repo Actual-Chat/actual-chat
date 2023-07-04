@@ -10,7 +10,7 @@ public class Feedbacks : DbServiceBase<FeedbackDbContext>, IFeedbacks
     public Feedbacks(IServiceProvider services, IAuth auth) : base(services)
         => _auth = auth;
 
-    public virtual async Task CreateFeatureRequest(IFeedbacks.FeatureRequestCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnCreateFeatureRequest(Feedbacks_FeatureRequest command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;

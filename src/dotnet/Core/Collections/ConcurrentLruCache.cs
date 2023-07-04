@@ -82,7 +82,7 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
     }
 
     public IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false)
-        => throw StandardError.NotSupported($"{GetType().Name} doesn't support this method.");
+        => throw StandardError.NotSupported($"'{GetType().GetName()}' doesn't support this method.");
 
     // Private methods
 

@@ -5,11 +5,10 @@
     var m = State.Value;
 }
 
-<NavbarButton
+<NavbarGroupSelectionButton
     Id="@NavbarGroupIds.Chats"
     Title="Chats"
     Tooltip="Chats"
-    TooltipPosition="FloatingPosition.Right"
     ShowBadge="@(m.Count != 0)">
     <ChildContent>
         <i class="icon-message-ellipse text-2xl font-medium"></i>
@@ -17,23 +16,22 @@
     <BadgeContent>
         @m.Count
     </BadgeContent>
-</NavbarButton>
+</NavbarGroupSelectionButton>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
             InitialValue = new(),
-            UpdateDelayer = FixedDelayer.Get(5),
+            UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await ChatUI.ListUnordered(cancellationToken);
-        var count = chats.Values.Select(c => c.UnmutedUnreadCount).Count(x => x.Value > 0);
-        return new(count);
+        var count = await ChatListUI.UnreadChatCount.Use(cancellationToken);
+        return new Model(count);
     }
 
     public sealed record Model(Trimmed<int> Count = default);

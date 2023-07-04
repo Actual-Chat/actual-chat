@@ -1,12 +1,10 @@
 import { fromEvent, Observable } from 'rxjs';
 import { Disposable } from 'disposable';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { Timeout } from 'timeout';
 import { PromiseSource, TimedOut } from 'promises';
 
-const LogScope: LogScope = 'event-handling';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('event-handling');
 
 export class EventHandler<T> implements Disposable {
     constructor(
@@ -123,12 +121,18 @@ class DocumentEventSet {
     public readonly contextmenu$: Observable<MouseEvent>;
     public readonly wheel$: Observable<WheelEvent>;
     public readonly scroll$: Observable<Event>;
+    public readonly visibilityChange$: Observable<Event>;
 
     public readonly pointerOver$: Observable<PointerEvent>;
     public readonly pointerDown$: Observable<PointerEvent>;
     public readonly pointerMove$: Observable<PointerEvent>;
     public readonly pointerUp$: Observable<PointerEvent>;
     public readonly pointerCancel$: Observable<PointerEvent>;
+
+    public readonly touchStart$: Observable<TouchEvent>;
+    public readonly touchMove$: Observable<TouchEvent>;
+    public readonly touchEnd$: Observable<TouchEvent>;
+    public readonly touchCancel$: Observable<TouchEvent>;
 
     public readonly keyDown$: Observable<KeyboardEvent>;
     public readonly keyUp$: Observable<KeyboardEvent>;
@@ -147,12 +151,18 @@ class DocumentEventSet {
         this.contextmenu$ = fromEvent(document, 'contextmenu', options) as Observable<MouseEvent>;
         this.wheel$ = fromEvent(document, 'wheel', options) as Observable<WheelEvent>;
         this.scroll$ = isActive ? null : fromEvent(document.defaultView, 'scroll', options);
+        this.visibilityChange$ = fromEvent(document, 'visibilitychange', options);
 
         this.pointerOver$ = fromEvent(document, 'pointerover', options) as Observable<PointerEvent>;
         this.pointerDown$ = fromEvent(document, 'pointerdown', options) as Observable<PointerEvent>;
         this.pointerMove$ = fromEvent(document, 'pointermove', options) as Observable<PointerEvent>;
         this.pointerUp$ = fromEvent(document, 'pointerup', options) as Observable<PointerEvent>;
         this.pointerCancel$ = fromEvent(document, 'pointercancel', options) as Observable<PointerEvent>;
+
+        this.touchStart$ = fromEvent(document, 'touchstart', options) as Observable<TouchEvent>;
+        this.touchMove$ = fromEvent(document, 'touchmove', options) as Observable<TouchEvent>;
+        this.touchEnd$ = fromEvent(document, 'touchend', options) as Observable<TouchEvent>;
+        this.touchCancel$ = fromEvent(document, 'touchcancel', options) as Observable<TouchEvent>;
 
         this.keyDown$ = fromEvent(document, 'keydown', options) as Observable<KeyboardEvent>;
         this.keyUp$ = fromEvent(document, 'keyup', options) as Observable<KeyboardEvent>;
@@ -184,4 +194,15 @@ export function preventDefaultForEvent(event?: Event) : void {
 
     debugLog?.log(`preventDefaultForEvent: event:`, event);
     event.preventDefault();
+}
+
+export function tryPreventDefaultForEvent(event?: Event) : void {
+    if (!event.defaultPrevented) {
+        try {
+            preventDefaultForEvent(event);
+        }
+        catch {
+            // Intended
+        }
+    }
 }

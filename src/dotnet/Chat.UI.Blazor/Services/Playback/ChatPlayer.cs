@@ -1,4 +1,6 @@
+using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -10,29 +12,39 @@ public abstract class ChatPlayer : ProcessorBase
     /// Once enqueued, playback loop continues, so the larger is this duration,
     /// the higher is the chance to enqueue the next entry on time.
     /// </summary>
-    protected static readonly TimeSpan EnqueueAheadDuration = TimeSpan.FromSeconds(1);
-    protected static readonly TimeSpan InfDuration = 2 * Constants.Chat.MaxEntryDuration;
-    protected static readonly TimeSpan MaxPlayStartTime = TimeSpan.FromSeconds(3);
+    protected static readonly TimeSpan EnqueueAheadDuration = TimeSpan.FromSeconds(2);
+    protected static readonly TimeSpan MaxEntryDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5);
 
     private volatile CancellationTokenSource? _playTokenSource;
     private volatile Task? _whenPlaying = null;
 
     protected ILogger Log { get; }
-    protected MomentClockSet Clocks { get; }
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected bool DebugMode => Constants.DebugMode.AudioPlayback;
+
     protected IServiceProvider Services { get; }
+    protected HostInfo HostInfo { get; }
+    protected MomentClockSet Clocks { get; }
+    protected IState<TimeSpan> SleepDuration { get; }
+    protected IState<TimeSpan> PauseDuration { get; }
+    protected TimeSpan SleepAndPauseDuration => SleepDuration.Value + Playback.TotalPauseDuration.Value;
+
     protected IAuthors Authors { get; }
     protected IChats Chats { get; }
+    protected InteractiveUI InteractiveUI { get; }
 
     public Session Session { get; }
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
+    public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
     protected ChatPlayer(Session session, ChatId chatId, IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
+        HostInfo = services.GetRequiredService<HostInfo>();
         Clocks = services.Clocks();
 
         ChatId = chatId;
@@ -41,6 +53,10 @@ public abstract class ChatPlayer : ProcessorBase
         Playback = services.GetRequiredService<IPlaybackFactory>().Create();
         Authors = services.GetRequiredService<IAuthors>();
         Chats = services.GetRequiredService<IChats>();
+        InteractiveUI = services.GetRequiredService<InteractiveUI>();
+
+        SleepDuration = services.GetRequiredService<DeviceAwakeUI>().TotalSleepDuration;
+        PauseDuration = Playback.TotalPauseDuration;
     }
 
     protected override async Task DisposeAsyncCore()
@@ -60,7 +76,7 @@ public abstract class ChatPlayer : ProcessorBase
         CancellationTokenSource playTokenSource;
         CancellationToken playToken;
 
-        var whenPlayingSource = TaskSource.New<Unit>(true);
+        var whenPlayingSource = TaskCompletionSourceExt.New<Unit>();
         Task stopTask = Stop();
         while (true) {
             await stopTask.ConfigureAwait(false);
@@ -84,7 +100,6 @@ public abstract class ChatPlayer : ProcessorBase
             catch (Exception e) {
                 if (e is not OperationCanceledException)
                     Log.LogError(e, "Playback (reader part) failed in chat #{ChatId}", ChatId);
-                chatEntryPlayer.Abort();
             }
             finally {
                 // We should wait for playback completion first
@@ -114,8 +129,19 @@ public abstract class ChatPlayer : ProcessorBase
         return whenPlaying ?? Task.CompletedTask;
     }
 
+    protected async ValueTask<bool> CanContinuePlayback(CancellationToken cancellationToken)
+    {
+        if (this is HistoricalChatPlayer)
+            await Playback.IsPaused.When(x => !x, cancellationToken).ConfigureAwait(false);
+
+        if (InteractiveUI.IsInteractive.Value)
+            return true;
+
+        return await InteractiveUI.Demand(Operation, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected methods
 
     protected abstract Task Play(
-        ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken);
+        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken);
 }

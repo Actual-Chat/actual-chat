@@ -1,13 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { AppKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
 
-const LogScope: LogScope = 'NotificationUI';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const infoLog = Log.get(LogScope, LogLevel.Info);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog, errorLog } = Log.get('NotificationUI');
 
 export class NotificationUI {
     private static baseLayoutRef?: DotNet.DotNetObject = null;

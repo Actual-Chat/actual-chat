@@ -1,29 +1,43 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IChatsUpgradeBackend : ICommandService
 {
     [CommandHandler]
-    Task<Chat> CreateAnnouncementsChat(CreateAnnouncementsChatCommand command, CancellationToken cancellationToken);
+    Task<Chat> OnCreateDefaultChat(ChatsUpgradeBackend_CreateDefaultChat command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<Chat> CreateDefaultChat(CreateDefaultChatCommand command, CancellationToken cancellationToken);
+    Task<Chat> OnCreateAnnouncementsChat(ChatsUpgradeBackend_CreateAnnouncementsChat command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task UpgradeChat(UpgradeChatCommand command, CancellationToken cancellationToken);
+    Task<Chat> OnCreateFeedbackTemplateChat(ChatsUpgradeBackend_CreateFeedbackTemplateChat command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task FixCorruptedReadPositions(FixCorruptedReadPositionsCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record CreateAnnouncementsChatCommand(
-    ) : ICommand<Chat>, IBackendCommand;
-
-    [DataContract]
-    public sealed record CreateDefaultChatCommand(
-    ) : ICommand<Chat>, IBackendCommand;
-
-    public sealed record UpgradeChatCommand(
-        [property: DataMember] ChatId ChatId
-    ) : ICommand<Unit>, IBackendCommand;
-
-    [DataContract]
-    public sealed record FixCorruptedReadPositionsCommand(
-    ) : ICommand<Unit>, IBackendCommand;
+    Task OnUpgradeChat(ChatsUpgradeBackend_UpgradeChat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnFixCorruptedReadPositions(ChatsUpgradeBackend_FixCorruptedReadPositions command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
+) : ICommand<Chat>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
+) : ICommand<Chat>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
+) : ICommand<Chat>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsUpgradeBackend_UpgradeChat(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
+) : ICommand<Unit>, IBackendCommand;

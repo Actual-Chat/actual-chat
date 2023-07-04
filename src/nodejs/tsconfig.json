@@ -17,11 +17,13 @@
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder.ts",
     "./../dotnet/UI.Blazor/Layouts/base-layout.ts",
+    "./../dotnet/UI.Blazor/Components/Skeleton/",
     "./../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts",
   ],
   "exclude": [
   ],
   "compilerOptions": {
+    "experimentalDecorators": true,
     "alwaysStrict": true,
     "downlevelIteration": false,
     "moduleResolution": "node",

@@ -1,0 +1,19 @@
+.sign-in-modal.modal-frame {
+    @apply md:min-w-96 md:max-w-96 md:h-160 md:max-h-160;
+}
+.sign-in-modal .dialog-body {
+    @apply flex-y;
+    @apply gap-y-2;
+}
+.sign-in-modal-body {
+    @apply flex-y gap-y-2 grow justify-center;
+}
+.sing-in-button {
+    @apply !max-w-full;
+}
+.sing-in-button > img {
+    @apply h-8 w-8;
+}
+.sing-in-button.btn .btn-content {
+    @apply text-02 text-headline-1;
+}

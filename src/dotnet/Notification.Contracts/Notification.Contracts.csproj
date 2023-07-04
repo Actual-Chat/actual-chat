@@ -5,4 +5,8 @@
     <ProjectReference Include="..\Notification\Notification.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MemoryPack" />
+  </ItemGroup>
+
 </Project>

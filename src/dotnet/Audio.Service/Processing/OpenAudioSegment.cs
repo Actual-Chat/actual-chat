@@ -7,15 +7,19 @@ public sealed class OpenAudioSegment
     public static string GetStreamId(string audioRecordId, int index)
         => $"{audioRecordId}-{index.ToString("D4", CultureInfo.InvariantCulture)}";
 
+    private TaskCompletionSource<Moment?> _recordedAtSource = TaskCompletionSourceExt.New<Moment?>();
+    private TaskCompletionSource<TimeSpan> _audibleDurationSource = TaskCompletionSourceExt.New<TimeSpan>();
+    private TaskCompletionSource<ClosedAudioSegment> _closedSegmentSource = TaskCompletionSourceExt.New<ClosedAudioSegment>();
+
     public int Index { get; }
     public string StreamId { get; }
     public AudioRecord AudioRecord { get; }
     public AudioSource Audio { get; }
     public Author Author { get; }
-    public ImmutableArray<Language> Languages { get; }
-    public Task<Moment?> RecordedAtTask { get; }
-    public Task<TimeSpan> AudibleDurationTask { get; }
-    public Task<ClosedAudioSegment> ClosedSegmentTask { get; }
+    public ApiArray<Language> Languages { get; }
+    public Task<Moment?> RecordedAt => _recordedAtSource.Task;
+    public Task<TimeSpan> AudibleDuration => _audibleDurationSource.Task;
+    public Task<ClosedAudioSegment> ClosedSegment => _closedSegmentSource.Task;
     private ILogger Log { get; }
 
     public OpenAudioSegment(
@@ -23,7 +27,7 @@ public sealed class OpenAudioSegment
         AudioRecord audioRecord,
         AudioSource audio,
         Author author,
-        ImmutableArray<Language> languages,
+        ApiArray<Language> languages,
         ILogger log)
     {
         Log = log;
@@ -33,14 +37,11 @@ public sealed class OpenAudioSegment
         Audio = audio;
         Author = author;
         Languages = languages;
-        RecordedAtTask = TaskSource.New<Moment?>(true).Task;
-        AudibleDurationTask = TaskSource.New<TimeSpan>(true).Task;
-        ClosedSegmentTask = TaskSource.New<ClosedAudioSegment>(true).Task;
     }
 
     public void SetRecordedAt(Moment? recordedAt)
     {
-        if (!TaskSource.For(RecordedAtTask).TrySetResult(recordedAt))
+        if (!_recordedAtSource.TrySetResult(recordedAt))
             Log.LogWarning(
                 "SetRecordedAt came too late for OpenAudioSegment #{Index} of Stream #{StreamId}",
                 Index, StreamId);
@@ -49,7 +50,7 @@ public sealed class OpenAudioSegment
     // TODO(AK): review: use or delete
     public void SetAudibleDuration(TimeSpan audibleDuration)
     {
-        if (!TaskSource.For(AudibleDurationTask).TrySetResult(audibleDuration))
+        if (!_audibleDurationSource.TrySetResult(audibleDuration))
             Log.LogWarning(
                 "SetAudibleDuration came too late for OpenAudioSegment #{Index} of Stream #{StreamId}",
                 Index, StreamId);
@@ -57,21 +58,20 @@ public sealed class OpenAudioSegment
 
     public void Close(TimeSpan duration)
     {
-        TaskSource.For(RecordedAtTask).TrySetResult(null);
-        TaskSource.For(AudibleDurationTask).TrySetResult(duration);
+        _recordedAtSource.TrySetResult(null);
+        _audibleDurationSource.TrySetResult(duration);
 
-        var recordedAt = RecordedAtTask.ToResultSynchronously().IsValue(out var r) ? r : null;
-        var audibleDuration = AudibleDurationTask.ToResultSynchronously().IsValue(out var d) ? d : duration;
+        var recordedAt = RecordedAt.ToResultSynchronously().IsValue(out var r) ? r : null;
+        var audibleDuration = AudibleDuration.ToResultSynchronously().IsValue(out var d) ? d : duration;
         var audioSegment = new ClosedAudioSegment(this, recordedAt, duration, audibleDuration);
-        TaskSource.For(ClosedSegmentTask).SetResult(audioSegment);
+        _closedSegmentSource.SetResult(audioSegment);
     }
 
     // TODO(AK): review: use or delete
     public void TryClose(Exception error)
     {
-        TaskSource.For(RecordedAtTask).TrySetException(error);
-        TaskSource.For(AudibleDurationTask).TrySetException(error);
-        TaskSource.For(ClosedSegmentTask).TrySetException(error);
+        _recordedAtSource.TrySetException(error);
+        _audibleDurationSource.TrySetException(error);
+        _closedSegmentSource.TrySetException(error);
     }
 }
-

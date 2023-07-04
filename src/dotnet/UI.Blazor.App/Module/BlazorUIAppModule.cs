@@ -1,37 +1,36 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Services;
-using Stl.Plugins;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class BlazorUIAppModule : HostModule, IBlazorUIModule
+public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "blazorApp";
 
-    public BlazorUIAppModule(IPluginInfoProvider.Query _) : base(_) { }
-    [ServiceConstructor]
-    public BlazorUIAppModule(IPluginHost plugins) : base(plugins) { }
+    public BlazorUIAppModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
+        services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
-        services.ConfigureUILifetimeEvents(events => {
-            events.OnAppInitialized += c => {
-                var signOutReloader = c.GetRequiredService<SignOutReloader>();
-                signOutReloader.Start();
-            };
-        });
+        services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));
+        services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 
         var fusion = services.AddFusion();
-        fusion.AddComputeService<AppPresenceReporter.Worker>(ServiceLifetime.Transient);
-        services.AddScoped<AppPresenceReporter>();
-        services.AddSingleton(_ => new AppPresenceReporter.Options {
-            AwayTimeout = Constants.Presence.AwayTimeout,
-        });
+        services.AddSingleton(_ => new AppPresenceReporter.Options());
+        fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
+
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<LandingVideoModal.Model, LandingVideoModal>()
+            .Add<SignInModal.Model, SignInModal>()
+        );
     }
 }

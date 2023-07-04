@@ -10,8 +10,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ILogger<VirtualList<TItem>> Log { get; init; } = null!;
 
-    private bool DebugMode => Constants.DebugMode.VirtualList;
-
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
@@ -24,6 +22,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     private int RenderIndex { get; set; } = 0;
 
+    [Parameter] public string Identity { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
 
@@ -33,8 +32,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public RenderFragment<TItem> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public RenderFragment? Empty { get; set; }
-    [Parameter] public int SkeletonCount { get; set; } = 50;
-    [Parameter] public double SpacerSize { get; set; } = 300;
+    [Parameter] public int SkeletonCount { get; set; } = 10;
+    [Parameter] public double SpacerSize { get; set; } = 200;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
@@ -49,12 +48,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     }
 
     [JSInvokable]
-    public Task UpdateItemVisibility(HashSet<string> visibleKeys, bool isEndAnchorVisible)
+    public Task UpdateItemVisibility(string identity, HashSet<string> visibleKeys, bool isEndAnchorVisible)
     {
         if (JSRef == null!) // The component is disposed
             return Task.CompletedTask;
 
-        LastReportedItemVisibility = new VirtualListItemVisibility(visibleKeys, isEndAnchorVisible);
+        if (!OrdinalEquals(identity, Identity)) {
+            Log.LogWarning("Expected JS identity to be {Identity}, but has {ActualIdentity}", Identity, identity);
+            return Task.CompletedTask;
+        }
+        LastReportedItemVisibility = new VirtualListItemVisibility(identity, visibleKeys, isEndAnchorVisible);
         ItemVisibilityChanged?.Invoke(LastReportedItemVisibility);
         return Task.CompletedTask;
     }
@@ -84,7 +87,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                 Ref,
-                BlazorRef);
+                BlazorRef,
+                Identity);
         }
     }
 

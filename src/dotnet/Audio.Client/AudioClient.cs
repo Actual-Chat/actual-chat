@@ -2,6 +2,7 @@ using System.Buffers;
 using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
+using Stl.Rpc;
 
 namespace ActualChat.Audio;
 
@@ -14,7 +15,7 @@ public class AudioClient : HubClientBase,
     public int StreamBufferSize { get; init; } = 64;
 
     public AudioClient(IServiceProvider services)
-        : base("api/hub/audio", services)
+        : base("api/hub/audio", services.GetRequiredService<RpcClientPeerReconnectDelayer>(), services)
         => AudioSourceLog = services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(
@@ -56,17 +57,17 @@ public class AudioClient : HubClientBase,
         await connection.SendAsync("ReportLatency", latency, cancellationToken).ConfigureAwait(false);
     }
 
-    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         Symbol streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId.Value);
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
-        var updates = connection
-            .StreamAsync<Transcript>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
+        var diffs = connection
+            .StreamAsync<TranscriptDiff>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        await foreach (var update in updates.ConfigureAwait(false))
-            yield return update;
+        await foreach (var diff in diffs.ConfigureAwait(false))
+            yield return diff;
         Log.LogDebug("GetTranscriptDiffStream: Exited; StreamId = {StreamId}", streamId.Value);
     }
 }

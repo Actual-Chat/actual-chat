@@ -8,11 +8,9 @@ import {
 } from './feeder-audio-worklet-contract';
 import { ResolvedPromise } from 'promises';
 import { rpcClientServer, RpcNoWait } from 'rpc';
+import { Log } from 'logging';
 
-import { Log, LogLevel, LogScope } from 'logging';
-const LogScope: LogScope = 'FeederNode';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, errorLog } = Log.get('FeederNode');
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
@@ -34,7 +32,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
                 return ResolvedPromise.Void;
             }
         }
-        this.worklet = rpcClientServer<FeederAudioWorklet>(`${LogScope}.feederWorklet`, this.port, server);
+        this.worklet = rpcClientServer<FeederAudioWorklet>(`${logScope}.feederWorklet`, this.port, server);
     }
 
     public static async create(

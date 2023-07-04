@@ -9,20 +9,21 @@ public interface IStoredState<T> : IMutableState<T>
 
 public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 {
+    private readonly TaskCompletionSource _whenReadSource = TaskCompletionSourceExt.New();
+
     private Options Settings { get; }
-    private TaskSource<Unit> WhenReadSource { get; }
     private ILogger? DebugLog => Constants.DebugMode.StoredState ? Log : null;
 
-    public Task WhenRead => WhenReadSource.Task;
+    public Task WhenRead => _whenReadSource.Task;
 
     public StoredState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
     {
         Settings = options;
-        WhenReadSource = TaskSource.New<Unit>(true);
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
-        if (initialize) Initialize(options);
+        if (initialize)
+            Initialize(options);
  #pragma warning restore MA0056
     }
 
@@ -33,7 +34,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
         if (snapshot.UpdateCount == 0) {
             // Initial value
             var initialSnapshot = snapshot;
-            ForegroundTask.Run(async () => {
+            _ = ForegroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
                     using var _ = Stl.Fusion.Computed.SuspendDependencyCapture();
@@ -47,8 +48,10 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
                         bool mustSet;
                         lock (Lock) {
                             mustSet = Snapshot == initialSnapshot;
-                            if (mustSet)
+                            if (mustSet) {
                                 Set(value);
+                                computed = (StateBoundComputed<T>)Computed;
+                            }
                         }
                         if (mustSet)
                             DebugLog?.LogDebug("{State}: Read = {Result}", this, value);
@@ -59,7 +62,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
                         DebugLog?.LogDebug("{State}: Read: skipping (no value stored or read error)", this);
                 }
                 finally {
-                    WhenReadSource.TrySetResult(default);
+                    _whenReadSource.TrySetResult();
                 }
             });
         }
@@ -95,28 +98,21 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
 
     public record KvasOptions(IKvas Kvas, string Key) : Options
     {
-        public static ITextSerializer<T> DefaultSerializer { get; set; } =
-            SystemJsonSerializer.Default.ToTyped<T>();
-
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
-        public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
 
         internal override async ValueTask<Option<T>> Read(CancellationToken cancellationToken)
         {
-            var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
-            if (data == null)
+            var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
+            if (!valueOpt.IsSome(out var value))
                 return default;
-            var value = Serializer.Read(data);
+
             if (Corrector != null)
                 value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
             return value;
         }
 
         internal override Task Write(T value, CancellationToken cancellationToken)
-        {
-            var data = Serializer.Write(value);
-            return Kvas.Set(Key, data, cancellationToken);
-        }
+            => Kvas.Set(Key, value, cancellationToken);
     }
 }
 

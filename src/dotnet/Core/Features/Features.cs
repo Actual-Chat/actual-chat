@@ -14,12 +14,10 @@ public class Features : IFeatures
     }
 
     public Task<object?> Get(Type featureType, CancellationToken cancellationToken)
-    {
-        if (typeof(IClientFeatureDef).IsAssignableFrom(featureType))
-            return ClientFeatures.Get(featureType, cancellationToken);
-        return ServerFeatures.Get(featureType, cancellationToken);
-    }
+        => typeof(IClientFeatureDef).IsAssignableFrom(featureType)
+            ? ClientFeatures.Get(featureType, cancellationToken)
+            : ServerFeatures.Get(featureType, cancellationToken);
 
-    Task<string> IFeatures.GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken)
+    Task<byte[]> IFeatures.GetData(TypeRef featureTypeRef, CancellationToken cancellationToken)
         => throw StandardError.NotSupported("This method isn't supported.");
 }

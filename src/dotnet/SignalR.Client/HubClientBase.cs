@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
-using Stl.Fusion.Bridge;
+using Stl.Net;
 
 namespace ActualChat.SignalR;
 
@@ -11,17 +11,16 @@ public abstract class HubClientBase : IDisposable
     protected ILogger Log { get; }
 
     public string HubUrl { get; init; }
-    public RetryDelaySeq ReconnectDelays { get; init; } = new(0.5, 10);
 
-    protected HubClientBase(string hubUrl, IServiceProvider services)
+    protected HubClientBase(string hubUrl, IRetryDelayer reconnectDelayer, IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
         HubUrl = hubUrl;
 
  #pragma warning disable MA0056
-        Connector = new(Connect, services.StateFactory()) {
-            ReconnectDelays = ReconnectDelays,
+        Connector = new(Connect) {
+            ReconnectDelayer = reconnectDelayer,
             Log = Log,
             LogTag = $"SignalR hub @ {HubUrl}",
             LogLevel = LogLevel.Debug,

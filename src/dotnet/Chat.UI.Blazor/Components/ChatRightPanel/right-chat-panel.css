@@ -1,0 +1,16 @@
+.right-chat-panel {
+    @apply flex-y;
+    @apply md:w-80 h-full;
+    @apply border-l border-bg-04;
+    @apply bg-02;
+}
+
+.right-chat-panel > .c-panel-content {
+    @apply flex-y;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
+.right-chat-panel > .c-panel-content > .c-panel-tabs {
+    @apply flex-y;
+    @apply border-t-4 border-bg-04;
+}

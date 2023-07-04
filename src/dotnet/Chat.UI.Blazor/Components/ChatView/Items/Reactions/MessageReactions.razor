@@ -39,7 +39,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(Entry.HasReactions, ImmutableArray<ReactionSummary>.Empty),
+            InitialValue = new Model(Entry.HasReactions, ApiArray<ReactionSummary>.Empty),
             Category = GetStateCategory(),
         };
 
@@ -48,14 +48,14 @@
             return Model.None;
 
         var summaries = await Reactions.ListSummaries(Session, textEntryId, cancellationToken);
-        if (summaries.Length == 0)
+        if (summaries.Count == 0)
             return new Model(false, summaries);
         var ownReaction = await Reactions.Get(Session, textEntryId, cancellationToken);
         return new Model(true, summaries, ownReaction);
     }
 
     private Task ToggleReaction(Symbol emojiId) {
-        return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
+        return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
         }));
@@ -63,9 +63,9 @@
 
     public record Model(
         bool HasReactions,
-        ImmutableArray<ReactionSummary> Reactions,
+        ApiArray<ReactionSummary> Reactions,
         Reaction? OwnReaction = null
     ) {
-        public static Model None { get; } = new(false, ImmutableArray<ReactionSummary>.Empty);
+        public static Model None { get; } = new(false, ApiArray<ReactionSummary>.Empty);
     };
 }

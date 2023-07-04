@@ -2,13 +2,16 @@
     @apply relative flex-y;
     @apply border-l-2 border-bg-01;
     @apply md:select-text;
-    transform: translateZ(0);
+    @apply translate-z-0;
 }
 body.hoverable .message-wrapper:hover {
     @apply bg-message-hover border-message-hover;
 }
 body.hoverable .message-wrapper:hover .avatar-badge {
     @apply bg-message-hover;
+}
+body.hoverable .system-entry.message-wrapper:hover {
+    @apply bg-transparent border-transparent;
 }
 
 .chat-message {
@@ -22,6 +25,7 @@ body.hoverable .message-wrapper:hover .avatar-badge {
 .chat-message > .c-author-badge {
     @apply flex-none;
     @apply overflow-hidden;
+    @apply select-none;
 }
 
 .chat-message > .c-content {
@@ -84,10 +88,10 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply ml-0;
 }
 body.narrow .message-menu .reaction-select {
-    @apply gap-4;
+    @apply gap-2;
 }
 body.narrow .message-menu .reaction-select-reaction-emoji {
-    @apply w-6 h-6;
+    @apply w-8 h-8;
 }
 body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
@@ -107,25 +111,53 @@ body.hoverable .chat-header-title:hover {
     @apply text-02;
 }
 
-.new-separator {
-    @apply bg-04;
-}
 .new-separator-title {
-    @apply bg-04 text-02 rounded-md;
+    @apply bg-new-separator;
+    @apply text-icons-04;
+    @apply translate-z-0;
 }
 
 .message-content {
     @apply flex-1 overflow-hidden;
     @apply rounded-sm;
 }
-
+.system-entry {
+    @apply self-center;
+    @apply w-fit;
+    @apply px-6;
+    @apply mt-0.5;
+}
+.system-entry .chat-message-markup {
+    @apply flex items-center gap-x-0.5;
+    @apply h-6 md:h-5;
+    @apply mt-0.5;
+}
+.system-entry * {
+    @apply text-xs font-medium;
+}
 .system-entry .message-content {
-    @apply flex-x justify-center items-center;
+    @apply flex-x justify-center items-center gap-x-2;
+    @apply bg-02;
+    @apply rounded-full;
+    @apply px-2;
 }
 .system-entry .message-content .avatar-name {
-    @apply font-bold text-03;
+    @apply font-semibold;
     @apply cursor-pointer;
     @apply hover:opacity-80;
+}
+.system-entry .mention-markup,
+.system-entry .mention-markup.mention-markup-own {
+    @apply p-0;
+    @apply bg-transparent;
+}
+.system-entry .mention-markup *,
+.system-entry .mention-markup.mention-markup-own * {
+    @apply m-0;
+    @apply text-xs font-medium;
+}
+.system-entry .icon-at {
+    @apply hidden;
 }
 
 .chat-message-quote {
@@ -148,4 +180,42 @@ body.hoverable .chat-header-title:hover {
     @apply max-h-6 overflow-hidden truncate;
     @apply font-medium text-base text-03;
     @apply pointer-events-none;
+}
+
+.message-attachments {
+    @apply flex-y gap-y-px md:gap-y-4;
+    @apply mt-2 md:mt-4;
+    @apply overflow-hidden;
+}
+.message-image-attachments {
+    @apply flex-y flex-wrap gap-px;
+    @apply border-2 border-primary;
+    @apply rounded-xl;
+    @apply overflow-hidden;
+}
+body.wide .message-image-attachments {
+    width: 30rem;
+}
+.message-file-attachments {
+    @apply flex-y gap-y-1;
+}
+
+.image-line {
+    @apply flex-x gap-x-px;
+}
+.image-line .image-item {
+    @apply flex-1 flex-x;
+    @apply bg-01;
+}
+.image-line .image-item img {
+    @apply h-full;
+    max-height: 30rem;
+}
+.image-line .image-item img,
+.image-line .image-item a {
+    @apply flex-1 flex;
+}
+.image-line .image-item img,
+.image-line .image-item video {
+    @apply object-cover;
 }

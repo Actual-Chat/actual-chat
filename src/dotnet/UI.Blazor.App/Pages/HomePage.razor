@@ -2,27 +2,6 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @layout NoLayout
 
-<AutoNavigateToChatsOnSignIn NavigateIfAlreadySignedIn="true">
-     @{ _isContentRendered = true; }
-    <AfterRenderEventDecorator AfterRenderCallback="OnLandingRendered">
-        <Landing/>
-    </AfterRenderEventDecorator>
-</AutoNavigateToChatsOnSignIn>
+<AutoNavigateOnSignIn TargetUrl="@Links.Chats" MustReplace="true" />
 
-@code {
-    private bool _isContentRendered;
-
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-
-    protected override void OnAfterRender(bool firstRender)
-        => MarkLoaded();
-
-    private void OnLandingRendered(bool isFirstRender)
-        => MarkLoaded();
-
-    private void MarkLoaded()
-    {
-        if (_isContentRendered)
-            LoadingUI.MarkLoaded();
-    }
-}
+<Landing/>

@@ -5,7 +5,7 @@ namespace ActualChat.Audio;
 public abstract class StreamServerBase<TItem> : IDisposable
 {
     private readonly CancellationTokenSource _disposeCts = new ();
-    private readonly ConcurrentDictionary<Symbol, Expiring<Symbol, Task<AsyncMemoizer<TItem>>>> _streams = new ();
+    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
     protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(600);
@@ -39,7 +39,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
     {
         var entry = GetOrAddStream(streamId, ReadStreamExpiration);
         try {
-            var memoizer = await entry.Value.WaitAsync(ReadStreamWaitDuration, cancellationToken).ConfigureAwait(false);
+            var memoizer = await entry.Value.Task.WaitAsync(ReadStreamWaitDuration, cancellationToken).ConfigureAwait(false);
             var stream = memoizer
                 .Replay(cancellationToken)
                 .WithBuffer(StreamBufferSize, cancellationToken);
@@ -56,7 +56,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
         StreamCounter?.Add(1);
         var entry = GetOrAddStream(streamId, WriteStreamExpiration);
         var memoizer = stream.Memoize(cancellationToken);
-        TaskSource.For(entry.Value).SetResult(memoizer);
+        entry.Value.SetResult(memoizer);
 
         await memoizer.WriteTask.ConfigureAwait(false);
         _ = Clocks.CpuClock
@@ -68,19 +68,20 @@ public abstract class StreamServerBase<TItem> : IDisposable
 
     // Private methods
 
-    private Expiring<Symbol, Task<AsyncMemoizer<TItem>>> GetOrAddStream(Symbol streamId, TimeSpan expiresIn)
+    private ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>>> GetOrAddStream(
+        Symbol streamId, TimeSpan expiresIn)
     {
         var entry = _streams.GetOrAdd(streamId,
             static (streamId1, arg) => {
                 var (self, expiresIn) = arg;
-                var memoizerTask = TaskSource.New<AsyncMemoizer<TItem>>(true).Task;
+                var memoizerSource = TaskCompletionSourceExt.New<AsyncMemoizer<TItem>>();
                 var disposeTokenSource = self._disposeCts.Token.CreateLinkedTokenSource();
-                var entry = Expiring
-                    .New(self._streams, streamId1, memoizerTask, disposeTokenSource)
+                var entry = ExpiringEntry
+                    .New(self._streams, streamId1, memoizerSource, disposeTokenSource)
                     .SetDisposer(e => {
-                        if (memoizerTask.IsCompleted)
+                        if (memoizerSource.Task.IsCompleted)
                             self.StreamCounter?.Add(-1);
-                        TaskSource.For(e.Value).TrySetCanceled();
+                        e.Value.TrySetCanceled();
                     })
                     .BumpExpiresAt(expiresIn, self.Clocks.CpuClock)
                     .BeginExpire();

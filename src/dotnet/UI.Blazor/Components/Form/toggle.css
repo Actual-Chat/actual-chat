@@ -28,20 +28,21 @@
     transition: .15s;
 }
 
-.toggle:has(input:checked) > .dash {
-    @apply bg-primary;
+.toggle[data-input-checked] > .dash {
+    @apply bg-accent;
 }
-.toggle:has(input:checked) > .dash > .o {
-    @apply bg-01 border-primary;
+.toggle[data-input-checked] > .dash > .o {
+    @apply bg-01 border-accent;
     @apply translate-x-3;
 }
 
 /* Hover */
-.toggle:has(input:not(:disabled)) > .dash > .o {
+.toggle:not([data-input-disabled]) > .dash > .o {
     @apply cursor-pointer;
 }
 
-/* Active/Focus */
+/* Active/Focus - impossible, coz input is invisible */
+/*
 .toggle:has(input:not(:disabled):active) > .dash > .o,
 .toggle:has(input:not(:disabled):focus) > .dash > .o {
     @apply animate-checkbox-active-on;
@@ -50,13 +51,14 @@
 .toggle:has(input:not(:disabled):checked:focus) > .dash > .o {
     @apply animate-checkbox-active-off;
 }
+*/
 
 /* Disabled */
-.toggle:has(input:disabled) > .dash {
+.toggle[data-input-disabled] > .dash {
     @apply border-icons-02;
     filter: grayscale(60%);
 }
-.toggle:has(input:disabled) > .dash > .o {
+.toggle[data-input-disabled] > .dash > .o {
     @apply bg-icons-02;
 }
 
@@ -69,6 +71,6 @@
 .toggle.toggle-sm > .dash > .o {
     @apply h-4 w-4;
 }
-.toggle.toggle-sm:has(input:checked) > .dash > .o {
+.toggle.toggle-sm[data-input-checked] > .dash > .o {
     @apply translate-x-2;
 }

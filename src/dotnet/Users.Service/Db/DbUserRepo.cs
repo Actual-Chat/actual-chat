@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ActualChat.Users.Module;
-using Stl.Fusion.EntityFramework.Authentication;
+using Stl.Fusion.Authentication.Services;
 
 namespace ActualChat.Users.Db;
 

@@ -1,11 +1,10 @@
 using ActualChat.Kvas;
+using MemoryPack;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public enum Theme { Light = 0, Dark }
-
-[DataContract]
-public sealed record ThemeSettings(
-    [property: DataMember] Theme Theme,
-    [property: DataMember] string Origin = ""
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record ThemeSettings(
+    [property: DataMember, MemoryPackOrder(0)] Theme Theme,
+    [property: DataMember, MemoryPackOrder(1)] string Origin = ""
     ) : IHasOrigin;

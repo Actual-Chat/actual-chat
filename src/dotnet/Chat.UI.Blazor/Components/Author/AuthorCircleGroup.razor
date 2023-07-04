@@ -2,9 +2,9 @@
 @inherits FusionComponentBase
 @{
     var authorSids = AuthorSids;
-    if (authorSids.Length == 0)
+    if (authorSids.Count == 0)
         return;
-    var maxLength = MaxIconCount > authorSids.Length ? authorSids.Length : MaxIconCount;
+    var maxLength = MaxIconCount > authorSids.Count ? authorSids.Count : MaxIconCount;
 }
 
 <div class="author-circle-group @Class">
@@ -17,11 +17,11 @@
             </div>
             zIndex++;
         }
-        if (authorSids.Length > MaxIconCount) {
+        if (authorSids.Count > MaxIconCount) {
             <div class="author-circle-group-item" style="z-index: @(maxLength + 1);">
                 @{
-                    var avatarText = authorSids.Length < 11
-                        ? "+" + (authorSids.Length - MaxIconCount)
+                    var avatarText = authorSids.Count < 11
+                        ? "+" + (authorSids.Count - MaxIconCount)
                         : "...";
                 }
                 <AvatarText Size="@Size" Text="@avatarText" />
@@ -40,5 +40,5 @@
     [Parameter] public int MaxIconCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
     [Parameter, ParameterComparer(typeof(ByItemParameterComparer))]
-    public ImmutableArray<string> AuthorSids { get; set; }
+    public ApiArray<string> AuthorSids { get; set; }
 }

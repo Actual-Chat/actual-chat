@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IReactions : IComputeService
@@ -6,17 +8,18 @@ public interface IReactions : IComputeService
     Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<ReactionSummary>> ListSummaries(
+    Task<ApiArray<ReactionSummary>> ListSummaries(
         Session session,
         TextEntryId entryId,
         CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task React(ReactCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ReactCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] Reaction Reaction
-    ) : ISessionCommand<Unit>;
+    Task OnReact(Reactions_React command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Reactions_React(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] Reaction Reaction
+) : ISessionCommand<Unit>;

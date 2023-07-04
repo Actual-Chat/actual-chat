@@ -3,6 +3,11 @@
     overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
+    will-change: scroll-position;
+    /* TODO: remove if everything is OK */
+    /*animation-name: scroller-overflow-hack;*/
+    animation-fill-mode: forwards;
+    animation-duration: 1ms;
 }
 
 .virtual-list::-webkit-scrollbar {
@@ -13,8 +18,12 @@
     list-style-type: none;
 }
 
-.virtual-list ul.virtual-container li.item.new {
-    position: absolute;
-    top: 20000px;
+.virtual-list ul.virtual-container li.item {
+    @apply flex flex-y;
 }
 
+/* TODO: remove if everything is OK */
+/*@keyframes scroller-overflow-hack {*/
+/*    0% { opacity: .9999; }*/
+/*    100% { opacity: 1; }*/
+/*}*/

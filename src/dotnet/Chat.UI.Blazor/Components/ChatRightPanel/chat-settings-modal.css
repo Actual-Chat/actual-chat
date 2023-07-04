@@ -1,0 +1,60 @@
+﻿.edit-chat-settings-modal {
+    @apply text-03;
+}
+
+.edit-chat-settings-modal.modal-frame {
+    @apply px-0;
+    @apply gap-y-0;
+}
+
+.edit-chat-settings-modal .no-padding-header-decorator {
+    @apply mx-0;
+}
+
+.edit-chat-settings-modal .modal-header {
+    @apply mx-4;
+}
+
+.edit-chat-settings-modal .dialog-body {
+    @apply p-0;
+}
+
+.edit-chat-settings-modal .dialog-buttons {
+    @apply -flex-x;
+    @apply px-4;
+    @apply pt-4;
+    @apply pb-2;
+}
+
+.edit-chat-settings-modal .form-block {
+    @apply px-4;
+}
+
+.edit-chat-settings-modal .tile-item {
+    @apply hover:bg-inherit;
+}
+
+.form .field-chat-public-url section {
+    @apply mt-0;
+}
+
+.form.form-y .field-chat-public-url section .form-section-content {
+    @apply mt-0;
+}
+
+.tile-item.field-chat-public-url .label-inside-input input {
+    @apply h-6;
+}
+
+.tile-item.field-chat-public-url .tile-item-icon,
+.tile-item.field-chat-public-url .tile-item-right {
+    @apply my-auto;
+}
+
+.form .field-allow-guest .tile-item-body-caption label {
+    @apply text-icons-04;
+}
+
+.wide .field-chat-title input {
+    @apply h-10;
+}

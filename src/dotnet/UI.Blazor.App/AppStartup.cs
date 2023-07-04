@@ -1,5 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Net.WebSockets;
 using ActualChat.Audio.Module;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
@@ -16,86 +16,35 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Client;
 using Stl.Generators;
-using Stl.Plugins;
+// ReSharper disable once RedundantUsingDirective
+using Stl.Interception.Interceptors;
+using Stl.RestEase; // Required for InterceptorBase configuration at Release
 
 namespace ActualChat.UI.Blazor.App
 {
     public static class AppStartup
     {
-        private static readonly object _lock = new ();
-        private static string? _sessionAffinityKey;
-
-        public static string SessionAffinityKey {
-            get {
-                lock (_lock)
-                    return _sessionAffinityKey ??= GenerateSessionAffinityKey();
-            }
-        }
-
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CoreModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaybackModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUICoreModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioBlazorUIModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContactsClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatBlazorUIModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InviteClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersContractsModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UsersBlazorUIModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeedbackClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationClientModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationBlazorUIModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorUIAppModule))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatModule))]
-        public static async Task ConfigureServices(IServiceCollection services, AppKind appKind, params Type[] platformPluginTypes)
+        public static void ConfigureServices(
+            IServiceCollection services,
+            AppKind appKind,
+            Func<IServiceProvider, HostModule[]>? platformModuleFactory = null)
         {
-            // Commander - it must be added first to make sure its options are set
-            var commander = services.AddCommander().Configure(new CommanderOptions() {
-                AllowDirectCommandHandlerCalls = false,
-            });
-
-            // Creating plugins
-            var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
-            // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
-            var pluginTypes = new List<Type> {
-                typeof(CoreModule),
-                typeof(PlaybackModule),
-                typeof(BlazorUICoreModule),
-                typeof(AudioClientModule),
-                typeof(AudioBlazorUIModule),
-                typeof(ChatModule),
-                typeof(ChatClientModule),
-                typeof(ChatBlazorUIModule),
-                typeof(ContactsClientModule),
-                typeof(InviteClientModule),
-                typeof(UsersContractsModule),
-                typeof(UsersClientModule),
-                typeof(UsersBlazorUIModule),
-                typeof(UsersContractsModule),
-                typeof(FeedbackClientModule),
-                typeof(NotificationClientModule),
-                typeof(NotificationBlazorUIModule),
-                typeof(BlazorUIAppModule),
-                typeof(ChatModule),
-            };
-            pluginTypes.AddRange(platformPluginTypes);
-            pluginHostBuilder.UsePlugins(pluginTypes);
-            var trace = Tracer.Default;
-            var step = trace.Region("Building PluginHost");
-            var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
-            step.Close();
-            services.AddSingleton(plugins);
+#if !DEBUG
+            InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+#else
+            if (appKind.IsMauiApp())
+                InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+#endif
+            var tracer = Tracer.Default;
 
             // Fusion services
             var fusion = services.AddFusion();
-            var fusionClient = fusion.AddRestEaseClient();
-            if (appKind == AppKind.WasmApp)
-                fusionClient.ConfigureHttpClient((c, name, o) => {
+            var restEase = services.AddRestEase();
+            var isWasm = appKind == AppKind.WasmApp;
+            if (isWasm)
+                restEase.ConfigureHttpClient((c, name, o) => {
                     var urlMapper = c.GetRequiredService<UrlMapper>();
                     var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                     var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
@@ -106,15 +55,16 @@ namespace ActualChat.UI.Blazor.App
                     });
                 });
             else
-                fusionClient.ConfigureHttpClient((c, name, o) => {
+                restEase.ConfigureHttpClient((c, name, o) => {
                     var urlMapper = c.GetRequiredService<UrlMapper>();
                     var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
                     var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
                     o.HttpClientActions.Add(client => {
+                        var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
                         client.BaseAddress = clientBaseUrl.ToUri();
                         client.DefaultRequestVersion = HttpVersion.Version30;
                         client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-                        client.DefaultRequestHeaders.Add("cookie", $"GCLB=\"{SessionAffinityKey}\"");
+                        client.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
                     });
                     o.HttpMessageHandlerBuilderActions.Add(b => {
                         if (b.PrimaryHandler is HttpClientHandler h)
@@ -122,22 +72,51 @@ namespace ActualChat.UI.Blazor.App
                     });
                 });
 
-            fusionClient.ConfigureWebSocketChannel(c => {
+            fusion.Rpc.AddWebSocketClient(c => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
-                return new () {
-                    BaseUri = urlMapper.BaseUri,
-                    LogLevel = LogLevel.Information,
-                    MessageLogLevel = LogLevel.None,
-                };
+                return urlMapper.BaseUri.ToString();
             });
+            if (!isWasm) {
+                services.AddTransient<ClientWebSocket>(_ => {
+                    var ws = new ClientWebSocket();
+                    var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
+                    ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                    return ws;
+                });
+            }
 
-            // Injecting plugin services
-            step = trace.Region("Injecting plugin services");
-            plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
-            step.Close();
+            // Creating modules
+            using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");
+            var moduleServices = services.BuildServiceProvider();
+            var moduleHostBuilder = new ModuleHostBuilder()
+                // From less dependent to more dependent!
+                .WithModules(
+                    // Core modules
+                    new CoreModule(moduleServices),
+                    // Generic modules
+                    new MediaPlaybackModule(moduleServices),
+                    // Service-specific & service client modules
+                    new AudioClientModule(moduleServices),
+                    new FeedbackClientModule(moduleServices),
+                    new UsersContractsModule(moduleServices),
+                    new UsersClientModule(moduleServices),
+                    new ContactsClientModule(moduleServices),
+                    new ChatModule(moduleServices),
+                    new ChatClientModule(moduleServices),
+                    new InviteClientModule(moduleServices),
+                    new NotificationClientModule(moduleServices),
+                    // UI modules
+                    new BlazorUICoreModule(moduleServices),
+                    new AudioBlazorUIModule(moduleServices),
+                    new UsersBlazorUIModule(moduleServices),
+                    new ChatBlazorUIModule(moduleServices),
+                    new NotificationBlazorUIModule(moduleServices),
+                    // This module should be the last one
+                    new BlazorUIAppModule(moduleServices)
+                );
+            if (platformModuleFactory != null)
+                moduleHostBuilder = moduleHostBuilder.WithModules(platformModuleFactory.Invoke(moduleServices));
+            moduleHostBuilder.Build(services);
         }
-
-        private static string GenerateSessionAffinityKey()
-            => RandomStringGenerator.Default.Next(16, RandomStringGenerator.Base16Alphabet);
     }
 }

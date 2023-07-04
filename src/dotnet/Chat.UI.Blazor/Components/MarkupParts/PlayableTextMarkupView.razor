@@ -1,7 +1,5 @@
-@using Stl.Extensibility
 @using ActualChat.MediaPlayback
 @inherits ComputedMarkupViewBase<PlayableTextMarkup, PlayableTextMarkupView.Model>
-@attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
 @{
     var m = _rendered = State.Value;
     var colorCls = m.Color switch {
@@ -16,7 +14,7 @@
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
 <span class="@containerCls @colorCls">
-    @for (var i = 0; i < Markup.Words.Length; i++) {
+    @for (var i = 0; i < Markup.Words.Count; i++) {
         var word = Markup.Words[i];
         var status = m.Map != null ? m.Map[i] : WordPlayback.None;
         var cls = GetPlayingClass(status);
@@ -35,7 +33,7 @@
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Model? _rendered;
 
-    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
@@ -66,7 +64,7 @@
         var entry = Entry;
         var chatId = entry.ChatId;
 
-        var startTimeOpt = markup.TextToTimeMap.TryMap(startIndex);
+        var startTimeOpt = markup.TimeMap.TryMap(startIndex);
         if (startTimeOpt is not { } startTime)
             return;
 
@@ -158,8 +156,8 @@
         if (!playingAtNearbyRange.Overlaps(timeRange))
             return Model.None;
 
-        var map = new WordPlayback[Markup.Words.Length];
-        for (var i = 0; i < Markup.Words.Length; i++) {
+        var map = new WordPlayback[Markup.Words.Count];
+        for (var i = 0; i < Markup.Words.Count; i++) {
             var word = Markup.Words[i];
             var isWordPlaying = word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt);
             map[i] = isWordPlaying ? WordPlayback.Playing : WordPlayback.None;
@@ -169,7 +167,7 @@
         if (isEmpty)
             return Model.None;
 
-        for (var i = 0; i < Markup.Words.Length; i++) {
+        for (var i = 0; i < Markup.Words.Count; i++) {
             var prev = i > 0 ? map[i - 1] : WordPlayback.None;
             var current = map[i];
             var next = i < map.Length - 1 ? map[i + 1] : WordPlayback.None;

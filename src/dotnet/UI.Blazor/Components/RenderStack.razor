@@ -1,17 +1,23 @@
+@implements IDisposable
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<ImmutableList<RenderIntoStack>>
 @{
-    var items = State.Value;
-    if (items.Count == 0)
+    var items = _stack?.Value;
+    if (items == null || items.Count == 0)
         return;
 
-    var orderedItems = items.OrderBy(x => x.Order).ThenBy(x => x.Key) as IEnumerable<RenderIntoStack>;
+    var orderedItems = items
+        .OrderBy(x => x.Order).ThenBy(x => x.Key) as IEnumerable<RenderIntoStack>;
     if (IsReversed)
         orderedItems = orderedItems.Reverse();
+
+    var knownKeys = new HashSet<string>(StringComparer.Ordinal);
 }
 
 @foreach (var item in orderedItems) {
     if (!item.Key.IsNullOrEmpty()) {
+        if (!knownKeys.Add(item.Key))
+            continue;  // It seems sometimes Blazor disposes the component way too late
+
         <NoComponent @key="item.Key">
             @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
         </NoComponent>
@@ -23,19 +29,26 @@
 }
 
 @code {
+    private RenderVar<List<RenderIntoStack>>? _stack;
+    private Action<RenderVar>? _onStackChanged;
+
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public bool IsReversed { get; set; }
     [Parameter] public RenderFragment<RenderFragment?>? Item { get; set; }
 
-    protected override ComputedState<ImmutableList<RenderIntoStack>>.Options GetStateOptions()
-        => new () {
-            InitialValue = ImmutableList<RenderIntoStack>.Empty,
-            UpdateDelayer = FixedDelayer.Instant,
-            Category = GetStateCategory(),
-        };
+    protected override void OnInitialized() {
+        _onStackChanged = OnStackChanged;
+        _stack = RenderVars.RenderStack(Name);
+        _stack.Changed += _onStackChanged;
+    }
 
-    protected override async Task<ImmutableList<RenderIntoStack>> ComputeState(CancellationToken cancellationToken)
-        => await RenderVars.RenderStack(Name).Use(cancellationToken);
+    public void Dispose() {
+        if (_stack != null)
+            _stack.Changed -= _onStackChanged;
+    }
+
+    private void OnStackChanged(RenderVar _)
+        => StateHasChanged();
 }

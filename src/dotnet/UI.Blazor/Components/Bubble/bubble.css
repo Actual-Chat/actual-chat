@@ -1,0 +1,19 @@
+.ac-bubble-host {
+    @apply fixed z-bubble inset-0 overflow-hidden;
+    @apply pointer-events-none select-none;
+}
+.ac-bubble {
+    @apply hidden absolute top-0 left-0;
+    @apply p-4;
+    @apply bg-bubble;
+    @apply min-w-64 max-w-64;
+    @apply rounded-lg whitespace-nowrap z-bubble;
+    @apply pointer-events-auto;
+    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
+}
+.ac-bubble-arrow {
+    @apply absolute;
+    @apply bg-bubble;
+    @apply w-[12px] h-[12px];
+    @apply rotate-45;
+}

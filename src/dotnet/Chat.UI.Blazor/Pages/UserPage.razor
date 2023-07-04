@@ -10,23 +10,23 @@
     protected override async Task OnParametersSetAsync() {
         var userId = new UserId(UserSid, ParseOrNone.Option);
         if (userId.IsGuestOrNone) {
-            History.NavigateTo(Links.NotFound);
+            _ = History.NavigateTo(Links.NotFound);
             return;
         }
 
         var ownAccount = await Accounts.GetOwn(Session, default);
         var account = await Accounts.Get(Session, userId, default);
         if (account == null || account.IsGuestOrNone) {
-            History.NavigateTo(Links.NotFound);
+            _ = History.NavigateTo(Links.NotFound);
             return;
         }
 
         if (ownAccount.Id == account.Id) { // Own account
-            History.NavigateTo(Links.Chats);
+            _ = History.NavigateTo(Links.Chats);
             return;
         }
 
         var chatId = new PeerChatId(ownAccount.Id, account.Id);
-        History.NavigateTo(Links.Chat(chatId));
+        _ = History.NavigateTo(Links.Chat(chatId));
     }
 }

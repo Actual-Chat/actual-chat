@@ -37,7 +37,7 @@ public class FirebaseMessagingClient
         var isChatRelated = !chatId.IsNone;
         var isTextEntryRelated = chatEntryId is { IsNone: false, Kind: ChatEntryKind.Text };
         var tag = isTextEntryRelated
-            ? chatEntryId.Value
+            ? chatEntryId.ChatId.Value
             : isChatRelated ? chatId.Value : "topic";
         var link = isTextEntryRelated
             ? UrlMapper.ToAbsolute(Links.Chat(chatId, chatEntryId.LocalId))
@@ -45,6 +45,8 @@ public class FirebaseMessagingClient
 
         var multicastMessage = new MulticastMessage {
             Tokens = deviceIds.Select(id => id.Value).ToList(),
+            // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
+            // Notification = default,
             Data = new Dictionary<string, string>(StringComparer.Ordinal) {
                 { NotificationConstants.MessageDataKeys.NotificationId, notificationId },
                 { NotificationConstants.MessageDataKeys.Tag, tag },
@@ -53,36 +55,24 @@ public class FirebaseMessagingClient
                 { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
                 { NotificationConstants.MessageDataKeys.Link, link },
             },
-            Notification = new FirebaseAdmin.Messaging.Notification {
-                Title = title,
-                Body = content,
-                // ImageUrl = TODO(AK): add first image url if the message contains images
-            },
             Android = new AndroidConfig {
-                Notification = new AndroidNotification {
-                    // Color = ??? TODO(AK): set color
-                    // For test purpose put priority to high
-                    // To have notification message appears on top of screen no matter what type notification it is.
-                    // Later I want to keep this behavior only for 'mention' and 'reply' messages.
-                    // Normal messages will be shown only in system tray without popping up on top of a screen.
-                    Priority = NotificationPriority.HIGH,
-                    // Sound = ??? TODO(AK): set sound
-                    Tag = tag,
-                    Visibility = NotificationVisibility.PRIVATE,
-                    // ClickAction = ?? TODO(AK): Set click action for Android
-                    DefaultSound = true,
-                    LocalOnly = false,
-                    // NotificationCount = TODO(AK): Set unread message count!
-                    Icon = absoluteIconUrl,
-                    ChannelId = NotificationConstants.ChannelIds.Default,
+                // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
+                // Notification = default,
+                Data = new Dictionary<string, string>(StringComparer.Ordinal) {
+                    { NotificationConstants.MessageDataKeys.Title, title },
+                    { NotificationConstants.MessageDataKeys.Body, content },
+                    { NotificationConstants.MessageDataKeys.ImageUrl, absoluteIconUrl },
                 },
-                Priority = Priority.Normal,
-                CollapseKey = "topics",
-                // RestrictedPackageName = TODO(AK): Set android package name
+                Priority = Priority.High,
+                // CollapseKey = default, /* We don't use collapsible messages */
                 TimeToLive = TimeSpan.FromMinutes(180),
             },
             Apns = new ApnsConfig {
                 Aps = new Aps {
+                    Alert = new ApsAlert {
+                        Title = title,
+                        Body = content,
+                    },
                     Sound = "default",
                     MutableContent = true,
                     ThreadId = "topics",
@@ -123,8 +113,8 @@ public class FirebaseMessagingClient
                 if (responseGroup.Key is MessagingErrorCode.Unregistered or MessagingErrorCode.SenderIdMismatch) {
                     var tokensToRemove = responseGroup
                         .Select(g => g.DeviceId)
-                        .ToImmutableArray();
-                    _ = Commander.Start(new INotificationsBackend.RemoveDevicesCommand(tokensToRemove), CancellationToken.None);
+                        .ToApiArray();
+                    _ = Commander.Start(new NotificationsBackend_RemoveDevices(tokensToRemove), CancellationToken.None);
                 }
                 else if (responseGroup.Key.HasValue) {
                     var firstErrorItem = responseGroup.First();

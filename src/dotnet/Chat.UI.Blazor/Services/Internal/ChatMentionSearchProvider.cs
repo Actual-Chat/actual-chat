@@ -27,7 +27,7 @@ internal class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(x => x.searchMatch.Rank)
             .ThenBy(x => x.author.Avatar.Name, StringComparer.Ordinal)
-            .Select(x => new MentionSearchResult($"a:{x.author.Id}", x.searchMatch, x.author.Avatar.Picture))
+            .Select(x => new MentionSearchResult(new MentionId(x.author.Id, AssumeValid.Option), x.searchMatch, x.author.Avatar.UserPicture))
             .Take(limit)
             .ToArray();
         return mentions;

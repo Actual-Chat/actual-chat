@@ -18,7 +18,7 @@ public class ScheduledCommandsTest: TestBase
             .AddLocalCommandQueues()
             .AddCommandQueueScheduler()
             .AddFusion()
-            .AddComputeService<ScheduledCommandTestService>()
+            .AddService<ScheduledCommandTestService>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
@@ -46,8 +46,8 @@ public class ScheduledCommandsTest: TestBase
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
-            .AddComputeService<ScheduledCommandTestService>()
-            .AddComputeService<DedicatedEventHandler>()
+            .AddService<ScheduledCommandTestService>()
+            .AddService<DedicatedEventHandler>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();
@@ -77,8 +77,8 @@ public class ScheduledCommandsTest: TestBase
             .AddSingleton<DedicatedInterfaceEventHandler>()
             .AddCommander(c => c.AddHandlers<DedicatedInterfaceEventHandler>())
             .AddFusion()
-            .AddComputeService<ScheduledCommandTestService>()
-            .AddComputeService<DedicatedEventHandler>()
+            .AddService<ScheduledCommandTestService>()
+            .AddService<DedicatedEventHandler>()
             .Services
             .BuildServiceProvider();
         await services.HostedServices().Start();

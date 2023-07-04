@@ -1,0 +1,143 @@
+@using ActualChat.Hosting
+@using ActualChat.Module
+@implements IRootComponent
+@implements IDisposable
+@{
+    if (!_readyToRender) {
+        // We can't render anything till the moment a few key components completed the initialization,
+        // but we can render the Router to make sure its routing tables are initialized -
+        // Routing tables are cached, so another (actual) Router instance will reuse them;
+        // see RouteTableFactory.Create for details.
+        <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+            <Found></Found>
+            <NotFound></NotFound>
+        </Router>
+        return;
+    }
+
+    if (_simulatedCrashError != null)
+        throw _simulatedCrashError;
+}
+
+<ScreenSizeProvider>
+    <AlwaysVisibleComponents/>
+
+    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+        <Found Context="routeData">
+            <RequirementChecker>
+                <Success>
+                    <RouteView RouteData="@routeData" DefaultLayout="@typeof(DefaultLayout)"/>
+                </Success>
+                <Failure Context="failures">
+                    <ErrorBlock Failures="@failures"/>
+                </Failure>
+            </RequirementChecker>
+        </Found>
+        <NotFound>
+            <PageNotFoundBlock/>
+        </NotFound>
+    </Router>
+
+</ScreenSizeProvider>
+
+@code {
+    private static Assembly? UIAssembly { get; set; }
+    private static Assembly[]? UIModuleAssemblies { get; set; }
+
+    private readonly CancellationTokenSource _disposeTokenSource;
+    private readonly CancellationToken _disposeToken;
+    private bool _readyToRender;
+    private Exception? _simulatedCrashError;
+
+    [Inject] protected IServiceProvider Services { get; init; } = null!;
+    [Inject] protected ILogger<AppBase> Log { get; init; } = null!;
+
+    [Inject] protected HostInfo HostInfo { get; init; } = null!;
+    [Inject] protected ModuleHost Host { get; init; } = null!;
+    [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] protected AppServiceStarter AppServiceStarter { get; init; } = null!;
+    [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
+    [Inject] protected LoadingUI LoadingUI { get; init; } = null!;
+    [Inject] protected Tracer Tracer { get; init; } = null!;
+
+    [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+
+    public AppBase() {
+        _disposeTokenSource = new CancellationTokenSource();
+        _disposeToken = _disposeTokenSource.Token;
+    }
+
+    protected override void OnInitialized() {
+        LoadingUI.MarkAppCreated();
+
+        // Hit StaticImportsInitializer to make sure DefaultLog is set
+        Services.GetRequiredService<StaticImportsInitializer>();
+
+        // Configure CircuitContext
+        CircuitContext.RootComponent = this;
+        ((AppBlazorCircuitContext)CircuitContext).MarkReady();
+    }
+
+    protected override async Task OnInitializedAsync() {
+        using var _1 = Tracer.Region();
+
+        var appKind = HostInfo.AppKind;
+        if (!appKind.IsMauiApp()) {
+            // Set ISessionResolver.Session
+            if (SessionId.IsNullOrEmpty())
+                throw new ArgumentOutOfRangeException(nameof(SessionId));
+
+            var session = new Session(SessionId);
+            if (!SessionResolver.HasSession) {
+                SessionResolver.Session = session;
+            } else if (SessionResolver.Session != session) {
+                // No way to change Session other than page reload
+                var nav = Services.GetRequiredService<NavigationManager>();
+                nav.NavigateTo(nav.Uri, true);
+                return;
+            }
+
+            if (appKind.IsClient()) // MAUI app does this earlier
+                _ = AppServiceStarter.PostSessionWarmup(SessionResolver.Session, CancellationToken.None);
+        }
+
+        var whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);
+
+        UIAssembly ??= typeof(AppBase).Assembly;
+        UIModuleAssemblies ??= Host.Modules
+            .OfType<IBlazorUIModule>()
+            .Select(p => p.GetType().Assembly)
+            .Where(a => a != UIAssembly)
+            .ToArray();
+        Tracer.Point("IBlazorUIModule assemblies evaluated");
+
+        await whenReadyToRender;
+        LoadingUI.MarkLoaded();
+        _ = LoadingUI.WhenRendered.ContinueWith(
+            _ => AppServiceStarter.AfterRender(_disposeToken),
+            TaskScheduler.Default);
+
+        Services.GetRequiredService<UIEventHub>();
+        _readyToRender = true;
+        StateHasChanged();
+    }
+
+    public void Dispose() {
+        if (_disposeToken.IsCancellationRequested)
+            return;
+
+        _disposeTokenSource.CancelAndDisposeSilently();
+        Dispose(true);
+    }
+
+    protected virtual void Dispose(bool disposing)
+        => CircuitContext.Dispose();
+
+    public void SimulateCrash(Exception error) {
+        _simulatedCrashError = error;
+        StateHasChanged();
+    }
+
+    protected override bool ShouldRender()
+        => _readyToRender;
+}

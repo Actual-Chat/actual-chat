@@ -1,4 +1,10 @@
-<Button Class="btn-w-full add-avatar-btn" Click="OnClick">
+@using ActualChat.Chat.UI.Blazor.Components
+
+<Button Class="btn-w-full add-avatar-btn"
+        Click="OnClick"
+        data-bubble="@(BubbleRef.New<AddAvatarBubble>())"
+        data-bubble-priority="302"
+        data-bubble-placement="@(FloatingPosition.LeftStart.ToPositionString())">
     <div class="flex min-w-10 items-center justify-center">
         <i class="icon-plus text-xl text-primary"></i>
     </div>

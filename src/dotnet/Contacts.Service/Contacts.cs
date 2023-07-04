@@ -54,7 +54,7 @@ public class Contacts : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ContactId>> ListIds(
+    public virtual async Task<ApiArray<ContactId>> ListIds(
         Session session,
         CancellationToken cancellationToken)
     {
@@ -64,7 +64,7 @@ public class Contacts : IContacts
     }
 
     // [CommandHandler]
-    public virtual async Task<Contact?> Change(IContacts.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -78,12 +78,12 @@ public class Contacts : IContacts
             throw Unauthorized();
 
         return await Commander
-            .Call(new IContactsBackend.ChangeCommand(id, expectedVersion, change), cancellationToken)
+            .Call(new ContactsBackend_Change(id, expectedVersion, change), cancellationToken)
             .ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task Touch(IContacts.TouchCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -96,7 +96,7 @@ public class Contacts : IContacts
             throw Unauthorized();
 
         await Commander
-            .Call(new IContactsBackend.TouchCommand(id), cancellationToken)
+            .Call(new ContactsBackend_Touch(id), cancellationToken)
             .ConfigureAwait(false);
     }
 

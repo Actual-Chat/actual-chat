@@ -1,85 +1,19 @@
 ﻿@using ActualChat.Chat.UI.Blazor.Pages
-@inherits ComputedStateComponent<ChatFooter.Model>
+@inherits FusionComponentBase
 @{
-    var m = State.Value;
+    var m = Model;
+    var chat = Chat;
 }
 
 <div class="writable-chat-footer">
-    @if (ReferenceEquals(m, Model.Loading)) {
+    @if (ReferenceEquals(chat, SpecialChat.Loading)) {
         // Render skeletons until State is computed
-        <div class="flex-none flex-x justify-items-stretch items-stretch w-full p-0 md:py-2 md:px-3 md:mx-0.5 gap-x-2.5">
-            <div class="-flex-y w-full overflow-x-hidden">
-                <div class="flex-x gap-x-1.5 px-2 md:px-0 my-1 md:my-0">
-                    <div class="post-panel flex-x justify-between outline-none w-full border-bg-01">
-                    </div>
-                </div>
-                @* Mobile panel *@
-                @if (ScreenSize.IsNarrow()) {
-                    <div class="chat-audio-panel flex-x gap-x-6">
-                        <div class="language-button !shadow-none">
-                            <div class="btn btn-round">
-                                <div class=" btn-content" tabindex="-1">
-                                    <div class="btn-content-inner">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="recorder-button">
-                            <div class="rounded-full h-20 w-20">
-                                <div class="btn btn-round recorder-skeleton">
-                                    <div class="btn-content" tabindex="-1">
-                                        <div class="btn-content-inner">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="playback-button">
-                            <div class="listen-off playback-wrapper !shadow-none">
-                                <div class="btn btn-round">
-                                    <div class=" btn-content" tabindex="-1">
-                                        <div class="btn-content-inner">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-            @* Desktop panel *@
-            @if (ScreenSize.IsWide()) {
-                <div class="chat-audio-panel">
-                    <div class="playback-button">
-                        <div class="btn btn-round">
-                            <div class=" btn-content" tabindex="-1">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="recorder-button flex">
-                        <div class="rounded-full mx-1">
-                            <div class="btn btn-round">
-                                <div class=" btn-content" tabindex="-1">
-                                    <div class="btn-content-inner">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="language-button">
-                        <div class="btn btn-round">
-                            <div class="btn-content" tabindex="-1">
-                                <div class="btn-content-inner">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
+        <chat-view-footer-skeleton/>
+    } else if (chat.Id.IsNone) {
+        <ReadOnlyChatFooter FooterText="@string.Empty" />
     } else {
         @if (m.CanPost) {
-            <ChatMessageEditor/>
+            <ChatMessageEditor @key="@chat" Chat="@chat" />
         } else if (m.CanJoin) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
@@ -95,9 +29,11 @@
                         @if (!m.OtherUserId.IsNone) {
                             <span class="inline-flex mx-2 mr-1 items-center">to chat with</span>
                             <AccountName UserSid="@m.OtherUserId.Id"/>
-                        } else {
+                        } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">Join anonymously</Button>
+                        } else {
+                            <span class="inline-flex ml-2 items-center">to join this chat</span>
                         }
                     </div>
                 }
@@ -111,63 +47,32 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    private ChatPage.FooterModel Model => ChatPageModel.Footer;
+    private Chat Chat => ChatPageModel.Chat;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
-    }
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ReferenceEquals(Chat, Chat.Loading))
-            return Model.Loading;
-        if (ReferenceEquals(Chat, Chat.None))
-            return Model.None;
-
-        var account = await Accounts.GetOwn(Session, cancellationToken);
-        var otherUserId = Chat.Id.IsPeerChat(out var peerChatId)
-            ? peerChatId.UserIds.OtherThan(account.Id)
-            : default;
-        var canPost = Chat.Rules.CanWrite();
-        var canJoin = !canPost && Chat.Rules.CanJoin();
-        var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
-        return new () {
-            OtherUserId = otherUserId,
-            IsGuest = account.IsGuestOrNone,
-            CanPost = canPost,
-            CanJoin = canJoin,
-            HasMultipleAvatars = avatars.Length > 1,
-        };
-    }
+    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // ReSharper disable once RedundantNameQualifier
+    [Parameter, EditorRequired] public ActualChat.Chat.UI.Blazor.Pages.ChatPage.Model ChatPageModel { get; set; } = null!;
 
     private async Task OnJoin() {
-        var m = State.Value;
-        if (!m.HasMultipleAvatars) {
-            var command = new IAuthors.JoinCommand(Session, Chat.Id);
+        if (!Model.HasMultipleAvatars) {
+            var command = new Authors_Join(Session, Chat.Id);
             await UICommander.Run(command);
             return;
         }
 
-        await ModalUI.Show(new AvatarSelectModal.Model(Chat));
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
+
+        async Task JoinWithAvatar(AvatarFull avatar) {
+            var command = new Authors_Join(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            await UICommander.Run(command);
+        }
     }
 
-    public sealed class Model {
-        public static Model Loading { get; } = new();
-        public static Model None { get; } = new();
-
-        public UserId OtherUserId { get; init; }
-        public bool IsGuest { get; init; }
-        public bool CanPost { get; init; }
-        public bool CanJoin { get; init; }
-        public bool HasMultipleAvatars { get; init; }
-    }
 }

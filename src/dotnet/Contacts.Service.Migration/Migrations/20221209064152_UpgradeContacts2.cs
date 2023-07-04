@@ -26,13 +26,12 @@ namespace ActualChat.Contacts.Migrations
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
-            var dbInitializer = DbInitializer.Get<ContactsDbInitializer>();
+            var dbInitializer = DbInitializer.GetCurrent<ContactsDbInitializer>();
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();
-            var versionGenerator = dbInitializer.DbHub.VersionGenerator;
 
-            using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
+            using var dbContext = dbInitializer.CreateDbContext(true);
 
             var dbContacts = await dbContext.Contacts.OrderBy(c => c.Id).ToListAsync();
             log.LogInformation("Upgrading {Count} contacts", dbContacts.Count);

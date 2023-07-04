@@ -9,7 +9,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'promises';
-import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
+import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Versioning } from 'versioning';
@@ -18,13 +18,10 @@ import { AudioVadWorker } from './audio-vad-worker-contract';
 import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
-import { VoiceActivityChange } from './audio-vad';
-import { Log, LogLevel, LogScope } from 'logging';
+import { VoiceActivityChange } from './audio-vad-contract';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'OpusEncoderWorker';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -34,9 +31,9 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 
 let codecModule: Codec | null = null;
 
-const CHUNKS_WILL_BE_SENT_ON_RESUME = 4;
-const FADE_CHUNKS = 2;
-const CHUNK_SIZE = 960;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
+const FADE_CHUNKS = 3;
+const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 
 /** buffer or callbackId: number of `end` message */
 const queue = new Denque<ArrayBuffer>();
@@ -45,11 +42,11 @@ const worker = self as unknown as Worker;
 let hubConnection: signalR.HubConnection;
 let recordingSubject: signalR.Subject<Uint8Array> = null;
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
-let vadState: 'voice' | 'silence' = 'voice';
+let vadState: 'voice' | 'silence' = 'silence';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
-let encoder: Encoder;
-let lastInitArguments: { sessionId: string, chatId: string } | null = null;
+let encoder: Encoder | null;
+let lastInitArguments: { recorderId: string, chatId: string, repliedChatEntryId: string } | null = null;
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
@@ -57,9 +54,9 @@ let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
 
 const serverImpl: OpusEncoderWorker = {
-    create: async (artifactVersions: Map<string, string>, audioHubUrl: string): Promise<void> => {
-        if (encoderWorklet != null || vadWorker != null)
-            throw new Error('Already initialized.');
+    create: async (artifactVersions: Map<string, string>, audioHubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
+        if (codecModule)
+            return;
 
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
@@ -75,6 +72,7 @@ const serverImpl: OpusEncoderWorker = {
         };
 
         // Connect to SignalR Hub
+        debugLog?.log(`create: hub connecting...`);
         hubConnection = new signalR.HubConnectionBuilder()
             .withUrl(audioHubUrl, {
                 skipNegotiation: true,
@@ -85,6 +83,13 @@ const serverImpl: OpusEncoderWorker = {
             .configureLogging(signalR.LogLevel.Information)
             .build();
         await hubConnection.start();
+
+        // Ensure audio transport is up and running
+        debugLog?.log(`create: -> hub.ping()`);
+        const pong = await hubConnection.invoke('Ping');
+        debugLog?.log(`create: <- hub.ping(): `, pong);
+        if (pong !== 'Pong')
+            warnLog?.log(`create: unexpected Ping call result`, pong);
 
         // Get fade-in window
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
@@ -105,26 +110,31 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     init: async (workletPort: MessagePort, vadPort: MessagePort): Promise<void> => {
-        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${LogScope}.encoderWorklet`, workletPort, serverImpl);
-        vadWorker = rpcClientServer<AudioVadWorker>(`${LogScope}.vadWorker`, vadPort, serverImpl);
+        encoderWorklet = rpcClientServer<OpusEncoderWorklet>(`${logScope}.encoderWorklet`, workletPort, serverImpl);
+        vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, vadPort, serverImpl);
 
         state = 'ended';
     },
 
-    start: async (sessionId: string, chatId: string): Promise<void> => {
-        lastInitArguments = { sessionId, chatId };
+    start: async (recorderId: string, chatId: string, repliedChatEntryId: string): Promise<void> => {
+        lastInitArguments = { recorderId, chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
         state = 'encoding';
-        vadState = 'silence';
+        if (vadState === 'voice')
+            await startRecording();
+        // do not set vadState there - it's independent from the recording state
     },
 
     stop: async (): Promise<void> => {
+        debugLog?.log(`stop`);
+
         state = 'ended';
+        vadState = 'silence';
         processQueue('out');
         recordingSubject?.complete();
         recordingSubject = null;
-        encoder.reset();
+        encoder?.reset();
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
@@ -141,13 +151,17 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     onVoiceActivityChange: async (change: VoiceActivityChange, _noWait?: RpcNoWait) => {
-        debugLog?.log(`onVoiceActivityChange:`, change);
-
         const newVadState = change.kind === 'end' ? 'silence' : 'voice';
         if (vadState === newVadState)
             return;
-        if (state !== 'encoding')
+
+        debugLog?.log(`onVoiceActivityChange:`, change);
+
+        if (state !== 'encoding') {
+            // set state, then leave since we are not recording
+            vadState = newVadState;
             return;
+        }
 
         if (newVadState === 'silence') {
             // set state, then complete the stream
@@ -160,23 +174,21 @@ const serverImpl: OpusEncoderWorker = {
             chunkTimeOffset = 0;
         }
         else {
+            // set state, then start new stream - several audio chunks can be buffered at the recordingSubject
+            // while hubConnection.send is being processed
+            vadState = newVadState;
+
             if (!lastInitArguments)
                 throw new Error('Unable to resume streaming lastNewStreamMessage is null');
 
             // start new stream and then set state
-            const { sessionId, chatId } = lastInitArguments;
-            recordingSubject?.complete(); // Just in case
-            recordingSubject = new signalR.Subject<Uint8Array>();
-            if (!encoder)
-                encoder = new codecModule.Encoder();
-            const preSkip = encoder.preSkip;
-            await hubConnection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, preSkip, recordingSubject);
-            vadState = newVadState;
-            processQueue('in');
+            lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
+
+            await startRecording();
         }
     }
 }
-const server = rpcServer(`${LogScope}.server`, worker, serverImpl);
+const server = rpcServer(`${logScope}.server`, worker, serverImpl);
 
 // Helpers
 
@@ -197,6 +209,18 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
         },
     };
+}
+
+async function startRecording(): Promise<void> {
+    const { recorderId, chatId, repliedChatEntryId } = lastInitArguments;
+
+    recordingSubject?.complete(); // Just in case
+    recordingSubject = new signalR.Subject<Uint8Array>();
+    if (!encoder)
+        encoder = new codecModule.Encoder();
+    const preSkip = encoder.preSkip;
+    await hubConnection.send('ProcessAudio', recorderId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
+    processQueue('in');
 }
 
 function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
@@ -235,12 +259,21 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
                     fadeWindowIndex = null;
             }
 
+
+            // this fake chunk emulates clicky sound
+            // const typedViewFakeChunk = encoder.encode(silenceChunk.buffer);
+            // const fakeChunk = new Uint8Array(typedViewFakeChunk.length);
+            // fakeChunk.set(typedViewFakeChunk);
+            // recordingSubject?.next(fakeChunk);
+
             // typedViewEncodedChunk is a typed_memory_view to Decoder internal buffer - so you have to copy data
             const typedViewEncodedChunk = encoder.encode(buffer);
-            void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
             const encodedChunk = new Uint8Array(typedViewEncodedChunk.length);
             encodedChunk.set(typedViewEncodedChunk);
             recordingSubject?.next(encodedChunk);
+
+            void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
+
             chunkTimeOffset += 20;
         }
         if (fade === 'out') {

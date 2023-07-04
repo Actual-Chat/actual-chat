@@ -15,7 +15,7 @@
         <FileUpload id="@_inputId"
                     UploadUrl="@ImageUploadUrl"
                     Uploaded="OnUploaded"
-                    MaxSize="Constants.Chat.PictureFileSizeLimit"
+                    MaxSize="Constants.Chat.FileSizeLimit"
                     accept="image/*"
                     hidden>
         </FileUpload>
@@ -41,7 +41,7 @@
     [Parameter] public string ImageUploadUrl { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> PictureClick { get; set; }
-    [Parameter] public EventCallback<string> ImagePicked { get; set; }
+    [Parameter] public EventCallback<MediaContent> ImagePicked { get; set; }
 
     protected override void OnInitialized() {
         _inputId = ComponentIdGenerator.Next("pic-upload-input-file");
@@ -66,6 +66,6 @@
         return $"hsl({h}, 30%, 80%)";
     }
 
-    private async Task OnUploaded(string contentId)
-        => await ImagePicked.InvokeAsync(contentId).ConfigureAwait(false);
+    private async Task OnUploaded(MediaContent mediaContent)
+        => await ImagePicked.InvokeAsync(mediaContent).ConfigureAwait(false);
 }

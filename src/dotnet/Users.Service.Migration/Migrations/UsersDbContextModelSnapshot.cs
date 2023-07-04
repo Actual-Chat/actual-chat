@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.2")
+                .HasAnnotation("ProductVersion", "7.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -92,6 +92,15 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("bio");
 
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_anonymous");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -148,9 +157,9 @@ namespace ActualChat.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("key");
 
-                    b.Property<string>("Value")
+                    b.Property<byte[]>("Value")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("bytea")
                         .HasColumnName("value");
 
                     b.Property<long>("Version")
@@ -280,7 +289,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("presences");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
+            modelBuilder.Entity("Stl.Fusion.Authentication.Services.DbUserIdentity<string>", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
@@ -349,7 +358,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("_operations");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
+            modelBuilder.Entity("Stl.Fusion.Authentication.Services.DbUserIdentity<string>", b =>
                 {
                     b.HasOne("ActualChat.Users.Db.DbUser", null)
                         .WithMany("Identities")

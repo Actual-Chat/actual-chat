@@ -32,13 +32,13 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Role>> List(
+    public virtual async Task<ApiArray<Role>> List(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is null or { HasLeft: true })
-            return ImmutableArray<Role>.Empty;
+            return ApiArray<Role>.Empty;
 
         var isGuest = account.IsGuestOrNone;
         var isAnonymous = author is { IsAnonymous: true };
@@ -48,29 +48,29 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(
+    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(
         Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
-            return ImmutableArray<AuthorId>.Empty;
+            return ApiArray<AuthorId>.Empty;
 
         // If we're here, current user is either admin or is in owner role
         return await Backend.ListAuthorIds(chatId, roleId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListOwnerIds(
+    public virtual async Task<ApiArray<AuthorId>> ListOwnerIds(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (ownAuthor == null)
-            return ImmutableArray<AuthorId>.Empty;
+            return ApiArray<AuthorId>.Empty;
 
         var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
         var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ImmutableArray<AuthorId>.Empty;
+            return ApiArray<AuthorId>.Empty;
 
         var ownerRole = await Backend
             .GetSystem(chatId, SystemRole.Owner, cancellationToken)
@@ -81,7 +81,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     }
 
     // [CommandHandler]
-    public virtual async Task<Role> Change(IRoles.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -89,7 +89,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         var (session, chatId, roleId, expectedVersion, change) = command;
         await RequireOwner(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var changeCommand = new IRolesBackend.ChangeCommand(chatId, roleId, expectedVersion, change);
+        var changeCommand = new RolesBackend_Change(chatId, roleId, expectedVersion, change);
         return await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

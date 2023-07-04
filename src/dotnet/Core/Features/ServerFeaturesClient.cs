@@ -1,44 +1,34 @@
-using RestEase;
-
 namespace ActualChat;
+
+public interface IServerFeaturesClient : IServerFeatures
+{ }
 
 public class ServerFeaturesClient : IServerFeatures
 {
-    protected ITextSerializer Serializer { get; set; } = TypeDecoratingSerializer.Default;
+    protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;
 
     public IServiceProvider Services { get; }
-    public IClient Client { get; }
+    public IServerFeaturesClient Client { get; }
 
     public ServerFeaturesClient(IServiceProvider services)
     {
         Services = services;
-        Client = services.GetRequiredService<IClient>();
+        Client = services.GetRequiredService<IServerFeaturesClient>();
     }
 
+    // [ComputeMethod]
     public virtual async Task<object?> Get(Type featureType, CancellationToken cancellationToken)
     {
-        var json = await GetJson(featureType, cancellationToken).ConfigureAwait(false);
-        var result = Serializer.Read(json, typeof(object));
+        var featureDef = ServerFeatureDefRegistry.Instance.Get(featureType);
+        var data = await GetData(featureType, cancellationToken).ConfigureAwait(false);
+        var result = Serializer.Read(data, featureDef.ResultType);
         return result;
     }
 
-    public virtual Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken)
     {
-        featureTypeRef = featureTypeRef.TrimAssemblyVersion();
-        return Client.GetJson(featureTypeRef, cancellationToken);
-    }
-
-    // Nested types
-
-    public interface IClient : IServerFeatures, IReplicaService
-    { }
-
-    [BasePath("serverFeatures")]
-    public interface IClientDef
-    {
-        [Get(nameof(Get))]
-        Task<object?> Get(Type featureType, CancellationToken cancellationToken);
-        [Get(nameof(GetJson))]
-        Task<string> GetJson(TypeRef featureTypeRef, CancellationToken cancellationToken);
+        featureTypeRef = featureTypeRef.WithoutAssemblyVersions();
+        return Client.GetData(featureTypeRef, cancellationToken);
     }
 }

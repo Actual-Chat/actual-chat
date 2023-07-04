@@ -1,10 +1,7 @@
 import { DeviceInfo } from 'device-info';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'ChromiumEchoCancellation';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { warnLog, errorLog } = Log.get('ChromiumEchoCancellation');
 
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.
@@ -166,6 +163,6 @@ export function isAecWorkaroundNeeded(): boolean {
     return false;
 
     // Mobile phones have a good echoCancellation by default, we don't need anything to do
-    const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChrome;
+    const hasBuiltInAec = DeviceInfo.isMobile || !DeviceInfo.isChromium;
     return !hasBuiltInAec;
 }

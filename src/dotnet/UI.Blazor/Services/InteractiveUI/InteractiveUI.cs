@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
-using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -9,13 +8,14 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private readonly DotNetObjectReference<IInteractiveUIBackend>? _backendRef;
     private readonly IMutableState<bool> _isInteractive;
     private readonly IMutableState<ActiveDemandModel?> _activeDemand;
+    private Dispatcher? _dispatcher;
     private readonly object _lock = new();
 
     // Services
+    private IServiceProvider Services { get; }
     private ModalUI ModalUI { get; }
-    private Dispatcher Dispatcher { get; }
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private IJSRuntime JS { get; }
-    private MomentClockSet Clocks { get; }
     private HostInfo HostInfo { get; }
     private ILogger Log { get; }
 
@@ -26,21 +26,20 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
     public InteractiveUI(IServiceProvider services)
     {
-        Clocks = services.Clocks();
+        Services = services;
         Log = services.LogFor(GetType());
         HostInfo = services.GetRequiredService<HostInfo>();
 
         ModalUI = services.GetRequiredService<ModalUI>();
-        Dispatcher = services.GetRequiredService<Dispatcher>();
         JS = services.GetRequiredService<IJSRuntime>();
         _backendRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
 
         _isInteractive = services.StateFactory().NewMutable(false);
         _activeDemand = services.StateFactory().NewMutable((ActiveDemandModel?)null);
-        WhenReady = Dispatcher.InvokeAsync(
-            () => JS.InvokeVoidAsync(
-                $"{BlazorUICoreModule.ImportName}.InteractiveUI.init",
-                _backendRef));
+        WhenReady = JS.InvokeVoidAsync(
+            $"{BlazorUICoreModule.ImportName}.InteractiveUI.init",
+            _backendRef
+            ).AsTask();
     }
 
     public void Dispose()
@@ -87,7 +86,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
                 activeDemand = new ActiveDemandModel(
                     ImmutableList.Create(operation),
                     modalRefTask,
-                    TaskSource.New<Unit>(true).Task);
+                    TaskCompletionSourceExt.New());
                 _activeDemand.Value = activeDemand;
             }
             else {
@@ -106,18 +105,17 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
         var modalRef = await activeDemand.WhenModalRef.WaitAsync(cancellationToken).ConfigureAwait(false);
         await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var whenConfirmed = activeDemand.WhenConfirmed;
-        var isConfirmed = whenConfirmed.IsCompletedSuccessfully;
-
+        var isConfirmed = activeDemand.WhenConfirmed.IsCompletedSuccessfully;
         if (isConfirmed) // If confirmed, let's wait for interactivity as well
             await IsInteractive.When(x => x, cancellationToken).ConfigureAwait(false);
+
         return isConfirmed;
     }
 
     private Task<ModalRef> ShowModal()
     {
         var modalRefTask = Dispatcher.InvokeAsync(() => ModalUI.Show(DemandUserInteractionModal.Model.Instance));
-        modalRefTask.ContinueWith(async _ => {
+        _ = modalRefTask.ContinueWith(async _ => {
             if (modalRefTask.IsCompletedSuccessfully) {
                 // If modal was successfully created, let's wait when it gets closed
                 var modalRef = await modalRefTask.ConfigureAwait(false);
@@ -125,9 +123,8 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
             }
             lock (_lock) {
                 var activeDemand = _activeDemand.Value;
-                var whenConfirmed = activeDemand?.WhenConfirmed;
-                if (whenConfirmed?.IsCompleted is false)
-                    TaskSource.For(whenConfirmed).TrySetCanceled();
+                var whenConfirmed = activeDemand?.WhenConfirmedSource;
+                whenConfirmed?.TrySetCanceled();
             }
         }, TaskScheduler.Default);
         return modalRefTask;
@@ -138,5 +135,8 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     public sealed record ActiveDemandModel(
         ImmutableList<string> Operations,
         Task<ModalRef> WhenModalRef,
-        Task<Unit> WhenConfirmed);
+        TaskCompletionSource WhenConfirmedSource)
+    {
+        public Task WhenConfirmed => WhenConfirmedSource.Task;
+    }
 }

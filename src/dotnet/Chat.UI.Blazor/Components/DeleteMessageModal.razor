@@ -1,6 +1,4 @@
-@using Stl.Extensibility
 @implements IModalView<DeleteMessageModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
     var m = ModalModel.MessageModel;
 }
@@ -24,9 +22,8 @@
                     </div>
                     <div class="message-content">
                         @if (FirstAttachment != null) {
-                            var isImage = FirstAttachment.ContentType.OrdinalIgnoreCaseStartsWith("image");
-                            @if (isImage) {
-                                <ImageAttachment Attachment="@FirstAttachment"/>
+                            @if (FirstAttachment.IsVisualMedia()) {
+                                <VisualMediaAttachment Attachment="@FirstAttachment"/>
                             } else {
                                 <FileAttachment Attachment="@FirstAttachment"/>
                             }
@@ -40,10 +37,8 @@
         </div>
     </Body>
     <Buttons>
-        <div class="btn-group">
-            <Button Class="btn-cancel" Click="OnCancel" IsAutofocused="true">Cancel</Button>
-            <Button Class="btn-error" Click="OnDelete">Delete</Button>
-        </div>
+        <Button Class="btn-modal" Click="OnCancel" IsAutofocused="true">Cancel</Button>
+        <Button Class="btn-modal danger" Click="OnDelete">Delete</Button>
     </Buttons>
 </DialogFrame>
 
@@ -66,7 +61,7 @@
         FirstAttachment = Entry.Attachments.FirstOrDefault();
         Markup = Entry.AudioEntryId == null
             ? MarkupParser.Parse(Entry.Content)
-            : new PlayableTextMarkup(Entry.Content, Entry.TextToTimeMap);
+            : new PlayableTextMarkup(Entry.Content, Entry.TimeMap);
     }
 
     private void OnCancel()
@@ -74,7 +69,7 @@
 
     private async Task OnDelete() {
         Modal.Close();
-        var command = new IChats.RemoveTextEntryCommand(Session, Entry.ChatId, ModalModel.MessageModel.Entry.LocalId);
+        var command = new Chats_RemoveTextEntry(Session, Entry.ChatId, ModalModel.MessageModel.Entry.LocalId);
         await UICommander.Run(command);
     }
 

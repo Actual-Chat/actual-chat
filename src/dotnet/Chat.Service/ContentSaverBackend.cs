@@ -2,8 +2,7 @@
 
 namespace ActualChat.Chat;
 
-public class
-    ContentSaverBackend : IContentSaverBackend
+public class ContentSaverBackend : IContentSaverBackend
 {
     private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
     private IContentSaver ContentSaver { get; }
@@ -11,7 +10,7 @@ public class
     public ContentSaverBackend(IServiceProvider services)
         => ContentSaver = services.GetRequiredService<IContentSaver>();
 
-    public virtual async Task SaveContent(IContentSaverBackend.SaveContentCommand command, CancellationToken cancellationToken)
+    public virtual async Task SaveContent(ContentSaverBackend_SaveContent command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return;

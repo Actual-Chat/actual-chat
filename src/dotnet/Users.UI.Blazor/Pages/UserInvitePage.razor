@@ -26,7 +26,7 @@
     [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
-        var useCommand = new IInvites.UseCommand(Session, InviteId);
+        var useCommand = new Invites_Use(Session, InviteId);
         _useResult = await UICommander.Run(useCommand, CancellationToken.None);
     }
 }

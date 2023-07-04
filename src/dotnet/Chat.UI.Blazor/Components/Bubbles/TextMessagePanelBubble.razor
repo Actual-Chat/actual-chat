@@ -1,0 +1,18 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits BubbleBase
+
+<BubbleContent Bubble="@(this)">
+    <Title>Text message panel</Title>
+    <Body>
+    <p>
+        If you prefer to text, enter your text messages here. Use:
+    </p>
+    <ul>
+        <li><pre>@@</pre> character to mention anyone who joined the chat here</li>
+        <li><pre>*</pre><em>italic</em><pre>*</pre>,
+            <pre>**</pre><strong>bold</strong><pre>**</pre>,
+            <pre>`</pre>fixed-width<pre>`</pre></li>
+        <li><pre>```</pre> placed on individual line starts & ends code block.</li>
+    </ul>
+    </Body>
+</BubbleContent>

@@ -30,8 +30,8 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     }
 
     // [CommandHandler]
-    public virtual async Task UpgradeChat(
-        IChatsUpgradeBackend.UpgradeChatCommand command,
+    public virtual async Task OnUpgradeChat(
+        ChatsUpgradeBackend_UpgradeChat command,
         CancellationToken cancellationToken)
     {
         // NOTE(AY): Currently this command just "repairs" some of chat properties,
@@ -98,7 +98,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
             var dbAnyoneRole = systemDbRoles.SingleOrDefault(r => r.SystemRole == SystemRole.Anyone);
             if (dbAnyoneRole == null) {
-                var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
+                var createAnyoneRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Anyone,
                         Permissions =
@@ -118,8 +118,8 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     }
 
     // [CommandHandler]
-    public virtual async Task FixCorruptedReadPositions(
-        IChatsUpgradeBackend.FixCorruptedReadPositionsCommand command,
+    public virtual async Task OnFixCorruptedReadPositions(
+        ChatsUpgradeBackend_FixCorruptedReadPositions command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -152,7 +152,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                     chatId,
                     position,
                     fixedPosition);
-                var setCmd = new IChatPositionsBackend.SetCommand(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
+                var setCmd = new ChatPositionsBackend_Set(userId, chatId, ChatPositionKind.Read, fixedPosition, true);
                 await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
             }
         }

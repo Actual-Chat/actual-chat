@@ -1,13 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="flex items-center mx-4">
-    <div class="@Class flex-1 h-px"></div>
-    <span class="@TitleClass px-2 py-0 font-medium">@Title</span>
-    <div class="@Class flex-1 h-px"></div>
+<div class="flex items-center justify-center my-2 mx-4">
+    <span class="@TitleClass rounded-full px-2 py-0 text-xs font-medium">@Title</span>
 </div>
 
 @code {
     [Parameter] public string? Title { get; set; }
-    [Parameter] public string Class { get; set; } = "bg-gray-300";
-    [Parameter] public string TitleClass { get; set; } = "text-03";
+    [Parameter] public string TitleClass { get; set; } = "bg-02 text-03";
 }

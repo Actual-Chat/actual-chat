@@ -1,27 +1,75 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits MenuBase
+@inherits ComputedMenuBase<MessageMenu.Model>
 
-@if (_chatMessageModel != null) {
-    <MessageMenuContent
-        ChatMessageModel="_chatMessageModel"
-        ClickedLinkUrl="@_link">
-    </MessageMenuContent>
+@{
+    var m = State.Value;
+    if (State.Value == Model.None)
+        return;
 }
 
+<MessageMenuContent
+    ChatEntry="m.ChatEntry"
+    ClickedLinkUrl="@m.Link"
+    ClickedCode="@m.Code"
+    IsOwnEntry="m.IsOwnEntry"
+    CanWrite="m.CanWrite"
+    IsSystem="m.IsSystem">
+</MessageMenuContent>
+
 @code {
-    private ChatMessageModel? _chatMessageModel;
     private string? _link;
+    private string? _code;
+    private bool _isSystem;
+    private TextEntryId _entryId;
 
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
 
-    protected override async Task OnParametersSetAsync() {
-        if (Arguments is not [ var sEntryId, var link ])
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var sEntryId, var sIsSystem, var link, var code ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
-        var entryId = new TextEntryId(sEntryId);
-        var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
-        _chatMessageModel = entry != null ? new ChatMessageModel(entry) : null;
+        _isSystem = bool.Parse(sIsSystem);
+        _entryId = new TextEntryId(sEntryId);
         _link = link.NullIfEmpty();
+        _code = code.NullIfEmpty();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatEntry = await Chats.GetEntry(Session, _entryId, CancellationToken.None);
+        if (chatEntry == null)
+            return Model.None;
+
+        var requestAuthor = await Authors.GetOwn(Session, chatEntry.ChatId, CancellationToken.None);
+        var rules = await Chats.GetRules(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
+        var canWrite = rules.CanWrite();
+
+        return new Model {
+            Link = _link,
+            IsSystem = _isSystem,
+            Code = _code,
+            ChatEntry = chatEntry,
+            CanWrite = canWrite,
+            IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public string? Link { get; init; }
+        public bool IsSystem { get; init; }
+        public string? Code { get; set; }
+        public bool IsOwnEntry { get; init; }
+        public bool CanWrite { get; init; }
+        public ChatEntry ChatEntry { get; init; } = null!;
     }
 }

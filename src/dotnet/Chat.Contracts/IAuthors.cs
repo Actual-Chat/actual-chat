@@ -1,12 +1,13 @@
 using ActualChat.Users;
+using MemoryPack;
 
 namespace ActualChat.Chat;
 
 public interface IAuthors : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Author?> Get(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    [ComputeMethod]
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<AuthorFull?> GetOwn(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorFull?> GetFull(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
@@ -16,46 +17,50 @@ public interface IAuthors : IComputeService
     Task<Presence> GetPresence(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
-    Task<AuthorFull> Join(JoinCommand command, CancellationToken cancellationToken);
+    Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task Leave(LeaveCommand command, CancellationToken cancellationToken);
+    Task OnLeave(Authors_Leave command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task Invite(InviteCommand command, CancellationToken cancellationToken);
+    Task OnInvite(Authors_Invite command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record JoinCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] Symbol AvatarId = default,
-        [property: DataMember] bool? JoinAnonymously = null
-    ) : ISessionCommand<AuthorFull>;
-
-    [DataContract]
-    public sealed record LeaveCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId
-    ) : ISessionCommand<Unit>;
-
-    [DataContract]
-    public sealed record InviteCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] UserId[] UserIds
-    ) : ISessionCommand<Unit>;
-
-    [DataContract]
-    public sealed record SetAvatarCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] Symbol AvatarId
-    ) : ISessionCommand<Unit>;
+    Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_SetAvatar(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] Symbol AvatarId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_Invite(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_Leave(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_Join(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] Symbol AvatarId = default,
+    [property: DataMember, MemoryPackOrder(3)] bool? JoinAnonymously = null
+) : ISessionCommand<AuthorFull>;

@@ -4,7 +4,7 @@ public class DisposeMonitor : IDisposable
 {
     private readonly object _lock = new();
     private readonly CancellationTokenSource _disposeTokenSource = new();
-    private readonly TaskSource<Unit> _whenDisposedSource = TaskSource.New<Unit>(true);
+    private readonly TaskCompletionSource _whenDisposedSource = TaskCompletionSourceExt.New();
 
     public bool IsDisposed { get; set; }
     public Task WhenDisposed => _whenDisposedSource.Task;
@@ -20,7 +20,7 @@ public class DisposeMonitor : IDisposable
         lock (_lock) {
             if (IsDisposed) return;
             IsDisposed = true;
-            _whenDisposedSource.TrySetResult(default);
+            _whenDisposedSource.TrySetResult();
             _disposeTokenSource.CancelAndDisposeSilently();
             Disposed?.Invoke();
         }

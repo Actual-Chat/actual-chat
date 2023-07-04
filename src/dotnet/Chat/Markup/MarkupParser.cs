@@ -7,7 +7,7 @@ using static ActualChat.Chat.ParserExt;
 
 namespace ActualChat.Chat;
 
-public class MarkupParser : IMarkupParser
+public partial class MarkupParser : IMarkupParser
 {
     public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
@@ -84,31 +84,32 @@ public class MarkupParser : IMarkupParser
         Whitespace.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, true);
 
     // Mentions
+    private static Parser<char, Markup> MentionParserFactory(string name = "") =>
+        from sid in Id
+        let id = new MentionId(sid, ParseOrNone.Option)
+        where !id.IsNone
+        select (Markup)new MentionMarkup(id, name);
     private static readonly Parser<char, Markup> NamedMention =
         // @`User Name`userId
-        AtToken.Then(
-            from name in QuotedName
-            from id in Id
-            select (Markup) new MentionMarkup(id, name)
-            ).Debug("@`name`");
+        AtToken.Then(QuotedName).Then(MentionParserFactory).Debug("@`name`");
     private static readonly Parser<char, Markup> UnnamedMention =
-        // @`User Name`userId
-        AtToken.Then(Id)
-            .Select(id => (Markup) new MentionMarkup(id))
-            .Debug("@");
+        // @userId
+        AtToken.Then(MentionParserFactory()).Debug("@");
     private static readonly Parser<char, Markup> Mention =
         SafeTryOneOf(NamedMention, UnnamedMention);
 
     // Url
-    private static readonly string ProtoRe = @"((mailto|tel):)|((http|ftp)s?\:\/\/)";
-    private static readonly string HostRe = @"[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*";
-    private static readonly string MaybePortRe = @"(:(0-9)*)?";
-    private static readonly string MaybePathRe = @"(\/[a-zA-Z0-9\-\.\?\,\'\/\\\+&%\$#_]*)?";
-    private static readonly string FullUrlRe = $@"{ProtoRe}{HostRe}{MaybePortRe}{MaybePathRe}";
-    private static readonly string ShortUrlRe = $@"www\.{HostRe}{MaybePortRe}{MaybePathRe}";
-    private static readonly Regex UrlRegex = new(
-        $@"^({FullUrlRe})|({ShortUrlRe})$",
-        RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+    private const string ProtoRe = @"((mailto|tel):)|((http|ftp)s?\:\/\/)";
+    private const string HostRe = @"[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*";
+    private const string MaybePortRe = @"(:(0-9)*)?";
+    private const string MaybePathRe = @"(\/[a-zA-Z0-9\-\.\?\,\'\/\\\+&%\$#_]*)?";
+    private const string FullUrlRe = $@"{ProtoRe}{HostRe}{MaybePortRe}{MaybePathRe}";
+    private const string ShortUrlRe = $@"www\.{HostRe}{MaybePortRe}{MaybePathRe}";
+
+    [GeneratedRegex($@"^({FullUrlRe})|({ShortUrlRe})$", RegexOptions.ExplicitCapture)]
+    private static partial Regex UrlRegexFactory();
+
+    private static readonly Regex UrlRegex = UrlRegexFactory();
 
     private static readonly Parser<char, Markup> Url = (
         from head in FirstUrlChar

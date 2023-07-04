@@ -1,0 +1,55 @@
+/* Blazor reconnect & error classes:
+   - BrowserInit.startReloadWatchers is responsible for tracking their state
+   - BrowserInit.startReloading is responsible for showing actual #app-reloading overlay on reloading
+*/
+#components-reconnect-modal {
+    @apply absolute z-minus top-0 bottom-0 w-0 h-0;
+}
+#blazor-error-ui {
+    @apply absolute z-minus top-0 bottom-0 w-0 h-0;
+}
+
+/* Reconnect overlay */
+
+:root {
+    --reconnect-overlay-bg-color: white;
+    --reconnect-overlay-circle-size: 16rem;
+}
+@media (min-width: 1024px) {
+    :root {
+        --reconnect-overlay-circle-size: 20rem;
+    }
+}
+
+.reconnect-overlay {
+    @apply absolute inset-0 z-[1900];
+    @apply flex items-center justify-center overflow-hidden;
+    @apply backdrop-blur;
+}
+.reconnect-overlay > .c-bg {
+    @apply absolute inset-0;
+    @apply bg-01;
+    @apply opacity-[33.3%];
+}
+.reconnect-overlay > .c-circle-blur {
+    @apply absolute z-minus;
+    top: calc(50vh - var(--reconnect-overlay-circle-size)/2);
+    left: calc(50vw - var(--reconnect-overlay-circle-size)/2);
+    width: var(--reconnect-overlay-circle-size);
+    height: var(--reconnect-overlay-circle-size);
+    background: var(--reconnect-overlay-bg-color);
+    box-shadow: 0 0 50px 50px var(--reconnect-overlay-bg-color);
+    @apply rounded-full;
+    @apply blur;
+}
+.reconnect-overlay > .c-circle {
+    @apply flex-y items-center justify-center gap-y-2;
+    width: var(--reconnect-overlay-circle-size);
+    height: var(--reconnect-overlay-circle-size);
+    @apply bg-transparent;
+    @apply text-xl md:text-2xl font-semibold text-03;
+    @apply animate-pulse-70;
+}
+.reconnect-overlay > .c-circle > img {
+    @apply w-[55%];
+}

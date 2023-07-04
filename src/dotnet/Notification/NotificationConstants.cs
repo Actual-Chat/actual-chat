@@ -2,8 +2,6 @@ namespace ActualChat.Notification;
 
 public static class NotificationConstants
 {
-    public static readonly TimeSpan MessageNotificationThrottleInterval = TimeSpan.FromSeconds(30);
-
     public static class ChannelIds
     {
         // TODO: create more channels and groups
@@ -19,9 +17,12 @@ public static class NotificationConstants
         public const string Icon = "icon";
         public const string Link = "link";
         public const string Tag = "tag";
+        public const string Title = "title";
+        public const string Body = "body";
+        public const string ImageUrl = "imageUrl";
 
         public static readonly string[] ValidKeys = {
-            ChatId, ChatEntryId, Icon, Link, NotificationId, Tag
+            Body, ChatId, ChatEntryId, Icon, ImageUrl, Link, NotificationId, Tag, Title
         };
 
         public static bool IsValidKey(string key)

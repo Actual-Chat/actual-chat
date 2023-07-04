@@ -1,40 +1,47 @@
 @using ActualChat.UI.Blazor.Services
 
-<div class="landing-links" xmlns="http://www.w3.org/1999/html">
-    <div class="flex-y self-auto font-semibold text-04 text-4.5xl md:text-6xl">
+@{
+    var hideForNarrow = !IsNarrow && ScreenSize.IsNarrow() ? "!hidden" : "";
+}
+
+<div class="landing-links @hideForNarrow" xmlns="http://www.w3.org/1999/html">
+    <div class="flex-none flex-y text-04 text-headline-4">
         Get Actual Chat
     </div>
-    <div class="flex-x justify-center gap-x-4">
+    <div class="flex-x justify-center gap-x-15">
         <button class="link-btn">
             <div class="link-btn-content">
-                <img src="/dist/images/landing/android-logo-white.svg" alt="android">
+                <img draggable="false" src="/dist/images/landing/android-logo-white.svg" alt="android">
             </div>
-            <div class="text-04 @(IsNarrow ? "text-sm" : "")" data-href="@(Links.Apps.Android)">
-                Download for <strong>Android</strong>
-            </div>
-        </button>
-        <button class="link-btn cursor-default">
-            <div class="link-btn-content">
-                <img src="/dist/images/landing/apple-logo-white.svg" alt="apple">
-            </div>
-            <div class="text-04 @(IsNarrow ? "text-sm" : "")">
-                Coming soon:
-                <strong>iPhone/iPad</strong>
+            <div class="flex-y items-start text-04 text-title-1" data-href="@(Links.Apps.Android)">
+                <span>Download</span>
+                <span>for Android</span>
             </div>
         </button>
         <button class="link-btn cursor-default">
             <div class="link-btn-content">
-                <img src="/dist/images/landing/web-logo-white.svg" alt="web">
+                <img draggable="false" src="/dist/images/landing/apple-logo-white.svg" alt="apple">
             </div>
-            <div class="flex-y text-04 @(IsNarrow ? "text-sm" : "")">
-                <strong>Web app</strong>
-                <span>just sign in!</span>
+            <div class="flex-y items-start text-04 text-title-1">
+                <span>Coming soon</span>
+                <span>for iOs</span>
+            </div>
+        </button>
+        <button class="link-btn cursor-default">
+            <div class="link-btn-content">
+                <img draggable="false" src="/dist/images/landing/web-logo-white.svg" alt="web">
+            </div>
+            <div class="flex-y items-start text-04 text-title-1">
+                <span>Just Sign in</span>
+                <span>for Web App</span>
             </div>
         </button>
     </div>
 </div>
 
 @code{
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
     [Parameter] public bool IsNarrow { get; set; }
     [Parameter] public bool EnableIncompleteUI { get; set; }
 }

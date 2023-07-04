@@ -1,0 +1,101 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Users
+@using Stl.Generators
+@using ActualChat.Kvas
+@implements IAsyncDisposable
+
+<div class="ac-bubble-host">
+    <CascadingValue Value="@this" IsFixed="true">
+        @if (_bubble != null) {
+            <div id="@_bubble.Id"
+                 @key="_bubble.Id"
+                 class="ac-bubble">
+                <DynamicComponent Type="@_bubble.Ref.BubbleType" Parameters="@_bubble.Parameters"/>
+                <div class="ac-bubble-arrow"></div>
+            </div>
+        }
+    </CascadingValue>
+</div>
+
+@code {
+    private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
+
+    private BubbleModel? _bubble;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<BubbleHost> _blazorRef = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+
+    [JSInvokable]
+    public Task OnShow(string bubbleRef, bool isLastVisible, int index, int total) {
+        var id = IdGenerator.Next();
+        _bubble = new BubbleModel(
+            id,
+            BubbleRef.Parse(bubbleRef),
+            new Dictionary<string, object> {
+                { nameof(IBubble.Id), id },
+                { nameof(IBubble.IsLastVisible), isLastVisible },
+                { nameof(IBubble.Index), index },
+                { nameof(IBubble.Total), total },
+            });
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask ShowBubble(IBubble bubble) {
+        if (_bubble?.Id != bubble.Id)
+            return;
+
+        await _jsRef.InvokeVoidAsync("showBubble", CancellationToken.None, _bubble.Id, _bubble.Ref.ToString());
+    }
+
+    public async Task SkipBubbles() {
+        _bubble = null;
+
+        var bubbleRefs = await _jsRef.InvokeAsync<string[]>("skipBubbles", CancellationToken.None);
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRefs));
+        StateHasChanged();
+    }
+
+    public async Task ReadBubble(IBubble bubble) {
+        if (_bubble?.Id != bubble.Id)
+            return;
+
+        var bubbleRef = _bubble.Ref;
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRef.ToString()));
+        _bubble = null;
+        await _jsRef.InvokeVoidAsync("readBubble", CancellationToken.None, bubbleRef.ToString());
+        StateHasChanged();
+    }
+
+    // Protected & private methods
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            var identifier = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
+            await BrowserInfo.WhenReady;
+            await BubbleUI.WhenReady;
+            var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef, readBubbles);
+        }
+    }
+
+    // Nested types
+
+    private sealed record BubbleModel(
+        string Id,
+        BubbleRef Ref,
+        Dictionary<string, object> Parameters);
+}

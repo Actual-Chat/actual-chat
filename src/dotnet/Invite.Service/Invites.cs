@@ -23,7 +23,7 @@ internal class Invites : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Invite>> ListUserInvites(
+    public virtual async Task<ApiArray<Invite>> ListUserInvites(
         Session session,
         CancellationToken cancellationToken)
     {
@@ -34,7 +34,7 @@ internal class Invites : IInvites
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Invite>> ListChatInvites(
+    public virtual async Task<ApiArray<Invite>> ListChatInvites(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ internal class Invites : IInvites
     }
 
     // [CommandHandler]
-    public virtual async Task<Invite> Generate(IInvites.GenerateCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!;
@@ -55,13 +55,13 @@ internal class Invites : IInvites
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
         invite = command.Invite with { CreatedBy = account.Id };
-        return await Commander.Call(new IInvitesBackend.GenerateCommand(invite), cancellationToken)
+        return await Commander.Call(new InvitesBackend_Generate(invite), cancellationToken)
             .ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task<Invite> Use(
-        IInvites.UseCommand command,
+    public virtual async Task<Invite> OnUse(
+        Invites_Use command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -70,9 +70,23 @@ internal class Invites : IInvites
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(Account.MustNotBeGuest);
 
-        var useCommand = new IInvitesBackend.UseCommand(command.Session, command.InviteId);
+        var useCommand = new InvitesBackend_Use(command.Session, command.InviteId);
         var invite = await Commander.Call(useCommand, cancellationToken).ConfigureAwait(false);
         return invite.Mask();
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRevoke(Invites_Revoke command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        var (session, inviteId) = command;
+        var invite = await Backend.Get(inviteId, cancellationToken).ConfigureAwait(false);
+        invite.Require();
+        _ = await AssertCanRevoke(session, invite, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new InvitesBackend_Revoke(session, invite.Id), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Assertions
@@ -99,6 +113,30 @@ internal class Invites : IInvites
         case UserInviteOption:
             if (!account.IsAdmin)
                 throw StandardError.Unauthorized("Only admins can generate user invites.");
+            break;
+        case ChatInviteOption chatInvite:
+            var rules = await Chats
+                .GetRules(session, chatInvite.ChatId, cancellationToken)
+                .ConfigureAwait(false);
+            rules.Require(ChatPermissions.Invite);
+            break;
+        default:
+            throw StandardError.Format<Invite>();
+        }
+
+        return account;
+    }
+
+    private async Task<AccountFull> AssertCanRevoke(Session session, Invite invite, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        account.Require(Account.MustNotBeGuest);
+        account.Require(AccountFull.MustBeActive);
+
+        switch (invite.Details.Option) {
+        case UserInviteOption:
+            if (!account.IsAdmin)
+                throw StandardError.Unauthorized("Only admins can revoke user invites.");
             break;
         case ChatInviteOption chatInvite:
             var rules = await Chats

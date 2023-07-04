@@ -1,0 +1,55 @@
+/* Content */
+.bubble-content {
+    @apply text-04;
+}
+.bubble-content > video {
+    @apply rounded-lg;
+    @apply mb-4;
+}
+.bubble-body {
+    @apply pt-2 pb-4;
+    @apply text-caption-4;
+    @apply whitespace-normal;
+}
+.bubble-body > ul {
+    @apply list-disc pl-4;
+}
+.bubble-title {
+    @apply text-headline-1;
+}
+.bubble-counter {
+    @apply text-caption-2;
+}
+.bubble-buttons {
+    @apply gap-x-1;
+}
+
+.bubble-content p {
+    @apply my-2;
+}
+.bubble-content pre {
+    @apply inline-block;
+    @apply rounded px-0.25 py-0;
+    @apply whitespace-pre-wrap;
+    @apply bg-bubble-btn-hover;
+}
+
+/* Buttons */
+.btn-next {
+    @apply bg-bubble-btn-hover;
+}
+.btn.btn-bubble {
+    @apply min-w-20;
+    @apply px-2;
+    @apply border-0;
+    @apply text-04 text-headline-1;
+}
+.btn.btn-bubble .btn-content {
+    @apply bg-transparent;
+}
+.btn.btn-bubble:active {
+    @apply bg-bubble-btn-hover;
+}
+body.hoverable .btn.btn-bubble:hover {
+    @apply bg-bubble-btn-hover;
+}

@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components.Rendering;
-using Stl.Extensibility;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -8,14 +7,14 @@ public class BannerUI
 {
     private readonly object _lock = new ();
     private readonly IMutableState<ImmutableList<BannerDef>> _banners;
-    private IMatchingTypeFinder MatchingTypeFinder { get; }
+    private TypeMapper<IBannerView> ViewResolver { get; }
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ImmutableList<BannerDef>> Banners => _banners;
 
     public BannerUI(IServiceProvider serviceProvider)
     {
-        MatchingTypeFinder = serviceProvider.GetRequiredService<IMatchingTypeFinder>();
+        ViewResolver = serviceProvider.GetRequiredService<TypeMapper<IBannerView>>();
         _banners = serviceProvider.StateFactory().NewMutable(
             ImmutableList<BannerDef>.Empty, nameof(Banners));
     }
@@ -23,9 +22,7 @@ public class BannerUI
     public BannerDef Show<TBannerModel>(TBannerModel bannerModel)
         where TBannerModel : notnull
     {
-        var componentType = MatchingTypeFinder.TryFind(bannerModel.GetType(), typeof(IBannerView<>))
-            ?? throw StandardError.NotFound<TBannerModel>(
-                $"No banner view is found for model '{typeof(TBannerModel).GetName()}'.");
+        var componentType = ViewResolver.Get(bannerModel.GetType());
  #pragma warning disable IL2072
         var banner = Create(bannerModel, componentType);
  #pragma warning restore IL2072

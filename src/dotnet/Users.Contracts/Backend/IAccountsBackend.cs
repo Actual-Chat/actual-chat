@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Users;
 
 public interface IAccountsBackend : IComputeService
@@ -6,11 +8,12 @@ public interface IAccountsBackend : IComputeService
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task Update(UpdateCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record UpdateCommand(
-        [property: DataMember] AccountFull Account,
-        [property: DataMember] long? ExpectedVersion
-    ) : ICommand<Unit>, IBackendCommand;
+    public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AccountsBackend_Update(
+    [property: DataMember, MemoryPackOrder(0)] AccountFull Account,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion
+) : ICommand<Unit>, IBackendCommand;

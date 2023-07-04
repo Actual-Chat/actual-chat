@@ -4,30 +4,27 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
 
 namespace ActualChat.Contacts.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ContactsServiceModule : HostModule<ContactsSettings>
+public sealed class ContactsServiceModule : HostModule<ContactsSettings>
 {
-    public ContactsServiceModule(IPluginInfoProvider.Query _) : base(_) { }
-    [ServiceConstructor]
-    public ContactsServiceModule(IPluginHost plugins) : base(plugins) { }
+    public ContactsServiceModule(IServiceProvider services) : base(services) { }
 
     public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<ContactsDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, ContactsDbInitializer>();
         dbModule.AddDbContextServices<ContactsDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
@@ -51,8 +48,8 @@ public class ContactsServiceModule : HostModule<ContactsSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<IContacts, Contacts>();
-        fusion.AddComputeService<IContactsBackend, ContactsBackend>();
+        fusion.AddService<IContacts, Contacts>();
+        fusion.AddService<IContactsBackend, ContactsBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

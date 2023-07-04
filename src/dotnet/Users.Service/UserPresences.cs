@@ -1,30 +1,41 @@
-using ActualChat.Users.Db;
-using Stl.Fusion.EntityFramework;
-
 namespace ActualChat.Users;
 
-public class UserPresences : DbServiceBase<UsersDbContext>, IUserPresences
+public class UserPresences : IUserPresences
 {
-    private IDbEntityResolver<string, DbUserPresence> DbUserPresenceResolver { get; }
+    private IUserPresencesBackend Backend { get; }
+    private IAuth Auth { get; }
+    private IAccounts Accounts { get; }
+    private ICommander Commander { get; }
+    private MomentClockSet Clocks { get; }
+    private Moment Now => Clocks.SystemClock.Now;
 
     public UserPresences(IServiceProvider services)
-        : base(services)
-        => DbUserPresenceResolver = services.DbEntityResolver<string, DbUserPresence>();
-
-    [ComputeMethod(AutoInvalidationDelay = 61)]
-    public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
     {
-        var dbUserPresence = await DbUserPresenceResolver.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (dbUserPresence == null)
-            return Presence.Offline;
+        Backend = services.GetRequiredService<IUserPresencesBackend>();
+        Auth = services.GetRequiredService<IAuth>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        Commander = services.Commander();
+        Clocks = services.Clocks();
+    }
 
-        var inactiveFor = Clocks.SystemClock.Now - dbUserPresence.OnlineCheckInAt.ToMoment();
-        if (inactiveFor > Constants.Presence.OfflineTimeout)
-            return Presence.Offline;
+    // [ComputeMethod]
+    public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
+        => await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
 
-        if (inactiveFor > Constants.Presence.AwayTimeout)
-            return Presence.Away;
+    // [CommandHandler]
+    public virtual async Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
 
-        return Presence.Online;
+        var (session, isActive) = command;
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return;
+
+        var backendCommand = new UserPresencesBackend_CheckIn(account.Id, Now, isActive);
+        _ = Commander.Run(backendCommand, true, CancellationToken.None);
+        _ = Auth.UpdatePresence(session, CancellationToken.None);
     }
 }

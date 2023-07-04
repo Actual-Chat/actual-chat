@@ -1,6 +1,15 @@
 .left-panel-buttons .btn.btn-square .navbar-button-content.btn-content {
     @apply w-10 md:w-12 h-10 md:h-12;
-    @apply bg-white;
+    @apply bg-03;
+    @apply text-badge;
+}
+.left-panel-buttons .btn.btn-square.on .navbar-button-content.btn-content {
+    @apply text-icons-01;
+}
+body.hoverable .left-panel-buttons .btn.btn-square:hover .btn-content,
+body.hoverable .left-panel-buttons .btn.btn-square.on .btn-content,
+body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
+    @apply bg-01;
 }
 
 /* Group toggle button on the left side of the navbar */
@@ -10,6 +19,7 @@
 }
 .navbar-button .left-line {
     @apply self-center;
+    @apply -order-1;
     @apply h-10 md:h-12;
     @apply py-2;
     @apply rounded-full;

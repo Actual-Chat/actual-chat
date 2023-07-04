@@ -3,6 +3,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
+    var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var link = Links.User(AccountUI.OwnAccount.Value.Id);
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
@@ -45,16 +46,19 @@
 }
 
 <CascadingValue Value="@this" IsFixed="true" >
-    <div class="@Class settings-panel @cls">
+    <div class="@Class settings-panel @cls" data-settings-panel="@attr">
         <div class="c-tabs" role="tablist">
             <div class="c-header">
-                <SettingsHeader Title="@Title" OnArrowClick="OnCloseModalClick"/>
+                <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
             </div>
             <div class="c-tab-items">
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
                     var activeCls = $"{(isActive ? "on" : "")}";
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
+                    @if (tab.HasSeparatorBefore) {
+                        <div class="w-auto bg-04 h-px my-4 mx-4"></div>
+                    }
                     <div class="c-tab-item @containerCls @activeCls">
                         @switch (tab.Id) {
                             case "logOut":
@@ -65,10 +69,6 @@
                                 break;
                         }
                     </div>
-                    @if (!tab.HasSeparator) {
-                        continue;
-                    }
-                    <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                 }
             </div>
             <div class="px-3">
@@ -76,9 +76,9 @@
             </div>
             <div class="c-footer">
                 <div class="flex-none flex-x items-center justify-between px-4 gap-x-2 text-xxs">
-                    <div class="flex-1 text-03 font-medium truncate">@Version</div>
+                    <div class="flex-1 text-03 font-medium truncate">@AppInfo.DisplayVersion</div>
                     <div class="flex-none">
-                        <LoadingTime/>
+                        <StartupTimeBar/>
                     </div>
                     @if (HostInfo.AppKind != AppKind.MauiApp) {
                         <div class="flex-none">
@@ -93,8 +93,6 @@
 </CascadingValue>
 
 @code {
-    private static readonly string Version =
-        "v" + (typeof(SettingsPanel).Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
     private bool _isRightSideVisible;
     private readonly List<SettingsTab> _tabs = new();
     private SettingsTab? _activeTab;
@@ -110,7 +108,7 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<SettingsTab?> ActiveTabChanged { get; set; }
-    [Parameter] public EventCallback OnCloseModalClick { get; set; }
+    [Parameter] public EventCallback CloseModalClick { get; set; }
 
 #pragma warning disable BL0007
     [Parameter] public SettingsTab? ActiveTab {

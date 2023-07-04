@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Chat;
 
 public interface IRoles : IComputeService
@@ -6,22 +8,22 @@ public interface IRoles : IComputeService
     Task<Role?> Get(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ImmutableArray<Role>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<Role>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
-
+    Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, RoleId roleId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> ListOwnerIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Role> Change(ChangeCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ChatId ChatId,
-        [property: DataMember] RoleId RoleId,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] Change<RoleDiff> Change
-    ) : ISessionCommand<Role>;
+    Task<Role> OnChange(Roles_Change command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Roles_Change(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] RoleId RoleId,
+    [property: DataMember, MemoryPackOrder(3)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(4)] Change<RoleDiff> Change
+) : ISessionCommand<Role>;

@@ -1,34 +1,34 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
-    var m = State.Value;
-    var settings = ChatUI.ListSettings.Value;
-
-    RenderFragment RenderTabContent(ChatListFilter filter, double order) =>
-        @<Tab
-             @key="@filter.Id.Value"
-             Id="@filter.Id.Value"
-             Title="@filter.Title"
-             Order="@order"
-             Class="chats-tab">
+    RenderFragment RenderTab(ChatListFilter filter, double order) {
+        var id = filter.Id.Value;
+        var title = filter.Title;
+        var contentVersion = (id, title);
+        return @<Tab
+            @key="@id"
+            Id="@id"
+            Title="@title"
+            ContentVersion="@contentVersion"
+            Order="@order"
+            Class="chats-tab">
             <TitleContent>
-                <span>@filter.Title</span>
-                <UnreadCount Value="@m.UnreadCountsByChatFilter.GetValueOrDefault(filter.Id)" Click="@OnUnreadBadgeClick"/>
+                <span>@title</span>
             </TitleContent>
-            <ChildContent>
-                <div class="flex-y my-2">
-                    <ChatList Kind="ChatListKind.Pinned" Chats="@m.PinnedChats"/>
-                    <ChatList Kind="ChatListKind.Unpinned" Chats="@m.UnpinnedChats"/>
-                </div>
-            </ChildContent>
+            <TitleExtras>
+                <ChatListTabUnreadCount ChatListFilter="filter" />
+            </TitleExtras>
         </Tab>;
+    }
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="flex-y min-h-min">
-            <ActiveChatList/>
-            <div class="border-t-4 border-bg-04"></div>
+            <ChatList Kind="ChatListKind.Active">
+                <FooterDelimiter>
+                    <div class="border-t-4 border-bg-04"></div>
+                </FooterDelimiter>
+            </ChatList>
             <TabPanel
                 @ref="@_tabPanel"
                 BottomHill="true"
@@ -36,20 +36,17 @@
                 TabsClass="left-panel-tabs"
                 SelectedTabIdChanged="@OnSelectedTabIdChanged">
                 <AdditionalButton>
-                    <ButtonRound
-                        Class="chat-list-sort-btn btn-sm"
-                        data-menu="@(MenuRef.New<ChatListSortMenu>())"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-                        <i class="@settings.Order.GetIcon() text-2xl"></i>
-                    </ButtonRound>
+                    <ChatListSortButton />
                 </AdditionalButton>
                 <ChildContent>
-                    @for (var i = 0; i < ChatListFilter.All.Length; i++) {
+                    @for (var i = 0; i < ChatListFilter.All.Count; i++) {
                         var filter = ChatListFilter.All[i];
-                        @RenderTabContent(filter, i)
+                        @RenderTab(filter, i)
                     }
                 </ChildContent>
+                <TabContent>
+                    <ChatList Kind="ChatListKind.All" />
+                </TabContent>
             </TabPanel>
         </div>
     </ChildContent>
@@ -58,101 +55,22 @@
 @code {
     TabPanel _tabPanel = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private LoadingUI LoadingUI { get; init; } = null!;
-    [Inject] private Tracer Tracer { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            UpdateDelayer = FixedDelayer.Instant,
-            Category = GetStateCategory(),
-        };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var tracer = ReferenceEquals(State.Value, Model.Loading)
-            ? Tracer[$"{nameof(ChatListNavbarWidget)}.{nameof(ComputeState)}"]
-            : Tracer.None;
-
-        var region = tracer.Region("Call ChatUI.List");
-        var chats = await ChatUI.List(cancellationToken);
-        region.Close();
-
-        region = tracer.Region("Call ChatUI.GetUnreadCount");
-        var unreadCounts = await ChatListFilter.All
-            .Select(async x => new {
-                FilterId = x.Id,
-                UnreadCount = await ChatUI.GetUnreadCount(x, cancellationToken),
-            })
-            .Collect();
-        region.Close();
-
-        region = tracer.Region("Chore chat list");
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
-        if (!searchPhrase.IsEmpty) {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken);
-            chats = (
-                from c in chats
-                let rank = searchPhrase.GetMatchRank(c.Chat.Title)
-                where rank > 0 || c.Chat.Id == selectedChatId
-                orderby c.Contact.IsPinned descending, rank descending
-                select c
-                ).ToList();
-        }
-
-        var pinnedChats = chats
-            .TakeWhile(c => c.Contact.IsPinned)
-            .ToList();
-        var unpinnedChats = chats
-            .Skip(pinnedChats.Count)
-            .ToList();
-        region.Close();
-
-        return new Model {
-            PinnedChats = pinnedChats,
-            UnpinnedChats = unpinnedChats,
-            UnreadCountsByChatFilter = unreadCounts.ToDictionary(x => x.FilterId, x => x.UnreadCount),
-        };
+    protected override async Task OnInitializedAsync() {
+        await ChatListUI.WhenLoaded;
     }
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (State.Value != Model.Loading) {
-            _tabPanel.SelectedTabId = ChatUI.ListSettings.Value.FilterId;
-            LoadingUI.MarkLoaded();
-        }
-    }
+    protected override void OnAfterRender(bool firstRender)
+        => _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";
-        var settings = ChatUI.ListSettings.Value;
-        if (settings.FilterId == filterId)
-            return;
-
-        ChatUI.ListSettings.Value = settings with { FilterId = filterId };
-    }
-
-    private void OnUnreadBadgeClick() {
-        var allChats = State.Value.AllChats;
-        var firstUnreadChat = allChats.FirstOrDefault(c => c.UnmutedUnreadCount != 0);
-        if (firstUnreadChat == null || firstUnreadChat.Chat.Id == ChatUI.SelectedChatId.Value)
-            return;
-
-        History.NavigateTo(Links.Chat(firstUnreadChat.Chat.Id));
-    }
-
-    public sealed record Model {
-        private static List<ChatInfo> _emptyList = new();
-
-        public static Model Loading { get; } = new();
-
-        public List<ChatInfo> PinnedChats { get; init; } = _emptyList;
-        public List<ChatInfo> UnpinnedChats { get; init; } = _emptyList;
-        public IEnumerable<ChatInfo> AllChats => PinnedChats.Concat(UnpinnedChats);
-        public Dictionary<Symbol, Trimmed<int>> UnreadCountsByChatFilter { get; init; } = new();
+        ChatListUI.Settings.Set(filterId, static (filterId1, r) => {
+            var settings = r.Value;
+            if (settings.FilterId != filterId1)
+                settings = settings with { FilterId = filterId1 };
+            return settings;
+        });
     }
 }

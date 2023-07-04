@@ -16,16 +16,15 @@
 .ac-menu {
     @apply hidden absolute z-menu;
     @apply p-1;
-    @apply bg-01 rounded-xl;
+    @apply bg-01 rounded-lg;
     @apply pointer-events-auto;
 }
 body.wide .ac-menu {
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
 }
 body.narrow .ac-menu {
-    @apply !left-6 !top-auto right-6 bottom-6;
+    @apply !left-4 !top-auto right-4 bottom-10;
     @apply p-3;
-    @apply rounded-3xl;
     box-shadow: 0 10px 20px rgba(0,0,0,.75);
 }
 
@@ -71,6 +70,9 @@ body.narrow .ac-menu-icon > i {
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
 }
+body.narrow .ac-menu-text {
+    @apply text-headline-1;
+}
 body.hoverable .ac-menu-item:hover .ac-menu-icon {
     @apply text-primary;
 }
@@ -85,10 +87,10 @@ body.hoverable .ac-menu-item:hover .ac-menu-icon {
     @apply text-error;
 }
 body.hoverable .ac-menu-item.important-item.on:hover {
-    @apply bg-error-hover;
+    @apply bg-menuitem-hover-warning;
 }
 body.hoverable .ac-menu-item.warning-item:hover {
-    @apply bg-error-hover;
+    @apply bg-menuitem-hover-warning;
 }
 body.hoverable .ac-menu-item.warning-item:hover .ac-menu-icon > i,
 body.hoverable .ac-menu-item.warning-item:hover .ac-menu-text {

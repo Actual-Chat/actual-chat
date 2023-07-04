@@ -9,6 +9,21 @@ body {
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
 }
 
+/* prevent pull-to-refresh for Safari 16+ */
+@media screen and (pointer: coarse) {
+    @supports (-webkit-backdrop-filter: blur(1px)) and (overscroll-behavior-y: none)  {
+        html {
+            overscroll-behavior-y: none;
+        }
+    }
+    /* prevent pull-to-refresh for Safari 9~15 */
+    @supports (-webkit-backdrop-filter: blur(1px)) and (not (overscroll-behavior-y: none))  {
+        html {
+            overflow: hidden;
+        }
+    }
+}
+
 /* Styled inputs */
 
 input.input-imprinted {
@@ -78,6 +93,7 @@ input.input-underlined {
 .error-toast .toast-content {
     @apply flex;
     @apply text-base font-normal;
+    @apply break-all;
 }
 .error-toast .btn.btn-x {
     @apply flex-none;

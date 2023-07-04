@@ -2,10 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat.Audio;
 
-public class LocalAudioDownloader : AudioDownloader
+public partial class LocalAudioDownloader : AudioDownloader
 {
-    private static readonly Regex AudioBlobIdRegex = new("^.+\\/api\\/audio\\/download\\/(?<blobId>.+)$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+    [GeneratedRegex("^.+\\/api\\/audio\\/download\\/(?<blobId>.+)$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
+    private static partial Regex AudioBlobIdRegexFactory();
+    
+    private static readonly Regex AudioBlobIdRegex = AudioBlobIdRegexFactory();
 
     private IBlobStorageProvider Blobs { get; init; }
 

@@ -1,4 +1,4 @@
-import { initLogging, LogScope, LogLevel } from 'logging-init';
+import { initLogging, LogLevel, LogScope } from 'logging-init';
 import 'logging-init';
 
 export { LogLevel } from './logging-init';
@@ -69,6 +69,7 @@ export class Log {
     public static readonly minLevels: Map<LogScope, LogLevel> = new Map<LogScope, LogLevel>();
     public static defaultMinLevel = LogLevel.Info;
     public log: (...data: unknown[]) => void;
+    public trace: (...data: unknown[]) => void;
 
     constructor(
         public readonly scope: LogScope,
@@ -91,11 +92,12 @@ export class Log {
             case LogLevel.None:
                 throw new Error('LogLevel.None cannot be used here');
         }
+        this.trace = (...data: unknown[]) => console.trace(prefix, ...data);
     }
 
     public static loggerFactory = (scope: LogScope, level: LogLevel) => new Log(scope, level);
 
-    public static get(scope: LogScope, level = LogLevel.Info): Log | null {
+    public static get(scope: LogScope) {
         if (!this.isInitialized) {
             this.isInitialized = true;
             initLogging(this);
@@ -105,7 +107,16 @@ export class Log {
         const minLevel = minLevels.get(scope)
             ?? minLevels.get('default')
             ?? this.defaultMinLevel;
-        return level >= minLevel ? this.loggerFactory(scope, level) : null;
+
+        const getLogger = (level: LogLevel) => level >= minLevel ? this.loggerFactory(scope, level) : null;
+
+        return {
+            logScope: scope,
+            debugLog: getLogger(LogLevel.Debug),
+            infoLog: getLogger(LogLevel.Info),
+            warnLog: getLogger(LogLevel.Warn),
+            errorLog: getLogger(LogLevel.Error),
+        };
     }
 
     public static ref(data: object) : object {

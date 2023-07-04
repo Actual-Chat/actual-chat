@@ -1,0 +1,45 @@
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="bubble-content">
+    @if (VideoMP4 != null && BrowserInfo.IsIos) {
+        @VideoMP4
+    } else if (VideoWebM != null) {
+        @VideoWebM
+    }
+    @if (Title != null) {
+        <div class="bubble-title">
+            @Title
+        </div>
+    }
+    <div class="bubble-body">
+        @Body
+    </div>
+    <div class="flex-x items-center">
+        <div class="bubble-counter flex-1 text-xs">
+            @Bubble.Index of @Bubble.Total
+        </div>
+        <div class="bubble-buttons flex justify-end">
+            @if (!Bubble.IsLastVisible) {
+                <Button Class="btn-bubble" Click="OnSkipClick">Skip</Button>
+            }
+            <Button Class="btn-bubble btn-next" Click="OnNextClick">
+                @(Bubble.IsLastVisible ? "Ok" : "Next")
+            </Button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IBubble Bubble { get; set; } = null!;
+    [Parameter] public RenderFragment? Title { get; set; }
+    [Parameter] public RenderFragment? VideoWebM { get; set; }
+    [Parameter] public RenderFragment? VideoMP4 { get; set; }
+    [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
+
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+
+    private async Task OnNextClick() => await Bubble.Host.ReadBubble(Bubble);
+
+    private async Task OnSkipClick() => await Bubble.Host.SkipBubbles();
+}

@@ -12,7 +12,8 @@
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
     </span>
 } else {
-    <span class="@Class avatar-name truncate" @onclick="@Click">
+    var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
+    <span class="@Class @extraClass avatar-name truncate" @onclick="@Click">
         @Avatar.Name
         @if (IsAnonymous) {
             <span class="c-anonymous" title="This author is anonymous">ā</span>
@@ -24,6 +25,6 @@
 @code {
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public EventCallback Click { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public bool IsAnonymous { get; set; }
 }

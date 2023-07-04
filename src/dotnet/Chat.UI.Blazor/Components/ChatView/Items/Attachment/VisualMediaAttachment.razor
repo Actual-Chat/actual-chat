@@ -1,0 +1,47 @@
+@using System.Numerics
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var attachment = Attachment;
+    var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
+    string? previewUrl = null;
+    if (attachment.IsGif()) {
+        previewUrl = url; // currently image proxy fails on large gifs
+    } else if(attachment.IsImage()) {
+        previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
+    }
+}
+
+<div class="image-attachment @Class">
+    <a class="cursor-pointer"
+       href="@url"
+       role="button"
+       @onclick="@(_ => VisualMediaViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry, attachment.IsVideo()))"
+       @onclick:preventDefault="true">
+        @if (attachment.IsVideo()) {
+            <video preload="auto" oncanplay="this.muted = true; this.play()"
+                   autoplay muted playsinline loop>
+                <source src="@url#t=,5" />
+            </video>
+        } else {
+            <img draggable="false" class="inline skeleton" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')"/>
+        }
+    </a>
+</div>
+
+@code {
+    private const int MaxWidth = 400; // In pixels
+    private const int MaxHeight = 300; // In pixels
+    private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
+    private const int ActualResolutionMultiplier = 2;
+
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter, EditorRequired]
+    public TextEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public ChatEntry? ChatEntry { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}

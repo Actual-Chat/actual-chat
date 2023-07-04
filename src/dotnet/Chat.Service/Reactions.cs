@@ -28,7 +28,7 @@ internal class Reactions : IReactions
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ReactionSummary>> ListSummaries(
+    public virtual async Task<ApiArray<ReactionSummary>> ListSummaries(
         Session session,
         TextEntryId entryId,
         CancellationToken cancellationToken)
@@ -39,7 +39,7 @@ internal class Reactions : IReactions
     }
 
     // [CommandHandler]
-    public virtual async Task React(IReactions.ReactCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnReact(Reactions_React command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -53,6 +53,6 @@ internal class Reactions : IReactions
             return;
 
         reaction = reaction with { AuthorId = author.Id };
-        await Commander.Call(new IReactionsBackend.ReactCommand(reaction), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new ReactionsBackend_React(reaction), cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,6 +1,9 @@
 .image-attachment, .file-attachment {
-    @apply flex;
-    @apply mt-1;
+    @apply flex-x;
+    @apply overflow-hidden;
+}
+.image-attachment {
+    @apply w-full;
 }
 .file-attachment-name {
     @apply text-blue-700 cursor-pointer overflow-hidden text-ellipsis hover:underline;

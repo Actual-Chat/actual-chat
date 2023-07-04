@@ -27,12 +27,12 @@
 
 @code {
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {
@@ -45,7 +45,7 @@
         => Chats.GetRules(Session, Chat.Id, default);
 
     private void OnHideRightPanelClick()
-        => RightPanelUI.SetIsVisible(false);
+        => PanelsUI.Right.SetIsVisible(false);
 
     private Task OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.Model(Chat));

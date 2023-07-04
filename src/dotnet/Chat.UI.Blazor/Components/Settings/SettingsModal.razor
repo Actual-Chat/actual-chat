@@ -1,28 +1,45 @@
-@using Stl.Extensibility
 @using LanguageSettings = ActualChat.Chat.UI.Blazor.Components.LanguageSettings
 @implements IModalView<SettingsModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@inherits ComputedStateComponent<AccountFull>
+@{
+    var account = State.Value;
+    if (ReferenceEquals(account, AccountFull.Loading))
+        return;
 
-<DialogFrame Title="Settings" NoNarrowHeader="true">
-    <Body>
-        <ButtonX Click="OnCloseClick"/>
-        <SettingsPanel Title="Settings" OnCloseModalClick="OnCloseClick">
-            <SettingsTab Title="My account" Id="myAccount" IconTitle="person">
+    var isGuestOrNone = account.IsGuestOrNone;
+    var showMyAccount = !isGuestOrNone;
+    var showChatFolder = !isGuestOrNone && _enableIncompleteUI;
+    var showNotification = !isGuestOrNone && _enableIncompleteUI;
+    var showLanguages = true;
+    var showThemeToggle = _enableIncompleteUI;
+    var showLogout = !isGuestOrNone;
+}
+
+<ModalFrame>
+    <ButtonX Click="OnCloseClick"/>
+    <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
+        @if (showMyAccount) {
+            <SettingsTab @key="1" Title="My account" Id="myAccount" IconTitle="person">
                 <MyAccount/>
             </SettingsTab>
+        }
 
-            @if (_enableIncompleteUI) {
-                <SettingsTab Title="Chat folder" Id="chatFolder" IconTitle="folder">
-                    <ChildContent>
-                    </ChildContent>
-                </SettingsTab>
-                <SettingsTab Title="Notification" Id="notification" IconTitle="bell">
-                    <ChildContent>
-                    </ChildContent>
-                </SettingsTab>
-            }
+        @if (showChatFolder) {
+            <SettingsTab @key="2" Title="Chat folder" Id="chatFolder" IconTitle="folder">
+                <ChildContent>
+                </ChildContent>
+            </SettingsTab>
+        }
 
-            <SettingsTab Title="Languages" Id="languages" IconTitle="language">
+        @if (showNotification) {
+            <SettingsTab @key="3" Title="Notification" Id="notification" IconTitle="bell">
+                <ChildContent>
+                </ChildContent>
+            </SettingsTab>
+        }
+
+        @if (showLanguages) {
+            <SettingsTab @key="4" Title="Languages" Id="languages" IconTitle="language">
                 <TitleContent>
                     <LanguageShortcut/>
                 </TitleContent>
@@ -30,41 +47,63 @@
                     <LanguageSettings/>
                 </ChildContent>
             </SettingsTab>
+        }
 
-            @if (_enableIncompleteUI) {
-                <SettingsTab Title="Dark theme" TitleComment="Work in progress" HasSeparator="true" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
-                    <TitleContent>
-                        <ThemeToggle/>
-                    </TitleContent>
-                </SettingsTab>
-            }
+        @if (showThemeToggle) {
+            <SettingsTab @key="5" Title="Dark theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+                <TitleContent>
+                    <ThemeToggle/>
+                </TitleContent>
+            </SettingsTab>
+        }
 
-            <SettingsTab Title="Log out" Id="logOut" IconTitle="log-out">
+        @if (WindowsSettings != null) {
+            <SettingsTab @key="6" Title="Windows settings" Id="winApp" IconTitle="settings">
+                <ChildContent>
+                    <WindowsSettingsView WindowsSettings="@WindowsSettings"></WindowsSettingsView>
+                </ChildContent>
+            </SettingsTab>
+        }
+
+        @if (showLogout) {
+            <SettingsTab @key="100" Title="Log out" Id="logOut" IconTitle="log-out" HasSeparatorBefore="true">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
-        </SettingsPanel>
-    </Body>
-    <Buttons>
-    </Buttons>
-</DialogFrame>
+        }
+
+    </SettingsPanel>
+</ModalFrame>
 
 @code {
     private bool _enableIncompleteUI;
 
     [Inject] private Features Features { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private IWindowsSettings? WindowsSettings { get; set; }
+
     protected override async Task OnInitializedAsync() {
-        _enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(CancellationToken.None);
+        WindowsSettings = Services.GetService<IWindowsSettings>();
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
+
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
 
     private void OnCloseClick()
         => Modal.Close();
 
     public sealed record Model {
-        public static Model None { get; } = new();
+        public static Model Instance { get; } = new();
     }
 }

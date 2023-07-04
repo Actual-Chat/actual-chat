@@ -43,6 +43,9 @@ public static partial class StandardError
     public static Exception NotSupported(string target, string message)
         => NotSupported($"{target}: {message}");
 
+    public static Exception Timeout(string target)
+        => new TimeoutException($"{target} has timed out.");
+
     public static Exception Unavailable(string message)
         => new InvalidOperationException(message);
 
@@ -53,4 +56,7 @@ public static partial class StandardError
         => new InternalError($"Configuration: {message}");
     public static Exception Internal(string message)
         => new InternalError(message);
+
+    public static Exception WrongSession(string message)
+        => new SessionError(message);
 }

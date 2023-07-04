@@ -65,7 +65,7 @@
         => ElementRef.FocusAsync();
 
     public ValueTask Clear()
-        => JSRef?.InvokeVoidAsync("clear") ?? ValueTask.CompletedTask;
+        => JSRef?.InvokeVoidAsync("clear") ?? default;
 
     [JSInvokable]
     public Task OnTextChanged(string text) {

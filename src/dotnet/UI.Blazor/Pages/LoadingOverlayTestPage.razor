@@ -1,0 +1,102 @@
+@page "/test/loading-overlay"
+@using ActualChat.UI.Blazor.Services
+@using System.Text
+@layout NoLayout
+
+<RequireAccount MustBeAdmin="true"/>
+
+<div class="flex-y gap-y-4 h-full text-lg">
+    <div>
+        To call, to text, or
+        to voice message?
+        But... Could these options be purely artificial?
+        Is it possible to create a medium, which naturally combines all of them together?
+
+        We are here to redefine the meaning of "Chat".
+    </div>
+    <div>
+        We used to speak, laugh, and cry
+        But now we text, "like", and send emojis.
+
+        It's slower, inconvenient, and less expressive.
+
+        With all the progress in technology and AI,
+        how it happened that we can't just talk in chats?
+    </div>
+    <div>
+        We reimagine calls, texts and voice messages
+        By blending voice and text into a single medium.
+
+        Watch your words come to life as you talk - anything you say is transcribed and instantly available, word-by-word.
+
+        And it's not just a transcript - it's voice + text, streamed in real time. Listen to chats like a call, without the need for a call.
+
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
+    </div>
+    <div>
+        At the moment, Actual Chat is entirely free for personal use, and we intend to keep it that way. However, we do plan to generate revenue from commercial usage and a small subset of advanced features we plan to add in near future.
+
+        So, if you're using Actual Chat for your personal communication needs, you can rest assured that there won't be any changes to the pricing.
+    </div>
+    <div>
+        We reimagine calls, texts and voice messages
+        By blending voice and text into a single medium.
+
+        Watch your words come to life as you talk - anything you say is transcribed and instantly available, word-by-word.
+
+        And it's not just a transcript - it's voice + text, streamed in real time. Listen to chats like a call, without the need for a call.
+
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
+    </div>
+    <div>
+        We reimagine calls, texts and voice messages
+        By blending voice and text into a single medium.
+
+        Watch your words come to life as you talk - anything you say is transcribed and instantly available, word-by-word.
+
+        And it's not just a transcript - it's voice + text, streamed in real time. Listen to chats like a call, without the need for a call.
+
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
+    </div>
+    <div>
+        We reimagine calls, texts and voice messages
+        By blending voice and text into a single medium.
+
+        Watch your words come to life as you talk - anything you say is transcribed and instantly available, word-by-word.
+
+        And it's not just a transcript - it's voice + text, streamed in real time. Listen to chats like a call, without the need for a call.
+
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
+    </div>
+    <div class="flex-x gap-x-8 justify-center">
+        <Button Class="btn-error" Click="@(_ => OnClick(1))">
+            Small toast
+        </Button>
+        <Button Class="btn-error" Click="@(_ => OnClick(3))">
+            Middle toast
+        </Button>
+        <Button Class="btn-error" Click="@(_ => OnClick(5))">
+            Big toast
+        </Button>
+        <Button Class="btn-error" Click="@(_ => OnClick(1))">
+            Small toast
+        </Button>
+        <Button Class="btn-error" Click="@(_ => OnClick(3))">
+            Middle toast
+        </Button>
+        <Button Class="btn-error" Click="@(_ => OnClick(5))">
+            Big toast
+        </Button>
+    </div>
+</div>
+
+<LoadingOverlay/>
+
+@code {
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+
+    private void OnClick(int count) {
+        var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
+        ErrorUI.ShowError(StandardError.Constraint(result));
+    }
+}

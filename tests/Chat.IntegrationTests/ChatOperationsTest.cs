@@ -25,7 +25,7 @@ public class ChatOperationsTest : AppHostTestBase
         var commander = tester.Commander;
 
         var chatTitle = "test chat";
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff() {
                 Title = chatTitle,
                 Kind = ChatKind.Group,
@@ -41,7 +41,7 @@ public class ChatOperationsTest : AppHostTestBase
         chat.IsPublic.Should().Be(isPublicChat);
 
         var chatRoles = await roles.List(session, chat.Id, default);
-        chatRoles.Length.Should().Be(2);
+        chatRoles.Count.Should().Be(2);
 
         var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
         owners.Name.Should().Be(SystemRole.Owner.ToString());
@@ -77,60 +77,13 @@ public class ChatOperationsTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
 
-        ChatId chatId;
-        var inviteId = Symbol.Empty;
-        {
-            await using var tester = appHost.NewBlazorTester();
-            var session = tester.Session;
-            await tester.SignIn(new User("", "Alice"));
+        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, isPublicChat);
 
-            var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
-                Create = new ChatDiff() {
-                    Title = "test chat",
-                    Kind = ChatKind.Group,
-                    IsPublic = isPublicChat,
-                },
-            }));
-            chat.Require();
-            chatId = chat.Id;
+        await using var tester = appHost.NewBlazorTester();
+        await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
 
-            if (!isPublicChat) {
-                // to join private chat we need to generate invite code
-                var invite = new Invite.Invite {
-                    Remaining = 10,
-                    Details = new ChatInviteOption(chatId),
-                };
-                invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
-                inviteId = invite.Id;
-            }
-        }
-
-        {
-            await using var tester = appHost.NewBlazorTester();
-            var session = tester.Session;
-            var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
-            var commander = tester.Commander;
-            var chats = tester.AppServices.GetRequiredService<IChats>();
-            var authors = tester.AppServices.GetRequiredService<IAuthors>();
-
-            var chatRules = await chats.GetRules(session, chatId, default);
-            var canJoin = chatRules.CanJoin();
-
-            if (!isPublicChat) {
-                canJoin.Should().BeFalse();
-                // to join private chat we need to activate invite code first
-                await commander.Call(new IInvites.UseCommand(session, inviteId));
-
-                var c = await Computed.Capture(() => chats.GetRules(session, chatId, default));
-                c = await c.When(x => x.CanJoin()).WaitAsync(TimeSpan.FromSeconds(3));
-                canJoin = c.Value.CanJoin();
-            }
-            canJoin.Should().BeTrue();
-
-            await authors.EnsureJoined(session, chatId, default);
-            await AssertJoined(tester.AppServices, session, chatId, account);
-        }
+        await ChatOperations.JoinChat(tester, chatId, inviteId);
+        await ChatOperations.AssertJoined(tester, chatId);
     }
 
     [Theory]
@@ -140,74 +93,45 @@ public class ChatOperationsTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
 
-        ChatId chatId;
-        Symbol inviteId = Symbol.Empty;
-        {
-            await using var tester = appHost.NewBlazorTester();
-            var session = tester.Session;
-            await tester.SignIn(new User("", "Alice"));
+        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, isPublicChat);
 
-            var commander = tester.Commander;
-            var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
-                Create = new ChatDiff() {
-                    Title = "test chat",
-                    Kind = ChatKind.Group,
-                    IsPublic = isPublicChat,
-                },
-            }));
-            chat.Require();
-            chatId = chat.Id;
+        await using var tester = appHost.NewBlazorTester();
+        var session = tester.Session;
+        var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+        var commander = tester.Commander;
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var authors = tester.AppServices.GetRequiredService<IAuthors>();
 
-            if (!isPublicChat) {
-                // to join private chat we need to generate invite code
-                var invite = new Invite.Invite {
-                    Remaining = 10,
-                    Details = new ChatInviteOption(chatId),
-                };
-                invite = await commander.Call(new IInvites.GenerateCommand(session, invite));
-                inviteId = invite.Id;
-            }
+        if (!isPublicChat) {
+            await commander.Call(new Invites_Use(session, inviteId));
+            await Task.Delay(1000); // Let the command complete
         }
 
-        {
-            await using var tester = appHost.NewBlazorTester();
-            var session = tester.Session;
-            var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
-            var commander = tester.Commander;
-            var chats = tester.AppServices.GetRequiredService<IChats>();
-            var authors = tester.AppServices.GetRequiredService<IAuthors>();
+        await authors.EnsureJoined(session, chatId, default);
+        await ChatOperations.AssertJoined(tester, chatId);
 
-            if (!isPublicChat) {
-                await commander.Call(new IInvites.UseCommand(session, inviteId));
-                await Task.Delay(1000); // Let the command complete
-            }
+        var leaveCommand = new Authors_Leave(session, chatId);
+        await commander.Call(leaveCommand);
 
-            await authors.EnsureJoined(session, chatId, default);
-            await AssertJoined(tester.AppServices, session, chatId, account);
+        var permissions = await chats.GetRules(session, chatId, default);
+        permissions.CanRead().Should().Be(isPublicChat);
+        permissions.CanWrite().Should().BeFalse();
 
-            var leaveCommand = new IAuthors.LeaveCommand(session, chatId);
-            await commander.Call(leaveCommand);
+        var chat = await chats.Get(session, chatId, default);
+        if (isPublicChat)
+            chat.Should().NotBeNull();
+        else
+            chat.Should().BeNull();
 
-            var permissions = await chats.GetRules(session, chatId, default);
-            permissions.CanRead().Should().Be(isPublicChat);
-            permissions.CanWrite().Should().BeFalse();
+        await AssertNotJoined(tester.AppServices, session, chatId, account);
 
-            var chat = await chats.Get(session, chatId, default);
-            if (isPublicChat)
-                chat.Should().NotBeNull();
-            else
-                chat.Should().BeNull();
-
-            await AssertNotJoined(tester.AppServices, session, chatId, account);
-
-            // re-join again
-            if (!isPublicChat) {
-                await commander.Call(new IInvites.UseCommand(session, inviteId));
-                await Task.Delay(1000); // Let the command complete
-            }
-            await authors.EnsureJoined(session, chatId, default);
-            await AssertJoined(tester.AppServices, session, chatId, account);
+        // re-join again
+        if (!isPublicChat) {
+            await commander.Call(new Invites_Use(session, inviteId));
+            await Task.Delay(1000); // Let the command complete
         }
+        await authors.EnsureJoined(session, chatId, default);
+        await ChatOperations.AssertJoined(tester, chatId);
     }
 
     [Theory]
@@ -231,34 +155,6 @@ public class ChatOperationsTest : AppHostTestBase
         //assert
         rules.CanJoin().Should().BeFalse();
         rules.CanLeave().Should().BeFalse();
-    }
-
-    private static async Task AssertJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
-    {
-        var chats = services.GetRequiredService<IChats>();
-
-        var cRules = await Computed.Capture(() => chats.GetRules(session, chatId, default));
-        await cRules.When(r => r.CanWrite()).WaitAsync(TimeSpan.FromSeconds(3));
-        var rules = await cRules.Use();
-        rules.CanRead().Should().BeTrue();
-        rules.CanWrite().Should().BeTrue();
-
-        var chat = await chats.Get(session, chatId, default);
-        chat.Should().NotBeNull();
-        var authors = services.GetRequiredService<IAuthors>();
-        var authorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
-        var author = await authors.GetOwn(session, chatId, default);
-        author.Should().NotBeNull();
-        author!.UserId.Should().Be(account.Id);
-        author.HasLeft.Should().BeFalse();
-
-        var ownChatIds = await authorsUpgradeBackend.ListOwnChatIds(session, default);
-        ownChatIds.Should().Contain(chatId);
-
-        var userIds = await authors.ListUserIds(session, chatId, default);
-        userIds.Should().Contain(account.Id);
-        var authorIds = await authors.ListAuthorIds(session, chatId, default);
-        authorIds.Should().Contain(author.Id);
     }
 
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)

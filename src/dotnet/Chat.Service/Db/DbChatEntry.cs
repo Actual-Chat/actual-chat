@@ -65,7 +65,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
-    public string? TextToTimeMap { get; set; }
+    public string? TimeMap { get; set; }
 
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
     {
@@ -85,11 +85,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
             RepliedEntryLocalId = RepliedChatEntryId!,
-            Attachments = attachments?.ToImmutableArray() ?? ImmutableArray<TextEntryAttachment>.Empty,
+            Attachments = attachments?.ToApiArray() ?? ApiArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
-            TextToTimeMap = Kind == ChatEntryKind.Text
-                ? TextToTimeMap != null
-                    ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
+            TimeMap = Kind == ChatEntryKind.Text
+                ? TimeMap != null
+                    ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
                     : default
                 : default,
 #pragma warning restore IL2026
@@ -123,8 +123,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
 #pragma warning disable IL2026
-        TextToTimeMap = !model.TextToTimeMap.IsEmpty
-            ? JsonSerializer.Serialize(model.TextToTimeMap)
+        TimeMap = !model.TimeMap.IsEmpty
+            ? JsonSerializer.Serialize(model.TimeMap)
             : null;
 #pragma warning restore IL2026
     }

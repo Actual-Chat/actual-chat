@@ -1,4 +1,5 @@
 ﻿using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -8,32 +9,31 @@ public partial class Modal : FusionComponentBase, IDisposable
     [Parameter, EditorRequired] public ModalRef Ref { get; set; } = null!;
     [Parameter] public RenderFragment? Content { get; set; }
 
-    private IModalRefImpl RefImpl => Ref;
     private FocusTrap? _focusTrap;
-    private bool _setFocus;
+    private bool _mustFocus;
 
     protected override void OnInitialized()
-        => Host.OnModalClosed += AttemptFocus;
+        => Host.OnModalClosed += OnClosed;
 
     void IDisposable.Dispose()
-        => Host.OnModalClosed -= AttemptFocus;
+        => Host.OnModalClosed -= OnClosed;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_setFocus) {
+        if (_mustFocus) {
             if (_focusTrap is { } focusTrap)
                 await focusTrap.Focus();
-            _setFocus = false;
+            _mustFocus = false;
         }
     }
 
-    public bool Close(bool forceClose = false)
-        => Ref.Close(forceClose);
+    public bool Close(bool force = false)
+        => Ref.Close(force);
 
     // Private methods
 
-    private void AttemptFocus()
-        => _setFocus = true;
+    private void OnClosed()
+        => _mustFocus = true;
 
     // Event handlers
 

@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Media;
 
 public enum RecordingEventKind : byte
@@ -7,16 +9,16 @@ public enum RecordingEventKind : byte
     Resume,
 }
 
-[DataContract]
-public class RecordingPart
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial class RecordingPart
 {
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public RecordingEventKind EventKind { get; init; }
-    [DataMember(Order = 1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public byte[]? Data { get; init; }
-    [DataMember(Order = 2)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public Moment? RecordedAt { get; init; }
-    [DataMember(Order = 3)]
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public TimeSpan? Offset { get; init; }
 
     public RecordingPart(RecordingEventKind eventKind)

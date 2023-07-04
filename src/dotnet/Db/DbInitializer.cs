@@ -8,11 +8,16 @@ namespace ActualChat.Db;
 public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDbInitializer
     where TDbContext : DbContext
 {
+    private const int CommandTimeout = 30;
+
+    private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
-    public new DbHub<TDbContext> DbHub => base.DbHub;
     public DbInfo<TDbContext> DbInfo { get; }
     public HostInfo HostInfo { get; }
-    public Dictionary<IDbInitializer, Task> InitializeTasks { get; set; } = null!;
+    public Dictionary<IDbInitializer, Task> RunningTasks { get; set; } = null!;
+
+    public bool ShouldRepairData => DbInfo.ShouldRepairDb;
+    public bool ShouldVerifyData => DbInfo.ShouldVerifyDb;
 
     protected DbInitializer(IServiceProvider services) : base(services)
     {
@@ -20,16 +25,23 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         HostInfo = services.GetRequiredService<HostInfo>();
     }
 
-    public virtual async Task Initialize(CancellationToken cancellationToken)
+    public new TDbContext CreateDbContext(bool readWrite = false)
+    {
+        var dbContext = DbHub.CreateDbContext(readWrite);
+        ConfigureContext(dbContext);
+        return dbContext;
+    }
+
+    public virtual async Task InitializeSchema(CancellationToken cancellationToken)
     {
         var hostInfo = Services.GetRequiredService<HostInfo>();
 
-        var dbContext = DbHub.CreateDbContext(readWrite: true);
+        var dbContext = CreateDbContext(readWrite: true);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var db = dbContext.Database;
         if (db.IsInMemory())
-            goto initializeData;
+            return;
 
         var dbName = db.GetDbConnection().Database;
         if (DbInfo.ShouldRecreateDb) {
@@ -69,17 +81,17 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
                     cancellationToken)
                 .ConfigureAwait(false);
         }
-
-        initializeData:
-
-        await InitializeData(cancellationToken).ConfigureAwait(false);
-        if (DbInfo.ShouldVerifyDb)
-            await VerifyData(cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeData(CancellationToken cancellationToken)
+    public virtual Task InitializeData(CancellationToken cancellationToken)
         => Task.CompletedTask;
 
-    protected virtual Task VerifyData(CancellationToken cancellationToken)
+    public virtual Task RepairData(CancellationToken cancellationToken)
         => Task.CompletedTask;
+
+    public virtual Task VerifyData(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    protected void ConfigureContext(TDbContext dbContext)
+        => dbContext.Database.SetCommandTimeout(CommandTimeout);
 }

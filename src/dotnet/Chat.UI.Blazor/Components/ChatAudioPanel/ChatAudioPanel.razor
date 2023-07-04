@@ -3,17 +3,35 @@
 @inherits FusionComponentBase
 
 <div class="chat-audio-panel">
-    <div class="language-button">
-        <LanguageToggle/>
+    <div class="language-button"
+         data-bubble="@(BubbleRef.New<TranscriptionLanguageButtonBubble>())"
+         data-bubble-priority="120"
+         data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
+        <LanguageToggle Chat="@Chat" />
     </div>
     <div class="recorder-button">
+        <div data-bubble="@(BubbleRef.New<RecordButtonBubble1>())"
+             data-bubble-priority="101"
+             data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+        </div>
+        <div data-bubble="@(BubbleRef.New<RecordButtonBubble2>())"
+             data-bubble-priority="102"
+             data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+        </div>
+        <div data-bubble="@(BubbleRef.New<RecordButtonBubble3>())"
+             data-bubble-priority="103"
+             data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
+        </div>
         <RecorderToggle Chat="@Chat"/>
     </div>
-    <div class="playback-button">
+    <div class="playback-button"
+         data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
+         data-bubble-priority="110"
+         data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
         <PlaybackToggle Chat="@Chat"/>
     </div>
 </div>
 
 @code {
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 }

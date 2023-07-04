@@ -1,58 +1,149 @@
-using Trace = Sentry.Protocol.Trace;
+using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// Delays splash screen removal in MAUI app.
+/// Keeps splash screen / splash UI open in WASM & MAUI.
 /// </summary>
 public sealed class LoadingUI
 {
-    private readonly TaskSource<Unit> _whenLoadedSource;
+    private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
+    private static readonly TaskCompletionSource _whenViewCreatedSource = new();
+    private static readonly TaskCompletionSource _whenAppRenderedSource = new();
 
-    private ILogger Log { get; }
+    public static TimeSpan AppCreationTime { get; private set; }
+    public static TimeSpan AppBuildTime { get; private set; }
+    public static Task WhenViewCreated => _whenViewCreatedSource.Task;
+    public static Task WhenAppRendered => _whenAppRenderedSource.Task;
+
+    private readonly TaskCompletionSource _whenLoadedSource = new();
+    private readonly TaskCompletionSource _whenRenderedSource = new();
+    private readonly TaskCompletionSource _whenChatListLoadedSource = new();
+    private bool _isLoadingOverlayShown;
+
+    private IServiceProvider Services { get; }
+    private HostInfo HostInfo { get; }
     private Tracer Tracer { get; }
 
+    public TimeSpan LoadTime { get; private set; }
+    public TimeSpan RenderTime { get; private set; }
+    public TimeSpan ChatListLoadTime { get; private set; }
     public Task WhenLoaded => _whenLoadedSource.Task;
-
-    public TimeSpan LoadingTime { get; private set; } = TimeSpan.Zero;
-    public static TimeSpan MauiAppBuildTime { get; private set; } = TimeSpan.Zero;
-    public TimeSpan AppInitTime { get; private set; } = TimeSpan.Zero;
-    public TimeSpan AppAboutRenderContentTime { get; private set; } = TimeSpan.Zero;
+    public Task WhenRendered => _whenRenderedSource.Task;
+    public Task WhenChatListLoaded => _whenChatListLoadedSource.Task;
 
     public LoadingUI(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
+        Services = services;
         Tracer = services.Tracer(GetType());
-        _whenLoadedSource = TaskSource.New<Unit>(true);
+        HostInfo = Services.GetRequiredService<HostInfo>();
+        var appKind = HostInfo.AppKind;
+        if (appKind.IsMauiApp()) {
+            if (!OSInfo.IsIOS)
+                ShowLoadingOverlay();
+
+            if (StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
+                // This is to make sure first scope's timings in MAUI are relative to app start
+                Tracer = StaticTracer[GetType()];
+            }
+        }
+        else if (appKind.IsClient())
+            ShowLoadingOverlay();
     }
 
-    public static void ReportMauiAppBuildTime(TimeSpan mauiAppBuildTime)
+    public static void MarkAppBuilt()
     {
-        if (MauiAppBuildTime > TimeSpan.Zero)
+        if (AppBuildTime != default)
             return;
-        MauiAppBuildTime = mauiAppBuildTime;
+
+        AppBuildTime = StaticTracer.Elapsed;
+        StaticTracer.Point(nameof(MarkAppBuilt));
     }
 
-    public void ReportAppInitialized()
+    public static void MarkViewCreated()
     {
-        if (AppInitTime > TimeSpan.Zero)
+        if (!_whenViewCreatedSource.TrySetResult())
             return;
-        AppInitTime = Tracer.Elapsed;
+
+        StaticTracer.Point(nameof(MarkViewCreated));
     }
 
-    public void ReportAppAboutRenderContent()
+    public static void MarkAppCreated()
     {
-        if (AppAboutRenderContentTime > TimeSpan.Zero)
+        if (AppCreationTime != default)
             return;
-        AppAboutRenderContentTime = Tracer.Elapsed;
+
+        AppCreationTime = StaticTracer.Elapsed;
+        StaticTracer.Point(nameof(MarkAppCreated));
     }
 
     public void MarkLoaded()
     {
-        if (!_whenLoadedSource.TrySetResult(default)) return;
+        if (!_whenLoadedSource.TrySetResult())
+            return;
 
-        Log.LogDebug("MarkLoaded");
-        Tracer.Point("MarkLoaded");
-        LoadingTime = Tracer.Elapsed;
+        LoadTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkLoaded));
+
+        // We want to make sure MarkRendered is called no matter what (e.g. even if render fails)
+        _ = Task.Delay(TimeSpan.FromSeconds(0.5)).ContinueWith(
+            _ => MarkRendered(),
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    public void MarkRendered()
+    {
+        if (!_whenRenderedSource.TrySetResult())
+            return;
+
+        RenderTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkRendered));
+        _whenAppRenderedSource.TrySetResult();
+        HideLoadingOverlay();
+    }
+
+    public void MarkChatListLoaded()
+    {
+        if (!_whenChatListLoadedSource.TrySetResult())
+            return;
+
+        ChatListLoadTime = Tracer.Elapsed;
+        Tracer.Point(nameof(MarkChatListLoaded));
+    }
+
+    // Private methods
+
+    private void ShowLoadingOverlay()
+    {
+        if (_isLoadingOverlayShown)
+            return;
+
+        _isLoadingOverlayShown = true;
+        var js = Services.GetRequiredService<IJSRuntime>();
+        // We want to do this via script, coz BrowserInit might not be loaded yet
+        const string script = """
+        (function() {
+            const overlay = document.getElementById('until-ui-is-ready');
+            if (overlay) overlay.classList.remove('hidden');
+        })();
+        """;
+        _ = js.EvalVoid(script);
+    }
+
+    private void HideLoadingOverlay()
+    {
+        if (!_isLoadingOverlayShown)
+            return;
+
+        _isLoadingOverlayShown = false;
+        var js = Services.GetRequiredService<IJSRuntime>();
+        // We want to do this via script, coz BrowserInit might not be loaded yet
+        const string script = """
+        (function() {
+            const overlay = document.getElementById('until-ui-is-ready');
+            if (overlay) overlay.classList.add('hidden');
+        })();
+        """;
+        _ = js.EvalVoid(script);
     }
 }

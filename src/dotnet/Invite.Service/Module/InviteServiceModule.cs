@@ -1,37 +1,30 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Commands;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
 using ActualChat.Redis.Module;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Plugins;
 
 namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class InviteServiceModule : HostModule<InviteSettings>
+public sealed class InviteServiceModule : HostModule<InviteSettings>
 {
-    public InviteServiceModule(IPluginInfoProvider.Query _) : base(_)
-    { }
+    public InviteServiceModule(IServiceProvider services) : base(services) { }
 
-    [ServiceConstructor]
-    public InviteServiceModule(IPluginHost plugins) : base(plugins)
-    { }
-
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
         // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InviteDbContext>(services, Settings.Redis);
 
         // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, InviteDbInitializer>();
         dbModule.AddDbContextServices<InviteDbContext>(services, Settings.Db, db => {
             // DbInvite
@@ -56,8 +49,8 @@ public class InviteServiceModule : HostModule<InviteSettings>
         var fusion = services.AddFusion();
 
         // Module's own services
-        fusion.AddComputeService<IInvites, Invites>();
-        fusion.AddComputeService<IInvitesBackend, InvitesBackend>();
+        fusion.AddService<IInvites, Invites>();
+        fusion.AddService<IInvitesBackend, InvitesBackend>();
         // services.AddSingleton<ITextSerializer>(SystemJsonSerializer.Default);
 
         // Controllers, etc.

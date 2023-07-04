@@ -1,29 +1,26 @@
 using ActualChat.Transcription;
+using ActualChat.Web;
 using Microsoft.AspNetCore.SignalR;
-using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.Audio;
 
 public class AudioHub : Hub
 {
+    private IServiceProvider Services { get; }
     private IAudioProcessor AudioProcessor { get; }
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
-    private SessionMiddleware SessionMiddleware { get; }
+    private SessionCookies SessionCookies { get; }
     private OtelMetrics Metrics { get; }
 
-    public AudioHub(
-        IAudioProcessor audioProcessor,
-        IAudioStreamServer audioStreamServer,
-        ITranscriptStreamServer transcriptStreamServer,
-        SessionMiddleware sessionMiddleware,
-        OtelMetrics metrics)
+    public AudioHub(IServiceProvider services)
     {
-        AudioProcessor = audioProcessor;
-        AudioStreamServer = audioStreamServer;
-        TranscriptStreamServer = transcriptStreamServer;
-        SessionMiddleware = sessionMiddleware;
-        Metrics = metrics;
+        Services = services;
+        Metrics = services.GetRequiredService<OtelMetrics>();
+        AudioProcessor = services.GetRequiredService<IAudioProcessor>();
+        AudioStreamServer = services.GetRequiredService<IAudioStreamServer>();
+        TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
+        SessionCookies = services.GetRequiredService<SessionCookies>();
     }
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
@@ -42,7 +39,7 @@ public class AudioHub : Hub
         return Task.CompletedTask;
     }
 
-    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -51,24 +48,47 @@ public class AudioHub : Hub
             yield return chunk;
     }
 
-    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, int preSkipFrames, IAsyncEnumerable<byte[]> audioStream)
+    public async Task ProcessAudio(
+        string recorderId,
+        string chatId,
+        string repliedChatEntryId,
+        double clientStartOffset,
+        int preSkipFrames,
+        IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = SessionMiddleware.GetSession(httpContext).Require();
+        var session = SessionCookies.Read(httpContext) ?? GetSession(recorderId).RequireValid();
 
-        var audioRecord = new AudioRecord(new Session(session.Id), new ChatId(chatId), clientStartOffset);
+        var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
             .Select((packet, i) => new AudioFrame {
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
             });
-        // No cancellation token here as we want to complete processing regardless of current request context state
-        await AudioProcessor.ProcessAudio(audioRecord, preSkipFrames, frameStream, CancellationToken.None)
+
+        var trimDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5);
+        var cancelDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(10);
+
+        using var cancelCts = new CancellationTokenSource(cancelDuration);
+        using var trimCts = new CancellationTokenSource(trimDuration);
+        frameStream = frameStream.TrimOnCancellation(trimCts.Token);
+
+        await AudioProcessor
+            .ProcessAudio(audioRecord, preSkipFrames, frameStream, cancelCts.Token)
             .ConfigureAwait(false);
     }
 
     public Task<string> Ping()
         => Task.FromResult("Pong");
+
+    private Session GetSession(string recorderId)
+    {
+        // TODO(AK): Security: migrate to session lookup / decryption here
+        recorderId = recorderId
+            .RequireNonEmpty(nameof(recorderId))
+            .RequireNotEqual(Constants.Recorder.DefaultId, nameof(recorderId));
+        return new(recorderId);
+    }
 }

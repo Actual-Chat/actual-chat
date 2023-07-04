@@ -6,14 +6,14 @@
         Sort by:
     </div>
     <MenuEntry
-        Icon="icon-sort-by-message"
-        Text="Recency of your own activity"
-        Click="@(() => OnClick(ChatListOrder.ByOwnUpdateTime))">
-    </MenuEntry>
-    <MenuEntry
         Icon="icon-sort-by-recent"
         Text="Recency of anyone's activity"
         Click="@(() => OnClick(ChatListOrder.ByLastEventTime))">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-sort-by-message"
+        Text="Recency of your own activity"
+        Click="@(() => OnClick(ChatListOrder.ByOwnUpdateTime))">
     </MenuEntry>
     <MenuEntry
         Icon="icon-sort-by-recent"
@@ -28,13 +28,14 @@
 </div>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     private void OnClick(ChatListOrder order) {
-        var settings = ChatUI.ListSettings.Value;
-        if (settings.Order == order)
-            return;
-
-        ChatUI.ListSettings.Value = settings with { Order = order };
+        ChatListUI.Settings.Set(order, static (order1, r) => {
+            var settings = r.Value;
+            if (settings.Order != order1)
+                settings = settings with { Order = order1 };
+            return settings;
+        });
     }
 }

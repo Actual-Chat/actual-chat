@@ -13,7 +13,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private Dispatcher? _dispatcher;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
-    private Task<Unit> _whenBufferLow = TaskSource.New<Unit>(true).Task;
+    private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
@@ -98,7 +98,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, false);
                     break;
                 default:
-                    throw StandardError.NotSupported(GetType(), $"Unsupported command type: '{command.GetType()}'.");
+                    throw StandardError.NotSupported(command.GetType(), "Unsupported command type.");
                 }
             }).ConfigureAwait(false);
 
@@ -111,7 +111,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 var chunk = frame.Data;
                 _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk);
                 try {
-                    await _whenBufferLow.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                    await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }
                 catch (TimeoutException) {
                     Log.LogError(
@@ -160,14 +160,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private void UpdateBufferState(bool isBufferLow)
     {
         if (isBufferLow) {
-            if (_whenBufferLow.IsCompleted)
-                return;
-            TaskSource.For(_whenBufferLow).TrySetResult(default);
+            _whenBufferLowSource.TrySetResult();
         }
         else {
-            if (!_whenBufferLow.IsCompleted)
+            if (!_whenBufferLowSource.Task.IsCompleted)
                 return;
-            _whenBufferLow = TaskSource.New<Unit>(true).Task;
+
+            _whenBufferLowSource = TaskCompletionSourceExt.New();
         }
     }
 }

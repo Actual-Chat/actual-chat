@@ -11,6 +11,22 @@ public static class EnumerableExt
         yield return suffix;
     }
 
+    public static (IReadOnlyCollection<T> Matched, IReadOnlyCollection<T> NotMatched) Split<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+    {
+        List<T>? matched = null;
+        List<T>? notMatched = null;
+        foreach (var item in source)
+            if (predicate(item)) {
+                matched ??= new List<T>();
+                matched.Add(item);
+            }
+            else {
+                notMatched ??= new List<T>();
+                notMatched.Add(item);
+            }
+        return (matched?.ToArray() ?? Array.Empty<T>(), notMatched?.ToArray() ?? Array.Empty<T>());
+    }
+
     public static bool StartsWith<T>(this IEnumerable<T> left, IReadOnlyCollection<T> right)
         => left.Take(right.Count).SequenceEqual(right);
 

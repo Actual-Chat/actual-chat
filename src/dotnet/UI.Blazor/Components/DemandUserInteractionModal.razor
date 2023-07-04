@@ -1,8 +1,6 @@
-@using Stl.Extensibility
 @using ActualChat.UI.Blazor.Services
 @inherits ComputedStateComponent<string>
 @implements IModalView<DemandUserInteractionModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 @{
     var operations = State.Value;
     var isUpdating = operations.IsNullOrEmpty();
@@ -69,13 +67,17 @@
     // Event handlers
 
     private void OnCancelClick()
-        => Modal.Close();
+        => Close(false);
 
-    private void OnContinueClick() {
-        var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmed;
-        if (whenConfirmed?.IsCompleted is false)
-            TaskSource.For(whenConfirmed).TrySetResult(default);
+    private void OnContinueClick()
+        => Close(true);
 
+    private void Close(bool result) {
+        var whenConfirmed = InteractiveUI.ActiveDemand.Value?.WhenConfirmedSource;
+        if (result)
+            whenConfirmed?.TrySetResult();
+         else
+            whenConfirmed?.TrySetCanceled();
         Modal.Close();
     }
 

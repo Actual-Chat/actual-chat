@@ -13,6 +13,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     where T: IHasOrigin
 {
     private readonly CancellationTokenSource _disposeTokenSource;
+    private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
     private bool _mustKeepOriginOnSet;
 
     private MomentClockSet Clocks { get; }
@@ -21,7 +22,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     public CancellationToken DisposeToken { get; }
     private string LocalOrigin { get; }
-    public Task WhenFirstTimeRead { get; }
+    public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;
     public Task WhenDisposed { get; private set; } = null!;
     public IComputedState<T> ReadState { get; }
 
@@ -40,7 +41,6 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         var stateFactory = services.StateFactory();
         LocalOrigin = RandomStringGenerator.Default.Next(8);
-        WhenFirstTimeRead = TaskSource.New<Unit>(true).Task;
         ReadState = stateFactory.NewComputed(
             new ComputedState<T>.Options() {
                 ComputedOptions = options.ComputedOptions,
@@ -59,7 +59,8 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
  #pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
-        if (initialize) Initialize(options);
+        if (initialize)
+            Initialize(options);
  #pragma warning restore MA0056
     }
 
@@ -67,7 +68,6 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     {
         base.Initialize(options);
 
-        using var _ = ExecutionContextExt.SuppressFlow();
         WhenDisposed = BackgroundTask.Run(SyncCycle, DisposeToken);
     }
 
@@ -78,7 +78,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
         _disposeTokenSource.CancelAndDisposeSilently();
         if (!WhenFirstTimeRead.IsCompleted)
-            TaskSource.For((Task<Unit>)WhenFirstTimeRead).TrySetCanceled(DisposeToken);
+            _whenFirstTimeReadSource.TrySetCanceled(DisposeToken);
     }
 
     // Private & protected methods
@@ -179,7 +179,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
             }
             finally {
                 if (!WhenFirstTimeRead.IsCompleted)
-                    TaskSource.For((Task<Unit>)WhenFirstTimeRead).TrySetResult(default);
+                    _whenFirstTimeReadSource.TrySetResult();
             }
         }
 
@@ -228,36 +228,27 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 
     public record KvasOptions(IKvas Kvas, string Key) : Options
     {
-        public static ITextSerializer<T> DefaultSerializer { get; set; } =
-            SystemJsonSerializer.Default.ToTyped<T>();
-
         public Func<T, CancellationToken, ValueTask<T>>? Corrector { get; init; }
-        public ITextSerializer<T> Serializer { get; init; } = DefaultSerializer;
         public Func<CancellationToken, ValueTask<T>>? MissingValueFactory { get; init; }
 
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
-            var data = await Kvas.Get(Key, cancellationToken).ConfigureAwait(false);
-            if (data == null) {
-                var value = MissingValueFactory != null
+            var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
+            if (!valueOpt.IsSome(out var value)) {
+                value = MissingValueFactory != null
                     ? await MissingValueFactory(cancellationToken).ConfigureAwait(false)
                     : InitialValue;
                 // Set the origin to external to make sure it won't get written
                 return value.SetOrigin(StateFactoryExt.ExternalOrigin);
             }
-            else {
-                var value = Serializer.Read(data);
-                if (Corrector != null)
-                    value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
-                return value;
-            }
+
+            if (Corrector != null)
+                value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
+            return value;
         }
 
         internal override Task Write(T value, CancellationToken cancellationToken)
-        {
-            var data = Serializer.Write(value);
-            return Kvas.Set(Key, data, cancellationToken);
-        }
+            => Kvas.Set(Key, value, cancellationToken);
     }
 }
 

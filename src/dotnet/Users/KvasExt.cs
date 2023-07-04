@@ -8,7 +8,7 @@ public static class KvasExt
 
     public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas kvas, ChatId chatId, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.Get<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
+        var valueOpt = await kvas.TryGet<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
         return valueOpt.IsSome(out var value) ? value : new();
     }
 
@@ -19,7 +19,7 @@ public static class KvasExt
 
     public static async ValueTask<UserAvatarSettings> GetUserAvatarSettings(this IKvas kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.Get<UserAvatarSettings>(UserAvatarSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        var valueOpt = await kvas.TryGet<UserAvatarSettings>(UserAvatarSettings.KvasKey, cancellationToken).ConfigureAwait(false);
         return valueOpt.IsSome(out var value) ? value : new();
     }
 
@@ -30,7 +30,7 @@ public static class KvasExt
 
     public static async ValueTask<UserLanguageSettings> GetUserLanguageSettings(this IKvas kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.Get<UserLanguageSettings>(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        var valueOpt = await kvas.TryGet<UserLanguageSettings>(UserLanguageSettings.KvasKey, cancellationToken).ConfigureAwait(false);
         return valueOpt.IsSome(out var value) ? value : new();
     }
 
@@ -41,7 +41,7 @@ public static class KvasExt
 
     public static async ValueTask<UserOnboardingSettings> GetOnboardingSettings(this IKvas kvas, CancellationToken cancellationToken)
     {
-        var valueOpt = await kvas.Get<UserOnboardingSettings>(UserOnboardingSettings.KvasKey, cancellationToken).ConfigureAwait(false);
+        var valueOpt = await kvas.TryGet<UserOnboardingSettings>(UserOnboardingSettings.KvasKey, cancellationToken).ConfigureAwait(false);
         return valueOpt.IsSome(out var value) ? value : new();
     }
 

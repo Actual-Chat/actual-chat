@@ -1,0 +1,59 @@
+/* Loading overlay */
+
+:root {
+    --loading-overlay-bg-color: white;
+    --loading-overlay-box-size: 24rem;
+    --loading-overlay-shine-size: 30%;
+    --loading-overlay-logo-size: 12rem;
+}
+@media (min-width: 1024px) {
+    :root {
+        --loading-overlay-logo-size: 18rem;
+    }
+}
+
+.loading-overlay {
+    @apply absolute inset-0 z-[1900] overflow-hidden;
+    background-color: var(--loading-overlay-bg-color);
+}
+
+/* The background of a square */
+.loading-overlay > .c-box {
+    @apply absolute;
+    top: calc(50vh - var(--loading-overlay-box-size)/2);
+    left: calc(50vw - var(--loading-overlay-box-size)/2);
+    width: var(--loading-overlay-box-size);
+    height: var(--loading-overlay-box-size);
+    @apply flex items-center justify-center overflow-hidden;
+    @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
+}
+
+/* Light/reflection strip */
+.loading-overlay > .c-box::after {
+    @apply absolute top-0 bottom-0;
+    left: calc(50% - var(--loading-overlay-shine-size)/2);
+    width: var(--loading-overlay-shine-size);
+    height: 100%;
+    @apply opacity-50 blur;
+    @apply animate-swipe-by;
+    content: '';
+    background: linear-gradient(to left, transparent 0%, #fff 40%, #fff 60%, transparent 100%);
+}
+
+/* Logo */
+.loading-overlay > .c-box > img {
+    height: calc(var(--loading-overlay-logo-size) * 0.667);
+}
+
+/* Rotating background, which "clips" c-box with a rotating border + bg */
+.loading-overlay > .c-rotating-bg {
+    @apply absolute z-10;
+    top: calc(50vh - var(--loading-overlay-logo-size)/2);
+    left: calc(50vw - var(--loading-overlay-logo-size)/2);
+    width: var(--loading-overlay-logo-size);
+    height: var(--loading-overlay-logo-size);
+    @apply rounded-5xl;
+    @apply bg-transparent;
+    box-shadow: 0 0 0 100vw var(--loading-overlay-bg-color);
+    animation: rotate-4 8s infinite;
+}

@@ -14,4 +14,8 @@ export class VirtualListItem {
     get isMeasured(): boolean {
         return (this.size ?? -1) >= 0 && this.range != null;
     }
+
+    get isChatEntry(): boolean {
+        return !isNaN(+this.key);
+    }
 }

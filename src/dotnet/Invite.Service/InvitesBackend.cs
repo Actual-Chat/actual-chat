@@ -11,16 +11,18 @@ namespace ActualChat.Invite;
 
 internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 {
+    private IAccounts? _accounts;
     private IChatsBackend? _chatsBackend;
+    private IServerKvas? _serverKvas;
 
-    private IAccounts Accounts { get; }
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IServerKvas ServerKvas => _serverKvas ??= Services.GetRequiredService<IServerKvas>();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
     private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
 
     public InvitesBackend(IServiceProvider services) : base(services)
     {
-        Accounts = services.GetRequiredService<IAccounts>();
         DbInviteResolver = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
         DbActivationKeyResolver = services.GetRequiredService<IDbEntityResolver<string, DbActivationKey>>();
     }
@@ -33,7 +35,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
     {
         await PseudoGetAll(searchKey).ConfigureAwait(false);
 
@@ -45,7 +47,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             .OrderByDescending(x => x.ExpiresOn)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbInvites.Select(x => x.ToModel()).ToImmutableArray();
+        return dbInvites.Select(x => x.ToModel()).ToApiArray();
     }
 
     // [ComputeMethod]
@@ -56,8 +58,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Invite> Generate(
-        IInvitesBackend.GenerateCommand command,
+    public virtual async Task<Invite> OnGenerate(
+        InvitesBackend_Generate command,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -91,8 +93,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Invite> Use(
-        IInvitesBackend.UseCommand command,
+    public virtual async Task<Invite> OnUse(
+        InvitesBackend_Use command,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -130,7 +132,7 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
                 throw StandardError.StateTransition("Your account is already active.");
 
             // Follow-up actions
-            new IAccountsBackend.UpdateCommand(account with { Status = AccountStatus.Active }, null)
+            new AccountsBackend_Update(account with { Status = AccountStatus.Active }, null)
                 .EnqueueOnCompletion();
             break;
         case ChatInviteOption chatInviteOption:
@@ -141,8 +143,9 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             dbContext.Add(dbActivationKey);
             context.Operation().Items.Set(dbActivationKey.Id);
 
-            var setCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id);
-            await Commander.Call(setCommand, true, cancellationToken).ConfigureAwait(false);
+            await ServerKvas.GetClient(session)
+                .Set(ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id, cancellationToken)
+                .ConfigureAwait(false);
             break;
         default:
             throw StandardError.Format<Invite>();
@@ -152,6 +155,38 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(invite);
         return invite;
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRevoke(
+        InvitesBackend_Revoke command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            var invInvite = context.Operation().Items.Get<Invite>();
+            if (invInvite != null) {
+                _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
+                _ = Get(invInvite.Id, default);
+            }
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbInvite = await dbContext.Invites
+                .FirstOrDefaultAsync(x => x.Id == command.InviteId, cancellationToken)
+                .ConfigureAwait(false)
+            ?? throw StandardError.NotFound<Invite>("Invite with the specified code is not found.");
+
+        var invite = dbInvite.ToModel();
+        invite = invite.Revoke(VersionGenerator);
+        dbInvite.UpdateFrom(invite);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(invite);
     }
 
     [ComputeMethod]

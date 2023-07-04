@@ -23,7 +23,9 @@ public class DefaultStartup
         .ConfigureLogging(log => log.SetMinimumLevel(LogLevel.Trace));
 
     public void Configure(ILoggerFactory loggerFactory, ITestOutputHelperAccessor accessor)
+ #pragma warning disable CS0618
         => loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor, (s, level) => true));
+ #pragma warning restore CS0618
 
     public virtual void ConfigureServices(IServiceCollection services, HostBuilderContext ctx)
         => services.TryAddSingleton(c => c.LogFor("")); // Default ILogger w/o a category

@@ -10,6 +10,8 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Debug' " />
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Blazor Debug' " />
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
@@ -39,6 +41,7 @@
     <ProjectReference Include="..\Notification.Service.Migration\Notification.Service.Migration.csproj" />
     <ProjectReference Include="..\Invite.Service.Migration\Invite.Service.Migration.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
+    <ProjectReference Include="..\Media.Service.Migration\Media.Service.Migration.csproj" />
     <!-- And service projects for stateless / other services -->
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
@@ -62,10 +65,11 @@
     <Watch Remove="wwwroot\**\*.woff" />
     <Watch Remove="wwwroot\**\*.woff2" />
   </ItemGroup>
+  
   <!-- Copy Stl* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>
-      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('Stl')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('Stl')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
     </ItemGroup>
   </Target>
 </Project>

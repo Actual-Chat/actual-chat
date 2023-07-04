@@ -1,76 +1,114 @@
 import DetectRTC from 'detectrtc';
-import { opusMediaRecorder } from './opus-media-recorder';
-import { Log, LogLevel, LogScope } from 'logging';
-import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
+import { Log } from 'logging';
 import { PromiseSource } from 'promises';
+import { DeviceInfo } from 'device-info';
+import { opusMediaRecorder } from './opus-media-recorder';
+import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 
-const LogScope: LogScope = 'AudioRecorder';
 
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioRecorder {
-    private readonly blazorRef: DotNet.DotNetObject;
-    private readonly sessionId: string;
+    private readonly recorderId: string;
 
-    private whenInitialized: Promise<void>;
-    private state: 'starting' | 'recording' | 'stopped' = 'stopped';
+    private static whenInitialized: Promise<void> | null;
+    private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
 
-    public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
-        return new AudioRecorder(blazorRef, sessionId);
+    public static init(): Promise<void> {
+        debugLog?.log(`-> init()`);
+        AudioRecorder.whenInitialized = new Promise<void>(resolve => {
+            DetectRTC.load(resolve);
+            debugLog?.log(`<- init(): resolved`);
+        });
+
+        return AudioRecorder.whenInitialized;
     }
 
-    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string) {
-        this.blazorRef = blazorRef;
-        this.sessionId = sessionId;
-
-        errorLog?.assert(blazorRef != null, `blazorRef == null`);
-
-        this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
-
+    /** Called by Blazor  */
+    public static create(recorderId: string) {
+        return new AudioRecorder(recorderId);
     }
 
+    public constructor(recorderId: string) {
+        this.recorderId = recorderId;
+        if (!AudioRecorder.whenInitialized)
+            void AudioRecorder.init();
+    }
+
+    /** Called by Blazor  */
     public async dispose(): Promise<void> {
-        await opusMediaRecorder.stop();
-    }
-
-    /** Called by Blazor  */
-    public async canRecord(): Promise<boolean> {
-        await this.whenInitialized;
-
-        const hasMicrophone = DetectRTC.isAudioContextSupported
-            && DetectRTC.hasMicrophone
-            && DetectRTC.isGetUserMediaSupported
-            && DetectRTC.isWebsiteHasMicrophonePermissions;
-
-        if (!hasMicrophone) {
-            // requests microphone permission
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
-                stream.getAudioTracks().forEach(t => t.stop());
-                stream.getVideoTracks().forEach(t => t.stop());
-                this.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
-            }
-            catch (error) {
-                errorLog?.log(`canRecord: failed to request microphone permissions`, error);
-                return false;
-            }
-
-            return true;
+        debugLog?.log(`-> dispose()`);
+        try {
+            await opusMediaRecorder.stop();
+        } catch (e) {
+            errorLog?.log(`dispose: failed to stop recording`, e);
+            throw e;
         }
-
-        return hasMicrophone;
     }
 
     /** Called by Blazor  */
-    public async startRecording(chatId: string): Promise<boolean> {
+    public async requestPermission(): Promise<boolean> {
+        debugLog?.log(`-> requestPermission()`);
+        try {
+            await AudioRecorder.whenInitialized;
+
+            const isMaui = BrowserInfo.appKind == 'MauiApp';
+            const hasMicrophone = DetectRTC.isAudioContextSupported
+                && DetectRTC.hasMicrophone
+                && DetectRTC.isGetUserMediaSupported
+                && (DetectRTC.isWebsiteHasMicrophonePermissions || isMaui);
+
+            debugLog?.log(`requestPermission(): hasMicrophone=`,
+                hasMicrophone,
+                DetectRTC.isAudioContextSupported,
+                DetectRTC.hasMicrophone,
+                DetectRTC.isGetUserMediaSupported,
+                DetectRTC.isWebsiteHasMicrophonePermissions);
+
+            if (!hasMicrophone) {
+                // Requests microphone permission
+                let stream: MediaStream = null;
+                try {
+                    debugLog?.log(`requestPermission: detecting active tracks to stop`);
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+                    // update DetectRTC with new microphone permission if granted
+                    AudioRecorder.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
+                }
+                catch (error) {
+                    errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
+                    return false;
+                }
+                finally {
+                    if (stream) {
+                        const audioTracks = stream.getAudioTracks();
+                        const videoTracks = stream.getVideoTracks();
+                        debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
+                        audioTracks.forEach(t => t.stop());
+                        videoTracks.forEach(t => t.stop());
+                    }
+                }
+
+                return true;
+            }
+
+            return hasMicrophone;
+        }
+        finally {
+            debugLog?.log(`<- requestPermission()`);
+        }
+    }
+
+    /** Called by Blazor  */
+    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
-        await this.whenInitialized;
+        await AudioRecorder.whenInitialized;
 
         try {
-            if (this.state === 'recording' || this.state === 'starting')
+            if (this.state === 'recording' || this.state === 'starting') {
+                warnLog?.log('startRecording: seems like server and client state are not consistent');
                 return true;
+            }
 
             this.state = 'starting';
             const isMaui = BrowserInfo.appKind == 'MauiApp';
@@ -78,9 +116,10 @@ export class AudioRecorder {
                 errorLog?.log(`startRecording: microphone is unavailable`);
                 return false;
             }
+            debugLog?.log(`startRecording(), after hasMicrophone`);
 
             if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
-                if (navigator.userAgent.toLowerCase().includes('firefox')) {
+                if (DeviceInfo.isFirefox) {
                     // Firefox doesn't support microphone permissions query
                     const hasMicrophonePromise = new PromiseSource<boolean>();
                     navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -104,19 +143,18 @@ export class AudioRecorder {
                     return false;
                 }
             }
+            debugLog?.log(`startRecording(), after isWebsiteHasMicrophonePermissions`);
 
-            const { blazorRef, sessionId } = this;
-            await opusMediaRecorder.start(sessionId, chatId);
+            await opusMediaRecorder.start(this.recorderId, chatId, repliedChatEntryId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')
             this.state = 'recording';
-            await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
-        catch (error) {
-            errorLog?.log(`startRecording: unhandled error:`, error);
-            await this.stopRecording();
-            throw error;
+        catch (e) {
+            errorLog?.log(`startRecording: unhandled error:`, e);
+            this.state = 'failed';
+            throw e;
         }
         finally {
             debugLog?.log(`<- startRecording()`);
@@ -125,16 +163,16 @@ export class AudioRecorder {
         return true;
     }
 
+    /** Called by Blazor  */
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
-
             await opusMediaRecorder.stop();
-
-            await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
         }
         catch (error) {
             errorLog?.log(`stopRecording: unhandled error:`, error);
+            this.state = 'failed';
+            throw error;
         }
         finally {
             this.state = 'stopped';

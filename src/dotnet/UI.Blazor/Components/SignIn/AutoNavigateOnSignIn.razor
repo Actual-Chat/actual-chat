@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services;
+@using ActualChat.UI.Blazor.Events
+
+<OnUIEvent TEvent="OwnAccountChangedEvent" Handler="@OnOwnAccountChanged"/>
+
+@code {
+    [Inject] private History History { get; init; } = null!;
+
+    [Parameter] public string? SourceUrl { get; set; } = null;
+    [Parameter] public string TargetUrl { get; set; } = "";
+    [Parameter] public bool MustReplace { get; set; }
+
+    private Task OnOwnAccountChanged(OwnAccountChangedEvent @event, CancellationToken cancellationToken) {
+        var (account, oldAccount) = @event;
+        var isSignedIn = !account.IsGuestOrNone;
+        var wasSignedIn = !oldAccount.IsGuestOrNone;
+
+        if (!isSignedIn || wasSignedIn)
+            return Task.CompletedTask;
+        if (SourceUrl != null && History.LocalUrl != new LocalUrl(SourceUrl))
+            return Task.CompletedTask;
+
+        var targetUrl = new LocalUrl(TargetUrl);
+        History.NavigateTo(targetUrl, MustReplace);
+        return Task.CompletedTask;
+    }
+}

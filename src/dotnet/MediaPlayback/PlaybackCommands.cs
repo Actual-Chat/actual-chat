@@ -10,7 +10,11 @@ public sealed class PlayTrackCommand : IPlaybackCommand
 {
     public static PlayTrackCommand PlayNothing { get; } = new(null!, null!);
     public static IMessageProcess<PlayTrackCommand> PlayNothingProcess { get; } =
-        new MessageProcess<PlayTrackCommand>(PlayNothing, default, Task.FromResult(default(Unit)), Task.FromResult((object?)null));
+        new MessageProcess<PlayTrackCommand>(
+            PlayNothing,
+            default,
+            TaskCompletionSourceExt.New().WithResult(),
+            TaskCompletionSourceExt.New<object?>().WithResult(null));
 
     public TrackInfo TrackInfo { get; }
     public IMediaSource Source { get; }

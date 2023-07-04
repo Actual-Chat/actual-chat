@@ -30,7 +30,7 @@ public class FeedbackUI
         if (!hasSubmitted)
             return;
 
-        var command = new IFeedbacks.FeatureRequestCommand(_session, feature) {
+        var command = new Feedbacks_FeatureRequest(_session, feature) {
             Rating = model.Rating,
             Comment = model.Comment,
         };

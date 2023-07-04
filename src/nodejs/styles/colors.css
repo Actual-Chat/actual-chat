@@ -29,6 +29,7 @@
     --disabled: #E7E7E7;
 
     --primary: #2970FF;
+    --accent: #007AFF;
     --reaction-own: rgba(41, 112, 255, 0.6);
     --primary-hover: #2569F1;
     --primary-title: #FFFFFF;
@@ -83,6 +84,7 @@
     --text-banner-warning: #FFC123;
     --background-banner-error: #FF38801A;
     --text-banner-error: #FF3880;
+    --new-separator: #FF388014;
     --away: #FFCC31;
     --unread: #93c5fd;
     --separator: #2b3641;
@@ -120,6 +122,9 @@
     --quote: #d6dde4;
     --place: #A98AFF;
     --badge: #007AFF;
+    --bubble: #515BE9;
+    --menuitem-hover-warning: #FF008A1A;
+    --bubble-btn-hover: #626BEB;
     --gradient-stop-01: #FFFFFF;
     --gradient-stop-02: #EEEEEE;
 

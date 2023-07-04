@@ -21,9 +21,12 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         UserId userId;
         if (user == null) {
             var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+            if (sessionInfo == null)
+                throw StandardError.WrongSession("Session is not found.");
+
             userId = sessionInfo.GetGuestId();
             if (!userId.IsGuest)
-                throw StandardError.Internal("GuestId is not set.");
+                throw StandardError.WrongSession("GuestId is not set.");
         }
         else
             userId = new UserId(user.Id);
@@ -48,7 +51,7 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
     }
 
     // [CommandHandler]
-    public virtual async Task Update(IAccounts.UpdateCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnUpdate(Accounts_Update command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -56,32 +59,7 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         var (session, account, expectedVersion) = command;
 
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        await Commander.Call(new IAccountsBackend.UpdateCommand(account, expectedVersion), cancellationToken)
+        await Commander.Call(new AccountsBackend_Update(account, expectedVersion), cancellationToken)
             .ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task InvalidateEverything(
-        IAccounts.InvalidateEverythingCommand command,
-        CancellationToken cancellationToken)
-    {
-        var (session, everywhere) = command;
-        var context = CommandContext.GetCurrent();
-
-        if (Computed.IsInvalidating()) {
-            // It should happen inside this block to make sure it runs on every node
-            var agentInfo = Services.GetRequiredService<AgentInfo>();
-            var operation = context.Operation();
-            if (everywhere || operation.AgentId == agentInfo.Id)
-                ComputedRegistry.Instance.InvalidateEverything();
-            return;
-        }
-
-        var account = await GetOwn(session, cancellationToken).ConfigureAwait(false);
-        account.Require(AccountFull.MustBeAdmin);
-
-        // We must call CreateCommandDbContext to make sure this operation is logged in the Users DB
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
     }
 }

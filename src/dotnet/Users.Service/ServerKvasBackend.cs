@@ -12,7 +12,7 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
         => DbKvasEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbKvasEntry>>();
 
     // [ComputeMethod]
-    public virtual async Task<string?> Get(string prefix, string key, CancellationToken cancellationToken = default)
+    public virtual async Task<byte[]?> Get(string prefix, string key, CancellationToken cancellationToken = default)
     {
         if (prefix.IsNullOrEmpty())
             return null;
@@ -22,10 +22,10 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableList<(string Key, string Value)>> List(string prefix, CancellationToken cancellationToken = default)
+    public virtual async Task<ApiList<(string Key, byte[] Value)>> List(string prefix, CancellationToken cancellationToken = default)
     {
         if (prefix.IsNullOrEmpty())
-            return ImmutableList<(string Key, string Value)>.Empty;
+            return new ApiList<(string Key, byte[] Value)>();
 
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
@@ -34,20 +34,13 @@ public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBacke
             .Where(e => e.Key.StartsWith(prefix))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], e.Value)).ToImmutableList();
+        return dbKvasEntryList.Select(e => (e.Key[prefix.Length..], Value: e.Value)).ToApiList();
     }
-
-    public string GetUserPrefix(UserId userId)
-        => userId.IsNone
-            ? ""
-            : userId.IsGuest
-                ? $"g/{userId}/"
-                : $"u/{userId}/";
 
     // Command handlers
 
     // [CommandHandler]
-    public virtual async Task SetMany(IServerKvasBackend.SetManyCommand command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSetMany(ServerKvasBackend_SetMany command, CancellationToken cancellationToken = default)
     {
         var prefix = command.Prefix;
         if (prefix.IsNullOrEmpty())

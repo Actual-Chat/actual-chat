@@ -1,11 +1,12 @@
 using Cysharp.Text;
+using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract]
-public sealed record MentionMarkup(
-    [property: DataMember] string Id,
-    [property: DataMember] string Name = ""
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record MentionMarkup(
+    [property: DataMember, MemoryPackOrder(0)] MentionId Id,
+    [property: DataMember, MemoryPackOrder(1)] string Name = ""
     ) : Markup
 {
     public static readonly string NotAvailableName = "(n/a)";
@@ -13,14 +14,12 @@ public sealed record MentionMarkup(
     public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
     public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string QuotedName => Quote(Name);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string NameOrId => Name.NullIfEmpty() ?? Id;
-
-    public MentionMarkup() : this("") { }
 
     public override string Format()
         => Name.IsNullOrEmpty()

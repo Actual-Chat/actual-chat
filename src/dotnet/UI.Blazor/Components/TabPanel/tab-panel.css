@@ -13,7 +13,16 @@
     @apply w-full justify-evenly;
 }
 .tab-panel-tabs .btn-group-container {
-    @apply flex-y mr-2;
+    @apply flex-y;
+}
+
+.tab-panel-tabs .c-container {
+    @apply self-center;
+    @apply max-h-8;
+    @apply rounded-full;
+}
+.tab-panel-tabs .c-container:has(.message-counter-badge):hover {
+    @apply bg-secondary;
 }
 
 /* Buttons */
@@ -50,9 +59,6 @@
 .side-nav .tab-panel-tabs {
     @apply max-h-14 p-0 m-0;
     @apply border-b border-bg-04;
-}
-.side-nav .tab-panel-tabs .chats-tab {
-    @apply flex-y h-full overflow-y-visible md:overflow-y-auto custom-scrollbar;
 }
 .side-nav .tab-panel-tabs .btn-group {
     @apply min-h-14 justify-start px-4 gap-x-0;

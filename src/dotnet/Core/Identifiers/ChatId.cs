@@ -1,23 +1,24 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Generators;
 
 namespace ActualChat;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<ChatId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<ChatId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<ChatId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ChatId : ISymbolIdentifier<ChatId>
+public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 {
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
     public static ChatId None => default;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Set on deserialization
@@ -25,14 +26,14 @@ public readonly struct ChatId : ISymbolIdentifier<ChatId>
     private readonly UserId UserId2;
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatKind Kind => UserId1.IsNone ? ChatKind.Group : ChatKind.Peer;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatId(Symbol id)
         => this = Parse(id);
     public ChatId(string? id)

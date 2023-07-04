@@ -3,10 +3,14 @@
 @using Stl.CommandR.Internal
 @using Stl.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<Form @ref="_formRef" Model="@_form" OnSubmit="@OnSave">
-    <DialogFrame Title="@_form.Title" Class="own-account-editor-modal" ButtonsClass="full-width" HasCloseButton="true">
+<Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame
+        Class="own-account-editor-modal"
+        Title="@_form.Title"
+        HasCloseButton="true"
+        NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
+        ButtonsClass="full-width">
         <Body>
         <DataAnnotationsValidator/>
         <ValidationSummary/>
@@ -15,7 +19,7 @@
             ImagePicked="OnImagePicked"
             Size="SquareSize.Size30"
             Title="@_form.Bio"
-            ContentId="@_form.Picture">
+            ContentId="@_form.PictureUrl">
             <NoPicture>
                 <AnonymousIcon Class="w-32 h-32"/>
             </NoPicture>
@@ -92,7 +96,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    private string UploadUrl => $"/api/user-avatars/{ModalModel.AvatarId}/upload-picture";
+    private string UploadUrl => "/api/avatars/upload-picture";
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -108,8 +112,16 @@
             isActive = ModalModel.AvatarId == (author?.AvatarId ?? Symbol.Empty);
         }
 
+        if (avatar != null) {
+            if (avatar.Media != null) {
+                _form.PictureUrl = avatar.Media.ContentId;
+                _form.PictureId = avatar.Media.Id;
+            } else {
+                _form.PictureUrl = avatar.Picture;
+            }
+        }
+
         _form.Name = avatar?.Name ?? "";
-        _form.Picture = avatar?.Picture ?? "";
         _form.Bio = avatar?.Bio ?? "";
         _form.IsDefault = isDefault;
         _form.IsActive = isActive;
@@ -129,9 +141,10 @@
         avatar = avatar with {
             Name = _form.Name,
             Bio = _form.Bio,
-            Picture = _form.Picture,
+            MediaId = _form.PictureId,
+            Picture = _form.PictureId.IsNone ? _form.PictureUrl : "",
         };
-        var command = new IAvatars.ChangeCommand(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
+        var command = new Avatars_Change(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
             Update = avatar,
         });
         var (_, error) = await UICommander.Run(command);
@@ -147,15 +160,16 @@
         CloseModal();
     }
 
-    private void OnImagePicked(string contentId) {
-        _form.Picture = contentId;
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.PictureUrl = mediaContent.ContentId;
+        _form.PictureId = mediaContent.MediaId;
         _form.CopyToBase();
         StateHasChanged();
     }
 
     private async Task SetDefaultAvatar(Symbol avatarId)
     {
-        var command = new IAvatars.SetDefaultCommand(Session, avatarId);
+        var command = new Avatars_SetDefault(Session, avatarId);
         await UICommander.Run(command);
     }
 
@@ -165,7 +179,7 @@
         if (author == null)
             return;
 
-        var command = new IAuthors.SetAvatarCommand(Session, ModalModel.ChatId, avatarId);
+        var command = new Authors_SetAvatar(Session, ModalModel.ChatId, avatarId);
         await UICommander.Run(command);
     }
 
@@ -173,7 +187,7 @@
         => CloseModal();
 
     private async Task OnDeleteAvatarClick() {
-        var command = new IAvatars.ChangeCommand(Session, ModalModel.AvatarId, null, new() {
+        var command = new Avatars_Change(Session, ModalModel.AvatarId, null, new() {
             Remove = true,
         });
         await UICommander.Run(command);
@@ -181,7 +195,8 @@
     }
 
     private void OnGenerateAvatarClick() {
-        _form.Picture = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
+        _form.PictureUrl = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
+        _form.PictureId = MediaId.None;
         _form.CopyToBase();
         StateHasChanged();
     }
@@ -195,7 +210,7 @@
     public sealed class FormModel : FormModel<FormModel> {
         [Required, MinLength(1)] public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
-        public string Picture { get; set; } = "";
+        public string PictureUrl { get; set; } = "";
         public string Bio { get; set; } = "";
         public string BioFieldId { get; set; } = "";
         public bool IsDefault { get; set; }
@@ -203,6 +218,7 @@
         public bool IsActive { get; set; }
         public string IsActiveFieldId { get; set; } = "";
         public string Title { get; set; } = "";
+        public MediaId PictureId { get; set; } = MediaId.None;
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("avatar-editor", componentIdGenerator) {

@@ -45,12 +45,12 @@
         }
 
         return new () {
-            Notifications = notifications.ToImmutableArray(),
+            Notifications = notifications.ToApiArray(),
         };
     }
 
     private async Task OnClose(NotificationId notificationId) {
-        var command = new INotifications.HandleCommand(Session, notificationId);
+        var command = new Notifications_Handle(Session, notificationId);
         await UICommander.Run(command);
     }
 
@@ -67,6 +67,6 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public ImmutableArray<ActualChat.Notification.Notification> Notifications { get; init; } = ImmutableArray<ActualChat.Notification.Notification>.Empty;
+        public ApiArray<ActualChat.Notification.Notification> Notifications { get; init; } = ApiArray<ActualChat.Notification.Notification>.Empty;
     }
 }

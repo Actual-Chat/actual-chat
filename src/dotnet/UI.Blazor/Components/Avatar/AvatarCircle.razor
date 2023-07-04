@@ -11,7 +11,7 @@
         @if (ReferenceEquals(Avatar, Avatar.Loading)) {
             <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
         } else {
-            <img class="@_avatarClass @Class rounded-full block"
+            <img draggable="false" class="@_avatarClass @Class rounded-full block"
                  src="@_avatarPictureUrl" alt="avatar" title="@title"
                  @onclick="@Click"/>
         }
@@ -37,13 +37,33 @@
         _avatarClass = GetSizeClass();
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
-        if (Avatar.Picture.IsNullOrEmpty()) {
-            _avatarPictureUrl = DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString());
-        } else if (Avatar.Picture.StartsWith("http")) {
-            _avatarPictureUrl = Avatar.Picture;
-        } else {
-            var contentUrl = UrlMapper.ContentUrl(Avatar.Picture);
-            _avatarPictureUrl = UrlMapper.ImagePreview128Url(contentUrl);
+        _avatarPictureUrl = GetAvatarPictureUrl();
+    }
+
+    private string GetAvatarPictureUrl()
+    {
+        var contentId = Avatar.Media?.ContentId;
+        if (!contentId.IsNullOrEmpty()) {
+            var contentUrl = UrlMapper.ContentUrl(contentId);
+            return UrlMapper.ImagePreview128Url(contentUrl);
+        }
+
+        var avatarPicture = Avatar.Picture;
+        if (avatarPicture.IsNullOrEmpty())
+            return Default();
+
+        if (avatarPicture.OrdinalStartsWith(DefaultUserPicture.BoringAvatarsBaseUrl))
+            return UrlMapper.BoringAvatar(avatarPicture);
+
+        if (avatarPicture.StartsWith("http"))
+            return UrlMapper.ImagePreview128Url(avatarPicture);
+
+        return Default();
+
+        string Default()
+        {
+            var bordAvatarUrl = DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString());
+            return UrlMapper.BoringAvatar(bordAvatarUrl);
         }
     }
 

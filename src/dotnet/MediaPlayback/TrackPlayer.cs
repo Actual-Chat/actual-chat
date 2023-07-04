@@ -7,7 +7,7 @@ public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, Play
 
 public abstract class TrackPlayer : ProcessorBase
 {
-    private readonly TaskSource<Unit> _whenCompletedSource;
+    private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly object _stateUpdateLock = new();
@@ -28,7 +28,6 @@ public abstract class TrackPlayer : ProcessorBase
     {
         Log = log;
         Source = source;
-        _whenCompletedSource = TaskSource.New<Unit>(true);
         _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
             new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
                 FullMode = BoundedChannelFullMode.DropOldest,
@@ -55,29 +54,27 @@ public abstract class TrackPlayer : ProcessorBase
                 throw StandardError.StateTransition(GetType(), "Play is already started.");
             this.ThrowIfDisposedOrDisposing();
 
-            using (ExecutionContext.SuppressFlow()) {
-                PlayTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, StopToken);
-                PlayToken = PlayTokenSource.Token;
+            PlayTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, StopToken);
+            PlayToken = PlayTokenSource.Token;
 
-                var playStartingTask = OnPlayStarting(PlayToken);
-                _whenPlaying = Task
-                    .Run(async () => {
-                        await playStartingTask.ConfigureAwait(false);
-                        await PlayInternal(PlayToken).ConfigureAwait(false);
-                    }, CancellationToken.None)
-                    .ContinueWith(async _ => {
-                        PlayTokenSource.CancelAndDisposeSilently();
-                        try {
-                            await OnPlayEnded().ConfigureAwait(false);
-                        }
-                        catch {
-                            // Intended
-                        }
-                    }, TaskScheduler.Default);
+            var playStartingTask = OnPlayStarting(PlayToken);
+            _whenPlaying = Task
+                .Run(async () => {
+                    await playStartingTask.ConfigureAwait(false);
+                    await PlayInternal(PlayToken).ConfigureAwait(false);
+                }, CancellationToken.None)
+                .ContinueWith(async _ => {
+                    PlayTokenSource.CancelAndDisposeSilently();
+                    try {
+                        await OnPlayEnded().ConfigureAwait(false);
+                    }
+                    catch {
+                        // Intended
+                    }
+                }, TaskScheduler.Default);
 #pragma warning disable MA0100
-                return _whenPlaying;
+            return _whenPlaying;
 #pragma warning restore MA0100
-            }
         }
     }
 
@@ -190,7 +187,7 @@ public abstract class TrackPlayer : ProcessorBase
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
             if (state.IsEnded)
-                _whenCompletedSource.TrySetResult(default);
+                _whenCompletedSource.TrySetResult();
         }
     }
 

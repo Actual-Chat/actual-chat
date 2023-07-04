@@ -1,0 +1,78 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Events
+@implements IModalView<SignInModal.Model>
+@{
+    if (AuthSchemas == null)
+        return;
+}
+
+<OnUIEvent TEvent="OwnAccountChangedEvent" Handler="@OnOwnAccountChanged"/>
+
+<DialogFrame
+    Class="sign-in-modal"
+    Title="Sign in"
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
+    <Body>
+    <div class="sign-in-modal-body">
+        @foreach (var schema in AuthSchemas!) {
+            <Button
+                Class="btn-modal sing-in-button"
+                Click="@(_ => SignIn(schema.Name))">
+                @if (schema.Icon != null) {
+                    <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName">
+                }
+                @("Sign in with " + schema.DisplayName)
+            </Button>
+        }
+    </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    private List<AuthSchemaModel>? AuthSchemas { get; set; }
+
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        var schemas = await ClientAuth.GetSchemas();
+        AuthSchemas = schemas
+            .Select(schema => new AuthSchemaModel {
+                Name = schema.Name,
+                DisplayName = schema.DisplayName,
+                Icon = schema.Name switch
+                {
+                    IClientAuth.GoogleSchemeName => "/dist/images/landing/google-icon-color.svg",
+                    IClientAuth.AppleIdSchemeName => "/dist/images/landing/apple-icon-black.svg",
+                    _ => null,
+                },
+            })
+            .ToList();
+    }
+
+    private void SignIn(string name)
+        => ClientAuth.SignIn(name);
+
+    private Task OnOwnAccountChanged(OwnAccountChangedEvent @event, CancellationToken cancellationToken) {
+        var (account, _) = @event;
+        var isSignedIn = !account.IsGuestOrNone;
+        var targetUrl = isSignedIn ? Links.Chats : Links.Home;
+        History.NavigateTo(targetUrl, true);
+        return Task.CompletedTask;
+    }
+
+    // Nested types
+
+    public sealed record Model;
+
+    private class AuthSchemaModel {
+        public string Name { get; init; } = null!;
+        public string DisplayName { get; init; } = null!;
+        public string? Icon { get; init; }
+    }
+}

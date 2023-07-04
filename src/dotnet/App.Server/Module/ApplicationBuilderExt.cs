@@ -37,9 +37,6 @@ public static class ApplicationBuilderExt
 
     public static IApplicationBuilder UseDistFiles(this IApplicationBuilder builder)
     {
-        if (builder is null)
-            throw new ArgumentNullException(nameof(builder));
-
         var webHostEnvironment = builder.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
         var options = CreateStaticFilesOptions(webHostEnvironment.WebRootFileProvider);
 

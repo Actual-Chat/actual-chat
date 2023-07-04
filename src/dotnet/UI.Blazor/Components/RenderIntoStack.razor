@@ -1,25 +1,40 @@
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
 @{
-    var stackState = RenderVars.RenderStack(Name);
-    var stackStateComputed = stackState.Computed;
-    var items = stackState.Value;
-    if (items.Contains(this))
-        stackStateComputed.Invalidate(); // Re-render here must trigger the invalidation & update there
+    if (_stack != null) {
+        _stack.NotifyChanged();
+        return;
+    }
+
+    _stack = RenderVars.RenderStack(Name);
+    if (MustPrepend)
+        _stack.Value.Insert(0, this);
     else
-        stackState.Value = MustPrepend ? items.Insert(0, this) : items.Add(this);
+        _stack.Value.Add(this);
+    _stack.NotifyChanged();
 }
 @code {
+    private RenderVar<List<RenderIntoStack>>? _stack = null!;
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
-    [Parameter] public string Key { get; set; } = "";
+    [Parameter, EditorRequired] public string Key { get; set; } = "";
     [Parameter] public double Order { get; set; } = 0;
     [Parameter] public bool MustPrepend { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public void Dispose() {
-        var stackState = RenderVars.RenderStack(Name);
-        stackState.Value = stackState.Value.Remove(this);
+        if (_stack == null)
+            return;
+
+        if (!_stack.Value.Remove(this)) {
+            var log = Services.LogFor(GetType());
+            log.LogWarning("Couldn't remove RenderIntoStack with Name = '{Name}'", Name);
+            return;
+        }
+
+        _stack.NotifyChanged();
     }
 }

@@ -36,15 +36,15 @@ public class AudioDownloader
 
         var clocks = Services.Clocks();
         var audioLog = Services.LogFor<AudioSource>();
-        IAudioStreamAdapter streamAdapter;
+        IAudioStreamConverter streamConverter;
         if (head.StartsWith(WebMHeader))
-            streamAdapter = new WebMStreamAdapter(clocks, audioLog);
+            streamConverter = new WebMStreamConverter(clocks, audioLog);
         else if (head.StartsWith(ActualOpusStreamHeader))
-            streamAdapter = new ActualOpusStreamAdapter(clocks, audioLog);
+            streamConverter = new ActualOpusStreamConverter(clocks, audioLog);
         else
             throw new InvalidOperationException("Unsupported audio stream container.");
 
         var restoredByteStream = tail.Prepend(head, cancellationToken);
-        return await streamAdapter.Read(restoredByteStream, cancellationToken).ConfigureAwait(false);
+        return await streamConverter.FromByteStream(restoredByteStream, cancellationToken).ConfigureAwait(false);
     }
 }

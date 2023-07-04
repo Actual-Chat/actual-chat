@@ -1,0 +1,34 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Events
+@implements IModalView<NoSecondaryLanguageModal.Model>
+
+<DialogFrame HasHeader="false" Class="menu-styled-modal">
+    <Body>
+    <div class="c-text">
+        <p>
+            Your secondary language is not selected. You can choose your secondary language in Settings.
+        </p>
+    </div>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+        <Button Class="btn-modal" Click="@OnClick">Go to Settings</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnClick() {
+        Modal.Close();
+        await History.WhenNavigationCompleted();
+        _ = UIEventHub.Publish(new ShowSettingsEvent());
+    }
+
+    public sealed record Model;
+}

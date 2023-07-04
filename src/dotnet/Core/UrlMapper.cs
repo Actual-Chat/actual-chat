@@ -3,12 +3,15 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
-public sealed class UrlMapper
+public sealed partial class UrlMapper
 {
-    private static readonly char[] UriPathEndChar = new[] { '#', '?' };
-    private static readonly Regex IsAbsoluteUrlRe = new(@"^[\w\d]+://", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[\w\d]+://")]
+    private static partial Regex IsAbsoluteUrlRegexFactory();
 
-    private string _baseUrlWithoutBackslash;
+    private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
+    private static readonly char[] UriPathEndChar = new[] { '#', '?' };
+
+    private readonly string _baseUrlWithoutBackslash;
 
     public Uri BaseUri { get; }
     public bool IsActualChat { get; }
@@ -20,6 +23,7 @@ public sealed class UrlMapper
     public string ApiBaseUrl { get; }
     public string ContentBaseUrl { get; }
     public string ImageProxyBaseUrl { get; }
+    public string BoringAvatarsProxyBaseUrl { get; }
 
     public UrlMapper(HostInfo hostInfo) : this(hostInfo.BaseUrl) { }
     public UrlMapper(string baseUrl)
@@ -38,6 +42,7 @@ public sealed class UrlMapper
 
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
+        BoringAvatarsProxyBaseUrl = $"{BaseUrl}boringavatars/";
         ImageProxyBaseUrl = "";
         HasImageProxy = false;
         if (IsActualChat || IsLocalActualChat) {
@@ -53,7 +58,7 @@ public sealed class UrlMapper
     }
 
     public static bool IsAbsolute(string url)
-        => IsAbsoluteUrlRe.IsMatch(url);
+        => IsAbsoluteUrlRegex.IsMatch(url);
 
     public string ToAbsolute(string url, bool allowAbsoluteUrl = false)
         => ToAbsolute(BaseUrl, url, allowAbsoluteUrl);
@@ -119,4 +124,8 @@ public sealed class UrlMapper
     // Returns absolute URL
     public string ImagePreview128Url(string imageUrl)
         => HasImageProxy ? $"{ImageProxyBaseUrl}128/{imageUrl}" : imageUrl;
+
+    // Returns absolute URL
+    public string BoringAvatar(string imageUrl)
+        => imageUrl.OrdinalReplace(DefaultUserPicture.BoringAvatarsBaseUrl, BoringAvatarsProxyBaseUrl);
 }

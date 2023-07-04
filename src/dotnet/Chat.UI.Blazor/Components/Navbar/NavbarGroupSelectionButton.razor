@@ -1,0 +1,49 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IDisposable
+@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
+@{
+    var isSelected = NavbarUI.SelectedGroupId == Id;
+    var selectedClass = isSelected ? "selected" : "";
+    var buttonClass = $"{(isSelected ? "on" : "")}";
+}
+
+<NavbarButton
+    Class="@selectedClass"
+    ButtonClass="@buttonClass"
+    TooltipPosition="@TooltipPosition"
+    Tooltip="@Tooltip"
+    Click="OnClick"
+    ChildContent="@ChildContent">
+    <Ending>
+        <LeftLine/>
+        <div class="w-[5px]"></div>
+        @if (ShowBadge && BadgeContent != null) {
+            <Badge>@BadgeContent</Badge>
+        }
+    </Ending>
+</NavbarButton>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public bool ShowBadge { get; set; }
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
+
+    protected override void OnInitialized()
+        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+
+    public void Dispose()
+        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+
+    private void OnClick()
+        => NavbarUI.SelectGroup(Id, Title);
+
+    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
+        => StateHasChanged();
+}

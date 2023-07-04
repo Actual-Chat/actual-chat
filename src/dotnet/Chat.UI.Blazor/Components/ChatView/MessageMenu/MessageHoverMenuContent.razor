@@ -10,7 +10,7 @@
     <ButtonRound Click="OnReactionClick" Tooltip="@quickReactionTooltip">
         <EmojiIcon Id="@Emoji.ThumbsUp.Id" Class="w-5 h-5"/>
     </ButtonRound>
-    @if (m.CanReply) {
+    @if (m.CanReply && !IsSystem) {
         <ButtonRound
             Click="@(() => Reply(Message.Entry))"
             Tooltip="Reply"
@@ -22,7 +22,7 @@
         <MessageMenuPlay Entry="@entry"/>
     }
     <ButtonRound
-        data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
+        data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, IsSystem.ToString(), "", "").ToString())"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">
         <i class="icon-more-vertical text-xl text-icon-01"></i>
@@ -32,11 +32,12 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
+    [Parameter] public bool IsSystem { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new () {
@@ -52,11 +53,11 @@
         return new Model(canReply);
     }
 
-    private void Reply(ChatEntry chatEntry)
-        => ChatUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
+    private Task Reply(ChatEntry chatEntry)
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
-        return UICommander.Run(new IReactions.ReactCommand(Session, new Reaction {
+        return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Message.Entry.Id.ToTextEntryId(),
             EmojiId = Emoji.ThumbsUp,
         }));

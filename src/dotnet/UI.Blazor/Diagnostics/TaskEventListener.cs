@@ -16,7 +16,7 @@ public class TaskEventListener : WorkerBase
         Services = services;
         Log = services.LogFor(GetType());
     }
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var tEventSource = Type.GetType("System.Threading.Tasks.TplEventSource")!;
         var fLog = tEventSource.GetField("Log", BindingFlags.Static | BindingFlags.Public)!;
@@ -28,7 +28,8 @@ public class TaskEventListener : WorkerBase
 
         Log.LogInformation("Started, IsEnabled: {IsEnabled}", eventSource.IsEnabled(EventLevel.Informational, (EventKeywords)8));
 
-        await Task.Delay(TimeSpan.FromDays(365), cancellationToken).ConfigureAwait(false);
+        while (true) // Max delay for Task.Delay is ~ 49 days
+            await Task.Delay(TimeSpan.FromDays(30), cancellationToken).ConfigureAwait(false);
     }
 
     private void OnEvent(object? source, EventWrittenEventArgs? eventArgs)

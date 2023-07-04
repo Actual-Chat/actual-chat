@@ -17,6 +17,11 @@ public static class Links
             ? $"/chat/{chatId.Value}#{vEntryId.Format()}"
             : $"/chat/{chatId.Value}";
 
+    public static LocalUrl EmbeddedChat(ChatId chatId, long? entryId = null)
+        => entryId is { } vEntryId and > 0
+            ? $"/embedded/{chatId.Value}#{vEntryId.Format()}"
+            : $"/embedded/{chatId.Value}";
+
     public static LocalUrl User(UserId userId)
         => $"/u/{userId.Value.UrlEncode()}";
 

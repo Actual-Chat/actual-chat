@@ -5,6 +5,8 @@
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net7.0-windows10.0.22000.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
+    <AssemblyName>$(BaseName)</AssemblyName>
+    <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <!--
@@ -18,24 +20,25 @@
 
     <!-- Display name -->
     <ApplicationTitle>Actual Chat</ApplicationTitle>
+    <appname>actual.chat</appname>
 
     <!-- App Identifier -->
     <ApplicationId>chat.actual.app</ApplicationId>
     <ApplicationIdGuid>7AC72B49-8FEA-45AB-B7B8-C32719677E9D</ApplicationIdGuid>
 
     <!-- Required for C# Hot Reload -->
-    <UseInterpreter Condition="'$(Configuration)' == 'Debug' OR '$(Configuration)'=='Debug-maui'">True</UseInterpreter>
+    <UseInterpreter Condition="'$(Configuration)' == 'Debug'">True</UseInterpreter>
 
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">16.1</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">33.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
-    <Configurations>Debug;Release;Debug-maui</Configurations>
 
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
     <IsPublishable>true</IsPublishable>
+    <Configurations>Release;Debug</Configurations>
   </PropertyGroup>
 
   <!-- Here we can alter either app is build to connect to dev or prod environment -->
@@ -62,12 +65,34 @@
     <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+  </ItemGroup>
+
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
   <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
     <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
   </PropertyGroup>-->
+
+  <!-- Common iOS and Android build properties -->
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
+    <!-- Trimmer settings -->
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <EventSourceSupport>false</EventSourceSupport>
+    <!-- This instructs trimmer to remove managed HTTP handler -->
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+  </PropertyGroup>
+
+  <!-- Android build properties -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidKeyStore>True</AndroidKeyStore>
@@ -76,28 +101,93 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
+    <!-- Performance-related -->
+    <!-- ~ -200ms -->
+    <AndroidUseInterpreter>false</AndroidUseInterpreter>
+    <!-- ~ -50-100ms + makes the the startup time more stable -->
+    <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
+    <!-- ~ -100ms -->
+    <AndroidEnablePreloadAssemblies>false</AndroidEnablePreloadAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-<!--    <AndroidLinkTool>r8</AndroidLinkTool>-->
-<!-- r8, full Trimming and LLVM optimization doesn work, it shows following error
- java.lang.NoSuchFieldError: no "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;"
- field "AES256_SIV" in class "Landroidx/security/crypto/EncryptedSharedPreferences$PrefKeyEncryptionScheme;" or its superclasses
--->
     <EnableLLVM>False</EnableLLVM>
-    <AndroidEnableProfiledAot>True</AndroidEnableProfiledAot>
-    <EnableTrimAnalyzer>True</EnableTrimAnalyzer>
-    <PublishTrimmed>True</PublishTrimmed>
+    <AndroidDexTool>d8</AndroidDexTool>
+    <AndroidLinkTool>r8</AndroidLinkTool>
+    <!-- Trimming -->
+    <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
+    <!-- <DebuggerSupport>false</DebuggerSupport> -->
   </PropertyGroup>
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ActualChat" />
+  </ItemGroup>
+
+  <!--
+  Android AOT settings & AOT profile
+  -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <AndroidAotEnableLazyLoad>true</AndroidAotEnableLazyLoad>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!--
+    This option kinda duplicates AndroidUseDefaultAotProfile,
+    so we're using both - just in case.
+    -->
+    <MauiUseDefaultAotProfile>true</MauiUseDefaultAotProfile>
+    <AndroidUseDefaultAotProfile>true</AndroidUseDefaultAotProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <!--
+    <AndroidAotProfile Include="custom-inc.aprof" />
+    -->
+  </ItemGroup>
+
+  <!-- Uncomment to profile Android app -->
+
+  <!--
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <AndroidEnableProfiler>true</AndroidEnableProfiler>
+  </PropertyGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <AndroidEnvironment Include="diagnostics-env.txt" />
+  </ItemGroup>
+  -->
+
+  <!-- iOS build properties -->
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
-    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
+    <UseShortFileNames>True</UseShortFileNames>
+    <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+    <!-- Performance-related -->
+    <EnableSGenConc>True</EnableSGenConc>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
+    <CreatePackage>false</CreatePackage>
+    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+    <CodesignKey>iPhone Developer</CodesignKey>
+    <ProvisioningType>automatic</ProvisioningType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <CodesignProvision>App Store Dev</CodesignProvision>
+    <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
+    <ArchiveOnBuild>true</ArchiveOnBuild>
+    <MtouchLink>SdkOnly</MtouchLink>
+    <UseInterpreter>true</UseInterpreter>
+    <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>-->
+  </PropertyGroup>
+
+  <!-- Platform-specific references -->
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android'">
     <PackageReference Include="Xamarin.Firebase.Messaging" />
@@ -105,7 +195,15 @@
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
+    <PackageReference Include="Mono.AotProfiler.Android" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
+    <PackageReference Include="Plugin.Firebase.CloudMessaging" />
+    <PackageReference Include="Xamarin.Build.Download" />
+  </ItemGroup>
+
+  <!-- Resources -->
 
   <ItemGroup>
     <!-- App Icon -->
@@ -119,7 +217,10 @@
 
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
+    <MauiImage Remove="Resources\Images\**" />
   </ItemGroup>
+
+  <!-- Platform-specific files to compile -->
 
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-android')) != true">
@@ -127,6 +228,9 @@
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Android\**\*.cs" />
     <None Include="**\Android\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <None Remove="GoogleService-Info.plist" />
+    <Compile Remove="Resources\Images\**" />
+    <None Remove="Resources\Images\**" />
   </ItemGroup>
 
   <!-- Both iOS and Mac Catalyst -->
@@ -163,12 +267,20 @@
 
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
+    <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Sentry.Serilog" />
-    <PackageReference Include="Sentry.Maui" />
+    <PackageReference Include="Sentry.Extensions.Logging" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
+    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.File" />
     <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
+    <PackageReference Include="sqlite-net-pcl" />
+    <!--
+      We needed an extra package to use SQLite on Android
+      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
+    <PackageReference Include="SQLitePCLRaw.bundle_green" />
     <!--
       MAUI msbuild tasks doesn't work with
       <Content Include="..\UI.Blazor.Host\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
@@ -183,16 +295,33 @@
     <Content Remove="appsettings.json" />
     <Content Remove="Platforms\Android\Resources\google-services.json.dev" />
     <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
+    <Content Remove="Resources\Images\**" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsDevMaui)' == 'true'">
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-android'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
-  <ItemGroup Condition="'$(IsDevMaui)' != 'true'">
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-android'">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-ios'">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-ios'">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+
   <ItemGroup>
-    <Folder Include="Resources\Images\" />
+    <ProguardConfiguration Include="proguard.cfg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Resources\Images\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiXaml Remove="Resources\Images\**" />
   </ItemGroup>
 
   <!-- Versions -->

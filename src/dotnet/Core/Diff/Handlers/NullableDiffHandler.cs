@@ -1,8 +1,5 @@
-using Stl.Extensibility;
-
 namespace ActualChat.Diff.Handlers;
 
-[MatchFor(typeof(Nullable<>), typeof(IDiffHandler))]
 public class NullableDiffHandler<T> : DiffHandlerBase<T, T?>
     where T : struct
 {

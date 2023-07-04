@@ -1,19 +1,20 @@
 using System.Numerics;
+using MemoryPack;
 
 namespace ActualChat.Mathematics.Internal;
 
-[DataContract]
-public readonly struct OldLinearMap
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial struct OldLinearMap
 {
     private readonly float[] _sourcePoints;
     private readonly float[] _targetPoints;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public float[] SourcePoints => _sourcePoints ?? Array.Empty<float>();
-    [DataMember(Order = 1)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public float[] TargetPoints => _targetPoints ?? Array.Empty<float>();
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public OldLinearMap(float[] sourcePoints, float[] targetPoints)
     {
         _sourcePoints = sourcePoints;

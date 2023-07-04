@@ -1,15 +1,13 @@
-using ActualChat.App.Maui.Services;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
-public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
+public sealed partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
 {
-    private static readonly Tracer _trace = Tracer.Default["MauiBlazorWebViewHandler"];
+    private static readonly Tracer Tracer = Tracer.Default[nameof(MauiBlazorWebViewHandler)];
+    private ILogger? _log;
 
-    public ClientAppSettings AppSettings { get; private set; } = null!;
-    public UrlMapper UrlMapper { get; private set; } = null!;
-    private ILogger Log { get; set; } = NullLogger.Instance;
+    private ILogger Log => _log ??= Services!.LogFor(GetType());
 
     public MauiBlazorWebViewHandler()
     {
@@ -19,15 +17,12 @@ public partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         // Message = Microsoft.Maui.Handlers.PageHandler found for ActualChat.App.Maui.MainPage is incompatible
 
         // ReSharper disable once ArrangeConstructorOrDestructorBody
-        _trace.Point(".ctor");
+        Tracer.Point(".ctor");
     }
 
     public override void SetMauiContext(IMauiContext mauiContext)
     {
-        _trace.Point("SetMauiContext");
+        Tracer.Point(nameof(SetMauiContext));
         base.SetMauiContext(mauiContext);
-        AppSettings = mauiContext.Services.GetRequiredService<ClientAppSettings>();
-        UrlMapper = mauiContext.Services.UrlMapper();
-        Log = mauiContext.Services.LogFor(GetType());
     }
 }

@@ -1,17 +1,15 @@
-import { Log, LogLevel, LogScope } from 'logging';
-
 const CheckIntervalMs = 1000;
-const SleepThresholdMs = 4800; // 5s
-const LogScope: LogScope = 'OnDeviceAwakeWorker';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
+const MinDetectedSleepMs = 1500; // 1.5s
 
 let _lastTime: number = Date.now();
+let totalSleepDurationMs = 0;
 
 const wakeUpCheck = () => {
     const currentTime =  Date.now();
-    if ((currentTime - _lastTime) > SleepThresholdMs) {
-        debugLog?.log(`wakeUpCheck: woke up after sleep`);
-        postMessage('wakeup');
+    const sleepDurationMs = Math.max(0, currentTime - _lastTime - CheckIntervalMs);
+    if (sleepDurationMs > MinDetectedSleepMs) {
+        totalSleepDurationMs += sleepDurationMs;
+        postMessage(totalSleepDurationMs);
     }
     _lastTime = currentTime;
 };

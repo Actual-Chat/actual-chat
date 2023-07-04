@@ -11,7 +11,7 @@
 
 <div class="recording-sub-header @recordingElsewhereCls">
     <div class="c-content">
-        <div class="flex justify-center w-10 px-1">
+        <div class="flex justify-center w-11">
             <div class="w-4 h-4 rounded-full bg-error animate-pulse"></div>
         </div>
         @if (m.RecordingChat != null) {
@@ -24,7 +24,7 @@
 
         @if (m.StopRecordingAt != null) {
             <div class="c-text">Recording is stopping in </div>
-            <Countdown StopAt="@m.StopRecordingAt.Value" Class="c-text"/>
+            <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
         }
     </div>
 </div>

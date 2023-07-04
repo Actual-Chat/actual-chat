@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />
     <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
     <ProjectReference Include="..\Chat.Client\Chat.Client.csproj" />
@@ -13,11 +17,6 @@
     <ProjectReference Include="..\Users.Client\Users.Client.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <TypeScriptCompile Include="Pages\Landing\landing.ts" />
-    <TypeScriptCompile Include="Pages\Test\js-test-page.ts" />
   </ItemGroup>
 
 </Project>

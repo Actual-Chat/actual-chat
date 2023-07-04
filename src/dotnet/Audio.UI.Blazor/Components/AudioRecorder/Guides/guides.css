@@ -1,0 +1,25 @@
+.guide-modal .modal-header-interactive {
+    @apply bg-bubble;
+    @apply pr-1; /* indent to OK button */
+}
+
+.guide-modal .modal-header-interactive .modal-title {
+    @apply text-04;
+    @apply text-headline-1;
+}
+
+.guide-modal .modal-header-interactive .btn .btn-content {
+    @apply text-04;
+}
+
+.guide-modal .dialog-body {
+    @apply gap-y-4;
+    @apply overflow-y-auto;
+}
+
+.guide-modal .dialog-body::-webkit-scrollbar {
+    @apply hidden;
+}
+.guide-modal .c-text {
+    @apply text-02;
+}

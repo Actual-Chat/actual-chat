@@ -51,7 +51,7 @@ jobs:
       - name: Install dotnet 7.0 SDK
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7.0.103'
+          dotnet-version: '7.0.305'
 
       - name: Set up Docker Buildx
         id: buildx
@@ -119,7 +119,7 @@ jobs:
       - name: Debug Build for tests
         run: |-
           dotnet run --project build --configuration Release -- restore
-          dotnet build --nologo --no-restore --configuration Debug
+          dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
         run: dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests
@@ -197,12 +197,12 @@ jobs:
       - name: Install dotnet 7.0 SDK
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7.0.103'
+          dotnet-version: '7.0.305'
 
       - name: Debug Build for tests
         run: |-
           dotnet run --project build --configuration Release -- restore
-          dotnet build --nologo --no-restore --configuration Debug
+          dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
         env:

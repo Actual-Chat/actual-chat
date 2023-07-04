@@ -25,7 +25,7 @@
     }
 
     protected override void OnParametersSet() {
-        var clock = Clocks.SystemClock; // Coz they're used by ILiveTime
+        var clock = Clocks.SystemClock; // Coz they're used by LiveTime
         _url = new LocalUrl(To).ToDisplayUrl(UrlMapper);
         _redirectAt = clock.Now + Delay;
         _delayTask = clock.Delay(Delay);
@@ -37,6 +37,6 @@
         if (_delayTask != delayTask)
             return;
 
-        History.NavigateTo(_url.LocalUrl);
+        _ = History.NavigateTo(_url.LocalUrl);
     }
 }

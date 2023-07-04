@@ -1,41 +1,37 @@
-@inherits LandingShort
+@using ActualChat.UI.Blazor.App.Pages.Landing
+@inherits LandingApp
 @{
     var account = State.Value;
     var isGuest = account is not {IsGuestOrNone: false };
-    var user = account.User.OrGuest();
     var avatar = account.Avatar;
-    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
-    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
-    var isNarrow = ScreenSize.IsNarrow();
 }
 
 @* Header *@
 <div class="landing-header blur-bg">
-    @if (isNarrow) {
-        <ButtonRound Class="menu-button flex-none" Click="@OnClick">
+    @if (ScreenSize.IsNarrow()) {
+        <ButtonRound Class="menu-button flex-none" Click="@Click">
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
         <div class="flex-x flex-1">
             <div class="min-w-fit">
-                <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
-                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
             <div class="flex-x flex-1">
                 <div class="px-2 self-center -mt-1.5 max-w-40">
-                    <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
-                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
                 </div>
                 <div class="max-w-9 -mt-0.5 -ml-1">
-                    <img src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
-                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
                 </div>
             </div>
             <div class="header-text"></div>
         </div>
         <div class="flex-none justify-end">
             @if (isGuest) {
-                <ButtonRound Class="signin-button" Click="@(() => SignIn(googleScheme.Name))">
+                <ButtonRound Class="signin-button" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
                 </ButtonRound>
             } else {
@@ -53,17 +49,17 @@
     } else {
         <div class="flex-x flex-1">
             <div class="min-w-fit">
-                <img src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
-                <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
             <div class="flex-x flex-1">
                 <div class="px-2 self-center -mt-1.5 min-w-fit">
-                    <img src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
-                    <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
                 </div>
                 <div class="max-w-9 -mt-0.5 -ml-1">
-                    <img src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
-                    <img src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
                 </div>
             </div>
             <div class="header-text">
@@ -72,22 +68,10 @@
                     Class="header-text text-headline-1 btn-transparent">Docs
                 </Button>
                 @if (isGuest) {
-                    <button class="signin-button-group" onclick="@(() => SignIn(googleScheme.Name))">
-                        <span class="px-2 font-medium">Sign in with</span>
-                        <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+                    <button class="signin-button-group" onclick="@SignIn">
+                        <span class="px-2 font-medium">Sign in</span>
                     </button>
-                    // Don't remove this button group
-                @* <SigninButtonGroup> *@
-                @*     <GoogleIcon> *@
-                @*         <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
-                @*     </GoogleIcon> *@
-                @*     <FacebookIcon> *@
-                @*         <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8"> *@
-                @*     </FacebookIcon> *@
-                @*     <AppleIcon> *@
-                @*         <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8"> *@
-                @*     </AppleIcon> *@
-                @* </SigninButtonGroup> *@
+                    <DownloadButton/>
                 } else {
                     <div
                         class="context-menu-btn"
@@ -105,17 +89,12 @@
 </div>
 
 @code {
-    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
-    protected override async Task OnInitializedAsync()
-        => AuthSchemas = await ClientAuth.GetSchemas();
-
-    private Task SignIn(string name) =>
-        ClientAuth.SignIn(name).AsTask();
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
 }

@@ -1,28 +1,47 @@
-@inherits ComputedStateComponent<ImmutableList<(string Backend, Exception Error)>>
+@inherits ComputedStateComponent<string>
 @{
-    var errors = State.Value ?? ImmutableList<(string Backend, Exception Error)>.Empty;
+    var errors = State.Value;
 }
 
 <h3>Backend status:</h3>
-@if (errors.Any()) {
-    @foreach (var (backend, error) in errors) {
-        <h4><b>@backend:</b> @(error.Message.NullIfEmpty() ?? "Unknown error")</h4>
-    }
+@if (!errors.IsNullOrEmpty()) {
+    <h4>@errors</h4>
 }
 else {
     <h4>No errors</h4>
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IBackendStatus BackendStatus { get; init; } = null!;
+    private RpcPeerStateMonitor? _monitor;
 
-    protected override ComputedState<ImmutableList<(string Backend, Exception Error)>>.Options GetStateOptions()
+    [Inject] private Session Session { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        _monitor = Services.GetService<RpcPeerStateMonitor>();
+        _monitor?.Start();
+        base.OnInitialized();
+    }
+
+    protected override ComputedState<string>.Options GetStateOptions()
         => new() {
-            InitialValue = ImmutableList<(string Backend, Exception Error)>.Empty,
+            InitialValue = "",
             Category = GetStateCategory(),
         };
 
-    protected override Task<ImmutableList<(string Backend, Exception Error)>> ComputeState(CancellationToken cancellationToken)
-        => BackendStatus.GetAllErrors(Session, cancellationToken);
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
+        if (_monitor == null)
+            return "";
+
+        try {
+            var state = await _monitor.State.Use(cancellationToken);
+            if (state == null)
+                return "";
+
+            return state.Error?.Message ?? "Unknown error";
+        }
+        catch (Exception e) {
+            return e.Message;
+        }
+    }
+
 }

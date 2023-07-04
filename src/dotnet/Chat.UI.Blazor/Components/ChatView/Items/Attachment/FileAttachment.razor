@@ -1,8 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
-    var fileSize = Attachment.Length / (1024 * 1024d);
-    var url = UrlMapper.ContentUrl(Attachment.ContentId);
+    var fileSize = Attachment.Media.Length / (1024 * 1024d);
+    var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
 }
 <div class="file-attachment">
     <div class="flex w-[400px] p-2 bg-zinc-200 rounded-md items-center">
@@ -13,7 +13,7 @@
         </div>
         <div class="flex-1">
             <div>
-                <a class="file-attachment-name" href="@url" target="_blank" role="button">@Attachment.FileName</a>
+                <a class="file-attachment-name" href="@url" target="_blank" role="button">@Attachment.Media.FileName</a>
             </div>
             <div class="file-attachment-size">@fileSize.ToString("N2") MB</div>
         </div>

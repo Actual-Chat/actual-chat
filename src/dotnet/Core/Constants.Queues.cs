@@ -6,12 +6,16 @@ public static partial class Constants
     {
         // Core
         public static int AsyncMemoizerTargetQueueSize { get; } = 16;
-        public static int MessageProcessorQueueDefaultSize { get; } = 128;
-        public static int MessageProcessorMaxProcessCallDurationMs { get; } = 2000;
         public static int LocalCommandQueueDefaultSize { get; } = 1024;
         // Audio
-        public static int OpusStreamAdapterQueueSize { get; } = 128;
-        public static int WebMStreamAdapterQueueSize { get; } = 128;
+        public static int OpusStreamConverterQueueSize { get; } = 128;
+        public static int WebMStreamConverterQueueSize { get; } = 128;
         public static int TrackPlayerCommandQueueSize { get; } = 8;
+    }
+
+    public static class MessageProcessing
+    {
+        public static int QueueSize { get; } = 128;
+        public static TimeSpan ProcessCallTimeout { get; } = TimeSpan.FromSeconds(2);
     }
 }

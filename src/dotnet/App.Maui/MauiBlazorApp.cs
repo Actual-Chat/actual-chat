@@ -1,27 +1,41 @@
-using Microsoft.AspNetCore.Components;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
-public class MauiBlazorApp : UI.Blazor.App.App
+public class MauiBlazorApp : AppBase
 {
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        ScopedServicesAccessor.ScopedServices = Services;
-        base.OnInitialized();
+        try {
+            var baseUri = AppSettings.BaseUri;
+            var session = await SessionResolver.SessionTask.ConfigureAwait(true);
+            MainPage.Current!.SetupSessionCookie(baseUri, session);
+
+            try {
+                ScopedServices = Services;
+            }
+            catch (Exception) {
+                Log.LogWarning("OnInitializedAsync: can't change ScopedServices - reloading");
+                DiscardScopedServices();
+                Services.GetRequiredService<ReloadUI>().Reload();
+                return; // No call to base.OnInitializedAsync() is intended here: reload is all we want
+            }
+            await base.OnInitializedAsync().ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "OnInitializedAsync failed");
+            throw;
+        }
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
+        base.Dispose(disposing);
         // On refreshing page, MAUI dispose PageContext.
         // Which dispose Renderer with all components.
         // And after that container is disposed.
         // So we forget previous scoped services container in advance.
-        ScopedServicesAccessor.Forget();
-        base.Dispose();
+        DiscardScopedServices();
     }
-
-    public MauiBlazorApp()
-        => Tracer.Default.Point("MauiBlazorApp.ctor");
 }

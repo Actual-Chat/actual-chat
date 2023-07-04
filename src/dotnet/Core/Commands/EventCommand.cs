@@ -1,7 +1,9 @@
+using MemoryPack;
+
 namespace ActualChat.Commands;
 
 [DataContract]
-public abstract record EventCommand : IEventCommand
+public abstract partial record EventCommand : IEventCommand
 {
-    [DataMember] public Symbol ChainId { get; init; }
+    [DataMember, MemoryPackOrder(0)] public Symbol ChainId { get; init; }
 }

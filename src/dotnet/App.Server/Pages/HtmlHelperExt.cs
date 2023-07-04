@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Controllers;
+using Stl.Fusion.Server.Endpoints;
 
 namespace ActualChat.App.Server.Pages;
 
@@ -13,7 +13,7 @@ public static class HtmlHelperExt
         this IHtmlHelper html, IServiceProvider services, HttpContext httpContext)
     {
         var serverAuthHelper = services.GetRequiredService<ServerAuthHelper>();
-        var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(httpContext);
+        var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(httpContext);
         var sessionId = serverAuthHelper.Session.Id.Value;
 
         return html.RenderComponentAsync<WasmApp>(
@@ -26,7 +26,7 @@ public static class HtmlHelperExt
     {
         var circuitContext = services.GetRequiredService<BlazorCircuitContext>();
         var serverAuthHelper = services.GetRequiredService<ServerAuthHelper>();
-        var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(httpContext);
+        var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(httpContext);
         var sessionId = serverAuthHelper.Session.Id.Value;
 
         using var prerendering = circuitContext.Prerendering();

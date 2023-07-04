@@ -97,21 +97,21 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ImmutableArray<AuthorId>.Empty;
+            return ApiArray<AuthorId>.Empty;
 
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ImmutableArray<UserId>.Empty;
+            return ApiArray<UserId>.Empty;
 
         return await Backend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
     }
@@ -137,7 +137,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task<AuthorFull> Join(IAuthors.JoinCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -151,12 +151,31 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         chatRules.Require(ChatPermissions.Join);
 
         if (!avatarId.IsEmpty) {
-            var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
-            avatarIds.SingleOrDefault(x => x == avatarId).Require();
+            var avatar = await Avatars.GetOwn(session, avatarId, cancellationToken).ConfigureAwait(false);
+            avatar.Require();
+            if (joinAnonymously.GetValueOrDefault() && !avatar.IsAnonymous)
+                throw StandardError.Constraint("Anonymous avatar should be used to join anonymously.");
         }
 
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+
+        if (account.IsGuestOrNone) {
+            if (!chat.AllowGuestAuthors)
+                throw StandardError.Constraint("The chat does not allow to join with guest account.");
+            if (joinAnonymously == false)
+                throw StandardError.Constraint(nameof(Authors_Join.JoinAnonymously)
+                    + " should be true or not be specified for guest account.");
+        }
+        else {
+            if (joinAnonymously.GetValueOrDefault()) {
+                if (!chat.AllowAnonymousAuthors)
+                    throw StandardError.Constraint("The chat does not allow to join anonymously.");
+            }
+        }
+
+        var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author?.Id ?? default, account.Id, null,
             new AuthorDiff() {
                 IsAnonymous = joinAnonymously,
@@ -165,10 +184,12 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             });
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var invite = await ServerKvas.Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
+        var invite = await ServerKvas
+            .GetClient(session)
+            .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken).ConfigureAwait(false);
         if (invite.HasValue) {
             // Remove the invite
-            var removeInviteCommand = new IServerKvas.SetCommand(session, ServerKvasInviteKey.ForChat(chatId), null);
+            var removeInviteCommand = new ServerKvas_Set(session, ServerKvasInviteKey.ForChat(chatId), null);
             await Commander.Call(removeInviteCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
@@ -176,7 +197,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task Leave(IAuthors.LeaveCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnLeave(Authors_Leave command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -191,14 +212,14 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return;
         chat.Rules.Require(ChatPermissions.Leave);
 
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+        var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { HasLeft = true });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task Invite(IAuthors.InviteCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnInvite(Authors_Invite command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -212,7 +233,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     }
 
     // [CommandHandler]
-    public virtual async Task SetAvatar(IAuthors.SetAvatarCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -224,7 +245,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author == null || author.AvatarId == command.AvatarId)
             return;
 
-        var upsertCommand = new IAuthorsBackend.UpsertCommand(
+        var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { AvatarId = avatarId });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);

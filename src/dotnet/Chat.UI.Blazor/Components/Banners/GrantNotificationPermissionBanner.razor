@@ -38,8 +38,6 @@
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     protected override void OnInitialized() {
         _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
         base.OnInitialized();

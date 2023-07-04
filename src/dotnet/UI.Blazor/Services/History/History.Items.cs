@@ -11,10 +11,13 @@ public partial class History
     private volatile HistoryItem _defaultItem;
     private readonly LruCache<long, HistoryItem> _itemById = new(MaxItemCount);
 
-    private HistoryItem NewItemUnsafe(string? uri = null)
-        => new(this, _currentItem.Id, uri ?? _uri, _currentItem.States) { Id = NewItemId() };
+    private HistoryItem NewItem(string? uri = null)
+        => NewItem(NewItemId(), uri);
 
-    private HistoryItem? GetItemByIdUnsafe(long id)
+    private HistoryItem NewItem(long itemId, string? uri = null)
+        => new(this, _currentItem.Id, uri ?? _uri, _currentItem.States) { Id = itemId };
+
+    private HistoryItem? GetItemById(long id)
         => _itemById.GetValueOrDefault(id);
 
     private long NewItemId()
@@ -38,17 +41,20 @@ public partial class History
         return item;
     }
 
-    private void AddItem(ref HistoryItem item)
+    private void AddItem(ref HistoryItem item, bool validate = true)
     {
-        if (item.BackItemId != _currentItem.Id)
-            throw StandardError.Internal("AddHistoryItem: item.BackItemId != CurrentItem.Id");
+        if (item.BackItemId != _currentItem.Id) {
+            if (validate)
+                throw StandardError.Internal("AddHistoryItem: item.BackItemId != CurrentItem.Id");
+            item = item with { BackItemId = _currentItem.Id };
+        }
 
         RegisterCurrentItem(item);
     }
 
-    private void ReplaceItem(ref HistoryItem item)
+    private void ReplaceItem(ref HistoryItem item, bool validate = true)
     {
-        if (item.Id != _currentItem.Id)
+        if (validate && item.Id != _currentItem.Id)
             throw StandardError.Internal("ReplaceHistoryItem: item.Id != CurrentItem.Id");
 
         RegisterCurrentItem(item);
@@ -61,7 +67,7 @@ public partial class History
         if (item.Id == 0)
             throw StandardError.Internal("ReplaceHistoryItemWithGeneratedBackItem: item.Id == 0");
 
-        backItem = GetItemByIdUnsafe(item.BackItemId);
+        backItem = GetItemById(item.BackItemId);
         if (backItem != null) { // Already has back item
             ReplaceItem(ref item);
             return false;

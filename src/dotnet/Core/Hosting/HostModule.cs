@@ -1,34 +1,33 @@
 using Microsoft.Extensions.Configuration;
-using Stl.Plugins;
 
 namespace ActualChat.Hosting;
 
-public abstract class HostModule : Plugin
+public abstract class HostModule
 {
-    protected HostInfo HostInfo { get; } = null!;
+    protected HostInfo HostInfo { get; }
     protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
+    protected ModuleHost Host { get; private set; } = null!;
 
-    protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
+    protected HostModule(IServiceProvider services)
+        => HostInfo = services.GetRequiredService<HostInfo>();
 
-    protected HostModule(IPluginHost plugins) : base(plugins)
-        => HostInfo = plugins.GetRequiredService<HostInfo>();
+    protected internal void Initialize(ModuleHost host)
+        => Host = host;
 
-    public abstract void InjectServices(IServiceCollection services);
+    protected internal abstract void InjectServices(IServiceCollection services);
 }
 
 public abstract class HostModule<TSettings> : HostModule
     where TSettings : class, new()
 {
-    public TSettings Settings { get; } = null!;
+    public TSettings Settings { get; }
 
-    protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
-
-    protected HostModule(IPluginHost plugins) : base(plugins)
+    protected HostModule(IServiceProvider services) : base(services)
     {
-        var cfg = plugins.GetRequiredService<IConfiguration>();
+        var cfg = services.GetRequiredService<IConfiguration>();
         Settings = cfg.GetSettings<TSettings>();
     }
 
-    public override void InjectServices(IServiceCollection services)
+    protected internal override void InjectServices(IServiceCollection services)
         => services.AddSingleton(Settings);
 }

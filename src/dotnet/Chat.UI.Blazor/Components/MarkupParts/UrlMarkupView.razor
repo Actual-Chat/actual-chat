@@ -1,7 +1,5 @@
-@using Stl.Extensibility
 @using System.Diagnostics.CodeAnalysis
 @inherits MarkupViewBase<UrlMarkup>
-@attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
 @{
     var cls = "url-markup url-markup-" + _urlKind.ToString().ToLower();
 }
@@ -12,7 +10,7 @@ case MarkupUrlKind.Local:
        href="@(_localUrl!.Value)"
        @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Local, _localUrl.Value))"
        @onclick:preventDefault="true"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url, ""))">
         @Markup.Url
     </a>
     break;
@@ -22,12 +20,12 @@ case MarkupUrlKind.Image:
        role="button"
        @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Image, Markup.Url))"
        @onclick:preventDefault="true">
-        <img src="@Markup.Url" alt="@Markup.Url"/>
+        <img draggable="false" src="@Markup.Url" alt="@Markup.Url"/>
     </a>
     break;
 default:
     <a class="@cls" href="@Markup.Url" target="_blank"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, Markup.Url))">
+       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url, ""))">
         @Markup.Url
     </a>
     break;
@@ -38,7 +36,7 @@ default:
     private LocalUrl? _localUrl;
     private ChatMessageModel _message = null!;
 
-    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
     protected override void OnParametersSet() {
@@ -67,10 +65,10 @@ default:
     private async Task OnSpecialUrlClick(MarkupUrlKind urlKind, string url) {
         switch (urlKind) {
         case MarkupUrlKind.Image:
-            await ImageViewerUI.Show(url);
+            await VisualMediaViewerUI.Show(url);
             break;
         case MarkupUrlKind.Local:
-            History.NavigateTo(url);
+            _ = History.NavigateTo(url);
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(urlKind));

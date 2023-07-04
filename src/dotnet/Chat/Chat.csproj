@@ -2,10 +2,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Media\Media.csproj" />
     <ProjectReference Include="..\Users\Users.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MemoryPack" />
     <PackageReference Include="Pidgin" />
   </ItemGroup>
 

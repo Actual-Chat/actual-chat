@@ -1,11 +1,12 @@
 using ActualChat.Hosting;
 using ActualChat.Users;
+using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class AccountUI : WorkerBase
+public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 {
-    private readonly TaskSource<Unit> _whenLoadedSource;
+    private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
 
     private IServiceProvider Services { get; }
@@ -13,7 +14,6 @@ public partial class AccountUI : WorkerBase
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private ILogger Log { get; }
-    private Tracer Tracer { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
@@ -22,31 +22,27 @@ public partial class AccountUI : WorkerBase
     {
         Services = services;
         Log = services.LogFor(GetType());
-        Tracer = services.Tracer(GetType());
 
         StateFactory = services.StateFactory();
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
 
-        _whenLoadedSource = TaskSource.New<Unit>(true);
         var ownAccountTask = Accounts.GetOwn(Session, default);
- #pragma warning disable VSTHRD002
-        AccountFull ownAccount;
-        if (ownAccountTask.IsCompletedSuccessfully) {
-            ownAccount = ownAccountTask.Result;
-            Tracer.Point(".ctor: OwnAccount is already loaded");
-        }
-        else {
-            ownAccount = AccountFull.Loading;
-            Tracer.Point(".ctor: OwnAccount is not loaded yet");
-        }
- #pragma warning restore VSTHRD002
+ #pragma warning disable VSTHRD002, VSTHRD104
+        AccountFull initialOwnAccount = ownAccountTask.IsCompletedSuccessfully
+            ? ownAccountTask.Result
+            : AccountFull.Loading;
+ #pragma warning restore VSTHRD002, VSTHRD104
         _ownAccount = StateFactory.NewMutable<AccountFull>(new () {
-            InitialValue = ownAccount,
+            InitialValue = initialOwnAccount,
             Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
         });
-        Start();
+        if (!ReferenceEquals(initialOwnAccount, AccountFull.Loading))
+            _whenLoadedSource.TrySetResult();
     }
+
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
     public async Task SignOut()
     {
@@ -54,7 +50,6 @@ public partial class AccountUI : WorkerBase
             return;
 
         var history = Services.GetRequiredService<History>();
-
         if (history.HostInfo.AppKind.IsMauiApp()) {
             // MAUI scenario:
             // - Sign-out natively
@@ -66,6 +61,6 @@ public partial class AccountUI : WorkerBase
         // Blazor Server/WASM scenario:
         // - Redirect to sign-out page, which redirects to home page after sign-out completion
         // - SignOutReloader doesn't get a chance to reload anything in this case - which is fine.
-        await history.HardNavigateTo(Links.SignOut());
+        history.ForceReload(Links.SignOut());
     }
 }

@@ -1,29 +1,60 @@
 ﻿@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
+@using ActualChat.Chat.UI.Blazor.Components.NewChat
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits OwnAccountComponentBase
 @{
     var m = State.Value;
 }
 
+@if (m.IsActive()) {
+    <NavbarButton
+        Tooltip="Create"
+        data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+        data-bubble-priority="201"
+        data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
+        Click="OnCreateChatClick">
+        <i class="icon-plus text-2xl font-medium"></i>
+    </NavbarButton>
+}
+
 <ChatsNavbarButton/>
 
 @if (m.IsAdmin) {
-    <NavbarButton
+    <NavbarGroupSelectionButton
         Title="Administration"
         Id="@NavbarGroupIds.Administration"
-        Tooltip="Administration"
-        TooltipPosition="FloatingPosition.Right">
+        Tooltip="Administration">
         <i class="icon-adminx-1 text-2xl font-medium"></i>
-    </NavbarButton>
+    </NavbarGroupSelectionButton>
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <NavbarButton
+    <NavbarGroupSelectionButton
         Title="Test Pages"
         Id="@NavbarGroupIds.TestPages"
-        Tooltip="Test Pages"
-        TooltipPosition="FloatingPosition.Right">
+        Tooltip="Test Pages">
         <i class="icon-alert-triangle text-2xl font-medium"></i>
+    </NavbarGroupSelectionButton>
+}
+
+@*
+@if (HostInfo.AppKind.IsMauiApp()) {
+    <NavbarButton
+        Class="mt-auto"
+        Tooltip="Restart"
+        Click="OnRestartClick">
+        <i class="icon-refresh text-2xl font-medium"></i>
     </NavbarButton>
+}
+*@
+
+@code {
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    private Task OnCreateChatClick()
+        => ModalUI.Show(new NewChatModal.Model());
+
+    private void OnRestartClick()
+        => Services.GetRequiredService<ReloadUI>().Reload(Links.Home);
 }

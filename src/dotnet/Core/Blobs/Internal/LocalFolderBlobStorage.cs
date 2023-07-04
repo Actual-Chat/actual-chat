@@ -15,11 +15,24 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
     public LocalFolderBlobStorage(FilePath directory, IServiceProvider services)
     {
-        if (directory == null)
-            throw new ArgumentNullException(nameof(directory));
-
         Services = services;
         BaseDirectory = directory.DirectoryPath;
+    }
+
+    public ValueTask DisposeAsync()
+        => default;
+
+    public Task<bool> Exists(string path, CancellationToken cancellationToken)
+    {
+        ValidatePath(path);
+
+        var fullPath = (BaseDirectory & path).Value;
+        if (File.Exists(fullPath))
+            return Stl.Async.TaskExt.TrueTask;
+        if (Directory.Exists(fullPath))
+            return Stl.Async.TaskExt.TrueTask;
+
+        return Stl.Async.TaskExt.FalseTask;
     }
 
     public Task<Stream?> Read(string path, CancellationToken cancellationToken)
@@ -39,8 +52,6 @@ internal class LocalFolderBlobStorage : IBlobStorage
 
     public Task<string?> GetContentType(string path, CancellationToken cancellationToken)
     {
-        if (path == null) throw new ArgumentNullException(nameof(path));
-
         ValidatePath(path);
 
         var fullPath = BaseDirectory & path;
@@ -49,72 +60,55 @@ internal class LocalFolderBlobStorage : IBlobStorage
             : Task.FromResult<string?>(null);
     }
 
-    public async Task Write(string path, Stream dataStream, string contentType, CancellationToken cancellationToken)
+    public async Task Write(string path, Stream stream, string contentType, CancellationToken cancellationToken)
     {
-        if (path == null) throw new ArgumentNullException(nameof(path));
-        if (dataStream == null) throw new ArgumentNullException(nameof(dataStream));
-
         ValidatePath(path);
 
         var fullPath = BaseDirectory & path;
         Directory.CreateDirectory(fullPath.DirectoryPath);
         var fileStream = File.Create(fullPath);
         await using var _ = fileStream.ConfigureAwait(false);
-        await dataStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+        await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task Delete(IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
+    public Task Copy(string oldPath, string newPath, CancellationToken cancellationToken)
     {
-        if (paths == null) throw new ArgumentNullException(nameof(paths));
+        ValidatePath(oldPath);
+        ValidatePath(newPath);
 
-        if (paths.Count == 0)
-            return Task.CompletedTask;
+        var fullOldPath = BaseDirectory & oldPath;
+        var fullNewPath = BaseDirectory & newPath;
 
-        foreach (var path in paths) {
-            ValidatePath(path);
+        Directory.CreateDirectory(fullNewPath.DirectoryPath);
 
-            var fullPath = (BaseDirectory & path).Value;
-            if (File.Exists(fullPath))
-                File.Delete(fullPath);
-            else if (Directory.Exists(fullPath))
-                Directory.Delete(fullPath, true);
-        }
+        File.Copy(fullOldPath, fullNewPath);
+
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyCollection<bool>> Exists(
-        IReadOnlyCollection<string> paths,
-        CancellationToken cancellationToken)
+    public Task Delete(string path, CancellationToken cancellationToken)
     {
-        if (paths == null) throw new ArgumentNullException(nameof(paths));
+        ValidatePath(path);
 
-        if (paths.Count == 0)
-            return Task.FromResult<IReadOnlyCollection<bool>>(Array.Empty<bool>());
+        var fullPath = (BaseDirectory & path).Value;
+        if (File.Exists(fullPath))
+            File.Delete(fullPath);
+        else if (Directory.Exists(fullPath))
+            Directory.Delete(fullPath, true);
 
-        var index = 0;
-        var result = new bool[paths.Count];
-        foreach (var path in paths) {
-            ValidatePath(path);
-
-            var fullPath = (BaseDirectory & path).Value;
-            if (File.Exists(fullPath))
-                result[index] = true;
-            else if (Directory.Exists(fullPath))
-                result[index] = true;
-            index++;
-        }
-        return Task.FromResult<IReadOnlyCollection<bool>>(result);
+        return Task.CompletedTask;
     }
 
-    public ValueTask DisposeAsync()
-        => ValueTask.CompletedTask;
+    // Private methods
 
     private void ValidatePath(string path)
     {
-        if (path == null) throw new ArgumentNullException(nameof(path));
+        if (path == null)
+            throw new ArgumentNullException(nameof(path));
 
         var filePath = FilePath.New(path);
-        if (!filePath.IsSubPathOf(BaseDirectory) && filePath.IsRooted)
-            throw StandardError.Constraint<LocalFolderBlobStorage>("Path should be relative to the base directory.");
+        if (filePath.IsRooted && !filePath.IsSubPathOf(BaseDirectory))
+            throw StandardError.Constraint<LocalFolderBlobStorage>(
+                "Path should be either relative to the base directory or rooted there.");
     }
 }

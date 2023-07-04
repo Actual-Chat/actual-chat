@@ -1,6 +1,6 @@
 @using System.Text.Encodings.Web
 @using ActualChat.Chat
-@inherits ComputedStateComponent<ImmutableArray<AvatarFull>>
+@inherits ComputedStateComponent<ApiArray<AvatarFull>>
 @{
     var avatars = State.Value;
 }
@@ -15,8 +15,8 @@
                 <Right>
                     <TileButtons
                         Avatar="@avatar"
-                        OnEditClick="@(() => EditAvatar(avatar, "Edit avatar"))"
-                        OnSetDefaultClick="@(() => SetDefaultAvatar(avatar))"/>
+                        EditClick="@(() => EditAvatar(avatar, "Edit avatar"))"
+                        SetDefaultClick="@(() => SetDefaultAvatar(avatar))"/>
                 </Right>
                 <Content>
                     @avatar.Name
@@ -47,31 +47,31 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
-    [Parameter] public Chat Chat { get; set; } = Chat.None;
+    private ChatId ChatId => Chat?.Id ?? ChatId.None;
 
-    protected override ComputedState<ImmutableArray<AvatarFull>>.Options GetStateOptions()
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+    [Parameter] public Chat? Chat { get; set; } = null;
+
+    protected override ComputedState<ApiArray<AvatarFull>>.Options GetStateOptions()
         => new () {
-            InitialValue = ImmutableArray<AvatarFull>.Empty,
+            InitialValue = ApiArray<AvatarFull>.Empty,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<ImmutableArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ApiArray<AvatarFull>> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
         var avatars = await avatarIds
             .Select(id => Avatars.GetOwn(Session, id, cancellationToken))
             .Collect();
-        return avatars.SkipNullItems().ToImmutableArray();
+        return avatars.SkipNullItems().ToApiArray();
     }
 
     private async Task OnAddNewAvatar() {
-        if (!Chat.Id.IsNone)
-            throw StandardError.Constraint("Avatars can be added on account page only");
+        if (Chat != null)
+            throw StandardError.Constraint("Avatars can be added only on account page.");
 
-        var command = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull>() {
-            Create = new AvatarFull() {
-                UserId = Account.Id,
-            }.WithMissingPropertiesFrom(Account.Avatar),
+        var command = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull>() {
+            Create = new AvatarFull(Account.Id).WithMissingPropertiesFrom(Account.Avatar),
         });
         var (avatar, error) = await UICommander.Run(command);
         if (error != null)
@@ -81,10 +81,10 @@
     }
 
     private Task EditAvatar(AvatarFull avatar, string title)
-        => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, Chat.Id, title));
+        => ModalUI.Show(new OwnAvatarEditorModal.Model(avatar.Id, ChatId, title));
 
     private async Task SetDefaultAvatar(AvatarFull avatar) {
-        var command = new IAvatars.SetDefaultCommand(Session, avatar.Id);
+        var command = new Avatars_SetDefault(Session, avatar.Id);
         await UICommander.Run(command);
     }
 }

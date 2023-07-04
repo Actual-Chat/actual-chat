@@ -43,8 +43,8 @@ public class GoogleTranscriberTest : TestBase
         //     Path.Combine(Environment.CurrentDirectory, "data", file-name),
         //     FileMode.OpenOrCreate,
         //     FileAccess.ReadWrite)) {
-        //     var webMAdapter = new WebMStreamAdapter(Log);
-        //     var byteStream = webMAdapter.Write(audio, CancellationToken.None);
+        //     var converter = new WebMStreamConverter(Log);
+        //     var byteStream = converter.ToByteStream(audio, CancellationToken.None);
         //     await foreach (var data in byteStream) {
         //         await outputStream.WriteAsync(data, CancellationToken.None);
         //     }
@@ -54,12 +54,9 @@ public class GoogleTranscriberTest : TestBase
         // using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
         // var writeBuffer = writeBufferLease.Memory;
 
-        var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
-
-        foreach (var diff in diffs)
-            Out.WriteLine(diff.ToString());
-        var transcript = diffs.ApplyDiffs().Last();
-        Out.WriteLine(transcript.ToString());
+        var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
+        foreach (var t in transcripts)
+            Out.WriteLine(t.ToString());
     }
 
     [Fact]
@@ -72,23 +69,20 @@ public class GoogleTranscriberTest : TestBase
             Language = "ru-RU",
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe("dev-tst", "test", audio, options, default).ToListAsync();
-
-        foreach (var diff in diffs)
-            Out.WriteLine(diff.ToString());
-        var transcript = diffs.ApplyDiffs().Last();
-        Out.WriteLine(transcript.ToString());
-        transcript.TimeRange.Start.Should().Be(0);
+        var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
+        foreach (var t in transcripts)
+            Out.WriteLine(t.ToString());
+        transcripts.Last().TimeRange.Start.Should().Be(0);
     }
 
     private async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = webMStream ?? fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, Log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, Log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, Log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, Log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 
@@ -122,9 +116,11 @@ public class GoogleTranscriberTest : TestBase
                 // XUnit logging requires weird setup b/c otherwise it filters out
                 // everything below LogLevel.Information
                 logging.AddProvider(
+ #pragma warning disable CS0618
                     new XunitTestOutputLoggerProvider(
                         new TestOutputHelperAccessor(Out),
                         (_, _) => true));
+ #pragma warning restore CS0618
             })
             .BuildServiceProvider();
 }

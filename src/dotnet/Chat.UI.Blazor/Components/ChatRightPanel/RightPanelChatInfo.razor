@@ -104,14 +104,14 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private ImageViewerUI ImageViewerUI { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -179,7 +179,7 @@
         });
 
     private Task OnInviteClick()
-        => ModalUI.Show(new InviteAuthor.Model(Chat));
+        => ModalUI.Show(new InviteAuthorModal.Model(Chat));
 
     public sealed record Model {
         public static Model None { get; } = new();

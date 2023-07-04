@@ -5,45 +5,66 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : WorkerBase, IHasServices
+public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
-    private readonly SharedResourcePool<Symbol, ISyncedState<ChatPosition>> _readPositionStates;
+    private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
-    private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
 
-    private IStateFactory StateFactory { get; }
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
+    private IUserPresences? _userPresences;
+    private IAccounts? _accounts;
+    private IChats? _chats;
+    private IContacts? _contacts;
+    private IChatPositions? _chatPositions;
+    private IMentions? _mentions;
+    private AccountSettings? _accountSettings;
+    private History? _history;
+    private KeepAwakeUI? _keepAwakeUI;
+    private TuneUI? _tuneUI;
+    private ModalUI? _modalUI;
+    private ActiveChatsUI? _activeChatsUI;
+    private ChatAudioUI? _chatAudioUI;
+    private ChatEditorUI? _chatEditorUI;
+    private UICommander? _uiCommander;
+    private UIEventHub? _uiEventHub;
+    private ICommander? _commander;
+    private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
+
     private Session Session { get; }
-    private IUserPresences UserPresences { get; }
-    private IAccounts Accounts { get; }
-    private IChats Chats { get; }
-    private IContacts Contacts { get; }
-    private IChatPositions ChatPositions { get; }
-    private IMentions Mentions { get; }
-    private AccountSettings AccountSettings { get; }
-    private KeepAwakeUI KeepAwakeUI { get; }
-    private TuneUI TuneUI { get; }
-    private ModalUI ModalUI { get; }
-    private ActiveChatsUI ActiveChatsUI { get; }
-    private ChatAudioUI ChatAudioUI { get; }
-    private History History { get; }
-    private UICommander UICommander { get; }
-    private UIEventHub UIEventHub { get; }
-    private ICommander Commander { get; }
+    private IStateFactory StateFactory { get; }
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
+        => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
+
+    private IUserPresences UserPresences => _userPresences ??= Services.GetRequiredService<IUserPresences>();
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
+    private IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
+    private IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
+    private AccountSettings AccountSettings => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
+    private History History => _history ??= Services.GetRequiredService<History>();
+    private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
+    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
+    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
+    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
+    private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
+    private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
+    private UICommander UICommander => _uiCommander ??= Services.UICommander();
+    private UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
+    private ICommander Commander => _commander ??= Services.Commander();
+
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IServiceProvider Services { get; }
-    public IStoredState<ChatListSettings> ListSettings { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
-    public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
 
@@ -51,105 +72,27 @@ public partial class ChatUI : WorkerBase, IHasServices
     {
         Services = services;
         Log = services.LogFor(GetType());
-        StateFactory = services.StateFactory();
-        ChatMarkupHubFactory = services.KeyedFactory<IChatMarkupHub, ChatId>();
 
         Session = services.GetRequiredService<Session>();
-        UserPresences = services.GetRequiredService<IUserPresences>();
-        Accounts = services.GetRequiredService<IAccounts>();
-        Chats = services.GetRequiredService<IChats>();
-        Contacts = services.GetRequiredService<IContacts>();
-        ChatPositions = services.GetRequiredService<IChatPositions>();
-        Mentions = services.GetRequiredService<IMentions>();
-        AccountSettings = services.AccountSettings();
-        KeepAwakeUI = services.GetRequiredService<KeepAwakeUI>();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        ModalUI = services.GetRequiredService<ModalUI>();
-        ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
-        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
-        History = services.GetRequiredService<History>();
-        UICommander = services.UICommander();
-        UIEventHub = services.UIEventHub();
-        Commander = services.Commander();
+        StateFactory = services.StateFactory();
 
         var type = GetType();
-        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new (services.LocalSettings(), nameof(SelectedChatId)) {
-            Corrector = FixChatId,
+        _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(services.LocalSettings(), nameof(SelectedChatId)) {
+            Corrector = FixSelectedChatId,
         });
-        _relatedChatEntry = StateFactory.NewMutable(
-            (RelatedChatEntry?)null,
-            StateCategories.Get(type, nameof(RelatedChatEntry)));
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
 
-        ListSettings = StateFactory.NewKvasStored<ChatListSettings>(
-            new (AccountSettings, nameof(ListSettings)) {
-                InitialValue = new(),
-                Category = StateCategories.Get(type, nameof(ListSettings)),
-            });
-
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
-        _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ChatPosition>>(CreateReadPositionState);
-        Start();
+        _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ReadPosition>>(CreateReadPositionState);
     }
 
-    [ComputeMethod]
-    public virtual async Task<IReadOnlyList<ChatInfo>> List(CancellationToken cancellationToken = default)
-    {
-        var settings = await ListSettings.Use(cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("-> List: {Settings}", settings);
-        var filterId = settings.Filter.Id;
-        var filteredChats = await ListFiltered(filterId, cancellationToken).ConfigureAwait(false);
-        var preOrderedChats = filteredChats
-            .OrderByDescending(c => c.Contact.IsPinned)
-            .ThenByDescending(c => c.HasUnreadMentions);
-        var orderedChats = settings.Order switch {
-            ChatListOrder.ByLastEventTime => preOrderedChats
-                .ThenByDescending(c => c.News.LastTextEntry?.Version ?? 0),
-            ChatListOrder.ByOwnUpdateTime => preOrderedChats
-                .ThenByDescending(c => c.Contact.TouchedAt),
-            ChatListOrder.ByUnreadCount => preOrderedChats
-                .ThenByDescending(c => c.UnreadCount.Value)
-                .ThenByDescending(c => c.News.LastTextEntry?.Version),
-            ChatListOrder.ByAlphabet => filteredChats
-                .OrderByDescending(c => c.Contact.IsPinned)
-                .ThenBy(c => c.Chat.Title, StringComparer.Ordinal),
-            _ => throw new ArgumentOutOfRangeException(nameof(settings)),
-        };
-        var result = orderedChats.ToList();
-        DebugLog?.LogDebug("<- List: {Settings}", settings);
-        return result;
-    }
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
-    [ComputeMethod]
-    protected virtual async Task<IReadOnlyList<ChatInfo>> ListFiltered(Symbol filterId, CancellationToken cancellationToken)
-    {
-        DebugLog?.LogDebug("-> ListFiltered: '{FilterId}'", filterId);
-        var chats = await ListUnordered(cancellationToken).ConfigureAwait(false);
-        var filter = ChatListFilter.Parse(filterId);
-        var result = chats.Values.Where(filter.Filter ?? (_ => true)).ToList();
-        DebugLog?.LogDebug("<- ListFiltered: '{FilterId}'", filterId);
-        return result;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnordered(CancellationToken cancellationToken = default)
-    {
-        DebugLog?.LogDebug("-> ListUnordered");
-        var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("-> ListUnordered.Contacts ({IdsLength})", contactIds.Length);
-        var contacts = await contactIds
-            .Select(contactId => Get(contactId.ChatId, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
-        var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
-        DebugLog?.LogDebug("<- ListUnordered");
-        return result;
-    }
-
-    [ComputeMethod]
+    [ComputeMethod(MinCacheDuration = 300, InvalidationDelay = 0.6)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("Get: {ChatId}", chatId.Value);
@@ -241,15 +184,14 @@ public partial class ChatUI : WorkerBase, IHasServices
 
         DebugLog?.LogDebug("GetReadEntryLid: {ChatId}", chatId);
 
-        var fetchedReadPosition = await ChatPositions
+        var serverReadPosition = await ChatPositions
             .GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken)
             .ConfigureAwait(false);
 
+        using var _ = Computed.SuspendDependencyCapture();
         using var readPositionState = await LeaseReadPositionState(chatId, cancellationToken).ConfigureAwait(false);
         var readPosition = readPositionState.Value;
-        return readPosition.EntryLid > fetchedReadPosition.EntryLid
-            ? readPosition.EntryLid
-            : fetchedReadPosition.EntryLid;
+        return MathExt.Max(readPosition.EntryLid, serverReadPosition.EntryLid);
     }
 
     [ComputeMethod] // Synced
@@ -257,29 +199,10 @@ public partial class ChatUI : WorkerBase, IHasServices
         => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
 
     [ComputeMethod]
-    public virtual async Task<Trimmed<int>> GetUnreadCount(ChatListFilter filter, CancellationToken cancellationToken)
-    {
-        var chats = await ListFiltered(filter.Id, cancellationToken).ConfigureAwait(false);
-        return chats.UnreadMessageCount();
-    }
-
-    [ComputeMethod]
     public virtual async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)
     {
         var chatInfo = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        return chatInfo?.UnreadCount ?? new ();
-    }
-
-    // Not compute method!
-    public Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
-    {
-        var unreadCount = 0;
-        if (readEntryLid > 0 && !chatNews.IsNone) {
-            // Otherwise the chat wasn't ever opened
-            var lastId = chatNews.TextEntryIdRange.End - 1;
-            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
-        }
-        return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
+        return chatInfo?.UnreadCount ?? new();
     }
 
     // SetXxx & Add/RemoveXxx
@@ -295,9 +218,11 @@ public partial class ChatUI : WorkerBase, IHasServices
         if (contact.IsPinned == mustPin)
             return;
 
-        var command = new IContacts.ChangeCommand(Session, contact.Id, contact.Version, new Change<Contact>() {
-            Update = contact with { IsPinned = mustPin },
-        });
+        var changedContact = contact with { IsPinned = mustPin };
+        var change = contact.IsStored()
+            ? new Change<Contact>() { Update = changedContact }
+            : new Change<Contact>() { Create = changedContact };
+        var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
         _ = TuneUI.Play("pin-unpin-chat");
         await UICommander.Run(command).ConfigureAwait(false);
     }
@@ -328,46 +253,10 @@ public partial class ChatUI : WorkerBase, IHasServices
             _selectedChatId.Value = chatId;
         }
 
-        HideRelatedEntry(false);
+        _ = ChatEditorUI.RestoreRelatedEntry(chatId).ConfigureAwait(false);
         _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
-        UICommander.RunNothing();
+        _ = UICommander.RunNothing();
         return true;
-    }
-
-    public void ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
-    {
-        var relatedChatEntry = new RelatedChatEntry(kind, entryId);
-        lock (_lock) {
-            if (_relatedChatEntry.Value == relatedChatEntry)
-                return;
-
-            _relatedChatEntry.Value = relatedChatEntry;
-        }
-        if (focusOnEditor)
-            _ = UIEventHub.Publish<FocusChatMessageEditorEvent>();
-        if (updateUI)
-            UICommander.RunNothing();
-
-        var tuneName = kind switch {
-            RelatedEntryKind.Reply => "reply-message",
-            RelatedEntryKind.Edit => "edit-message",
-            _ => "",
-        };
-        if (!tuneName.IsNullOrEmpty())
-            TuneUI.Play(tuneName);
-    }
-
-    public void HideRelatedEntry(bool updateUI = true)
-    {
-        lock (_lock) {
-            if (_relatedChatEntry.Value == null)
-                return;
-
-            _relatedChatEntry.Value = null;
-        }
-        if (updateUI)
-            UICommander.RunNothing();
-        TuneUI.Play("cancel");
     }
 
     public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)
@@ -381,23 +270,41 @@ public partial class ChatUI : WorkerBase, IHasServices
         if (navigate)
             _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId));
         if (updateUI)
-            UICommander.RunNothing();
+            _ = UICommander.RunNothing();
     }
 
     public Task ShowDeleteMessageModal(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));
 
-    public async ValueTask<SyncedStateLease<ChatPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
+    public async ValueTask<SyncedStateLease<ReadPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        var result = new SyncedStateLease<ChatPosition>(lease);
+        var result = new SyncedStateLease<ReadPosition>(lease);
         await result.WhenFirstTimeRead;
         return result;
     }
 
     // Private methods
 
-    private Task<ISyncedState<ChatPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
+    private async ValueTask<ChatId> FixSelectedChatId(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        chatId = await FixChatId(chatId, cancellationToken).ConfigureAwait(false);
+        return chatId.IsNone ? Constants.Chat.AnnouncementsChatId : chatId;
+    }
+
+    // Not compute method!
+    private Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
+    {
+        var unreadCount = 0;
+        if (readEntryLid > 0 && !chatNews.IsNone) {
+            // Otherwise the chat wasn't ever opened
+            var lastId = chatNews.TextEntryIdRange.End - 1;
+            unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
+        }
+        return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
+    }
+
+    private Task<ISyncedState<ReadPosition>> CreateReadPositionState(Symbol chatId, CancellationToken cancellationToken)
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
 
@@ -406,21 +313,30 @@ public partial class ChatUI : WorkerBase, IHasServices
             TimeSpan.FromSeconds(1),
             command => Commander.Run(command, CancellationToken.None));
 
-        return Task.FromResult(StateFactory.NewCustomSynced<ChatPosition>(
+        return Task.FromResult(StateFactory.NewCustomSynced<ReadPosition>(
             new (
                 // Reader
                 async ct => {
                     if (pChatId.IsNone)
-                        return new ChatPosition();
+                        return ReadPosition.None;
 
-                    return await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
+                    var (entryLid, origin) = await ChatPositions.GetOwn(Session, pChatId, ChatPositionKind.Read, ct).ConfigureAwait(false);
+                    return new ReadPosition(pChatId, entryLid, origin);
                 },
                 // Writer
                 (position, ct) => {
                     if (pChatId.IsNone || position == null!)
                         return Task.CompletedTask;
 
-                    var command = new IChatPositions.SetCommand(Session, pChatId, ChatPositionKind.Read, position);
+                    if (position.ChatId != pChatId) {
+                        Log.LogWarning(
+                            $"{nameof(CreateReadPositionState)}.Write: expected ChatId={{ChatId}}, but received {{ActualChatId}}",
+                            pChatId,
+                            position.ChatId);
+                        return Task.CompletedTask;
+                    }
+
+                    var command = new ChatPositions_Set(Session, pChatId, ChatPositionKind.Read, new ChatPosition(position.EntryLid, position.Origin));
                     writeDebouncer.Throttle(command);
 
                     var cReadEntryLid = Computed.GetExisting(() => GetReadEntryLid(pChatId, default));
@@ -433,7 +349,7 @@ public partial class ChatUI : WorkerBase, IHasServices
 
                     return Task.CompletedTask;
                 }) {
-                InitialValue = new ChatPosition(),
+                InitialValue = ReadPosition.GetInitial(pChatId),
                 UpdateDelayer = _readStateUpdateDelayer,
                 Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }

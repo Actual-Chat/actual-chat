@@ -38,8 +38,8 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [CommandHandler]
-    public virtual async Task Handle(
-        INotifications.HandleCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnHandle(
+        Notifications_Handle command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -52,12 +52,12 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         notification = notification with {
             HandledAt = Clocks.SystemClock.Now,
         };
-        var upsertCommand = new INotificationsBackend.UpsertCommand(notification);
+        var upsertCommand = new NotificationsBackend_Upsert(notification);
         await Commander.Run(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnRegisterDevice(Notifications_RegisterDevice command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 

@@ -4,4 +4,8 @@
     <ProjectReference Include="..\Invite\Invite.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MemoryPack" />
+  </ItemGroup>
+
 </Project>

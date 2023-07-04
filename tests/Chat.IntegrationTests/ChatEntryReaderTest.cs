@@ -121,7 +121,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         result.Count.Should().BeGreaterThan(0);
         result.Count.Should().BeLessThanOrEqualTo(2);
         result[0].Should().NotBeNull();
-        result[0].Entries.Length.Should().BeGreaterThan(3);
+        result[0].Entries.Count.Should().BeGreaterThan(3);
     }
 
     [Fact(Skip = "Flaky")]
@@ -193,7 +193,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
         var tile = await reader.ReadTilesReverse(idRange, CancellationToken.None).FirstAsync();
         foreach (var chatEntry in tile.Entries.TakeLast(removeLastCount))
-            await services.Commander().Call(new IChats.RemoveTextEntryCommand(session, TestChatId, chatEntry.LocalId), CancellationToken.None);
+            await services.Commander().Call(new Chats_RemoveTextEntry(session, TestChatId, chatEntry.LocalId), CancellationToken.None);
 
         var entry = await reader.GetLast(idRange, x => x.AuthorId == author.Id, 0, CancellationToken.None);
         entry?.Content.Should().Be(expected);
@@ -295,7 +295,7 @@ public class ChatEntryReaderTest : AppHostTestBase
                 if (count-- <= 0)
                     return;
 
-                var command = new IChats.UpsertTextEntryCommand(session, chatId, null, text);
+                var command = new Chats_UpsertTextEntry(session, chatId, null, text);
                 await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
             }
     }

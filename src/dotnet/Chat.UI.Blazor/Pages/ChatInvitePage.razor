@@ -22,13 +22,13 @@
     [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
-        var useCommand = new IInvites.UseCommand(Session, InviteId);
+        var useCommand = new Invites_Use(Session, InviteId);
         _useResult = await UICommander.Run(useCommand);
         if (_useResult is not { } useResult || useResult.HasError)
             return;
 
         var invite = useResult.Value;
         var chatInvite = invite.Details.Chat.Require();
-        History.NavigateTo(Links.Chat(chatInvite.ChatId));
+        _ = History.NavigateTo(Links.Chat(chatInvite.ChatId));
     }
 }

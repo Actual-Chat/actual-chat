@@ -5,12 +5,9 @@ import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'OpusEncoderWorkletProcessor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
 const SAMPLES_PER_MS = 48;
 
@@ -23,6 +20,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
+    private state: 'running' | 'stopped' | 'inactive' = 'inactive';
     private server: Disposable;
     private worker: OpusEncoderWorker & Disposable;
 
@@ -39,11 +37,16 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
-        this.server = rpcServer(`${LogScope}.server`, this.port, this);
+        this.server = rpcServer(`${logScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
-        this.worker = rpcClientServer<OpusEncoderWorker>(`${LogScope}.worker`, workerPort, this);
+        this.worker = rpcClientServer<OpusEncoderWorker>(`${logScope}.worker`, workerPort, this);
+        this.state = 'running';
+    }
+
+    public async stop(_noWait?: RpcNoWait): Promise<void> {
+        this.state = 'stopped';
     }
 
     public async releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> {
@@ -53,12 +56,20 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         timerQueue?.triggerExpired();
         try {
-            if (inputs == null
-                || inputs.length === 0
-                || inputs[0].length === 0
-                || outputs == null
-                || outputs.length === 0)
+            const hasInput = inputs
+                && inputs.length !== 0
+                && inputs[0].length !== 0;
+            const hasOutput = outputs
+                && outputs.length !== 0
+                && outputs[0].length !== 0;
+
+            if (this.state === 'stopped')
+                return false;
+            if (this.state === 'inactive')
                 return true;
+            if (!hasInput || !hasOutput)
+                return true;
+
             const input = inputs[0];
             const output = outputs[0];
 
@@ -93,6 +104,4 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     }
 }
 
-// @ts-expect-error - registerProcessor exists
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('opus-encoder-worklet-processor', OpusEncoderWorkletProcessor);

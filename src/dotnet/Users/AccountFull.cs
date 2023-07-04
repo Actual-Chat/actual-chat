@@ -1,8 +1,10 @@
+using MemoryPack;
+
 namespace ActualChat.Users;
 
-[DataContract]
-public sealed record AccountFull(
-    [property: DataMember] User User,
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record AccountFull(
+    [property: DataMember, MemoryPackOrder(4)] User User,
     long Version = 0
     ) : Account(new UserId(User.Id, AssumeValid.Option), Version)
 {
@@ -25,19 +27,17 @@ public sealed record AccountFull(
         new(() => StandardError.Account.Inactive()),
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 
-    [DataMember] public bool IsAdmin { get; init; }
-    [DataMember] public string Phone { get; init; } = "";
-    [DataMember] public bool SyncContacts { get; init; }
-    [DataMember] public string Email { get; init; } = "";
-    [DataMember] public string Name { get; init; } = "";
-    [DataMember] public string LastName { get; init; } = "";
-    [DataMember] public string Username { get; init; } = "";
+    [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
+    [DataMember, MemoryPackOrder(6)] public string Phone { get; init; } = "";
+    [DataMember, MemoryPackOrder(7)] public bool SyncContacts { get; init; }
+    [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
+    [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";
+    [DataMember, MemoryPackOrder(10)] public string LastName { get; init; } = "";
+    [DataMember, MemoryPackOrder(11)] public string Username { get; init; } = "";
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string FullName => $"{Name} {LastName}".Trim();
-
-    public AccountFull() : this(None.User) { }
 
     // This record relies on version-based equality
     public bool Equals(AccountFull? other) => EqualityComparer.Equals(this, other);

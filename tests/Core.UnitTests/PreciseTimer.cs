@@ -2,14 +2,12 @@ namespace ActualChat.Core.UnitTests;
 
 public static class PreciseDelay
 {
-    public static (TimeSpan ActualDelay, int SpinCount) Delay(TimeSpan delay)
+    public static TimeSpan Delay(TimeSpan delay)
     {
-        var start = CpuClock.Now;
-        var spinCount = 0;
-        while (CpuClock.Now - start < delay) {
-            spinCount++;
+        var startedAt = CpuTimestamp.Now;
+        var endsAt = startedAt + delay;
+        while (CpuTimestamp.Now < endsAt)
             Thread.Yield();
-        }
-        return (CpuClock.Now - start, spinCount);
+        return CpuTimestamp.Now - startedAt;
     }
 }

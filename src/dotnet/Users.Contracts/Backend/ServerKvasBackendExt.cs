@@ -11,5 +11,12 @@ public static class ServerKvasBackendExt
         => serverKvasBackend.GetUserClient(account.Id);
 
     public static IKvas GetUserClient(this IServerKvasBackend serverKvasBackend, UserId userId)
-        => new ServerKvasBackendClient(serverKvasBackend, serverKvasBackend.GetUserPrefix(userId));
+        => new ServerKvasBackendClient(serverKvasBackend, GetUserPrefix(userId));
+
+    public static string GetUserPrefix(UserId userId)
+        => userId.IsNone
+            ? ""
+            : userId.IsGuest
+                ? $"g/{userId}/"
+                : $"u/{userId}/";
 }

@@ -4,19 +4,14 @@ import { Timeout } from 'timeout';
 import { throttle } from 'promises';
 import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'MarkupEditor';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog, errorLog } = Log.get('MarkupEditor');
 
 const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
 const CrlfRe = /\r\n/g
-const PrefixLfRe = /^(\s*\n)+/g
-const SuffixLfRe = /(\n\s*)+$/g
 
 export class MarkupEditor {
     static create(
@@ -161,8 +156,13 @@ export class MarkupEditor {
         return isEditable;
     }
 
+    /** Called by Blazor */
     public getText() {
         return this.contentDiv.innerText;
+    }
+
+    public getHtml() {
+        return this.contentDiv.innerHTML;
     }
 
     public setHtml(html: string, mustFocus: boolean = false, clearUndoStack: boolean = true) {
@@ -343,7 +343,8 @@ export class MarkupEditor {
         const ok = () => preventDefaultForEvent(e);
 
         const data = e.clipboardData;
-        const text = cleanPastedText(data.getData('text'));
+        const plainText = data.getData('text');
+        const text = cleanPastedText(plainText, data.types.includes('text/html'));
 
         // debugLog?.log(`onPaste: text:`, text)
         this.transaction(() => {
@@ -724,9 +725,11 @@ function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | nul
     return node as unknown as TNode;
 }
 
-function cleanPastedText(text: string): string {
+function cleanPastedText(text: string, removeDoubleNewLines: boolean): string {
     text = text.replace(ZeroWidthSpaceRe, '');
     text = normalize(text);
+    if (removeDoubleNewLines)
+        text = text.replace("\n\n", "\n");
     return text;
 }
 

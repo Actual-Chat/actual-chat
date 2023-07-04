@@ -12,7 +12,5 @@ public static class SentryExt
         options.AddExceptionFilterForType<OperationCanceledException>();
         options.Debug = false;
         options.DiagnosticLevel = SentryLevel.Error;
-        //IsGlobalModeEnabled will be true for Blazor WASM
-        Debug.Assert(options.IsGlobalModeEnabled);
     }
 }

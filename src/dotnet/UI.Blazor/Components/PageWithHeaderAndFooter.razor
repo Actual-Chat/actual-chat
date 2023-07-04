@@ -1,32 +1,47 @@
+@using ActualChat.UI.Blazor.Services
 <div class="page-with-header-and-footer h-full w-full flex-x">
-    <ErrorBarrier>@LeftDrawer</ErrorBarrier>
     <ErrorBarrier>
-        <div class="@Class relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
-            <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
-                @Header
-            </div>
-            <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10">
-                @SubHeader
-            </div>
-            <div class="flex-1 flex-x h-full overflow-hidden">
-                <div class="flex-1 -flex-y h-full overflow-hidden relative">
-                    <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
-                        @Footer
-                    </div>
-                    <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
-                        @SubFooter
-                    </div>
-                    <div class="layout-body flex-1 custom-scrollbar">
-                        @Body
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Left.IsVisible">
+            @LeftDrawer
+        </RegionVisibilityProvider>
+    </ErrorBarrier>
+    <ErrorBarrier>
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
+            <div class="@Class relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
+                <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
+                    @Header
+                </div>
+                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10 bg-01">
+                    @SubHeader
+                </div>
+                <div class="flex-1 flex-x h-full overflow-hidden">
+                    <div class="flex-1 -flex-y h-full overflow-hidden relative">
+                        <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
+                            @Footer
+                        </div>
+                        <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
+                            @SubFooter
+                        </div>
+                        <div class="layout-body flex-1 custom-scrollbar">
+                            <ErrorBarrier>
+                                @Body
+                            </ErrorBarrier>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </RegionVisibilityProvider>
     </ErrorBarrier>
-    <ErrorBarrier>@RightDrawer</ErrorBarrier>
+    <ErrorBarrier>
+        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Right.IsVisible">
+            @RightDrawer
+        </RegionVisibilityProvider>
+    </ErrorBarrier>
 </div>
 
 @code {
+    [Inject] public PanelsUI PanelsUI { get; init; } = null!;
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? SubHeader { get; set; }

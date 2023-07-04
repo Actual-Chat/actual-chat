@@ -12,12 +12,12 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var relatedChatEntry = await ChatUI.RelatedChatEntry.Use(cancellationToken);
+        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         if (relatedChatEntry is not { } vRelatedChatEntry)
             return null;
 
@@ -26,8 +26,6 @@
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
         var entry = await Chats.GetEntry(Session, entryId, cancellationToken);
         if (entry == null) {
-            // The entry was removed
-            ChatUI.HideRelatedEntry();
             return null;
         }
 

@@ -229,7 +229,7 @@ body.hoverable .clear-attachments-btn.btn:hover {
     @apply rounded-t-lg;
     @apply overflow-hidden;
 }
-.attachment-item > img {
+.attachment-item > img, .attachment-item > video {
     @apply min-h-34;
     @apply object-contain;
 }
@@ -239,6 +239,7 @@ body.hoverable .clear-attachments-btn.btn:hover {
     @apply min-w-9 max-w-9 min-h-9 max-h-9;
     @apply top-0 right-0;
     @apply text-04;
+    @apply z-10;
 }
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
@@ -256,10 +257,18 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
     @apply self-center text-center;
     @apply truncate;
     @apply px-2 md:px-0.5 py-0.5;
-    @apply rounded-b-lg;
     @apply cursor-default;
     @apply bg-01;
     @apply text-03 text-xs font-medium;
+}
+.attachment-upload-progress {
+    @apply h-[5px];
+    @apply bg-[#0ea5e9];
+    @apply rounded-md;
+    transition: all 150ms ease-in-out;
+}
+.attachment-upload-completed {
+    @apply bg-[#2FCB5B];
 }
 .add-attachment.btn .btn-content {
     @apply bg-04;
@@ -273,10 +282,6 @@ body.hoverable .add-attachment.btn:hover .btn-content {
 .attach-btn.btn.btn-round .btn-content {
     @apply bg-07 md:bg-03;
     @apply text-05 md:text-icons-01;
-}
-.attach-dropdown-menu {
-    @apply absolute;
-    @apply bottom-2;
 }
 
 .related-chat-entry-panel {

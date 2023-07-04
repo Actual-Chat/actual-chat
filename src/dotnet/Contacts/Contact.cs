@@ -1,41 +1,35 @@
 using ActualChat.Users;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 namespace ActualChat.Contacts;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract]
-public sealed record Contact(
-    [property: DataMember] ContactId Id,
-    [property: DataMember] long Version = 0
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record Contact(
+    [property: DataMember, MemoryPackOrder(0)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    public static Contact None { get; } = new(default, 0) { Chat = ActualChat.Chat.Chat.None };
-    public static Contact Loading { get; } = new(default, -1) { Chat = ActualChat.Chat.Chat.Loading };
-
     public static Requirement<Contact> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Contact>()),
         (Contact? c) => c is { Id.IsNone: false });
 
-    [DataMember] public UserId UserId { get; init; }
-    [DataMember] public Moment TouchedAt { get; init; }
-    [DataMember] public bool IsPinned { get; init; }
+    [DataMember, MemoryPackOrder(2)] public UserId UserId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public Moment TouchedAt { get; init; }
+    [DataMember, MemoryPackOrder(4)] public bool IsPinned { get; init; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ContactKind Kind => Id.ChatId.Kind == ChatKind.Peer ? ContactKind.User : ContactKind.Chat;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsVirtual => Version == 0 || Id.IsNone;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public UserId OwnerId => Id.OwnerId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatId ChatId => Id.ChatId;
 
     // Populated on backend on reads
-    [DataMember] public Account? Account { get; init; }
+    [DataMember, MemoryPackOrder(5)] public Account? Account { get; init; }
     // Populated on front-end on reads
-    [DataMember] public Chat.Chat Chat { get; init; } = null!;
-
-    public Contact() : this(ContactId.None) { }
+    [DataMember, MemoryPackOrder(6)] public Chat.Chat Chat { get; init; } = null!;
 }

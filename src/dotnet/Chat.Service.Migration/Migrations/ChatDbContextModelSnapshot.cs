@@ -17,7 +17,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.2")
+                .HasAnnotation("ProductVersion", "7.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -101,6 +101,14 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AllowAnonymousAuthors")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_anonymous_authors");
+
+                    b.Property<bool>("AllowGuestAuthors")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_guest_authors");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -109,14 +117,31 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
 
+                    b.Property<bool>("IsTemplate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_template");
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
 
                     b.Property<string>("Picture")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("picture");
+
+                    b.Property<string>("TemplateId")
+                        .HasColumnType("text")
+                        .HasColumnName("template_id");
+
+                    b.Property<string>("TemplatedForUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("templated_for_user_id");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -211,9 +236,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("text")
                         .HasColumnName("stream_id");
 
-                    b.Property<string>("TextToTimeMap")
+                    b.Property<string>("TimeMap")
                         .HasColumnType("text")
-                        .HasColumnName("text_to_time_map");
+                        .HasColumnName("time_map");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -451,6 +476,11 @@ namespace ActualChat.Chat.Migrations
                     b.Property<int>("Index")
                         .HasColumnType("integer")
                         .HasColumnName("index");
+
+                    b.Property<string>("MediaId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("media_id");
 
                     b.Property<string>("MetadataJson")
                         .IsRequired()

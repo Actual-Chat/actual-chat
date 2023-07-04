@@ -1,0 +1,511 @@
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Pages.Landing
+@inherits ComputedStateComponent<LandingWeb.Model>
+@{
+    var m = State.Value;
+    var account = m.Account;
+    var isGuest = account is not {IsGuestOrNone: false };
+}
+
+<div @ref="Ref" class="landing" xmlns="http://www.w3.org/1999/html">
+<LandingLeftMenu @ref="_landingLeftMenu" />
+
+<LandingHeader Click="OnMenuHandleClick"/>
+
+@* Page 1 *@
+<div class="page page-1 full-screen-page scrollable">
+    <div class="page-1-wrapper overflow-hidden">
+        <div class="flex-x justify-center h-full overflow-hidden md:px-16">
+            <div class="main-text">
+                <div class="md:text-4xl font-normal text-04 pt-12">
+                    <div class="title-text main">To call, to text, or<br/>to voice message?</div>
+                    <p class="!pt-8">
+                        But... Could these options be purely artificial?<br/>
+                        Is it possible to create a medium, which naturally
+                        combines all of them together?
+                    </p>
+                    <p class="!pt-8">
+                        <strong>We are here to redefine the meaning of "Chat".</strong>
+                    </p>
+                </div>
+                <div class="flex-y md:flex-x gap-y-4 gap-x-4 py-8 md:py-4">
+                    <DownloadButton/>
+                    @if (isGuest) {
+                        <button class="download-btn web-signin transparent" onclick="@SignIn">
+                            <span class="text-headline-1">Sign in</span>
+                        </button>
+
+                        <button class="download-btn web-signin transparent md:hidden" onclick="@OnShowVideoClick">
+                            <i class="icon-play-fill text-2xl"></i>
+                            <span class="text-headline-1">Watch video how it works</span>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="hidden md:flex justify-center items-center w-2/5">
+                <video controls hidden muted playsinline loop class="landing-video">
+                    <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+                </video>
+                <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="landing-video-plug flex">
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Page 2 *@
+<LandingItem
+    ImagePositionMobile="ImagePosition.Top"
+    ImagePositionDesktop="ImagePosition.Left"
+    Class="scrollable">
+
+    <LandingItemImage>
+        <img draggable="false" src="/dist/images/landing/evolution.svg" alt="evolution">
+    </LandingItemImage>
+    <LandingItemDescription Title="We used to speak, laugh, and cry">
+        <p>
+            But now we text, "like", and send emojis.
+        </p>
+        <p>
+            It's slower, inconvenient, and less expressive.
+        </p>
+        <p>
+            With all the progress in technology and AI,<br/>
+            how it happened that <strong>we can't just talk</strong> in chats?
+        </p>
+    </LandingItemDescription>
+</LandingItem>
+
+@* Page 3 *@
+<LandingItem
+    ImagePositionMobile="ImagePosition.Top"
+    ImagePositionDesktop="ImagePosition.Right"
+    Class="bg-[#EEEEF6] scrollable"
+    ExtraContentClass="flex-y md:flex-x items-start justify-between gap-y-4 md:gap-x-8 py-4 pb-8">
+
+    <ChildContent>
+        <LandingItemTitle Class="flex md:hidden">
+            We reimagine calls, texts and voice messages
+        </LandingItemTitle>
+        <LandingItemImage>
+            <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
+        </LandingItemImage>
+        <LandingItemDescription Title="We reimagine calls, texts and voice messages" TitleClass="hidden md:flex">
+            <p>
+                By blending voice and text into a single medium.
+            </p>
+        </LandingItemDescription>
+    </ChildContent>
+    <ExtraContent>
+        <div class="extra-content">
+            <i class="icon-transcription text-2xl text-primary"></i>
+            <p>
+                Watch your words come to life as you talk -
+                anything you say is transcribed and instantly available, word-by-word.
+            </p>
+        </div>
+        <div class="extra-content">
+            <i class="icon-listen text-2xl text-primary"></i>
+            <p>
+                And it's not just a transcript - it's voice + text, streamed in real time.
+                Listen to chats like a call, without the need for a call.
+            </p>
+        </div>
+        <div class="extra-content">
+            <i class="icon-archive text-2xl text-primary"></i>
+            <p>
+                Effortlessly catch up on missed moments - every conversation
+                is captured in text and audio for later playback or reading.
+            </p>
+        </div>
+    </ExtraContent>
+</LandingItem>
+
+<LandingCarousel
+    CarouselOrder="1"
+    CarouselLength="6"
+    Class="landing-carousel-01"
+    WrapperClass="mt-20 px-4 text-headline-5 md:text-3xl md:font-semibold"
+    WrapperTitle="We believe communication must be...">
+    @* Page 4 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="carousel-page"
+        HeaderClass="bg-01"
+        SlideOrder="1">
+
+        <HeaderContent>
+            <span></span>
+        </HeaderContent>
+        <ChildContent>
+            <LandingItemImage>
+                <img draggable="false" src="/dist/images/landing/stressless.svg" alt="stressless">
+            </LandingItemImage>
+            <LandingItemDescription Title="Stressless">
+                <ul>
+                    <li>
+                        <strong>61%</strong> of the millennials and
+                        <strong>40% of baby boomers</strong> experience anxiety when the phone rings.
+                        <a href="https://theconversation.com/phone-call-anxiety-why-so-many-of-us-have-it-and-how-to-get-over-it-155798"
+                           target="_blank">That's why they avoid calls.</a>
+                    </li>
+                    <li>
+                        <a href="https://www.forbes.com/sites/briannawiest/2019/11/04/millennials-hate-phone-calls-they-have-a-point/"
+                           target="_blank">Millennials and Gen-Z also find calls rude.</a>
+                        Most even need to work up the courage to press the "Call" button.
+                    </li>
+                </ul>
+                <p>
+                    Believe it or not, but there is no “Call” button in Actual Chat.
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
+
+    @* Page 5 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="carousel-page"
+        SlideOrder="2">
+
+        <HeaderContent>
+            <span></span>
+        </HeaderContent>
+        <ChildContent>
+            <LandingItemImage>
+                <div class="flex-y gap-y-4 justify-center w-full h-full">
+                    <div class="flex-x gap-x-8 justify-center">
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img draggable="false" src="/dist/images/landing/person-01.svg" alt="body">
+                        </div>
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img draggable="false" src="/dist/images/landing/person-02.svg" alt="body">
+                        </div>
+                    </div>
+                    <div class="flex-x gap-x-8 justify-center">
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img draggable="false" src="/dist/images/landing/person-03.svg" alt="body">
+                        </div>
+                        <div class="flex overflow-hidden justify-center items-center">
+                            <img draggable="false" src="/dist/images/landing/person-04.svg" alt="body">
+                        </div>
+                    </div>
+                </div>
+            </LandingItemImage>
+            <LandingItemDescription Title="Seamless &amp; Frictionless">
+                <ul>
+                    <li>
+                        Typing is great, but sometimes it's not practical or feasible
+                    </li>
+                    <li>
+                        Driving, jogging, or about to sleep, but need to respond?
+                        Just hit the microphone button & start talking &ndash;
+                        we'll do the rest!
+                    </li>
+                </ul>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
+
+    @* Page 6 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="carousel-page"
+        SlideOrder="3">
+
+        <HeaderContent>
+            <span></span>
+        </HeaderContent>
+        <ChildContent>
+            <LandingItemImage>
+                <img draggable="false" src="/dist/images/landing/synchronous.svg" alt="synchronous">
+            </LandingItemImage>
+            <LandingItemDescription Title="Real-time + asynchronous">
+                <ul>
+                    <li>
+                        Start any conversation as asynchronous,
+                        which turns into real-time one
+                        when parties start to respond
+                    </li>
+                    <li>
+                        And if you missed the real-time part,
+                        transcript and recording is always there
+                        – in fact, you get exactly the same experience
+                        as in regular chats in this case.
+                    </li>
+                </ul>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
+
+    @* Page 7 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="carousel-page"
+        SlideOrder="4">
+
+        <HeaderContent>
+            <span></span>
+        </HeaderContent>
+        <ChildContent>
+            <LandingItemImage>
+                <img draggable="false" src="/dist/images/landing/productive.svg" alt="productive">
+            </LandingItemImage>
+            <LandingItemDescription Title="Productive">
+                <ul>
+                    <li>
+                        Beep… Beep… Beep… And 10 seconds of your life are gone - forever!
+                    </li>
+                    <li>
+                        "I explained the problem to your colleague in December. Do you have any notes on this?"
+                        &ndash; "Sorry, but no... Could you explain it again?"
+                    </li>
+                    <li>
+                        Have you ever dreamed of highlighting the important parts of a voice conversation
+                        to have the summary later?
+                    </li>
+                </ul>
+                <p>
+                    Actual Chat shines in these scenarios.
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
+
+    @* Page 7.5 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Right"
+        Class="carousel-page"
+        SlideOrder="5">
+
+        <HeaderContent>
+            <span></span>
+        </HeaderContent>
+        <ChildContent>
+            <LandingItemImage>
+                <img draggable="false" src="/dist/images/landing/team-friendly.svg" alt="team-friendly">
+            </LandingItemImage>
+            <LandingItemDescription Title="Team-friendly">
+                <p>
+                    The dilemma of real-time vs asynchronous communication style
+                    is a common issue in almost any team:
+                </p>
+                <ul>
+                    <li>
+                        Keeping everyone on the same page is super important,
+                        but bringing the whole team together is always a productivity hit
+                    </li>
+                    <li>
+                        Individual communication preferences vary based on daily schedules,
+                        job duties, and other factors.
+                    </li>
+                    <li>
+                        <a href="https://www.forbes.com/sites/glennllopis/2022/10/05/the-demands-of-millennials--gen-z-a-guide-to-meeting-their-needs/"
+                           target="_blank">Millennials and Gen-Z are ok only with specific kinds of meetings</a>
+                    </li>
+                </ul>
+                <p>
+                    Is there a communication tool addressing these problems?
+                    We hope you've just found one!
+                </p>
+            </LandingItemDescription>
+        </ChildContent>
+    </LandingItem>
+
+    @* Page 8 *@
+    <LandingItem
+        ImagePositionMobile="ImagePosition.Top"
+        ImagePositionDesktop="ImagePosition.Bottom"
+        Class="no-auto-scroll carousel-page"
+        SlideOrder="6">
+
+        <HeaderContent>
+            <span></span>
+        </HeaderContent>
+        <ChildContent>
+            @if (!ScreenSize.IsNarrow()) {
+                <LandingItemDescription
+                    Title="Enjoyable and Fun"/>
+            }
+            <LandingItemImage Class="flex-col gap-y-4 md:gap-y-12 md:flex-row items-center">
+                <div class="flex-x md:flex-y gap-y-4 items-center">
+                    <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
+                    </div>
+                    <div class="w-1/2 md:w-auto px-8 text-center">
+                        Many people prefer hearing your voice rather than reading your texts
+                    </div>
+                </div>
+
+                <div class="flex-x md:flex-y gap-y-4 items-center">
+                    <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
+                    </div>
+                    <div class="w-1/2 md:w-auto px-8 text-center">
+                        For some, speaking is a stronger communication tool than writing
+                    </div>
+                </div>
+
+                <div class="flex-x md:flex-y gap-y-4 items-center">
+                    <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
+                    </div>
+                    <div class="w-1/2 md:w-auto px-8 text-center">
+                        Jokes are almost always more fun when delivered verbally
+                    </div>
+                </div>
+            </LandingItemImage>
+            @if (ScreenSize.IsNarrow()) {
+                <LandingItemDescription
+                    Title="Enjoyable and Fun"
+                    Class="self-center mt-2"/>
+            }
+        </ChildContent>
+    </LandingItem>
+</LandingCarousel>
+
+<FeaturesCarousel/>
+
+@* Page 9 *@
+@* <LandingItem *@
+@*     ImagePositionMobile="ImagePosition.Top" *@
+@*     ImagePositionDesktop="ImagePosition.Bottom" *@
+@*     Class="no-auto-scroll scrollable"> *@
+@* *@
+@*     <LandingItemTitle> *@
+@*         Actual Chat Features *@
+@*     </LandingItemTitle> *@
+@*     <LandingItemImage Class="features-grid"> *@
+@*         <LandingFeatures/> *@
+@*     </LandingItemImage> *@
+@* </LandingItem> *@
+
+@* Page 10 *@
+@*
+<LandingItem
+    ImagePositionMobile="ImagePosition.Top"
+    ImagePositionDesktop="ImagePosition.Bottom"
+    Class="no-auto-scroll bg-[#EEEEF6]">
+
+    <LandingItemTitle>
+        <span>What`s&nbsp;</span><span>upcoming?</span>
+    </LandingItemTitle>
+    <LandingItemImage Class="justify-between flex-col gap-y-8 md:flex-row md:mt-16">
+        <div class="flex-y gap-y-8 min-w-1/3">
+            <LandingUpcomingItem Text="Highlights & conversations"/>
+            <LandingUpcomingItem Text="Action items"/>
+            <LandingUpcomingItem Text="Places: a group of chats managed together"/>
+        </div>
+        <div class="flex-y gap-y-8 min-w-1/3">
+            <LandingUpcomingItem Text="Chat timelines"/>
+            <LandingUpcomingItem Text="Voice quotes"/>
+            <LandingUpcomingItem Text="Nested chats / threads"/>
+        </div>
+        <div class="flex-y gap-y-8 min-w-1/3">
+            <LandingUpcomingItem Text="More languages, transcription and punctuation engines"/>
+            <LandingUpcomingItem Text="Phone integration"/>
+            <LandingUpcomingItem Text="Search everywhere"/>
+        </div>
+    </LandingItemImage>
+</LandingItem>
+*@
+
+@* Page 11 *@
+<LandingItem
+    ImagePositionMobile="ImagePosition.Top"
+    ImagePositionDesktop="ImagePosition.Left"
+    Class="scrollable">
+
+    <ChildContent>
+        <LandingItemImage Class="flex-col gap-y-12">
+            <div class="hidden md:flex-1"></div>
+            <div class="flex-y md:flex-x gap-y-2">
+                <div class="flex-x flex-wrap items-start md:w-1/2 text-headline-4 md:text-headline-2">
+                    <span>Are there any fees?</span>
+                </div>
+                <div class="flex-y items-start md:w-1/2 text-text-1 md:text-2xl md:leading-7" style="font-size: calc(0.5rem + 1vw);">
+                    <p>At the moment, Actual Chat is <strong>entirely free</strong> for personal use, and we intend to keep it that way.
+                        However, we do plan to generate revenue from commercial usage and a small subset of advanced features
+                        we plan to add in near future.</p>
+                    <p>So, if you're using Actual Chat for your personal communication needs, you can rest assured that
+                        there won't be any changes to the pricing.</p>
+                </div>
+            </div>
+            @if (ScreenSize.IsNarrow()) {
+                <div class="flex-y gap-y-4">
+                    <DownloadButton/>
+                    <button class="download-btn web-signin" onclick="@SignIn">
+                        <span class="text-headline-1">Sign in</span>
+                    </button>
+                </div>
+            }
+        </LandingItemImage>
+        <LandingItemDescription Class="hidden"/>
+    </ChildContent>
+    <ExtraContent>
+        <LandingLinks EnableIncompleteUI="@m.EnableIncompleteUI"/>
+    </ExtraContent>
+    <FooterContent>
+        <LandingFooter/>
+    </FooterContent>
+</LandingItem>
+
+</div>
+
+@code {
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private LandingLeftMenu? _landingLeftMenu;
+
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUIAppModule.ImportName}.Landing.create", Ref);
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(AccountUI.OwnAccount.Value, false),
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        return new Model(
+            await AccountUI.OwnAccount.Use(cancellationToken),
+            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken));
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync();
+    }
+
+    private Task OnShowVideoClick()
+        => ModalUI.Show(new LandingVideoModal.Model());
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
+
+    private void OnMenuHandleClick()
+        => _landingLeftMenu?.Open();
+
+    public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
+}

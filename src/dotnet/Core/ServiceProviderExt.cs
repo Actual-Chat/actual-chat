@@ -15,4 +15,12 @@ public static class ServiceProviderExt
 
     public static IServerKvas ServerKvas(this IServiceProvider services)
         => services.GetRequiredService<IServerKvas>();
+
+    public static async ValueTask SafelyDisposeAsync(this IServiceProvider services)
+    {
+        if (services is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+        else if (services is IDisposable disposable)
+            disposable.Dispose();
+    }
 }

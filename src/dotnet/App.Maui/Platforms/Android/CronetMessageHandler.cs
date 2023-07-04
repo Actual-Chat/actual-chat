@@ -9,6 +9,17 @@ namespace ActualChat.App.Maui;
 
 public class CronetMessageHandler : HttpMessageHandler
 {
+    private static readonly CronetEngine.Builder CronetEngineBuilder = new CronetEngine.Builder(MauiApplication.Current)
+        .EnableBrotli(true)
+        .EnableHttp2(true)
+        .EnableQuic(true)
+        .AddQuicHint("dev.actual.chat", 443, 443)
+        .AddQuicHint("media-dev.actual.chat", 443, 443)
+        .AddQuicHint("cdn-dev.actual.chat", 443, 443)
+        .AddQuicHint("actual.chat", 443, 443)
+        .AddQuicHint("media.actual.chat", 443, 443)
+        .AddQuicHint("cdn.actual.chat", 443, 443);
+
     private readonly CronetEngine _cronetEngine;
 
     private IExecutorService Executor { get; }
@@ -16,17 +27,7 @@ public class CronetMessageHandler : HttpMessageHandler
     public CronetMessageHandler(IExecutorService executor)
     {
         Executor = executor;
-        _cronetEngine = new CronetEngine.Builder(MauiApplication.Current)
-            .EnableBrotli(true)
-            .EnableHttp2(true)
-            .EnableQuic(true)
-            .AddQuicHint("dev.actual.chat", 443, 443)
-            .AddQuicHint("media-dev.actual.chat", 443, 443)
-            .AddQuicHint("cdn-dev.actual.chat", 443, 443)
-            .AddQuicHint("actual.chat", 443, 443)
-            .AddQuicHint("media.actual.chat", 443, 443)
-            .AddQuicHint("cdn.actual.chat", 443, 443)
-            .Build();
+        _cronetEngine = CronetEngineBuilder.Build();
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -55,7 +56,7 @@ public class CronetMessageHandler : HttpMessageHandler
         }
         requestBuilder.Build().Start();
 
-        return await callback.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await callback.ResultTask.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     protected override void Dispose(bool disposing)
@@ -64,13 +65,14 @@ public class CronetMessageHandler : HttpMessageHandler
         _cronetEngine.Dispose();
     }
 
+    // Nested types
 
     private class CronetCallback : UrlRequest.Callback
     {
         private const int MaxRedirectCount = 3;
         private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
-        private readonly TaskSource<HttpResponseMessage> _result;
+        private readonly TaskCompletionSource<HttpResponseMessage> _resultSource;
 
         private int _redirectCount;
         private MemoryStream? _responseBody;
@@ -79,19 +81,19 @@ public class CronetMessageHandler : HttpMessageHandler
         private HttpRequestMessage RequestMessage { get; }
         private CancellationToken CancellationToken { get; }
 
-        public Task<HttpResponseMessage> Task => _result.Task;
+        public Task<HttpResponseMessage> ResultTask => _resultSource.Task;
 
         public CronetCallback(HttpRequestMessage requestMessage, CancellationToken cancellationToken)
         {
             RequestMessage = requestMessage;
             CancellationToken = cancellationToken;
-            _result = TaskSource.New<HttpResponseMessage>(true);
+            _resultSource = TaskCompletionSourceExt.New<HttpResponseMessage>();
         }
 
         public override void OnFailed(UrlRequest p0, UrlResponseInfo p1, CronetException p2)
         {
             CleanUp();
-            _result.TrySetException(p2);
+            _resultSource.TrySetException(p2);
         }
 
         public override void OnRedirectReceived(UrlRequest p0, UrlResponseInfo p1, string p2)
@@ -134,7 +136,7 @@ public class CronetMessageHandler : HttpMessageHandler
             }
             catch (Exception e) {
                 p0.Cancel();
-                _result.TrySetException(e);
+                _resultSource.TrySetException(e);
             }
         }
 
@@ -167,13 +169,13 @@ public class CronetMessageHandler : HttpMessageHandler
                 else
                     ret.Headers.Add(key, values);
             // we are waiting for transmit completion - but we can try to return Response as soon as possible with uncompleted StreamContent
-            _result.TrySetResult(ret);
+            _resultSource.TrySetResult(ret);
         }
 
         public override void OnCanceled(UrlRequest request, UrlResponseInfo info)
         {
             CleanUp();
-            _ = _result.TrySetCanceled(CancellationToken);
+            _ = _resultSource.TrySetCanceled(CancellationToken);
             base.OnCanceled(request, info);
         }
 

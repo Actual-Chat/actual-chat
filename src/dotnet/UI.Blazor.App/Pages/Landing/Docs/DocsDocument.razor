@@ -1,6 +1,6 @@
-<AutoNavigateToChatsOnSignIn />
+<AutoNavigateOnSignIn TargetUrl="@Links.Chats" />
 
-<RenderIntoSlot Name="DocsLeftDrawer">
+<RenderIntoSlot Name="MainLeftDrawer">
     <CascadingValue Value="@Page">
         <DocsLeftPanel/>
     </CascadingValue>
@@ -16,5 +16,4 @@
 
 @code {
     [Parameter] public DocsPage Page { get; set; } = DocsPage.Privacy;
-
 }

@@ -39,7 +39,7 @@
     private DotNetObjectReference<MenuHost> _blazorRef = null!;
 
     [Inject] public IServiceProvider Services { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] public History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
@@ -87,7 +87,7 @@
         => Position(menu.Id);
     public ValueTask Position(string menuId) {
         if (_jsMenuId != menuId)
-            return ValueTask.CompletedTask;
+            return default;
 
         return _jsRef.InvokeVoidAsync("positionById", menuId);
     }

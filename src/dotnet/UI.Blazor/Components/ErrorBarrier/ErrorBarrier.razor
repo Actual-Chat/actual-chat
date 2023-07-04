@@ -1,4 +1,6 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
 <ErrorBoundary @ref="_errorBoundary">
     <ChildContent>
         @{
@@ -28,11 +30,22 @@
     private Moment Now => Clocks.CpuClock.Now;
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [Parameter] public ErrorBarrierKind Kind { get; set; } = ErrorBarrierKind.Full;
     [Parameter] public bool MustAutoReload { get; set; } = true;
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    protected override void OnInitialized()
+        => History.LocationChanged += HistoryOnLocationChanged;
+
+    public void Dispose()
+        => History.LocationChanged -= HistoryOnLocationChanged;
+
+    private void HistoryOnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => _errorBoundary?.Recover();
+
     public void Reload()
         => _errorBoundary?.Recover();
+
 }

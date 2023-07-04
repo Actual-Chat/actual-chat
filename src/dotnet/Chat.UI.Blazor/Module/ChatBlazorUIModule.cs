@@ -1,13 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Chat.UI.Blazor.Components.MarkupParts;
+using ActualChat.Chat.UI.Blazor.Components.MarkupParts.CodeBlockMarkupView;
+using ActualChat.Chat.UI.Blazor.Components.NewChat;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Events;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module;
 
@@ -16,12 +18,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "chat";
 
-    public ChatBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
+    public ChatBlazorUIModule(IServiceProvider services) : base(services) { }
 
-    [ServiceConstructor]
-    public ChatBlazorUIModule(IPluginHost plugins) : base(plugins) { }
-
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
@@ -29,43 +28,70 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
 
         // Singletons
-        fusion.AddComputeService<VirtualListTestService>();
+        fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
-        services.AddScoped<NavbarUI>(c => new NavbarUI(c));
-        services.AddScoped<AuthorUI>(c => new AuthorUI(c));
+        services.AddScoped(_ => new NavbarUI());
+        services.AddScoped(c => new PanelsUI(c));
+        services.AddScoped(c => new AuthorUI(c));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
-        fusion.AddComputeService<RightPanelUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatAudioUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ActiveChatsUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
-        services.AddScoped<PlayableTextPaletteProvider>(_ => new PlayableTextPaletteProvider());
+        fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
+        services.AddScoped(_ => new PlayableTextPaletteProvider());
+        services.AddScoped(c => new ActiveChatsUI(c));
 
         // Chat activity
-        services.AddScoped<ChatActivity>(c => new ChatActivity(c));
-        fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
+        services.AddScoped(c => new ChatActivity(c));
+        fusion.AddService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
         // Settings
-        services.TryAddSingleton<AudioSettings>(c => new AudioSettings());
-        services.AddScoped<LanguageUI>(c => new LanguageUI(c));
-        services.AddScoped<OnboardingUI>(c => new OnboardingUI(c));
+        services.AddSingleton(_ => new AudioSettings());
+        services.AddScoped(c => new LanguageUI(c));
+        services.AddScoped(c => new OnboardingUI(c));
 
-        services.ConfigureUILifetimeEvents(events
-            => events.OnCircuitContextCreated += RegisterShowSettingsHandler);
-    }
+        // IMarkupViews
+        services.AddTypeMapper<IMarkupView>(map => map
+            .Add<NewLineMarkup, NewLineMarkupView>()
+            .Add<UrlMarkup, UrlMarkupView>()
+            .Add<MentionMarkup, MentionView>()
+            .Add<PreformattedTextMarkup, PreformattedTextMarkupView>()
+            .Add<PlayableTextMarkup, PlayableTextMarkupView>()
+            .Add<CodeBlockMarkup, CodeBlockMarkupView>()
+            .Add<StylizedMarkup, StylizedMarkupView>()
+            .Add<PlainTextMarkup, PlainTextMarkupView>()
+            .Add<UnparsedTextMarkup, PlainTextMarkupView>()
+            .Add<MarkupSeq, MarkupSeqView>()
+            .Add<Markup, MarkupView>()
+        );
+        // IModalViews
+        services.AddTypeMap<IModalView>(map => map
+            .Add<AvatarSelectModal.Model, AvatarSelectModal>()
+            .Add<NoSecondaryLanguageModal.Model, NoSecondaryLanguageModal>()
+            .Add<ChatSettingsModal.Model, ChatSettingsModal>()
+            .Add<InviteAuthorModal.Model, InviteAuthorModal>()
+            .Add<NewChatModal.Model, NewChatModal>()
+            .Add<OnboardingModal.Model, OnboardingModal>()
+            .Add<SettingsModal.Model, SettingsModal>()
+            .Add<AuthorModal.Model, AuthorModal>()
+            .Add<DeleteMessageModal.Model, DeleteMessageModal>()
+            .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
+        );
+        // IBannerViews
+        services.AddTypeMap<IBannerView>(map => map
+            .Add<SwitchToWasmBanner.Model, SwitchToWasmBanner>()
+        );
 
-    private void RegisterShowSettingsHandler(IServiceProvider services)
-    {
-        var eventHub = services.UIEventHub();
-        eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
-            var modalUI = services.GetRequiredService<ModalUI>();
-            modalUI.Show(new SettingsModal.Model(), true);
-            return Task.CompletedTask;
-        });
+        services.ConfigureUIEvents(
+            eventHub => eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
+                var modalUI = eventHub.Services.GetRequiredService<ModalUI>();
+                _ = modalUI.Show(SettingsModal.Model.Instance, true);
+                return Task.CompletedTask;
+            }));
     }
 }

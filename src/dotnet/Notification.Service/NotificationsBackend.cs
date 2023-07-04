@@ -21,6 +21,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private UrlMapper UrlMapper { get; }
+    private IUserPresences UserPresences { get; }
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
 
     public NotificationsBackend(IServiceProvider services) : base(services)
@@ -32,6 +33,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
         ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
+        UserPresences = services.GetRequiredService<IUserPresences>();
         FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
 
         _recentChatsWithNotifications = new MemoryCache(new MemoryCacheOptions {
@@ -106,7 +108,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     // [CommandHandler]
-    public virtual async Task Notify(INotificationsBackend.NotifyCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -127,13 +129,13 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             notification = notification.WithSimilar(similar);
         }
 
-        var upsertCommand = new INotificationsBackend.UpsertCommand(notification);
+        var upsertCommand = new NotificationsBackend_Upsert(notification);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         await Send(userId, notification, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task Upsert(INotificationsBackend.UpsertCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var notification = command.Notification;
         var userId = notification.UserId.Require();
@@ -179,7 +181,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     }
 
     // [CommandHandler]
-    public virtual async Task RemoveDevices(INotificationsBackend.RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveDevices(NotificationsBackend_RemoveDevices removeDevicesCommand, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
@@ -220,14 +222,26 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, author, changeKind) = eventCommand;
-        if (changeKind != ChangeKind.Create || entry.IsSystemEntry)
+        if (entry.IsSystemEntry)
             return;
+
+        var isTranscribedTextEntry = entry.AudioEntryId.HasValue;
+        if (isTranscribedTextEntry) {
+            if (changeKind != ChangeKind.Update)
+                return;
+            // When transcribed message is being finalized, it's updated to IsStreaming = false.
+            // At this moment we can notify chat users.
+        }
+        else {
+            if (changeKind != ChangeKind.Create)
+                return;
+            // For regular text messages we notify chat users upon message creation.
+        }
 
         var (text, mentionIds) = await GetText(entry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
         var chatId = entry.ChatId;
         var key = chatId.Id.Value;
-        if (!_recentChatsWithNotifications.TryGetValue(key, out _))
-        {
+        if (!_recentChatsWithNotifications.TryGetValue(key, out _)) {
             using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
             cacheEntry.Size = 1;
             cacheEntry.Value = "";
@@ -303,6 +317,10 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         var otherUserIds = changeAuthor.UserId.IsNone ? userIds : userIds.Where(uid => uid != changeAuthor.UserId);
 
         foreach (var otherUserId in otherUserIds) {
+            var presence = await UserPresences.Get(otherUserId, cancellationToken).ConfigureAwait(false);
+            // Do not send notifications to users who are online
+            if (presence is Presence.Online or Presence.Recording)
+                continue;
             var notificationId = new NotificationId(otherUserId, kind, similarityKey);
             var notification = new Notification(notificationId) {
                 Title = title,
@@ -311,7 +329,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
                 SentAt = now,
                 ChatEntryNotification = new ChatEntryNotificationOption(entry.Id, changeAuthor.Id),
             };
-            await new INotificationsBackend.NotifyCommand(notification)
+            await new NotificationsBackend_Notify(notification)
                 .Enqueue(cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -319,9 +337,11 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)
          => chat.Kind switch {
-             ChatKind.Group => !chat.Picture.IsNullOrEmpty() ? UrlMapper.ContentUrl(chat.Picture) : "/favicon.ico",
-             ChatKind.Peer => !author.Avatar.Picture.IsNullOrEmpty()
-                 ? UrlMapper.ContentUrl(author.Avatar.Picture)
+             ChatKind.Group => chat.Picture?.ContentId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(chat.Picture.ContentId)
+                 : "/favicon.ico",
+             ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
+                 ? UrlMapper.ContentUrl(author.Avatar.Media.ContentId)
                  : "/favicon.ico",
              _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null),
          };
@@ -333,7 +353,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
         };
 
-    private async ValueTask<(string Content, HashSet<Symbol> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
+    private async ValueTask<(string Content, HashSet<MentionId> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
     {
         var chatMarkupHub = ChatMarkupHubFactory[entry.ChatId];
         var markup = await chatMarkupHub.GetMarkup(entry, consumer, cancellationToken).ConfigureAwait(false);

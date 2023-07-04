@@ -19,12 +19,7 @@
     @if (!IsLabelInsideInput) {
         @if (!Label.IsNullOrEmpty()) {
             <div class="@LabelClass form-section-label">
-                <label for="@(InputId.NullIfEmpty() ?? "-")">
-                    <span>@Label</span>
-                    @if (IsRequired) {
-                        <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
-                    }
-                </label>
+                <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
             </div>
         }
         <div class="@ContentClass form-section-content">
@@ -34,12 +29,7 @@
         <div class="@ContentClass form-section-content label-inside-input">
             @if (!Label.IsNullOrEmpty()) {
                 <div class="@LabelClass form-section-label">
-                    <label for="@(InputId.NullIfEmpty() ?? "-")">
-                        <span>@Label</span>
-                        @if (IsRequired) {
-                            <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
-                        }
-                    </label>
+                    <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
                 </div>
             }
             @ChildContent

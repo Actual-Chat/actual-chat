@@ -1,6 +1,7 @@
 using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
+using Stl.Net;
 
 namespace ActualChat.Audio;
 
@@ -8,11 +9,14 @@ public class AudioHubBackendClient : HubClientBase,
     IAudioStreamClient,
     ITranscriptStreamClient
 {
+    public static IRetryDelayer ReconnectDelayer { get; set; } =
+        new RetryDelayer() { Delays = RetryDelaySeq.Exp(0.5, 5) };
+
     public int AudioStreamBufferSize { get; init; } = 64;
     public int TranscriptStreamBufferSize { get; init; } = 16;
 
     internal AudioHubBackendClient(string address, int port, IServiceProvider services)
-        : base(GetHubUrl(address, port), services)
+        : base(GetHubUrl(address, port), ReconnectDelayer, services)
     { }
 
     public async Task<IAsyncEnumerable<byte[]>> Read(
@@ -27,13 +31,13 @@ public class AudioHubBackendClient : HubClientBase,
         return stream;
     }
 
-    public async Task<IAsyncEnumerable<Transcript>> Read(
+    public async Task<IAsyncEnumerable<TranscriptDiff>> Read(
         Symbol streamId,
         CancellationToken cancellationToken)
     {
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         var stream = connection
-            .StreamAsync<Transcript>("GetTranscriptStream", streamId.Value, cancellationToken)
+            .StreamAsync<TranscriptDiff>("GetTranscriptDiffStream", streamId.Value, cancellationToken)
             .WithBuffer(TranscriptStreamBufferSize, cancellationToken);
         return stream;
     }
@@ -45,11 +49,11 @@ public class AudioHubBackendClient : HubClientBase,
         await connection.InvokeAsync("WriteAudioStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
+    public async Task Write(Symbol streamId, IAsyncEnumerable<TranscriptDiff> stream, CancellationToken cancellationToken)
     {
         var connection = await GetConnection(cancellationToken).ConfigureAwait(false);
         // wait for stream upload completion
-        await connection.InvokeAsync("WriteTranscriptStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
+        await connection.InvokeAsync("WriteTranscriptDiffStream", streamId.Value, stream, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

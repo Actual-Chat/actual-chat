@@ -1,5 +1,8 @@
 .banner {
-    @apply flex-x w-full h-14 gap-x-1 items-center justify-between pl-4 pr-4 bg-01 border-bg-04 border;
+    @apply flex-x gap-x-1 items-center justify-between;
+    @apply w-full h-14;
+    @apply pl-4 pr-4;
+    @apply bg-01 border-bg-04 border;
 }
 .banner-body {
     @apply ml-1;
@@ -8,7 +11,7 @@
     @apply flex-x ml-auto items-center gap-x-2;
 }
 .banner-buttons-close {
-    @apply flex w-6 h-6  ml-3 rounded-full items-center justify-center;
+    @apply flex w-6 h-6 ml-3 rounded-full items-center justify-center;
 }
 body.hoverable .banner-buttons-close:hover i {
     @apply text-03;

@@ -1,5 +1,5 @@
-import { audioContextSource } from 'audio-context-source';
-import { AudioContextRef, AudioContextRefOptions } from 'audio-context-ref';
+import { audioContextSource } from '../../Services/audio-context-source';
+import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
@@ -7,12 +7,10 @@ import { OpusDecoderWorker } from './workers/opus-decoder-worker-contract';
 import { catchErrors, PromiseSource, retry } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
+import { fallbackPlayback } from './fallback-playback';
 
-const LogScope: LogScope = 'AudioPlayer';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 
@@ -42,8 +40,8 @@ export class AudioPlayer {
 
         const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
         decoderWorkerInstance = new Worker(decoderWorkerPath);
-        decoderWorker = rpcClient<OpusDecoderWorker>(`${LogScope}.decoderWorker`, decoderWorkerInstance);
-        await decoderWorker.init(Versioning.artifactVersions);
+        decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
+        await decoderWorker.create(Versioning.artifactVersions, { type: 'rpc-timeout', timeoutMs: 20_000 });
         this.whenInitialized.resolve(undefined);
     }
 
@@ -81,9 +79,12 @@ export class AudioPlayer {
             feederNode.onStateChanged = this.onFeederStateChanged;
 
             // Create decoder worker
-            await decoderWorker.create(this.id, this.decoderToFeederWorkletChannel.port1);
+            await decoderWorker.init(this.id, this.decoderToFeederWorkletChannel.port1);
 
-            feederNode.connect(context.destination);
+            if(fallbackPlayback.isRequired)
+                await fallbackPlayback.attach(feederNode, context);
+            else
+                feederNode.connect(context.destination);
 
             this.isAttached = true;
         };
@@ -98,22 +99,23 @@ export class AudioPlayer {
             if (decoderToFeederWorkletChannel) {
                 await catchErrors(
                     () => decoderWorker.close(this.id),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
                 this.decoderToFeederWorkletChannel = null;
                 await catchErrors(
                     () => decoderToFeederWorkletChannel?.port1.close(),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
                 await catchErrors(
                     () => decoderToFeederWorkletChannel?.port2.close(),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
             }
 
             const feederNode = this.feederNode;
             if (feederNode) {
+                fallbackPlayback.detach();
                 this.feederNode = null;
                 await catchErrors(
                     () => feederNode.disconnect(),
-                    e => warnLog.log(`#${this.id}.start.detach error:`, e));
+                    e => warnLog?.log(`#${this.id}.start.detach error:`, e));
                 feederNode.onStateChanged = null;
             }
         }

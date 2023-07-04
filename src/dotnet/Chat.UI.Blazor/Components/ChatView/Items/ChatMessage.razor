@@ -27,12 +27,17 @@
 
 @if (message.DateLine.HasValue) {
     <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
+    return;
 }
-@if (message.IsFirstUnread) {
-    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+@if (message.IsFirstUnreadSeparator) {
+    <Separator Title="New messages" TitleClass="new-separator-title"/>
+    return;
 }
 @if (isSystem) {
-    <div class="@cls">
+    <div class="@cls"
+         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.TrueString))"
+         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.TrueString, "", ""))"
+         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
         <div class="chat-message group @cls">
             <div class="c-content">
                 <div class="message-content">
@@ -41,6 +46,9 @@
                             <MarkupView Markup="@markup"/>
                         </CascadingValue>
                     </p>
+                    @if (entry.HasReactions) {
+                        <MessageReactions Entry="@entry"/>
+                    }
                 </div>
             </div>
         </div>
@@ -49,8 +57,8 @@
 }
 
 <div class="@cls"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id).ToString())"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, "").ToString())"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
+     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, "", ""))"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="chat-message group">
         <div class="c-author-badge">
@@ -92,15 +100,15 @@
                     </p>
                 }
             </div>
-            @if (entry.Attachments.Length > 0) {
+            @if (entry.Attachments.Count > 0) {
+                var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
-                    @foreach (var attachment in entry.Attachments) {
-                        @if (attachment.IsImage()) {
-                            <ImageAttachment Attachment="@attachment" ChatEntry="@entry"/>
-                        } else {
+                    <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
+                    <div class="message-file-attachments">
+                        @foreach (var attachment in fileList) {
                             <FileAttachment Attachment="@attachment"/>
                         }
-                    }
+                    </div>
                 </div>
             }
             @if (entry.HasReactions) {
@@ -123,6 +131,7 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
@@ -188,7 +197,7 @@
         var repliedEntry = await GetRepliedEntry(cancellationToken);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var relatedChatEntry = await ChatUI.RelatedChatEntry.Use(cancellationToken);
+        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
         var result = new Model {
@@ -229,7 +238,19 @@
         if (repliedEntry?.AuthorId == authorId)
             return true;
 
-        return hasAnyMentions && MarkupValidator.ContainsMention($"a:{authorId}").IsValid(markup);
+        return hasAnyMentions && MarkupValidator.ContainsMention(new MentionId(authorId, AssumeValid.Option)).IsValid(markup);
+    }
+
+    private (List<TextEntryAttachment>, List<TextEntryAttachment>) GetOrderedAttachmentList(ChatEntry entry) {
+        var mediaList = new List<TextEntryAttachment>();
+        var fileList = new List<TextEntryAttachment>();
+        foreach (var attachment in entry.Attachments) {
+            if (attachment.IsVisualMedia())
+                mediaList.Add(attachment);
+            else
+                fileList.Add(attachment);
+        }
+        return (mediaList, fileList);
     }
 
     // Nested types

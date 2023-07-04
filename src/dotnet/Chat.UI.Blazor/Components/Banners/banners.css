@@ -1,0 +1,10 @@
+.banner.reconnect-banner  {
+    @apply bg-banner-error;
+    @apply animate-opacity-from-0;
+}
+.banner.reconnect-banner .banner-body {
+    @apply flex-1 flex-x items-center gap-x-1;
+}
+.banner.reconnect-banner .banner-body .reconnect-countdown {
+    @apply font-semibold text-primary;
+}

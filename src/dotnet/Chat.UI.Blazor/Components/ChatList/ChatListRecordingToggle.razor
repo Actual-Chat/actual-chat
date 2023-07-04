@@ -14,7 +14,7 @@
         Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
         Tooltip="Stop"
         TooltipPosition="FloatingPosition.Top">
-        <i class="icon-mic text-2xl"></i>
+        <i class="icon-mic-2 text-2xl"></i>
     </ButtonRound>
 } else {
     <ButtonRound
@@ -24,14 +24,14 @@
         Tooltip="Start"
         TooltipPosition="FloatingPosition.Top"
         MustKeepAwake="true">
-        <i class="icon-mic text-2xl"></i>
+        <i class="icon-mic-2 text-2xl"></i>
     </ButtonRound>
 }
 
 @code {
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
     [Parameter, EditorRequired] public bool IsRecording { get; set; }
     [Parameter] public string Class { get; set; } = "";
 }

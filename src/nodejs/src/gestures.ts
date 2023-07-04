@@ -1,23 +1,22 @@
 import { DeviceInfo } from 'device-info';
-import { Disposable } from 'disposable';
+import { DisposableBag } from 'disposable';
 import { DocumentEvents, preventDefaultForEvent, stopEvent } from 'event-handling';
-import { fromEvent, Subscription } from 'rxjs';
+import { fromEvent } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';
 import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
+import { TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 
-const LogScope: LogScope = 'Gestures';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { debugLog } = Log.get('Gestures');
 
 export type GestureEvent = PointerEvent | MouseEvent | TouchEvent | WheelEvent;
 
 export class Gestures {
-    private static activeGestures = new Set<Gesture>();
+    public static activeGestures = new Set<Gesture>();
     private static dumpTimeout: Timeout | null;
 
     public static init(): void {
@@ -46,7 +45,7 @@ export class Gestures {
         if (debugLog == null || this.activeGestures.size == 0 || this.dumpTimeout != null)
             return;
 
-        this.dumpTimeout = new Timeout(100, () => this.dumpTracked());
+        this.dumpTimeout = new Timeout(1000, () => this.dumpTracked());
     }
 
     private static dumpTracked() {
@@ -62,26 +61,13 @@ export class Gestures {
     }
 }
 
-class Gesture implements Disposable {
-    protected toDispose = new Array<Disposable | Subscription>();
-
-    public static use(): void {
-        return;
-    }
-
+export class Gesture extends DisposableBag {
     public dispose() {
-        if (this.toDispose == null)
+        if (this.isDisposed)
             return;
 
-        const toDispose = this.toDispose;
-        this.toDispose = null;
         try {
-            for (const disposable of toDispose) {
-                if (disposable instanceof Subscription)
-                    disposable.unsubscribe();
-                else
-                    disposable?.dispose();
-            }
+            super.dispose();
         }
         finally {
             Gestures.removeActive(this);
@@ -125,7 +111,7 @@ class DataHrefGesture extends Gesture {
         if (event.defaultPrevented)
             return;
 
-        const [, href] = getOrInheritData(event.target, 'href');
+        const [element, href] = getOrInheritData(event.target, 'href');
         if (href === null)
             return;
 
@@ -139,11 +125,25 @@ class DataHrefGesture extends Gesture {
             return;
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
+        const tuneName = element.dataset['hrefTune'];
         FocusUI.blur();
+        if (tuneName)
+            TuneUI.play(tuneName);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
-        else
-            void History.navigateTo(href); // Internal URL
+        else {
+            const chatSwitchWithReplace = element.dataset['chatSwitchWithReplace'];
+            let mustReplace = false;
+            if (chatSwitchWithReplace) {
+                const url = new URL(location.href);
+                const path = url.pathname;
+                const prefix = '/chat/';
+                if (path.startsWith(prefix) && path.length > prefix.length) {
+                    mustReplace = true;
+                }
+            }
+            void History.navigateTo(href, mustReplace); // Internal URL
+        }
     }
 }
 
@@ -165,12 +165,11 @@ class SuppressDefaultContextMenuGesture extends Gesture {
 }
 
 class ContextMenuGesture extends Gesture {
-    public static cancelLongPressDistance: number;
+    public static cancelLongPressDistance = DeviceInfo.isAndroid ? 5 : 10;
     public static defaultDelayMs = 500;
 
     public static use(): void {
         debugLog?.log(`ContextMenuGesture.use`);
-        this.cancelLongPressDistance = DeviceInfo.isAndroid ? 5 : 10;
         DocumentEvents.capturedActive.pointerDown$.subscribe((event: PointerEvent) => {
             if (event.button !== 0) // Only primary button
                 return;
@@ -192,7 +191,7 @@ class ContextMenuGesture extends Gesture {
     ) {
         super();
         const startPoint = new Vector2D(startEvent.clientX, startEvent.clientY);
-        this.toDispose.push(
+        this.addDisposables(
             // Events that we track
             DocumentEvents.capturedPassive.pointerMove$.subscribe((e: PointerEvent) => {
                 const delta = new Vector2D(e.clientX, e.clientY).sub(startPoint).length;
@@ -270,7 +269,7 @@ class WaitForEventGesture extends Gesture {
         public isPassive = true,
     ) {
         super();
-        this.toDispose.push(
+        this.addDisposables(
             fromEvent(document, eventName, { capture: isCapturing, passive: isPassive })
                 .subscribe((event: Event) => {
                     this.dispose();
@@ -288,7 +287,7 @@ class SuppressEventGesture extends Gesture {
         public readonly targetExclusions: string[] = null,
     ) {
         super();
-        this.toDispose.push(
+        this.addDisposables(
             new Timeout(timeoutMs, () => this.dispose()),
             fromEvent(document, eventName, { capture: true, passive: false })
                 .subscribe((e: Event) => {

@@ -8,6 +8,7 @@
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
+<RequireAccount MustBeAdmin="true"/>
 <MainHeader>Authentication Test Page</MainHeader>
 
 @if (error != null) {
@@ -126,7 +127,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private ILiveTime LiveTime { get; init; } = null!;
+    [Inject] private LiveTime LiveTime { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

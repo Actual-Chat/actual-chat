@@ -18,7 +18,7 @@
         <div class="flex-none flex-x my-8">
             <Pic
                 Title="@_stepModel.Name"
-                ContentId="@_stepModel.AvatarPicture"
+                ContentId="@_stepModel.Picture"
                 Size="SquareSize.Size20">
                 <NoPicture>
                     <AnonymousIcon Class="w-20 h-20"/>
@@ -36,9 +36,9 @@
                 <FileUpload
                     @key="@_stepModel.AvatarId.Value"
                     id="fileUpload"
-                    UploadUrl="@($"/api/user-avatars/{_stepModel.AvatarId}/upload-picture")"
+                    UploadUrl="@("/api/avatars/upload-picture")"
                     Uploaded="OnImagePicked"
-                    MaxSize="Constants.Chat.PictureFileSizeLimit"
+                    MaxSize="Constants.Chat.FileSizeLimit"
                     accept="image/*"
                     hidden>
                 </FileUpload>
@@ -94,23 +94,21 @@
         _stepModel.LastName = account.LastName;
 
         if (!account.Avatar.Id.IsEmpty) {
-            _stepModel.AvatarPicture = account.Avatar.Picture;
+            _stepModel.Picture = account.Avatar.Media?.ContentId ?? account.Avatar.Picture;
             _stepModel.AvatarId = account.Avatar.Id;
             return;
         }
 
-        var createAvatarCommand = new IAvatars.ChangeCommand(Session, Symbol.Empty, null, new Change<AvatarFull> {
-            Create = new AvatarFull {
-                UserId = account.Id,
-            }.WithMissingPropertiesFrom(account.Avatar),
+        var createAvatarCommand = new Avatars_Change(Session, Symbol.Empty, null, new Change<AvatarFull> {
+            Create = new AvatarFull(account.Id).WithMissingPropertiesFrom(account.Avatar),
         });
         var (newAvatar, error) = await UICommander.Run(createAvatarCommand);
         if (error != null)
             return;
 
         _stepModel.AvatarId = newAvatar.Id;
-        _stepModel.AvatarPicture = newAvatar.Picture;
-        var setDefaultAvatarCommand = new IAvatars.SetDefaultCommand(Session, newAvatar.Id);
+        _stepModel.Picture = newAvatar.Media?.ContentId ?? account.Avatar.Picture;
+        var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
     }
 
@@ -121,7 +119,7 @@
 
     protected override async Task Save() {
         var account = await Accounts.GetOwn(Session, default);
-        var updateAccountCommand = new IAccounts.UpdateCommand(
+        var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
                 Name = _stepModel.Name,
@@ -131,31 +129,35 @@
         await UICommander.Run(updateAccountCommand);
 
         var avatar = await Avatars.GetOwn(Session, _stepModel.AvatarId, default).Require();
-        var updateAvatarCommand = new IAvatars.ChangeCommand(
+        var updateAvatarCommand = new Avatars_Change(
             Session,
             _stepModel.AvatarId,
             avatar.Version,
             new Change<AvatarFull> {
                 Update = avatar with {
                     Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
-                    Picture = _stepModel.AvatarPicture,
+                    MediaId = _stepModel.MediaId,
+                    Picture = _stepModel.MediaId.IsNone ? _stepModel.Picture : "",
                 },
             });
         await UICommander.Run(updateAvatarCommand);
     }
 
-    private void OnImagePicked(string contentId) {
-        _stepModel.AvatarPicture = contentId;
+    private void OnImagePicked(MediaContent mediaContent) {
+        _stepModel.Picture = mediaContent.ContentId;
+        _stepModel.MediaId = mediaContent.MediaId;
     }
 
     private void OnGenerateAvatarClick() {
-        _stepModel.AvatarPicture = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
+        _stepModel.Picture = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
+        _stepModel.MediaId = MediaId.None;
     }
 
     public class AvatarStepModel {
         [Required] public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
-        public string AvatarPicture { get; set; } = "";
+        public string Picture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
+        public MediaId MediaId { get; set; } = MediaId.None;
     }
 }

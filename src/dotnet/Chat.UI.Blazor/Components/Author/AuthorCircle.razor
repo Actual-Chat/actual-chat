@@ -4,8 +4,9 @@
     var m = State.Value;
 }
 
-<AvatarCircle Avatar="@m.Author.Avatar" Size="@Size" Presence="@m.Presence" />
+<AvatarCircle Avatar="@m.Author.Avatar" Size="@Size" Presence="@m.Presence" Click="@Click" />
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 }

@@ -5,7 +5,6 @@ using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Playwright;
-using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Testing.Host;
 
@@ -31,7 +30,7 @@ public static class TestAuthExt
         var commander = services.Commander();
         var accounts = services.GetRequiredService<IAccounts>();
 
-        var command = new SignInCommand(session, user, userIdentity);
+        var command = new AuthBackend_SignIn(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         // Wait till the authentication happens
@@ -63,7 +62,7 @@ public static class TestAuthExt
         var services = appHost.Services;
         var commander = services.Commander();
 
-        var command = new SignOutCommand(session, force);
+        var command = new Auth_SignOut(session, force);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         // Let's wait a bit to ensure all invalidations go through

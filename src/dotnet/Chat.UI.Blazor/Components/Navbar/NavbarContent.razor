@@ -25,12 +25,18 @@
         <NavbarItem Url="/test/render-slot">Render Slot</NavbarItem>
         <NavbarItem Url="/test/error-barrier">Error Barrier</NavbarItem>
         <NavbarItem Url="/test/error-toast">Error Toast</NavbarItem>
+        <NavbarItem Url="/test/reconnect-overlay">Reconnect Overlay</NavbarItem>
+        <NavbarItem Url="/test/reconnect-banner">Reconnect Banner</NavbarItem>
+        <NavbarItem Url="/test/loading-overlay">Loading Overlay</NavbarItem>
+        <NavbarItem Url="/test/skeletons">Skeletons</NavbarItem>
         <NavbarItem Url="/test/requirements">Requirements</NavbarItem>
         <NavbarItem Url="/test/features">Features</NavbarItem>
+        <NavbarItem Url="/test/compute-state">Compute State</NavbarItem>
         <NavbarItem Url="/test/markup-editor">Markup Editor</NavbarItem>
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
         <NavbarItem Url="/test/blazor">Blazor</NavbarItem>
         <NavbarItem Url="/test/js">JavaScript</NavbarItem>
+        <NavbarItem Url="/test/embedded">Embedded</NavbarItem>
         @if (HostInfo.AppKind == AppKind.MauiApp) {
             <NavbarItem Url="/test/maui">Maui</NavbarItem>
         }
@@ -43,17 +49,19 @@
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
 
+    private EventHandler _navbarUIOnSelectedGroupChanged = null!;
+
     protected override void OnInitialized() {
-        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
+        _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
+        NavbarUI.SelectedGroupChanged += _navbarUIOnSelectedGroupChanged;
         base.OnInitialized();
     }
 
     public override ValueTask DisposeAsync() {
-        NavbarUI.SelectedGroupChanged -= NavbarUIOnSelectedGroupChanged;
+        NavbarUI.SelectedGroupChanged -= _navbarUIOnSelectedGroupChanged;
         return base.DisposeAsync();
     }
 
-    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e) {
-        StateHasChanged();
-    }
+    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
+        => StateHasChanged();
 }

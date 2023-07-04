@@ -1,20 +1,28 @@
 using System.Text.RegularExpressions;
 using Cysharp.Text;
+using MemoryPack;
 
 namespace ActualChat.Search;
 
-[DataContract]
-public sealed class SearchPhrase
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial class SearchPhrase
 {
-    private static readonly Regex TermSplitRegex = new("[\\s_]+", RegexOptions.Compiled);
+    [GeneratedRegex("[\\s_]+")]
+    private static partial Regex TermSplitRegexFactory();
+
+    private static readonly Regex TermSplitRegex = TermSplitRegexFactory();
 
     private string? _text;
     private Regex? _termRegex;
 
-    [DataMember] public string[] Terms { get; }
-    [DataMember] public bool MatchPrefixes { get; }
+    [DataMember, MemoryPackOrder(0)] public string[] Terms { get; }
+    [DataMember, MemoryPackOrder(1)] public bool MatchPrefixes { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Text => _text ??= Terms.ToDelimitedString(" ");
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public Regex TermRegex => _termRegex ??= new Regex(GetTermRegexString(), RegexOptions.IgnoreCase);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsEmpty => Terms.Length == 0;
 
     public SearchPhrase(string text, bool matchPrefixes, bool matchSuffixes)
@@ -23,6 +31,7 @@ public sealed class SearchPhrase
         MatchPrefixes = matchPrefixes;
     }
 
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public SearchPhrase(string[] terms, bool matchPrefixes)
     {
         Terms = terms;
@@ -69,7 +78,7 @@ public sealed class SearchPhrase
     public SearchMatch GetMatch(string text)
     {
         if (Terms.Length == 0 || text.IsNullOrEmpty())
-            return new SearchMatch(text);
+            return SearchMatch.New(text);
 
         var matches = TermRegex.Matches(text);
         var parts = new SearchMatchPart[matches.Count];

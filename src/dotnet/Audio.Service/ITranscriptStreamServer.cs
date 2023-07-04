@@ -4,12 +4,12 @@ namespace ActualChat.Audio;
 
 public interface ITranscriptStreamServer
 {
-    Task<IAsyncEnumerable<Transcript>> Read(
+    Task<IAsyncEnumerable<TranscriptDiff>> Read(
         Symbol streamId,
         CancellationToken cancellationToken);
 
     Task Write(
         Symbol streamId,
-        IAsyncEnumerable<Transcript> stream,
+        IAsyncEnumerable<TranscriptDiff> stream,
         CancellationToken cancellationToken);
 }

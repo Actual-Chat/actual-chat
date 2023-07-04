@@ -4,7 +4,7 @@
 }
 
 <ButtonRound
-    Class="chat-language-toggle" Click="OnClick">
+    Class="chat-language-toggle" Click="@(_ => OnClick())">
     <span class="w-8 h-8 m-1">
         @m.Code
     </span>
@@ -15,8 +15,9 @@
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Language>.Options GetStateOptions()
         => new() {
@@ -27,6 +28,11 @@
     protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
         => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
 
-    protected Task OnClick()
-        => LanguageUI.ChangeChatLanguage(Chat.Id);
+    protected async Task OnClick(CancellationToken cancellationToken = default) {
+        var languages = await LanguageUI.Settings.Use(cancellationToken);
+        if (languages.Secondary != null)
+            await LanguageUI.ChangeChatLanguage(Chat.Id);
+        else
+            _ = ModalUI.Show(new NoSecondaryLanguageModal.Model());
+    }
 }

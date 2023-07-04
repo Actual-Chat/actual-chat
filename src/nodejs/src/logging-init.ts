@@ -10,59 +10,75 @@ export enum LogLevel {
 export type LogScope =
     'default'
     // Library
-    | 'Versioning'
-    | 'TimerQueue'
+    | 'AppSettings'
+    | 'AsyncProcessor'
     | 'BrowserInfo'
-    | 'Clipboard'
+    | 'BrowserInit'
+    | 'BubbleHost'
     | 'Gestures'
     | 'event-handling'
+    | 'InertialScroll'
+    | 'NoSleep'
     | 'History'
     | 'Interactive'
-    | 'LocalSettings'
+    | 'Kvas'
+    | 'KvasBackend'
     | 'MenuHost'
     | 'ModalHost'
     | 'OnDeviceAwake'
-    | 'OnDeviceAwakeWorker'
     | 'promises'
     | 'Rpc'
-    | 'AsyncProcessor'
+    | 'ScreenSize'
+    | 'ServiceWorker'
+    | 'TimerQueue'
     | 'UndoStack'
+    | 'Versioning'
     | 'VirtualList'
     // XxxUI
     | 'DebugUI'
+    | 'DeviceAwakeUI'
     | 'FocusUI'
     | 'InteractiveUI'
     | 'KeepAwakeUI'
+    | 'LanguageUI'
     | 'NotificationUI'
+    | 'ThemeUI'
     | 'TuneUI'
     | 'UserActivityUI'
     | 'VibrationUI'
     // Audio
     | 'AudioContextRef'
     | 'AudioContextSource'
-    | 'ChromiumEchoCancellation'
-    | 'WarmUpAudioWorkletProcessor'
-    | 'FeederProcessor'
-    | 'FeederNode'
-    | 'OpusEncoderWorker'
-    | 'OpusEncoderWorkletProcessor'
+    | 'AudioInfo'
+    // Audio playback
+    | 'AudioPlayer'
+    | 'FallbackPlayback'
     | 'OpusDecoder'
     | 'OpusDecoderWorker'
-    | 'AudioPlayer'
-    | 'AudioVad'
+    | 'FeederNode'
+    | 'FeederProcessor'
+    // Audio recording
+    | 'AudioRecorder'
+    | 'OpusMediaRecorder'
     | 'AudioVadWorker'
     | 'AudioVadWorkletProcessor'
-    | 'AudioRecorder'
+    | 'OpusEncoderWorkletProcessor'
+    | 'OpusEncoderWorker'
+    | 'WarmUpAudioWorkletProcessor'
+    | 'ChromiumEchoCancellation' // Unused
     // Isolated components
+    | 'Attachments'
     | 'ChatMessageEditor'
+    | 'CodeBlockMarkupView'
     | 'CopyTrigger'
-    | 'ImageViewer'
     | 'Landing'
     | 'LandingLeftMenu'
     | 'MarkupEditor'
-    | 'PicUpload'
+    | 'MessageEditor'
     | 'SideNav'
-    | string;
+    | 'TextBox'
+    | 'TooltipHost'
+    | 'VisualMediaViewer';
 
 const GlobalThisKey = 'logLevels';
 const StorageKey = 'logLevels';
@@ -163,29 +179,34 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
-    minLevels.set('AudioPlayer', LogLevel.Debug);
-    minLevels.set('AudioRecorder', LogLevel.Debug);
+    // minLevels.set('AudioPlayer', LogLevel.Debug);
+    minLevels.set('FallbackPlayback', LogLevel.Debug);
     // minLevels.set('OpusDecoder', LogLevel.Debug);
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
     // minLevels.set('FeederProcessor', LogLevel.Debug);
-    // minLevels.set('OpusMediaRecorder', LogLevel.Debug);
-    // minLevels.set('OpusEncoderWorker', LogLevel.Debug);
-    // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
-    // minLevels.set('AudioVad', LogLevel.Debug);
-    // minLevels.set('AudioVadWorker', LogLevel.Debug);
+    minLevels.set('AudioRecorder', LogLevel.Debug);
+    minLevels.set('OpusMediaRecorder', LogLevel.Debug);
+    minLevels.set('AudioVadWorker', LogLevel.Debug);
     // minLevels.set('AudioVadWorkletProcessor', LogLevel.Debug);
-    // minLevels.set('History', LogLevel.Debug);
-    // minLevels.set('MenuHost', LogLevel.Debug);
-    // minLevels.set('MarkupEditor', LogLevel.Debug);
-    // minLevels.set('ChatMessageEditor', LogLevel.Debug);
+    minLevels.set('OpusEncoderWorker', LogLevel.Debug);
+    // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
+    // minLevels.set('InertialScroll', LogLevel.Debug);
+    // minLevels.set('VirtualList', LogLevel.Debug);
     minLevels.set('Landing', LogLevel.Debug);
     minLevels.set('LandingLeftMenu', LogLevel.Debug);
 
     // XxxUI
     // minLevels.set('FocusUI', LogLevel.Debug);
     // minLevels.set('KeepAwakeUI', LogLevel.Debug);
+    // minLevels.set('NoSleep', LogLevel.Debug);
     minLevels.set('NotificationUI', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
+
+    // Isolated components
+    // minLevels.set('History', LogLevel.Debug);
+    // minLevels.set('MenuHost', LogLevel.Debug);
+    // minLevels.set('MarkupEditor', LogLevel.Debug);
+    // minLevels.set('ChatMessageEditor', LogLevel.Debug);
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);

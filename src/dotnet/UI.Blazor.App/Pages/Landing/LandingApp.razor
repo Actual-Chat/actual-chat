@@ -1,0 +1,79 @@
+@using ActualChat.Users
+@using ActualChat.Hosting
+@inherits ComputedStateComponent<AccountFull>
+
+@{
+    var account = State.Value;
+    var isGuest = account is not { IsGuest: false };
+}
+
+<div @ref="Ref" class="landing" xmlns="http://www.w3.org/1999/html">
+    <LandingLeftMenu @ref="_landingLeftMenu" />
+
+    @* Header *@
+    <LandingHeader Click="@OnMenuHandleClick"/>
+
+    @* Page 1 *@
+    <div class="page page-1 h-screen">
+        <div class="page-1-wrapper overflow-hidden">
+            <div class="flex-x h-full overflow-hidden px-8">
+                <div class="main-text">
+                    <div class="md:text-4xl font-normal text-04 pt-12">
+                        <div class="title-text main">To call, to text, or<br/>to voice message?</div>
+                        <p class="!pt-8">
+                            But... Could these options be purely artificial?<br/>
+                            Is it possible to create a medium, which naturally
+                            combines all of them together?
+                        </p>
+                        <p class="!pt-8">
+                            <strong>We are here to redefine the meaning of "Chat".</strong>
+                        </p>
+                    </div>
+                    <div class="flex gap-x-8 flex-col items-center md:items-start">
+                        @if (isGuest) {
+                            <button class="download-btn web-signin transparent" onclick="@SignIn">
+                                <span class="px-2 text-xl font-semibold">Sign in</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="hidden md:flex justify-center items-center w-2/5">
+                    <video autoplay muted playsinline loop class="landing-video" poster="/dist/images/landing/landing-tutorial-plug.png">
+                        <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private LandingLeftMenu? _landingLeftMenu;
+
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken);
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync();
+    }
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
+
+    private void OnMenuHandleClick()
+        => _landingLeftMenu?.Open();
+}

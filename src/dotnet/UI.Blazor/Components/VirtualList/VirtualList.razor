@@ -10,7 +10,7 @@
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem
         ? 0
-        : renderIndex == 0
+        : renderIndex == 0 && Data.Items.Count == 0
             ? 1000 // initial spacer size to cover all list area on first load
             : SpacerSize;
     var endSpacerSize = Data.HasVeryLastItem
@@ -35,12 +35,8 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
-    var visibleKeys = LastReportedItemVisibility.VisibleKeys;
     var items = Data.Items;
     LastData = Data;
-    var itemClassBase = Data.Query.IsNone
-        ? "item"
-        : "item new";
 }
 
 <div @ref="Ref"
@@ -71,26 +67,20 @@
     <ul @key="VirtualListSpecialKeys.Container"
         class="@flexClass virtual-container">
         @foreach (var item in items) {
-            var itemClass = visibleKeys.Contains(item.Key)
-                ? "item"
-                : itemClassBase;
-
-            <li @key="item.Key.Value"
-                id="@item.Key.Value"
-                class="@itemClass"
-                data-count-as="@item.CountAs">
-                @Item(item)
-            </li>
-            /* NOTE(AY): I thought Blazor doesn't properly compare keys here,
-              So I ended up writing component wrapper for item.
-              But it looks like it does.
-
-            <VirtualListItem
-                @key="@item.Key.Value"
-                Item="@item"
-                Class="@itemClass"
-                Content="@Item"/>
-            */
+            @if (item.CountAs != 1) {
+                <li id="@item.Key"
+                    @key="@item.Key"
+                    class="item"
+                    data-count-as="@item.CountAs">
+                    @Item(item)
+                </li>
+            } else {
+                <li id="@item.Key"
+                    @key="@item.Key"
+                    class="item">
+                    @Item(item)
+                </li>
+            }
         }
         @if (items.Count == 0 && Data != VirtualListData<TItem>.None) {
             @Empty

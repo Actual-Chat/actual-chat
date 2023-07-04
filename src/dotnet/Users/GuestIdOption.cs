@@ -1,6 +1,8 @@
+using MemoryPack;
+
 namespace ActualChat.Users;
 
-[DataContract]
-public sealed record GuestIdOption(
-    [property: DataMember(Order = 0)] UserId GuestId
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record GuestIdOption(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] UserId GuestId
     );

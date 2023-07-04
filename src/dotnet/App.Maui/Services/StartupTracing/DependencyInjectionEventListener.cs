@@ -1,24 +1,23 @@
 using System.Diagnostics.Tracing;
 using Cysharp.Text;
-using Serilog;
 
 namespace ActualChat.App.Maui.Services.StartupTracing;
 
-internal class DependencyInjectionEventListener : EventListener
+// Unfortunately it does not work in Mono and therefor in Android.
+// https://learn.microsoft.com/en-us/dotnet/core/diagnostics/eventsource-collect-and-view-traces#eventlistener
+internal sealed class DependencyInjectionEventListener : EventListener
 {
-    private readonly Serilog.ILogger _log;
+    private Serilog.ILogger? _log;
 
-    // Unfortunately it does not work in Mono and therefor in Android.
-    // https://learn.microsoft.com/en-us/dotnet/core/diagnostics/eventsource-collect-and-view-traces#eventlistener
-
-    public DependencyInjectionEventListener()
-        => _log = Log.Logger.ForContext<DependencyInjectionEventListener>();
+    private Serilog.ILogger Log
+        => _log ??= Serilog.Log.Logger.ForContext<DependencyInjectionEventListener>();
 
     protected override void OnEventSourceCreated(EventSource eventSource)
     {
-        _log.Information("OnEventSourceCreated: " + eventSource.Name);
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        Log.Information($"{nameof(OnEventSourceCreated)}: {eventSource.Name}");
         // https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.DependencyInjection/src/DependencyInjectionEventSource.cs
-        if(OrdinalEquals(eventSource.Name, "Microsoft-Extensions-DependencyInjection"))
+        if (OrdinalEquals(eventSource.Name, "Microsoft-Extensions-DependencyInjection"))
             EnableEvents(eventSource, EventLevel.Verbose);
     }
 
@@ -26,10 +25,11 @@ internal class DependencyInjectionEventListener : EventListener
     {
         if (eventData.EventId != 1)
             return;
+
         var message = ZString.Concat(
             eventData.EventName, " ",
             eventData.PayloadNames!.Zip(eventData.Payload!, (s, o) => $"{s}: '${o}'").ToCommaPhrase());
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        _log.Information(message);
+        Log.Information(message);
     }
 }

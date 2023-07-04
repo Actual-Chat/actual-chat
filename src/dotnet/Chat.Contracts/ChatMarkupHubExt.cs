@@ -18,7 +18,7 @@ public static class ChatMarkupHubExt
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
         case { HasMediaEntry: true }:
-            markup = new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
+            markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);
@@ -40,7 +40,7 @@ public static class ChatMarkupHubExt
             markup = systemEntry.Option?.ToMarkup() ?? Markup.Empty;
             break;
         case { HasMediaEntry: true }:
-            markup = new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
+            markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);
@@ -92,35 +92,47 @@ public static class ChatMarkupHubExt
             return Markup.Empty;
 
         var attachments = entry.Attachments;
-        if (attachments.Length == 0)
+        if (attachments.Count == 0)
             return Markup.Empty;
 
         if (consumer is MarkupConsumer.QuoteView)
             return new PlainTextMarkup("Click to see attachment");
 
         var imageCount = 0;
+        var videoCount = 0;
         TextEntryAttachment? firstFile = null;
         foreach (var x in attachments) // No LINQ to avoid boxing allocation
             if (x.IsImage())
                 imageCount++;
+            else if (x.IsVideo())
+                videoCount++;
             else if (firstFile is null)
                 firstFile = x;
-        var fileCount = attachments.Length - imageCount;
+        var fileCount = attachments.Count - imageCount - videoCount;
 
         var imageText = imageCount switch {
             0 => "",
             1 => "an image",
             _ => $"{imageCount.Format()} images",
         };
+        var videoText = videoCount switch {
+            0 => "",
+            1 => "an video",
+            _ => $"{videoCount.Format()} videos",
+        };
         var fileText = fileCount switch {
             0 => "",
-            1 => firstFile!.FileName,
+            1 => firstFile!.Media.FileName,
             _ => $"{fileCount.Format()} files",
         };
-        var text = (imageText.Length, fileText.Length) switch {
-            (0, _) => fileText,
-            (_, 0) => imageText,
-            _ => ZString.Concat(imageText, " and ", fileText),
+        var text = (imageText.Length, videoText.Length, fileText.Length) switch {
+            (0, 0, _) => fileText,
+            (0, _, 0) => videoText,
+            (_, 0, 0) => imageText,
+            (_, _, 0) => ZString.Concat(imageText, " and ", videoText),
+            (_, 0, _) => ZString.Concat(imageText, " and ", fileText),
+            (0, _, _) => ZString.Concat(videoText, " and ", fileText),
+            _ => ZString.Concat(imageText, ", ", videoText, ", and ", fileText),
         };
         return new PlainTextMarkup(ZString.Concat("Sent ", text));
     }

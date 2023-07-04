@@ -1,0 +1,44 @@
+@page "/test/embedded"
+@using ActualChat.Hosting
+
+@{
+    var baseUri = new Uri(HostInfo.BaseUrl);
+    var domain = HostInfo.IsDevelopmentInstance
+        ? "cdn.local.actual.chat"
+        : baseUri.IdnHost;
+    var feedbackTemplateUrl = $"https://{domain}/embedded/feedback-template";
+    var showChat = _showChat;
+}
+
+<RequireAccount MustBeAdmin="true"/>
+<h2>Embedded Test Page</h2>
+
+<div class="fixed bottom-4 right-4 flex flex-y">
+    @if (showChat) {
+        <iframe class="min-w-88 min-h-128 rounded-lg drop-shadow-xl"
+                src="@feedbackTemplateUrl"
+                referrerpolicy="origin-when-cross-origin"
+                sandbox="allow-downloads allow-scripts allow-same-origin"
+                allow="microphone *; storage-access-api *; sync-xhr *; document-domain *">
+        </iframe>
+    }
+    <button class="mt-4 place-self-end transform active:scale-90 transition-transform" @onclick="@OnClick">
+        <div
+            Class="h-14 w-14 flex content-center justify-center rounded-full bg-gradient-to-b from-primary to-[#B60B84] drop-shadow-lg shadow-gradient-stop-02">
+            <img draggable="false" src="/dist/images/logo-white.svg" alt="logo" class="h-8 w-8 place-self-center">
+        </div>
+    </button>
+
+</div>
+
+@code {
+
+    private bool _showChat;
+
+
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    private void OnClick(MouseEventArgs obj) {
+        _showChat = !_showChat;
+    }
+}

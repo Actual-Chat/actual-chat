@@ -1,6 +1,8 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public interface IChatRecordingActivity : IComputeService, IDisposable
+// NOTE(AY): This type can't be tagged as IComputeService, coz it has a few fields,
+// so we tag the implementation instead
+public interface IChatRecordingActivity : IDisposable
 {
     ChatActivity Owner { get; }
     ChatId ChatId { get; }
@@ -8,13 +10,13 @@ public interface IChatRecordingActivity : IComputeService, IDisposable
     [ComputeMethod]
     Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
     [ComputeMethod]
     Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken);
 }
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
+public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComputeService
 {
     public static TimeSpan ExtraActivityDuration { get; } = TimeSpan.FromMilliseconds(250);
 
@@ -33,18 +35,21 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
         _log = owner.Services.LogFor(GetType());
     }
 
+    // [ComputeMethod]
     public virtual Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries);
 
-    public virtual Task<ImmutableArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
-        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToImmutableArray());
+    // [ComputeMethod]
+    public virtual Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
+        => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToApiArray());
 
+    // [ComputeMethod]
     public virtual Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries.Any(e => e.AuthorId == authorId));
 
     // Protected & private methods
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var startAt = Owner.Clocks.SystemClock.Now;
         var idRange = await Owner.Chats.GetIdRange(Owner.Session, ChatId, ChatEntryKind.Audio, cancellationToken)

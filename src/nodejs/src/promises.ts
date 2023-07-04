@@ -1,12 +1,8 @@
-import { Log, LogLevel, LogScope } from 'logging';
+import { Log } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
-import { Resettable } from 'resettable';
 
-const LogScope: LogScope = 'promises';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
+const { logScope, debugLog, warnLog, errorLog } = Log.get('promises');
 
 export class TimedOut {
     public static readonly instance: TimedOut = new TimedOut();
@@ -446,18 +442,18 @@ export class AsyncLockReleaser implements Disposable {
     private readonly _whenReleased: PromiseSource<void>;
     constructor(public readonly asyncLock: AsyncLock) {
         if (asyncLock.releaser != null)
-            throw new Error(`${LogScope}.AsyncLockReleaser cannot be created while the lock is held.`);
+            throw new Error(`${logScope}.AsyncLockReleaser cannot be created while the lock is held.`);
 
         asyncLock.releaser = this;
         this._whenReleased = new PromiseSource<void>(
             () => {
                 if (asyncLock.releaser != this)
-                    throw new Error(`${LogScope}.AsyncLockReleaser is associated with another releaser.`);
+                    throw new Error(`${logScope}.AsyncLockReleaser is associated with another releaser.`);
 
                 asyncLock.releaser = null;
                 return;
             },
-            () => `${LogScope}.AsyncLockReleaser.released cannot be rejected.`);
+            () => `${logScope}.AsyncLockReleaser.released cannot be rejected.`);
     }
 
     public whenReleased(): Promise<void> {

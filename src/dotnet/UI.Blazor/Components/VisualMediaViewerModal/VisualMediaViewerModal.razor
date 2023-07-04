@@ -1,0 +1,76 @@
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Chat
+@using ActualChat.UI.Blazor.Module
+@implements IModalView<VisualMediaViewerModal.Model>
+@namespace ActualChat.UI.Blazor.Components
+
+<ModalFrame Class="image-viewer-modal">
+    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@ModalModel.Url"/>
+    <div @ref="@Ref" class="image-viewer-content">
+        @if (ModalModel.IsVideo) {
+            <video width="@ModalModel.Width" height="@ModalModel.Height" preload="auto" autoplay controls onclick="this.play()">
+                <source src="@ModalModel.Url"/>
+            </video>
+        } else {
+            <img class="hidden"
+                 width="@ModalModel.Width"
+                 height="@ModalModel.Height"
+                 src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
+                 onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
+            <img id="@_cachedImgElementId"
+                 style="width: @(ModalModel.Width)px; height: @(ModalModel.Height)px;"
+                 src="@ModalModel.CachedImageUrl"
+                 alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+        }
+    </div>
+    <div class="image-viewer-footer">
+        <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
+    </div>
+</ModalFrame>
+
+@code {
+    private string _cachedImgElementId = "";
+    private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private ComponentIdGenerator IdGenerator { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ILogger<VisualMediaViewerModal> Log { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _cachedImgElementId = IdGenerator.Next("image-viewer-modal-cached-image");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create",
+                Ref, BlazorRef
+                );
+        }
+    }
+
+    private void CloseModal()
+        => Modal.Close();
+
+    [JSInvokable]
+    public void LogJS(string text)
+        => Log.LogInformation(text);
+
+    [JSInvokable]
+    public void Close()
+        => CloseModal();
+
+    public sealed record Model(
+        string Url,
+        string? CachedImageUrl,
+        string? AltText,
+        int? Width = null,
+        int? Height = null,
+        ChatEntry? ChatEntry = default,
+        bool IsVideo = false);
+}

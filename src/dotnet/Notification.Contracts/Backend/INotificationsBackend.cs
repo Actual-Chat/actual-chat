@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Notification.Backend;
 
 public interface INotificationsBackend : IComputeService
@@ -15,24 +17,27 @@ public interface INotificationsBackend : IComputeService
     // Command handlers
 
     [CommandHandler]
-    Task Notify(NotifyCommand command, CancellationToken cancellationToken);
+    Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task Upsert(UpsertCommand notification, CancellationToken cancellationToken);
+    Task OnUpsert(NotificationsBackend_Upsert notification, CancellationToken cancellationToken);
     [CommandHandler]
-    Task RemoveDevices(RemoveDevicesCommand removeDevicesCommand, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record NotifyCommand(
-        [property: DataMember] Notification Notification
-    ) : ICommand<Unit>, IBackendCommand;
-
-    [DataContract]
-    public sealed record UpsertCommand(
-        [property: DataMember] Notification Notification
-    ) : ICommand<Unit>, IBackendCommand;
-
-    [DataContract]
-    public sealed record RemoveDevicesCommand(
-        [property: DataMember] ImmutableArray<Symbol> DeviceIds
-    ) : ICommand<Unit>, IBackendCommand;
+    Task OnRemoveDevices(NotificationsBackend_RemoveDevices removeDevicesCommand, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_Notify(
+    [property: DataMember, MemoryPackOrder(0)] Notification Notification
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_Upsert(
+    [property: DataMember, MemoryPackOrder(0)] Notification Notification
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_RemoveDevices(
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<Symbol> DeviceIds
+) : ICommand<Unit>, IBackendCommand;

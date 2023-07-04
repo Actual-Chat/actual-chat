@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Users;
+﻿using MemoryPack;
+
+namespace ActualChat.Users;
 
 public interface IAvatarsBackend : IComputeService
 {
@@ -6,12 +8,13 @@ public interface IAvatarsBackend : IComputeService
     Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<AvatarFull> Change(ChangeCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] Symbol AvatarId,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] Change<AvatarFull> Change
-        ) : ICommand<AvatarFull>, IBackendCommand;
+    Task<AvatarFull> OnChange(AvatarsBackend_Change command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AvatarsBackend_Change(
+    [property: DataMember, MemoryPackOrder(0)] Symbol AvatarId,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<AvatarFull> Change
+) : ICommand<AvatarFull>, IBackendCommand;

@@ -15,7 +15,7 @@ public static class ContactsExt
         if (contact.IsStored())
             return contact;
 
-        var command = new IContacts.ChangeCommand(session, contactId, null, new Change<Contact>() {
+        var command = new Contacts_Change(session, contactId, null, new Change<Contact>() {
             Create = new Contact(contactId),
         });
         contact = await contacts.GetCommander().Call(command, true, cancellationToken).ConfigureAwait(false);

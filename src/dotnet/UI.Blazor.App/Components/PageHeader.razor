@@ -1,0 +1,37 @@
+﻿@using ActualChat.Chat.UI.Blazor.Services
+@inherits ComputedStateComponent<PageHeader.Model>
+@{
+    var m = State.Value;
+    var title = "Actual Chat";
+    if (m.Count > 0)
+        title += " (" + m.Count + ")";
+}
+
+<PageTitle>@title</PageTitle>
+<HeadContent>
+    @{
+        // NOTE(DF): I use png favicons because Chrome does not properly reacts on changes of svg icons.
+        var fileName = m.Count > 9 ? "9+" : m.Count.ToString();
+        var iconHref = $"/unreadcountfavicon/{fileName}.png";
+    }
+    <link rel="icon" href="@iconHref">
+</HeadContent>
+
+@code {
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = new(),
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var count = await ChatListUI.UnreadChatCount.Use(cancellationToken);
+        return new Model(count);
+    }
+
+    public sealed record Model(Trimmed<int> Count = default);
+}

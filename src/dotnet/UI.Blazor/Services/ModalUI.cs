@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Stl.Extensibility;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -10,7 +9,7 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
     private BrowserInfo BrowserInfo { get; }
     private History History { get; }
     private TuneUI TuneUI { get; }
-    private IMatchingTypeFinder MatchingTypeFinder { get; }
+    private TypeMapper<IModalView> ViewResolver { get; }
 
     Acceptor<ModalHost> IHasAcceptor<ModalHost>.Acceptor => _hostAcceptor;
 
@@ -24,16 +23,14 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
         BrowserInfo = services.GetRequiredService<BrowserInfo>();
         History = services.GetRequiredService<History>();
         TuneUI = services.GetRequiredService<TuneUI>();
-        MatchingTypeFinder = services.GetRequiredService<IMatchingTypeFinder>();
+        ViewResolver = services.GetRequiredService<TypeMapper<IModalView>>();
     }
 
-    public async Task<ModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
+    public Task<ModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
         where TModel : class
     {
-        var options = new ModalOptions() {
-            OverlayClass = isFullScreen ? "modal-overlay-fullscreen" : "",
-        };
-        return await Show(model, options);
+        var options = isFullScreen ? ModalOptions.FullScreen : ModalOptions.Default;
+        return Show(model, options);
     }
 
     public async Task<ModalRef> Show<TModel>(TModel model, ModalOptions options)
@@ -64,11 +61,6 @@ public sealed class ModalUI : IHasServices, IHasAcceptor<ModalHost>
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private Type GetComponentType<TModel>(TModel model)
         where TModel : class
-    {
-        var componentType = MatchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
-        return componentType
-            ?? throw StandardError.NotFound<IModalView>(
-                $"No modal view component for '{model.GetType().GetName()}' model.");
-    }
+        => ViewResolver.Get(model.GetType());
 #pragma warning restore IL2073
 }

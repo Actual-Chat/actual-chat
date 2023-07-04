@@ -1,0 +1,42 @@
+﻿@inherits ComputedStateComponent<ComputeStateTestComponent.Model>
+
+@{
+    var m = State.ValueOrDefault;
+}
+
+<h2>Result is:</h2>
+<h3>@m.Value</h3>
+<h2>Child Result is:</h2>
+<CascadingValue Value="@m">
+    <ComputeStateTestChildComponent />
+</CascadingValue>
+<div>
+    <Button Click="@OnMutateClick">Mutate</Button>
+</div>
+
+@code {
+
+    [Inject] ComputeStateTestService TestService { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+        var value = await TestService.GetValue(cancellationToken);
+        return new Model(value);
+    }
+
+    private async Task OnMutateClick() {
+        await TestService.MutateAndInvalidate("Final", CancellationToken.None);
+    }
+
+    public record struct Model(string Value) {
+        public static Model None = new Model("None");
+    }
+}
+

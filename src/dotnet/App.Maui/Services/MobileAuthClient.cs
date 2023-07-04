@@ -1,65 +1,74 @@
 namespace ActualChat.App.Maui.Services;
 
-public class MobileAuthClient
+public sealed class MobileAuthClient
 {
-    private ClientAppSettings AppSettings { get; }
     private HttpClient HttpClient { get; }
-    private BaseUrlProvider BaseUrlProvider { get; }
-    private ILogger<MobileAuthClient> Log { get; }
+    private ISessionResolver SessionResolver { get; }
+    private ILogger Log { get; }
 
-    public MobileAuthClient(
-        ClientAppSettings clientAppSettings,
-        BaseUrlProvider baseUrlProvider,
-        HttpClient httpClient,
-        ILogger<MobileAuthClient> log)
+    public MobileAuthClient(IServiceProvider services)
     {
-        AppSettings = clientAppSettings;
-        HttpClient = httpClient;
-        BaseUrlProvider = baseUrlProvider;
-        Log = log;
+        HttpClient = services.GetRequiredService<HttpClient>();
+        SessionResolver = services.GetRequiredService<ISessionResolver>();
+        Log = services.GetRequiredService<ILogger<MobileAuthClient>>();
     }
 
-    public async Task<bool> SetupSession()
+    public async Task<bool> SignInApple(string code, string name, string email, string userId)
     {
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
+        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInAppleWithCode";
         try {
-            var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
-            var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/setupSession/{sessionId.UrlEncode()}";
-            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
+            var values = new List<KeyValuePair<string, string>> {
+                new ("SessionId", session.Id.Value),
+                new ("Name", name),
+                new ("Email", email),
+                new ("Code", code),
+                new ("UserId", userId),
+            };
+            var request = new HttpRequestMessage(HttpMethod.Post, requestUri) {
+                Content = new FormUrlEncodedContent(values),
+            };
+            var response = await HttpClient.SendAsync(request).ConfigureAwait(false);
+
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to setup session");
+            Log.LogError(e, "SignInApple failed");
+
             return false;
         }
     }
 
     public async Task<bool> SignInGoogle(string code)
     {
-        if (string.IsNullOrEmpty(code))
+        if (code.IsNullOrEmpty())
             throw new ArgumentException($"'{nameof(code)}' cannot be null or empty.", nameof(code));
-        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
-        var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
+
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
+        var sessionId = session.Id.Value;
+        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to sign in google");
+            Log.LogError(e, "SignInGoogle failed");
             return false;
         }
     }
 
-    public async Task<bool> SignOut()
+    public async Task SignOut()
     {
-        var sessionId = await AppSettings.GetSessionId().ConfigureAwait(false);
-        var requestUri = $"{BaseUrlProvider.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
+        var sessionId = session.Id.Value;
+        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
-            return response.IsSuccessStatusCode;
+            response.EnsureSuccessStatusCode();
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to sign out");
-            return false;
+            Log.LogError(e, "SignOut failed");
+            throw;
         }
     }
 }

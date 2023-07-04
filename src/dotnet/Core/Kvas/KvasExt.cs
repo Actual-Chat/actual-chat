@@ -1,21 +1,33 @@
+using Microsoft.Toolkit.HighPerformance.Buffers;
+
 namespace ActualChat.Kvas;
 
 public static class KvasExt
 {
-    public static ITextSerializer Serializer { get; set; } = SystemJsonSerializer.Default;
+    public static IByteSerializer Serializer { get; set; } = KvasSerializer.Default;
 
     // Get, Set, Remove w/ <T>
 
-    public static async ValueTask<Option<T>> Get<T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
-    {
+    public static async ValueTask<Option<T>> TryGet<T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
+  {
         var data = await kvas.Get(key, cancellationToken).ConfigureAwait(false);
         return data is null ? Option<T>.None : Serializer.Read<T>(data);
     }
 
+    public static ValueTask<T?> Get<T>(this IKvas kvas, string key, CancellationToken cancellationToken = default)
+        => Get<T>(kvas, key, default, cancellationToken);
+
+    public static async ValueTask<T?> Get<T>(this IKvas kvas, string key, T? @default, CancellationToken cancellationToken = default)
+    {
+        var (hasValue, value) = await TryGet<T>(kvas, key, cancellationToken).ConfigureAwait(false);
+        return hasValue ? value ?? @default : @default;
+    }
+
     public static Task Set<T>(this IKvas kvas, string key, T value, CancellationToken cancellationToken = default)
     {
-        var data = Serializer.Write(value);
-        return kvas.Set(key, data, cancellationToken);
+        using var buffer = new ArrayPoolBufferWriter<byte>();
+        Serializer.Write(buffer, value);
+        return kvas.Set(key, buffer.WrittenMemory.ToArray(), cancellationToken);
     }
 
     public static Task Set<T>(this IKvas kvas, string key, Option<T> value, CancellationToken cancellationToken = default)

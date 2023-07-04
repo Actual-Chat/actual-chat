@@ -35,9 +35,9 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         DebugLog = Constants.DebugMode.TranscriptStreamProxy ? Log : null;
     }
 
-    public async Task<IAsyncEnumerable<Transcript>> Read(Symbol streamId, CancellationToken cancellationToken)
+    public async Task<IAsyncEnumerable<TranscriptDiff>> Read(Symbol streamId, CancellationToken cancellationToken)
     {
-        var streamName = $"transcript #{streamId.Value}";
+        var streamName = $"Transcript #{streamId.Value}";
         var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
         if (kube == null) {
             DebugLog?.LogInformation("Read({Stream}): fallback to the local server", streamName);
@@ -50,7 +50,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         var addressRing = serviceEndpoints.GetAddressHashRing();
         if (addressRing.IsEmpty) {
             Log.LogError("Read({Stream}): empty address ring!", streamName);
-            return AsyncEnumerable.Empty<Transcript>();
+            return AsyncEnumerable.Empty<TranscriptDiff>();
         }
         var port = serviceEndpoints.GetPort()!.Port;
         var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
@@ -70,12 +70,12 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             }
         }
         DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
-        return AsyncEnumerable.Empty<Transcript>();
+        return AsyncEnumerable.Empty<TranscriptDiff>();
     }
 
-    public async Task Write(Symbol streamId, IAsyncEnumerable<Transcript> stream, CancellationToken cancellationToken)
+    public async Task Write(Symbol streamId, IAsyncEnumerable<TranscriptDiff> stream, CancellationToken cancellationToken)
     {
-        var streamName = $"transcript #{streamId.Value}";
+        var streamName = $"Transcript #{streamId.Value}";
         var kube = await KubeServices.GetKube(cancellationToken).ConfigureAwait(false);
         if (kube == null) {
             DebugLog?.LogInformation("Write({Stream}): fallback to the local server", streamName);

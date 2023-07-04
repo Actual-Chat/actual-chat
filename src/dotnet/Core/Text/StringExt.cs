@@ -4,21 +4,35 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
+using Cysharp.Text;
 
 namespace ActualChat;
 
-public static class StringExt
+public static partial class StringExt
 {
-    private static readonly Regex CaseChangeRegex =
-        new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+    [GeneratedRegex("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.ExplicitCapture)]
+    private static partial Regex CaseChangeRegexFactory();
+
+    [GeneratedRegex(@"([a-z0-9])([A-Z])")]
+    private static partial Regex CamelCaseRegexFactory();
+
+    [GeneratedRegex(@"([^\r\n]*)(?:\r?\n)", RegexOptions.ExplicitCapture)]
+    private static partial Regex NewLineRegexFactory();
+
+    private static readonly Regex CaseChangeRegex = CaseChangeRegexFactory();
 #pragma warning disable MA0023
-    private static readonly Regex CamelCaseRegex = new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
-    private static readonly Regex NewLineRegex = new(@"([^\r\n]*)(?:\r?\n)", RegexOptions.Compiled);
+    private static readonly Regex CamelCaseRegex = CamelCaseRegexFactory();
+    private static readonly Regex NewLineRegex = NewLineRegexFactory();
 #pragma warning restore MA0023
 
     public static string RequireNonEmpty(this string? source, string name)
         => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
-    [return: NotNullIfNotNull("source")]
+    [return: NotNullIfNotNull(nameof(source))]
+    public static string? RequireNotEqual(this string? source, string target, string name)
+        => OrdinalEquals(source, target)
+            ? throw StandardError.Constraint($"{name} should not be {target}.")
+            : source;
+    [return: NotNullIfNotNull(nameof(source))]
     public static string? RequireEmpty(this string? source, string name)
         => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");
     public static string? RequireMaxLength(this string source, int length, string name)
@@ -31,14 +45,29 @@ public static class StringExt
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
 
     public static string ToSnakeCase(this string input)
-        => string.IsNullOrEmpty(input)
+        => input.IsNullOrEmpty()
             ? input
             : CamelCaseRegex.Replace(input, "$1_$2")
                 .ToLower(CultureInfo.InvariantCulture)
                 .OrdinalReplace("__", "_");
 
     public static string Capitalize(this string source)
-        => source.IsNullOrEmpty() ? source : source[..1].ToUpperInvariant() + source[1..];
+        => source.IsNullOrEmpty() ? source : source.Capitalize(0);
+
+    public static string Capitalize(this string source, int position)
+    {
+        var firstLetter = source[position];
+        var firstLetterUpper = char.ToUpperInvariant(firstLetter);
+        if (firstLetter == firstLetterUpper)
+            return source;
+
+        using var sb = ZString.CreateStringBuilder(true);
+        if (position > 0)
+            sb.Append(source.AsSpan(0, position));
+        sb.Append(firstLetterUpper);
+        sb.Append(source.AsSpan(position + 1));
+        return sb.ToString();
+    }
 
     public static string EnsureSuffix(this string source, string suffix)
         => source.OrdinalEndsWith(suffix) ? source : source + suffix;
@@ -137,6 +166,14 @@ public static class StringExt
         using var sha1 = System.Security.Cryptography.SHA1.Create();
         var inputBytes = Encoding.ASCII.GetBytes(input);
         var hashBytes = sha1.ComputeHash(inputBytes);
+        return Convert.ToHexString(hashBytes);
+    }
+
+    // ReSharper disable once InconsistentNaming
+    public static string GetSHA256HashCode(this string input)
+    {
+        var inputBytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
         return Convert.ToHexString(hashBytes);
     }
 }

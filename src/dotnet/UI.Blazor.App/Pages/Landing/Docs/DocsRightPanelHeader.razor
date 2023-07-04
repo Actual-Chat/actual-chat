@@ -5,30 +5,13 @@
 @{
     var account = State.Value;
     var isGuest = account is not {IsGuestOrNone: false };
-    var user = account.User.OrGuest();
-    var usedAuthSchemas = user.OrGuest().Identities.Select(kv => kv.Key.Schema).ToHashSet();
-    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var googleScheme = unusedAuthSchemas.SingleOrDefault(e => OrdinalEquals(e.Name, IClientAuth.GoogleSchemeName));
 }
 
 <div class="c-header">
     @if (isGuest) {
-        <button class="signin-button-group" onclick="@(() => SignIn(googleScheme.Name))">
-            <span class="px-2">Sign in with</span>
-            <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8">
+        <button class="signin-button-group" onclick="@SignIn">
+            <span class="px-2">Sign in</span>
         </button>
-        // Don't remove this button group
-        @* <SigninButtonGroup> *@
-        @*     <GoogleIcon> *@
-        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="google" class="min-h-8 min-w-8"> *@
-        @*     </GoogleIcon> *@
-        @*     <FacebookIcon> *@
-        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="facebook" class="min-h-8 min-w-8"> *@
-        @*     </FacebookIcon> *@
-        @*     <AppleIcon> *@
-        @*         <img src="/dist/images/landing/google-icon-color.svg" alt="apple" class="min-h-8 min-w-8"> *@
-        @*     </AppleIcon> *@
-        @* </SigninButtonGroup> *@
     } else {
         <div
             class="context-menu-btn"
@@ -43,10 +26,8 @@
 </div>
 
 @code {
-    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions() {
         return new ComputedState<AccountFull>.Options() {
@@ -58,6 +39,6 @@
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => await AccountUI.OwnAccount.Use(cancellationToken);
 
-    private void SignIn(string name)
-        => ClientAuth.SignIn(name);
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
 }

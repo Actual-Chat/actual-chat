@@ -1,13 +1,6 @@
 import { Disposable } from 'disposable';
 import { fromEvent, map, Subject, takeUntil, tap, merge } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
-import { Log, LogLevel, LogScope } from 'logging';
-
-const LogScope: LogScope = 'PicUpload';
-const debugLog = Log.get(LogScope, LogLevel.Debug);
-const warnLog = Log.get(LogScope, LogLevel.Warn);
-const errorLog = Log.get(LogScope, LogLevel.Error);
-
 
 export class PicUpload implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();

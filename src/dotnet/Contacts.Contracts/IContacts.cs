@@ -1,3 +1,5 @@
+using MemoryPack;
+
 namespace ActualChat.Contacts;
 
 public interface IContacts : IComputeService
@@ -6,25 +8,27 @@ public interface IContacts : IComputeService
     Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<ImmutableArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 300)]
+    Task<ApiArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Contact?> Change(ChangeCommand command, CancellationToken cancellationToken);
+    Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task Touch(TouchCommand command, CancellationToken cancellationToken);
-
-    [DataContract]
-    public sealed record ChangeCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ContactId Id,
-        [property: DataMember] long? ExpectedVersion,
-        [property: DataMember] Change<Contact> Change
-    ) : ISessionCommand<Contact?>;
-
-    [DataContract]
-    public sealed record TouchCommand(
-        [property: DataMember] Session Session,
-        [property: DataMember] ContactId Id
-    ) : ISessionCommand<Unit>;
+    Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Contacts_Touch(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ContactId Id
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Contacts_Change(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ContactId Id,
+    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(3)] Change<Contact> Change
+) : ISessionCommand<Contact?>;

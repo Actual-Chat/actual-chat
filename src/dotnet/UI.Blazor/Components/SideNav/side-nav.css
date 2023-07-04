@@ -4,12 +4,21 @@
     @apply h-full w-full;
     @apply text-02 bg-02;
     @apply top-0 bottom-0;
-    @apply transition-transform duration-200 ease-out;
     transform: none;
-    touch-action: pan-y;
+    touch-action: manipulation;
+    will-change: custom; /* Ensures its own composition layer */
 }
 
-.side-nav.side-nav-dragging {
+.side-nav.animated {
+    @apply transition-transform duration-200 ease-out;
+}
+.side-nav.animated > *:first-child {
+    @apply transition-opacity duration-200 ease-out;
+}
+.side-nav.animated.pulling {
+    @apply transition-none;
+}
+.side-nav.animated.pulling > *:first-child {
     @apply transition-none;
 }
 
@@ -17,10 +26,10 @@
 .side-nav.side-nav-left {
     @apply md:w-110;
 }
-body.wide .side-nav.side-nav-left.closed {
+body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
 }
-body.narrow .side-nav.side-nav-left.closed {
+body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     transform: translate3d(-100%, 0, 0);
 }
 
@@ -28,34 +37,21 @@ body.narrow .side-nav.side-nav-left.closed {
 .side-nav.side-nav-right {
     @apply md:w-80;
 }
-body.wide .side-nav.side-nav-right.closed {
+body.wide .side-nav.side-nav-right[data-side-nav="closed"] {
     @apply hidden;
 }
-body.narrow .side-nav.side-nav-right.closed {
+body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     transform: translate3d(100%, 0, 0);
 }
 
 /* If one SideNav is open, the other one should be hidden to prevent its pull */
-body.narrow:has(.side-nav.side-nav-left.open) .side-nav.side-nav-right {
+body.narrow.side-nav-left-open .side-nav.side-nav-right {
     @apply hidden;
 }
-body.narrow:has(.side-nav.side-nav-right.open) .side-nav.side-nav-left {
+body.narrow.side-nav-right-open .side-nav.side-nav-left {
     @apply hidden;
 }
 /* This rule prioritizes left SideNav over the right one when both are open */
-body.narrow:has(.side-nav.side-nav-right.open) .side-nav.side-nav-left.open {
-    @apply hidden;
-}
-
-/* Drawer */
-.side-nav .side-nav-drawer {
-    @apply fixed;
-    @apply top-14 bottom-14 w-[15px];
-    @apply bg-transparent;
-}
-.side-nav.side-nav-left .side-nav-drawer {
-    @apply -right-[15px];
-}
-.side-nav.side-nav-right .side-nav-drawer {
-    @apply -left-[15px]
+body.narrow.side-nav-right-open .side-nav.side-nav-left.open {
+    @apply block;
 }

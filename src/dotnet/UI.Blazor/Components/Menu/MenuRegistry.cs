@@ -4,6 +4,7 @@ public static class MenuRegistry
 {
     private static readonly ConcurrentDictionary<Type, Symbol> TypeToTypeId = new();
     private static readonly ConcurrentDictionary<Symbol, Type> TypeIdToType = new();
+    private static int _lastMenuId;
 
     public static string GetTypeId<TMenu>()
         where TMenu: MenuBase
@@ -13,7 +14,9 @@ public static class MenuRegistry
         => TypeToTypeId.GetOrAdd(type, type1 => {
             if (!type1.IsAssignableTo(typeof(IMenu)))
                 throw new ArgumentOutOfRangeException(nameof(type));
-            var typeId = type1.ToSymbol(false);
+
+            var menuId = Interlocked.Increment(ref _lastMenuId);
+            var typeId = new Symbol($"{type1.Name}-{menuId}");
             TypeIdToType.GetOrAdd(typeId, type1);
             return typeId;
         });

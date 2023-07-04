@@ -26,7 +26,7 @@ public class AudioHubBackend : Hub
             yield return chunk;
     }
 
-    public async IAsyncEnumerable<Transcript> GetTranscriptStream(
+    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -43,9 +43,9 @@ public class AudioHubBackend : Hub
         await AudioStreamServer.Write(streamId, stream, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task WriteTranscriptStream(
+    public async Task WriteTranscriptDiffStream(
         string streamId,
-        IAsyncEnumerable<Transcript> stream) // No CancellationToken argument here, otherwise SignalR binder fails!
+        IAsyncEnumerable<TranscriptDiff> stream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
         var cancellationToken = Context.GetHttpContext()!.RequestAborted;
         await TranscriptStreamServer.Write(streamId, stream, cancellationToken).ConfigureAwait(false);

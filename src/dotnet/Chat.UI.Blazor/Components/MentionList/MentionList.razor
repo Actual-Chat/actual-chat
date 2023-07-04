@@ -4,25 +4,22 @@
 @{
     var mentions = Mentions;
     var listCls = "";
-    if (mentions.Length < 1)
-        listCls += "hidden";
+    if (mentions.Length == 0)
+        listCls += " hidden";
     var selection = Selection;
 }
 
 <div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
-        var title = mention.Text;
         var cls = mention == selection ? "selected" : "";
-        var picture = string.IsNullOrWhiteSpace(mention.Picture)
-            ? $"https://avatars.dicebear.com/api/avataaars/{title}.svg"
-            : UrlMapper.ContentUrl(mention.Picture);
+        var pictureUrl = UrlMapper.UserPictureUrl(mention.Picture);
         <div class="@cls mention-list-item"
              data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"
              @onclick="@(_ => Manager.SelectMention(mention))">
-            <div class="flex-x gap-x-2 px-4 items-center h-6 md:h-8">
-                <img class="flex-none w-5 md:w-7 h-5 md:h-7 rounded-full" src="@picture" alt="avatar"/>
-                <div class="flex-auto text-ellipsis whitespace-nowrap overflow-hidden">
+            <div class="flex-x gap-x-2 px-4 items-center h-9">
+                <img draggable="false" class="flex-none w-7 h-7 rounded-full" src="@pictureUrl" alt="avatar"/>
+                <div class="flex-auto text-ellipsis whitespace-nowrap overflow-hidden text-headline-1 text-02">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
                 </div>
             </div>
@@ -56,10 +53,10 @@
     }
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         Filter = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), nameof(Filter)));
+        base.OnInitialized();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -115,6 +112,6 @@
             return null;
         var firstMention = mentions[0];
         selection ??= firstMention;
-        return mentions.FirstOrDefault(o => o.Id == selection.Id) ?? firstMention;
+        return mentions.FirstOrDefault(o => o.MentionId == selection.MentionId) ?? firstMention;
     }
 }

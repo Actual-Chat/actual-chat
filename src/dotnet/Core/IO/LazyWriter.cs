@@ -13,7 +13,7 @@ public class LazyWriter<T> : WorkerBase
     public Func<List<T>, Task> Implementation { get; init; } = _ => Task.CompletedTask;
     public Func<Exception, LogLevel> FlushErrorSeverityProvider { get; init; } = static _ => LogLevel.Error;
     public IMomentClock Clock { get; init; } = MomentClockSet.Default.CpuClock;
-    public ILogger Log { get; init; } = NullLogger.Instance;
+    public ILogger? Log { get; init; }
 
     public LazyWriter()
     {
@@ -21,7 +21,7 @@ public class LazyWriter<T> : WorkerBase
             SingleReader = true,
             SingleWriter = false,
         });
-        Start();
+        this.Start();
     }
 
     public void Add(T item)
@@ -37,10 +37,10 @@ public class LazyWriter<T> : WorkerBase
         if (!_commands.Writer.TryWrite(command))
             throw Errors.AlreadyDisposed();
 
-        return command.WhenFlushed.WaitAsync(cancellationToken);
+        return command.WhenFlushedSource.Task.WaitAsync(cancellationToken);
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         using var abortCts = new CancellationTokenSource();
         var abortToken = abortCts.Token;
@@ -77,7 +77,7 @@ public class LazyWriter<T> : WorkerBase
                     break;
                 case FlushCommand flushCommand:
                     var flushTask = FlushInternal();
-                    _ = TaskSource.For(flushCommand.WhenFlushed).TrySetFromTaskAsync(flushTask, cancellationToken);
+                    _ = flushCommand.WhenFlushedSource.TrySetFromTaskAsync(flushTask, cancellationToken);
                     await flushTask.ConfigureAwait(false);
                     break;
                 }
@@ -94,7 +94,7 @@ public class LazyWriter<T> : WorkerBase
             upcomingFlushCts?.CancelAndDisposeSilently();
             upcomingFlushCts = null;
             var failedTryCount = 0;
-            while (true) {
+            while (batch.Count > 0) {
                 try {
                     await Implementation.Invoke(batch).ConfigureAwait(false);
                     break;
@@ -104,7 +104,7 @@ public class LazyWriter<T> : WorkerBase
                     var retryDelay = FlushRetryDelays[failedTryCount];
                     var severity = FlushErrorSeverityProvider.Invoke(e);
                     if (severity != LogLevel.None)
-                        Log.Log(severity, e,
+                        Log?.Log(severity, e,
                             "Error #{ErrorCount} while flushing a batch of {ItemCount} items, will retry in {RetryDelay}",
                             failedTryCount, batch.Count, retryDelay.ToShortString());
                     await Clock.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
@@ -119,7 +119,7 @@ public class LazyWriter<T> : WorkerBase
 
     private abstract record Command;
     private record ItemCommand(T Item) : Command;
-    private record FlushCommand(Task<Unit> WhenFlushed) : Command {
-        public FlushCommand() : this(TaskSource.New<Unit>(true).Task) { }
+    private record FlushCommand(TaskCompletionSource<Unit> WhenFlushedSource) : Command {
+        public FlushCommand() : this(TaskCompletionSourceExt.New<Unit>()) { }
     }
 }

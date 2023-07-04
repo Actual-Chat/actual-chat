@@ -11,6 +11,11 @@ public sealed class UsersSettings
     public string GoogleClientSecret { get; set; } = "";
     public string MicrosoftAccountClientId { get; set; } = "";
     public string MicrosoftAccountClientSecret { get; set; } = "";
+    public string AppleClientId { get; set; } = "";
+    public string AppleAppId { get; set; } = "";
+    public string? AppleKeyId { get; set; } = "";
+    public string AppleTeamId { get; set; } = "";
+    public string ApplePrivateKeyPath { get; set; } = "";
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Inactive;
 }

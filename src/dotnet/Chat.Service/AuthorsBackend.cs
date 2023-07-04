@@ -93,13 +93,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ImmutableArray<AuthorId>.Empty;
+            return ApiArray<AuthorId>.Empty;
 
         if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToImmutableArray();
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
 
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
@@ -109,17 +109,17 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return authorIds.Select(x => new AuthorId(x)).ToImmutableArray();
+        return authorIds.Select(x => new AuthorId(x)).ToApiArray();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ImmutableArray<UserId>.Empty;
+            return ApiArray<UserId>.Empty;
 
         if (chatId.IsPeerChat(out var peerChatId))
-            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToImmutableArray();
+            return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToApiArray();
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -129,13 +129,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return userIds.Select(x => new UserId(x)).ToImmutableArray();
+        return userIds.Select(x => new UserId(x)).ToApiArray();
     }
 
     // [CommandHandler]
-    public virtual async Task<AuthorFull> Upsert(IAuthorsBackend.UpsertCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AuthorFull> Upsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
-        var (chatId, authorId, userId, expectedVersion, diff) = command;
+        var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
         if (!authorId.IsNone && authorId.ChatId != chatId)
@@ -211,7 +211,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var id = new AuthorId(chatId, localId, AssumeValid.Option);
             var author = new AuthorFull(id, VersionGenerator.NextVersion()) {
                 UserId = userId,
-                IsAnonymous = account.IsGuestOrNone,
+                IsAnonymous = command.Diff.IsAnonymous ?? account.IsGuestOrNone
             };
             author = DiffEngine.Patch(author, diff);
 
@@ -221,12 +221,11 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             if (author.IsAnonymous) {
                 if (author.AvatarId.IsEmpty) {
                     // Creating a random avatar for anonymous authors w/o pre-selected avatar
-                    var changeCommand = new IAvatarsBackend.ChangeCommand(Symbol.Empty, null, new Change<AvatarFull>() {
-                        Create = new AvatarFull() {
-                            UserId = userId,
+                    var changeCommand = new AvatarsBackend_Change(Symbol.Empty, null, new Change<AvatarFull> {
+                        Create = new AvatarFull(userId) {
                             Name = RandomNameGenerator.Default.Generate(),
                             Bio = "Someone anonymous",
-                            Picture = "", // NOTE(AY): Add a random one?
+                            IsAnonymous = true,
                         },
                     });
                     var avatar = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
@@ -252,13 +251,14 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
                     .ConfigureAwait(false);
                 var readPosition = new ChatPosition(chatTextIdRange.End - 1);
-                new IChatPositionsBackend.SetCommand(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
+                new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, readPosition)
                     .EnqueueOnCompletion();
             }
 
-            // Raise events
-            new AuthorChangedEvent(author, existingAuthor)
-                .EnqueueOnCompletion();
+            if (!doNotNotify)
+                // Raise events
+                new AuthorChangedEvent(author, existingAuthor)
+                    .EnqueueOnCompletion();
             return author;
         }
     }
@@ -278,7 +278,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var authors = await ListAuthorsByAvatarId(oldAvatar.UserId, oldAvatar.Id, cancellationToken).ConfigureAwait(false);
 
         foreach (var author in authors) {
-            var command = new IAuthorsBackend.UpsertCommand(author.ChatId,
+            var command = new AuthorsBackend_Upsert(author.ChatId,
                 author.Id,
                 author.UserId,
                 author.Version,
@@ -316,10 +316,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     private AvatarFull GetDefaultAvatar(AuthorFull author)
-        => new() {
+        => new(author.UserId) {
             Name = RandomNameGenerator.Default.Generate(author.Id),
-            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
             Bio = "",
+            Picture = DefaultUserPicture.GetBoringAvatar(author.Id),
         };
 
     private AuthorFull[] GetDefaultPeerChatAuthors(PeerChatId chatId)

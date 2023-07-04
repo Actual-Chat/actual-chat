@@ -4,11 +4,11 @@ namespace ActualChat.Notification.UI.Blazor;
 
 public class WebDeviceTokenRetriever : IDeviceTokenRetriever
 {
-    private readonly IJSRuntime _js;
+    private IJSRuntime JS { get; }
 
     public WebDeviceTokenRetriever(IJSRuntime js)
-    => _js = js;
+        => JS = js;
 
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)
-        => await _js.InvokeAsync<string?>($"{NotificationBlazorUIModule.ImportName}.NotificationUI.getDeviceToken", cancellationToken);
+        => await JS.InvokeAsync<string?>($"{NotificationBlazorUIModule.ImportName}.NotificationUI.getDeviceToken", cancellationToken);
 }

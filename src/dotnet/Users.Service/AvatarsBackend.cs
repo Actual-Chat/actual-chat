@@ -1,4 +1,5 @@
 ﻿using ActualChat.Commands;
+using ActualChat.Media;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Stl.Fusion.EntityFramework;
@@ -8,9 +9,13 @@ namespace ActualChat.Users;
 public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 {
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }
+    private IMediaBackend MediaBackend { get; }
 
     public AvatarsBackend(IServiceProvider services) : base(services)
-        => DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
+    {
+        DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
+        MediaBackend = services.GetRequiredService<IMediaBackend>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken)
@@ -20,11 +25,18 @@ public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
 
         var dbUserAvatar = await DbAvatarResolver.Get(avatarId, cancellationToken).ConfigureAwait(false);
         var userAvatar = dbUserAvatar?.ToModel();
-        return userAvatar;
+        if (userAvatar == null)
+            return null;
+
+        if (userAvatar.MediaId.IsNone)
+            return userAvatar;
+
+        var media = await MediaBackend.Get(userAvatar.MediaId, cancellationToken).ConfigureAwait(false);
+        return userAvatar with { Media = media };
     }
 
     // [CommandHandler]
-    public virtual async Task<AvatarFull> Change(IAvatarsBackend.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<AvatarFull> OnChange(AvatarsBackend_Change command, CancellationToken cancellationToken)
     {
         var (avatarId, expectedVersion, change) = command;
         if (Computed.IsInvalidating()) {

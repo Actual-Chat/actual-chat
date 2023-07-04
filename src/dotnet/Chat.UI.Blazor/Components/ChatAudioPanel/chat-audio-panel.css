@@ -51,9 +51,20 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper {
     @apply border;
 }
+.chat-audio-panel .recorder-wrapper.applying-changes {
+    @apply opacity-50;
+}
 .recorder-wrapper .recorder-icon {
     @apply h-10 w-10;
 }
+.recorder-wrapper .mic-disabled.btn .btn-content,
+body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
+    @apply bg-icons-02;
+}
+.recorder-wrapper.mic-disabled {
+    @apply border-icons-02;
+}
+
 .narrow-panel.narrow .recorder-wrapper .recorder-icon,
 .wide .recorder-wrapper .recorder-icon {
     @apply h-7 w-7;
@@ -202,9 +213,6 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
     @apply min-w-12 max-w-12;
     @apply bg-transparent;
 }
-.narrow-panel.narrow .playback-wrapper.listen-on {
-    @apply w-28;
-}
 .narrow-panel.narrow .playback-wrapper.listen-on .loud-btn.btn.btn-round {
     @apply opacity-100;
     @apply translate-x-10;
@@ -289,4 +297,20 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply scale-100;
     @apply opacity-100;
+}
+
+.modal-frame.menu-styled-modal {
+    @apply md:gap-x-0;
+    @apply max-w-72;
+}
+.modal-frame.menu-styled-modal .c-text {
+    @apply flex-y gap-y-2;
+    @apply font-medium text-sm;
+}
+
+.narrow .modal-frame.menu-styled-modal .c-text {
+    @apply font-normal text-base;
+}
+.narrow .modal-frame.menu-styled-modal .dialog-body {
+    @apply gap-y-4;
 }

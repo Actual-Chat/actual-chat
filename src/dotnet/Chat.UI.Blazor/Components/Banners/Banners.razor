@@ -4,15 +4,18 @@
     var m = State.Value;
 }
 
+<ReconnectBanner/>
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
-<AddToContactsBanner/>
-<GrantNotificationPermissionBanner/>
+<AddToContactsBanner Chat="@Chat"/>
+<GrantNotificationPermissionBanner />
 
 @code {
     private const int MaxCount = 2;
     [Inject] private BannerUI BannerUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {

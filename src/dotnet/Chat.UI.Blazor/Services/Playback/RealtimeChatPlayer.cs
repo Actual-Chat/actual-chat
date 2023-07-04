@@ -2,36 +2,48 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
-    /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
-    private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
-
-    private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode => Constants.DebugMode.AudioPlayback;
+    private ChatAudioUI ChatAudioUI { get; }
 
     public RealtimeChatPlayer(Session session, ChatId chatId, IServiceProvider services)
         : base(session, chatId, services)
-        => PlayerKind = ChatPlayerKind.Realtime;
+    {
+        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
+        PlayerKind = ChatPlayerKind.Realtime;
+    }
 
     // ReSharper disable once RedundantAssignment
     protected override async Task Play(
-        ChatEntryPlayer entryPlayer, Moment startAt, CancellationToken cancellationToken)
+        ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
     {
-        startAt = Clocks.SystemClock.Now; // We always override startAt here
-        DebugLog?.LogDebug("[RealtimeChatPlayer] Play: {ChatId}, {StartedAt}", ChatId, startAt);
+        var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || !chat.Rules.CanRead())
+            return;
+
+        var serverClock = Clocks.ServerClock;
+        await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        Operation = $"listening in \"{chat.Title}\"";
+        // We always override startAt here
+        DebugLog?.LogDebug("Play: {ChatId}, {StartedAt}", ChatId, minPlayAt);
+
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
-            .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         var startId = startEntry?.LocalId ?? idRange.End;
+        var initialSleepDuration = SleepDuration.Value;
+        var syncedSleepDuration = initialSleepDuration;
+        minPlayAt = serverClock.Now;
 
         var entries = audioEntryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.EndsAt < startAt)
-                // We're starting @ (startAt - ChatConstants.MaxEntryDuration),
-                // so we need to skip a few entries.
-                // Note that streaming entries have EndsAt == null, so we don't skip them.
+            if (!entry.IsStreaming)
+                // Non-streaming entry:
+                // - We were asleep & missed a bunch of entries
+                // - Or audioEntryReader is still enumerating "early" entries
+                //   @ (startAt - ChatConstants.MaxEntryDuration)
                 continue;
 
             if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
@@ -41,11 +53,26 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                     continue;
             }
 
-            var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
-            var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
-            var skipTo = entryBeginsAt - entry.BeginsAt;
+            if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false)) {
+                await ChatAudioUI.SetListeningState(ChatId, false);
+                return;
+            }
 
-            DebugLog?.LogDebug("[RealtimeChatPlayer] Player.EnqueueEntry: {ChatId}, {EntryId}", ChatId, entry.Id);
+            // We don't move minPlayAt forward here only when sleep is detected,
+            // coz if they simply track ServerClock.Now & ServerClock is somehow
+            // ahead of actual server clock, it's going to skip the beginning of
+            // every message rather than just of the initial one / post-sleep ones.
+            var sleepDuration = SleepDuration.Value;
+            if (sleepDuration != syncedSleepDuration) {
+                minPlayAt = serverClock.Now + sleepDuration - initialSleepDuration; // Re-sync minPlayAt
+                syncedSleepDuration = sleepDuration;
+            }
+            var playAt = Moment.Max(minPlayAt, entry.BeginsAt);
+            if (playAt >= entry.BeginsAt + Constants.Chat.MaxEntryDuration) // no EndsAt for streaming entries
+                continue;
+
+            var skipTo = (playAt - entry.BeginsAt).Positive();
+            DebugLog?.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
             entryPlayer.EnqueueEntry(entry, skipTo);
         }
     }

@@ -11,10 +11,10 @@
 
 <div class="menu-header">
     <div class="flex">
-        <img src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+        <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
     </div>
     <div class="px-2 self-center max-w-40">
-        <img src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+        <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
     </div>
 </div>
 <div class="menu-content">
@@ -52,27 +52,29 @@
 <div class="menu-footer">
     @if (m.EnableIncompleteUI) {
         <ButtonRound>
-            <img src="/dist/images/landing/github-gray.svg" alt="github">
+            <img draggable="false" src="/dist/images/landing/github-gray.svg" alt="github">
         </ButtonRound>
         <ButtonRound>
-            <img src="/dist/images/landing/facebook-gray.svg" alt="facebook">
+            <img draggable="false" src="/dist/images/landing/facebook-gray.svg" alt="facebook">
         </ButtonRound>
         <ButtonRound>
-            <img src="/dist/images/landing/telegram-gray.svg" alt="telegram">
+            <img draggable="false" src="/dist/images/landing/telegram-gray.svg" alt="telegram">
         </ButtonRound>
         <ButtonRound>
-            <img src="/dist/images/landing/medium-gray.svg" alt="medium">
+            <img draggable="false" src="/dist/images/landing/medium-gray.svg" alt="medium">
         </ButtonRound>
     }
 </div>
 
 @code {
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [Parameter] public LandingLeftMenu Owner { get; init; } = null!;
+    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // ReSharper disable once RedundantNameQualifier
+    [Parameter] public  ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenu Owner { get; init; } = null!;
     [Parameter] public bool ShowHome { get; init; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -85,7 +87,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         return new Model(
             await AccountUI.OwnAccount.Use(cancellationToken),
-            await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken));
+            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken));
     }
 
     private void NavigateTo(string url) {
@@ -93,11 +95,8 @@
         History.NavigateTo(url);
     }
 
-    private void SignIn()
-        => SignIn(IClientAuth.GoogleSchemeName);
-
-    private Task SignIn(string name) =>
-        ClientAuth.SignIn(name).AsTask();
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
 
     public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
 }

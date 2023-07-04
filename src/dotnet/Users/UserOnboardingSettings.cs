@@ -1,18 +1,19 @@
 using ActualChat.Kvas;
+using MemoryPack;
 
 namespace ActualChat.Users;
 
-[DataContract]
-public sealed record UserOnboardingSettings : IHasOrigin
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record UserOnboardingSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserOnboardingSettings);
 
-    [DataMember] public bool IsPhoneStepCompleted { get; init; }
-    [DataMember] public bool IsAvatarStepCompleted { get; init; }
-    [DataMember] public Moment LastShownAt { get; init; }
-    [DataMember] public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(0)] public bool IsPhoneStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(1)] public bool IsAvatarStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(2)] public Moment LastShownAt { get; init; }
+    [DataMember, MemoryPackOrder(3)] public string Origin { get; init; } = "";
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool HasUncompletedSteps
         => this is not {
             IsAvatarStepCompleted: true,

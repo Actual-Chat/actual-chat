@@ -11,19 +11,17 @@ public class LanguageUI
 
     private TuneUI TuneUI { get; }
     private AccountSettings AccountSettings { get; }
-    private Dispatcher Dispatcher { get; }
     private IJSRuntime JS { get; }
 
     public IState<UserLanguageSettings> Settings => _settings;
 
     public LanguageUI(IServiceProvider services)
     {
-        Dispatcher = services.GetRequiredService<Dispatcher>();
+        TuneUI = services.GetRequiredService<TuneUI>();
+        AccountSettings = services.GetRequiredService<AccountSettings>();
         JS = services.GetRequiredService<IJSRuntime>();
 
         var stateFactory = services.StateFactory();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        AccountSettings = services.GetRequiredService<AccountSettings>();
         _settings = stateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),
@@ -75,10 +73,10 @@ public class LanguageUI
 
     private async ValueTask<List<Language>> GetClientLanguages(CancellationToken cancellationToken)
     {
-        var browserLanguages = await Dispatcher.InvokeAsync(
-            () => JS.InvokeAsync<string[]>(
-                $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
-                cancellationToken).AsTask());
+        var browserLanguages = await JS.InvokeAsync<string[]>(
+            $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages",
+            cancellationToken
+            ).ConfigureAwait(false);
         return browserLanguages
             .Select(x => new Language(x, ParseOrNone.Option))
             .Where(x => !x.IsNone)

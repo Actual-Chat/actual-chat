@@ -8,17 +8,18 @@ using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Redis;
 using Stl.Fusion.Operations.Internal;
-using Stl.Plugins;
 
 namespace ActualChat.Db.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class DbModule : HostModule<DbSettings>
+public sealed class DbModule : HostModule<DbSettings>
 {
-    public DbModule(IPluginInfoProvider.Query _) : base(_) { }
+    private const int CommandTimeout = 3;
 
-    [ServiceConstructor]
-    public DbModule(IPluginHost plugins) : base(plugins) { }
+    private ILogger Log { get; }
+
+    public DbModule(IServiceProvider services) : base(services)
+        => Log = services.LogFor<DbModule>();
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
@@ -32,7 +33,7 @@ public class DbModule : HostModule<DbSettings>
             connectionString = Settings.OverrideDb;
 
         // Replacing variables
-        var instance = Plugins.GetPlugins<CoreModule>().Single().Settings.Instance;
+        var instance = Host.GetModule<CoreModule>().Settings.Instance;
         var contextName = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant();
         connectionString = Variables.Inject(connectionString,
             ("instance", instance),
@@ -54,8 +55,9 @@ public class DbModule : HostModule<DbSettings>
             DbKind = dbKind,
             ConnectionString = connectionStringSuffix,
             ShouldRecreateDb = Settings.ShouldRecreateDb,
-            ShouldVerifyDb = Settings.ShouldVerifyDb,
             ShouldMigrateDb = Settings.ShouldMigrateDb,
+            ShouldRepairDb = Settings.ShouldRepairDb,
+            ShouldVerifyDb = Settings.ShouldVerifyDb,
         };
 
         // Adding services
@@ -72,6 +74,7 @@ public class DbModule : HostModule<DbSettings>
                 break;
             case DbKind.PostgreSql:
                 builder.UseNpgsql(dbInfo.ConnectionString, npgsql => {
+                    npgsql.CommandTimeout(CommandTimeout);
                     npgsql.EnableRetryOnFailure(0);
                     npgsql.MaxBatchSize(1);
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
@@ -107,7 +110,7 @@ public class DbModule : HostModule<DbSettings>
         });
     }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module

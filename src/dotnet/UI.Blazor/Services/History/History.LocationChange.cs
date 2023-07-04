@@ -5,30 +5,22 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
 {
-    private readonly LockedRegionWithExitAction _locationChangeRegion;
+    private readonly NoRecursionRegion _locationChangeRegion;
 
-    private void LocationChange(HistoryItem newItem, Action? stateMutator = null)
+    private void LocationChange(LocationChangedEventArgs eventArgs, bool mustReplace = false)
     {
-        var eventArgs = new LocationChangedEventArgs(newItem.Uri, true);
-        LocationChange(eventArgs, newItem, stateMutator);
-    }
+        using var _1 = _locationChangeRegion.Enter();
+        _whenReadySource.TrySetResult();
+        var historyEntryState = eventArgs.HistoryEntryState;
+        var parsedHistoryEntryState = ItemIdFormatter.Parse(historyEntryState);
+        DebugLog?.LogDebug(
+            "-> LocationChange: {Kind} '{Location}' #{ParsedState} / {UnparsedState}",
+            eventArgs.IsNavigationIntercepted ? "intercepted" : "internal",
+            eventArgs.Location, parsedHistoryEntryState?.Format() ?? "null", historyEntryState);
 
-    private void LocationChange(
-        LocationChangedEventArgs eventArgs,
-        HistoryItem? newItem = null,
-        Action? stateMutator = null)
-    {
-        using var _ = _locationChangeRegion.Enter();
-        if (DebugLog != null) {
-            var intercepted = eventArgs.IsNavigationIntercepted ? "intercepted" : "internal";
-            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-            DebugLog.LogDebug($"-> LocationChange: {intercepted} '{{Location}}' #{{State}}",
-                eventArgs.Location,
-                eventArgs.HistoryEntryState);
-        }
-
+        Action? exitAction = null;
         try {
-            // Saving current state
+            // Saving the current state
             Save();
 
             var uri = _uri = Nav.GetLocalUrl().Value;
@@ -38,69 +30,67 @@ public partial class History
 
             HistoryItem currentItem;
             var locationChangeKind = LocationChangeKind.HistoryMove;
-            var parsedItemId = ItemIdFormatter.Parse(eventArgs.HistoryEntryState);
-            if (parsedItemId is { } itemId && GetItemByIdUnsafe(itemId) is { } existingItem) {
-                currentItem = _currentItem = existingItem;
-                if (!OrdinalEquals(uri, currentItem.Uri)) {
-                    Log.LogWarning(
-                        "LocationChange: Uri mismatch, expected: {Expected}, actual: {Actual} - fixed",
-                        currentItem.Uri,
-                        uri);
-                    currentItem = currentItem.WithUri(uri);
-                    ReplaceItem(ref currentItem);
+            var existingItemId = parsedHistoryEntryState.GetValueOrDefault();
+            var hasValidHistoryEntryState = existingItemId > 0;
+            var existingItem = hasValidHistoryEntryState && GetItemById(existingItemId) is { } item ? item : null;
+            if (existingItem != null) {
+                if (OrdinalEquals(uri, existingItem.Uri)) {
+                    currentItem = _currentItem = existingItem;
+                    if (currentItem.OnNavigation is {IsNone: false} onNavigation) {
+                        DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);
+                        currentItem = currentItem with {OnNavigation = default};
+                        ReplaceItem(ref currentItem);
+                        _locationChangeRegion.ExitAction = onNavigation.Action;
+                        return;
+                    }
                 }
-                if (currentItem.OnNavigation is { IsNone: false } onNavigation) {
-                    DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);
-                    currentItem = currentItem with { OnNavigation = default };
-                    ReplaceItem(ref currentItem);
-                    _locationChangeRegion.ExitAction = onNavigation.Action;
-                    return;
+                else {
+                    // Navigation with keeping state but changing Uri happened
+                    currentItem = _currentItem = existingItem.WithUri(uri);
+                    ReplaceItem(ref currentItem, false);
+                    locationChangeKind = LocationChangeKind.NewUri;
                 }
             }
             else {
                 locationChangeKind = LocationChangeKind.NewUri;
-                currentItem = newItem ?? NewItemUnsafe();
-                AddItem(ref currentItem);
-                _locationChangeRegion.ExitAction = () => {
-                    if (newItem != null)
-                        AddNavigationHistoryEntry(currentItem);
-                    else
-                        ReplaceNavigationHistoryEntry(currentItem);
-                };
-
-                if (stateMutator != null) {
-                    using (_isSaveSuppressed.Change(true))
-                        try {
-                            stateMutator.Invoke();
-                        }
-                        catch (Exception e) {
-                            Log.LogError(e, "LocationChange: New item updater failed");
-                        }
-                    Save();
-                    currentItem = _currentItem;
+                currentItem = hasValidHistoryEntryState ? NewItem(existingItemId) : NewItem();
+                if (mustReplace) {
+                    ReplaceItem(ref currentItem, false);
+                    if (!hasValidHistoryEntryState)
+                        exitAction = () => _ = ReplaceHistoryEntry(currentItem, true);
+                }
+                else {
+                    AddItem(ref currentItem, false);
+                    if (!hasValidHistoryEntryState)
+                        exitAction = () => _ = AddHistoryEntry(currentItem, true);
                 }
             }
-
-            /*
-            if (currentItem.IsIdenticalTo(lastItem)) {
-                DebugLog?.LogDebug("LocationChange: same state as now, nothing to do");
-                return;
-            }
-            */
 
             var transition = new HistoryTransition(currentItem, lastItem, locationChangeKind);
             DebugLog?.LogDebug(
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                $"<- LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
+                $"LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
             Transition(transition);
         }
         finally {
             try {
                 LocationChanged?.Invoke(this, eventArgs);
             }
-            catch (Exception ex) {
-                Log.LogError(ex, "LocationChange: One of LocationChanged handlers failed");
+            catch (Exception e) {
+                Log.LogError(e, "LocationChange: One of LocationChanged handlers failed");
             }
+            try {
+                exitAction?.Invoke();
+            }
+            catch (Exception e) {
+                Log.LogError(e, "LocationChange: exit action failed");
+            }
+            if (parsedHistoryEntryState is { } expectedItemId) {
+                DebugLog?.LogDebug("<- LocationChange: completing #{ExpectedItemId}", expectedItemId);
+                NavigationQueue.TryComplete(expectedItemId);
+            }
+            else
+                DebugLog?.LogDebug("<- LocationChange");
         }
     }
 
@@ -150,7 +140,7 @@ public partial class History
 
         // Special case: we might be at the very beginning of the history,
         // but current state requires us to have "Back" item.
-        var backItem = GetItemByIdUnsafe(item.BackItemId);
+        var backItem = GetItemById(item.BackItemId);
         var mustAddBackItem =
             backItem == null // There is no "back" item in history
             && item.HasBackSteps; // And the state isn't "base"
@@ -160,7 +150,7 @@ public partial class History
         // Adding "Back" item
         if (ReplaceItem(ref item, out backItem)) {
             DebugLog?.LogDebug("Transition: adding Back item");
-            _locationChangeRegion.ExitAction = () => AddNavigationHistoryEntry(item);
+            _locationChangeRegion.ExitAction = () => _ = AddHistoryEntry(item);
         }
         else
             Log.LogWarning("Transition: Back item couldn't be added");

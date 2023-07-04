@@ -12,8 +12,8 @@ namespace ActualChat.Chat;
 public partial class ChatsUpgradeBackend
 {
     // [CommandHandler]
-    public virtual async Task<Chat> CreateAnnouncementsChat(
-        IChatsUpgradeBackend.CreateAnnouncementsChatCommand command,
+    public virtual async Task<Chat> OnCreateAnnouncementsChat(
+        ChatsUpgradeBackend_CreateAnnouncementsChat command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -42,26 +42,26 @@ public partial class ChatsUpgradeBackend
                 continue;
 
             if (hostInfo.IsDevelopmentInstance) {
-                if (email.OrdinalIgnoreCaseEndsWith("actual.chat"))
+                if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
                     userIdByEmail.Add(email, userId);
             }
             else {
-                if (OrdinalIgnoreCaseEquals(email, "alex.yakunin@actual.chat")
-                    || OrdinalIgnoreCaseEquals(email, "alexey.kochetov@actual.chat"))
+                if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
+                    || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
                     userIdByEmail.Add(email, userId);
             }
         }
 
         if (creatorId.IsNone) {
-            if (userIdByEmail.TryGetValue("alex.yakunin@actual.chat", out var temp))
+            if (userIdByEmail.TryGetValue(Constants.Team.Member1Email, out var temp))
                 creatorId = temp;
             else if (userIdByEmail.Count > 0)
                 creatorId = userIdByEmail.First().Value;
         }
         if (creatorId.IsNone)
-            throw StandardError.Constraint("Creator user not found");
+            throw StandardError.Constraint("Creator user not found.");
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId,
+        var changeCommand = new ChatsBackend_Change(chatId,
             null,
             new () {
                 Create = new ChatDiff {
@@ -77,7 +77,7 @@ public partial class ChatsUpgradeBackend
             .Require()
             .ConfigureAwait(false);
 
-        var changeAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+        var changeAnyoneRoleCmd = new RolesBackend_Change(chatId,
             anyoneRole.Id,
             null,
             new () {
@@ -99,7 +99,7 @@ public partial class ChatsUpgradeBackend
             .GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .Require()
             .ConfigureAwait(false);
-        var ownerAuthorIds = ImmutableArray<AuthorId>.Empty;
+        var ownerAuthorIds = ApiArray<AuthorId>.Empty;
         foreach (var userId in userIdByEmail.Values) {
             if (userId == creatorId)
                 continue;
@@ -109,13 +109,13 @@ public partial class ChatsUpgradeBackend
             ownerAuthorIds = ownerAuthorIds.Add(author.Id);
         }
 
-        if (ownerAuthorIds.Length > 0) {
-            var changeOwnerRoleCmd = new IRolesBackend.ChangeCommand(chatId,
+        if (ownerAuthorIds.Count > 0) {
+            var changeOwnerRoleCmd = new RolesBackend_Change(chatId,
                 ownerRole.Id,
                 null,
                 new () {
                     Update = new RoleDiff {
-                        AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
+                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
                             AddedItems = ownerAuthorIds,
                         }
                     },
@@ -127,7 +127,7 @@ public partial class ChatsUpgradeBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateDefaultChat(IChatsUpgradeBackend.CreateDefaultChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnCreateDefaultChat(ChatsUpgradeBackend_CreateDefaultChat command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             // This command changes a lot of things directly, so we invalidate everything here
@@ -143,7 +143,7 @@ public partial class ChatsUpgradeBackend
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);
         admin.Require(AccountFull.MustBeAdmin);
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId, null, new() {
+        var changeCommand = new ChatsBackend_Change(chatId, null, new() {
             Create = new ChatDiff {
                 Title = "The Actual One",
                 IsPublic = true,
@@ -241,7 +241,7 @@ public partial class ChatsUpgradeBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
                     .ConfigureAwait(false);
                 var id = new ChatEntryId(chatId, ChatEntryKind.Audio, localId, AssumeValid.Option);
-                var textToTimeMap = ConvertOldTextToTimeMap(
+                var timeMap = ConvertOldTextToTimeMap(
                     "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
                 var audioEntry = new DbChatEntry {
                     Id = id,
@@ -271,7 +271,7 @@ public partial class ChatsUpgradeBackend
                     Content =
                         "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал "
                         + "открыв мне чудо на Земле",
-                    TextToTimeMap = textToTimeMap,
+                    TimeMap = timeMap,
                     AudioEntryId = audioEntry.LocalId,
                     AuthorId = author.Id,
                 };
@@ -288,7 +288,7 @@ public partial class ChatsUpgradeBackend
                 lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
                 lastEndsAt = lastBeginsAt + duration;
 
-                var textToTimeMap = ConvertOldTextToTimeMap(
+                var timeMap = ConvertOldTextToTimeMap(
                     "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}");
                 var localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
@@ -322,7 +322,7 @@ public partial class ChatsUpgradeBackend
                     Content =
                         "утро в декабре туманом окутана под ногами белый снег предатель виден каждый "
                         + "шаг и холоду лютому слишком просто сладить с тобой",
-                    TextToTimeMap = textToTimeMap,
+                    TimeMap = timeMap,
                     AudioEntryId = audioEntry.LocalId,
                     AuthorId = author.Id,
                 };
@@ -357,5 +357,124 @@ public partial class ChatsUpgradeBackend
             textToTimeMapJson = NewtonsoftJsonSerialized.New(newMap).Data;
             return textToTimeMapJson;
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Chat> OnCreateFeedbackTemplateChat(ChatsUpgradeBackend_CreateFeedbackTemplateChat command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var chatId = Constants.Chat.FeedbackTemplateChatId;
+        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
+        var hostInfo = Services.GetRequiredService<HostInfo>();
+        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
+
+        var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        var creatorId = UserId.None;
+
+        var userIdByEmail = new Dictionary<string, UserId>(StringComparer.OrdinalIgnoreCase);
+        foreach (var userId in userIds) {
+            var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                continue;
+
+            var user = account.User;
+            var email = user.GetEmail();
+            if (email.IsNullOrEmpty())
+                continue;
+
+            if (hostInfo.IsDevelopmentInstance) {
+                if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
+                    userIdByEmail.Add(email, userId);
+            }
+            else {
+                if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
+                    || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
+                    userIdByEmail.Add(email, userId);
+            }
+        }
+
+        if (creatorId.IsNone) {
+            if (userIdByEmail.TryGetValue(Constants.Team.Member1Email, out var temp))
+                creatorId = temp;
+            else if (userIdByEmail.Count > 0)
+                creatorId = userIdByEmail.First().Value;
+        }
+        if (creatorId.IsNone) {
+            if (admin.Id.IsNone)
+                throw StandardError.Constraint("Creator user not found");
+
+            creatorId = admin.Id;
+        }
+
+        var changeCommand = new ChatsBackend_Change(chatId,
+            null,
+            new () {
+                Create = new ChatDiff {
+                    Title = "Actual.chat Feedback",
+                    IsPublic = true,
+                    IsTemplate = true,
+                    AllowGuestAuthors = true,
+                    Kind = ChatKind.Group,
+                },
+            },
+            creatorId);
+        var chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var anyoneRole = await RolesBackend
+            .GetSystem(chatId, SystemRole.Anyone, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        var changeAnyoneRoleCmd = new RolesBackend_Change(chatId,
+            anyoneRole.Id,
+            null,
+            new () {
+                Update = new RoleDiff() {
+                    Permissions = ChatPermissions.Read,
+                },
+            });
+        await Commander.Call(changeAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+
+        // Join owners
+        var authorByUserId = new Dictionary<UserId, AuthorFull>();
+        foreach (var userId in userIdByEmail.Values) {
+            Log.LogInformation("Joining {UserId}", userId);
+            var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
+            authorByUserId.Add(userId, author);
+        }
+
+        var ownerRole = await RolesBackend
+            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        var ownerAuthorIds = ApiArray<AuthorId>.Empty;
+        foreach (var userId in userIdByEmail.Values) {
+            if (userId == creatorId)
+                continue;
+            if (!authorByUserId.TryGetValue(userId, out var author))
+                continue;
+
+            ownerAuthorIds = ownerAuthorIds.Add(author.Id);
+        }
+
+        if (ownerAuthorIds.Count > 0) {
+            var changeOwnerRoleCmd = new RolesBackend_Change(chatId,
+                ownerRole.Id,
+                null,
+                new () {
+                    Update = new RoleDiff {
+                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                            AddedItems = ownerAuthorIds,
+                        }
+                    },
+                });
+            await Commander.Call(changeOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
+        }
+
+        return chat;
     }
 }

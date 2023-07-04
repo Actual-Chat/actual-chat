@@ -5,22 +5,53 @@ public partial class History
     public HistoryChangeTracker TrackChanges(Action<HistoryItem> onChange)
         => new HistoryChangeTracker(this, onChange).Start();
 
-    public CancellationTokenSource TrackChangesAndCancel(Func<HistoryItem, bool> whenPredicate)
+    public Task When(Func<HistoryItem, bool> predicate, CancellationToken cancellationToken = default)
     {
-        var cts = new CancellationTokenSource();
+        var tcs = TaskCompletionSourceExt.New<Unit>();
+        if (cancellationToken.IsCancellationRequested) {
+            tcs.TrySetCanceled(cancellationToken);
+            return tcs.Task;
+        }
+        if (predicate.Invoke(CurrentItem)) {
+            tcs.TrySetResult(default);
+            return tcs.Task;
+        }
+
+        var cts = cancellationToken.CreateLinkedTokenSource();
         var tracker = new HistoryChangeTracker(this,
             item => {
-                if (whenPredicate.Invoke(item) && !cts.IsCancellationRequested) {
+                if (predicate.Invoke(item)) {
+                    tcs.TrySetResult(default);
+                    cts.CancelAndDisposeSilently();
+                }
+            });
+        cts.Token.Register(() => {
+            tcs.TrySetCanceled();
+            tracker.Dispose();
+        });
+        tracker.Start();
+        return tcs.Task;
+    }
+
+    public void CancelWhen(CancellationTokenSource cancellationTokenSource, Func<HistoryItem, bool> predicate)
+    {
+        if (predicate.Invoke(CurrentItem)) {
+            cancellationTokenSource.Cancel();
+            return;
+        }
+
+        var tracker = new HistoryChangeTracker(this,
+            item => {
+                if (predicate.Invoke(item) && !cancellationTokenSource.IsCancellationRequested) {
                     try {
-                        cts.Cancel();
+                        cancellationTokenSource.Cancel();
                     }
                     catch {
                         // Intended
                     }
                 }
             });
-        cts.Token.Register(() => tracker.Dispose());
+        cancellationTokenSource.Token.Register(() => tracker.Dispose());
         tracker.Start();
-        return cts;
     }
 }

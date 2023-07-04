@@ -1,13 +1,14 @@
 using ActualChat.Users;
+using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract]
-public sealed record AuthorRules(
-    [property: DataMember] Symbol ChatId,
-    [property: DataMember] AuthorFull? Author,
-    [property: DataMember] AccountFull Account,
-    [property: DataMember] ChatPermissions Permissions = 0
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record AuthorRules(
+    [property: DataMember, MemoryPackOrder(0)] Symbol ChatId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorFull? Author,
+    [property: DataMember, MemoryPackOrder(2)] AccountFull Account,
+    [property: DataMember, MemoryPackOrder(3)] ChatPermissions Permissions = default
     ) : IRequirementTarget
 {
     public static Requirement<AuthorRules> MustExist { get; } = Requirement.New(

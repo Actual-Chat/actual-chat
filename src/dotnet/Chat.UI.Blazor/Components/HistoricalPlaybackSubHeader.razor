@@ -81,9 +81,9 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ILiveTime LiveTime { get; init; } = null!;
+    [Inject] private LiveTime LiveTime { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
 
@@ -116,14 +116,13 @@
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken);
-        var authorSids = ImmutableArray<string>.Empty;
+        var authorSids = ApiArray<string>.Empty;
         Moment? playingAt = null;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
             if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
                 var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
-                if (!authorSids.Contains(authorId))
-                    authorSids = authorSids.Add(authorId);
+                authorSids = authorSids.TryAdd(authorId);
             }
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
@@ -206,7 +205,7 @@
         public string ChatTitle { get; init; } = "";
         public ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
-        public ImmutableArray<string> AuthorSids { get; init; }
+        public ApiArray<string> AuthorSids { get; init; }
     }
 
     internal class RewindController

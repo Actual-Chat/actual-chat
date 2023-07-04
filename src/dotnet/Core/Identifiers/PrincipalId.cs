@@ -1,38 +1,42 @@
 using System.ComponentModel;
 using ActualChat.Internal;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat;
 
-[DataContract]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(SymbolIdentifierJsonConverter<PrincipalId>))]
 [Newtonsoft.Json.JsonConverter(typeof(SymbolIdentifierNewtonsoftJsonConverter<PrincipalId>))]
 [TypeConverter(typeof(SymbolIdentifierTypeConverter<PrincipalId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-public readonly struct PrincipalId : ISymbolIdentifier<PrincipalId>
+public readonly partial struct PrincipalId : ISymbolIdentifier<PrincipalId>
 {
     public static PrincipalId None => default;
 
-    [DataMember(Order = 0)]
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public PrincipalKind Kind { get; }
     private AuthorId AuthorId { get; }
     private UserId UserId { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public PrincipalId(Symbol id) => this = Parse(id);
-    public PrincipalId(string? id) => this = Parse(id);
-    public PrincipalId(string? id, ParseOrNone _) => ParseOrNone(id);
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    public PrincipalId(Symbol id)
+        => this = Parse(id);
+    public PrincipalId(string? id)
+        => this = Parse(id);
+    public PrincipalId(string? id, ParseOrNone _)
+        => this = ParseOrNone(id);
 
     public PrincipalId(AuthorId authorId, AssumeValid _)
     {

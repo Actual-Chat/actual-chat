@@ -121,11 +121,11 @@ public class SharedResourcePoolTest : TestBase
 
     private sealed class Resource : IDisposable
     {
-        private readonly TaskSource<Unit> _whenDisposed = TaskSource.New<Unit>(false);
+        private readonly TaskCompletionSource _whenDisposed = new();
 
         public Task WhenDisposed => _whenDisposed.Task;
 
         public void Dispose()
-            => _whenDisposed.TrySetResult(default);
+            => _whenDisposed.TrySetResult();
     }
 }

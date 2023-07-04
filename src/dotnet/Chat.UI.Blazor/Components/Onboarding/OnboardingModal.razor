@@ -1,12 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using Stl.Extensibility
 @implements IModalView<OnboardingModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
 <DialogFrame
     Class="onboarding-modal"
-    HasHeader="false"
-    NoNarrowHeader="true">
+    HasHeader="false">
 
     <Body>
 

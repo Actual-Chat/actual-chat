@@ -10,12 +10,12 @@
 <SideNav
     Side="SideNavSide.Right"
     IsOpen="@m.IsVisible"
-    VisibilityChanged="@(isOpen => RightPanelUI.SetIsVisible(isOpen))">
-    <div class="flex-y md:w-80 h-full border-l border-bg-04">
-        <RightPanelHeader/>
-        <div class="flex flex-col overflow-y-auto custom-scrollbar">
-            <RightPanelChatInfo/>
-            <div class="flex flex-col border-t-4 border-bg-04">
+    VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
+    <div class="right-chat-panel">
+        <RightPanelHeader Chat="@Chat"/>
+        <div class="c-panel-content">
+            <RightPanelChatInfo Chat="@Chat"/>
+            <div class="c-panel-tabs">
                 @if (m.ShowMembers || m.EnableIncompleteUI) {
                     <TabPanel
                         @key="@Chat.Id.Value"
@@ -24,7 +24,7 @@
 
                         @if (m.ShowMembers) {
                             <Tab @key="@("members")" Id="members" Title="Members" Order="0">
-                                <AuthorList/>
+                                <AuthorList Chat="@Chat"/>
                             </Tab>
                         }
                         @if (m.EnableIncompleteUI) {
@@ -46,12 +46,12 @@
 </SideNav>
 
 @code {
-    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -62,10 +62,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
+        var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMembers = rules.CanSeeMembers();
-        var enableIncompleteUI = await Features.Get<UIFeatures.EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new () {
             IsVisible = isVisible,
             ShowMembers = showMembers,

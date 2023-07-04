@@ -1,4 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@implements IAsyncDisposable
 
 <div class="modal-chrome-wrapper">
     <div class="modal-chrome-overlay" @onclick="@OnCloseClick"></div>
@@ -8,10 +10,26 @@
 </div>
 
 @code {
+    private IAsyncDisposable? _escapeSubscription;
+
+    [Inject] private Escapist Escapist { get; init; } = null!;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool HasEscapeHandler { get; set; } = true;
+
 
     private void OnCloseClick()
         => _ = Modal.Close();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && HasEscapeHandler)
+            _escapeSubscription = await Escapist.Subscribe(() => _ = Modal.Close());
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_escapeSubscription != null)
+            await _escapeSubscription.DisposeAsync().ConfigureAwait(false);
+    }
 }

@@ -40,16 +40,16 @@ public class ChatActivityTest : AppHostTestBase
             _ = Task.Run(() => AddChatEntries(session, authors, ct), ct);
 
             await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
-            await cActiveAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            await cActiveAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
 
             await cActiveChatEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            cActiveAuthorIds = await cActiveAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
+            cActiveAuthorIds = await cActiveAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
             var authorId = cActiveAuthorIds.Value.Single();
             var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorActive(authorId, ct));
             await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
 
             await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            await cActiveAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            await cActiveAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             await cIsAuthorActive.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
         }
         finally {
@@ -75,7 +75,7 @@ public class ChatActivityTest : AppHostTestBase
             ClientSideBeginsAt = clock.Now,
         };
         var commander = authors.GetCommander();
-        var createCommand = new IChatsBackend.UpsertEntryCommand(entry);
+        var createCommand = new ChatsBackend_UpsertEntry(entry);
         entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
 
         await testClock.Delay(2000, cancellationToken);
@@ -84,7 +84,7 @@ public class ChatActivityTest : AppHostTestBase
             EndsAt = clock.Now,
             StreamId = Symbol.Empty,
         };
-        var completeCommand = new IChatsBackend.UpsertEntryCommand(entry);
+        var completeCommand = new ChatsBackend_UpsertEntry(entry);
         await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

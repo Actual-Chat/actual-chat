@@ -1,57 +1,70 @@
 using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatAudioUI : WorkerBase
+public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
-    private readonly TaskSource<Unit> _whenEnabledSource;
+    private readonly IMutableState<Moment?> _audioStoppedAt;
+    private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
+    private AudioSettings? _audioSettings;
+    private AudioRecorder? _audioRecorder;
+    private ChatPlayers? _chatPlayers;
+    private IChats? _chats;
+    private ActiveChatsUI? _activeChatsUI;
+    private TuneUI? _tuneUI;
+    private LanguageUI? _languageUI;
+    private InteractiveUI? _interactiveUI;
+    private DeviceAwakeUI? _deviceAwakeUI;
+    private ChatEditorUI? _chatEditorUI;
+    private UICommander? _uiCommander;
+
+    private IServiceProvider Services { get; }
+    private ILogger Log { get; }
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     private Session Session { get; }
-    private AudioSettings AudioSettings { get; }
-    private AudioRecorder AudioRecorder { get; }
-    private ChatPlayers ChatPlayers { get; }
-    private IChats Chats { get; }
-    private ActiveChatsUI ActiveChatsUI { get; }
-    private TuneUI TuneUI { get; }
-    private ErrorUI ErrorUI { get; }
-    private LanguageUI LanguageUI { get; }
-    private InteractiveUI InteractiveUI { get; }
-    private UICommander UICommander { get; }
+    private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
+    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
+    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
+    private LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
+    private InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
+    private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
+    private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
+    private UICommander UICommander => _uiCommander ??= Services.UICommander();
     private MomentClockSet Clocks { get; }
-    private ILogger Log { get; }
 
     private Moment Now => Clocks.SystemClock.Now;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
-    public Task<Unit> WhenEnabled => _whenEnabledSource.Task;
+    public Task WhenEnabled => _whenEnabledSource.Task;
+    public IState<Moment?> AudioStoppedAt => _audioStoppedAt;
 
     public ChatAudioUI(IServiceProvider services)
     {
-        Session = services.GetRequiredService<Session>();
-        AudioSettings = services.GetRequiredService<AudioSettings>();
-        AudioRecorder = services.GetRequiredService<AudioRecorder>();
-        ChatPlayers = services.GetRequiredService<ChatPlayers>();
-        Clocks = services.Clocks();
-        Chats = services.GetRequiredService<IChats>();
-        LanguageUI = services.GetRequiredService<LanguageUI>();
-        InteractiveUI = services.GetRequiredService<InteractiveUI>();
-        TuneUI = services.GetRequiredService<TuneUI>();
-        ErrorUI = services.GetRequiredService<ErrorUI>();
-        ActiveChatsUI = services.GetRequiredService<ActiveChatsUI>();
-        UICommander = services.UICommander();
+        Services = services;
         Log = services.LogFor(GetType());
 
-        _whenEnabledSource = TaskSource.New<Unit>(true);
+        Session = services.GetRequiredService<Session>();
+        Clocks = services.Clocks();
+
         // Read entry states from other windows / devices are delayed by 1s
-        _stopRecordingAt = services.StateFactory().NewMutable<Moment?>();
-        Start();
+        var stateFactory = services.StateFactory();
+        _stopRecordingAt = stateFactory.NewMutable<Moment?>();
+        _audioStoppedAt = stateFactory.NewMutable<Moment?>();
     }
+
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
     // ChatAudioUI is disabled until the moment user visits ChatPage
     public void Enable()
-        => _whenEnabledSource.TrySetResult(default);
+        => _whenEnabledSource.TrySetResult();
 
     [ComputeMethod] // Synced
     public virtual Task<ChatAudioState> GetState(ChatId chatId)
@@ -75,38 +88,36 @@ public partial class ChatAudioUI : WorkerBase
     public ValueTask SetListeningState(ChatId chatId, bool mustListen)
     {
         if (chatId.IsNone)
-            return ValueTask.CompletedTask;
+            return default;
 
         var now = Now;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
-            var oldActiveChats = activeChats;
             if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
                 chat = chat with {
                     IsListening = mustListen,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
-                activeChats = activeChats.AddOrUpdate(chat);
+                activeChats = activeChats.AddOrReplace(chat);
             }
             else if (mustListen)
                 activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now));
-            if (oldActiveChats != activeChats)
-                UICommander.RunNothing();
-
             return activeChats;
         });
     }
 
-    public ValueTask ClearListeningState()
+    public ValueTask ClearListeningChats()
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
-            var oldActiveChats = activeChats;
-            foreach (var chat in oldActiveChats) {
-                if (chat.IsListening)
-                    activeChats = activeChats.AddOrUpdate(chat with { IsListening = false });
+            var newActiveChats = new List<ActiveChat>(activeChats.Count);
+            var isUpdated = false;
+            foreach (var chat in activeChats) {
+                if (chat.IsListening) {
+                    newActiveChats.Add(chat with { IsListening = false });
+                    isUpdated = true;
+                }
+                else
+                    newActiveChats.Add(chat);
             }
-            if (oldActiveChats != activeChats)
-                UICommander.RunNothing();
-
-            return activeChats;
+            return isUpdated ? new ApiArray<ActiveChat>(newActiveChats) : activeChats;
         });
 
     [ComputeMethod] // Synced
@@ -120,21 +131,23 @@ public partial class ChatAudioUI : WorkerBase
                 return activeChats;
 
             if (!oldChat.ChatId.IsNone)
-                activeChats = activeChats.AddOrUpdate(oldChat with {
+                activeChats = activeChats.AddOrReplace(oldChat with {
                     IsRecording = false,
                     Recency = Now,
                 });
             if (!chatId.IsNone) {
                 var newChat = new ActiveChat(chatId, true, true, Now);
-                activeChats = activeChats.AddOrUpdate(newChat);
-                TuneUI.Play("begin-recording");
+                activeChats = activeChats.AddOrReplace(newChat);
+                _ = TuneUI.Play("begin-recording");
             }
             else
-                TuneUI.Play("end-recording");
-
-            UICommander.RunNothing();
+                _ = TuneUI.Play("end-recording");
             return activeChats;
         });
+
+    [ComputeMethod] // Synced
+    public virtual Task<bool> IsAudioOn()
+        => Task.FromResult(ActiveChatsUI.ActiveChats.Value.Any(c => c.IsRecording || c.IsListening));
 
     [ComputeMethod]
     public virtual async Task<RealtimePlaybackState?> GetExpectedRealtimePlaybackState()

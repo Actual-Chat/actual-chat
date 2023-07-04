@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat;
+using ActualChat.Chat;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
@@ -12,6 +12,7 @@ using Stl.Reflection;
 #pragma warning disable MA0004
 #pragma warning disable VSTHRD002
 #pragma warning disable CA1847
+#pragma warning disable CS0162
 
 namespace ActualChat.Users.Migrations
 {
@@ -26,15 +27,16 @@ namespace ActualChat.Users.Migrations
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {
-            var dbInitializer = DbInitializer.Get<UsersDbInitializer>();
-            var chatDbInitializer = await DbInitializer.Get<ChatDbInitializer>().CompleteEarlierMigrations(this);
+            return; // Obsolete: applied to all of our DBs
+
+            var dbInitializer = DbInitializer.GetCurrent<UsersDbInitializer>();
+            var chatDbInitializer = await DbInitializer.GetOther<ChatDbInitializer>().CompleteEarlierMigrations(this);
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();
-            var versionGenerator = dbInitializer.DbHub.VersionGenerator;
 
-            using var dbContext = dbInitializer.DbHub.CreateDbContext(true);
-            using var chatDbContext = chatDbInitializer.DbHub.CreateDbContext(true);
+            using var dbContext = dbInitializer.CreateDbContext(true);
+            using var chatDbContext = chatDbInitializer.CreateDbContext(true);
 
             var dbAvatars = await dbContext.Avatars
                 .Where(a => (a.UserId ?? "").Contains(":"))

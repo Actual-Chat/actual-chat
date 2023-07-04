@@ -2,7 +2,7 @@ using System.Text;
 
 namespace ActualChat.Kubernetes;
 
-public record KubeEndpoint(ImmutableArray<string> Addresses, bool IsReady)
+public record KubeEndpoint(ApiArray<string> Addresses, bool IsReady)
 {
     protected virtual bool PrintMembers(StringBuilder builder)
     {

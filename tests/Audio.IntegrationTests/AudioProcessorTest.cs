@@ -30,9 +30,8 @@ public class AudioProcessorTest : AppHostTestBase
         if (mustSetUserLanguageSettings)
             await kvas.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
 
-        var audioRecord = new AudioRecord(
-            session, Constants.Chat.DefaultChatId,
-            CpuClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = AudioRecord.New(session, Constants.Chat.DefaultChatId,
+            CpuClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         await audioProcessor.ProcessAudio(audioRecord, 333, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
@@ -61,7 +60,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -73,7 +72,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
             () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
@@ -109,7 +108,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -121,7 +120,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -175,7 +174,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -187,7 +186,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
         await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -240,7 +239,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -250,7 +249,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         using var cts = new CancellationTokenSource();
 
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readSizeTask = BackgroundTask.Run(
             () => ReadAudio(audioRecord.Id, audioStreamer, default, ctsToken),
@@ -280,7 +279,7 @@ public class AudioProcessorTest : AppHostTestBase
                 Primary = Languages.Russian,
             });
 
-        var chat = await commander.Call(new IChats.ChangeCommand(session, default, null, new() {
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
                 Title = "Test",
                 Kind = ChatKind.Group,
@@ -290,7 +289,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         using var cts = new CancellationTokenSource();
 
-        var audioRecord = new AudioRecord(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds);
+        var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readSizeTask = BackgroundTask.Run(
             () => ReadAudio(audioRecord.Id, audioStreamer, TimeSpan.FromSeconds(1), ctsToken),
@@ -314,16 +313,18 @@ public class AudioProcessorTest : AppHostTestBase
         string audioRecordId,
         ITranscriptStreamer transcriptStreamer)
     {
-        var totalLength = 0;
-        // TODO(AK): we need to figure out how to notify consumers about new streamId - with new ChatEntry?
         var audioStreamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
-        var transcriptStreamId = TranscriptSegment.GetStreamId(audioStreamId, 0);
+        var transcriptStreamId = audioStreamId;
         var diffs = transcriptStreamer.GetTranscriptDiffStream(transcriptStreamId, CancellationToken.None);
+        var transcript = Transcript.Empty;
+        var length = 0;
         await foreach (var diff in diffs) {
-            Out.WriteLine(diff.Text);
-            totalLength += diff.Length;
+            transcript += diff;
+            Out.WriteLine($"TextDiff: {diff.TextDiff}");
+            Out.WriteLine($"Transcript: {transcript}");
+            length = transcript.Length;
         }
-        return totalLength;
+        return length;
     }
 
     private static async Task<int> ReadAudio(
@@ -363,10 +364,10 @@ public class AudioProcessorTest : AppHostTestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var isWebMStream = fileName.Extension == ".webm";
-        var streamAdapter = isWebMStream
-            ? (IAudioStreamAdapter)new WebMStreamAdapter(MomentClockSet.Default, log)
-            : new ActualOpusStreamAdapter(MomentClockSet.Default, log);
-        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        var converter = isWebMStream
+            ? (IAudioStreamConverter)new WebMStreamConverter(MomentClockSet.Default, log)
+            : new ActualOpusStreamConverter(MomentClockSet.Default, log);
+        var audio = await converter.FromByteStream(byteStream, CancellationToken.None);
         if (!withDelay)
             return audio;
 

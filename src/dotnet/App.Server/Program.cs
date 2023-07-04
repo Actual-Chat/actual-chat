@@ -1,7 +1,6 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.App.Services;
 using Grpc.Core;
 
 namespace ActualChat.App.Server;
@@ -11,12 +10,13 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         Tracer.Default =
-#if DEBUG || DEBUG_MAUI
+#if DEBUG
             new Tracer("Server", x => Console.WriteLine("@ " + x.Format()));
 #else
             Tracer.None;
 #endif
 
+        FusionSettings.Mode = FusionMode.Server;
         Console.OutputEncoding = Encoding.UTF8;
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;
@@ -39,10 +39,10 @@ internal static class Program
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
 
-        await appHost.Initialize().ConfigureAwait(false);
+        await appHost.InvokeDbInitializers().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
 
-        // we preserve default thread pool settings only if they are bigger of our minimals
+        // We preserve default thread pool settings only if they are bigger of our minimals
         static void AdjustThreadPool()
         {
             var (maxWorker, maxIO) = (16384, 16384);

@@ -2,7 +2,8 @@ namespace ActualChat;
 
 public static class CancellationTokenExt
 {
-    public static CancellationTokenSource CancelledTokenSource { get; }
+    private static CancellationTokenSource CancelledTokenSource { get; }
+
     public static CancellationToken Cancelled { get; }
 
     static CancellationTokenExt()

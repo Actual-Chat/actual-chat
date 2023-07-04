@@ -86,6 +86,7 @@ body.hoverable .playable-text-markup > span:hover {
 .preformatted-text-markup {
     @apply bg-02;
     @apply whitespace-pre-wrap;
+    @apply text-sm;
 }
 
 .code-block-markup {
@@ -96,7 +97,8 @@ body.hoverable .playable-text-markup > span:hover {
     @apply block;
     @apply p-1 px-1.5;
     @apply rounded-l border-0 border-l-4 bg-02;
-    @apply overflow-y-hidden overflow-x-auto custom-scrollbar-x
+    @apply overflow-y-hidden overflow-x-auto custom-scrollbar-x;
+    @apply text-sm;
     /*@apply whitespace-pre-wrap;*/
 }
 

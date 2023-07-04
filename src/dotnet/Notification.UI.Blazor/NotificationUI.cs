@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
@@ -9,32 +8,38 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 {
     private readonly object _lock = new();
     private readonly IMutableState<PermissionState> _state;
-    private readonly TaskSource<Unit> _whenReady;
-    private string? _deviceId;
+    private readonly IMutableState<string?> _deviceId;
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
 
     private IDeviceTokenRetriever DeviceTokenRetriever { get; }
     private History History { get; }
+    private AutoNavigationUI AutoNavigationUI { get; }
     private Session Session => History.Session;
     private HostInfo HostInfo => History.HostInfo;
     private UrlMapper UrlMapper => History.UrlMapper;
     private Dispatcher Dispatcher => History.Dispatcher;
     private IJSRuntime JS => History.JS;
     private UICommander UICommander { get; }
+    private ILogger Log { get; }
 
     public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
+    // ReSharper disable once InconsistentlySynchronizedField
+    public IState<string?> DeviceId => _deviceId;
 
     public NotificationUI(IServiceProvider services)
     {
         History = services.GetRequiredService<History>();
+        AutoNavigationUI = services.GetRequiredService<AutoNavigationUI>();
         DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
         UICommander = services.GetRequiredService<UICommander>();
+        Log = services.LogFor(GetType());
 
-        _state = services.StateFactory().NewMutable<PermissionState>();
-        _whenReady = TaskSource.New<Unit>(true);
+        var stateFactory = services.StateFactory();
+        _state = stateFactory.NewMutable(default(PermissionState), nameof(State));
+        _deviceId = stateFactory.NewMutable(default(string?), nameof(DeviceId));
 
         WhenInitialized = Initialize();
-
 
         async Task Initialize()
         {
@@ -43,50 +48,31 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
                 await JS.InvokeVoidAsync(
                     $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init",
                     backendRef,
-                    HostInfo.AppKind.ToString());
+                    HostInfo.AppKind.ToString()).ConfigureAwait(false);
             }
             else if (HostInfo.AppKind == AppKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
                 var notificationPermissions = services.GetRequiredService<INotificationPermissions>();
-                var permissionState = await notificationPermissions.GetNotificationPermissionState(CancellationToken.None);
+                var permissionState = await notificationPermissions.GetNotificationPermissionState(CancellationToken.None).ConfigureAwait(false);
                 UpdateNotificationStatus(permissionState);
             }
 
-            await _whenReady.Task.ConfigureAwait(false);
+            await _whenReadySource.Task.ConfigureAwait(false);
         }
-    }
-
-
-    [ComputeMethod]
-    public virtual async Task<string?> GetDeviceId()
-    {
-        await WhenInitialized;
-
-        lock (_lock)
-            return _deviceId;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<bool> IsDeviceRegistered()
-    {
-        await WhenInitialized;
-
-        lock (_lock)
-            return _deviceId != null;
     }
 
     public async Task EnsureDeviceRegistered(CancellationToken cancellationToken)
     {
-        if (_deviceId != null)
+        // ReSharper disable once InconsistentlySynchronizedField
+        if (_deviceId.Value != null)
             return;
-
         lock (_lock)
-            if (_deviceId != null)
+            if (_deviceId.Value != null)
                 return;
 
-        var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken);
+        var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
         if (deviceId != null)
-            _ = RegisterDevice(deviceId, cancellationToken);
+            await RegisterDevice(deviceId, cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask RegisterRequestNotificationHandler(ElementReference reference)
@@ -109,28 +95,15 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         => Task.CompletedTask;
 
     [JSInvokable]
-    public Task HandleNotificationNavigation(string url)
+    public void HandleNotificationNavigation(string absoluteUrl)
     {
-        // Called from MainActivity, i.e. unclear if it's running in Blazor Dispatcher
-        Dispatcher.InvokeAsync(() => {
-            var origin = UrlMapper.BaseUrl.TrimEnd('/');
-            if (url.IsNullOrEmpty() || !url.OrdinalStartsWith(origin))
-                return;
+        // This method can be invoked from any synchronization context
+        if (LocalUrl.FromAbsolute(absoluteUrl, UrlMapper) is not { } localUrl)
+            return;
+        if (!localUrl.IsChat())
+            return;
 
-            var chatPageRe = new Regex($"^{Regex.Escape(origin)}/chat/(?<chatid>[a-z0-9-]+)(?:#(?<entryid>)\\d+)?");
-            var match = chatPageRe.Match(url);
-            if (!match.Success)
-                return;
-
-            // Take relative URL to eliminate difference between web app and MAUI app
-            var relativeUrl = url[origin.Length..];
-
-            var chatIdGroup = match.Groups["chatid"];
-            if (chatIdGroup.Success)
-                History.NavigateTo(relativeUrl);
-        });
-        return Task.CompletedTask;
-
+        _ = AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
     public void UpdateNotificationStatus(PermissionState newState)
@@ -140,11 +113,11 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState == PermissionState.Granted)
             _ = EnsureDeviceRegistered(CancellationToken.None);
 
-        _whenReady.SetResult(Unit.Default);
+        _whenReadySource.SetResult();
     }
 
     [JSInvokable]
-    public Task UpdateNotificationStatus(string permissionState)
+    public async Task UpdateNotificationStatus(string permissionState)
     {
         var newState = permissionState switch {
             "granted" => PermissionState.Granted,
@@ -154,10 +127,9 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState != _state.Value)
             _state.Value = newState;
         if (newState == PermissionState.Granted)
-            _ = EnsureDeviceRegistered(CancellationToken.None);
+            await EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
 
-        _whenReady.SetResult(Unit.Default);
-        return Task.CompletedTask;
+        _whenReadySource.SetResult();
     }
 
     public bool IsAlreadyThere(ChatId chatId)
@@ -165,13 +137,9 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     private async Task RegisterDevice(string deviceId, CancellationToken cancellationToken) {
         lock (_lock)
-            _deviceId = deviceId;
-        using (Computed.Invalidate()) {
-            _ = GetDeviceId();
-            _ = IsDeviceRegistered();
-        }
+            _deviceId.Value = deviceId;
 
-        var command = new INotifications.RegisterDeviceCommand(Session, deviceId, DeviceType.WebBrowser);
-        await UICommander.Run(command, cancellationToken);
+        var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
+        await UICommander.Run(command, cancellationToken).ConfigureAwait(false);
     }
 }

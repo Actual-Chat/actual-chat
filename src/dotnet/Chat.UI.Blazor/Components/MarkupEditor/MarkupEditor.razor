@@ -10,7 +10,7 @@
 </div>
 
 @code {
-    private TaskSource<Unit> _whenReadySource;
+    private TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     private MentionListManager? _lastMentionListManager;
     private Action<MentionSearchResult> _onMentionSelected;
 
@@ -37,7 +37,6 @@
     public Task WhenReady => _whenReadySource.Task;
 
     public MarkupEditor() {
-        _whenReadySource = TaskSource.New<Unit>(true);
         _onMentionSelected = mention => _ = InsertMention(mention);
     }
 
@@ -69,7 +68,7 @@
             Ref,
             BlazorRef,
             Autofocus);
-        _whenReadySource.TrySetResult(default);
+        _whenReadySource.TrySetResult();
     }
 
     public async ValueTask<string> GetText() {
@@ -79,10 +78,14 @@
         return text;
     }
 
-    public async ValueTask SetText(string text, bool mustFocus = false) {
-        var markup = MarkupParser.Parse(text);
-        markup = await MentionNamer.Apply(markup, default).ConfigureAwait(false);
-        await SetMarkup(markup, mustFocus);
+    public async ValueTask SetText(string? text, bool mustFocus = false) {
+        if (text.IsNullOrEmpty())
+            await Clear(mustFocus);
+        else {
+            var markup = MarkupParser.Parse(text);
+            markup = await MentionNamer.Apply(markup, default).ConfigureAwait(false);
+            await SetMarkup(markup, mustFocus);
+        }
     }
 
     public async ValueTask SetMarkup(Markup markup, bool mustFocus = false) {
@@ -114,7 +117,7 @@
         if (mention == null)
             return;
 
-        var html = HtmlConverter.Format(new MentionMarkup(mention.Id, mention.Text)) + " ";
+        var html = HtmlConverter.Format(new MentionMarkup(mention.MentionId, mention.Text)) + " ";
         await JSRef.InvokeVoidAsync("insertHtml", html, "@");
     }
 

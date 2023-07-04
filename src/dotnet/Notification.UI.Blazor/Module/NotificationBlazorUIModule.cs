@@ -1,20 +1,17 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Plugins;
 
 namespace ActualChat.Notification.UI.Blazor.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
+public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 {
     public static string ImportName => "notification";
 
-    public NotificationBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
-    [ServiceConstructor]
-    public NotificationBlazorUIModule(IPluginHost plugins) : base(plugins) { }
+    public NotificationBlazorUIModule(IServiceProvider services) : base(services) { }
 
-    public override void InjectServices(IServiceCollection services)
+    protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
@@ -22,13 +19,13 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
 
         // Scoped / Blazor Circuit services
-        fusion.AddComputeService<NotificationUI>(ServiceLifetime.Scoped);
+        services.AddScoped<NotificationUI>();
 
         if (HostInfo.AppKind == AppKind.MauiApp)
             return;
 
         // Web application (or WASM) services
-        services.TryAddTransient<IDeviceTokenRetriever, WebDeviceTokenRetriever>();
-        services.TryAddScoped<INotificationPermissions>(s => s.GetRequiredService<NotificationUI>());
+        services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<NotificationUI>());
     }
 }

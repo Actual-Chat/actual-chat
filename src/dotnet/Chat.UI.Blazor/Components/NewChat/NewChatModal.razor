@@ -1,11 +1,9 @@
-@using Stl.Extensibility
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Contacts
 @using ActualChat.Search
 @implements IModalView<NewChatModal.Model>
-@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame Class="new-chat-modal" Title="New group" HasCloseButton="true">
+<DialogFrame Class="new-chat-modal" Title="New chat" HasCloseButton="true" NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
     <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
         <DataAnnotationsValidator/>
@@ -20,7 +18,7 @@
             <div class="flex-y grow">
                 <FormSection
                     For="() => _form.Title"
-                    Label="Group name"
+                    Label="Name"
                     InputId="@_form.TitleId"
                     IsLabelInsideInput="true"
                     Class="!mt-0 grow"
@@ -83,19 +81,17 @@
     </div>
     </Body>
     <Buttons>
-        <div class="btn-group">
-            <Button
-                Click="@(() => Modal.Close())"
-                Class="btn-cancel">
-                Cancel
-            </Button>
-            <Button
-                Click="@OnCreate"
-                Type="@ButtonType.Submit"
-                Class="btn-primary">
-                Create
-            </Button>
-        </div>
+        <Button
+            Click="@(() => Modal.Close())"
+            Class="btn-modal">
+            Cancel
+        </Button>
+        <Button
+            Click="@OnCreate"
+            Type="@ButtonType.Submit"
+            Class="btn-modal">
+            Create
+        </Button>
     </Buttons>
 </DialogFrame>
 
@@ -168,7 +164,7 @@
 
     private async Task OnCreate() {
         try {
-            var command = new IChats.ChangeCommand(Session, default, null, new() {
+            var command = new Chats_Change(Session, default, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Kind = ChatKind.Group,
@@ -185,12 +181,12 @@
                 .Where(contact => contact.Contact.Account != null)
                 .Select(contact => contact.Contact.Account!.Id)
                 .ToArray();
-            var createAuthorsCommand = new IAuthors.InviteCommand(Session, chat.Id, userIds);
+            var createAuthorsCommand = new Authors_Invite(Session, chat.Id, userIds);
             var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, CancellationToken.None);
             if (createAuthorsError != null)
                 return;
 
-            History.NavigateTo(Links.Chat(chat.Id));
+            _ = History.NavigateTo(Links.Chat(chat.Id));
             // Required for proper navigation to the newly created chat
             await Task.Delay(100);
             Modal.Close();

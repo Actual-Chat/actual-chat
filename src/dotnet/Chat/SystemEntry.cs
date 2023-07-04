@@ -1,15 +1,15 @@
-using Cysharp.Text;
+using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract]
-public record SystemEntry : IUnionRecord<SystemEntryOption?>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
 {
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public SystemEntryOption? Option { get; init; }
 
-    [DataMember]
+    [DataMember, MemoryPackOrder(0)]
     public MembersChangedOption? MembersChanged {
         get => Option as MembersChangedOption;
         init => Option ??= value;
@@ -23,19 +23,26 @@ public abstract record SystemEntryOption : IRequirementTarget
     public abstract Markup ToMarkup();
 }
 
-[DataContract]
-public record MembersChangedOption(
-    [property: DataMember] AuthorId AuthorId,
-    [property: DataMember] string AuthorName,
-    [property: DataMember] bool HasLeft
-    ) : SystemEntryOption
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record MembersChangedOption : SystemEntryOption
 {
-    [Obsolete("This constructor is used to deserialize legacy MembersChangedOption w/o AuthorName property.")]
-    public MembersChangedOption() : this(default, "", false) { }
+    [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
+    [DataMember, MemoryPackOrder(2)] public bool HasLeft { get; init; }
+
+    public MembersChangedOption() { }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    public MembersChangedOption(AuthorId authorId, string authorName, bool hasLeft)
+    {
+        AuthorId = authorId;
+        AuthorName = authorName;
+        HasLeft = hasLeft;
+    }
 
     public override Markup ToMarkup()
     {
-        var authorMentionId = ZString.Concat("a:", AuthorId);
+        var authorMentionId = new MentionId(AuthorId, AssumeValid.Option);
         var authorName = AuthorName.NullIfEmpty() ?? "Someone";
         var verb = HasLeft ? "left" : "joined";
         return new MarkupSeq(

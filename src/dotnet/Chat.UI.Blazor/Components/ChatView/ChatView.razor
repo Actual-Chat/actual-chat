@@ -1,49 +1,28 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Comparison
+@using ActualChat.Chat.UI.Blazor.Events
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
 <VirtualList
+    @key="@Chat.Id.Value"
     Class="chat-view"
-    DataSource="this"
-    KeyComparer="LongAsStringKeyComparer.Default"
-    ItemVisibilityChanged="OnItemVisibilityChanged">
+    DataSource="@this"
+    Identity="@Chat.Id"
+    KeyComparer="@LongAsStringKeyComparer.Default"
+    ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
         <ChatMessage Message="@context" />
     </Item>
     <Empty>
-        <EmptyChatContent/>
+        <EmptyChatContent Chat="@Chat"/>
     </Empty>
     <Skeleton>
-        @{
-            var rnd = new Random(Random.Shared.Next());
-            var showHeader = rnd.Next(5) == 1; // 20%
-        }
-        <div class="flex mx-1.5 opacity-75 hover:opacity-100 animate-pulse truncate">
-            @if (showHeader) {
-                <div class="m-2">
-                    <AvatarCircle Avatar="Avatar.Loading"/>
-                </div>
-            } else {
-                <div class="w-9 m-2 mt-1"></div>
-            }
-
-            <div class="flex flex-col grow overflow-hidden m-1">
-                @if (showHeader) {
-                    <div class="flex inline-flex-x">
-                        <AvatarName Avatar="@Avatar.Loading" Class="flex"/>
-                        <span class="bg-skeleton rounded-md border-skeleton-border opacity-75 border-2 w-32 h-4"></span>
-                    </div>
-                }
-                <div class="leading-normal bg-skeleton rounded-md border-skeleton-border border-2 h-4 truncate"
-                        style="width: @(30+rnd.Next(50))%;"></div>
-            </div>
-        </div>
+        <chat-message-skeleton />
     </Skeleton>
 </VirtualList>
 
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
     <NavigateToUnreadOrEnd
         ChatSid="@Chat.Id"
-        IsVisible="@(!ItemVisibility.Value.IsEndAnchorVisible)"
-        ChatView="this" />
+        ChatView="@this" />
 </RenderIntoStack>

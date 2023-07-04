@@ -81,16 +81,16 @@ public class KubeServices : IKubeInfo
 
             var initialValue = new KubeServiceEndpoints(
                 kubeService,
-                ImmutableArray<KubeEndpoint>.Empty,
-                ImmutableArray<KubeEndpoint>.Empty,
-                ImmutableArray<KubePort>.Empty);
+                ApiArray<KubeEndpoint>.Empty,
+                ApiArray<KubeEndpoint>.Empty,
+                ApiArray<KubePort>.Empty);
             State = services.StateFactory().NewMutable(initialValue);
-            Start();
+            this.Start();
         }
 
-        protected override async Task RunInternal(CancellationToken cancellationToken)
+        protected override async Task OnRun(CancellationToken cancellationToken)
         {
-            var retries = new RetryDelaySeq(1, 10);
+            var retries = RetryDelaySeq.Exp(1, 10);
             var failureCount = 0;
             while (true) {
                 try {
@@ -112,7 +112,7 @@ public class KubeServices : IKubeInfo
                 return;
             }
 
-            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ImmutableArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
+            var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ApiArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
             var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
             var httpClientDisposable = new SafeDisposable(httpClient, 10, Log) { MustWait = false };
@@ -126,7 +126,7 @@ public class KubeServices : IKubeInfo
                 .ConfigureAwait(false);
             if (response.StatusCode == HttpStatusCode.Forbidden)
                 throw StandardError.Constraint(
-                    "Kubernetes ClusterRole to read EndpointSlices is required for the service account");
+                    "Kubernetes ClusterRole to read EndpointSlices is required for the service account.");
             response.EnsureSuccessStatusCode();
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -154,8 +154,8 @@ public class KubeServices : IKubeInfo
                         change.Object,
                         change.Object
                             .Endpoints
-                            .Select(e => new KubeEndpoint(e.Addresses.ToImmutableArray(), e.Conditions.Ready))
-                            .ToImmutableArray()
+                            .Select(e => new KubeEndpoint(e.Addresses.ToApiArray(), e.Conditions.Ready))
+                            .ToApiArray()
                         );
                     break;
                 case ChangeType.Modified:
@@ -163,21 +163,21 @@ public class KubeServices : IKubeInfo
                         change.Object,
                         change.Object
                             .Endpoints
-                            .Select(e => new KubeEndpoint(e.Addresses.ToImmutableArray(), e.Conditions.Ready))
-                            .ToImmutableArray()
+                            .Select(e => new KubeEndpoint(e.Addresses.ToApiArray(), e.Conditions.Ready))
+                            .ToApiArray()
                         );
                     break;
                 default:
                     throw StandardError.Constraint<Api.Change<EndpointSlice>>($"Type {change.Type} is invalid.");
                 }
 
-                var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToImmutableArray();
-                var readyEndpoints = endpoints.Where(e => e.IsReady).ToImmutableArray();
+                var endpoints = endpointsMap.Values.SelectMany(p => p.Endpoints).ToApiArray();
+                var readyEndpoints = endpoints.Where(e => e.IsReady).ToApiArray();
                 var ports = endpointsMap.Values
                     .SelectMany(p => p.Slice.Ports)
                     .Select(p => new KubePort(p.Name, (KubeServiceProtocol)(int)p.Protocol, p.Port))
                     .Distinct()
-                    .ToImmutableArray();
+                    .ToApiArray();
                 var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -192,9 +192,9 @@ public class KubeServices : IKubeInfo
             var port = urlMapper.BaseUri.Port;
             if (port == 0)
                 port = 80;
-            var ports = ImmutableArray.Create(new KubePort("http", KubeServiceProtocol.Tcp, port));
-            var addresses = ImmutableArray.Create(Kube.PodIP);
-            var endpoints = ImmutableArray.Create(new KubeEndpoint(addresses, true));
+            var ports = ApiArray.New(new KubePort("http", KubeServiceProtocol.Tcp, port));
+            var addresses = ApiArray.New(Kube.PodIP);
+            var endpoints = ApiArray.New(new KubeEndpoint(addresses, true));
             var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, endpoints, ports);
 
             State.Value = serviceEndpoints;

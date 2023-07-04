@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazored.SessionStorage" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Sentry" />
     <PackageReference Include="Stl.Fusion.Blazor" />
+    <PackageReference Include="Stl.Fusion.Blazor.Authentication" />
     <PackageReference Include="Stl" />
   </ItemGroup>
 

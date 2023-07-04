@@ -1,11 +1,22 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class LocalSettings : BatchingKvas
 {
-    public new record Options : BatchingKvas.Options;
+    public new record Options : BatchingKvas.Options
+    {
+        public IBatchingKvasBackend? BackendOverride { get; init; }
+    }
 
-    public LocalSettings(Options options, LocalSettingsBackend backend, ILogger<LocalSettings>? log = null)
-        : base(options, backend, log) { }
+    public new Options Settings { get; }
+
+    public LocalSettings(Options settings, IServiceProvider services)
+        : base(settings, services)
+    {
+        Settings = settings;
+        Backend = settings.BackendOverride
+            ?? new WebKvasBackend($"{BlazorUICoreModule.ImportName}.localSettings", services);
+    }
 }

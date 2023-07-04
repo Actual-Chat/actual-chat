@@ -10,14 +10,18 @@
 </div>
 
 @code {
+    private object? _lastContentVersion;
+
     [CascadingParameter] public TabPanel Panel { get; set; } = null!;
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public RenderFragment? TitleExtras { get; set; }
     [Parameter] public double Order { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public object? ContentVersion { get; set; }
 
     protected override void OnInitialized() {
         if (Panel == null)
@@ -29,5 +33,12 @@
         if (Panel == null)
             throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
         Panel.UnregisterTab(this);
+    }
+
+    protected override void OnParametersSet() {
+        if (Equals(_lastContentVersion, ContentVersion))
+            return;
+        _lastContentVersion = ContentVersion;
+        Panel.TabContentChanged();
     }
 }

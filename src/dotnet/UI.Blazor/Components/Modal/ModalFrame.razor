@@ -4,45 +4,14 @@
     var cls = $"modal-frame {Class}";
 }
 
-<ModalChrome Class="@cls">
-    @if (HasHeader) {
-        @if (ScreenSize.IsWide()) {
-            <div class="modal-header">
-                <h3 class="modal-title">@Title</h3>
-                @if (HasCloseButton) {
-                    <div class="modal-close">
-                        <ButtonX Class="@CloseButtonClass" Click="OnCloseClick"/>
-                    </div>
-                }
-            </div>
-        } else if (!NoNarrowHeader) {
-            <div class="modal-mobile-header">
-                @if (HasCloseButton) {
-                    <ButtonRound Click="OnCloseClick" Class="transparent">
-                        <i class="icon-arrow-left text-2xl"></i>
-                    </ButtonRound>
-                }
-                <div class="text-xl font-semibold md:text-lg md:font-medium">
-                    @Title
-                </div>
-            </div>
-        }
-    }
+<ModalChrome Class="@cls" HasEscapeHandler="@HasEscapeHandler">
+    @Header
     <ErrorBarrier>@ChildContent</ErrorBarrier>
 </ModalChrome>
 
 @code {
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public string CloseButtonClass { get; set; } = "";
-    [Parameter] public bool HasHeader { get; set; } = true;
-    [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public bool NoNarrowHeader { get; set; }
-    [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-
-    private void OnCloseClick()
-        => _ = Modal.Close();
+    [Parameter] public RenderFragment Header { get; set; } = null!;
+    [Parameter] public bool HasEscapeHandler { get; set; } = true;
 }

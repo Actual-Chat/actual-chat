@@ -1,0 +1,87 @@
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Audio.UI.Blazor.Services
+@namespace ActualChat.Audio.UI.Blazor.Components
+@implements IModalView<GuideModal.Model>
+
+@{
+    GuideType device;
+    if (ScreenSize.IsNarrow()) {
+        if (BrowserInfo.IsEdge)
+            device = GuideType.MobileEdgeAndroid;
+        else if (BrowserInfo.IsWebKit)
+            device = GuideType.MobileSafariIos;
+        else
+            device = GuideType.MobileChromeAndroid;
+    } else {
+        if (BrowserInfo.IsEdge)
+            device = GuideType.WebEdge;
+        else if (BrowserInfo.IsWebKit)
+            device = GuideType.WebSafari;
+        else
+            device = GuideType.WebChrome;
+    }
+}
+
+<DialogFrame
+    Class="guide-modal"
+    Title="Microphone access guide"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, "OK")">
+    <Body>
+
+    @switch (device) {
+        case GuideType.MobileSafariIos:
+            <MobileSafariIosGuideContent/>
+            break;
+        case GuideType.WebEdge:
+            <WebEdgeGuideContent/>
+            break;
+        case GuideType.WebSafari:
+            <WebSafariGuideContent/>
+            break;
+        case GuideType.MobileChromeAndroid:
+            <MobileChromeAndroidGuideContent/>
+            break;
+        case GuideType.MobileEdgeAndroid:
+            <MobileEdgeAndroidGuideContent/>
+            break;
+        default:
+            <WebChromeGuideContent/>
+            break;
+    }
+
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="OnOkClick">
+            OK
+        </Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] public IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnOkClick() {
+        ModalModel.WasPermissionRequested = await RecordingPermissionRequester.TryRequest();
+        Modal.Close();
+    }
+
+    public sealed record Model {
+        public bool WasPermissionRequested { get; set; }
+    }
+
+    private enum GuideType {
+        MobileChromeAndroid,
+        MobileEdgeAndroid,
+        MobileSafariIos,
+        WebChrome,
+        WebEdge,
+        WebSafari,
+    }
+}

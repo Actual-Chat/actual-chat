@@ -2,24 +2,41 @@ namespace ActualChat.Hosting;
 
 public interface IDbInitializer : IHasServices
 {
-    Dictionary<IDbInitializer, Task> InitializeTasks { get; set; }
+    Dictionary<IDbInitializer, Task> RunningTasks { get; set; }
+    bool ShouldRepairData { get; }
+    bool ShouldVerifyData { get; }
 
-    Task Initialize(CancellationToken cancellationToken);
+    Task InitializeSchema(CancellationToken cancellationToken);
+    Task InitializeData(CancellationToken cancellationToken);
+    Task RepairData(CancellationToken cancellationToken);
+    Task VerifyData(CancellationToken cancellationToken);
 }
 
 public static class DbInitializer
 {
     private static readonly AsyncLocal<IDbInitializer?> _current = new();
 
-    public static IDbInitializer? Current {
-        get => _current.Value;
-        set => _current.Value = value;
+    public static ClosedDisposable<IDbInitializer?> Activate(this IDbInitializer dbInitializer)
+    {
+        var oldCurrent = _current.Value;
+        if (oldCurrent == dbInitializer)
+            return default;
+
+        _current.Value = dbInitializer;
+        return Disposable.NewClosed(oldCurrent, oldCurrent1 => _current.Value = oldCurrent1);
     }
 
-    public static TDbInitializer Get<TDbInitializer>()
+    public static TDbInitializer GetCurrent<TDbInitializer>()
         where TDbInitializer : IDbInitializer
     {
-        var current = Current ?? throw StandardError.Internal("DbInitializer.Current == null");
+        var current = _current.Value ?? throw StandardError.Internal("DbInitializer.Current == null");
+        return (TDbInitializer)current;
+    }
+
+    public static TDbInitializer GetOther<TDbInitializer>()
+        where TDbInitializer : IDbInitializer
+    {
+        var current = GetCurrent<IDbInitializer>();
         if (current is TDbInitializer result)
             return result;
 

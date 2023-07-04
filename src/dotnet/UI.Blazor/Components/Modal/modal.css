@@ -6,7 +6,7 @@
     @apply top-0 left-0 h-full w-full;
     @apply overflow-x-hidden overflow-y-hidden;
     @apply outline-0;
-    background-color: rgba(0,0,0,0.8);
+    background-color: rgba(0,0,0,0.5);
 }
 
 .modal-focus-trap {
@@ -18,7 +18,6 @@
     @apply h-full w-full md:h-auto md:w-auto;
     @apply border-0 rounded-none;
     @apply p-0 m-0 bg-transparent;
-    /* @apply bg-white; */
     box-shadow: none;
 }
 
@@ -26,6 +25,16 @@
     /* h-[90vh] adds top+bottom gap between the modal frame & screen edge on smaller screens */
     /* Note that modal-overlay-fullscreen selector below cancels it */
     @apply h-full md:h-[90vh] w-full;
+}
+
+.narrow .narrow-view__modal__position-bottom {
+    @apply absolute bottom-0 left-0 right-0;
+    @apply w-auto h-auto rounded-b-none;
+    min-height: 80vh;
+}
+
+.narrow .narrow-view__modal__position-stretch {
+    @apply rounded-none;
 }
 
 /* Full-screen mode overrides */
@@ -50,36 +59,13 @@
     @apply z-10;
 }
 .modal-frame {
-    @apply flex-y items-stretch gap-y-4 overflow-hidden;
-    @apply p-0 md:p-4 pb-4;
+    @apply flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply p-2;
     @apply h-full w-full md:h-auto md:w-modal;
-    @apply md:rounded-2xl rounded-none;
+    @apply rounded-lg;
     @apply font-medium;
 }
-.modal-frame .dialog-body,
-.modal-frame .dialog-buttons {
-    @apply px-4 md:px-1 overflow-hidden;
-}
-.modal-frame .dialog-buttons {
-    @apply flex-none;
-}
-.dialog-body .validation-errors {
-    @apply rounded-md mb-2;
-}
-.dialog-body .validation-errors .validation-message {
-     @apply flex justify-center rounded-md p-2 bg-error text-04 font-normal text-base;
- }
 
-.modal-frame * {
-    @apply cursor-default;
-}
-.modal-frame .btn,
-.modal-frame .btn * {
-    @apply cursor-pointer;
-}
-.modal-frame input[type=text] {
-    @apply cursor-text;
-}
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
@@ -90,10 +76,15 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .modal-header {
     @apply flex-none flex-x justify-between items-center gap-x-2;
     @apply min-h-10 max-h-10;
+    @apply p-2;
     @apply overflow-visible;
 }
-.modal-header .modal-title {
+
+.modal-title {
     @apply flex-1;
+}
+
+.modal-header .modal-title {
     @apply text-xl md:text-lg font-semibold md:font-medium truncate;
 }
 .modal-header .modal-close {
@@ -103,21 +94,61 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply invisible md:visible;
 }
 
-.modal-mobile-header {
+.modal-header-mobile {
     @apply flex-x justify-start items-center gap-x-2;
-    @apply min-h-14 px-2;
-    @apply border-b border-bg-04;
-    @apply bg-02;
+    @apply p-2;
 }
-.modal-close,
-.modal-close * {
-    @apply cursor-pointer;
+
+.modal-header-mobile .modal-title {
+    @apply text-title-1 text-02;
+}
+
+.modal-header-interactive {
+    @apply flex-x items-center;
+    @apply min-h-14;
+    @apply pr-2; /* indent to Submit button */
+    @apply bg-02 border-bg-04 border-b;
+}
+
+.modal-header-interactive .btn .btn-content {
+    @apply bg-transparent;
+}
+
+.modal-header-interactive .modal-title {
+    @apply text-title-1 text-02;
+}
+
+.modal-header-interactive .btn-submit {
+    @apply text-headline-1;
+    @apply text-accent;
 }
 
 .dialog-body {
-    @apply flex-1 flex-y items-stretch overflow-hidden;
-    /*@apply overflow-y-auto custom-scrollbar;*/
+    @apply flex-1 p-2;
+    @apply flex-y items-stretch overflow-y-auto;
 }
+
+.dialog-buttons {
+    @apply flex-none p-2;
+    @apply flex-x gap-x-2 overflow-hidden;
+}
+
+body.narrow .dialog-buttons {
+    @apply p-2;
+    @apply -flex-y gap-y-2;
+}
+
+.dialog-buttons .btn {
+    @apply flex-1 max-w-none;
+}
+
+.dialog-body .validation-errors {
+    @apply rounded-md mb-2;
+}
+.dialog-body .validation-errors .validation-message {
+    @apply flex justify-center rounded-md p-2 bg-error text-04 font-normal text-base;
+}
+
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply border rounded-md outline-none p-1 px-2;
 }
@@ -130,28 +161,6 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus {
     @apply border-error;
-}
-
-.dialog-buttons {
-    @apply flex-x justify-end;
-    @apply overflow-hidden;
-}
-.dialog-buttons .btn,
-.dialog-buttons .btn * {
-    @apply cursor-pointer;
-}
-.dialog-buttons.full-width {
-    @apply min-w-full;
-}
-.dialog-buttons.full-width .form-buttons {
-    @apply gap-x-4 justify-center;
-}
-.dialog-buttons.full-width .btn {
-    @apply max-w-full grow;
-}
-
-div.modal-content > form {
-    @apply h-full;
 }
 
 /* Fullscreen Modal */
@@ -171,12 +180,7 @@ div.modal-content > form {
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
 }
-.modal-overlay-fullscreen input {
-    @apply cursor-text;
-}
-.modal-overlay-fullscreen .user-avatar-editor-item,
-.modal-overlay-fullscreen .user-avatar-editor-item *,
-.modal-overlay-fullscreen button,
-.modal-overlay-fullscreen button * {
-    @apply cursor-pointer;
+
+.modal-frame .no-padding-header-decorator {
+    @apply -mt-2 -ml-2 -mr-2;
 }

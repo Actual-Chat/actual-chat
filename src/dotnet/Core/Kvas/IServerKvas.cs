@@ -1,32 +1,37 @@
+using MemoryPack;
+
 namespace ActualChat.Kvas;
 
 public interface IServerKvas : IComputeService
 {
     [ComputeMethod]
-    Task<Option<string>> Get(Session session, string key, CancellationToken cancellationToken = default);
+    Task<byte[]?> Get(Session session, string key, CancellationToken cancellationToken = default);
 
     [CommandHandler]
-    Task Set(SetCommand command, CancellationToken cancellationToken = default);
+    Task OnSet(ServerKvas_Set command, CancellationToken cancellationToken = default);
     [CommandHandler]
-    Task SetMany(SetManyCommand command, CancellationToken cancellationToken = default);
+    Task OnSetMany(ServerKvas_SetMany command, CancellationToken cancellationToken = default);
     [CommandHandler]
-    Task MigrateGuestKeys(MigrateGuestKeysCommand command, CancellationToken cancellationToken = default);
-
-    [DataContract]
-    public record SetCommand(
-        [property: DataMember(Order = 0)] Session Session,
-        [property: DataMember(Order = 1)] string Key,
-        [property: DataMember(Order = 2)] string? Value
-        ) : ISessionCommand<Unit>;
-
-    [DataContract]
-    public record SetManyCommand(
-        [property: DataMember(Order = 0)] Session Session,
-        [property: DataMember(Order = 1)] params (string Key, string? Value)[] Items
-        ) : ISessionCommand<Unit>;
-
-    [DataContract]
-    public record MigrateGuestKeysCommand(
-        [property: DataMember(Order = 0)] Session Session
-        ) : ISessionCommand<Unit>;
+    Task OnMigrateGuestKeys(ServerKvas_MigrateGuestKeys command, CancellationToken cancellationToken = default);
 }
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public partial record ServerKvas_Set(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Key,
+    [property: DataMember(Order = 2), MemoryPackOrder(2)] byte[]? Value
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public partial record ServerKvas_SetMany(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] params (string Key, byte[]? Value)[] Items
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public partial record ServerKvas_MigrateGuestKeys(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session
+) : ISessionCommand<Unit>;

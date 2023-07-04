@@ -1,0 +1,52 @@
+﻿@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+@if (ScreenSize.IsWide()) {
+    <div class="modal-header">
+        <h3 class="modal-title">@Title</h3>
+        @if (HasCloseButton) {
+            <div class="modal-close">
+                <ButtonX Class="btn-sm" Click="OnCloseClick"/>
+            </div>
+        }
+    </div>
+} else {
+    var settings = DialogFrame.NarrowViewSettings;
+    var useInteractiveHeader = DialogFrame.NarrowViewSettings.IsSubmitDefined;
+    if (useInteractiveHeader) {
+        var submitText = settings.SubmitButtonText;
+        if (string.IsNullOrEmpty(submitText))
+            submitText = "Save";
+        <DialogInteractiveHeader
+            Title="@Title"
+            CloseClick="OnCloseClick"
+            SubmitButtonType="@settings.SubmitButtonType"
+            SubmitButtonText="@submitText"
+            SubmitClick="@settings.SubmitClick" />
+    } else {
+        <div class="modal-header-mobile">
+            @if (HasCloseButton) {
+                <ButtonRound Click="OnCloseClick" Class="btn-sm transparent">
+                    <i class="icon-arrow-left text-2xl"></i>
+                </ButtonRound>
+            }
+            <div class="modal-title">
+                @Title
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // ReSharper disable once RedundantNameQualifier
+    [Parameter] public ActualChat.UI.Blazor.Components.DialogFrame DialogFrame { get; set; } = null!;
+    [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+
+    private void OnCloseClick()
+        => _ = Modal.Close();
+}

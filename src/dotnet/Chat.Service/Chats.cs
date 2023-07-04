@@ -11,25 +11,27 @@ namespace ActualChat.Chat;
 
 public class Chats : DbServiceBase<ChatDbContext>, IChats
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-
     private IAccounts Accounts { get; }
     private IAuthors Authors { get; }
     private IAuthorsBackend AuthorsBackend { get; }
+    private IAvatars Avatars { get; }
     private IContactsBackend ContactsBackend { get; }
     private IInvitesBackend InvitesBackend { get; }
     private IServerKvas ServerKvas { get; }
     private IChatsBackend Backend { get; }
+    private IRolesBackend RolesBackend { get; }
 
     public Chats(IServiceProvider services) : base(services)
     {
         Accounts = services.GetRequiredService<IAccounts>();
         Authors = services.GetRequiredService<IAuthors>();
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
+        Avatars = services.GetRequiredService<IAvatars>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         InvitesBackend = services.GetRequiredService<IInvitesBackend>();
         ServerKvas = services.ServerKvas();
         Backend = services.GetRequiredService<IChatsBackend>();
+        RolesBackend = services.GetRequiredService<IRolesBackend>();
     }
 
     // [ComputeMethod]
@@ -49,7 +51,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             chat ??= new Chat(chatId);
             chat = chat with {
                 Title = contact.Account.Avatar.Name,
-                Picture = contact.Account.Avatar.Picture,
+                Picture = contact.Account.Avatar.Media,
             };
         }
         else if (chat == null)
@@ -110,7 +112,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!rules.CanRead() && chatId.Kind != ChatKind.Peer) {
             // Has invite = same as having read permission
             var activationKeyOpt = await ServerKvas
-                .Get(session, ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+                .GetClient(session)
+                .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
                 .ConfigureAwait(false);
             if (activationKeyOpt.IsSome(out var activationKey)) {
                 var isValid = await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
@@ -137,7 +140,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Author>> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -148,7 +151,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return authors
             .SkipNullItems()
             .OrderBy(a => a.Avatar.Name, StringComparer.Ordinal)
-            .ToImmutableArray();
+            .ToApiArray();
     }
 
     // Not a [ComputeMethod]!
@@ -175,7 +178,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> Change(IChats.ChangeCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -184,7 +187,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = chatId.IsNone ? null
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        var changeCommand = new IChatsBackend.ChangeCommand(chatId, expectedVersion, change.RequireValid());
+        var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
         if (change.Create.HasValue) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             account.Require(AccountFull.MustBeActive);
@@ -205,7 +208,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return chat;
     }
 
-    public virtual async Task<ChatEntry> UpsertTextEntry(IChats.UpsertTextEntryCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -214,6 +217,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
+        if (string.IsNullOrWhiteSpace(text) && command.Attachments.IsEmpty)
+            throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
@@ -233,42 +238,29 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             textEntry = textEntry with { Content = text };
             if (repliedChatEntryId.IsSome(out var v))
                 textEntry = textEntry with { RepliedEntryLocalId = v };
-            var upsertCommand = new IChatsBackend.UpsertEntryCommand(textEntry);
+            var upsertCommand = new ChatsBackend_UpsertEntry(textEntry);
             textEntry = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
         }
         else {
             // Create
             var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
-            var upsertCommand = new IChatsBackend.UpsertEntryCommand(
+            var upsertCommand = new ChatsBackend_UpsertEntry(
                 new ChatEntry(textEntryId) {
                     AuthorId = author.Id,
                     Content = text,
                     RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
                 },
-                command.Attachments.Length > 0);
+                command.Attachments.Count > 0);
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             textEntryId = textEntry.Id.ToTextEntryId();
 
-            for (var index = 0; index < command.Attachments.Length; index++) {
-                var attachmentUpload = command.Attachments[index];
-                var (fileName, content, contentType) = attachmentUpload;
-                var contentLocalId = Ulid.NewUlid().ToString();
-                var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
-
-                var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
-                await Commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
-
-                var attachment = new TextEntryAttachment() {
+            for (var index = 0; index < command.Attachments.Count; index++) {
+                var attachment = new TextEntryAttachment {
                     EntryId = textEntryId,
                     Index = index,
-                    Length = content.Length,
-                    ContentType = contentType,
-                    FileName = fileName,
-                    ContentId = contentId,
-                    Width = attachmentUpload.Width,
-                    Height = attachmentUpload.Height,
+                    MediaId = command.Attachments[index],
                 };
-                var createAttachmentCommand = new IChatsBackend.CreateAttachmentCommand(attachment);
+                var createAttachmentCommand = new ChatsBackend_CreateAttachment(attachment);
                 await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -277,7 +269,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     }
 
     // [CommandHandler]
-    public virtual async Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -312,9 +304,142 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 return;
 
             entry1 = entry1 with { IsRemoved = true };
-            var upsertCommand = new IChatsBackend.UpsertEntryCommand(entry1);
+            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
             await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, templateChatId) = command;
+        var templateChat = await Get(session, templateChatId, cancellationToken).ConfigureAwait(false);
+        templateChat.Require(Chat.MustBeTemplate);
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var chat = await Backend.GetTemplatedChatFor(templateChatId, account.Id, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return chat;
+
+        var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
+        var templateAuthors = await templateAuthorIds
+            .Select(aId => AuthorsBackend.Get(templateChatId, aId, cancellationToken))
+            .Collect(4)
+            .ConfigureAwait(false);
+        var authorRoles = await templateAuthorIds
+            .Select(async aId => (
+                AuthorId: aId,
+                Roles: await RolesBackend.List(templateChatId,
+                    aId,
+                    false,
+                    false,
+                    cancellationToken).ConfigureAwait(false))
+            )
+            .Collect(4)
+            .ConfigureAwait(false);
+        var templateOwner = authorRoles.FirstOrDefault(x => x.Roles.Any(r => r.SystemRole == SystemRole.Owner));
+
+        // clone template chat
+        var cloneCommand = new ChatsBackend_Change(
+            ChatId.None,
+            null,
+            new Change<ChatDiff> {
+                Create = new ChatDiff {
+                    Title = templateChat.Title,
+                    MediaId = templateChat.MediaId,
+                    Kind = ChatKind.Group,
+                    IsPublic = true,
+                    IsTemplate = false,
+                    TemplateId = templateChatId,
+                    TemplatedForUserId = account.Id,
+                    AllowAnonymousAuthors = false,
+                    AllowGuestAuthors = true,
+                },
+            },
+            templateAuthors.Single(a => a?.Id == templateOwner.AuthorId)?.UserId ?? UserId.None // Owner is mandatory
+        );
+
+        var cloned = await Commander.Call(cloneCommand, cancellationToken).ConfigureAwait(false);
+        var chatId = cloned.Id;
+
+        // copy existing template authors and their roles
+        var clonedAuthors = new List<AuthorFull>();
+        foreach (var templateAuthor in templateAuthors.Where(ta => ta != null)) {
+            var cloneAuthorCommand = new AuthorsBackend_Upsert(
+                chatId,
+                AuthorId.None,
+                templateAuthor!.UserId,
+                ExpectedVersion: null,
+                new AuthorDiff {
+                    AvatarId = templateAuthor.AvatarId,
+                },
+                DoNotNotify: true);
+            var clonedAuthor = await Commander.Call(cloneAuthorCommand, cancellationToken).ConfigureAwait(false);
+            clonedAuthors.Add(clonedAuthor);
+        }
+        var authorMap = templateAuthors
+            .Where(a => a != null)
+            .Join(clonedAuthors,
+                a => a!.UserId,
+                a => a.UserId,
+                (l, r) => (TemplateAuthorId: l!.Id, CloneAuthorId: r.Id))
+            .ToDictionary(x => x.TemplateAuthorId, x => x.CloneAuthorId);
+        var roleAuthors = authorRoles
+            .SelectMany(x => x.Roles, (x, r) => (x.AuthorId, Role: r))
+            .Where(x => x.Role.SystemRole is not SystemRole.Anyone and not SystemRole.None and not SystemRole.Owner) // Owner is already registered
+            .GroupBy(x => x.Role.Id,
+                (_, xs) => {
+                    var tuples = xs.ToList();
+                    return (tuples.FirstOrDefault().Role, AuthorIds: tuples.Select(x => authorMap[x.AuthorId]).ToApiArray());
+                })
+            .ToList();
+
+        foreach (var (role, roleAuthorIds) in roleAuthors) {
+            var createOwnersRoleCmd = new RolesBackend_Change(cloned.Id, default, null, new() {
+                Create = new RoleDiff {
+                    Picture = role.Picture,
+                    Name = role.Name,
+                    SystemRole = role.SystemRole,
+                    Permissions = role.Permissions,
+                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        AddedItems = roleAuthorIds,
+                    },
+                },
+            });
+            await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+        }
+
+        // join guest author
+        var avatarIds = await Avatars.ListOwnAvatarIds(session, cancellationToken).ConfigureAwait(false);
+        var avatars = await avatarIds
+            .Select(aId => Avatars.GetOwn(session, aId, cancellationToken))
+            .Collect().ConfigureAwait(false);
+        var guestAvatar = avatars
+            .Where(a => a != null)
+            .FirstOrDefault(a => OrdinalEquals(a!.Name, Avatar.GuestName));
+        if (guestAvatar == null) {
+            var createAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
+                Create = new AvatarFull(account.Id) {
+                    Name = "Guest",
+                }.WithMissingPropertiesFrom(account.Avatar),
+            });
+            var newAvatar = await Commander.Call(createAvatarCommand, cancellationToken).ConfigureAwait(false);
+            guestAvatar = newAvatar;
+        }
+        var createAuthorCommand = new AuthorsBackend_Upsert(
+            chatId,
+            AuthorId.None,
+            account.Id,
+            ExpectedVersion: null,
+            new AuthorDiff {
+                AvatarId = guestAvatar.Id,
+            });
+        await Commander.Run(createAuthorCommand, cancellationToken).ConfigureAwait(false);
+
+        return cloned;
     }
 
     // Private methods

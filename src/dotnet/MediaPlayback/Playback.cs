@@ -1,3 +1,4 @@
+using ActualChat.Hardware;
 using ActualChat.Media;
 using ActualChat.Messaging;
 
@@ -10,23 +11,28 @@ public sealed class Playback : ProcessorBase
 {
     private readonly ILogger<Playback> _log;
     private readonly ITrackPlayerFactory _trackPlayerFactory;
+    private readonly ISleepDurationProvider _sleepDurationProvider;
     private readonly IMessageProcessor<IPlaybackCommand> _messageProcessor;
     private readonly ConcurrentDictionary<PlayTrackCommand, (TrackPlayer Player, Task PlayTask)> _trackPlayers = new();
     private readonly object _stateUpdateLock = new();
+    private (CpuTimestamp CpuTimestamp, TimeSpan TotalSleepDuration) _pausedAt = default;
 
     public IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }
     public IMutableState<bool> IsPlaying { get; }
     public IMutableState<bool> IsPaused { get; }
+    public IMutableState<TimeSpan> TotalPauseDuration { get; }
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
     internal Playback(
         IStateFactory stateFactory,
         ITrackPlayerFactory trackPlayerFactory,
+        ISleepDurationProvider sleepDurationProvider,
         ILogger<Playback> log)
     {
         _log = log;
         _trackPlayerFactory = trackPlayerFactory;
+        _sleepDurationProvider = sleepDurationProvider;
         _messageProcessor = new MessageProcessor<IPlaybackCommand>(ProcessCommand) {
             QueueFullMode = BoundedChannelFullMode.DropOldest,
         };
@@ -40,14 +46,17 @@ public sealed class Playback : ProcessorBase
         IsPaused = stateFactory.NewMutable(
             false,
             StateCategories.Get(type, nameof(IsPaused)));
+        TotalPauseDuration = stateFactory.NewMutable(
+            TimeSpan.Zero,
+            StateCategories.Get(type, nameof(TotalPauseDuration)));
     }
 
     protected override async Task DisposeAsyncCore()
     {
-        var process = Stop(CancellationToken.None);
-        await process.WhenCompleted.SuppressExceptions().ConfigureAwait(false);
-        await _messageProcessor.Complete().SuppressExceptions().ConfigureAwait(false);
-        await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SuppressExceptions().ConfigureAwait(false);
+        var process = Abort();
+        await process.WhenCompleted.SilentAwait(false);
+        await _messageProcessor.Complete().ConfigureAwait(false);
+        await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SilentAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -69,8 +78,8 @@ public sealed class Playback : ProcessorBase
     public IMessageProcess<ResumeCommand> Resume(CancellationToken cancellationToken)
         => _messageProcessor.Enqueue(ResumeCommand.Instance, cancellationToken);
 
-    public IMessageProcess<AbortCommand> Stop(CancellationToken cancellationToken)
-        => _messageProcessor.Enqueue(AbortCommand.Instance, cancellationToken);
+    public IMessageProcess<AbortCommand> Abort()
+        => _messageProcessor.Enqueue(AbortCommand.Instance);
 
     private Task<object?> ProcessCommand(IPlaybackCommand command, CancellationToken cancellationToken)
     {
@@ -79,7 +88,7 @@ public sealed class Playback : ProcessorBase
             PauseCommand => OnPauseCommand(),
             ResumeCommand => OnResumeCommand(),
             AbortCommand => OnAbortCommand(),
-            _ => throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.")
+            _ => throw StandardError.NotSupported(command.GetType(), "Unsupported command type."),
         };
 
         async Task<object?> OnPlayTrackCommand(PlayTrackCommand cmd)
@@ -156,25 +165,34 @@ public sealed class Playback : ProcessorBase
         catch (Exception ex) {
             _log.LogError(ex, $"Unhandled exception in {nameof(OnTrackPlayingChanged)}");
         }
-        if (!prev.IsStarted && state.IsStarted) {
-            lock (_stateUpdateLock) {
-                PlayingTracks.Value = PlayingTracks.Value.Insert(0, (trackInfo, state));
-                IsPlaying.Value = true;
-            }
-        }
-        else if (state.IsEnded && !prev.IsEnded) {
+        if (!prev.IsEnded && state.IsEnded)
             lock (_stateUpdateLock) {
                 PlayingTracks.Value = PlayingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
                 if (PlayingTracks.Value.Count == 0) {
                     IsPlaying.Value = false;
                     IsPaused.Value = false;
                 }
+                return; // Nothing else to do here
             }
-        }
-        if (prev.IsPaused ^ state.IsPaused) {
+
+        if (!prev.IsStarted && state.IsStarted)
             lock (_stateUpdateLock) {
-                IsPaused.Value = state.IsPaused;
+                PlayingTracks.Value = PlayingTracks.Value.Insert(0, (trackInfo, state));
+                IsPlaying.Value = true;
             }
-        }
+
+        var isPaused = state.IsPaused;
+        if (prev.IsPaused != isPaused)
+            lock (_stateUpdateLock) {
+                if (isPaused)
+                    _pausedAt = (CpuTimestamp.Now, _sleepDurationProvider.TotalSleepDuration.Value);
+                else {
+                    var elapsed = _pausedAt.CpuTimestamp.Elapsed
+                        - _sleepDurationProvider.TotalSleepDuration.Value
+                        + _pausedAt.TotalSleepDuration;
+                    TotalPauseDuration.Set(elapsed, static (elapsed, r) => r.Value + elapsed);
+                }
+                IsPaused.Value = isPaused;
+            }
     }
 }

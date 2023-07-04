@@ -16,7 +16,7 @@
 
     private IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public int MaxIconCount { get; set; } = 5;
 
     public override async ValueTask DisposeAsync() {
@@ -43,13 +43,13 @@
 
         var authorIds = await ChatRecordingActivity.GetActiveAuthorIds(cancellationToken);
         return new() {
-            RecordingAuthorSids = authorIds.Select(id => id.Value).ToImmutableArray(),
+            RecordingAuthorSids = authorIds.Select(id => id.Value).ToApiArray(),
         };
     }
 
     public sealed class Model {
         public static Model None { get; } = new();
 
-        public ImmutableArray<string> RecordingAuthorSids { get; init; } = ImmutableArray<string>.Empty;
+        public ApiArray<string> RecordingAuthorSids { get; init; } = ApiArray<string>.Empty;
     }
 }

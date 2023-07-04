@@ -8,8 +8,18 @@ public sealed record ChatListFilter(
     public static readonly ChatListFilter None = new("", "All", _ => true);
     public static readonly ChatListFilter Personal = new("@personal", "Personal", c => c.Chat.Kind == ChatKind.Peer);
     public static readonly ChatListFilter Groups = new("@groups", "Groups", c => c.Chat.Kind != ChatKind.Peer);
-    public static readonly ImmutableArray<ChatListFilter> All = ImmutableArray.Create(None, Personal, Groups);
+    public static readonly ApiArray<ChatListFilter> All = new(None, Personal, Groups);
+
+    public override string ToString()
+        => $"{GetType()}({Id}, '{Title}')";
 
     public static ChatListFilter Parse(Symbol filterId)
         => All.FirstOrDefault(x => x.Id == filterId, new ChatListFilter(filterId, filterId.Value));
+
+    // Equality
+
+    public bool Equals(ChatListFilter? other)
+        => !ReferenceEquals(null, other) && Id.Equals(other.Id);
+    public override int GetHashCode()
+        => Id.GetHashCode();
 }

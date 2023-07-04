@@ -8,14 +8,16 @@ public abstract class TimeZoneConverter
         => Log = services.LogFor(GetType());
 
     public DateTime ToLocalTime(Moment moment)
-        => ToLocalTime(moment.ToDateTime());
+        => ToLocalTimeAssumeUtc(moment.ToDateTime());
 
     public abstract DateTime ToLocalTime(DateTime utcTime);
+    public abstract DateTime ToLocalTimeAssumeUtc(DateTime utcTime);
 
     protected DateTime AssertUtcTime(DateTime utcTime)
     {
         if (utcTime.Kind == DateTimeKind.Utc)
             return utcTime;
+
         Log.LogWarning("Expected UTC time, but got '{DateTime}'", utcTime);
         return utcTime.ToUniversalTime();
     }
@@ -30,6 +32,9 @@ public sealed class ClientSizeTimeZoneConverter : TimeZoneConverter
         utcTime = AssertUtcTime(utcTime);
         return utcTime.ToLocalTime();
     }
+
+    public override DateTime ToLocalTimeAssumeUtc(DateTime utcTime)
+        => utcTime.ToLocalTime();
 }
 
 public sealed class ServerSideTimeZoneConverter : TimeZoneConverter
@@ -53,4 +58,8 @@ public sealed class ServerSideTimeZoneConverter : TimeZoneConverter
         utcTime = AssertUtcTime(utcTime);
         return utcTime - _utcOffset;
     }
+
+    public override DateTime ToLocalTimeAssumeUtc(DateTime utcTime)
+        // TODO(DF): Same issue as w/ above method
+        => utcTime - _utcOffset;
 }

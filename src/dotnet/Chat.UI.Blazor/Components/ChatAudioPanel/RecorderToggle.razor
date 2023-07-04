@@ -4,52 +4,52 @@
 @{
     var m = State.Value;
     _animator.State = m.IsRecording;
-    var wrapperCls = "record-" + _animator.Class;
+    var animatorClass = "record-" + _animator.Class;
+    var applyingChangesClass = m.IsApplyingChanges ? "applying-changes" : "";
 }
 
-@if (CanRecord) {
-    <div class="@wrapperCls recorder-wrapper">
-        <ButtonRound Class="record-off-btn"
-                     Click="OnClick"
-                     @onpointerup="OnPointerUp"
-                     @oncontextmenu="OnContextMenu"
-                     data-context-menu-delay="200"
-                     MustKeepAwake="true">
-                <img src="/dist/images/logo-white.svg" alt="logo" class="recorder-icon">
+@if (m.HasMicrophonePermission != false) {
+    <div class="recorder-wrapper @animatorClass @applyingChangesClass">
+        <ButtonRound
+            Class="record-off-btn"
+            Click="OnClick"
+            MustKeepAwake="true"
+            @onpointerup="OnPointerUp"
+            @oncontextmenu="OnContextMenu"
+            data-context-menu-delay="200">
+            <img draggable="false" src="/dist/images/logo-white.svg" alt="logo" class="recorder-icon">
         </ButtonRound>
-        <ButtonRound Class="record-on-btn"
-                     Click="OnClick"
-                     @onpointerup="OnPointerUp"
-                     @oncontextmenu="OnContextMenu"
-                     data-context-menu-delay="200">
+        <ButtonRound
+            Class="record-on-btn"
+            Click="OnClick"
+            @onpointerup="OnPointerUp"
+            @oncontextmenu="OnContextMenu"
+            data-context-menu-delay="200">
             <i class="icon-Stop-fill text-2xl"></i>
         </ButtonRound>
     </div>
 } else {
-    <div class="recorder-wrapper">
-        <ButtonRound Class="w-14 h-14"
-                     IsDisabled="true">
-            <svg class="fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M8.70794 11.5362C8.82772 13.3106 10.2867 14.7206 12.0559 14.8841L8.70794 11.5362ZM13.0274 15.8556C12.8218 15.8849 12.6124 15.9 12.4 15.9C9.9 15.9 7.8 13.8 7.8 11.3C7.8 10.8 7.4 10.4 6.9 10.4C6.4 10.4 6 10.8 6 11.3C6 14.5 8.4 17.2 11.5 17.6V19.5V19.9C11.5 20.4 11.9 20.7 12.3 20.7H12.5C13 20.7 13.3 20.3 13.3 19.9V19.5V18V17.6C13.7119 17.5469 14.1115 17.4531 14.4947 17.323L13.0274 15.8556ZM15.4774 16.8914L14.1351 15.5491C14.7676 15.2838 15.3329 14.8796 15.7908 14.3768L17.0705 15.6565C16.6096 16.1481 16.072 16.5666 15.4774 16.8914ZM17.6992 14.871C18.3936 13.849 18.8 12.6168 18.8 11.3C18.8 10.8 18.4 10.4 17.9 10.4C17.4 10.4 17 10.8 17 11.3C17 12.1157 16.7765 12.8888 16.3884 13.5602L17.6992 14.871ZM15.7042 12.876C15.9566 12.3775 16.1 11.8098 16.1 11.2V6.7C16.1 4.7 14.5 3 12.4 3C10.5693 3 9.11855 4.29198 8.7766 5.94839L10.6 7.77178V6.7C10.6 5.7 11.4 4.9 12.4 4.9C13.4 4.9 14.2 5.7 14.2 6.7V11.3C14.2 11.3236 14.1996 11.3471 14.1987 11.3705L15.7042 12.876ZM10.6 9.186L8.7 7.286V10.114L10.9302 12.3442C10.722 12.0504 10.6 11.6905 10.6 11.3V9.186ZM11.3558 12.7698C11.6496 12.978 12.0095 13.1 12.4 13.1C12.9807 13.1 13.4939 12.8303 13.8222 12.4082L15.1239 13.7099C14.653 14.2188 14.0421 14.5915 13.36 14.774L11.3558 12.7698Z"/>
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M20.7073 19.2932L4.70725 3.29325C4.31625 2.90225 3.68425 2.90225 3.29325 3.29325C2.90225 3.68425 2.90225 4.31625 3.29325 4.70725L19.2932 20.7073C19.4882 20.9023 19.7442 21.0002 20.0002 21.0002C20.2563 21.0002 20.5123 20.9023 20.7073 20.7073C21.0983 20.3162 21.0983 19.6842 20.7073 19.2932Z"/>
-            </svg>
+    <div class="recorder-wrapper mic-disabled">
+        <ButtonRound
+            Class="mic-disabled w-14 h-14"
+            Click="OnClick">
+            <i class="icon-mic-off text-2xl text-04"></i>
         </ButtonRound>
     </div>
 }
 
 @code {
-    private bool? _canRecord = null;
     private OnOffAnimator _animator = null!;
 
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    private bool CanRecord => _canRecord ?? true;
-    private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsRecording => !IsLoading && State.Value.IsRecording;
+    private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
+    private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
     private bool IsForcePush { get; set; } = false;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = Chat.None;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
     protected override void OnInitialized() {
         _animator = new OnOffAnimator(this, TimeSpan.FromMilliseconds(300));
@@ -69,23 +69,23 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var audioState = await ChatAudioUI.GetState(Chat.Id);
-        return new Model(Chat, audioState.IsRecording);
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId();
+        var recorderState = await AudioRecorder.State.Use(cancellationToken);
+        var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
+        var isRecording = recordingChatId == Chat.Id;
+        var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
+        return new Model(Chat, isRecording, isApplyingChanges, hasMicrophonePermission);
     }
 
     private async Task OnClick() {
-        if (IsLoading)
+        if (IsChatChanging)
             return; // Loading
 
         if (IsRecording) {
             _ = ChatAudioUI.SetRecordingChatId(default);
         }
         else {
-            if (_canRecord == null) {
-                _canRecord = await AudioRecorder.CanRecord();
-                StateHasChanged();
-            }
-            if (!CanRecord)
+            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
                 return;
 
             _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
@@ -95,12 +95,7 @@
     private async Task OnContextMenu() {
         if (IsForcePush)
             return;
-
-        if (_canRecord == null) {
-            _canRecord = await AudioRecorder.CanRecord();
-            StateHasChanged();
-        }
-        if (!CanRecord || IsLoading)
+        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
             return;
 
         IsForcePush = true;
@@ -115,11 +110,14 @@
         _ = ChatAudioUI.SetRecordingChatId(default);
     }
 
+    // Nested types
+
     public sealed record Model(
         Chat Chat,
-        bool IsRecording = false
+        bool IsRecording = false,
+        bool IsApplyingChanges = false,
+        bool? HasMicrophonePermission = null
     ) {
-        public static Model Loading { get; } = new(Chat.Loading);
-        public static Model None { get; } = new(Chat.None);
+        public static Model Loading { get; } = new(SpecialChat.Loading, false, true);
     }
 }

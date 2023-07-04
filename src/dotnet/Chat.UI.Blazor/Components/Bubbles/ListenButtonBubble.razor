@@ -1,0 +1,18 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits BubbleBase
+
+<BubbleContent Bubble="@(this)">
+    <Title>"Listen" button</Title>
+    <Body>
+    <p>
+        Click it to start or stop listening in this chat.
+    </p>
+    <ul>
+        <li>When you start recording, the listening mode turns on automatically.</li>
+        <li>Unlike voice messages in other chats, the listening mode is always real-time.</li>
+    </ul>
+    <p>
+        When no one is talking for about five minutes, the listening mode turns off automatically.
+    </p>
+    </Body>
+</BubbleContent>

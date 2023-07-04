@@ -1,4 +1,4 @@
-using ActualChat.Users;
+using ActualChat.UI.Blazor.Events;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -6,18 +6,19 @@ public partial class AccountUI
 {
     // All state sync logic should be here
 
-    protected override Task RunInternal(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
         => Task.WhenAll(
             SyncOwnAccount(cancellationToken),
             Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
 
     private async Task SyncOwnAccount(CancellationToken cancellationToken)
     {
-        Tracer.Point("SyncOwnAccount");
+        var uiEventHub = (UIEventHub?)null;
         var cOwnAccount0 = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
-        var changes = cOwnAccount0.Changes(cancellationToken);
+        cOwnAccount0 = await cOwnAccount0.UpdateIfCached(TimeSpan.FromSeconds(2), cancellationToken);
+        var changes = cOwnAccount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cOwnAccount in changes.ConfigureAwait(false)) {
             if (cOwnAccount.HasError)
                 continue;
@@ -26,12 +27,18 @@ public partial class AccountUI
             if (ownAccount is not { Id.IsNone: false })
                 continue;
 
-            var hasLoaded = _ownAccount.Value == AccountFull.Loading;
+            var oldAccount = _ownAccount.Value;
+            if (oldAccount == ownAccount)
+                continue;
 
+            Log.LogDebug("SyncOwnAccount: new OwnAccount: {Account}", ownAccount);
             _ownAccount.Value = ownAccount;
-            _whenLoadedSource.TrySetResult(default);
-            if (hasLoaded)
-                Tracer.Point("SyncOwnAccount: OwnAccount is loaded");
+            if (!_whenLoadedSource.TrySetResult()) {
+                // We don't publish this event for the initial account change
+                uiEventHub ??= Services.GetRequiredService<UIEventHub>();
+                var @event = new OwnAccountChangedEvent(ownAccount, oldAccount);
+                await uiEventHub.Publish(@event, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 }

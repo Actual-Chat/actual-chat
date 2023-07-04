@@ -1,24 +1,25 @@
 using System.Numerics;
+using MemoryPack;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.Mathematics;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
-[DataContract]
-public readonly record struct Trimmed<T>
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public readonly partial record struct Trimmed<T>
     : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>,
         IComparisonOperators<Trimmed<T>, Trimmed<T>, bool>,
         IComparable<Trimmed<T>>
     where T : struct, IAdditionOperators<T, T, T>, IComparable<T>, IEquatable<T>
 {
-    [DataMember] public T Value { get; }
-    [DataMember] public T? Limit { get; }
+    [DataMember, MemoryPackOrder(0)] public T Value { get; }
+    [DataMember, MemoryPackOrder(1)] public T? Limit { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsTrimmed => Limit is { } t && EqualityComparer<T>.Default.Equals(Value, t);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public Trimmed(T value, T? limit)
     {
         Limit = limit;

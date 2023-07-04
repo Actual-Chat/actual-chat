@@ -1,10 +1,10 @@
-using System.ComponentModel.DataAnnotations;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
 using ActualChat.Contacts;
+using ActualChat.Media;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +20,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private IAuthorsBackend AuthorsBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
+    private IMediaBackend MediaBackend { get; }
     private IMarkupParser MarkupParser { get; }
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
@@ -34,6 +35,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
+        MediaBackend = services.GetRequiredService<IMediaBackend>();
         MarkupParser = services.GetRequiredService<IMarkupParser>();
         ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
         DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
@@ -50,6 +52,32 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
         var dbChat = await DbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var chat = dbChat?.ToModel();
+        if (chat == null)
+            return null;
+
+        if (chat.MediaId.IsNone)
+            return chat;
+
+        var media = await MediaBackend.Get(chat.MediaId, cancellationToken).ConfigureAwait(false);
+        return chat with { Picture = media };
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken)
+    {
+        if (templateId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(templateId));
+        if (userId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(userId));
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbChat = await dbContext.Chats
+            .Where(c => c.TemplateId == templateId && c.TemplatedForUserId == userId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
         return dbChat?.ToModel();
     }
 
@@ -88,7 +116,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else
             return AuthorRules.None(chatId);
 
-        var roles = ImmutableArray<Role>.Empty;
+        var roles = ApiArray<Role>.Empty;
         var isJoined = author is { HasLeft: false };
         if (isJoined) {
             var isGuest = account.IsGuestOrNone;
@@ -128,7 +156,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
-        var lastEntry = tile.Entries.Length > 0 ? tile.Entries[^1] : null;
+        var lastEntry = tile.Entries.Count > 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
     }
 
@@ -143,7 +171,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbChatEntries = dbContext.ChatEntries.AsQueryable()
+        var dbChatEntries = dbContext.ChatEntries
             .Where(e => e.ChatId == chatId && e.Kind == entryKind);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
@@ -171,7 +199,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbChatEntries = dbContext.ChatEntries.AsQueryable()
+        var dbChatEntries = dbContext.ChatEntries
             .Where(e => e.ChatId == chatId && e.Kind == entryKind);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => e.IsRemoved == false);
@@ -208,7 +236,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
         if (!includeRemoved) {
             var fullTile = await GetTile(chatId, entryKind, idTileRange, true, cancellationToken).ConfigureAwait(false);
-            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToImmutableArray());
+            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToApiArray());
         }
 
         // If we're here, it's the smallest tile & includeRemoved = true
@@ -234,18 +262,31 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false)
             : (IReadOnlyCollection<DbTextEntryAttachment>)Array.Empty<DbTextEntryAttachment>();
+
         var attachmentsLookup = allAttachments.ToLookup(x => x.EntryId, StringComparer.Ordinal);
-        var entries = dbEntries.Select(e => {
-                var entryAttachments = attachmentsLookup[e.Id].Select(a => a.ToModel());
+        var entries = await dbEntries.Select(async e => {
+                var entryAttachments = await attachmentsLookup[e.Id]
+                    .Select(async dbAttachment => {
+                        var attachment = dbAttachment.ToModel();
+                        if (attachment.MediaId.IsNone)
+                            return attachment;
+
+                        var media = await MediaBackend.Get(attachment.MediaId, cancellationToken).ConfigureAwait(false);
+                        return attachment with { Media = media! };
+                    })
+                    .Collect()
+                    .ConfigureAwait(false);
+
                 return e.ToModel(entryAttachments);
             })
-            .ToImmutableArray();
-        return new ChatTile(idTileRange, true, entries);
+            .Collect()
+            .ConfigureAwait(false);
+        return new ChatTile(idTileRange, true, entries.ToApiArray());
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> Change(
-        IChatsBackend.ChangeCommand command,
+    public virtual async Task<Chat> OnChange(
+        ChatsBackend_Change command,
         CancellationToken cancellationToken)
     {
         var (chatId, expectedVersion, change, ownerId) = command;
@@ -253,8 +294,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>();
-            if (invChat != null)
+            if (invChat != null) {
                 _ = Get(invChat.Id, default);
+                if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
+                    _ = GetTemplatedChatFor(invChat.TemplateId.Value, invChat.TemplatedForUserId.Value, default);
+            }
             return null!;
         }
 
@@ -307,18 +351,18 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                     .EnsureJoined(chatId, ownerId, cancellationToken)
                     .ConfigureAwait(false);
 
-                var createOwnersRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
+                var createOwnersRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Owner,
                         Permissions = ChatPermissions.Owner,
-                        AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId>() {
-                            AddedItems = ImmutableArray<AuthorId>.Empty.Add(author.Id),
+                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                            AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                         },
                     },
                 });
                 await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                var createAnyoneRoleCmd = new IRolesBackend.ChangeCommand(chatId, default, null, new() {
+                var createAnyoneRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Anyone,
                         Permissions =
@@ -379,8 +423,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> UpsertEntry(
-        IChatsBackend.UpsertEntryCommand command,
+    public virtual async Task<ChatEntry> OnUpsertEntry(
+        ChatsBackend_UpsertEntry command,
         CancellationToken cancellationToken)
     {
         var entry = command.Entry;
@@ -425,25 +469,26 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         entry = dbEntry.ToModel();
         context.Operation().Items.Set(entry);
 
-        if (entry.Kind is not ChatEntryKind.Text || entry.IsStreaming)
+        if (entry.Kind != ChatEntryKind.Text)
+            return entry;
+        if (changeKind == ChangeKind.Remove || entry.IsStreaming)
             return entry;
 
-        Metrics.MessageCount.Add(1);
+        if (changeKind == ChangeKind.Create)
+            Metrics.MessageCount.Add(1);
 
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
         var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        var userId = author!.UserId;
-
         // Raise events
-        new TextEntryChangedEvent(entry, author, changeKind)
+        new TextEntryChangedEvent(entry, author!, changeKind)
             .EnqueueOnCompletion();
         return entry;
     }
 
     // [CommandHandler]
-    public virtual async Task<TextEntryAttachment> CreateAttachment(
-        IChatsBackend.CreateAttachmentCommand command,
+    public virtual async Task<TextEntryAttachment> OnCreateAttachment(
+        ChatsBackend_CreateAttachment command,
         CancellationToken cancellationToken)
     {
         var attachment = command.Attachment;
@@ -484,8 +529,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
 
-        if (HostInfo.IsDevelopmentInstance)
+        if (HostInfo.IsDevelopmentInstance) {
             await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+            await JoinFeedbackTemplateChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     [EventHandler]
@@ -502,9 +549,23 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (oldHasLeft == author.HasLeft)
             return;
 
+        // Skip for system admin user
+        if (author.UserId == Constants.User.Admin.UserId)
+            return;
+
+        // Skip for template chats
+        var chat = await Get(author.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat?.IsTemplate ?? false)
+            return;
+
+        // and template chat owners
+        var ownerRole = await RolesBackend.GetSystem(author.ChatId, SystemRole.Owner, cancellationToken).ConfigureAwait(false);
+        if ((chat?.TemplatedForUserId.HasValue ?? false) && ownerRole != null && author.RoleIds.Contains(ownerRole.Id))
+            return;
+
         // Let's delay fetching an author a bit
         Author? readAuthor = null;
-        var retrier = new Retrier(5, new RetryDelaySeq(0.25, 1));
+        var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
         while (retrier.NextOrThrow()) {
             await Clocks.CoarseCpuClock.Delay(retrier.Delay, cancellationToken).ConfigureAwait(false);
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, cancellationToken).ConfigureAwait(false);
@@ -514,7 +575,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var authorName = readAuthor?.Avatar.Name.NullIfEmpty() ?? MentionMarkup.NotAvailableName;
 
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry(entryId) {
+        var command = new ChatsBackend_UpsertEntry(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
             SystemEntry = new MembersChangedOption(author.Id, authorName, author.HasLeft),
         });
@@ -532,7 +593,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        return await dbContext.ChatEntries.AsQueryable()
+        return await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId && e.Kind == entryKind)
             .OrderBy(e => e.LocalId)
             .Select(e => e.LocalId)
@@ -651,19 +712,37 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task JoinFeedbackTemplateChatIfAdmin(UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account is not { IsAdmin: true })
+            return;
+
+        var email = account.User.GetEmail();
+        if (email.IsNullOrEmpty())
+            return;
+        if (!email.OrdinalEndsWith(Constants.Team.EmailSuffix))
+            return;
+
+        var chatId = Constants.Chat.FeedbackTemplateChatId;
+        var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
+
+        await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task AddOwner(ChatId chatId, Author author, CancellationToken cancellationToken)
     {
         var ownerRole = await RolesBackend.GetSystem(chatId, SystemRole.Owner, cancellationToken)
             .Require()
             .ConfigureAwait(false);
 
-        var changeCommand = new IRolesBackend.ChangeCommand(chatId,
+        var changeCommand = new RolesBackend_Change(chatId,
             ownerRole.Id,
             null,
             new Change<RoleDiff> {
                 Update = new RoleDiff {
-                    AuthorIds = new SetDiff<ImmutableArray<AuthorId>, AuthorId> {
-                        AddedItems = ImmutableArray<AuthorId>.Empty.Add(author.Id),
+                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                     },
                 },
             });
@@ -721,7 +800,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chat.IsStored())
             return chat;
 
-        var command = new IChatsBackend.ChangeCommand(peerChatId, null, new() { Create = new ChatDiff() });
+        var command = new ChatsBackend_Change(peerChatId, null, new() { Create = new ChatDiff() });
         chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return chat;
     }

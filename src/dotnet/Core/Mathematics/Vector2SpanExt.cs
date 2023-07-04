@@ -42,8 +42,9 @@ public static class Vector2SpanExt
 
     public static bool IsStrictlyIncreasingXSequence(this ReadOnlySpan<Vector2> values)
     {
-        if (values.Length == 0)
-            return false;
+        if (values.Length < 2)
+            return true;
+
         var lastValue = values[0];
         for (var i = 1; i < values.Length; i++) {
             var value = values[i];
@@ -56,8 +57,9 @@ public static class Vector2SpanExt
 
     public static bool IsStrictlyIncreasingYSequence(this ReadOnlySpan<Vector2> values)
     {
-        if (values.Length == 0)
-            return false;
+        if (values.Length < 2)
+            return true;
+
         var lastValue = values[0];
         for (var i = 1; i < values.Length; i++) {
             var value = values[i];

@@ -8,25 +8,19 @@
 
 <div class="flex flex-col h-full px-5 py-3 people-tab">
     <div class="flex-auto flex-y gap-y-1">
-        <div class="text-caption-1 text-02">Active — @m.OnlineAuthorIds.Length</div>
+        <div class="text-caption-1 text-02">Online — @m.OnlineAuthorIds.Count</div>
         @foreach (var authorId in m.OnlineAuthorIds) {
-            @if (authorId == _ownAuthor?.Id) {
-                <AuthorBadge
-                    AuthorSid="@authorId"
-                    ShowPresence="true"
-                    NameClass="font-medium text-02"
-                    Click="OnSelfClick"/>
-            } else {
-                <AuthorBadge
-                    AuthorSid="@authorId"
-                    ShowPresence="true"
-                    NameClass="font-medium text-02"
-                    Click="@(_ => AuthorUI.Show(authorId))"/>
-            }
+            <AuthorBadge
+                @key="@authorId"
+                AuthorSid="@authorId"
+                ShowPresence="true"
+                NameClass="font-medium text-02"
+                Click="@(_ => AuthorUI.Show(authorId))"/>
         }
-        <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Length</div>
+        <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Count</div>
         @foreach (var authorId in m.OfflineAuthorIds) {
             <AuthorBadge
+                @key="@authorId"
                 AuthorSid="@authorId"
                 ShowPresence="true"
                 NameClass="font-medium text-02"
@@ -41,9 +35,7 @@
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    private AuthorFull? _ownAuthor;
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -53,38 +45,40 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
-        _ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken);
-        var onlineAuthorIds = new List<AuthorId>();
-        var offlineAuthorIds = new List<AuthorId>();
+        var onlineAuthors = new List<(AuthorId,string)>();
+        var offlineAuthors = new List<(AuthorId,string)>();
         var presences = await allAuthorIds
             .Select(async authorId => {
-                var presence = await Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken).ConfigureAwait(false);
-                return (authorId, presence);
+                var presenceTask = Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken);
+                var authorTask = Authors.Get(Session, Chat.Id, authorId, cancellationToken);
+                var presence = await presenceTask.ConfigureAwait(false);
+                var author = await authorTask.ConfigureAwait(false);
+                var authorName = author?.Avatar.Name ?? "";
+                return (authorId, presence, authorName);
             })
             .Collect(); // Add concurrency
-        foreach (var (authorId, presence) in presences) {
-            if (presence is Presence.Online or Presence.Recording) {
-                onlineAuthorIds.Add(authorId);
+        foreach (var (authorId, presence, authorName) in presences) {
+            if (presence is Presence.Online or Presence.Recording or Presence.Away) {
+                onlineAuthors.Add((authorId, authorName));
             } else {
-                offlineAuthorIds.Add(authorId);
+                offlineAuthors.Add((authorId, authorName));
             }
         }
 
+        Comparison<(AuthorId, string)> comparison = (info1, info2)
+            => String.Compare(info1.Item2, info2.Item2, StringComparison.Ordinal);
+        onlineAuthors.Sort(comparison);
+        offlineAuthors.Sort(comparison);
+
         return new() {
-            OnlineAuthorIds = onlineAuthorIds.ToImmutableArray(),
-            OfflineAuthorIds = offlineAuthorIds.ToImmutableArray(),
+            OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToApiArray(),
+            OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToApiArray(),
         };
     }
 
-    private Task OnAuthorClick(AuthorId authorId)
-        => AuthorUI.Show(authorId);
-
-    private void OnSelfClick()
-        => _ = UIEventHub.Publish(new ShowSettingsEvent());
-
     public sealed class Model {
         public static Model None { get; } = new();
-        public ImmutableArray<AuthorId> OnlineAuthorIds { get; init; } = ImmutableArray<AuthorId>.Empty;
-        public ImmutableArray<AuthorId> OfflineAuthorIds { get; init; } = ImmutableArray<AuthorId>.Empty;
+        public ApiArray<AuthorId> OnlineAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
+        public ApiArray<AuthorId> OfflineAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
     }
 }

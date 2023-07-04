@@ -2,6 +2,7 @@
 "use strict";
 const path = require('path');
 const fs = require('fs');
+const plugin = require('tailwindcss/plugin');
 /**
  * @param {string} file
  */
@@ -50,6 +51,9 @@ module.exports = {
     'max-w-17',
     'min-h-17',
     'min-w-17',
+    'min-w-88',
+    'min-h-120',
+    'min-h-128',
     'rounded-4xl',
     'rounded-5xl',
     '-r-46',
@@ -62,6 +66,9 @@ module.exports = {
   darkMode: 'media',
   theme: {
     extend: {
+      backdropBlur: {
+        xs: '2px',
+      },
       colors: {
         'counter': 'var(--counter)',
         'counter-navgroup': 'var(--counter-navgroup)',
@@ -82,6 +89,7 @@ module.exports = {
 
         'disabled': 'var(--disabled)',
         'primary': 'var(--primary)',
+        'accent': 'var(--accent)',
         'primary-hover': 'var(--primary-hover)',
         'primary-title': 'var(--primary-title)',
         'reaction-own': 'var(--reaction-own)',
@@ -147,8 +155,12 @@ module.exports = {
         'hover': 'var(--hover)',
         'place': 'var(--place)',
         'badge': 'var(--badge)',
+        'bubble': 'var(--bubble)',
+        'new-separator': 'var(--new-separator)',
+        'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'gradient-stop-01': 'var(--gradient-stop-01)',
         'gradient-stop-02': 'var(--gradient-stop-02)',
+        'bubble-btn-hover': 'var(--bubble-btn-hover)',
       },
       textColor: {
         '01': 'var(--text-01)',
@@ -175,6 +187,7 @@ module.exports = {
         'text-05': 'var(--text-05)',
         'bg-06': 'var(--background-06)',
         'bg-07': 'var(--background-07)',
+        'accent': 'var(--accent)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -191,6 +204,7 @@ module.exports = {
         'banner-info': 'var(--background-banner-info)',
         'banner-success': 'var(--background-banner-success)',
         'recording-countdown': 'var(--background-recording-countdown)',
+        'accent': 'var(--accent)',
       },
     },
     screens: {
@@ -306,6 +320,7 @@ module.exports = {
       88: '22rem',
       90: '22.5rem',
       96: '24rem',
+      100: '25rem',
       110: '27.5rem',
       120: '30rem',
       128: '32rem',
@@ -326,7 +341,9 @@ module.exports = {
       spin: 'spin 1s linear infinite',
       ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'pulse-70': 'pulse-70 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'swipe-by': 'swipe-by 2s infinite',
       'scale': 'scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       'decrease': 'decrease 500ms ease-in-out',
       'increase': 'increase 500ms ease-in-out',
@@ -351,6 +368,7 @@ module.exports = {
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
       'scale-icon': 'scale-icon 150ms ease-in-out forwards',
+      'scaling-5': 'scaling-5 2s ease-in-out infinite',
       'checkbox-active-on': 'checkbox-active-on 300ms linear forwards',
       'checkbox-active-off': 'checkbox-active-off 300ms linear forwards',
       'highlight': 'highlight 1s ease-in-out forwards',
@@ -369,6 +387,9 @@ module.exports = {
       'notify-panel-closing': 'notify-panel-closing 150ms ease-in-out',
       'notify-toggle-hide': 'notify-toggle-hide 150ms ease-in-out',
       'notify-toggle-show': 'notify-toggle-show 150ms ease-in-out',
+      'opacity-0-100-0': 'opacity-0-100-0 3s ease-in-out infinite',
+      'opacity-10-20-10': 'opacity-10-20-10 3s ease-in-out infinite',
+      'backdrop-2-4-2': 'backdrop-2-4-2 3s ease-in-out infinite',
 
     },
     aspectRatio: {
@@ -631,6 +652,7 @@ module.exports = {
       ],
       serif: ['ui-serif', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
       mono: [
+        'TT Commons Pro Mono',
         'ui-monospace',
         'SFMono-Regular',
         'Menlo',
@@ -659,10 +681,15 @@ module.exports = {
       '9xl': ['8rem', { lineHeight: '1' }],
       'title-1': ['1.25rem', { lineHeight: '1.375rem', fontWeight: '500' }],
       'headline-1': ['1rem', { lineHeight: '1.125rem', fontWeight: '500' }],
+      'headline-2': ['4.5rem', { lineHeight: '4.75rem', fontWeight: '600' }],
+      'headline-3': ['3.5rem', { lineHeight: '3.75rem', fontWeight: '600' }],
+      'headline-4': ['2.5rem', { lineHeight: '2.75rem', fontWeight: '600' }],
+      'headline-5': ['1.5rem', { lineHeight: '1.75rem', fontWeight: '500' }],
       'text-1': ['1rem', { lineHeight: '1.125rem', fontWeight: '400' }],
       'caption-1': ['0.875rem', { lineHeight: '1rem', fontWeight: '500' }],
       'caption-2': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '400' }],
       'caption-3': ['0.85rem', { lineHeight: '0.875rem', fontWeight: '500' }],
+      'caption-4': ['0.875rem', { lineHeight: '1rem', fontWeight: '400' }],
     },
     fontWeight: {
       thin: '100',
@@ -845,9 +872,25 @@ module.exports = {
           opacity: '.5',
         },
       },
+      'pulse-70': {
+        '50%': {
+          opacity: '.7',
+        },
+      },
       'custom-pulse': {
         '50%': {
           opacity: '.1',
+        },
+      },
+      'swipe-by': {
+        '0%': {
+          transform: 'translate(-150%) rotate(10deg)',
+        },
+        '70%': {
+          transform: 'translate(150%) rotate(10deg)',
+        },
+        '100%': {
+          transform: 'translate(150%) rotate(10deg)',
         },
       },
       'scale': {
@@ -1121,6 +1164,14 @@ module.exports = {
           transform: 'scale(1.05)',
         },
       },
+      'scaling-5': {
+        '0%, 100%': {
+          transform: 'scale(1)',
+        },
+        '50%': {
+          transform: 'scale(1.05)',
+        },
+      },
       'tooltip-vertical': {
         to: {
           transform: 'translate(-50%, 0)',
@@ -1142,6 +1193,32 @@ module.exports = {
               'background': '',
               'border-left': '2px solid transparent',
           },
+      },
+      'opacity-0-100-0': {
+        '0%, 100%': {
+          opacity: 0,
+        },
+        '50%': {
+          opacity: 1,
+        },
+      },
+      'opacity-10-20-10': {
+        '0%, 100%': {
+          opacity: 0.1,
+        },
+        '50%': {
+          opacity: 0.2,
+        },
+      },
+      'backdrop-2-4-2': {
+        '0%, 100%': {
+          opacity: 0.9,
+          'backdrop-filter': 'blur(2px)',
+        },
+        '50%': {
+          opacity: 0.8,
+          'backdrop-filter': 'blur(4px)',
+        },
       },
     },
     letterSpacing: {
@@ -1186,6 +1263,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       footer: '3.75rem',
+      none: 'none',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       ...theme('spacing'),
@@ -1515,12 +1593,14 @@ module.exports = {
       80: '80',
       90: '90',
       'minus': '-1',
-      'modal-overlay': '100',
-      'error-container': '200',
-      'menu-container': '900',
-      'menu-overlay': '901',
-      'menu-hover': '902',
-      'menu': '903',
+      'button': '100',
+      'menu-container': '200',
+      'modal-overlay': '200',
+      'menu-overlay': '201',
+      'menu-hover': '202',
+      'menu': '203',
+      'error-container': '300',
+      'bubble': '900',
       'tooltip': '999',
     },
   },
@@ -1544,6 +1624,17 @@ module.exports = {
   ],
   plugins: [
       // require('@tailwindcss/forms'),
+    plugin(({ matchUtilities, theme }) => {
+      matchUtilities(
+        {
+          'translate-z': (value) => ({
+            '--tw-translate-z': value,
+            transform: ` translate3d(var(--tw-translate-x), var(--tw-translate-y), var(--tw-translate-z)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))`,
+          }), // this is actual CSS
+        },
+        { values: theme('translate'), supportsNegativeValues: true },
+      );
+    }),
   ],
   future: {
     hoverOnlyWhenSupported: true,
