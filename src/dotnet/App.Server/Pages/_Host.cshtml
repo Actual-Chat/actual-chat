@@ -100,7 +100,7 @@
 <body class="app-web @(isServerSideBlazor ? "app-server" : "app-wasm")">
 
 @if (!isServerSideBlazor && !isCloseWindowRequest) {
-    <div id="until-ui-is-ready" class="loading-overlay">
+    <div id="until-ui-is-ready" class="loading-overlay hidden">
         <div class="c-box">
             <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="loading">
         </div>

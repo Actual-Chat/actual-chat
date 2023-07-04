@@ -19,7 +19,7 @@ public sealed class LoadingUI
     private readonly TaskCompletionSource _whenLoadedSource = new();
     private readonly TaskCompletionSource _whenRenderedSource = new();
     private readonly TaskCompletionSource _whenChatListLoadedSource = new();
-    private bool _isLoadingOverlayRemoved;
+    private bool _isLoadingOverlayShown;
 
     private IServiceProvider Services { get; }
     private HostInfo HostInfo { get; }
@@ -37,12 +37,18 @@ public sealed class LoadingUI
         Services = services;
         Tracer = services.Tracer(GetType());
         HostInfo = Services.GetRequiredService<HostInfo>();
-        if (HostInfo.AppKind.IsMauiApp()) {
+        var appKind = HostInfo.AppKind;
+        if (appKind.IsMauiApp()) {
+            if (!OSInfo.IsIOS)
+                ShowLoadingOverlay();
+
             if (StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
                 // This is to make sure first scope's timings in MAUI are relative to app start
                 Tracer = StaticTracer[GetType()];
             }
         }
+        else if (appKind.IsClient())
+            ShowLoadingOverlay();
     }
 
     public static void MarkAppBuilt()
@@ -93,7 +99,7 @@ public sealed class LoadingUI
         RenderTime = Tracer.Elapsed;
         Tracer.Point(nameof(MarkRendered));
         _whenAppRenderedSource.TrySetResult();
-        RemoveLoadingOverlay();
+        HideLoadingOverlay();
     }
 
     public void MarkChatListLoaded()
@@ -107,18 +113,35 @@ public sealed class LoadingUI
 
     // Private methods
 
-    private void RemoveLoadingOverlay()
+    private void ShowLoadingOverlay()
     {
-        if (_isLoadingOverlayRemoved)
+        if (_isLoadingOverlayShown)
             return;
 
-        _isLoadingOverlayRemoved = true;
+        _isLoadingOverlayShown = true;
         var js = Services.GetRequiredService<IJSRuntime>();
         // We want to do this via script, coz BrowserInit might not be loaded yet
         const string script = """
         (function() {
             const overlay = document.getElementById('until-ui-is-ready');
-            if (overlay) overlay.remove();
+            if (overlay) overlay.classList.remove('hidden');
+        })();
+        """;
+        _ = js.EvalVoid(script);
+    }
+
+    private void HideLoadingOverlay()
+    {
+        if (!_isLoadingOverlayShown)
+            return;
+
+        _isLoadingOverlayShown = false;
+        var js = Services.GetRequiredService<IJSRuntime>();
+        // We want to do this via script, coz BrowserInit might not be loaded yet
+        const string script = """
+        (function() {
+            const overlay = document.getElementById('until-ui-is-ready');
+            if (overlay) overlay.classList.add('hidden');
         })();
         """;
         _ = js.EvalVoid(script);
