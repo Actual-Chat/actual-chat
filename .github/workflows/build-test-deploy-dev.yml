@@ -75,7 +75,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Generate Nerdbank.GitVersioning files
-        run: dotnet run --project build -- generate-version
+        run: ./run-build.cmd generate-version
 
       - name: Authenticate to Google Cloud
         id: auth
@@ -118,11 +118,11 @@ jobs:
 
       - name: Debug Build for tests
         run: |-
-          dotnet run --project build --configuration Release -- restore
+          ./run-build.cmd restore
           dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
-        run: dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests
+        run: ./run-build.cmd unit-tests --configuration Debug
 
       - name: Report unit test results
         uses: dorny/test-reporter@v1
@@ -201,7 +201,7 @@ jobs:
 
       - name: Debug Build for tests
         run: |-
-          dotnet run --project build --configuration Release -- restore
+          ./run-build.cmd restore
           dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
@@ -224,7 +224,7 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug integration-tests
+          ./run-build.cmd integration-tests --configuration Debug
 
       - name: Report integration test results
         uses: dorny/test-reporter@v1

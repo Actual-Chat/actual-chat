@@ -8,8 +8,8 @@
 
 <!--  Update Identity Version attribute before publishing app to Windows Store  -->
   <Identity
-      Version="0.150.13.0"
-      Name="ActualChatInc.ActualChat"
+      Version=""
+      Name="ActualChatInc.ActualChat.Local"
       Publisher="CN=1A271B2C-D208-4D7C-835E-FB73A5E453AD" />
 
   <Properties>
@@ -38,7 +38,7 @@
                 <uap5:StartupTask
                     TaskId="{2720A628-2446-460A-9B15-9F3B41104E79}"
                     Enabled="false"
-                    DisplayName="Actual Chat" />
+                    DisplayName="Actual Chat Local" />
             </uap5:Extension>
       </Extensions>
     </Application>
