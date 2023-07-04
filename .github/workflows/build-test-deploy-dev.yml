@@ -51,7 +51,7 @@ jobs:
       - name: Install dotnet 7.0 SDK
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7.0.202'
+          dotnet-version: '7.0.305'
 
       - name: Set up Docker Buildx
         id: buildx
@@ -197,7 +197,7 @@ jobs:
       - name: Install dotnet 7.0 SDK
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '7.0.202'
+          dotnet-version: '7.0.305'
 
       - name: Debug Build for tests
         run: |-
