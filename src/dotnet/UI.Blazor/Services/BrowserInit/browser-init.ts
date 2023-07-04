@@ -12,6 +12,7 @@ export class BrowserInit {
     public static windowId = "";
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
+    public static readonly isMauiApp = document.body.classList.contains('app-maui');
 
     public static async init(apiVersion: string, sessionHash: string | null, calls: Array<unknown>): Promise<void> {
         if (this.whenInitialized.isCompleted()) {
@@ -69,7 +70,8 @@ export class BrowserInit {
         if (this.whenReloading.isCompleted())
             return;
 
-        this.setAppConnectionState("Reloading...");
+        if (!this.isMauiApp) // No "Reloading..." on MAUI app
+            this.setAppConnectionState("Reloading...");
         this.whenReloading.resolve(undefined);
         window.setInterval(() => this.tryReload(), 2000);
         void this.tryReload();
