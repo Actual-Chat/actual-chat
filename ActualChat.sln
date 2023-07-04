@@ -98,6 +98,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run.cmd = run.cmd
 		version.json = version.json
 		global.json = global.json
+		.gitignore = .gitignore
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -279,6 +280,15 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nginx", "nginx", "{A1F100F7-92DF-4B51-BF55-A90700BD9423}"
 	ProjectSection(SolutionItems) = preProject
 		.config\local.actual.chat\nginx\nginx.conf = .config\local.actual.chat\nginx\nginx.conf
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{16126688-A04E-44A8-9EA3-A6A45A1D2CE8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{4C3BF424-4983-404C-A62B-F2D286EBCB4E}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
+		.github\workflows\build-monitor.yml = .github\workflows\build-monitor.yml
+		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
 	EndProjectSection
 EndProject
 Global
@@ -664,6 +674,8 @@ Global
 		{70EB21AB-4388-4C55-BA19-D1E1769B0886} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211} = {70EB21AB-4388-4C55-BA19-D1E1769B0886}
 		{A1F100F7-92DF-4B51-BF55-A90700BD9423} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
+		{16126688-A04E-44A8-9EA3-A6A45A1D2CE8} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
+		{4C3BF424-4983-404C-A62B-F2D286EBCB4E} = {16126688-A04E-44A8-9EA3-A6A45A1D2CE8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

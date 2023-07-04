@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -9,10 +8,9 @@ using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
 using Crayon;
-using static Build.CliWrapCommandExtensions;
-using static Build.Windows;
 using static Bullseye.Targets;
 using static Crayon.Output;
+using static Build.CliWrapCommandExtensions;
 
 namespace Build;
 
@@ -21,6 +19,25 @@ namespace Build;
 // but it's clean and works, so I've decided to use it.
 internal static class Program
 {
+    public static class Targets
+    {
+        public const string CleanDist = "clean-dist";
+        public const string Clean = "clean";
+        public const string Watch = "watch";
+        public const string NpmInstall = "npm-install";
+        public const string UnitTests = "unit-tests";
+        public const string GenerateVersion = "generate-version";
+        public const string IntegrationTests = "integration-tests";
+        public const string CleanTests = "clean-tests";
+        public const string Tests = "tests";
+        public const string Build = "build";
+        public const string Maui = "maui";
+        public const string PublishWin = "publish-win";
+        public const string RestoreTools = "restore-tools";
+        public const string Restore = "restore";
+        public const string Default = "default";
+    }
+
     /// <summary>Build project for repository</summary>
     /// <param name="arguments">A list of targets to run or list.</param>
     /// <param name="clear">Clear the console before execution.</param>
@@ -75,164 +92,83 @@ internal static class Program
             NoExtendedChars = noExtendedChars,
         };
 
-        var dotnet = TryFindDotNetExePath()
-            ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
+        var dotnet = Utils.FindDotnetExe();
 
-        Target("watch", DependsOn("clean-dist"), async () => {
+        Target(Targets.Watch, DependsOn(Targets.CleanDist), async () => {
 
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + webpack watch without build system");
-            }
-
-            var npm = TryFindCommandPath("npm")
-                ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
 
             // if one of process exits then close another on Cancel()
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             // cliwrap doesn't kill children of the process..
             // https://github.com/Tyrrrz/CliWrap/blob/49f34ad145501da2d5381058a9ab8d336e788511/CliWrap/Utils/Polyfills.cs#L117
-            using Process dotnetProcess = new();
-            using Process npmProcess = new();
-            try {
-                // any other than `dotnet watch run` command will use legacy ho-reload behavior (profile), so it's better to use the default watch running args
-                // CliWrap doesn't give us process object, which is needed for the workaround of https://github.com/dotnet/aspnetcore/issues/37190
-                var psiDotnet = new ProcessStartInfo(dotnet, "watch -v run") {
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "App.Server")),
-                    EnvironmentVariables = {
-                        ["ASPNETCORE_ENVIRONMENT"] = "Development",
-                        ["EnableAnalyzer"] = "false",
-                        ["EnableNETAnalyzers"] = "false"
-                    }
-                };
-                dotnetProcess.StartInfo = psiDotnet;
-                dotnetProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
-                    if (e?.Data == null)
-                        return;
-                    Console.WriteLine(Green("dotnet: ") + Colorize(e.Data));
-                };
-                dotnetProcess.ErrorDataReceived += (object sender, DataReceivedEventArgs e) => {
-                    if (e?.Data == null)
-                        return;
-                    Console.WriteLine(Green("dotnet: ") + Red(e.Data));
-                };
-                dotnetProcess.Start();
+            using var dotnetWatch = ProcessWatch.Start(
+                "dotnet",
+                dotnet,
+                "watch -v run",
+                "src/dotnet/App.Server",
+                new () {
 
-                if (dotnetProcess.HasExited) {
-                    throw new WithoutStackException("Can't start dotnet watch");
-                }
-                dotnetProcess.BeginErrorReadLine();
-                dotnetProcess.BeginOutputReadLine();
+                    ["ASPNETCORE_ENVIRONMENT"] = "Development",
+                    ["EnableAnalyzer"] = "false",
+                    ["EnableNETAnalyzers"] = "false"
+                },
+                cts);
+            using var npmWatch = ProcessWatch.Start(
+                "webpack",
+                Utils.FindNpmExe(),
+                "run watch",
+                "src/nodejs",
+                new () {
+                    ["CI"] = "true"
+                },
+                cts);
+            await Task.WhenAny(npmWatch.WaitForExit(), dotnetWatch.WaitForExit()).ConfigureAwait(false);
 
-                var psiNpm = new ProcessStartInfo(npm, "run watch") {
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    WorkingDirectory = Path.GetFullPath(Path.Combine("src", "nodejs")),
-                    EnvironmentVariables = {
-                        ["CI"] = "true"
-                    }
-                };
-                npmProcess.StartInfo = psiNpm;
-                npmProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
-                    if (e?.Data == null)
-                        return;
-                    Console.WriteLine(Blue("webpack: ") + e.Data);
-                };
-                npmProcess.ErrorDataReceived += (object sender, DataReceivedEventArgs e) => {
-                    if (e?.Data == null)
-                        return;
-                    Console.WriteLine(Blue("webpack: ") + Red(e.Data));
-                };
-                npmProcess.Start();
-                if (npmProcess.HasExited) {
-                    throw new WithoutStackException("Can't start webpack watch");
-                }
-                npmProcess.BeginErrorReadLine();
-                npmProcess.BeginOutputReadLine();
-                var npmTask = npmProcess.WaitForExitAsync(cts.Token);
-                var dotnetTask = dotnetProcess.WaitForExitAsync(cts.Token);
-                await Task.WhenAny(npmTask, dotnetTask).ConfigureAwait(false);
-            }
-            finally {
-                KillProcessTree(dotnetProcess);
-                KillProcessTree(npmProcess);
-                if (!cts.IsCancellationRequested)
-                    cts.Cancel();
-
-                cts.Dispose();
-            }
             Console.WriteLine(Yellow("The watching is over"));
-
-            /// <seealso cref="Process.Kill(bool)"/> doesn't kill all child processes of npm.bat, this is workaround of that
-            static void KillProcessTree(Process process)
-            {
-                try {
-                    if (!process.HasExited && process.Id != 0) {
-                        var children = GetChildProcesses((uint)process.Id);
-                        process.Kill(entireProcessTree: true);
-                        foreach (var child in children) {
-                            try {
-                                var childProcess = Process.GetProcessById((int)child.ProcessId);
-                                if (childProcess.Id != 0 && !childProcess.HasExited) {
-                                    childProcess.Kill(entireProcessTree: true);
-                                }
-                            }
-                            catch { }
-                        }
-                    }
-                }
-                catch { }
-            }
-
         });
 
-        Target("clean-dist", () => {
-            var extensionDir = Path.Combine("src", "dotnet", "App.Wasm", "wwwroot", "dist");
-            if (Directory.Exists(extensionDir)) {
-                Directory.Delete(extensionDir, recursive: true);
-            }
+        Target(Targets.CleanDist, () => {
+            FileExt.Remove("src/dotnet/*/wwwroot/dist");
         });
 
-        Target("npm-install", async () => {
+        Target(Targets.Clean, DependsOn(Targets.CleanDist, Targets.CleanTests), () => {
+            FileExt.Remove("artifacts", "src/nodejs/node_modules", "**/obj/");
+        });
+
+        Target(Targets.NpmInstall, async () => {
             var nodeModulesDir = Path.Combine("src", "nodejs", "node_modules");
             if (!Directory.Exists(nodeModulesDir)) {
-                var npm = TryFindCommandPath("npm")
-                    ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
-
-                await Cli
-                    .Wrap(npm)
+                await Npm()
                     .WithArguments("ci")
-                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
-                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
                     .ToConsole(Blue("npm install: "))
-                    .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
+                    .ExecuteAsync(cancellationToken)
+                    .Task.ConfigureAwait(false);
             }
         });
 
-        Target("unit-tests", async () => {
-            await Cli.Wrap(dotnet)
-                .WithArguments("test " +
-                "ActualChat.sln " +
-                "--nologo " +
-                "--filter \"FullyQualifiedName~UnitTests\" " +
-                "--no-restore " +
-                "--blame-hang " +
-                "--blame-hang-timeout 60s " +
-                "--logger \"console;verbosity=detailed\" " +
-                "--logger \"trx;LogFileName=Results.trx\" " +
-                (IsGitHubActions() ? "--logger GitHubActions " : "") +
-                $"-c {configuration} "
-                )
-                .ToConsole()
-                .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
-        });
+        Target(Targets.UnitTests,
+            async () => {
+                await Cli.Wrap(dotnet)
+                    .WithArguments("test",
+                        "ActualChat.sln",
+                        "--nologo",
+                        "--filter \"FullyQualifiedName~UnitTests\"",
+                        "--no-restore",
+                        "--blame-hang",
+                        "--blame-hang-timeout 60s",
+                        "--logger \"console;verbosity=detailed\"",
+                        "--logger \"trx;LogFileName=Results.trx\"",
+                        Utils.GithubLogger(),
+                        $"-c {configuration} "
+                    )
+                    .ToConsole()
+                    .ExecuteBufferedAsync(cancellationToken)
+                    .Task.ConfigureAwait(false);
+            });
 
-        Target("generate-version", async () => {
+        Target(Targets.GenerateVersion, async () => {
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
@@ -303,37 +239,31 @@ internal static class Program
             await File.WriteAllTextAsync(".dockerignore", dockerIgnore).ConfigureAwait(false);
         });
 
-        Target("integration-tests", async () => {
+        Target(Targets.IntegrationTests, async () => {
             await Cli.Wrap(dotnet)
-                .WithArguments("test " +
-                "ActualChat.sln " +
-                "--nologo " +
-                "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\" " +
-                "--no-restore " +
-                "--blame-hang " +
-                "--blame-hang-timeout 300s " +
-                "--logger \"console;verbosity=detailed\" " +
-                "--logger \"trx;LogFileName=Results.trx\" " +
-                (IsGitHubActions() ? "--logger GitHubActions " : "") +
-                $"-c {configuration} "
-                )
+                .WithArguments("test",
+                    "ActualChat.sln",
+                    "--nologo",
+                    "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\"",
+                    "--no-restore",
+                    "--blame-hang",
+                    "--blame-hang-timeout 300s",
+                    "--logger \"console;verbosity=detailed\"",
+                    "--logger \"trx;LogFileName=Results.trx\"",
+                    Utils.GithubLogger(),
+                    $"-c {configuration}")
                 .ToConsole()
-                .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+                .ExecuteBufferedAsync(cancellationToken)
+                .Task.ConfigureAwait(false);
         });
 
-        Target("clean-tests", () => {
-            var extensionDir = Path.Combine("artifacts", "tests", "output");
-            if (Directory.Exists(extensionDir)) {
-                Directory.Delete(extensionDir, recursive: true);
-            }
+        Target(Targets.CleanTests, () => {
+            FileExt.Remove("artifacts/tests/output");
         });
 
-        Target("tests", DependsOn("clean-tests", "unit-tests", "integration-tests"), () => { });
+        Target(Targets.Tests, DependsOn(Targets.CleanTests, Targets.UnitTests, Targets.IntegrationTests), () => { });
 
-        Target("build", DependsOn("clean-dist", "npm-install"), async () => {
-            var npm = TryFindCommandPath("npm")
-                ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
-
+        Target(Targets.Build, DependsOn(Targets.CleanDist, Targets.NpmInstall), async () => {
             // if one of process exits then close another on Cancel()
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var token = cts.Token;
@@ -344,11 +274,8 @@ internal static class Program
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
-                var npmTask = Cli
-                    .Wrap(npm)
+                var npmTask = Npm()
                     .WithArguments($"run build:{configuration}")
-                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
-                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
                     .ToConsole(Blue("webpack: "))
                     .ExecuteAsync(token).Task;
 
@@ -361,10 +288,7 @@ internal static class Program
             }
         });
 
-        Target("maui", DependsOn("clean-dist", "npm-install"), async () => {
-            var npm = TryFindCommandPath("npm")
-                ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
-
+        Target(Targets.Maui, DependsOn(Targets.CleanDist, Targets.NpmInstall), async () => {
             // if one of process exits then close another on Cancel()
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var token = cts.Token;
@@ -376,11 +300,8 @@ internal static class Program
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
-                var npmTask = Cli
-                    .Wrap(npm)
+                var npmTask = Npm()
                     .WithArguments($"run build:{configuration}")
-                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
-                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
                     .ToConsole(Blue("webpack: "))
                     .ExecuteAsync(token).Task;
 
@@ -393,7 +314,33 @@ internal static class Program
             }
         });
 
-        Target("restore-tools", async () => {
+        Target(Targets.PublishWin, DependsOn(Targets.CleanDist, Targets.NpmInstall), async () => {
+            await Npm()
+                .WithArguments($"run build:{configuration}")
+                .ToConsole(Blue("webpack: "))
+                .ExecuteAsync(cancellationToken).Task;
+
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            await AppxManifestGenerator.Generate(
+                isProduction,
+                cancellationToken);
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net7.0-windows10.0.22000.0",
+                    "-p:RuntimeIdentifierOverride=win10-x64",
+                    $"-c {configuration}",
+                    isProduction ? "-p:IsDevMaui=false" : "")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task;
+        });
+
+        Target(Targets.RestoreTools, async () => {
             await Cli.Wrap(dotnet).WithArguments("tool restore")
                 .ToConsole()
                 .WithValidation(CommandResultValidation.None)
@@ -410,7 +357,7 @@ internal static class Program
                 .ExecuteAsync().Task.ConfigureAwait(false);
         });
 
-        Target("restore", async () => {
+        Target(Targets.Restore, async () => {
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try {
                 await Cli.Wrap(dotnet).WithArguments("restore ActualChat.sln")
@@ -424,7 +371,7 @@ internal static class Program
             }
         });
 
-        Target("default", DependsOn("build"));
+        Target(Targets.Default, DependsOn(Targets.Build));
 
         try {
             /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
@@ -472,71 +419,6 @@ internal static class Program
             Console.Write("\n");
         }
     }
-
-    /// <summary>
-    /// Returns full path for short commands like "npm" (on windows it will be 'C:\Program Files\nodejs\npm.cmd' for example)
-    /// or null if full path not found
-    /// </summary>
-    internal static string? TryFindCommandPath(string cmd)
-    {
-        if (File.Exists(cmd)) {
-            return Path.GetFullPath(cmd);
-        }
-
-        var values = Environment.GetEnvironmentVariable("PATH");
-        if (values == null)
-            return null;
-
-        var isWindows = Environment.OSVersion.Platform != PlatformID.Unix;
-
-        foreach (var path in values.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)) {
-            var fullPath = Path.Combine(path, cmd);
-            if (isWindows) {
-                if (File.Exists(fullPath + ".exe"))
-                    return fullPath + ".exe";
-                else if (File.Exists(fullPath + ".cmd"))
-                    return fullPath + ".cmd";
-                else if (File.Exists(fullPath + ".bat"))
-                    return fullPath + ".bat";
-            }
-            else {
-                if (File.Exists(fullPath + ".sh"))
-                    return fullPath + ".sh";
-            }
-            if (File.Exists(fullPath))
-                return fullPath;
-        }
-        return null;
-    }
-
-    private static string? TryFindDotNetExePath()
-    {
-        var dotnet = "dotnet";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            dotnet += ".exe";
-
-        var mainModule = Process.GetCurrentProcess().MainModule;
-        if (!string.IsNullOrEmpty(mainModule?.FileName) && Path.GetFileName(mainModule.FileName)!.Equals(dotnet, StringComparison.OrdinalIgnoreCase))
-            return mainModule.FileName;
-
-        var environmentVariable = Environment.GetEnvironmentVariable("DOTNET_ROOT");
-        if (!string.IsNullOrEmpty(environmentVariable))
-            return Path.Combine(environmentVariable, dotnet);
-
-        var paths = Environment.GetEnvironmentVariable("PATH");
-        if (paths == null)
-            return null;
-
-        foreach (var path in paths.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)) {
-            var fullPath = Path.Combine(path, dotnet);
-            if (File.Exists(fullPath))
-                return fullPath;
-        }
-        return null;
-    }
-
-    private static bool IsGitHubActions()
-        => bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), out bool isGitHubActions) && isGitHubActions;
 }
 
 internal class WithoutStackException : Exception

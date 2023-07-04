@@ -14,6 +14,14 @@ namespace Build
         internal static Command ToConsole(this Command command) => command | (_stdout, _stderr);
         internal static Command ToConsole(this Command command, string prefix) => command | (s => Console.WriteLine(prefix + Colorize(s)), s => Console.Error.WriteLine(prefix + Red(s)));
 
+        public static Command Npm()
+            => Cli.Wrap(Utils.FindNpmExe())
+                .WithWorkingDirectory(Path.Combine("src", "nodejs"))
+                .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" });
+
+        public static Command WithArguments(this Command command, params string[] args)
+            => command.WithArguments(args, false);
+
         /// <summary>
         /// Stdout redirect won't use colors from the original output, we should use pseudo console to correct redirect colors.
         /// <see href="https://github.com/microsoft/terminal/blob/main/samples/ConPTY/MiniTerm/MiniTerm/Program.cs#L16" />

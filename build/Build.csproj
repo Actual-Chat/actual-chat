@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Bullseye" />
     <PackageReference Include="CliWrap" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" />
     <PackageReference Include="System.CommandLine.DragonFruit" />
     <PackageReference Include="Crayon" />
     <PackageReference Include="System.Management" />

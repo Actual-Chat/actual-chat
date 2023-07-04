@@ -40,11 +40,12 @@ RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/
 COPY tests/Directory.Build.* tests/.editorconfig tests/
 
 COPY build/ build/
+COPY run-build.cmd .
 
 RUN apt update \
     && apt install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
-RUN dotnet run --project build --configuration Release -- restore \
+RUN ./run-build.cmd restore \
     && dotnet workload install wasm-tools
 
 # node:16-alpine because it's [cached on gh actions VM](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#cached-docker-images)
