@@ -65,7 +65,7 @@ export class MenuHost implements Disposable {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerOver(event));
 
-        Escapist.event$
+        Escapist.escapeEvents()
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: KeyboardEvent) => {
                 if (this.menu != null) {

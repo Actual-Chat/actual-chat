@@ -1,6 +1,6 @@
 import { Subject } from 'rxjs';
 
-export class KeyboardDispatcher {
+class KeyboardDispatcher {
     private readonly subjects: Subject<KeyboardEvent>[] = [];
     private _isAttached: boolean;
 
