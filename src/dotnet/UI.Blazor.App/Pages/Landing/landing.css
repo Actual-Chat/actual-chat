@@ -196,7 +196,8 @@ body.narrow .landing-header .header-text {
     @apply text-01;
 }
 .landing-header .signin-button-group {
-    @apply px-1;
+    @apply flex gap-4;
+    @apply px-6;
     @apply border border-bg-04;
     @apply bg-transparent;
     @apply text-04;
@@ -343,7 +344,7 @@ body.narrow .landing .link-btn-content {
     @apply h-8;
 }
 .link-btn-content img {
-    @apply min-h-10 min-w-10 max-w-10 max-h-10;
+    @apply min-h-8 min-w-8 max-w-8 max-h-8;
 }
 body.narrow .landing .link-btn-content img {
     @apply min-h-8 min-w-8 max-w-8 max-h-8;
@@ -413,7 +414,7 @@ body.narrow .landing .landing-menu {
     @apply text-title-1 text-01;
 }
 .landing-links {
-    @apply flex-x items-center justify-between gap-4;
+    @apply flex-x items-center justify-between gap-8;
     @apply p-8 my-16;
     @apply rounded-lg;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
@@ -429,7 +430,7 @@ body.narrow .landing-links {
 .download-btn {
     @apply md:flex-none flex-x gap-x-4 items-center justify-center;
     @apply h-10;
-    @apply px-4;
+    @apply px-6;
     @apply rounded-full;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }

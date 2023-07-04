@@ -68,8 +68,9 @@
                     Class="header-text text-headline-1 btn-transparent">Docs
                 </Button>
                 @if (isGuest) {
-                    <button class="signin-button-group" onclick="@SignIn">
-                        <span class="px-2 font-medium">Sign in</span>
+                    <button class="signin-button-group items-center" onclick="@SignIn">
+                        <span class="font-medium">Sign in Web App</span>
+                        <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
                     <DownloadButton/>
                 } else {
