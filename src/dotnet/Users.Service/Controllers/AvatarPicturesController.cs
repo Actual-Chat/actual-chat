@@ -1,5 +1,6 @@
 using ActualChat.Media;
 using ActualChat.Web;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -44,14 +45,14 @@ public sealed class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Chat.FileSizeLimit)
             return BadRequest("Image is too big");
 
-        var session = SessionCookies.Read(HttpContext);
+        var session = SessionCookies.Read(HttpContext) ?? ReadSessionFromQuery(HttpContext);
         if (session is null)
-            return Forbid();
+            return BadRequest("No session");
 
         SessionResolver.Session = session;
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user is null)
-            return Forbid();
+            return BadRequest("No session");
 
         var mediaId = new MediaId(user!.Id, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
@@ -76,5 +77,17 @@ public sealed class AvatarPicturesController : ControllerBase
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
         return Ok(new MediaContent(media.Id, media.ContentId));
+    }
+
+    private static Session? ReadSessionFromQuery(HttpContext httpContext)
+    {
+        if (!httpContext.Request.Query.TryGetValue("s", out var sessionIdValue))
+            return null;
+
+        var sessionId = sessionIdValue.ToString();
+        if (sessionId.IsNullOrEmpty() || OrdinalEquals(sessionId, Session.Default.Id))
+            return null;
+
+        return new Session(sessionId);
     }
 }
