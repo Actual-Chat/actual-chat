@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Hosting
 @implements IAsyncDisposable
 
 <input @ref="InputRef" type="file" @attributes="InputAttributes"/>
@@ -11,6 +12,8 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
@@ -27,6 +30,9 @@
         var options = new Options {
             MaxSize = MaxSize,
             UploadUrl = UploadUrl,
+            SessionId = BrowserInfo is { AppKind: AppKind.MauiApp, IsIos: true }
+                ? Session.Id
+                : null,
         };
         JSRef = await JS
             .InvokeAsync<IJSObjectReference>(
@@ -63,5 +69,6 @@
     {
         public int? MaxSize { get; set; }
         public string? UploadUrl { get; set; }
+        public string? SessionId { get; set; }
     }
 }

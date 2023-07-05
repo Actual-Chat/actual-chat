@@ -4,6 +4,7 @@ import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxj
 export interface Options {
     maxSize?: number;
     uploadUrl: string;
+    sessionId?: string;
 }
 
 export class FileUpload implements Disposable {
@@ -21,6 +22,11 @@ export class FileUpload implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly options: Options)
     {
+        let url = this.getUrl(options.uploadUrl);
+        if (options.sessionId) {
+            url = url + '?' + new URLSearchParams({ s: options.sessionId}).toString();
+        }
+
         fromEvent(input, 'change')
             .pipe(
                 takeUntil(this.disposed$),
@@ -39,7 +45,7 @@ export class FileUpload implements Disposable {
                     formData.append('file', file, file.name);
                     return formData;
                 }),
-                map((formData: FormData) => fetch(this.options.uploadUrl, { method: 'POST', body: formData })),
+                map((formData: FormData) => fetch(url, { method: 'POST', body: formData })),
                 switchMap((promise: Promise<Response>) => from(promise)),
             )
             .subscribe(async (response: Response) => {
@@ -54,5 +60,11 @@ export class FileUpload implements Disposable {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private getUrl(url: string) {
+        // @ts-ignore
+        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
+        return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }
