@@ -348,9 +348,19 @@ export class MarkupEditor {
 
         // debugLog?.log(`onPaste: text:`, text)
         this.transaction(() => {
-            document.execCommand('insertText', false, text);
+            this.insertTextAtCursor(text);
         });
         return ok();
+    }
+
+    private insertTextAtCursor(text)
+    {
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const node = document.createTextNode(text);
+        range.deleteContents();
+        range.insertNode(node);
+        selection.setPosition(node, text.length);
     }
 
     private onSelectionChange = (e: Event) => {
