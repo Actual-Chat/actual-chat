@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using Microsoft.Toolkit.HighPerformance
+@using ActualChat.UI.Blazor.Services
 @inherits FusionComponentBase
 @{
     var title = HasTooltip ? Avatar.Name : "";
@@ -37,34 +38,7 @@
         _avatarClass = GetSizeClass();
         if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
-        _avatarPictureUrl = GetAvatarPictureUrl();
-    }
-
-    private string GetAvatarPictureUrl()
-    {
-        var contentId = Avatar.Media?.ContentId;
-        if (!contentId.IsNullOrEmpty()) {
-            var contentUrl = UrlMapper.ContentUrl(contentId);
-            return UrlMapper.ImagePreview128Url(contentUrl);
-        }
-
-        var avatarPicture = Avatar.Picture;
-        if (avatarPicture.IsNullOrEmpty())
-            return Default();
-
-        if (avatarPicture.OrdinalStartsWith(DefaultUserPicture.BoringAvatarsBaseUrl))
-            return UrlMapper.BoringAvatar(avatarPicture);
-
-        if (avatarPicture.StartsWith("http"))
-            return UrlMapper.ImagePreview128Url(avatarPicture);
-
-        return Default();
-
-        string Default()
-        {
-            var bordAvatarUrl = DefaultUserPicture.GetBoringAvatar(Avatar.Id.ToString().GetDjb2HashCode().ToString());
-            return UrlMapper.BoringAvatar(bordAvatarUrl);
-        }
+        _avatarPictureUrl = UrlMapper.AvatarPictureUrl(Avatar);
     }
 
     private string GetSizeClass() {

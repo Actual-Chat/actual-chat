@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public static class UrlMapperExt
@@ -15,7 +13,4 @@ public static class UrlMapperExt
 
         return urlMapper.ToAbsolute(urlMapper.ApiBaseUrl, "audio/download/" + audioEntry.Content);
     }
-
-    public static string UserPictureUrl(this UrlMapper mapper, UserPicture picture)
-        => picture.ContentId.IsNullOrEmpty() ? picture.Picture ?? "" : mapper.ContentUrl(picture.ContentId);
 }
