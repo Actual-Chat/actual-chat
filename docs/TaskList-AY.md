@@ -1,6 +1,7 @@
 Near-term:
+- Use default Session in WASM
 - Session renewal
-- Make reconnection reliable
+- Make reconnection reliable + find out why "Server is disconnected" appears
 - Android AOT fine-tuning
 - Text editor - fix extra blank lines 
 
