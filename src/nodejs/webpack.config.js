@@ -131,11 +131,6 @@ module.exports = (env, args) => {
                     { from: 'images', to: 'images' },
                 ],
             }),
-            new CopyPlugin({
-                patterns: [
-                    { from: 'apple-app-site-association', to: '.well-known/apple-app-site-association', toType: 'file' },
-                ],
-            }),
             // @ts-ignore
             new FileManagerPlugin({
                 events: {

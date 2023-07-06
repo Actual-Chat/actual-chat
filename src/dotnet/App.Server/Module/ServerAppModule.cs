@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
-using System.Net;
 using ActualChat.Commands;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
@@ -8,6 +7,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
@@ -16,12 +16,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Stl.Diagnostics;
-using Stl.Fusion.Blazor;
-using Stl.Fusion.Blazor.Authentication;
-using Stl.Fusion.Server;
-using Stl.Fusion.Server.Authentication;
 using Stl.IO;
-using Stl.RestEase;
 using Stl.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
@@ -92,6 +87,11 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
         app.UseDistFiles();
+        // Explicit rewrite cause files without extension (hence no content-type) are not served due to security reasons
+        app.UseRewriter(
+            new RewriteOptions().AddRewrite("\\.well-known/apple-app-site-association$",
+                ".well-known/apple-app-site-association.json",
+                true));
         app.UseStaticFiles();
 
         /*

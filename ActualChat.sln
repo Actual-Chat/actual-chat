@@ -144,7 +144,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47
 		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
 		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
 		src\nodejs\webpack.config.js = src\nodejs\webpack.config.js
-		src\nodejs\apple-app-site-association = src\nodejs\apple-app-site-association
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C53-98F6-45B2-8717-15B35A59AFDC}"
