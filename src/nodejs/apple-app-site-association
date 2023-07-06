@@ -1,0 +1,11 @@
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appIDs": [ "M287G8G83F.chat.actual.app", "M287G8G83F.chat.actual.dev.app" ],
+                "paths": [ "/chat/*"]
+            }
+        ]
+    }
+}
