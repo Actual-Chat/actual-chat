@@ -1,13 +1,14 @@
 Near-term:
-- [Done?] GuestId is not set issue
-- Historical playback: pause doesn't actually stop it
-- Switch to Stl.Rpc
+- Session renewal
+- Make reconnection reliable
+- Android AOT fine-tuning
+- Text editor - fix extra blank lines 
 
 Mid-term (team):
-- Real-time playback: don't render it as historical
-- AuthorModal - fix view (for you & anonymous authors)
+- SignalR hub reconnection must depend on Rpc reconnection
+- Extract Session service & migrate it to Redis
 - Anonymous user names: come up w/ nicer naming scheme
-- Check if it's ok to run ComputeState not in Dispatcher - it is already like this on MAUI
+- Record how we use background audio playback for Apple review
 
 - Join as guest shouldn't be enabled by default in chats w/ anonymity enabled
 - How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
