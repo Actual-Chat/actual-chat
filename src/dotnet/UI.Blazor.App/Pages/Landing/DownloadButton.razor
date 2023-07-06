@@ -1,6 +1,15 @@
-<button class="download-btn" data-href="@(Links.Apps.Android)">
-    <div class="text-04 text-headline-1">
-        Download App
+<button class="download-btn @Class">
+    <div class="c-content">
+        @Text
     </div>
-    <i class="icon-download text-2xl font-thin text-04"></i>
+    @if (!HideIcon) {
+        <i class="icon-download text-2xl font-thin text-04 c-icon"></i>
+    }
 </button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Text { get; set; } = "Download App";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HideIcon { get; set; }
+}
