@@ -4,14 +4,15 @@ import { audioContextSource } from '../../Services/audio-context-source';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
-import { rpcClient, rpcNoWait } from 'rpc';
+import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
-import { catchErrors, PromiseSource, retry } from 'promises';
+import { catchErrors, debounce, PromiseSource, ResolvedPromise, retry } from 'promises';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
-
+import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
+import * as signalR from "@microsoft/signalr";
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -38,17 +39,11 @@ import { Log } from 'logging';
  */
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
+const RecordingFailedInterval = 500;
 
-class ChatRecording {
-    constructor(
-        public readonly recorderId: string,
-        public readonly chatId: string
-    ) { }
-}
+export class OpusMediaRecorder implements RecorderStateEventHandler {
+    public static readonly audioPowerChanged$: signalR.Subject<number> = new signalR.Subject<number>();
 
-type RecorderState = ChatRecording | null;
-
-export class OpusMediaRecorder {
     private readonly whenInitialized: PromiseSource<void>;
 
     private encoderWorkerInstance: Worker = null;
@@ -59,8 +54,11 @@ export class OpusMediaRecorder {
     private encoderWorklet: OpusEncoderWorklet & Disposable = null;
     private vadWorkletInstance: AudioWorkletNode = null;
     private vadWorklet: AudioVadWorklet & Disposable = null;
-    private state: RecorderState = null;
     private contextRef: AudioContextRef = null;
+    private onStateChanged?: RecorderStateChanged;
+    private isRecording: boolean = false;
+    private isConnected: boolean = false;
+    private isVoiceActive: boolean = false;
 
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
@@ -79,14 +77,14 @@ export class OpusMediaRecorder {
         if (!this.encoderWorker) {
             const encoderWorkerPath = Versioning.mapPath('/dist/opusEncoderWorker.js');
             this.encoderWorkerInstance = new Worker(encoderWorkerPath);
-            this.encoderWorker = rpcClient<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance);
+            this.encoderWorker = rpcClientServer<OpusEncoderWorker>(`${logScope}.encoderWorker`, this.encoderWorkerInstance, this);
         }
 
         debugLog?.log(`init(): create vad worker`);
         if (!this.vadWorker) {
             const vadWorkerPath = Versioning.mapPath('/dist/vadWorker.js');
             this.vadWorkerInstance = new Worker(vadWorkerPath);
-            this.vadWorker = rpcClient<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance);
+            this.vadWorker = rpcClientServer<AudioVadWorker>(`${logScope}.vadWorker`, this.vadWorkerInstance, this);
         }
 
         if (this.origin.includes('0.0.0.0')) {
@@ -108,7 +106,8 @@ export class OpusMediaRecorder {
         debugLog?.log(`<- init()`);
     }
 
-    public async start(recorderId: string, chatId: string, repliedChatEntryId: string): Promise<void> {
+    public async start(recorderId: string, chatId: string, repliedChatEntryId: string, onStateChanged: RecorderStateChanged): Promise<void> {
+        this.onStateChanged = onStateChanged;
         debugLog?.log('-> start(): #', chatId);
         if (!recorderId || !chatId)
             throw new Error('start: recorderId or chatId is unspecified.');
@@ -160,8 +159,6 @@ export class OpusMediaRecorder {
                 () => this.source?.disconnect(),
                 e => warnLog?.log('start.detach source.disconnect error:', e));
             this.source = null;
-
-            this.state = null;
         }
 
         const attach = async (context: AudioContext) => {
@@ -200,9 +197,10 @@ export class OpusMediaRecorder {
                     context,
                     'opus-encoder-worklet-processor',
                     encoderWorkletOptions);
-                this.encoderWorklet = rpcClient<OpusEncoderWorklet>(
+                this.encoderWorklet = rpcClientServer<OpusEncoderWorklet>(
                     `${logScope}.encoderWorklet`,
-                    this.encoderWorkletInstance.port);
+                    this.encoderWorkletInstance.port,
+                    this);
                 await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
                 debugLog?.log(`start.attach(): encoder worklet init completed`);
 
@@ -262,7 +260,6 @@ export class OpusMediaRecorder {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();
             this.contextRef = contextRef;
-            this.state = new ChatRecording(recorderId, chatId);
 
             debugLog?.log(`start(): awaiting encoder worker start and vad worker reset ...`);
             await Promise.all([
@@ -297,7 +294,68 @@ export class OpusMediaRecorder {
         }
     }
 
+
+    // recorder state event handlers
+
+    public onConnectionStateChanged(isConnected: boolean, _noWait?: RpcNoWait): Promise<void> {
+        if (this.isConnected === isConnected)
+            return Promise.resolve(undefined);
+
+        this.isConnected = isConnected;
+
+        const onStateChanged = this.onStateChanged;
+        if (onStateChanged)
+            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+
+        return Promise.resolve(undefined);
+    }
+
+    public onRecordingStateChanged(isRecording: boolean, _noWait?: RpcNoWait): Promise<void> {
+        if (this.isRecording === isRecording)
+            return Promise.resolve(undefined);
+
+        this.isRecording = isRecording;
+
+        const onStateChanged = this.onStateChanged;
+        if (onStateChanged)
+            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+
+        return Promise.resolve(undefined);
+    }
+
+    public onVoiceStateChanged(isVoiceActive: boolean, _noWait?: RpcNoWait): Promise<void> {
+        if (this.isVoiceActive === isVoiceActive)
+            return Promise.resolve(undefined);
+
+        this.isVoiceActive = isVoiceActive;
+
+        const onStateChanged = this.onStateChanged;
+        if (onStateChanged)
+            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
+
+        return Promise.resolve(undefined);
+    }
+
+    public onAudioPowerChange(power: number, _noWait?: RpcNoWait): Promise<void> {
+        OpusMediaRecorder.audioPowerChanged$.next(power);
+
+        return Promise.resolve(undefined);
+    }
+
+    public recordingInProgress(noWait?: RpcNoWait): Promise<void> {
+        if (!this.isRecording) {
+            void this.onRecordingStateChanged(true);
+        }
+        this.recordingFailedDebounced();
+        return Promise.resolve(undefined);
+    }
+
     // Private methods
+
+    private recordingFailedDebounced = debounce(() => this.recordingFailed(), RecordingFailedInterval);
+    private async recordingFailed(): Promise<void> {
+        await this.onRecordingStateChanged(false);
+    }
 
     private async stopMicrophoneStream(): Promise<void> {
         warnLog?.log('stopMicrophoneStream()');

@@ -211,12 +211,12 @@ class Call<T extends (...args: unknown[]) => unknown> {
     }
 }
 
-export type ThrottleMode = 'default' | 'skip' | 'delayHead';
+export type ThrottleMode = 'skip' | 'delayHead';
 
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     intervalMs: number,
-    mode: ThrottleMode = 'default',
+    mode: ThrottleMode = 'skip',
     name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
@@ -274,7 +274,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
             // timeoutHandle !== null, so all we need to do here is to update lastCall
             if (name)
                 debugLog?.log(`throttle '${name}': throttling, remaining delay = ${fireDelay}ms`);
-            if (mode !== 'skip') // i.e. default or delayHead
+            if (mode !== 'skip') // i.e. delayHead
                 lastCall = call;
         }
     }
@@ -285,7 +285,6 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 export function debounce<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     intervalMs: number,
-    debounceHead = false,
     name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
@@ -303,50 +302,35 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
         if (timeoutHandle !== null)
             clearTimeout(timeoutHandle);
         timeoutHandle = null;
-        nextFireTime = 0;
-        if (lastCall !== null) {
-            if (name)
-                debugLog?.log(`debounce '${name}': fire`);
-            const call = lastCall;
-            lastCall = null;
-            call?.invokeSilently(); // This must be done at last
+
+        const fireDelay = nextFireTime - Date.now();
+        if (fireDelay <= 0) {
+            nextFireTime = 0;
+            if (lastCall !== null) {
+                if (name)
+                    debugLog?.log(`debounce '${name}': fire`);
+                const call = lastCall;
+                lastCall = null;
+                call?.invokeSilently(); // This must be done at last
+            }
         }
         else {
-            if (name)
-                debugLog?.log(`debounce '${name}': delay ended`);
+            // debounce has already been called yet another time, but we have triggered on previous call timeout
+            // so let's schedule a new timer
+            timeoutHandle = setTimeout(fire, fireDelay);
         }
     };
 
     const result: ResettableFunc<T> = function(...callArgs: Parameters<T>): void {
         const call = new Call<T>(func, this, callArgs);
-        const fireDelay = nextFireTime - Date.now();
-        if (timeoutHandle !== null && fireDelay <= 0) {
-            // Our delayed "fire" is ready to fire but not fired yet,
-            // so we "flush" it here.
-            fire();
-        }
 
-        if (timeoutHandle === null) {
-            // lastCall is null here
-            if (debounceHead) {
-                if (name)
-                    debugLog?.log(`debounce '${name}': debouncing head call`);
-                lastCall = call;
-            } else {
-                if (name)
-                    debugLog?.log(`debounce '${name}': fire (head call)`);
-                call?.invokeSilently();
-            }
-            nextFireTime = Date.now() + intervalMs;
+        nextFireTime = Date.now() + intervalMs;
+        lastCall = call;
+
+        if (timeoutHandle === null)
             timeoutHandle = setTimeout(fire, intervalMs);
-        } else {
-            // timeoutHandle !== null, so all we need to do here is to update lastCall
-            if (name)
-                debugLog?.log(`debounce '${name}': debouncing`);
-            lastCall = call;
-            clearTimeout(timeoutHandle);
-            timeoutHandle = setTimeout(fire, intervalMs);
-        }
+        if (name)
+            debugLog?.log(`debounce '${name}': debouncing`);
     };
     result.reset = reset;
     return result;

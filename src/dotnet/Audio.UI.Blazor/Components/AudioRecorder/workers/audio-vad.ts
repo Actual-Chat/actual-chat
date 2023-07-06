@@ -52,7 +52,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         this.maxSpeechSamples = sampleRate * MAX_SPEECH;
     }
 
-    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | null> {
+    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> {
         const {
             movingAverages,
             longMovingAverages,
@@ -65,12 +65,12 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         } = this;
         let currentEvent = this.lastActivityEvent;
         const gain = this.calculateChunkGainApproximately(monoPcm);
-        if (gain < 0.0025 && currentEvent.kind === 'end')
-            return null; // do not try to check VAD at low gain input
+         if (gain < 0.0025 && currentEvent.kind === 'end')
+            return gain; // do not try to check VAD at low gain input
 
         const prob = await this.appendChunkInternal(monoPcm);
         if (prob === null)
-            return null; // skip processing until initialized
+            return gain; // skip processing until initialized
 
         // this.results.push(prob);
         const avgProb = movingAverages.append(prob);
@@ -156,7 +156,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
 
         this.sampleCount += monoPcm.length;
         if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind) {
-            return null;
+            return gain;
         }
 
         this.lastActivityEvent = currentEvent;

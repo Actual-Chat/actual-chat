@@ -6,24 +6,25 @@
     _animator.State = m.IsRecording;
     var animatorClass = "record-" + _animator.Class;
     var applyingChangesClass = m.IsApplyingChanges ? "applying-changes" : "";
+    var disconnectedClass = m.IsConnected ? "" : "disconnected";
 }
 
 @if (m.HasMicrophonePermission != false) {
-    <div class="recorder-wrapper @animatorClass @applyingChangesClass">
+    <div class="recorder-wrapper @animatorClass @applyingChangesClass @disconnectedClass">
         <ButtonRound
             Class="record-off-btn"
-            Click="OnClick"
+            Click="@OnClick"
             MustKeepAwake="true"
-            @onpointerup="OnPointerUp"
-            @oncontextmenu="OnContextMenu"
+            @onpointerup="@OnPointerUp"
+            @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
             <img draggable="false" src="/dist/images/logo-white.svg" alt="logo" class="recorder-icon">
         </ButtonRound>
         <ButtonRound
             Class="record-on-btn"
-            Click="OnClick"
-            @onpointerup="OnPointerUp"
-            @oncontextmenu="OnContextMenu"
+            Click="@OnClick"
+            @onpointerup="@OnPointerUp"
+            @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
             <i class="icon-Stop-fill text-2xl"></i>
         </ButtonRound>
@@ -32,7 +33,7 @@
     <div class="recorder-wrapper mic-disabled">
         <ButtonRound
             Class="mic-disabled w-14 h-14"
-            Click="OnClick">
+            Click="@OnClick">
             <i class="icon-mic-off text-2xl text-04"></i>
         </ButtonRound>
     </div>
@@ -74,7 +75,7 @@
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
         var isRecording = recordingChatId == Chat.Id;
         var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
-        return new Model(Chat, isRecording, isApplyingChanges, hasMicrophonePermission);
+        return new(Chat, isRecording, isApplyingChanges, recorderState.IsConnected, recorderState.IsVoiceActive, hasMicrophonePermission);
     }
 
     private async Task OnClick() {
@@ -116,6 +117,8 @@
         Chat Chat,
         bool IsRecording = false,
         bool IsApplyingChanges = false,
+        bool IsConnected = false,
+        bool IsVoiceActive = false,
         bool? HasMicrophonePermission = null
     ) {
         public static Model Loading { get; } = new(SpecialChat.Loading, false, true);

@@ -396,12 +396,12 @@ export class VirtualList {
         // console.warn("skeleton triggered", isNearSkeleton);
     };
 
-    private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce, true);
+    private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce);
     private turnOffIsNearSkeleton() {
         this._isNearSkeleton = false;
     }
 
-    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce, true);
+    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
     private turnOffIsEndAnchorVisible() {
         this._isEndAnchorVisible = false;
         if (this._stickyEdge?.edge === VirtualListEdge.End) {
@@ -698,7 +698,7 @@ export class VirtualList {
         }
     };
 
-    private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce, true);
+    private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
     private turnOffIsScrolling() {
         this._isScrolling = false;
         this._scrollDirection = 'none';
@@ -747,7 +747,7 @@ export class VirtualList {
             this.updateViewportThrottled();
     }
 
-    private requestOldItemsRemovalDebounced = debounce(() => this.requestOldItemsRemoval(), RemoveOldItemsDebounce, true);
+    private requestOldItemsRemovalDebounced = debounce(() => this.requestOldItemsRemoval(), RemoveOldItemsDebounce);
     private async requestOldItemsRemoval(): Promise<void> {
         const items = this._orderedItems;
         const oldCount = items.reduceRight((prev, item) => (!!item.isOld ? 1 : 0) + prev, 0);

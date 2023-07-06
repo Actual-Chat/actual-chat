@@ -1,5 +1,5 @@
 /// #if MEM_LEAK_DETECTION
-import codec, { Codec, Encoder } from '@actual-chat/codec/codec.debug';
+import codec, {Codec, Encoder} from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #else
@@ -9,8 +9,9 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'promises';
-import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer, RpcTimeout } from 'rpc';
+import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import * as signalR from '@microsoft/signalr';
+import { HubConnectionState } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Versioning } from 'versioning';
 
@@ -19,7 +20,8 @@ import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
 import { VoiceActivityChange } from './audio-vad-contract';
-import { Log } from 'logging';
+import { Log} from 'logging';
+import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -83,6 +85,10 @@ const serverImpl: OpusEncoderWorker = {
             .configureLogging(signalR.LogLevel.Information)
             .build();
         await hubConnection.start();
+
+        hubConnection.onreconnected(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
+        hubConnection.onreconnecting(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
+        void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
 
         // Ensure audio transport is up and running
         debugLog?.log(`create: -> hub.ping()`);
@@ -188,7 +194,7 @@ const serverImpl: OpusEncoderWorker = {
         }
     }
 }
-const server = rpcServer(`${logScope}.server`, worker, serverImpl);
+const server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, worker, serverImpl);
 
 // Helpers
 

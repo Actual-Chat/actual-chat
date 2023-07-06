@@ -5,7 +5,7 @@ using Stl.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public class AudioRecorder : IAsyncDisposable
+public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 {
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
@@ -17,6 +17,7 @@ public class AudioRecorder : IAsyncDisposable
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.AudioRecording;
+    private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
 
     private Session Session { get; }
     private IJSRuntime JS { get; }
@@ -47,8 +48,10 @@ public class AudioRecorder : IAsyncDisposable
             var recorderId = hostInfo is { Platform: Platform.iOS, AppKind: AppKind.MauiApp }
                 ? Session.Id.Value
                 : Constants.Recorder.DefaultId;
+            _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
+                    _blazorRef,
                     recorderId)
                 .ConfigureAwait(false);
         }
@@ -58,7 +61,9 @@ public class AudioRecorder : IAsyncDisposable
     {
         using var _ = await _stateLock.Lock().ConfigureAwait(false);
         await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        _blazorRef.DisposeSilently();
         _jsRef = null!;
+        _blazorRef = null!;
     }
 
     public async Task StartRecording(
@@ -97,7 +102,6 @@ public class AudioRecorder : IAsyncDisposable
                 throw new AudioRecorderException(
                     "Can't access the microphone - please check if microphone access permission is granted.");
             }
-            MarkStarted();
         }
         catch (Exception e) when (e is not AudioRecorderException) {
             if (e is not OperationCanceledException)
@@ -126,6 +130,26 @@ public class AudioRecorder : IAsyncDisposable
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         using var _ = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
         return await StopRecordingUnsafe().ConfigureAwait(false);
+    }
+
+    // JS backend callback handlers
+    [JSInvokable]
+    public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)
+    {
+        var state = _state.Value;
+        if (state.ChatId.IsNone) {
+            if (isRecording)
+                throw StandardError.Internal("Something is off: OnRecordingStateChange() is called with active microphone, but ChatId.IsNone == true.");
+
+            isVoiceActive = false;
+        }
+
+        _state.Value = state with {
+            IsRecording = isRecording,
+            IsConnected = isConnected,
+            IsVoiceActive = isVoiceActive,
+        };
+        DebugLog?.LogDebug("Chat #{ChatId}: recording state changed: {State}", state.ChatId, state);
     }
 
     // Private methods
@@ -166,23 +190,15 @@ public class AudioRecorder : IAsyncDisposable
 
     private void MarkStarting(ChatId chatId)
     {
-        _state.Value = new AudioRecorderState(chatId);
+        var currentIsConnected = _state.Value.IsConnected;
+        _state.Value = new AudioRecorderState(chatId) { IsConnected = currentIsConnected };
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting", chatId);
-    }
-
-    private void MarkStarted()
-    {
-        var state = _state.Value;
-        if (state.ChatId.IsNone)
-            throw StandardError.Internal("Something is off: MarkStarted() is called, but ChatId.IsNone == true.");
-
-        _state.Value = state with { IsRecording = true };
-        DebugLog?.LogDebug("Chat #{ChatId}: recording is started", state.ChatId);
     }
 
     private void MarkStopped()
     {
-        _state.Value = AudioRecorderState.Idle;
+        var currentIsConnected = _state.Value.IsConnected;
+        _state.Value = AudioRecorderState.Idle with { IsConnected = currentIsConnected };
         DebugLog?.LogDebug("Recording is stopped");
     }
 }

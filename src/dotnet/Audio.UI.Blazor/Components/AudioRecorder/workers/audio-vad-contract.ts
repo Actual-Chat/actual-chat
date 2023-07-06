@@ -8,7 +8,7 @@ export interface VoiceActivityChange {
 }
 
 export interface VoiceActivityDetector {
-    appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | null> ;
+    appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> ;
     init(): Promise<void>;
     reset(): void;
 }

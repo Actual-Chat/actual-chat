@@ -17,6 +17,8 @@ import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 import { retry } from 'promises';
 import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
+import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
+import { ExponentialMovingAverage } from "./streamed-moving-average";
 
 const { logScope, debugLog, errorLog } = Log.get('AudioVadWorker');
 
@@ -40,6 +42,8 @@ let webrtcVoiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 let isActive = false;
 let isNNVadInitialized = false;
+let audioPowerSampleCounter = 0;
+let audioPowerAverage = new ExponentialMovingAverage(10);
 
 const serverImpl: AudioVadWorker = {
     create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
@@ -96,7 +100,7 @@ const serverImpl: AudioVadWorker = {
         }
     },
 };
-const server = rpcServer(`${logScope}.server`, worker, serverImpl);
+const server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, worker, serverImpl);
 
 async function processQueue(): Promise<void> {
     if (isVadRunning)
@@ -113,7 +117,7 @@ async function processQueue(): Promise<void> {
             }
 
             const buffer = queue.shift();
-            let vadEvent: VoiceActivityChange | null;
+            let vadEvent: VoiceActivityChange | number;
             const hasNNVad = nnVoiceDetector != null && resampler != null;
 
             // might be switched to NN Vad, but still has queue with wrong buffers
@@ -131,7 +135,15 @@ async function processQueue(): Promise<void> {
             }
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
-            if (vadEvent) {
+            if (typeof vadEvent === 'number') {
+                audioPowerAverage.append(vadEvent);
+                if (audioPowerSampleCounter++ > 10) {
+                    // Let's sample audio power results to call this once per 300 ms
+                    void server.onAudioPowerChange(audioPowerAverage.lastAverage, rpcNoWait);
+                    audioPowerSampleCounter = 0;
+                }
+            }
+            else {
                 if (vadEvent.kind === "start") {
                     // we are trying to initialize NN vad when WebRTC vad has already triggered recording
                     // because it's time and CPU consuming operation
@@ -142,6 +154,7 @@ async function processQueue(): Promise<void> {
                     }
                 }
                 void encoderWorker.onVoiceActivityChange(vadEvent, rpcNoWait);
+                void server.onVoiceStateChanged(vadEvent.kind === 'start', rpcNoWait);
             }
         }
     }

@@ -12,25 +12,21 @@
 </p>
 <p>
     <span>1 x:</span>
-    <Button Click="@(() => InvokeMember("throttled"))">throttled()</Button>
     <Button Click="@(() => InvokeMember("throttledSkip"))">throttled(mode = 'skip')</Button>
     <Button Click="@(() => InvokeMember("throttledDelayHead"))">throttled(mode = 'delayHead')</Button>
 </p>
 <p>
     <span>2 x:</span>
-    <Button Click="@(() => InvokeMember("throttled2"))">throttled()</Button>
     <Button Click="@(() => InvokeMember("throttledSkip2"))">throttled(mode = 'skip')</Button>
     <Button Click="@(() => InvokeMember("throttledDelayHead2"))">throttled(mode = 'delayHead')</Button>
 </p>
 <p>
     <span>1 x:</span>
     <Button Click="@(() => InvokeMember("debounced"))">debounced()</Button>
-    <Button Click="@(() => InvokeMember("debouncedHead"))">debounced(debounceHead = true)</Button>
 </p>
 <p>
     <span>2 x:</span>
     <Button Click="@(() => InvokeMember("debounced2"))">debounced()</Button>
-    <Button Click="@(() => InvokeMember("debouncedHead2"))">debounced(debounceHead = true)</Button>
 </p>
 
 <p class="pt-4">Check out the output in JS console.</p>

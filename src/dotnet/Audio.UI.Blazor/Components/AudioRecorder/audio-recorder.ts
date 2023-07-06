@@ -9,6 +9,7 @@ import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-inf
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioRecorder {
+    private readonly blazorRef: DotNet.DotNetObject;
     private readonly recorderId: string;
 
     private static whenInitialized: Promise<void> | null;
@@ -25,11 +26,12 @@ export class AudioRecorder {
     }
 
     /** Called by Blazor  */
-    public static create(recorderId: string) {
-        return new AudioRecorder(recorderId);
+    public static create(blazorRef: DotNet.DotNetObject, recorderId: string) {
+        return new AudioRecorder(blazorRef, recorderId);
     }
 
-    public constructor(recorderId: string) {
+    public constructor(blazorRef: DotNet.DotNetObject, recorderId: string) {
+        this.blazorRef = blazorRef;
         this.recorderId = recorderId;
         if (!AudioRecorder.whenInitialized)
             void AudioRecorder.init();
@@ -145,7 +147,12 @@ export class AudioRecorder {
             }
             debugLog?.log(`startRecording(), after isWebsiteHasMicrophonePermissions`);
 
-            await opusMediaRecorder.start(this.recorderId, chatId, repliedChatEntryId);
+            await opusMediaRecorder.start(
+                this.recorderId,
+                chatId,
+                repliedChatEntryId,
+                (isRecording, isConnected, isVoiceActive) =>
+                    this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')
@@ -177,6 +184,15 @@ export class AudioRecorder {
         finally {
             this.state = 'stopped';
             debugLog?.log(`<- stopRecording`);
+        }
+    }
+
+    private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
+        try {
+            await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isConnected, isVoiceActive);
+        }
+        catch (error) {
+            errorLog?.log(`onRecordingStateChange: unhandled error:`, error);
         }
     }
 }

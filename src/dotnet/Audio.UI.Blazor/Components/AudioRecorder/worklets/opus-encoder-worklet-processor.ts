@@ -6,10 +6,12 @@ import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
 import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { Log } from 'logging';
+import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
 const SAMPLES_PER_MS = 48;
+const SAMPLES_PER_RECORDING_REPORT_CALL = 9600; // 200ms
 
 export interface ProcessorOptions {
     timeSlice: number;
@@ -21,8 +23,9 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private readonly buffer: AudioRingBuffer;
     private readonly bufferPool: ObjectPool<ArrayBuffer>;
     private state: 'running' | 'stopped' | 'inactive' = 'inactive';
-    private server: Disposable;
+    private server: RecorderStateEventHandler & Disposable;
     private worker: OpusEncoderWorker & Disposable;
+    private samplesSinceLastReporting = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -37,7 +40,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
-        this.server = rpcServer(`${logScope}.server`, this.port, this);
+        this.server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, this.port, this);
     }
 
     public async init(workerPort: MessagePort): Promise<void> {
@@ -53,6 +56,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         this.bufferPool.release(buffer);
     }
 
+    // called for each 128 samples ~ 2.5ms
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         timerQueue?.triggerExpired();
         try {
@@ -94,6 +98,12 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
                 } else {
                     this.bufferPool.release(audioArrayBuffer);
                 }
+            }
+
+            this.samplesSinceLastReporting += input[0].length;
+            if (this.samplesSinceLastReporting > SAMPLES_PER_RECORDING_REPORT_CALL) {
+                this.samplesSinceLastReporting = 0;
+                void this.server.recordingInProgress(rpcNoWait);
             }
         }
         catch (error) {
