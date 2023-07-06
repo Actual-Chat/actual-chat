@@ -6,19 +6,21 @@ export class AudioRecorderTestPage extends AudioRecorder {
     private _recordsRef: HTMLElement;
 
     public static createObj(
+        blazorRef: DotNet.DotNetObject,
         debugMode: boolean,
         recordsRef: HTMLElement,
         recordNumber: number,
         sessionId: string) {
-        return new AudioRecorderTestPage(debugMode, recordsRef, recordNumber, sessionId);
+        return new AudioRecorderTestPage(blazorRef, debugMode, recordsRef, recordNumber, sessionId);
     }
 
     public constructor(
+        blazorRef: DotNet.DotNetObject,
         debugMode: boolean,
         recordsRef: HTMLElement,
         recordNumber: number,
         sessionId: string) {
-        super(sessionId);
+        super(blazorRef, sessionId);
         this._recordsRef = recordsRef;
         this._recordNumber = recordNumber;
     }
