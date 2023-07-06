@@ -238,19 +238,23 @@ body.app-maui .landing-header .download-btn {
 }
 
 /* Page 1 styles */
-.landing .page-1 {
+.landing .page-1,
+.landing .page-links {
     @apply bg-[#0436A3];
 }
-.landing .page-1 .page-1-wrapper {
+.landing .page-1 .page-1-wrapper,
+.landing .page-links .page-links-wrapper {
     @apply h-full;
     @apply pt-16;
     @apply bg-contain bg-no-repeat;
     @apply bg-[url('/dist/images/ellipses.svg')];
 }
-body.narrow .landing .page-1 {
+body.narrow .landing .page-1,
+body.narrow .landing .page-links {
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
 }
-body.narrow .landing .page-1 .page-1-wrapper {
+body.narrow .landing .page-1 .page-1-wrapper,
+body.narrow .landing .page-links .page-links-wrapper {
     @apply h-full;
     @apply pt-12 px-4;
     @apply bg-cover bg-repeat-round;
@@ -452,6 +456,10 @@ body.narrow .landing-links {
 }
 .download-btn.transparent * {
     @apply text-04;
+}
+.download-btn .c-content {
+    @apply flex items-center;
+    @apply text-04 text-headline-1;
 }
 
 .page-container {
@@ -690,7 +698,8 @@ body.narrow .layout-body:has(> .docs-content) {
 .carousel-wrapper {
     @apply absolute z-10;
     @apply flex-x justify-center;
-    @apply w-screen h-full;
+    @apply w-screen;
+    @apply top-16 bottom-8;
 }
 .carousel-wrapper .c-side-left,
 .carousel-wrapper .c-side-right {
@@ -705,30 +714,29 @@ body.narrow .carousel-wrapper .c-side-right {
 .carousel-wrapper .c-body {
     @apply flex-1 flex-y;
 }
-.carousel-wrapper .arrow {
-    @apply opacity-30;
-}
 .carousel-wrapper .c-side-left:hover .arrow,
 .carousel-wrapper .c-side-right:hover .arrow {
-    @apply opacity-100;
+    @apply scale-105;
 }
 .carousel-wrapper .c-side-left .arrow {
     @apply absolute left-0 inset-y-1/2;
     @apply flex self-center;
+    @apply h-12;
     @apply cursor-pointer;
 }
 .carousel-wrapper .c-side-right .arrow {
     @apply absolute right-0 inset-y-1/2;
     @apply flex self-center;
+    @apply h-12;
     @apply cursor-pointer;
 }
 .carousel-wrapper .c-bottom {
-    @apply relative self-center bottom-8;
+    @apply relative self-center;
     @apply flex-1 flex-x items-center justify-center gap-x-2;
     @apply w-fit;
 }
 body.wide .feature-carousel .carousel-wrapper .c-bottom {
-    @apply bottom-96 -right-40;
+    left: 25%;
 }
 .feature-carousel .c-bottom {
     @apply relative;
@@ -891,4 +899,57 @@ body.narrow .landing-video-modal .c-footer {
 .landing-video-modal .c-duration {
     @apply flex items-center justify-center;
     @apply w-10;
+}
+
+.page-links {
+    @apply h-screen;
+}
+.page-links .page-title {
+    @apply flex;
+    @apply my-8;
+    @apply text-headline-4 text-04;
+}
+body.narrow .page-links .page-title {
+    @apply justify-start;
+    @apply w-full;
+    @apply text-2xl;
+}
+.landing-download-tile {
+    @apply flex-x justify-between gap-4;
+    @apply p-4;
+    @apply rounded-lg;
+    @apply bg-01;
+    @apply overflow-hidden;
+}
+body.hoverable .landing-download-tile:hover {
+    @apply bg-accent;
+}
+body.hoverable .landing-download-tile:hover .c-title,
+body.hoverable .landing-download-tile:hover .c-text {
+    @apply text-04;
+}
+.landing-download-tile .c-title {
+    @apply flex justify-start;
+    @apply text-xl font-semibold;
+}
+.landing-download-tile .c-text {
+    @apply flex justify-start;
+    @apply text-text-1;
+}
+.landing-download-tile .c-brand {
+    @apply md:mt-4;
+}
+.landing-download-tile .c-qrcode {
+    @apply hidden md:flex;
+    @apply w-20 h-20;
+    @apply m-4;
+}
+.landing-header .download-btn {
+    @apply min-w-48;
+}
+.landing-download-tile .c-content {
+    @apply flex-1 flex-y justify-between;
+}
+body.narrow .landing-download-tile .c-content {
+    @apply flex-x items-center;
 }

@@ -1,0 +1,21 @@
+<button class="landing-download-tile" data-href="@Link">
+    <div class="c-content">
+        <div class="flex-y gap-1">
+            <div class="c-title">@Title</div>
+            <div class="c-text">@Text</div>
+        </div>
+        <div class="c-brand">@Brand</div>
+    </div>
+    <div class="c-qrcode">
+        @QrCode
+    </div>
+</button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Title { get; set; }
+    [Parameter] public RenderFragment? Text { get; set; }
+    [Parameter] public RenderFragment? Brand { get; set; }
+    [Parameter] public RenderFragment? QrCode { get; set; }
+    [Parameter] public string Link { get; set; } = "";
+}

@@ -2,7 +2,7 @@ import { clamp } from 'math';
 import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
 import { DeviceInfo } from 'device-info';
 import { hasModifierKey } from 'keyboard';
-import { stopEvent } from 'event-handling';
+import { preventDefaultForEvent, stopEvent } from 'event-handling';
 import { Timeout } from 'timeout';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
@@ -57,6 +57,8 @@ export class Landing {
     private readonly scrollContainer: HTMLElement;
     private readonly links = new Array<HTMLElement>();
     private readonly pages = new Array<HTMLElement>();
+    private readonly downloadLinksPage: HTMLElement;
+    private currentPage: HTMLElement;
     private lastPage0Top = 0;
     private isAutoScrolling = false;
     private finalScrollCheckTimeout?: Timeout;
@@ -73,6 +75,7 @@ export class Landing {
         landing.querySelectorAll('.scrollable').forEach(e => this.pages.push(e as HTMLElement));
 
         this.scrollContainer = getScrollContainer(this.pages[0]);
+        this.currentPage = this.pages[0];
 
         this.onScreenSizeChange();
         ScreenSize.event$
@@ -93,6 +96,13 @@ export class Landing {
                 takeUntil(this.disposed$),
                 debounceTime(100),
             ).subscribe(() => this.onScroll(false));
+
+        this.downloadLinksPage = this.landing.querySelector('.page-links');
+        let downloadAppButtons = this.landing.querySelectorAll('.download-app');
+
+        fromEvent(downloadAppButtons, 'pointerdown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onDownloadButtonClick(event));
 
         const plug = this.landing.querySelector('.landing-video-plug') as HTMLImageElement;
         const video = this.landing.querySelector('.landing-video') as HTMLVideoElement;
@@ -243,7 +253,8 @@ export class Landing {
 
     private updateHeader(): void {
         const page0 = this.pages[0] as HTMLElement;
-        if (page0.getBoundingClientRect().bottom <= 0) {
+        const downloadPage = this.downloadLinksPage;
+        if (page0.getBoundingClientRect().bottom <= 0 && Math.round(downloadPage.getBoundingClientRect().top) > 0) {
             this.header.classList.add('filled');
         } else {
             this.header.classList.remove('filled');
@@ -262,11 +273,31 @@ export class Landing {
         });
         // There are no links covering the header
         this.header.classList.remove('hide-header');
+
+        let button = this.header.querySelector('.download-app');
+        if (button == null)
+            return;
+        let content = button.querySelector('.c-content');
+        let icon = button.querySelector('.c-icon');
+        if (downloadPage.getBoundingClientRect().top <= 0) {
+            content.innerHTML = "Back to Main page";
+            if (!icon.classList.contains('hidden')) {
+                icon.classList.add('hidden');
+            }
+        } else {
+            content.innerHTML = "Download App";
+            icon.classList.remove('hidden');
+        }
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
         if (DeviceInfo.isIos)
             return; // The auto-scroll doesn't work on iOS devices (yet)
+
+        if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
+            preventDefaultForEvent(event);
+            return;
+        }
 
         const page = this.getCurrentPage();
         if (page == null)
@@ -380,6 +411,24 @@ export class Landing {
         }
 
         this.autoScroll(dPage0Top < 0, null, true);
+    }
+
+    private onDownloadButtonClick(event: PointerEvent) : void {
+        let top = 0;
+        if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
+            // on links page
+            top = Math.round(this.currentPage.getBoundingClientRect().top);
+        } else {
+            // return last viewed page
+            this.currentPage = this.getCurrentPage();
+            top = this.downloadLinksPage.getBoundingClientRect().top;
+        }
+        let landingTop = this.landing.getBoundingClientRect().top;
+        const options = {
+            behavior: 'auto',
+            top: (top - landingTop),
+        } as ScrollToOptions;
+        this.scrollContainer.scrollTo(options);
     }
 }
 

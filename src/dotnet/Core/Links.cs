@@ -34,5 +34,6 @@ public static class Links
     public static class Apps
     {
         public static readonly string Android = "https://play.google.com/store/apps/details?id=chat.actual.app";
+        public static readonly string iOS = "https://testflight.apple.com/join/5JP64q4v";
     }
 }
