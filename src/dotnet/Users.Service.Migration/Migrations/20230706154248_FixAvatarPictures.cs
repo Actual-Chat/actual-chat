@@ -36,7 +36,7 @@ namespace ActualChat.Users.Migrations
             using var mediaDbContext = mediaDbInitializer.CreateDbContext(true);
 
             var dbAvatars = await dbContext.Avatars
-                .Where(a => !a.Picture.IsNullOrEmpty())
+                .Where(a => !string.IsNullOrEmpty(a.Picture))
                 .Where(a => !a.Picture.StartsWith("http"))
                 .OrderBy(c => c.Id)
                 .ToListAsync();
