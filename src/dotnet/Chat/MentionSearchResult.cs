@@ -8,17 +8,17 @@ namespace ActualChat.Chat;
 public partial class MentionSearchResult : SearchResult
 {
     [DataMember, MemoryPackOrder(2)]
-    public UserPicture Picture { get; }
+    public Picture Picture { get; }
 
     [IgnoreDataMember, MemoryPackIgnore]
     public MentionId MentionId => new (Id);
 
     [MemoryPackConstructor]
-    private MentionSearchResult(string id, SearchMatch searchMatch, UserPicture picture)
+    private MentionSearchResult(string id, SearchMatch searchMatch, Picture picture)
         : base(id, searchMatch)
         => Picture = picture;
 
-    public MentionSearchResult(MentionId id, SearchMatch searchMatch, UserPicture picture)
+    public MentionSearchResult(MentionId id, SearchMatch searchMatch, Picture picture)
         : base(id, searchMatch)
         => Picture = picture;
 }

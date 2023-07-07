@@ -9,7 +9,7 @@
 }
 
 <div class="@Class @sizeClass">
-    @if (_hasPicture) {
+    @if (!_pictureUrl.IsNullOrEmpty()) {
         <img class="pic-image @sizeClass @cursorClass"
              alt=""
              src="@_pictureUrl"
@@ -28,31 +28,23 @@
 @code {
     private string _picStyle = "";
     private string _pictureUrl = "";
-    private bool _hasPicture;
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public MediaContent? MediaContent { get; set; }
-    [Parameter] public string ExternalPictureUrl { get; set; } = "";
+    [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public bool EnableImagePreview { get; set; }
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        _pictureUrl = "";
-        if (MediaContent != null) {
-            _pictureUrl = UrlMapper.ImagePreview128Url(UrlMapper.ContentUrl(MediaContent.ContentId));
-            _hasPicture = true;
-        } else if (!ExternalPictureUrl.IsNullOrEmpty()) {
-            _pictureUrl = UrlMapper.ImagePreview128Url(ExternalPictureUrl);
-            _hasPicture = true;
-        } else {
+        if (Picture != null)
+            _pictureUrl = UrlMapper.ImagePreview128Url(UrlMapper.PictureUrl(Picture));
+        else
             _picStyle = $"background-color: {GenerateColor()}";
-        }
     }
 
     private string GenerateColor() {
@@ -64,8 +56,8 @@
     private async Task OnPictureClick(MouseEventArgs arg) {
         await Click.InvokeAsync(arg).ConfigureAwait(false);
 
-        if (EnableImagePreview) {
-            var url = UrlMapper.ContentUrl(MediaContent!.ContentId);
+        if (EnableImagePreview && Picture is { MediaContent: {} mediaContent }) {
+            var url = UrlMapper.ContentUrl(mediaContent.ContentId);
             await VisualMediaViewerUI.Show(url);
         }
     }

@@ -5,7 +5,7 @@
 
 @switch (chat.Kind) {
 case ChatKind.Group:
-    <Pic Title="@chat.Title" MediaContent="@chat.Picture?.ToMediaContent()" Size="@Size"/>
+    <Pic Title="@chat.Title" Picture="@chat.Picture.ToPicture()" Size="@Size"/>
     break;
 case ChatKind.Peer when !_peerChatUserId.IsNone:
     <AccountCircle ShowPresence="true" UserSid="@_peerChatUserId" Size="@Size"/>

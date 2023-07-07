@@ -126,7 +126,7 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
     private static AvatarFull GetDefaultAvatar(AccountFull account)
         => new(account.Id) {
             Name = account.FullName,
-            Picture = DefaultUserPicture.Get(account.FullName),
+            PictureUrl = DefaultUserPicture.Get(account.FullName),
             Bio = "",
         };
 }

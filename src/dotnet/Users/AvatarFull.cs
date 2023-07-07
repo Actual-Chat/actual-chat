@@ -1,5 +1,4 @@
 using MemoryPack;
-using Microsoft.CodeAnalysis;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.Users;
@@ -32,6 +31,8 @@ public sealed partial record AvatarFull(
         => (AvatarFull) base.WithMissingPropertiesFrom(other);
     public new AvatarFull WithMissingPropertiesFrom(Avatar? other)
         => (AvatarFull) base.WithMissingPropertiesFrom(other);
+    public new AvatarFull WithPicture(Picture? picture)
+        => (AvatarFull) base.WithPicture(picture);
 
     // This record relies on version-based equality
     public bool Equals(AvatarFull? other) => EqualityComparer.Equals(this, other);

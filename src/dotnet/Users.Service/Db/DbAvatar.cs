@@ -30,7 +30,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Name = Name,
             MediaId = new MediaId(MediaId),
             Bio = Bio,
-            Picture = Picture,
+            PictureUrl = Picture,
             IsAnonymous = IsAnonymous,
         };
 
@@ -51,7 +51,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Name = model.Name;
         MediaId = model.MediaId;
         Bio = model.Bio;
-        Picture = model.Picture;
+        Picture = model.PictureUrl;
         if (isNew)
             IsAnonymous = model.IsAnonymous;
         else if (IsAnonymous != model.IsAnonymous)

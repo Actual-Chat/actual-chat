@@ -91,7 +91,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             Create = new AvatarFull(account.Id) {
                 Name = name,
                 Bio = avatarBio,
-                Picture = avatarPicture,
+                PictureUrl = avatarPicture,
             },
         });
         var avatar = await commander.Call(changeAvatarCommand, cancellationToken).ConfigureAwait(false);

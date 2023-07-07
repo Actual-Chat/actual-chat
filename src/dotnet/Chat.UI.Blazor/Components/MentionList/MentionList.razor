@@ -12,7 +12,7 @@
 <div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
     @foreach (var mention in mentions) {
         var cls = mention == selection ? "selected" : "";
-        var pictureUrl = UrlMapper.UserPictureUrl(mention.Picture);
+        var pictureUrl = UrlMapper.PicturePreview128Url(mention.Picture);
         <div class="@cls mention-list-item"
              data-editor-focus="true"
              @onmouseover="@(_ => Selection = mention)"

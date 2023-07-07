@@ -25,7 +25,7 @@
                         ImagePicked="OnImagePicked"
                         Size="SquareSize.Size30"
                         Title="@_form.Title"
-                        MediaContent="@_form.PictureMediaContent">
+                        Picture="@_form.Picture">
                     </PicUpload>
 
                     <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
@@ -200,7 +200,7 @@
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
         _form ??= new(ComponentIdGenerator);
         _form.Title = chat.Title;
-        _form.PictureMediaContent = chat.Picture?.ToMediaContent();
+        _form.Picture = chat.Picture?.ToPicture();
         _form.IsPublic = chat.IsPublic;
         _form.IsTemplate = chat.IsTemplate;
         _form.AllowGuestAuthors = chat.AllowGuestAuthors;
@@ -237,7 +237,7 @@
             IsTemplate = _form.IsTemplate,
             AllowGuestAuthors = _form.AllowGuestAuthors,
             AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
-            MediaId = _form.PictureMediaContent?.MediaId ?? MediaId.None,
+            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
             };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
@@ -247,7 +247,7 @@
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
-        _form.PictureMediaContent = mediaContent;
+        _form.Picture = new (mediaContent);
         StateHasChanged();
     }
 
@@ -263,7 +263,7 @@
         public string Title { get; set; } = "";
 
         public string PublicUrl { get; set; } = "";
-        public MediaContent? PictureMediaContent { get; set; }
+        public Picture? Picture { get; set; }
         public bool IsPublic { get; set; }
         public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }
