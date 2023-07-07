@@ -1,4 +1,5 @@
 ﻿using ActualChat.Comparison;
+using ActualChat.Media;
 using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Versioning;
@@ -23,9 +24,9 @@ public partial record Avatar(
         (Avatar? a) => a is { Id.IsEmpty : false });
 
     [DataMember, MemoryPackOrder(2)] public string Name { get; init; } = "";
-    [DataMember, MemoryPackOrder(3)] public string Picture { get; init; } = "";
+    [DataMember, MemoryPackOrder(3)] public string PictureUrl { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public MediaId MediaId { get; init; }
-    [IgnoreDataMember, MemoryPackIgnore] public UserPicture UserPicture => new (Media?.ContentId, Picture);
+    [IgnoreDataMember, MemoryPackIgnore] public Picture? Picture => Media.ToPicture(PictureUrl);
     [DataMember, MemoryPackOrder(5)] public string Bio { get; init; } = "";
 
     // Populated only on reads
@@ -45,9 +46,20 @@ public partial record Avatar(
             avatar = avatar with { Bio = other.Bio };
         if (avatar.MediaId.IsNone)
             avatar = avatar with { MediaId = other.MediaId };
-        if (avatar.Picture.IsNullOrEmpty())
-            avatar = avatar with { Picture = other.Picture };
+        if (avatar.PictureUrl.IsNullOrEmpty())
+            avatar = avatar with { PictureUrl = other.PictureUrl };
         return avatar;
+    }
+
+    public Avatar WithPicture(Picture? picture)
+    {
+        if (picture is null)
+            return this;
+
+        return this with {
+            MediaId = picture.MediaContent?.MediaId ?? MediaId.None,
+            PictureUrl = picture.MediaContent is null ? picture.ExternalUrl ?? "" : "",
+        };
     }
 
     // This record relies on version-based equality

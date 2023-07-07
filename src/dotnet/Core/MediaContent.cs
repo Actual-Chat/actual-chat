@@ -1,3 +1,8 @@
+using MemoryPack;
+
 namespace ActualChat;
 
-public record MediaContent(MediaId MediaId, string ContentId);
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record MediaContent(
+    [property: DataMember, MemoryPackOrder(0)] MediaId MediaId,
+    [property: DataMember, MemoryPackOrder(1)] string ContentId);

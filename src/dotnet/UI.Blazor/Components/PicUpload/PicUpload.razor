@@ -13,8 +13,7 @@
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
     <Pic Title="@Title"
          Size="@Size"
-         MediaContent="@MediaContent"
-         ExternalPictureUrl="@ExternalPictureUrl"
+         Picture="Picture"
          Click="PictureClick"
          NoPicture="NoPicture"/>
     <div class="pic-upload-picker @(sizeClass)">
@@ -42,8 +41,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public MediaContent? MediaContent { get; set; }
-    [Parameter] public string ExternalPictureUrl { get; set; } = "";
+    [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string ImageUploadUrl { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }

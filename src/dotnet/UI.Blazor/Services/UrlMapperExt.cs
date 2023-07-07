@@ -5,31 +5,26 @@ namespace ActualChat.UI.Blazor.Services;
 
 public static class UrlMapperExt
 {
-    public static string UserPictureUrl(this UrlMapper mapper, UserPicture userPicture)
+    public static string PicturePreview128Url(this UrlMapper mapper, Picture? picture)
     {
-        var contentId = userPicture.ContentId;
-        if (!contentId.IsNullOrEmpty())
-        {
-            var contentUrl = mapper.ContentUrl(contentId);
-            return mapper.ImagePreview128Url(contentUrl);
-        }
-
-        var avatarPicture = userPicture.Picture;
-        if (avatarPicture.IsNullOrEmpty())
+        if (picture is null)
             return "";
 
-        if (avatarPicture.OrdinalStartsWith(DefaultUserPicture.BoringAvatarsBaseUrl))
-            return mapper.BoringAvatar(avatarPicture);
+        var pictureUrl = mapper.PictureUrl(picture);
+        if (pictureUrl.OrdinalStartsWith(DefaultUserPicture.BoringAvatarsBaseUrl))
+            return mapper.BoringAvatar(pictureUrl);
 
-        if (avatarPicture.OrdinalStartsWith("http"))
-            return mapper.ImagePreview128Url(avatarPicture);
+        return mapper.ImagePreview128Url(pictureUrl);    }
 
-        return "";
-    }
+    public static string PictureUrl(this UrlMapper mapper, Picture picture)
+        => picture.MediaContent != null
+            ? mapper.ContentUrl(picture.MediaContent.ContentId)
+            : picture.ExternalUrl ?? "";
 
-    public static string AvatarPictureUrl(this UrlMapper mapper, Avatar avatar)
+
+    public static string AvatarPicturePreview128Url(this UrlMapper mapper, Avatar avatar)
     {
-        return UserPictureUrl(mapper, avatar.UserPicture).NullIfEmpty() ?? Default();
+        return PicturePreview128Url(mapper, avatar.Picture).NullIfEmpty() ?? Default();
 
         string Default()
         {

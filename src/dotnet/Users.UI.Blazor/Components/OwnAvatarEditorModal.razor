@@ -1,6 +1,5 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Chat
-@using ActualChat.Media
 @using Stl.CommandR.Internal
 @using Stl.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
@@ -20,8 +19,7 @@
             ImagePicked="OnImagePicked"
             Size="SquareSize.Size30"
             Title="@_form.Bio"
-            MediaContent="_form.PictureMediaContent"
-            ExternalPictureUrl="@_form.ExternalPictureUrl">
+            Picture="_form.Picture">
             <NoPicture>
                 <AnonymousIcon Class="w-32 h-32"/>
             </NoPicture>
@@ -115,8 +113,7 @@
         }
 
         if (avatar != null) {
-            _form.PictureMediaContent = avatar.Media?.ToMediaContent();
-            _form.ExternalPictureUrl = avatar.Picture;
+            _form.Picture = avatar.Picture;
         }
 
         _form.Name = avatar?.Name ?? "";
@@ -136,12 +133,10 @@
             });
             return;
         }
-        avatar = avatar with {
+        avatar = avatar.WithPicture(_form.Picture) with {
             Name = _form.Name,
             Bio = _form.Bio,
-            MediaId = _form.PictureMediaContent?.MediaId ?? MediaId.None,
-            Picture = _form.PictureMediaContent is null ? _form.ExternalPictureUrl : "",
-        };
+            };
         var command = new Avatars_Change(Session, avatarId, avatar.Version, new Change<AvatarFull>() {
             Update = avatar,
         });
@@ -159,8 +154,7 @@
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
-        _form.ExternalPictureUrl = "";
-        _form.PictureMediaContent = mediaContent;
+        _form.Picture = new(mediaContent);
         _form.CopyToBase();
         StateHasChanged();
     }
@@ -193,8 +187,7 @@
     }
 
     private void OnGenerateAvatarClick() {
-        _form.ExternalPictureUrl = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
-        _form.PictureMediaContent = null;
+        _form.Picture = new Picture(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
         _form.CopyToBase();
         StateHasChanged();
     }
@@ -215,9 +208,7 @@
         public bool IsActive { get; set; }
         public string IsActiveFieldId { get; set; } = "";
         public string Title { get; set; } = "";
-        // TODO: try use UserPicture instead
-        public string ExternalPictureUrl { get; set; } = "";
-        public MediaContent? PictureMediaContent { get; set; }
+        public Picture? Picture { get; set; }
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("avatar-editor", componentIdGenerator) {
