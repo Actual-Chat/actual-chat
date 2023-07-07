@@ -1,5 +1,6 @@
 @using ActualChat.Users
 @inherits MenuBase
+@* This is an admin-only component, see how it's used! *@
 
 @foreach (var value in Enum.GetValues<AccountStatus>()) {
     <MenuEntry
