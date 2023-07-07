@@ -179,7 +179,10 @@
         var ownAuthorTask = Authors.GetOwn(Session, ChatId, default);
         if (ownAuthorTask.IsCompletedSuccessfully) {
             var ownAuthorId = ownAuthorTask.Result?.Id ?? AuthorId.None;
-            initialValue = new Model { OwnAuthorId = ownAuthorId };
+            initialValue = new Model {
+                OwnAuthorId = ownAuthorId,
+                RepliedEntry = Entry.RepliedEntryLocalId != null ? ChatEntry.Loading : null,
+            };
         }
         return new() {
             InitialValue = initialValue,

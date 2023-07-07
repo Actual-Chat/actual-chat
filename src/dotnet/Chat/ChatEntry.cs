@@ -13,6 +13,7 @@ public sealed partial record ChatEntry(
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
     public static IdAndVersionEqualityComparer<ChatEntry, ChatEntryId> EqualityComparer { get; } = new();
+    public static ChatEntry Loading { get; } = new(default, -1); // Should differ by Id & Version from None
 
     public static Requirement<ChatEntry> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<ChatEntry>()),

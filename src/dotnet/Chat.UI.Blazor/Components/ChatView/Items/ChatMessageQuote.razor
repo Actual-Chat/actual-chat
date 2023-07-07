@@ -29,10 +29,7 @@
     private string _text = "";
 
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }

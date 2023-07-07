@@ -161,7 +161,7 @@ body.hoverable .chat-header-title:hover {
 }
 
 .chat-message-quote {
-    @apply flex-x gap-x-2;
+    @apply flex-x gap-x-2 h-11;
     @apply text-03 cursor-pointer;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
@@ -169,7 +169,7 @@ body.hoverable .chat-header-title:hover {
     @apply italic cursor-default;
 }
 .chat-message-quote > .c-content {
-    @apply flex-1 flex-y;
+    @apply flex-1 flex-y content-center;
     @apply overflow-hidden;
 }
 .chat-message-quote > .c-content > .c-author {
