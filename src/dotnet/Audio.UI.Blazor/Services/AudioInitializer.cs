@@ -1,15 +1,23 @@
+using System.Text.RegularExpressions;
 using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Hosting;
 
 namespace ActualChat.Audio.UI.Blazor.Services;
 
-public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
+public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
 {
+    [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
+    private static partial Regex IOSDeviceRegexFactory();
+
+    private static readonly Regex IOSDeviceRegex = IOSDeviceRegexFactory();
+
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private IJSRuntime JS { get; }
     private UrlMapper UrlMapper { get; }
+    private HostInfo HostInfo { get; }
 
     public Task WhenInitialized { get; }
 
@@ -20,6 +28,7 @@ public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
 
         JS = services.GetRequiredService<IJSRuntime>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
+        HostInfo = services.GetRequiredService<HostInfo>();
         WhenInitialized = Initialize();
     }
 
@@ -28,13 +37,34 @@ public sealed class AudioInitializer : IAudioInfoBackend, IDisposable
 
     private Task Initialize()
         => new AsyncChain(nameof(Initialize), async ct => {
+                // ReSharper disable once InconsistentNaming
+                var deviceModel = HostInfo.DeviceModel;
+
+                // ReSharper disable once InconsistentNaming
+                var canUseNNVad = HostInfo.Platform != Platform.iOS || IsIOSDeviceFastEnoughToRunNNVad(deviceModel);
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
                 await JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioInitializer.init",
                     ct,
                     backendRef,
-                    UrlMapper.BaseUrl);
+                    UrlMapper.BaseUrl,
+                    canUseNNVad);
             })
             .Log(Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
             .RunIsolated();
+
+    // ReSharper disable once InconsistentNaming
+    private static bool IsIOSDeviceFastEnoughToRunNNVad(string deviceModel)
+    {
+        var match = IOSDeviceRegex.Match(deviceModel);
+        if (!match.Success)
+            return false;
+
+        if (OrdinalIgnoreCaseEquals( match.Groups["type"].Value,"mac"))
+            return true;
+
+        // only recent versions of apple hw have decent performance to run NN with WASM SIMD for VAD
+        return int.TryParse(match.Groups["version"].Value, CultureInfo.InvariantCulture, out var hwVersion)
+            && hwVersion >= 13;
+    }
 }

@@ -68,7 +68,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         this.whenInitialized = new PromiseSource<void>();
     }
 
-    public async init(baseUri: string): Promise<void> {
+    public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
         debugLog?.log(`-> init()`);
         if (this.whenInitialized.isCompleted())
             return;
@@ -100,6 +100,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                { type: 'rpc-timeout', timeoutMs: 20_000 }),
             this.vadWorker.create(
                 Versioning.artifactVersions,
+                canUseNNVad,
                 { type: 'rpc-timeout', timeoutMs: 20_000 }),
         ]);
         this.whenInitialized.resolve(undefined);

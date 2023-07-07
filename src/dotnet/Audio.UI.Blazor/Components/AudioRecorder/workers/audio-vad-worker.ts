@@ -44,9 +44,11 @@ let isActive = false;
 let isNNVadInitialized = false;
 let audioPowerSampleCounter = 0;
 let audioPowerAverage = new ExponentialMovingAverage(10);
+let canUseNNVad = false;
 
 const serverImpl: AudioVadWorker = {
-    create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
+    create: async (artifactVersions: Map<string, string>, canUseNNVad_: boolean, _timeout?: RpcTimeout): Promise<void> => {
+        canUseNNVad = canUseNNVad_;
         if (resampler != null && nnVoiceDetector != null) {
             await nnVoiceDetector.init();
             return;
@@ -147,7 +149,7 @@ async function processQueue(): Promise<void> {
                 if (vadEvent.kind === "start") {
                     // we are trying to initialize NN vad when WebRTC vad has already triggered recording
                     // because it's time and CPU consuming operation
-                    const isSimdSupported = _isSimdSupported();
+                    const isSimdSupported = canUseNNVad && _isSimdSupported();
                     if (isSimdSupported && !hasNNVad && !isNNVadInitialized) {
                         // Load NN VAD Module asynchronously
                         void initNNVad();

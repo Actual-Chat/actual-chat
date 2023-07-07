@@ -11,7 +11,7 @@ export class AudioInitializer {
     public static isRecorderInitialized = false;
     public static isPlayerInitialized = false;
 
-    public static async init(backendRef1: DotNet.DotNetObject, baseUri: string): Promise<void> {
+    public static async init(backendRef1: DotNet.DotNetObject, baseUri: string, canUseNNVad: boolean): Promise<void> {
         this.backendRef = backendRef1;
         infoLog?.log(`-> init`);
 
@@ -29,7 +29,7 @@ export class AudioInitializer {
         if (!this.isRecorderInitialized) {
             try {
                 await AudioRecorder.init();
-                await opusMediaRecorder.init(baseUri);
+                await opusMediaRecorder.init(baseUri, canUseNNVad);
                 this.isRecorderInitialized = true;
             }
             catch (e) {

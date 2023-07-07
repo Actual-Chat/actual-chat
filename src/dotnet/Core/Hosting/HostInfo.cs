@@ -19,6 +19,7 @@ public sealed record HostInfo
     public ClientKind ClientKind { get; init; }
     public Symbol Environment { get; init; } = Environments.Development;
     public IConfiguration Configuration { get; init; } = null!;
+    public string DeviceModel { get; init; } = "Unknown";
     public ImmutableHashSet<Symbol> RequiredServiceScopes => _requiredServiceScopes ??= AppKind.GetRequiredServiceScopes();
 
     public string BaseUrl {

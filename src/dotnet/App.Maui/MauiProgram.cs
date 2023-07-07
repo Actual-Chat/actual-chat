@@ -218,12 +218,14 @@ public static partial class MauiProgram
         var environment = Environments.Development;
 #endif
 
+        var deviceInfo = DeviceInfo.Current;
         var hostInfo = new HostInfo {
             AppKind = AppKind.MauiApp,
             ClientKind = clientKind,
             Environment = environment,
             Configuration = configuration,
             BaseUrl = AppSettings.BaseUrl,
+            DeviceModel = deviceInfo.Model,
             Platform = PlatformInfoProvider.GetPlatform(),
         };
         return hostInfo;

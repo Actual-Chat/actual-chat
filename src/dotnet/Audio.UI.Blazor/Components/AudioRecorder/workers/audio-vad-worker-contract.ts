@@ -1,7 +1,7 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
 
 export interface AudioVadWorker {
-    create(artifactVersions: Map<string, string>, timeout?: RpcTimeout): Promise<void>;
+    create(artifactVersions: Map<string, string>, canUseNNVad: boolean, timeout?: RpcTimeout): Promise<void>;
     init(workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void>;
     reset(): Promise<void>;
 
