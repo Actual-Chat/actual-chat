@@ -46,7 +46,7 @@ public partial class GoogleTranscriber : ITranscriber
     public GoogleTranscriber(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        Clocks = services.GetRequiredService<MomentClockSet>();
+        Clocks = services.Clocks();
 
         Services = services;
         CoreSettings = services.GetRequiredService<CoreSettings>();

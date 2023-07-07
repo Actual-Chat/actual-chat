@@ -19,7 +19,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
             return; // Blazor UI only module
 
         services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
-        services.AddScoped<SignOutReloader>(c => new SignOutReloader(c));
+        services.AddScoped<SignInStateChangeReloader>(c => new SignInStateChangeReloader(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 

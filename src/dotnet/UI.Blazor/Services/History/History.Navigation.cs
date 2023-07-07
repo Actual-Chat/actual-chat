@@ -23,7 +23,7 @@ public partial class History
 
             var itemId = mustReplace ? _currentItem.Id : NewItemId();
             Nav.NavigateTo(uri, new NavigationOptions() {
-                ForceLoad = false,
+                ForceLoad = force,
                 ReplaceHistoryEntry = mustReplace,
                 HistoryEntryState = ItemIdFormatter.Format(itemId),
             });

@@ -33,7 +33,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
     {
         var services = _tester.ScopedAppServices;
 
-        var clocks = services.GetRequiredService<MomentClockSet>();
+        var clocks = services.Clocks();
         var today = clocks.SystemClock.Now.ToDateTime().Date;
         var yesterday = today.AddDays(-1);
         var entry1BeginsAt = yesterday;

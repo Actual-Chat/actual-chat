@@ -99,7 +99,7 @@ public class AppServiceStarter
     {
         // Starting less important UI services
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-        Services.GetRequiredService<SignOutReloader>().Start();
+        Services.GetRequiredService<SignInStateChangeReloader>().Start();
         Services.GetRequiredService<AppPresenceReporter>().Start();
         Services.GetRequiredService<AppIconBadgeUpdater>().Start();
         Services.GetRequiredService<DebugUI>();

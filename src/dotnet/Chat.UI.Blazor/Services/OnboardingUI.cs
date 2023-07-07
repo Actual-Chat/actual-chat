@@ -10,6 +10,7 @@ public class OnboardingUI
 
     private Session Session { get; }
     private IAccounts Accounts { get; }
+    private AccountSettings AccountSettings { get; }
     private ModalUI ModalUI { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
@@ -20,13 +21,13 @@ public class OnboardingUI
     {
         Session = services.GetRequiredService<Session>();
         Accounts = services.GetRequiredService<IAccounts>();
+        AccountSettings = services.GetRequiredService<AccountSettings>();
         ModalUI = services.GetRequiredService<ModalUI>();
-        Clocks = services.GetRequiredService<MomentClockSet>();
+        Clocks = services.Clocks();
 
         var stateFactory = services.StateFactory();
-        var accountSettings = services.GetRequiredService<AccountSettings>();
         _settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
-            new (accountSettings, UserOnboardingSettings.KvasKey) {
+            new (AccountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
@@ -47,28 +48,36 @@ public class OnboardingUI
 
     // Private methods
 
-    private async ValueTask<bool> ShouldBeShown()
+    private async Task<bool> ShouldBeShown()
     {
-        // Uncomment to debug OnboardingUI:
-        // UpdateSettings(new());
-
+        // 1. Wait for sign-in
         try {
             await Computed
                 .Capture(() => Accounts.GetOwn(Session, CancellationToken.None))
-                .When(x => !x.IsGuestOrNone, Clocks.Timeout(3));
-            await Task.Delay(TimeSpan.FromSeconds(0.1));
+                .When(x => !x.IsGuestOrNone, Clocks.Timeout(2))
+                .ConfigureAwait(false);
         }
         catch (TimeoutException) {
             return false;
         }
 
-        await _settings.WhenFirstTimeRead;
+        // 2. Wait when settings are read
+        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+
+        // 3. Extra delay - just in case Origin is somehow set for cached settings
+        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+
+        // 4.Wait when settings migrated
+        try {
+            await _settings.Computed
+                .When(x => !x.Origin.IsNullOrEmpty(), Clocks.Timeout(1))
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            return false;
+        }
+
         var settings = _settings.Value;
-
-        // NOTE(AY): We should stick to the typical UX as much as we can, otherwise we won't see the bugs
-        // if (account.IsAdmin && settings.LastShownAt is { } lastShownAt && lastShownAt + TimeSpan.FromDays(1) < Now)
-        //     return false;
-
         return settings.HasUncompletedSteps;
     }
 }

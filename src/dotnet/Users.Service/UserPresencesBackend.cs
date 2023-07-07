@@ -9,7 +9,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
     private readonly UserPresenceTracker _userPresences;
 
     public UserPresencesBackend(IServiceProvider services) : base(services)
-        => _userPresences = new(PresenceChanged, services.GetRequiredService<MomentClockSet>());
+        => _userPresences = new(PresenceChanged, services.Clocks());
 
     public ValueTask DisposeAsync()
         => _userPresences.DisposeAsync();

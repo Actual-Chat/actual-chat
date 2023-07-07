@@ -6,19 +6,23 @@ using Stl.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class SignOutReloader : WorkerBase
+public class SignInStateChangeReloader : WorkerBase
 {
     private IServiceProvider Services { get; }
     private History History { get; }
     private UICommander UICommander { get; }
+    private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
-    public SignOutReloader(IServiceProvider services)
+    private Moment Now => Clocks.CpuClock.Now;
+
+    public SignInStateChangeReloader(IServiceProvider services)
     {
         Services = services;
         Log = services.LogFor(GetType());
         History = services.GetRequiredService<History>();
-        UICommander = Services.UICommander();
+        UICommander = services.UICommander();
+        Clocks = services.Clocks();
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -37,8 +41,27 @@ public class SignOutReloader : WorkerBase
 
                     // Wait for sign-in unless already signed in
                     if (cAccount.Value.IsGuestOrNone) {
+                        var signedOutAt = Now;
                         await cAccount.When(x => !x.IsGuestOrNone, updateDelayer, cancellationToken).ConfigureAwait(false);
-                        await UICommander.RunNothing().ConfigureAwait(false); // Reset all update delays
+                        if (Now - signedOutAt >= TimeSpan.FromSeconds(0.75)) {
+                            // We check for delay here to make sure it's a human action
+                            // rather than just a delayed update.
+                            // Technically even zero delay is fine here, coz earlier we call
+                            // UpdateIfCached to make sure we use non-cached account.
+                            // But it makes sense to have some delay to decrease the probability
+                            // of unintended redirect here - e.g. in case someone breaks
+                            // UpdateIfCached.
+
+                            var currentUrl = History.LocalUrl;
+                            var targetUrl = currentUrl.IsDocs() ? Links.Chats : currentUrl;
+                            await History.Dispatcher
+                                .InvokeAsync(() => History.NavigateTo(targetUrl, targetUrl == currentUrl, true))
+                                .ConfigureAwait(false);
+                            // The code can't reach this point.
+                        }
+
+                        // Cached sign-out state is replaced with the real signed-in one
+                        await UICommander.RunNothing().ConfigureAwait(false);
                     }
 
                     var onboardingUI = Services.GetRequiredService<OnboardingUI>();

@@ -84,7 +84,7 @@ public static class ComputedExt
             var computedTask = computed.When(predicate, cts.Token);
             var timeoutTask = timeout.Wait(cts.Token);
             await Task.WhenAny(timeoutTask, computedTask).ConfigureAwait(false);
-            if (timeoutTask.IsCompleted)
+            if (timeoutTask.IsCompleted && !cancellationToken.IsCancellationRequested)
                 throw new TimeoutException();
 
             return await computedTask.ConfigureAwait(false);

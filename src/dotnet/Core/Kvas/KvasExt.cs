@@ -5,6 +5,7 @@ namespace ActualChat.Kvas;
 public static class KvasExt
 {
     public static IByteSerializer Serializer { get; set; } = KvasSerializer.Default;
+    public static readonly string MigratedKey = "@Migrated";
 
     // Get, Set, Remove w/ <T>
 
@@ -37,6 +38,18 @@ public static class KvasExt
 
     public static Task Remove(this IKvas kvas, string key, CancellationToken cancellationToken = default)
         => kvas.Set(key, null, cancellationToken);
+
+    public static async Task WhenMigrated(this IKvas kvas, CancellationToken cancellationToken = default)
+    {
+        // NOTE(AY): This method is unused for now, but I decided to keep it - just in case
+        var cMigratedTask = Computed.Capture(() => kvas.Get(MigratedKey, cancellationToken));
+        var cSettingsTask = Computed.Capture(() => kvas.Get("UserLanguageSettings", cancellationToken));
+        var cMigrated = await cMigratedTask.ConfigureAwait(false);
+        var cSettings = await cSettingsTask.ConfigureAwait(false);
+        var task1 = cMigrated.When(x => x != null, cancellationToken);
+        var task2 = cSettings.When(x => x != null, cancellationToken);
+        await Task.WhenAny(task1, task2).ConfigureAwait(false);
+    }
 
     // WithXxx
 

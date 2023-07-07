@@ -121,7 +121,7 @@ public class ServerKvas : IServerKvas
                 .ConfigureAwait(false);
         }
         catch (TimeoutException) {
-            Log.LogWarning("MigrateGuestKeys: GetUserPrefix couldn't complete in 3 seconds");
+            Log.LogWarning("MigrateGuestKeys: Auth.GetUser couldn't complete in 3 seconds");
             return;
         }
 
@@ -170,7 +170,9 @@ public class ServerKvas : IServerKvas
         }
 
         using var _ = Computed.SuspendDependencyCapture();
-        var movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        var movedKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal) {
+            { Kvas.KvasExt.MigratedKey, KvasSerializer.SerializedTrue },
+        };
         var skippedKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (key, value) in keys) {
             var userValue = await Backend.Get(toPrefix, key, cancellationToken).ConfigureAwait(false);
@@ -185,12 +187,12 @@ public class ServerKvas : IServerKvas
             movedKeys.Keys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString(),
             skippedKeys.OrderBy(x => x, StringComparer.Ordinal).ToDelimitedString());
 
-        // Create missing keys in userPrefix
+        // Create missing keys in toPrefix
         await Commander.Call(
             new ServerKvasBackend_SetMany(toPrefix, movedKeys.Select(kv => (kv.Key, (byte[]?) kv.Value)).ToArray()),
             true, cancellationToken
         ).ConfigureAwait(false);
-        // Remove all keys in sessionPrefix
+        // Remove all keys in fromPrefix
         await Commander.Call(
             new ServerKvasBackend_SetMany(fromPrefix, keys.Select(kv => (kv.Key, (byte[]?) null)).ToArray()),
             true, cancellationToken

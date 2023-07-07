@@ -24,24 +24,22 @@ public class AppDelegate : MauiUIApplicationDelegate
 
     private void CheckForAppLink(NSUserActivity userActivity)
     {
-        var strLink = string.Empty;
-
-        switch (userActivity.ActivityType)
-        {
-            case "NSUserActivityTypeBrowsingWeb":
-                strLink = userActivity.WebPageUrl.AbsoluteString;
-                break;
-            case "com.apple.corespotlightitem":
-                if (userActivity.UserInfo?.ContainsKey(CSSearchableItem.ActivityIdentifier) == true)
-                    strLink = userActivity.UserInfo.ObjectForKey(CSSearchableItem.ActivityIdentifier).ToString();
-                break;
-            default:
-                if (userActivity.UserInfo?.ContainsKey(new NSString("link")) == true)
-                    strLink = userActivity.UserInfo[new NSString("link")].ToString();
-                break;
+        var url = "";
+        switch (userActivity.ActivityType) {
+        case "NSUserActivityTypeBrowsingWeb":
+            url = userActivity.WebPageUrl!.AbsoluteString;
+            break;
+        case "com.apple.corespotlightitem":
+            if (userActivity.UserInfo?.ContainsKey(CSSearchableItem.ActivityIdentifier) == true)
+                url = userActivity.UserInfo.ObjectForKey(CSSearchableItem.ActivityIdentifier).ToString();
+            break;
+        default:
+            if (userActivity.UserInfo?.ContainsKey(new NSString("link")) == true)
+                url = userActivity.UserInfo[new NSString("link")].ToString();
+            break;
         }
 
-        if (!string.IsNullOrEmpty(strLink))
-            App.Current.SendOnAppLinkRequestReceived(new Uri(strLink));
+        if (!url.IsNullOrEmpty())
+            App.Current!.SendOnAppLinkRequestReceived(new Uri(url));
     }
 }

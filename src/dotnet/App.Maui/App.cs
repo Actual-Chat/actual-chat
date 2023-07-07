@@ -1,6 +1,6 @@
 namespace ActualChat.App.Maui;
 
-public class App : Microsoft.Maui.Controls.Application
+public class App : Application
 {
     private ILogger Log { get; }
 

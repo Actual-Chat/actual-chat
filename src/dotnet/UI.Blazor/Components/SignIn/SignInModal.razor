@@ -1,13 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Events
 @implements IModalView<SignInModal.Model>
 @{
     if (AuthSchemas == null)
         return;
 }
-
-<OnUIEvent TEvent="OwnAccountChangedEvent" Handler="@OnOwnAccountChanged"/>
 
 <DialogFrame
     Class="sign-in-modal"
@@ -57,14 +54,6 @@
 
     private void SignIn(string name)
         => ClientAuth.SignIn(name);
-
-    private Task OnOwnAccountChanged(OwnAccountChangedEvent @event, CancellationToken cancellationToken) {
-        var (account, _) = @event;
-        var isSignedIn = !account.IsGuestOrNone;
-        var targetUrl = isSignedIn ? Links.Chats : Links.Home;
-        History.NavigateTo(targetUrl, true);
-        return Task.CompletedTask;
-    }
 
     // Nested types
 

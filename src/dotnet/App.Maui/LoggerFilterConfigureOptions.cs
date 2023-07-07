@@ -55,7 +55,7 @@ internal sealed class LoggerFilterConfigureOptions : IConfigureOptions<LoggerFil
 
     private static bool TryGetSwitch(string? value, out LogLevel level)
     {
-        if (string.IsNullOrEmpty(value)) {
+        if (value.IsNullOrEmpty()) {
             level = LogLevel.None;
             return false;
         }

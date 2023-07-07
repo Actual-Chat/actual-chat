@@ -10,7 +10,7 @@
         // Render skeletons until State is computed
         <chat-view-footer-skeleton/>
     } else if (chat.Id.IsNone) {
-        <ReadOnlyChatFooter FooterText="@string.Empty" />
+        <ReadOnlyChatFooter FooterText="" />
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor @key="@chat" Chat="@chat" />

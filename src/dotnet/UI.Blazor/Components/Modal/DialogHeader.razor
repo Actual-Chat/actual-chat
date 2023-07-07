@@ -15,7 +15,7 @@
     var useInteractiveHeader = DialogFrame.NarrowViewSettings.IsSubmitDefined;
     if (useInteractiveHeader) {
         var submitText = settings.SubmitButtonText;
-        if (string.IsNullOrEmpty(submitText))
+        if (submitText.IsNullOrEmpty())
             submitText = "Save";
         <DialogInteractiveHeader
             Title="@Title"

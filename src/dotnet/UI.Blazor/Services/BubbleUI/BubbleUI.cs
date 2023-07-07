@@ -7,21 +7,60 @@ public sealed class BubbleUI
 {
     private readonly ISyncedState<UserBubbleSettings> _settings;
 
+    private Session Session { get; }
+    private IAccounts Accounts { get; }
+    private AccountSettings AccountSettings { get; }
+    private MomentClockSet Clocks { get; }
+
     public IState<UserBubbleSettings> Settings => _settings;
+    public Task WhenReady { get; }
 
     public BubbleUI(IServiceProvider services)
     {
+        Session = services.GetRequiredService<Session>();
+        Accounts = services.GetRequiredService<IAccounts>();
+        AccountSettings = services.GetRequiredService<AccountSettings>();
+        Clocks = services.Clocks();
+
         var stateFactory = services.StateFactory();
-        var accountSettings = services.GetRequiredService<AccountSettings>();
         _settings = stateFactory.NewKvasSynced<UserBubbleSettings>(
-            new (accountSettings, UserBubbleSettings.KvasKey) {
+            new (AccountSettings, UserBubbleSettings.KvasKey) {
                 InitialValue = new UserBubbleSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
+        WhenReady = Initialize();
     }
 
-    public Task WhenReady => _settings.WhenFirstTimeRead;
+    private async Task Initialize()
+    {
+        // 1. Wait for sign-in
+        try {
+            await Computed
+                .Capture(() => Accounts.GetOwn(Session, CancellationToken.None))
+                .When(x => !x.IsGuestOrNone, Clocks.Timeout(2))
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            // Intended
+        }
+
+        // 2. Wait when settings are read
+        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+
+        // 3. Extra delay - just in case Origin is somehow set for cached settings
+        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+
+        // 4.Wait when settings migrated
+        try {
+            await _settings.Computed
+                .When(x => !x.Origin.IsNullOrEmpty(), Clocks.Timeout(1))
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            // Intended
+        }
+    }
 
     public void UpdateSettings(UserBubbleSettings value)
         => _settings.Value = value;
