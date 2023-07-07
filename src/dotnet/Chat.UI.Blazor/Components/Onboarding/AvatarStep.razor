@@ -92,7 +92,7 @@
         _stepModel.LastName = account.LastName;
 
         if (!account.Avatar.Id.IsEmpty) {
-            _stepModel.Picture = account.Avatar.Picture;
+            _stepModel.Picture = account.Avatar.Picture!;
             _stepModel.AvatarId = account.Avatar.Id;
             return;
         }
@@ -105,7 +105,7 @@
             return;
 
         _stepModel.AvatarId = newAvatar.Id;
-        _stepModel.Picture = newAvatar.Picture with { ExternalUrl = account.Avatar.PictureUrl };
+        _stepModel.Picture = newAvatar.Picture! with { ExternalUrl = account.Avatar.PictureUrl };
         var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
     }
