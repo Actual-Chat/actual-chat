@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.Media
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
@@ -10,7 +11,12 @@
 }
 
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
-    <Pic Title="@Title" Size="@Size" ContentId="@ContentId" Click="PictureClick" NoPicture="NoPicture"/>
+    <Pic Title="@Title"
+         Size="@Size"
+         MediaContent="@MediaContent"
+         ExternalPictureUrl="@ExternalPictureUrl"
+         Click="PictureClick"
+         NoPicture="NoPicture"/>
     <div class="pic-upload-picker @(sizeClass)">
         <FileUpload id="@_inputId"
                     UploadUrl="@ImageUploadUrl"
@@ -36,7 +42,8 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter] public string Title { get; set; } = "";
-    [Parameter] public string ContentId { get; set; } = "";
+    [Parameter] public MediaContent? MediaContent { get; set; }
+    [Parameter] public string ExternalPictureUrl { get; set; } = "";
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string ImageUploadUrl { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }

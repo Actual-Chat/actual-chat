@@ -1,6 +1,10 @@
 ﻿@using ActualChat.Chat
+@using ActualChat.Media
 
-<Pic Class="@Class" ContentId="@(Avatar.Media?.ContentId ?? Avatar.Picture)" Title="@Avatar.Name" Size="@Size">
+<Pic Class="@Class"
+     MediaContent="@Avatar.Media?.ToMediaContent()"
+     ExternalPictureUrl="@Avatar.Picture"
+     Title="@Avatar.Name" Size="@Size">
     <NoPicture>
         <AnonymousIcon/>
     </NoPicture>
