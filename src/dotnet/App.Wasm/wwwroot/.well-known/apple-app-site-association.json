@@ -10,7 +10,8 @@
         "paths": [
           "/chat/*",
           "/u/*",
-          "/join/*"
+          "/join/*",
+          "/user/invite/*"
         ]
       }
     ]
