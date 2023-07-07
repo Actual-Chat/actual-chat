@@ -102,12 +102,12 @@
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
     <!-- Performance-related -->
-    <!-- ~ -200ms -->
+    <!-- Doesn't seem to impact the startup time w/ AOT -->
     <AndroidUseInterpreter>false</AndroidUseInterpreter>
-    <!-- ~ -50-100ms + makes the the startup time more stable -->
+    <!-- true: -50-100ms + makes the the startup time more stable -->
     <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
-    <!-- ~ -100ms -->
-    <AndroidEnablePreloadAssemblies>false</AndroidEnablePreloadAssemblies>
+    <!-- true: -150ms -->
+    <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
@@ -115,7 +115,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <EnableLLVM>False</EnableLLVM>
+    <EnableLLVM>false</EnableLLVM>
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
     <!-- Trimming -->
@@ -133,19 +133,23 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
-    <AndroidAotEnableLazyLoad>true</AndroidAotEnableLazyLoad>
+    <!-- false: -100ms or so to startup time -->
+    <AndroidAotEnableLazyLoad>false</AndroidAotEnableLazyLoad>
   </PropertyGroup>
-  <PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <!--
-    This option kinda duplicates AndroidUseDefaultAotProfile,
-    so we're using both - just in case.
+    These two profiles are different, we can include none, any of them, or both.
+    Using both seems to be the most efficient option.
     -->
     <MauiUseDefaultAotProfile>true</MauiUseDefaultAotProfile>
     <AndroidUseDefaultAotProfile>true</AndroidUseDefaultAotProfile>
   </PropertyGroup>
-  <ItemGroup>
-    <!--
-    <AndroidAotProfile Include="custom-inc.aprof" />
+
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <!-- Somehow this just makes things worse
+    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
+    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
     -->
   </ItemGroup>
 
@@ -196,6 +200,8 @@
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android' and '$(Configuration)' == 'Debug'">
     <PackageReference Include="Mono.AotProfiler.Android" />
   </ItemGroup>
 
