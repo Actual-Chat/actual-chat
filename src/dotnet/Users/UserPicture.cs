@@ -2,6 +2,7 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+// TODO: add MediaId
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record UserPicture(
     [property: DataMember, MemoryPackOrder(0)] string? ContentId,

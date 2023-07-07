@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
+@using ActualChat.Media
 @implements IModalView<ChatSettingsModal.Model>
 @inherits ComputedStateComponent<ChatSettingsModal.ComputedModel>
 @{
@@ -24,7 +25,7 @@
                         ImagePicked="OnImagePicked"
                         Size="SquareSize.Size30"
                         Title="@_form.Title"
-                        ContentId="@_form.Picture">
+                        MediaContent="@_form.PictureMediaContent">
                     </PicUpload>
 
                     <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
@@ -176,11 +177,9 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
@@ -201,7 +200,7 @@
         var chat = await Chats.Get(Session, ModalModel.Chat.Id, default).Require();
         _form ??= new(ComponentIdGenerator);
         _form.Title = chat.Title;
-        _form.Picture = chat.Picture?.ContentId ?? "";
+        _form.PictureMediaContent = chat.Picture?.ToMediaContent();
         _form.IsPublic = chat.IsPublic;
         _form.IsTemplate = chat.IsTemplate;
         _form.AllowGuestAuthors = chat.AllowGuestAuthors;
@@ -238,7 +237,7 @@
             IsTemplate = _form.IsTemplate,
             AllowGuestAuthors = _form.AllowGuestAuthors,
             AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
-            MediaId = _form.PictureId,
+            MediaId = _form.PictureMediaContent?.MediaId ?? MediaId.None,
             };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
@@ -248,8 +247,7 @@
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
-        _form.Picture = mediaContent.ContentId;
-        _form.PictureId = mediaContent.MediaId;
+        _form.PictureMediaContent = mediaContent;
         StateHasChanged();
     }
 
@@ -264,9 +262,8 @@
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
 
-        public string Picture { get; set; } = "";
         public string PublicUrl { get; set; } = "";
-        public MediaId PictureId { get; set; } = MediaId.None;
+        public MediaContent? PictureMediaContent { get; set; }
         public bool IsPublic { get; set; }
         public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }

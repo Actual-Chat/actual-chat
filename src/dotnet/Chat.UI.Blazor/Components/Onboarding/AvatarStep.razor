@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using System.ComponentModel.DataAnnotations
+@using ActualChat.Media
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using Microsoft.Toolkit.HighPerformance
 @using Stl.Generators
@@ -18,7 +19,8 @@
         <div class="flex-none flex-x my-8">
             <Pic
                 Title="@_stepModel.Name"
-                ContentId="@_stepModel.Picture"
+                MediaContent="@_stepModel.MediaContent"
+                ExternalPictureUrl="@_stepModel.Picture"
                 Size="SquareSize.Size20">
                 <NoPicture>
                     <AnonymousIcon Class="w-20 h-20"/>
@@ -94,7 +96,7 @@
         _stepModel.LastName = account.LastName;
 
         if (!account.Avatar.Id.IsEmpty) {
-            _stepModel.MediaId = account.Avatar.MediaId;
+            _stepModel.MediaContent = account.Avatar.Media?.ToMediaContent();
             _stepModel.Picture = account.Avatar.Picture;
             _stepModel.AvatarId = account.Avatar.Id;
             return;
@@ -108,7 +110,7 @@
             return;
 
         _stepModel.AvatarId = newAvatar.Id;
-        _stepModel.MediaId = newAvatar.MediaId;
+        _stepModel.MediaContent = newAvatar.Media?.ToMediaContent();
         _stepModel.Picture = account.Avatar.Picture;
         var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
@@ -138,28 +140,28 @@
             new Change<AvatarFull> {
                 Update = avatar with {
                     Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
-                    MediaId = _stepModel.MediaId,
-                    Picture = _stepModel.MediaId.IsNone ? _stepModel.Picture : "",
+                    MediaId = _stepModel.MediaContent?.MediaId ?? MediaId.None,
+                    Picture = _stepModel.MediaContent is null ? _stepModel.Picture : "",
                 },
             });
         await UICommander.Run(updateAvatarCommand);
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
-        _stepModel.MediaId = mediaContent.MediaId;
+        _stepModel.MediaContent = mediaContent;
         _stepModel.Picture = "";
     }
 
     private void OnGenerateAvatarClick() {
         _stepModel.Picture = DefaultUserPicture.GetBoringAvatar(IdGenerator.Next());
-        _stepModel.MediaId = MediaId.None;
+        _stepModel.MediaContent = null;
     }
 
     public class AvatarStepModel {
         [Required] public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
-        public string Picture { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";
-        public MediaId MediaId { get; set; } = MediaId.None;
+        public string Picture { get; set; } = "";
+        public MediaContent? MediaContent { get; set; }
     }
 }
