@@ -22,6 +22,8 @@
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
     @if (hasChat) {
         <Banners @key="@chat" Chat="@chat"/>
+    } else {
+        <AlwaysVisibleBanners/>
     }
 </RenderIntoStack>
 
@@ -44,6 +46,8 @@
 }
 
 @code {
+    protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
+
     protected Model? Rendered;
     protected ChatView ChatViewRef = null!;
 
@@ -109,11 +113,16 @@
                             await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
                     }
 
-                    chat = await Chats.Get(Session, chatId, cancellationToken);
+                    chat = await Chats
+                        .Get(Session, chatId, cancellationToken)
+                        .WaitAsync(LoadTimeout, cancellationToken);
                     chat ??= SpecialChat.Unavailable;
                 }
                 var footer = await GetFooterModel(chat, account, cancellationToken);
                 return new Model(chat, account, footer);
+            }
+            catch (TimeoutException) {
+                return new Model(SpecialChat.Loading, account, new());
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
@@ -125,7 +134,7 @@
         }
     }
 
-    protected async ValueTask<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
+    protected async Task<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
         var otherUserId = chat.Id.IsPeerChat(out var peerChatId)
             ? peerChatId.UserIds.OtherThan(account.Id)
             : default;
@@ -139,7 +148,9 @@
                 canJoinWithGuestAccount = chat.AllowGuestAuthors;
             } else {
                 canJoinAnonymously = chat.AllowAnonymousAuthors;
-                var avatars = await Avatars.ListOwnAvatarIds(Session, cancellationToken);
+                var avatars = await Avatars
+                    .ListOwnAvatarIds(Session, cancellationToken)
+                    .WaitAsync(LoadTimeout, cancellationToken);
                 hasMultipleAvatars = avatars.Count > 1 || canJoinAnonymously;
             }
         }
