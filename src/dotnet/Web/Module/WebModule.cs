@@ -2,11 +2,16 @@
 using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Web.Internal;
+using ActualChat.Web.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
+using Stl.Fusion.Server.Middlewares;
+using Stl.Fusion.Server.Rpc;
 using Stl.RestEase;
+using Stl.Rpc;
+using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.Web.Module;
 
@@ -22,12 +27,20 @@ public sealed class WebModule : HostModule, IWebModule
 
         // Fusion web server
         var fusion = services.AddFusion();
+        var rpc = fusion.Rpc;
         fusion.AddWebServer();
 
-        // Remove SessionMiddleware - just in case
+        // Remove SessionMiddleware - we use SessionCookies directly instead
         services.RemoveAll<SessionMiddleware.Options>();
         services.RemoveAll<SessionMiddleware>();
-        services.AddSingleton(c => new SessionCookies(c));
+
+        // Replace RpcServerConnectionFactory with AppRpcConnectionFactory
+        services.AddSingleton(_ => new AppRpcConnectionFactory());
+        services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<AppRpcConnectionFactory>().Invoke);
+
+        // Replace DefaultSessionReplacerRpcMiddleware with AppDefaultSessionReplacerRpcMiddleware
+        rpc.RemoveInboundMiddleware<DefaultSessionReplacerRpcMiddleware>();
+        rpc.AddInboundMiddleware<AppDefaultSessionReplacerRpcMiddleware>();
 
         // RestEase client
         var restEase = services.AddRestEase();

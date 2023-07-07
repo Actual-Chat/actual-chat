@@ -132,6 +132,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             return false;
         });
         var fusion = services.AddFusion();
+        var rpc = fusion.Rpc;
 
         // Auth
         fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
@@ -160,7 +161,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddSingleton<UserNamer>();
-        services.AddSingleton<MobileSessions.Options>(_ => MobileSessions.Options.Default);
         fusion.AddService<ISystemProperties, SystemProperties>();
         fusion.AddService<IAccounts, Accounts>();
         fusion.AddService<IAccountsBackend, AccountsBackend>();
@@ -172,8 +172,13 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
-        fusion.AddService<IMobileSessions, MobileSessions>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
+
+        // Mobile-related module's own services
+        fusion.AddService<IMobileAuth, MobileAuth>();
+#pragma warning disable CS0618
+        rpc.AddServer<IMobileSessions, IMobileAuth>();
+#pragma warning restore CS0618
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

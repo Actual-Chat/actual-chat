@@ -87,7 +87,9 @@
             if (SessionId.IsNullOrEmpty())
                 throw new ArgumentOutOfRangeException(nameof(SessionId));
 
-            var session = new Session(SessionId);
+            var session = appKind.IsWasmApp()
+                ? Session.Default
+                : new Session(SessionId);
             if (!SessionResolver.HasSession) {
                 SessionResolver.Session = session;
             } else if (SessionResolver.Session != session) {

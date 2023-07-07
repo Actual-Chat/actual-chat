@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 using Stl.Fusion.Extensions;
+using Stl.Generators;
 using Stl.Mathematics.Internal;
 using Stl.RestEase;
 using Stl.Rpc;
@@ -17,21 +18,31 @@ namespace ActualChat.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed partial class CoreModule : HostModule<CoreSettings>
 {
+    static CoreModule()
+    {
+        // This type initializer sets all super-early defaults
+
+        // Session.Factory & Validator
+        Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
+        Session.Validator = session => session.Id.Value.Length >= 20;
+
+#if false
+        // Default binary serializer
+        ByteSerializer.Default = MessagePackByteSerializer.Default;
+
+        // Default caching settings
+        ComputedOptions.ClientDefault = ComputedOptions.ClientDefault with {
+            ClientCacheMode = ClientCacheMode.NoCache,
+        };
+#endif
+    }
+
     public CoreModule(IServiceProvider services) : base(services) { }
 
     protected internal override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-
         var appKind = HostInfo.AppKind;
-
-        // Default binary serializer
-        // ByteSerializer.Default = MessagePackByteSerializer.Default;
-
-        // Default caching settings
-        ComputedOptions.ClientDefault = ComputedOptions.ClientDefault with {
-            // ClientCacheMode = ClientCacheMode.NoCache,
-        };
 
         // Common services
         services.AddTracer();

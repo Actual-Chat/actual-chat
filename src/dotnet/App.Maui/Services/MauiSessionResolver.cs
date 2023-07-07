@@ -62,12 +62,11 @@ public sealed class MauiSessionResolver : ISessionResolver
             if (HasSession)
                 return; // Nothing else to do
 
-            var mobileSessions = Services.GetRequiredService<IMobileSessions>();
+            var mobileAuth = Services.GetRequiredService<IMobileAuth>();
             var session = await _readSessionTask.ConfigureAwait(false);
             if (session == null) {
                 // No session -> create one
-                var sessionId = await mobileSessions.Create(CancellationToken.None).ConfigureAwait(false);
-                session = new Session(sessionId);
+                session = await mobileAuth.CreateSession(CancellationToken.None).ConfigureAwait(false);
                 _sessionSource.TrySetResult(session);
                 _ = Task.Run(() => StoreSession(session));
                 return;
@@ -75,8 +74,7 @@ public sealed class MauiSessionResolver : ISessionResolver
 
             // Session is there -> validate it
             _sessionSource.TrySetResult(session); // Let's be optimists & restart if validation fails later
-            var validSessionId = await mobileSessions.Validate(session.Id, CancellationToken.None).ConfigureAwait(false);
-            var validSession = new Session(validSessionId);
+            var validSession = await mobileAuth.ValidateSession(session, CancellationToken.None).ConfigureAwait(false);
             if (session == validSession)
                 return;
 

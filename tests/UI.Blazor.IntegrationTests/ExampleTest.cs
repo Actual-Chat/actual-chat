@@ -10,11 +10,9 @@ public class ExampleTest : AppHostTestBase
     public async Task SessionTest()
     {
         using var appHost = await NewAppHost();
-        var services = appHost.Services;
-        var sessionFactory = services.SessionFactory();
-        var sessionA = sessionFactory.CreateSession();
+        var session = Session.New();
 
-        Assert.NotNull(sessionA);
-        sessionA.ToString().Length.Should().BeGreaterOrEqualTo(16);
+        Assert.NotNull(session);
+        session.ToString().Length.Should().Be(20);
     }
 }

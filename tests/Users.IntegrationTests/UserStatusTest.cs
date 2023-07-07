@@ -10,7 +10,6 @@ public class UserStatusTest : AppHostTestBase
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
-    private ISessionFactory _sessionFactory = null!;
     private Session _adminSession = null!;
 
     public UserStatusTest(ITestOutputHelper @out) : base(@out)
@@ -22,8 +21,7 @@ public class UserStatusTest : AppHostTestBase
             builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
         _tester = _appHost.NewWebClientTester();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
-        _sessionFactory = _appHost.Services.SessionFactory();
-        _adminSession = _sessionFactory.CreateSession();
+        _adminSession = Session.New();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }

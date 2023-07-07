@@ -16,15 +16,14 @@ public sealed class UsersClientModule : HostModule
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
-        var fusion = services.AddFusion();
-        var fusionAuth = fusion.AddAuthClient();
+        var fusion = services.AddFusion().AddAuthClient();
 
         fusion.AddClient<ISystemProperties>();
+        fusion.AddClient<IMobileAuth>();
         fusion.AddClient<IServerKvas>();
         fusion.AddClient<IAccounts>();
         fusion.AddClient<IAvatars>();
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
-        fusion.AddClient<IMobileSessions>();
     }
 }

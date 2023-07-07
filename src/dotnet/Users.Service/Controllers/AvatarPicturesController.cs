@@ -10,20 +10,17 @@ public sealed class AvatarPicturesController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private ICommander Commander { get; }
-    private SessionCookies SessionCookies { get; }
     private ISessionResolver SessionResolver { get; }
     private IAuth Auth { get; }
 
     public AvatarPicturesController(
         IContentSaver contentSaver,
         ICommander commander,
-        SessionCookies sessionCookies,
         ISessionResolver sessionResolver,
         IAuth auth)
     {
         ContentSaver = contentSaver;
         Commander = commander;
-        SessionCookies = sessionCookies;
         SessionResolver = sessionResolver;
         Auth = auth;
     }
@@ -45,14 +42,14 @@ public sealed class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Chat.FileSizeLimit)
             return BadRequest("Image is too big");
 
-        var session = SessionCookies.Read(HttpContext) ?? ReadSessionFromQuery(HttpContext);
+        var session = SessionCookies.Read(HttpContext, "s");
         if (session is null)
-            return BadRequest("No session");
+            return BadRequest("No Session");
 
         SessionResolver.Session = session;
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user is null)
-            return BadRequest("No session");
+            return BadRequest("No Account");
 
         var mediaId = new MediaId(user!.Id, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
@@ -77,17 +74,5 @@ public sealed class AvatarPicturesController : ControllerBase
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
         return Ok(new MediaContent(media.Id, media.ContentId));
-    }
-
-    private static Session? ReadSessionFromQuery(HttpContext httpContext)
-    {
-        if (!httpContext.Request.Query.TryGetValue("s", out var sessionIdValue))
-            return null;
-
-        var sessionId = sessionIdValue.ToString();
-        if (sessionId.IsNullOrEmpty() || OrdinalEquals(sessionId, Session.Default.Id))
-            return null;
-
-        return new Session(sessionId);
     }
 }

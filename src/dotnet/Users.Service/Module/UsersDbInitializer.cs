@@ -66,7 +66,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         var userIdentity = new UserIdentity("internal", userId);
 
         // Create & sign in the user
-        var session = Services.SessionFactory().CreateSession();
+        var session = Session.New();
         var user = new User(userId, name).WithIdentity(userIdentity);
         var signInCommand = new AuthBackend_SignIn(session, user, userIdentity);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);

@@ -13,7 +13,6 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     private AppHost _appHost = null!;
     private TestSettings _testSettings = null!;
     private IAccounts _accounts = null!;
-    private ISessionFactory _sessionFactory = null!;
     private Session _adminSession = null!;
 
     public ChatPageAuthorizationTest(ITestOutputHelper @out) : base(@out) { }
@@ -24,8 +23,7 @@ public class ChatPageAuthorizationTest : AppHostTestBase
         _testSettings = _appHost.Services.GetRequiredService<TestSettings>();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _tester = _appHost.NewPlaywrightTester();
-        _sessionFactory = _appHost.Services.SessionFactory();
-        _adminSession = _sessionFactory.CreateSession();
+        _adminSession = Session.New();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }

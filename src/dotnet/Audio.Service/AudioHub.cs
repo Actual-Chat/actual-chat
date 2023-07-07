@@ -10,7 +10,6 @@ public class AudioHub : Hub
     private IAudioProcessor AudioProcessor { get; }
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
-    private SessionCookies SessionCookies { get; }
     private OtelMetrics Metrics { get; }
 
     public AudioHub(IServiceProvider services)
@@ -20,7 +19,6 @@ public class AudioHub : Hub
         AudioProcessor = services.GetRequiredService<IAudioProcessor>();
         AudioStreamServer = services.GetRequiredService<IAudioStreamServer>();
         TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
-        SessionCookies = services.GetRequiredService<SessionCookies>();
     }
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
@@ -59,7 +57,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = SessionCookies.Read(httpContext) ?? GetSession(recorderId).RequireValid();
+        var session = SessionCookies.Read(httpContext) ?? ExtractSession(recorderId);
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
@@ -83,12 +81,12 @@ public class AudioHub : Hub
     public Task<string> Ping()
         => Task.FromResult("Pong");
 
-    private Session GetSession(string recorderId)
+    private Session ExtractSession(string recorderId)
     {
         // TODO(AK): Security: migrate to session lookup / decryption here
         recorderId = recorderId
             .RequireNonEmpty(nameof(recorderId))
             .RequireNotEqual(Constants.Recorder.DefaultId, nameof(recorderId));
-        return new(recorderId);
+        return new Session(recorderId).RequireValid();
     }
 }

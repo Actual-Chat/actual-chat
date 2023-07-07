@@ -22,8 +22,7 @@ public class BlazorTester : TestContext, IWebTester
         _serviceScope = AppServices.CreateScope();
         Services.AddFallbackServiceProvider(ScopedAppServices);
 
-        var sessionFactory = AppServices.SessionFactory();
-        Session = sessionFactory.CreateSession();
+        Session = Session.New();
         var sessionResolver = ScopedAppServices.GetRequiredService<ISessionResolver>();
         sessionResolver.Session = Session;
 

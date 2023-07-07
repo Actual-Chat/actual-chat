@@ -43,8 +43,7 @@ public class WebClientTester : IWebClientTester
     public WebClientTester(AppHost appHost, IServiceProvider? clientServices = null)
     {
         AppHost = appHost;
-        var sessionFactory = AppServices.SessionFactory();
-        Session = sessionFactory.CreateSession();
+        Session = Session.New();
         var sessionInfo = Commander.Call(new AuthBackend_SetupSession(Session)).Result;
         sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
         _mustDisposeClientServices = clientServices == null;

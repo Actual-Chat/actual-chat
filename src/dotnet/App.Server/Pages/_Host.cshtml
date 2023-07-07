@@ -10,14 +10,10 @@
 @inject IServiceProvider Services
 @inject ServerAuthHelper ServerAuthHelper
 @inject ISessionResolver SessionResolver
-@inject SessionCookies SessionCookies
 @inject HostInfo HostInfo
 @{
-    if (!SessionResolver.HasSession)
-        SessionResolver.Session = SessionCookies.ReadOrWriteNew(HttpContext);
-
-    var session = SessionResolver.Session;
-    await ServerAuthHelper.UpdateAuthState(session, HttpContext);
+    var session = await SessionCookies.Authenticate(HttpContext, ServerAuthHelper);
+    SessionResolver.Session = session;
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
     var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);

@@ -21,8 +21,7 @@ public class AudioProcessorTest : AppHostTestBase
     {
         using var appHost = await NewAppHost();
         var services = appHost.Services;
-        var sessionFactory = services.SessionFactory();
-        var session = sessionFactory.CreateSession();
+        var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
@@ -47,8 +46,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.SessionFactory();
-        var session = sessionFactory.CreateSession();
+        var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
@@ -94,8 +92,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.SessionFactory();
-        var session = sessionFactory.CreateSession();
+        var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
@@ -160,8 +157,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.SessionFactory();
-        var session = sessionFactory.CreateSession();
+        var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
@@ -227,8 +223,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.SessionFactory();
-        var session = sessionFactory.CreateSession();
+        var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer =services.GetRequiredService<IAudioStreamer>();
@@ -267,8 +262,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var appHost = await NewAppHost();
         var services = appHost.Services;
         var commander = services.Commander();
-        var sessionFactory = services.SessionFactory();
-        var session = sessionFactory.CreateSession();
+        var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer =services.GetRequiredService<IAudioStreamer>();
