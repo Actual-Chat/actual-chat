@@ -62,6 +62,9 @@ export class VisualMediaViewer {
         private readonly blazorRef: DotNet.DotNetObject
     ) {
         this.image = imageViewer.querySelector('img');
+        if (this.image == null) {
+            return;
+        }
         this.overlay = this.imageViewer.closest('.modal-overlay');
         this.header = this.overlay.querySelector('.image-viewer-header');
         this.footer = this.overlay.querySelector('.image-viewer-footer');
