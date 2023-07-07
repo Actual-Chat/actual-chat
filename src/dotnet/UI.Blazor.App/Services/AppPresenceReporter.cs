@@ -6,8 +6,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class AppPresenceReporter : WorkerBase, IComputeService
 {
-    public record Options;
-
     private Session? _session;
     private UserActivityUI? _userActivityUI;
     private ChatAudioUI? _chatAudioUI;
@@ -16,7 +14,6 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private ILogger? _log;
     private IMutableState<Moment> _lastCheckInAt;
 
-    private Options Settings { get; }
     private IServiceProvider Services { get; }
     private Session Session => _session ??= Services.GetRequiredService<Session>();
     private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
@@ -26,9 +23,8 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private Moment Now => Clocks.SystemClock.Now;
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public AppPresenceReporter(Options settings, IServiceProvider services)
+    public AppPresenceReporter(IServiceProvider services)
     {
-        Settings = settings;
         Services = services;
         _lastCheckInAt = services.StateFactory().NewMutable(
             Now - Constants.Presence.OfflineTimeout,

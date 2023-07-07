@@ -24,7 +24,6 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 
         var fusion = services.AddFusion();
-        services.AddSingleton(_ => new AppPresenceReporter.Options());
         fusion.AddService<AppPresenceReporter>(ServiceLifetime.Scoped);
 
         // IModalViews
