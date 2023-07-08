@@ -1,5 +1,4 @@
 using ActualChat.Search;
-using ActualChat.Users;
 using MemoryPack;
 
 namespace ActualChat.Chat;
