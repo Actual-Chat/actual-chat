@@ -57,7 +57,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = SessionCookies.Read(httpContext) ?? ExtractSession(recorderId);
+        var session = GetSession(recorderId) ?? SessionCookies.Read(httpContext).RequireValid();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
@@ -81,12 +81,20 @@ public class AudioHub : Hub
     public Task<string> Ping()
         => Task.FromResult("Pong");
 
-    private Session ExtractSession(string recorderId)
+    private Session? GetSession(string recorderId)
     {
         // TODO(AK): Security: migrate to session lookup / decryption here
-        recorderId = recorderId
-            .RequireNonEmpty(nameof(recorderId))
-            .RequireNotEqual(Constants.Recorder.DefaultId, nameof(recorderId));
-        return new Session(recorderId).RequireValid();
+        if (recorderId.IsNullOrEmpty())
+            return null;
+        if (OrdinalEquals(recorderId, Constants.Recorder.DefaultId))
+            return null;
+
+        try {
+            var session = new Session(recorderId);
+            return session.IsValid() ? session : null;
+        }
+        catch (ArgumentOutOfRangeException) {
+            return null;
+        }
     }
 }

@@ -66,6 +66,7 @@ public static partial class Constants
 
     public static class Recorder
     {
+        // Obsolete: must be removed after a few releases
         public static string DefaultId = "default";
     }
 

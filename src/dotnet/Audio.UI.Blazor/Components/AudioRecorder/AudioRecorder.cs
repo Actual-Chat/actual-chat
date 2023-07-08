@@ -47,7 +47,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
             // TODO(AK): register recorderId for the session
             var recorderId = hostInfo is { Platform: Platform.iOS, AppKind: AppKind.MauiApp }
                 ? Session.Id.Value
-                : Constants.Recorder.DefaultId;
+                : Session.Default.Id.Value;
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
