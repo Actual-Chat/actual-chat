@@ -36,7 +36,7 @@ public sealed class FilesController : ControllerBase
         if (file.Length == 0)
             return BadRequest("File is empty");
 
-        if (file.Length > Constants.Chat.FileSizeLimit)
+        if (file.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("File is too big");
 
         var fileInfo = await ReadFileContent(file, cancellationToken).ConfigureAwait(false);

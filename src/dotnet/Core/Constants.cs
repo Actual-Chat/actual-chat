@@ -20,7 +20,6 @@ public static partial class Constants
         public static TileStack<long> IdTileStack { get; } = TileStacks.Long5To1K;
         public static TileStack<Moment> TimeTileStack { get; } = TileStacks.Moment3MTo6Y;
         public static TimeSpan MaxEntryDuration { get; } = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
-        public const int FileSizeLimit = 25 * 1024 * 1024; // 25MB
         public const int MaxSearchFilterLength = 100;
         public const int ReactionFirstAuthorIdsLimit = 10;
     }
@@ -55,7 +54,7 @@ public static partial class Constants
 
     public static class Attachments
     {
-        public const int FileSizeLimit = 25 * 1024 * 1024; // 25MB
+        public const int FileSizeLimit = 100 * 1024 * 1024; // 25MB
         public const int FileCountLimit = 10;
     }
 
