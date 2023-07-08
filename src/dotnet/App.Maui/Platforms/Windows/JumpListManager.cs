@@ -10,7 +10,7 @@ public static class JumpListManager
     {
         var jumpList = await JumpList.LoadCurrentAsync();
         var count = jumpList.Items.Count;
-        AddJumpListItem(jumpList, QuitArgs, "Quit", "ms-appx:///Platforms/Windows/Assets/jump_item_quit.png");
+        AddJumpListItem(jumpList, QuitArgs, "Quit Actual Chat", "ms-appx:///Platforms/Windows/Assets/jump_item_quit.png");
         if (jumpList.Items.Count == count)
             return;
         await jumpList.SaveAsync();
