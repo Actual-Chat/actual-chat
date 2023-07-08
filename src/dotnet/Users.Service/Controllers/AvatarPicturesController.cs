@@ -39,7 +39,7 @@ public sealed class AvatarPicturesController : ControllerBase
         if (file.Length == 0)
             return BadRequest("Image is empty");
 
-        if (file.Length > Constants.Chat.FileSizeLimit)
+        if (file.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("Image is too big");
 
         var session = SessionCookies.Read(HttpContext, "s");
