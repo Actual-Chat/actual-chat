@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<Stepper Context="stepper">
+    <Header>
+        @if (!stepper.CanMoveBack) {
+            <div class="sign-in-modal-header">Actual.chat ID</div>
+        } else {
+            <ButtonRound
+                Class="transparent"
+                Click="@stepper.MoveBack">
+                <i class="icon-arrow-left text-2xl"></i>
+            </ButtonRound>
+            <div class="sign-in-modal-header">Back</div>
+        }
+    </Header>
+    <Steps>
+        <ProviderSelectStep PhoneSignInModel="_model"/>
+        <VerifyPhoneStep PhoneSignInModel="_model"/>
+    </Steps>
+</Stepper>
+
+@code {
+    private PhoneSignInModel _model = new();
+}

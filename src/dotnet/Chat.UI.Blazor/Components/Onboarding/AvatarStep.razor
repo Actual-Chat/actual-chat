@@ -115,7 +115,7 @@
         return Task.FromResult(isValid);
     }
 
-    protected override async Task Save() {
+    protected override async Task<bool> Save() {
         var account = await Accounts.GetOwn(Session, default);
         var updateAccountCommand = new Accounts_Update(
             Session,
@@ -136,7 +136,8 @@
                     Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
                 },
             });
-        await UICommander.Run(updateAvatarCommand);
+        var (_, error) = await UICommander.Run(updateAvatarCommand);
+        return error is null;
     }
 
     private void OnImagePicked(MediaContent mediaContent) {

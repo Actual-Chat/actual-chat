@@ -98,6 +98,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run.cmd = run.cmd
 		version.json = version.json
 		global.json = global.json
+		docker-compose.yml = docker-compose.yml
 		.gitignore = .gitignore
 	EndProjectSection
 EndProject

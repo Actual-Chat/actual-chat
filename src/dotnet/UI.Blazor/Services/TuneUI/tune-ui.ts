@@ -11,6 +11,7 @@ export class TuneUI {
         'open-modal': [20],
         'close-modal': [20],
         'select-navbar-item': [],
+        'input-error': [80],
         // Recording
         'begin-recording': [100,50,50],
         'end-recording': [100],

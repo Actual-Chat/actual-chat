@@ -131,22 +131,25 @@ body.hoverable .btn.btn-text:focus:hover {
     @apply min-w-20;
     @apply px-2;
     @apply border-0;
-    @apply text-badge text-headline-1;
+    @apply text-headline-1;
+}
+.btn.btn-modal:not(.btn-primary) {
+    @apply text-badge;
+    @apply bg-03;
 }
 .btn.btn-modal.danger {
     @apply text-icons-04;
 }
-.btn.btn-modal {
-    @apply bg-03;
+.btn.btn-modal:not(.btn-primary) .btn-content {
+    @apply bg-transparent;
 }
 .btn.btn-modal .btn-content {
-    @apply bg-transparent;
     @apply flex-x gap-x-2 items-center;
 }
 .btn.btn-modal:active {
     @apply bg-secondary;
 }
-body.hoverable .btn.btn-modal:hover {
+body.hoverable .btn.btn-modal:hover:not(.btn-primary) {
     @apply bg-secondary;
 }
 body.hoverable .btn.btn-modal.danger:hover {

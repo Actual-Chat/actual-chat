@@ -1,0 +1,24 @@
+.totp-input {
+    @apply flex-y gap-y-4 justify-center;
+}
+.totp-input > .c-digits {
+    @apply flex-x gap-x-4 items-center justify-center;
+}
+.totp-input > .c-digits > input[type=text].c-digit {
+    @apply w-8 h-11 rounded-t-lg rounded-b-none border-l-0 border-t-0 border-r-0 border-b-text-01;
+    @apply caret-transparent bg-02;
+    @apply text-center align-middle;
+}
+.totp-input > .c-digits > input[type=text].c-digit:focus, .totp-input > .c-digits > input[type=text].c-digit:active {
+    @apply border-b-accent outline-none;
+    box-shadow: none;
+}
+.totp-input.invalid > .c-digits > input[type=text].c-digit {
+    @apply border-b-error;
+}
+.totp-input.invalid > .c-error {
+    @apply text-error text-sm;
+}
+.totp-input:not(.invalid) > .c-error {
+    @apply invisible;
+}

@@ -28,6 +28,7 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
             Name = user.Claims.TryGetValue(ClaimTypes.GivenName, out var name) ? name : "",
             LastName = user.Claims.TryGetValue(ClaimTypes.Surname, out var surname) ? surname : "",
             Email = user.Claims.TryGetValue(ClaimTypes.Email, out var email) ? email : "",
+            Phone = user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var phone) ? phone : "",
         };
         dbContext.Accounts.Add(dbAccount);
 

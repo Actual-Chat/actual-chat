@@ -69,7 +69,7 @@
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
         _form.Email = _account.Email;
-        _form.Phone = _account.Phone;
+        _form.Phone = _account.Phone.ToReadable();
         _form.CopyToBase();
     }
 

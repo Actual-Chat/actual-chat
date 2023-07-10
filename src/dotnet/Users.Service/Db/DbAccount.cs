@@ -29,7 +29,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         return new (user, Version) {
             Status = Status,
             Email = Email,
-            Phone = Phone,
+            Phone = new ActualChat.Phone(Phone),
             SyncContacts = SyncContacts,
             Name = Name,
             LastName = LastName,
