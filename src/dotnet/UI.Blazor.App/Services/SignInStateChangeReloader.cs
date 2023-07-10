@@ -29,50 +29,52 @@ public class SignInStateChangeReloader : WorkerBase
         var account = Services.GetRequiredService<IAccounts>();
 
         var updateDelayer = FixedDelayer.Instant;
+        var cAccount = (Computed<AccountFull>?)null;
         while (true) {
             try {
-                var cAccount = await Computed
-                    .Capture(() => account.GetOwn(session, cancellationToken))
-                    .ConfigureAwait(false);
-                // Wait for non-cached account retrieval
-                cAccount = await cAccount.UpdateIfCached(cancellationToken).ConfigureAwait(false);
-                // And wait till the moment all errors are gone
-                cAccount = await cAccount.When((_, error) => error == null, cancellationToken).ConfigureAwait(false);
+                if (cAccount == null) {
+                    cAccount = await Computed
+                        .Capture(() => account.GetOwn(session, cancellationToken))
+                        .ConfigureAwait(false);
+                    // Wait for non-cached account retrieval
+                    cAccount = await cAccount.UpdateIfCached(cancellationToken).ConfigureAwait(false);
+                    // And wait till the moment all errors are gone
+                    cAccount = await cAccount.When((_, error) => error == null, cancellationToken).ConfigureAwait(false);
+                }
 
                 // Wait for sign-in unless already signed in
                 if (cAccount.Value.IsGuestOrNone) {
-                    await cAccount
+                    cAccount = await cAccount
                         .When((x, error) => error == null && !x.IsGuestOrNone, updateDelayer, cancellationToken)
                         .ConfigureAwait(false);
 
-                    var currentUrl = History.LocalUrl;
-                    var targetUrl = currentUrl.IsDocs() ? Links.Chats : currentUrl;
-                    Log.LogInformation("Forced reload on sign-in: {TargetUrl}", targetUrl);
-                    await History.Dispatcher
-                        .InvokeAsync(() => History.ForceReload(targetUrl, targetUrl == currentUrl))
-                        .ConfigureAwait(false);
+                    _ = History.Dispatcher.InvokeAsync(() => {
+                        var currentUrl = History.LocalUrl;
+                        var targetUrl = currentUrl.IsChatOrChatRoot() ? currentUrl : Links.Chats;
+                        Log.LogInformation("Forced reload on sign-in: {TargetUrl}", targetUrl);
+                        History.ForceReload(targetUrl);
+                    });
                 }
                 else {
                     var onboardingUI = Services.GetRequiredService<OnboardingUI>();
                     _ = History.Dispatcher.InvokeAsync(() => onboardingUI.TryShow());
 
                     // Wait for sign-out
-                    await cAccount
+                    cAccount = await cAccount
                         .When((x, error) => error == null && x.IsGuestOrNone, updateDelayer, cancellationToken)
                         .ConfigureAwait(false);
 
-                    var targetUrl = Links.Home;
-                    Log.LogInformation("Forced reload on sign-in: {TargetUrl}", targetUrl);
                     _ = History.Dispatcher.InvokeAsync(async () => {
                         var clientComputedCache = Services.GetService<IClientComputedCache>();
                         if (clientComputedCache != null) {
                             // Clear computed cache on sign-out to evict cached account from there
                             await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
                         }
+                        var targetUrl = Links.Home;
+                        Log.LogInformation("Forced reload on sign-out: {TargetUrl}", targetUrl);
                         History.ForceReload(targetUrl);
                     });
                 }
-                return;
             }
             catch (OperationCanceledException) {
                 throw;

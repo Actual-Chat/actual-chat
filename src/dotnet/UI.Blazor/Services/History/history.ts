@@ -15,7 +15,7 @@ export class History {
         historyEntryState: string
     ): void {
         this.backendRef = backendRef1;
-        this.navigationManager = window.window['Blazor']._internal.navigationManager;
+        this.navigationManager = window['Blazor']._internal.navigationManager;
 
         const options = {
             forceLoad : false,

@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Module;
+
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
@@ -32,12 +34,14 @@ public partial class History
         return entry.WhenCompleted;
     }
 
-    public void ForceReload(LocalUrl url, bool mustReplace = false)
+    public void ForceReload(LocalUrl url, bool mustReplace = true)
         => ForceReload(url.ToAbsolute(UrlMapper));
-    public void ForceReload(string url, bool mustReplace = false)
+    public void ForceReload(string url, bool mustReplace = true)
     {
         Log.LogInformation("ForceReload: {Url}", url);
-        Nav.NavigateTo(url, true, mustReplace);
+        _ = JS.InvokeVoidAsync(
+            $"window.location.{(mustReplace ? "replace" : "assign")}",
+            url);
     }
 
     // Internal and private methods
