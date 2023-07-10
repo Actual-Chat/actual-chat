@@ -16,7 +16,7 @@ public abstract class Step : ComponentBase
     }
 
     protected abstract Task<bool> Validate();
-    protected abstract Task Save();
+    protected abstract Task<bool> Save();
     protected abstract void MarkCompleted();
 
     public async ValueTask<bool> TryComplete()

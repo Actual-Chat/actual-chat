@@ -16,6 +16,8 @@ using Stl.Fusion.Authentication.Services;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
+using Twilio;
+using Twilio.Clients;
 
 namespace ActualChat.Users.Module;
 
@@ -82,6 +84,8 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             options.GenerateClientSecret = true;
             options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
         });
+        authentication.AddScheme<PhoneAuthOptions, PhoneAuthHandler>(Constants.Auth.Phone.SchemeName,
+            options => options.CallbackPath = Constants.Auth.Phone.CallbackPath);
         /*
         authentication.AddMicrosoftAccount(options => {
             options.ClientId = Settings.MicrosoftAccountClientId;
@@ -172,7 +176,18 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
+        fusion.AddService<IPhoneAuth, PhoneAuth>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
+        services.AddTransient<Rfc6238AuthenticationService>();
+        fusion.AddService<TotpRandomSecrets>();
+        services.AddSingleton<ITwilioRestClient>(_ => {
+            TwilioClient.Init(Settings.TwilioAccountSid, Settings.TwilioAuthToken);
+            return TwilioClient.GetRestClient();
+        });
+        if (IsDevelopmentInstance && !Settings.IsTwilioEnabled)
+            services.AddTransient<ISmsGateway, LocalSmsGateway>();
+        else
+            services.AddTransient<ISmsGateway, TwilioSmsGateway>();
 
         // Mobile-related module's own services
         fusion.AddService<IMobileAuth, MobileAuth>();

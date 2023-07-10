@@ -28,7 +28,7 @@ public sealed partial record AccountFull(
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 
     [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
-    [DataMember, MemoryPackOrder(6)] public string Phone { get; init; } = "";
+    [DataMember, MemoryPackOrder(6)] public Phone Phone { get; init; }
     [DataMember, MemoryPackOrder(7)] public bool SyncContacts { get; init; }
     [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";

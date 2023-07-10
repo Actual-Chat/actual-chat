@@ -91,4 +91,23 @@ public static partial class Constants
     {
         public static HashSet<AppKind> EnabledFor { get; } = new () {AppKind.MauiApp};
     }
+
+    public static class Auth
+    {
+        public static readonly string[] EmailSchemes = { Google.SchemeName, Apple.SchemeName };
+        public static class Phone
+        {
+            public const string SchemeName = "phone";
+            public const string CallbackPath = "/signin/phone/callback";
+            public const int TotpLength = 6;
+        }
+        public static class Google
+        {
+            public const string SchemeName = "Google";
+        }
+        public static class Apple
+        {
+            public const string SchemeName = "Apple";
+        }
+    }
 }

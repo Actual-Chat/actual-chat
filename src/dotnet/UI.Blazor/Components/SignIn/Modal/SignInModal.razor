@@ -1,0 +1,18 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IModalView<SignInModal.Model>
+
+<DialogFrame
+    Class="sign-in-modal"
+    HasHeader="false"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
+    <Body>
+    <SignInWizard/>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model;
+}

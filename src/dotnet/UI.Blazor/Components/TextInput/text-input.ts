@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
+import { fromEvent, Subject, takeUntil, debounceTime, switchMap } from 'rxjs';
 
 interface TextInputOptions {
     text: string;
@@ -26,23 +26,33 @@ export class TextInput implements Disposable {
         fromEvent(this.element, 'input')
             .pipe(
                 takeUntil(this.disposed$),
-                debounceTime(this.options.debounce)
-            )
-            .subscribe((e: InputEvent) => {
-                this.blazorRef.invokeMethodAsync('OnTextChanged', (<HTMLInputElement>e.target).value);
-            });
+                debounceTime(this.options.debounce),
+                switchMap((e: InputEvent) => this.blazorRef.invokeMethodAsync('OnTextChanged', (<HTMLInputElement>e.target).value))
+            ).subscribe();
+
+        fromEvent(this.element, 'paste')
+            .pipe(
+                takeUntil(this.disposed$),
+                debounceTime(this.options.debounce),
+                switchMap((e: ClipboardEvent) => this.blazorRef.invokeMethodAsync('OnPaste', e.clipboardData.getData('Text'))),
+            ).subscribe();
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
         this.disposed$.complete();
     }
 
-    public clear(): void {
+    public async clear() {
         this.element.value = "";
-        this.blazorRef.invokeMethodAsync('OnTextChanged', "");
+        await this.blazorRef.invokeMethodAsync('OnTextChanged', "");
+    }
+
+    /** Called by Blazor */
+    public set(value: string): void {
+        this.element.value = value ?? "";
     }
 }

@@ -1,0 +1,59 @@
+.sign-in-modal.modal-frame {
+    @apply md:w-90 md:max-w-90 md:h-164 md:max-h-164;
+}
+.sign-in-modal .dialog-body {
+    @apply flex-y;
+    @apply gap-y-2;
+}
+.sign-in-modal .dialog-body .stepper-content {
+    @apply flex grow;
+}
+.sign-in-modal-header {
+    @apply text-xl font-semibold md:font-medium text-02;
+}
+.sign-in {
+    @apply w-full !max-w-full;
+}
+.sign-in > img {
+    @apply h-8 w-8;
+}
+
+.sign-in.btn .btn-content {
+    @apply text-headline-1;
+}
+.sign-in-with.btn .btn-content {
+    @apply text-02;
+}
+/* steps */
+.sign-in-step {
+    @apply flex-y grow justify-start;
+}
+.sign-in-step-title {
+    @apply text-2xl font-semibold text-02;
+}
+.sign-in-step-description {
+    @apply text-lg text-icons-01;
+}
+/* provider select step */
+.provider-select-step {
+    @apply gap-y-6;
+}
+.sign-in-separator {
+    @apply flex items-center text-center text-02;
+}
+.sign-in-separator::before,
+.sign-in-separator::after {
+    @apply flex-1;
+    content: '';
+    @apply border-b border-solid border-counter;
+}
+.sign-in-separator:not(:empty)::before {
+    @apply mr-3;
+}
+.sign-in-separator:not(:empty)::after {
+    @apply ml-3;
+}
+/* verify phone step */
+.verify-phone-step {
+    @apply flex-y;
+}

@@ -16,6 +16,14 @@ public sealed class UsersSettings
     public string? AppleKeyId { get; set; } = "";
     public string AppleTeamId { get; set; } = "";
     public string ApplePrivateKeyPath { get; set; } = "";
+    public string TwilioAccountSid { get; set; } = "";
+    public string TwilioAuthToken { get; set; } = "";
+    public string TwilioSmsFrom { get; set; } = "";
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Inactive;
+    public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(30);
+    public int TotpTimestepCount { get; set; } = 2;
+    public int TotpRandomSecretLength { get; set; } = 32;
+    public TimeSpan TotpLifetime => TotpTimestep * TotpTimestepCount;
+    public bool IsTwilioEnabled => !TwilioAccountSid.IsNullOrEmpty() && !TwilioAuthToken.IsNullOrEmpty() && !TwilioSmsFrom.IsNullOrEmpty();
 }

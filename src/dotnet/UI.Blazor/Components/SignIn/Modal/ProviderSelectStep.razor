@@ -1,0 +1,180 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Users
+@inherits Step;
+@if (CurrentStep != this) {
+    return;
+}
+
+@if (_authSchemas is null) {
+    return;
+}
+
+<div class="sign-in-step provider-select-step">
+    <div>
+        <div class="sign-in-step-title">Sign in</div>
+    </div>
+    <div class="flex-y gap-y-4">
+        <div class="text-xl text-02">Enter your phone number</div>
+        <p class="sign-in-step-description">We will send you SMS with verification code on specified number.</p>
+    </div>
+    <div class="flex-y gap-y-8">
+        <Form
+            @ref="_formRef"
+            Class="mt-6 flex-y gap-y-2"
+            Model="@_stepModel"
+            OnValidSubmit="OnSignInWithPhone">
+            <DataAnnotationsValidator/>
+            <div class="flex-x gap-x-4 items-center">
+                <FormSection
+                    For="() => _stepModel.Code"
+                    InputId="@_stepModel.CodeFieldId"
+                    Label="Code"
+                    Class="w-20"
+                    IsLabelInsideInput="true"
+                    IsRequired="true">
+                    @* TODO: seems like we need custom country code control *@
+                    <InputText
+                        id="@_stepModel.CodeFieldId"
+                        @bind-Value="_stepModel.Code"
+                        list="phoneCodes"
+                        pattern="@StepModel.CountryCodePattern"
+                        onfocus="this.select()"/>
+                    <datalist id="phoneCodes">
+                        @foreach (var phoneCode in PhoneCodes.List) {
+                            <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
+                        }
+                    </datalist>
+                </FormSection>
+                <FormSection
+                    For="() => _stepModel.Number"
+                    InputId="@_stepModel.NumberFieldId"
+                    Label="Phone number"
+                    Class="grow"
+                    IsLabelInsideInput="true"
+                    IsRequired="true">
+                    <InputText
+                        id="@_stepModel.NumberFieldId"
+                        @bind-Value="_stepModel.Number"
+                        autocomplete="tel-national"
+                        type="tel"
+                        pattern="@StepModel.NumberPattern"
+                        inputmode="tel"/>
+                </FormSection>
+            </div>
+             <FormButtons IsEndAligned="false">
+                <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Sign in</Button>
+            </FormButtons>
+        </Form>
+
+        <div class="sign-in-separator">or</div>
+
+        <div class="flex-y gap-y-2">
+            @foreach (var schema in _authSchemas!) {
+                <Button
+                    Class="btn-modal sign-in sign-in-with"
+                    Click="@(_ => OnSignInWith(schema.Name))">
+                    @if (schema.Icon != null) {
+                        <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName">
+                    }
+                    @("Sign in with " + schema.DisplayName)
+                </Button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private Form _formRef = null!;
+    private StepModel _stepModel = null!;
+    private List<AuthSchemaModel>? _authSchemas;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
+
+    public override bool IsCompleted { get; } = false;
+
+    protected override async Task OnInitializedAsync() {
+        _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
+        var schemas = await ClientAuth.GetSchemas();
+        _authSchemas = schemas
+            .Select(schema => new AuthSchemaModel {
+                Name = schema.Name,
+                DisplayName = schema.DisplayName,
+                Icon = schema.Name switch
+                {
+                    IClientAuth.GoogleSchemeName => "/dist/images/landing/google-icon-color.svg",
+                    IClientAuth.AppleIdSchemeName => "/dist/images/landing/apple-icon-black.svg",
+                    _ => null,
+                    },
+            })
+            .ToList();
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override async Task<bool> Save() {
+        var phone = new Phone(_stepModel.Code, _stepModel.Number);
+        var cmd = new PhoneAuth_SendTotp(Session, phone);
+        var (expiresAt, error) = await UICommander.Run(cmd);
+        if (error != null)
+            return false;
+
+        PhoneSignInModel.Phone = phone;
+        PhoneSignInModel.TotpExpiresAt = expiresAt;
+        return true;
+    }
+
+    protected override void MarkCompleted()
+    { }
+
+    private void OnSignInWith(string name)
+        => ClientAuth.SignIn(name);
+
+    private Task OnSignInWithPhone()
+        => Stepper.TryMoveForward().AsTask();
+
+    // Nested types
+
+    private class AuthSchemaModel {
+        public string Name { get; init; } = null!;
+        public string DisplayName { get; init; } = null!;
+        public string? Icon { get; init; }
+    }
+
+    public sealed class StepModel : FormModel<StepModel> {
+        public const string CountryCodePattern = @"\+[\d\s]+";
+        public const string NumberPattern = @"[\d\s\(\-]+";
+        public const int MinNumberLength = 7;
+
+        [Required, RegularExpression(CountryCodePattern, ErrorMessage = "Country code is incorrect"), CustomValidation(typeof(StepModel), nameof(ValidateCode))]
+        public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
+        public string CodeFieldId { get; set; } = "";
+        [Required, RegularExpression(NumberPattern, ErrorMessage = "Phone number is incorrect"), CustomValidation(typeof(StepModel), nameof(ValidateNumber))]
+        public string Number { get; set; } = "";
+        public string NumberFieldId { get; set; } = "";
+
+        public StepModel(ComponentIdGenerator? componentIdGenerator = null)
+            : base("phone-signin", componentIdGenerator) {
+        }
+
+        public static ValidationResult? ValidateCode(string value, ValidationContext context) {
+            return PhoneCodes.GetByCode(value) is null
+                ? context.Error("Non-existent country code")
+                : ValidationResult.Success;
+        }
+
+        public static ValidationResult? ValidateNumber(string value, ValidationContext context) {
+            return value.Count(char.IsDigit) < MinNumberLength
+                ? context.Error($"At least {MinNumberLength} digits must be in a phone number")
+                : ValidationResult.Success;
+        }
+    }
+}

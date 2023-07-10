@@ -30,7 +30,16 @@ public static class AccountsExt
         if (ownAccount.Id != updatedAccount.Id)
             ownAccount.Require(AccountFull.MustBeAdmin);
         else {
-            // User updates its own profile - everything but status update is allowed in this case
+            // User updates its own profile
+            if (ownAccount.Phone != updatedAccount.Phone) {
+                if (ownAccount.User.HasPhoneIdentity())
+                    throw StandardError.Unauthorized("You can't change your phone number.");
+
+                if (!updatedAccount.Phone.IsValid)
+                    throw StandardError.Constraint<Phone>("Phone format is not correct.");
+            }
+            if(!OrdinalIgnoreCaseEquals(ownAccount.Email, updatedAccount.Email) && ownAccount.User.HasEmailIdentity())
+                throw StandardError.Unauthorized("You can't change your email.");
             if (ownAccount.Status != updatedAccount.Status)
                 throw StandardError.Unauthorized("You can't change your own status.");
         }

@@ -1,10 +1,13 @@
-namespace ActualChat.Chat.UI.Blazor.Components;
+namespace ActualChat.UI.Blazor.Services;
 
-public sealed record PhoneCode(string Country, string Code);
+public sealed record PhoneCode(string Country, string DisplayCode)
+{
+    public string Code => Phone.Normalize(DisplayCode);
+}
 
 public static class PhoneCodes
 {
-    public static readonly PhoneCode Default = new PhoneCode("United States of America", "+1");
+    public static readonly PhoneCode Default = new ("United States of America", "+1");
 
     public static readonly List<PhoneCode> List = new () {
         new PhoneCode("Afghanistan", "+93"),
@@ -245,4 +248,11 @@ public static class PhoneCodes
         new PhoneCode("Zambia", "+260"),
         new PhoneCode("Zimbabwe", "+263"),
     };
+
+    private static readonly Dictionary<string, PhoneCode> _byCode =
+        // distinct cause some codes duplicate
+        List.Distinct(PhoneCodeComparer.Instance).ToDictionary(x => x.Code, PhoneCodeComparer.Instance);
+
+    public static PhoneCode? GetByCode(string codeOrDisplayCode)
+        => _byCode.GetValueOrDefault(codeOrDisplayCode);
 }

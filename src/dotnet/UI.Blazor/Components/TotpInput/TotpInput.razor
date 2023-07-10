@@ -1,0 +1,66 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
+@using System.Net.Mime
+@implements IAsyncDisposable
+
+<div @ref="_ref" class="totp-input">
+    <div class="c-digits">
+        @for (var i = Length - 1; i >= 0; i--) {
+            var digitIndex = i;
+            <input
+                @ref="@_inputRefs[digitIndex]"
+                value="@_digits[digitIndex]"
+                class="c-digit"
+                type="text"
+                name="token"
+                inputmode="numeric"
+                pattern="[0-9]"
+                autocomplete="one-time-code"
+                data-index="@digitIndex"/>
+        }
+    </div>
+    <span class="c-error">@ErrorText</span>
+</div>
+
+@code {
+    private const int Length = Constants.Auth.Phone.TotpLength;
+    private ElementReference[] _inputRefs = new ElementReference[Length];
+    private int?[] _digits = new int?[Length];
+    private ElementReference _ref;
+    private DotNetObjectReference<TotpInput> _blazorRef = null!;
+    private IJSObjectReference _jsRef = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private FocusUI FocusUI { get; init; } = null!;
+
+    [Parameter] public string ErrorText { get; set; } = "Invalid code. Please try again";
+    [Parameter] public EventCallback<int> Completed { get; set; }
+
+    public ValueTask DisposeAsync()
+        => _jsRef.DisposeSilentlyAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.{nameof(TotpInput)}.create",
+                _ref,
+                _inputRefs,
+                _blazorRef);
+        }
+    }
+
+    public ValueTask Focus()
+        => _jsRef.InvokeVoidAsync("focus");
+
+    public ValueTask Clear()
+        => _jsRef.InvokeVoidAsync("clear");
+
+    public ValueTask ShowError()
+        => _jsRef.InvokeVoidAsync("showError");
+
+    [JSInvokable]
+    public Task OnCompleted(int value)
+        => Completed.InvokeAsync(value);
+}

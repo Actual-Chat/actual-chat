@@ -46,33 +46,31 @@
     public Step? CurrentStep => _currentStep;
 
     public async ValueTask<bool> TryMoveForward() {
-        if (_currentStep == null)
+        if (_currentStep is null || !await _currentStep.TryComplete())
             return false;
-        if (!await _currentStep.TryComplete())
-            return false;
-
-        var nextStepIndex = CurrentStepIndex + 1;
-        if (nextStepIndex >= StepCount)
-            return true;
-
-        var previousStep = _currentStep;
-        _currentStep = _steps[nextStepIndex];
-        previousStep.NotifyStateHasChanged();
-        _currentStep.NotifyStateHasChanged();
-        return true;
+        return Move(1);
     }
 
     public void MoveBack() {
-        if (_currentStep == null)
-            return;
+        Move(-1);
+    }
 
-        var nextStepIndex = CurrentStepIndex - 1;
-        if (nextStepIndex < 0)
-            return;
+    private bool Move(int offset) {
+        if (_currentStep == null)
+            return false;
+
+        var newStepIndex = CurrentStepIndex + offset;
+        if (newStepIndex < 0)
+            return false;
+
+        if (newStepIndex >= StepCount)
+            return true;
 
         var previousStep = _currentStep;
-        _currentStep = _steps[nextStepIndex];
+        _currentStep = _steps[newStepIndex];
         previousStep.NotifyStateHasChanged();
         _currentStep.NotifyStateHasChanged();
+        StateHasChanged();
+        return true;
     }
 }

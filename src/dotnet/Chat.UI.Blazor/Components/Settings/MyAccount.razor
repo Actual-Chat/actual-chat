@@ -47,10 +47,10 @@
             <i class="icon-phone text-xl"></i>
         </Icon>
         <Right>
-            <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Phone"/>
+            <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
         </Right>
         <Content>
-            @account.Phone
+            @account.Phone.ToReadable()
         </Content>
         <Caption>
             Phone

@@ -33,6 +33,7 @@ export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';
 export * from './Components/Tooltip/tooltip-host';
+export * from './Components/TotpInput/totp-input';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/PicUpload/pic-upload';
 export * from './Components/FileUpload/file-upload';

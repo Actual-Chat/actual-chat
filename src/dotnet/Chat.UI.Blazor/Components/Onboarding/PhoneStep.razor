@@ -17,19 +17,21 @@
         Class="mt-6"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
-        <FormSection
-            For="() => _stepModel.Country"
-            InputId="country"
-            Label="Country"
-            IsLabelInsideInput="true"
-            IsRequired="true">
-            <InputSelect id="country" @bind-Value="_stepModel.Country">
-                @foreach (var phoneCode in PhoneCodes.List)
-                {
-                    <option value="@phoneCode.Country">@phoneCode.Country</option>
-                }
-            </InputSelect>
-        </FormSection>
+        @if (!_hasPhoneIdentity) {
+            <FormSection
+                For="() => _stepModel.Country"
+                InputId="country"
+                Label="Country"
+                IsLabelInsideInput="true"
+                IsRequired="@(!_hasPhoneIdentity)">
+                <InputSelect id="country" @bind-Value="_stepModel.Country">
+                    @foreach (var phoneCode in PhoneCodes.List)
+                    {
+                        <option value="@phoneCode.Country">@phoneCode.Country</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        }
         <div class="flex-x gap-x-1">
             <FormSection
                 For="() => _stepModel.Code"
@@ -37,8 +39,12 @@
                 Label="Code"
                 Class="w-20"
                 IsLabelInsideInput="true"
-                IsRequired="true">
-                <InputText id="phoneCode" @bind-Value="_stepModel.Code" autocomplete="tel-country-code"/>
+                IsRequired="@(!_hasPhoneIdentity)">
+                <InputText
+                    id="phoneCode"
+                    @bind-Value="_stepModel.Code"
+                    autocomplete="tel-country-code"
+                    disabled="@_hasPhoneIdentity"/>
             </FormSection>
             <FormSection
                 For="() => _stepModel.Number"
@@ -46,22 +52,24 @@
                 Label="Phone number"
                 Class="grow"
                 IsLabelInsideInput="true"
-                IsRequired="true">
+                IsRequired="@(!_hasPhoneIdentity)">
                 <InputText
                     id="phoneNumber"
                     @bind-Value="_stepModel.Number"
                     autocomplete="tel-national"
                     type="number"
                     pattern="[0-9]*"
-                    inputmode="numeric"/>
+                    inputmode="numeric"
+                    disabled="@_hasPhoneIdentity"/>
             </FormSection>
         </div>
         <FormSection
             For="() => _stepModel.Email"
             InputId="email"
             Label="Email"
+            IsRequired="@_hasPhoneIdentity"
             IsLabelInsideInput="true">
-            <InputText id="email" @bind-Value="_stepModel.Email" disabled/>
+            <InputText id="email" @bind-Value="_stepModel.Email" disabled="@(!_hasPhoneIdentity)"/>
         </FormSection>
     </Form>
 </div>
@@ -69,6 +77,7 @@
 @code {
     private readonly PhoneStepModel _stepModel = new();
     private Form? _formRef;
+    private bool _hasPhoneIdentity;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -82,7 +91,18 @@
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
+        _hasPhoneIdentity = account.User.HasPhoneIdentity();
         _stepModel.Email = account.Email;
+        if (!account.Phone.IsNone) {
+            var phoneCode = PhoneCodes.GetByCode(account.Phone.Code);
+            if (phoneCode != null) {
+                _stepModel.Code = phoneCode.DisplayCode;
+                _stepModel.Country = phoneCode.Country;
+                _stepModel.Number = account.Phone.Number;
+            } else {
+                _stepModel.Number = account.Phone.Number;
+            }
+        }
     }
 
     protected override Task<bool> Validate() {
@@ -90,15 +110,18 @@
         return Task.FromResult(isValid);
     }
 
-    protected override async Task Save() {
+    protected override async Task<bool> Save() {
+        // TODO: verify email for phone sign in
+        // TODO: verify phone for email signin
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(
             Session,
             account with {
-                Phone = $"{_stepModel.Code} {_stepModel.Number}",
+                Phone = new (_stepModel.Code!, _stepModel.Number!),
             },
             account.Version);
-        await UICommander.Run(command);
+        var (_, error) = await UICommander.Run(command);
+        return error is null;
     }
 
     public class PhoneStepModel {
@@ -109,17 +132,19 @@
             get => _country;
             set {
                 _country = value;
-                Code = PhoneCodes.List.First(x => x.Country == value).Code;
+                Code = PhoneCodes.List.First(x => x.Country == value).DisplayCode;
             }
         }
 
         [Required]
-        public string? Code { get; set; } = PhoneCodes.Default.Code;
+        public string? Code { get; set; } = PhoneCodes.Default.DisplayCode;
 
         [Required]
         [Phone]
         public string? Number { get; set; }
 
+        [Required]
+        [EmailAddress]
         public string? Email { get; set; }
     }
 }

@@ -23,13 +23,13 @@
 @import './Components/Radio/radio.css';
 @import './Components/SearchBox/search-box.css';
 @import './Components/SettingsPanel/settings-panel.css';
-@import './Components/SignIn/sign-in.css';
-@import './Components/SignIn/sign-in-modal.css';
+@import './Components/SignIn/Modal/sign-in-modal.css';
 @import './Components/SideNav/side-nav.css';
 @import './Components/Skeleton/skeleton.css';
 @import './Components/Stepper/stepper.css';
 @import './Components/TabPanel/tab-panel.css';
 @import './Components/Tooltip/tooltip.css';
+@import './Components/TotpInput/totp-input.css';
 @import './Components/VirtualList/virtual-list.css';
 @import './Components/VisualMediaViewerModal/visual-media-viewer-modal.css';
 
