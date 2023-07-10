@@ -366,6 +366,15 @@ export class Landing {
             return this.autoScroll(true, event);
         if (event.key == "ArrowUp" || event.key == "PageUp")
             return this.autoScroll(false, event);
+        if (event.key == "Escape" && Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
+            let top = Math.round(this.currentPage.getBoundingClientRect().top);
+            let landingTop = this.landing.getBoundingClientRect().top;
+            const options = {
+                behavior: 'auto',
+                top: (top - landingTop),
+            } as ScrollToOptions;
+            this.scrollContainer.scrollTo(options);
+        }
     }
 
     private onWheel(event: WheelEvent): void {
