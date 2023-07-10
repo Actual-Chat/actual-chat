@@ -5,16 +5,26 @@
     var m = State.Value;
     _animator.State = m.IsRecording;
     var animatorClass = "record-" + _animator.Class;
-    var applyingChangesClass = m.IsApplyingChanges ? "applying-changes" : "";
-    var disconnectedClass = m.IsConnected ? "" : "disconnected";
+    var isRecordingInTheChat = m.IsRecording;
+    var applyingChangesClass = m.IsApplyingChanges || (isRecordingInTheChat && !m.IsConnected) ? "applying-changes" : "";
+    var isMicrophoneCaptured = m.IsMicrophoneCaptured;
+    var isConnected = m.IsConnected;
+    var (forceDisplay, tooltip) = (isRecordingInTheChat, isMicrophoneCaptured, isConnected) switch {
+        (false, _, _) => (false, ""),
+        (_, false, _) => (true, "Starting recording..."),
+        (_, _, false) => (true, "Reconnecting..."),
+        _ => (false, "Recording..."),
+    };
 }
 
 @if (m.HasMicrophonePermission != false) {
-    <div class="recorder-wrapper @animatorClass @applyingChangesClass @disconnectedClass">
+    <div class="recorder-wrapper @animatorClass @applyingChangesClass">
         <ButtonRound
             Class="record-off-btn"
             Click="@OnClick"
             MustKeepAwake="true"
+            Tooltip="@tooltip"
+            TooltipPosition="FloatingPosition.Top"
             @onpointerup="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
@@ -23,6 +33,8 @@
         <ButtonRound
             Class="record-on-btn"
             Click="@OnClick"
+            Tooltip="@tooltip"
+            TooltipPosition="FloatingPosition.Top"
             @onpointerup="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
@@ -75,7 +87,14 @@
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
         var isRecording = recordingChatId == Chat.Id;
         var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
-        return new(Chat, isRecording, isApplyingChanges, recorderState.IsConnected, recorderState.IsVoiceActive, hasMicrophonePermission);
+        return new(
+            Chat,
+            isRecording,
+            isApplyingChanges,
+            recorderState.IsRecording,
+            recorderState.IsConnected,
+            recorderState.IsVoiceActive,
+            hasMicrophonePermission);
     }
 
     private async Task OnClick() {
@@ -117,6 +136,7 @@
         Chat Chat,
         bool IsRecording = false,
         bool IsApplyingChanges = false,
+        bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool IsVoiceActive = false,
         bool? HasMicrophonePermission = null

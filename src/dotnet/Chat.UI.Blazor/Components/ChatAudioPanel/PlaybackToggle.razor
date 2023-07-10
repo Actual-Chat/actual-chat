@@ -15,12 +15,18 @@
         (_, true) => "listen-on",
         (_, false) => "listen-off",
     };
+    var tooltip = audioState.IsListening ? "Listening..." : "Listen";
     _rendered = m;
     var loudBtnCls = "loud-btn " + (m.IsSpeakerphoneOn ? "on" : "off");
 }
 
 <div class="@wrapperCls playback-wrapper">
-    <ButtonRound Click="@OnListenClick" Class="@cls" MustKeepAwake="@(!audioState.IsListening)">
+    <ButtonRound
+        Click="@OnListenClick"
+        Class="@cls"
+        Tooltip="@tooltip"
+        TooltipPosition="FloatingPosition.Top"
+        MustKeepAwake="@(!audioState.IsListening)">
         <i class="icon-listen text-2xl"></i>
     </ButtonRound>
     @* Temporarily disabled switch between loud speaker and earpiece *@
