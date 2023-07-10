@@ -331,6 +331,10 @@
     <MauiXaml Remove="Resources\Images\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Platforms\Windows\Assets\**\*.*" />
+  </ItemGroup>
+
   <!-- Versions -->
   <!-- Use approach described on https://github.com/dotnet/Nerdbank.GitVersioning/issues/828 -->
   <Target Name="FixVersionForAndroid" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" BeforeTargets="_GetAndroidPackageName" DependsOnTargets="SetApplicationVersion" />
