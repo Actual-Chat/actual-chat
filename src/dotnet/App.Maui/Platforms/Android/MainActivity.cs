@@ -51,7 +51,7 @@ public class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        using var _ = _tracer.Region();
+        using var _1 = _tracer.Region();
 
         var isLoaded = false;
         CurrentActivity = this;
@@ -87,8 +87,11 @@ public class MainActivity : MauiAppCompatActivity
                 var notificationState = isGranted
                     ? PermissionState.Granted
                     : PermissionState.Denied;
-                var notificationUI = AppServices.GetRequiredService<NotificationUI>();
-                notificationUI.UpdateNotificationStatus(notificationState);
+                _ = Task.Run(async () => {
+                    var scopedServices1 = await ScopedServicesTask.ConfigureAwait(false);
+                    var notificationUI = scopedServices1.GetRequiredService<NotificationUI>();
+                    notificationUI.UpdateNotificationStatus(notificationState);
+                });
             }));
         CreateNotificationChannel();
 
@@ -156,12 +159,14 @@ public class MainActivity : MauiAppCompatActivity
                 .Zip(grantResults)
                 .FirstOrDefault(tuple => OrdinalEquals(tuple.First, Manifest.Permission.PostNotifications));
             var notificationState = notificationGrant switch {
-                Permission.Denied => PermissionState.Denied,
                 Permission.Granted => PermissionState.Granted,
-                _ => throw new ArgumentOutOfRangeException(),
+                _ => PermissionState.Denied,
             };
-            var notificationUI = AppServices.GetRequiredService<NotificationUI>();
-            notificationUI.UpdateNotificationStatus(notificationState);
+            _ = Task.Run(async () => {
+                var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+                var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
+                notificationUI.UpdateNotificationStatus(notificationState);
+            });
         }
     }
 

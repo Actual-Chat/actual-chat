@@ -9,40 +9,39 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private readonly object _lock = new();
     private readonly IMutableState<PermissionState> _state;
     private readonly IMutableState<string?> _deviceId;
-    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenStateSet = TaskCompletionSourceExt.New();
+    private History? _history;
+    private AutoNavigationUI? _autoNavigationUI;
+    private IDeviceTokenRetriever? _deviceTokenRetriever;
+    private UICommander? _uiCommander;
+    private ILogger? _log;
 
-    private IDeviceTokenRetriever DeviceTokenRetriever { get; }
-    private History History { get; }
-    private AutoNavigationUI AutoNavigationUI { get; }
+    private IServiceProvider Services { get; }
+    private History History => _history ??= Services.GetRequiredService<History>();
+    private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
+    private IDeviceTokenRetriever DeviceTokenRetriever => _deviceTokenRetriever ??= Services.GetRequiredService<IDeviceTokenRetriever>();
     private Session Session => History.Session;
     private HostInfo HostInfo => History.HostInfo;
     private UrlMapper UrlMapper => History.UrlMapper;
-    private Dispatcher Dispatcher => History.Dispatcher;
     private IJSRuntime JS => History.JS;
-    private UICommander UICommander { get; }
-    private ILogger Log { get; }
+    private UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public Task WhenInitialized { get; }
     public IState<PermissionState> State => _state;
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<string?> DeviceId => _deviceId;
+    public Task WhenReady { get; }
 
     public NotificationUI(IServiceProvider services)
     {
-        History = services.GetRequiredService<History>();
-        AutoNavigationUI = services.GetRequiredService<AutoNavigationUI>();
-        DeviceTokenRetriever = services.GetRequiredService<IDeviceTokenRetriever>();
-        UICommander = services.GetRequiredService<UICommander>();
-        Log = services.LogFor(GetType());
+        Services = services;
 
         var stateFactory = services.StateFactory();
-        _state = stateFactory.NewMutable(default(PermissionState), nameof(State));
+        _state = stateFactory.NewMutable(PermissionState.Denied, nameof(State));
         _deviceId = stateFactory.NewMutable(default(string?), nameof(DeviceId));
+        WhenReady = Initialize();
 
-        WhenInitialized = Initialize();
-
-        async Task Initialize()
-        {
+        async Task Initialize() {
             if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp) {
                 var backendRef = DotNetObjectReference.Create<INotificationUIBackend>(this);
                 await JS.InvokeVoidAsync(
@@ -56,8 +55,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
                 var permissionState = await notificationPermissions.GetNotificationPermissionState(CancellationToken.None).ConfigureAwait(false);
                 UpdateNotificationStatus(permissionState);
             }
-
-            await _whenReadySource.Task.ConfigureAwait(false);
+            await _whenStateSet.Task.ConfigureAwait(false);
         }
     }
 
@@ -86,7 +84,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
 
     public async Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
     {
-        await WhenInitialized.ConfigureAwait(false);
+        await WhenReady.ConfigureAwait(false);
         return _state.Value;
     }
 
@@ -112,8 +110,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
             _state.Value = newState;
         if (newState == PermissionState.Granted)
             _ = EnsureDeviceRegistered(CancellationToken.None);
-
-        _whenReadySource.SetResult();
+        _whenStateSet.SetResult();
     }
 
     [JSInvokable]
@@ -129,11 +126,8 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         if (newState == PermissionState.Granted)
             await EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
 
-        _whenReadySource.SetResult();
+        _whenStateSet.SetResult();
     }
-
-    public bool IsAlreadyThere(ChatId chatId)
-        => History.LocalUrl == Links.Chat(chatId);
 
     private async Task RegisterDevice(string deviceId, CancellationToken cancellationToken) {
         lock (_lock)

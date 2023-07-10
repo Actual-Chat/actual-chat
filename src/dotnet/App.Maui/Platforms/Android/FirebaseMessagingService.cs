@@ -1,5 +1,5 @@
 using ActualChat.Notification;
-using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Android.App;
 using Android.Content;
 using Android.Graphics;
@@ -30,7 +30,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     * every ~50 days, and even then chances of conflict will be rare.
     */
     private static readonly AtomicInteger _requestCodeProvider =
-        new AtomicInteger((int) Android.OS.SystemClock.ElapsedRealtime());
+        new((int)Android.OS.SystemClock.ElapsedRealtime());
 
     private ILogger Log { get; set; } = NullLogger.Instance;
 
@@ -81,12 +81,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
             var chatId = new ChatId(sChatId, ParseOrNone.Option);
             if (!chatId.IsNone && TryGetScopedServices(out var scopedServices)) {
-                var handler = scopedServices.GetRequiredService<NotificationUI>();
-                if (handler.IsAlreadyThere(chatId)) {
-                    // Do nothing if notification leads to the active chat.
-                    Log.LogDebug(
-                        "OnMessageReceived: notification in the active chat while app is foreground, chat #{ChatId}",
-                        chatId);
+                var history = scopedServices.GetRequiredService<History>();
+                if (history.LocalUrl.IsChat(out var currentChatId) && currentChatId == chatId) {
+                    Log.LogDebug("OnMessageReceived: notification in the current chat #{ChatId}", chatId);
                     return;
                 }
             }

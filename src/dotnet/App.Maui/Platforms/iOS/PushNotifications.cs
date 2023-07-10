@@ -33,8 +33,8 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
     public static void Initialize(UIApplication app, NSDictionary options)
     {
-        // prevent null ref for windows+iphone
-        // see https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
+        // Prevents null ref for Windows+iPhone, see:
+        // - https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
 #if !HOTRESTART
         Firebase.Core.App.Configure();
         FirebaseCloudMessagingImplementation.Initialize();

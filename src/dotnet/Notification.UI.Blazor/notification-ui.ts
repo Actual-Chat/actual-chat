@@ -6,13 +6,13 @@ import { AppKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
 const { debugLog, warnLog, errorLog } = Log.get('NotificationUI');
 
 export class NotificationUI {
-    private static baseLayoutRef?: DotNet.DotNetObject = null;
+    private static backendRef?: DotNet.DotNetObject = null;
     private static appKind?: AppKind = null;
 
-    public static async init(baseLayoutRef: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
+    public static async init(backendRef: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
         // probably init can be called multiple times on MAUI
         debugLog?.log('init');
-        NotificationUI.baseLayoutRef = baseLayoutRef;
+        NotificationUI.backendRef = backendRef;
         NotificationUI.appKind = appKind;
 
         if (appKind === 'MauiApp')
@@ -124,7 +124,7 @@ export class NotificationUI {
 
     private static async updateNotificationStatus(state: PermissionState): Promise<void> {
         debugLog?.log('-> updateNotificationStatus');
-        await NotificationUI.baseLayoutRef.invokeMethodAsync('UpdateNotificationStatus', state);
+        await NotificationUI.backendRef.invokeMethodAsync('UpdateNotificationStatus', state);
         debugLog?.log('<- updateNotificationStatus');
     }
 
@@ -137,7 +137,7 @@ export class NotificationUI {
                 return;
 
             const url = evt.data?.url;
-            await NotificationUI.baseLayoutRef.invokeMethodAsync('HandleNotificationNavigation', url);
+            await NotificationUI.backendRef.invokeMethodAsync('HandleNotificationNavigation', url);
         });
     }
 }

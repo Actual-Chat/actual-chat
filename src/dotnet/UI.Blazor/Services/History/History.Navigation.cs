@@ -32,12 +32,12 @@ public partial class History
         return entry.WhenCompleted;
     }
 
-    public void ForceReload(LocalUrl url)
+    public void ForceReload(LocalUrl url, bool mustReplace = false)
         => ForceReload(url.ToAbsolute(UrlMapper));
-    public void ForceReload(string url)
+    public void ForceReload(string url, bool mustReplace = false)
     {
         Log.LogInformation("ForceReload: {Url}", url);
-        Nav.NavigateTo(url, true);
+        Nav.NavigateTo(url, true, mustReplace);
     }
 
     // Internal and private methods
