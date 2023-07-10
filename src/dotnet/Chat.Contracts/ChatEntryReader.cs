@@ -93,10 +93,10 @@ public sealed class ChatEntryReader
     public async ValueTask<ChatEntry?> GetLastWhile(Range<long> idRange, Func<ChatEntry, bool> filter, Predicate<(ChatEntry ChatEntry, int SkippedCount)> @while, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
+        var skippedCount = 0;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
             var tile = await Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken).ConfigureAwait(false);
-            var skippedCount = 0;
             for (var i = tile.Entries.Count - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
