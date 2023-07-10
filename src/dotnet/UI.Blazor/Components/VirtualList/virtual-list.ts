@@ -23,7 +23,7 @@ const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 160;
-const ScrollDebounce: number = 600;
+const ScrollDebounce: number = 750;
 const RemoveOldItemsDebounce: number = 600;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
@@ -375,6 +375,7 @@ export class VirtualList {
             }))
             .sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset))
             .slice(0, 10);
+        this.updateViewportThrottled();
     };
 
     private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -387,7 +388,6 @@ export class VirtualList {
             this._isNearSkeleton = isNearSkeleton;
             // reset turn off attempt
             this.turnOffIsNearSkeletonDebounced.reset();
-            this.turnOffIsNearSkeletonDebounced();
             this.updateViewportThrottled();
         }
         else
@@ -399,6 +399,8 @@ export class VirtualList {
     private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce);
     private turnOffIsNearSkeleton() {
         this._isNearSkeleton = false;
+        // debug helper
+        // console.warn("skeleton os off");
     }
 
     private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
@@ -463,6 +465,7 @@ export class VirtualList {
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                 }
+                this._pivots = [];
             } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
@@ -475,6 +478,7 @@ export class VirtualList {
                     if (this._stickyEdge?.edge === VirtualListEdge.End) {
                         let itemRef = this.getItemRef(this._stickyEdge.itemKey);
                         this.scrollTo(itemRef, false, 'end');
+                        this._pivots = [];
                     }
                     this.setStickyEdge(null);
                 } else {
@@ -483,10 +487,15 @@ export class VirtualList {
                     if (this._stickyEdge?.edge === VirtualListEdge.Start) {
                         let itemRef = this.getItemRef(itemKey);
                         this.scrollTo(itemRef, false);
+                        this._pivots = [];
                     }
                 }
             }
-            else if (this._pivots?.length) {
+            else if (this._pivots.length && (this._lastQuery.expandEndBy > 0 || this._isNearSkeleton || (this._lastQuery.expandEndBy == 0 || this._lastQuery.expandStartBy == 0))) {
+                // let's fix scroll position for scroll down only, when
+                // - items are added before the viewport (in our reverse-rendered list)
+                // - or skeletons are visible (because browsers can start scrolling automatically to the latest visible element after adding new child elements to the list)
+                // - or we are cleaning up old items removing items before the viewport
                 for (const pivot of this._pivots) {
                     // resync scroll to make pivot ref position the same within viewport
                     const pivotRef = this.getItemRef(pivot.itemKey);
@@ -542,7 +551,7 @@ export class VirtualList {
         }
     }
 
-    private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval, 'delayHead');
+    private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval);
     private readonly updateViewport = serialize(async (getRidOfOldItems?: boolean) => {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
@@ -580,7 +589,6 @@ export class VirtualList {
             const scrollHeight = this._ref.scrollHeight;
             const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
             const clientViewport = new NumberRange(scrollTop, scrollTop + viewportHeight);
-            let viewport: NumberRange | null = null;
             const fullRange = this.fullRange;
             if (fullRange != null) {
                 viewport = clientViewport.fitInto(fullRange);
@@ -693,6 +701,7 @@ export class VirtualList {
                         }
                     }
                     this._pivots = pivots;
+                    this.updateViewportThrottled();
                 }
             }, 'pivotRecalculate');
         }
@@ -710,14 +719,16 @@ export class VirtualList {
         if (this._isRendering || this._isDisposed)
             return;
 
-        this.markItemsForRemoval();
+        if (!this.markItemsForRemoval())
+            this.updateViewportThrottled();
     }
 
-    private markItemsForRemoval(): void {
+    private markItemsForRemoval(): boolean {
+        let hasOldItems = false;
         const viewport = this._viewport;
         const itemRange = this._itemRange;
         if (!viewport || !itemRange)
-            return;
+            return false;
 
         const loadZoneSize = viewport.size;
         let bufferZoneSize = loadZoneSize * 2;
@@ -727,9 +738,8 @@ export class VirtualList {
 
         const oldItemsRange = new NumberRange(bufferZone.end, itemRange.end);
         if (oldItemsRange.size <=0)
-            return;
+            return false;
 
-        let hasOldItems = false;
         const items = this._orderedItems;
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
@@ -741,10 +751,11 @@ export class VirtualList {
                 hasOldItems = true;
             }
         }
-        if (hasOldItems)
+        if (hasOldItems) {
             this.requestOldItemsRemovalDebounced();
-        else
-            this.updateViewportThrottled();
+            return true;
+        }
+        return false;
     }
 
     private requestOldItemsRemovalDebounced = debounce(() => this.requestOldItemsRemoval(), RemoveOldItemsDebounce);
@@ -752,7 +763,7 @@ export class VirtualList {
         const items = this._orderedItems;
         const oldCount = items.reduceRight((prev, item) => (!!item.isOld ? 1 : 0) + prev, 0);
         if (oldCount > 20)
-            await this.updateViewportThrottled(true);
+            this.updateViewportThrottled(true);
     }
 
     private getAllItemRefs(): HTMLLIElement[] {
@@ -899,10 +910,8 @@ export class VirtualList {
             return;
 
         const query = this.getDataQuery(getRidOfOldItems);
-        const isDataRequestIsRequired = this.dataRequestIsRequired(query);
-        if (!isDataRequestIsRequired && !getRidOfOldItems) {
+        if (!this.isDataRequestRequired(query, getRidOfOldItems))
             return;
-        }
         if (query.isNone)
             return;
 
@@ -933,7 +942,7 @@ export class VirtualList {
         this._lastQueryTime = Date.now();
     }
 
-    private dataRequestIsRequired(query: VirtualListDataQuery): boolean
+    private isDataRequestRequired(query: VirtualListDataQuery, getRidOfOldItems: boolean): boolean
     {
         const currentItemRange = this._itemRange;
         const queryItemRange = query.virtualRange;
@@ -951,6 +960,10 @@ export class VirtualList {
         if (intersection.isEmpty)
             return true;
 
+        // if old items area is big enough - rerender without it
+        if (getRidOfOldItems)
+            return intersection.start - currentItemRange.start > viewportSize
+                || currentItemRange.end - intersection.end > viewportSize;
         return intersection.start - queryItemRange.start > viewportSize
             || queryItemRange.end - intersection.end > viewportSize;
     }

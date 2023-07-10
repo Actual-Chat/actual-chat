@@ -292,8 +292,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
     const reset = () => {
-        if (timeoutHandle !== null)
-            clearTimeout(timeoutHandle);
+        // we should not clear timeout there because it leads to clear\set timeout useless cycle
         timeoutHandle = lastCall = null;
         nextFireTime = 0;
     }
