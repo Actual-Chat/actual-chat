@@ -25,6 +25,7 @@ public class GoogleTranscriberTest : TestBase
     [InlineData("file.webm", true)]
     [InlineData("0002-AK.opuss", true)]
     // [InlineData("0003-AK.opuss", true)] - fails as too short???
+    [InlineData("tail-cut.opuss", true)]
     public async Task TranscribeWorks(string fileName, bool withDelay)
     {
         // Global - Google Speech v2 doesnt work with Http/3!

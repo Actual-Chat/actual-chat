@@ -284,6 +284,14 @@ public partial class GoogleTranscriber : ITranscriber
         }
 #endif
 
+        // Sometimes Final response seems to be cut, let's check its size and keep unstable transcription if necessary
+        if (isFinal && !appendToUnstable)
+            // Unstable is significantly larger than new stable chunk
+            if (state.Unstable.Length > suffix.Length + 8) {
+                state.MakeStable();
+                return;
+            }
+
         state.Append(suffix, endTime, appendToUnstable).MakeStable(isFinal);
     }
 
