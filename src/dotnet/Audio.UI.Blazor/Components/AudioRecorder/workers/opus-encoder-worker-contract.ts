@@ -6,6 +6,7 @@ export interface OpusEncoderWorker {
     init(workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void>;
     start(recorderId: string, chatId: string, repliedChatEntryId: string): Promise<void>;
     stop(): Promise<void>;
+    reconnect(noWait?: RpcNoWait): Promise<void>;
 
     onEncoderWorkletSamples(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;

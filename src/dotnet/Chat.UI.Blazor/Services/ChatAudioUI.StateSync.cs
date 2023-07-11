@@ -27,6 +27,7 @@ public partial class ChatAudioUI
             new(nameof(PushRealtimePlaybackState), PushRealtimePlaybackState),
             new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
             new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
+            new(nameof(ReconnectAudioHubOnRpcConnect), ReconnectAudioHubOnRpcConnect),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -296,6 +297,12 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
 
         await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
+    }
+
+    private async Task ReconnectAudioHubOnRpcConnect(CancellationToken cancellationToken)
+    {
+        await foreach (var _ in RpcClientConnectionFactory.ReconnectCount.Changes(cancellationToken).ConfigureAwait(false))
+            await AudioRecorder.Reconnect(cancellationToken).ConfigureAwait(false);
     }
 
     // Helpers

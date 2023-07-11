@@ -132,6 +132,11 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 
+    public async Task Reconnect(CancellationToken cancellationToken)
+        => await _jsRef
+            .InvokeVoidAsync("reconnect", cancellationToken)
+            .ConfigureAwait(false);
+
     // JS backend callback handlers
     [JSInvokable]
     public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)

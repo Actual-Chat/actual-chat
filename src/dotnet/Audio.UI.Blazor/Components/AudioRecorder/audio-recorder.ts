@@ -187,6 +187,11 @@ export class AudioRecorder {
         }
     }
 
+    /** Called by Blazor  */
+    public async reconnect(): Promise<void> {
+        await opusMediaRecorder.reconnect();
+    }
+
     private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
         try {
             await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isConnected, isVoiceActive);

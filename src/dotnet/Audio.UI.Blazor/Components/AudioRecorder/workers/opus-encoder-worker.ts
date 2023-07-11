@@ -8,7 +8,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #endif
 import Denque from 'denque';
 import { Disposable } from 'disposable';
-import { retry } from 'promises';
+import { retry} from 'promises';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import * as signalR from '@microsoft/signalr';
 import { HubConnectionState } from '@microsoft/signalr';
@@ -141,6 +141,23 @@ const serverImpl: OpusEncoderWorker = {
         recordingSubject?.complete();
         recordingSubject = null;
         encoder?.reset();
+    },
+
+    reconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        if (hubConnection.state === HubConnectionState.Connected)
+            return;
+
+        if (hubConnection.state === HubConnectionState.Disconnected) {
+            await hubConnection.start();
+            // @ts-ignore
+            void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+        }
+        else {
+            await hubConnection.stop();
+            await hubConnection.start();
+            // @ts-ignore
+            void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+        }
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {

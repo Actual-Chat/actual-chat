@@ -12,6 +12,7 @@ using Stl.Generators;
 using Stl.Mathematics.Internal;
 using Stl.RestEase;
 using Stl.Rpc;
+using RpcClientConnectionFactory = ActualChat.Rpc.RpcClientConnectionFactory;
 
 namespace ActualChat.Module;
 
@@ -72,6 +73,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
  #pragma warning restore CS0618
             : new DefaultObjectPoolProvider());
 
+        // Rpc
+        services.AddSingleton<RpcClientConnectionFactory>(s => new RpcClientConnectionFactory(s));
+
         // Fusion
         var fusion = services.AddFusion();
         if (appKind.IsServer()) {
@@ -91,9 +95,10 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
                             ? throw StandardError.NotSupported("No server peers on the client.")
                             : new RpcClientPeer(hub, peerRef) { CallLogLevel = LogLevel.Debug });
             }
-            else {
+            else
                 RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.None;
-            }
+            services.RemoveAll(sd => sd.ServiceType == typeof(Stl.Rpc.RpcClientConnectionFactory));
+            services.AddSingleton(s => s.GetRequiredService<RpcClientConnectionFactory>().Invoke);
         }
         fusion.AddComputedGraphPruner();
         fusion.AddFusionTime();
