@@ -189,32 +189,10 @@ body.hoverable .chat-header-title:hover {
 }
 .message-image-attachments {
     @apply flex-y flex-wrap gap-px;
+    @apply w-auto md:w-120 lg:w-180 /*xl:w-240*//* 2xl:w-320*/;
     @apply rounded-xl;
     @apply overflow-hidden;
 }
-body.wide .message-image-attachments {
-    width: 30rem;
-}
 .message-file-attachments {
     @apply flex-y gap-y-1;
-}
-
-.image-line {
-    @apply flex-x gap-x-px;
-}
-.image-line .image-item {
-    @apply flex-1 flex-x;
-    @apply bg-01;
-}
-.image-line .image-item img {
-    @apply h-full;
-    max-height: 30rem;
-}
-.image-line .image-item img,
-.image-line .image-item a {
-    @apply flex-1 flex;
-}
-.image-line .image-item img,
-.image-line .image-item video {
-    @apply object-cover;
 }

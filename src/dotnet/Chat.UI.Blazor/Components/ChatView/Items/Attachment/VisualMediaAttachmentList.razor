@@ -1,12 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <div class="message-image-attachments">
-    @foreach (var item in GetOptimizedGallery()) {
+    @foreach (var row in GetRows()) {
         <VisualMediaAttachmentLine
-            ImageList="@item.ImageList"
-            ChatEntry="@ChatEntry"
-            IsFull="@item.IsFull"
-            ImageSize="@item.ImageSize"/>
+            Row="@row"
+            ChatEntry="@ChatEntry"/>
     }
 </div>
 
@@ -15,59 +13,21 @@
     public List<TextEntryAttachment> ImageList { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
 
-    private List<GalleryRow> GetOptimizedGallery() {
-        var (fullRows, theRest) = ImageList
-            .Select(image => new { image, ratio = (float)image.Media.Width / image.Media.Height })
-            .Select(x => new { x.image, x.ratio, size = GetSize(x.ratio) })
-            .OrderByDescending(x => x.ratio)
-            .Select(x => new ImageItem(x.image, x.size))
-            .Aggregate(new List<GalleryRow>(), (rows, item) => {
-                var currentRow = rows.LastOrDefault();
-                if (currentRow == null || currentRow.IsFull || currentRow.ImageSize != item.ImageSize) {
-                    currentRow = new(item.ImageSize, new() { item });
-                    rows.Add(currentRow);
-                } else {
-                    currentRow.ImageList.Add(item);
-                }
-                return rows;
-            })
-            .Split(row => row.IsFull || row.ImageSize == ImageSize.Large);
-
-        return new(fullRows.Concat(theRest
-            .SelectMany(r => r.ImageList)
-            .Chunk(3)
-            .Select(ch => new GalleryRow(ImageSize.Mixed, ch.ToList()))));
-
-        ImageSize GetSize(float ratio)
-            => ratio switch {
-                <= 0.75f => ImageSize.Small,
-                <= 1.25f => ImageSize.Medium,
-                <= 2 => ImageSize.Large,
-                _ => ImageSize.ExtraLarge,
-                };
-    }
-
-    public record ImageItem {
-        public TextEntryAttachment Attachment { get; set; } = null!;
-        public ImageSize ImageSize { get; set; }
-
-        public ImageItem(TextEntryAttachment attachment, ImageSize imageSize) {
-            Attachment = attachment;
-            ImageSize = imageSize;
+    private IEnumerable<ImageRow> GetRows() {
+        var remainingWidth = Constants.Chat.ImageRowCapacity;
+        var line = new List<ImageTile>(Constants.Chat.ImageRowCapacity);
+        foreach (var attachment in ImageList) {
+            var tile = new ImageTile(attachment);
+            var quota = tile.RowQuota;
+            if (remainingWidth < quota) {
+                yield return new ImageRow(line);
+                line = new (Constants.Chat.ImageRowCapacity);
+                remainingWidth = Constants.Chat.ImageRowCapacity;
+            }
+            remainingWidth -= quota;
+            line.Add(tile);
         }
+        if (line.Count > 0)
+            yield return new ImageRow(line);
     }
-
-    public record GalleryRow(ImageSize ImageSize, List<ImageItem> ImageList) {
-        public bool IsFull
-            => GetCapacity(ImageSize) == ImageList.Count;
-    }
-
-    private static int GetCapacity(ImageSize imageSize)
-        => imageSize switch {
-            ImageSize.ExtraLarge => 1,
-            ImageSize.Large => 2,
-            ImageSize.Medium => 3,
-            _ => 4,
-            };
-
 }
