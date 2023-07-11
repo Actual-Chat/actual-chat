@@ -7,21 +7,21 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 import Denque from 'denque';
-import { Disposable } from 'disposable';
-import { retry} from 'promises';
-import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
+import {Disposable} from 'disposable';
+import {retry} from 'promises';
+import {rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout} from 'rpc';
 import * as signalR from '@microsoft/signalr';
-import { HubConnectionState } from '@microsoft/signalr';
-import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { Versioning } from 'versioning';
+import {HubConnectionState} from '@microsoft/signalr';
+import {MessagePackHubProtocol} from '@microsoft/signalr-protocol-msgpack';
+import {Versioning} from 'versioning';
 
-import { AudioVadWorker } from './audio-vad-worker-contract';
-import { KaiserBesselDerivedWindow } from './kaiser–bessel-derived-window';
-import { OpusEncoderWorker } from './opus-encoder-worker-contract';
-import { OpusEncoderWorklet } from '../worklets/opus-encoder-worklet-contract';
-import { VoiceActivityChange } from './audio-vad-contract';
-import { Log} from 'logging';
-import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
+import {AudioVadWorker} from './audio-vad-worker-contract';
+import {KaiserBesselDerivedWindow} from './kaiser–bessel-derived-window';
+import {OpusEncoderWorker} from './opus-encoder-worker-contract';
+import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
+import {VoiceActivityChange} from './audio-vad-contract';
+import {Log} from 'logging';
+import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -34,6 +34,7 @@ debugLog?.log(`MEM_LEAK_DETECTION == true`);
 let codecModule: Codec | null = null;
 
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
+const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 100 = 2s
 const FADE_CHUNKS = 3;
 const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 
@@ -86,9 +87,9 @@ const serverImpl: OpusEncoderWorker = {
             .build();
         await hubConnection.start();
 
-        hubConnection.onreconnected(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
+        hubConnection.onreconnected(() => onReconnect());
         hubConnection.onreconnecting(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
-        void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+        void onReconnect();
 
         // Ensure audio transport is up and running
         debugLog?.log(`create: -> hub.ping()`);
@@ -149,26 +150,28 @@ const serverImpl: OpusEncoderWorker = {
 
         if (hubConnection.state === HubConnectionState.Disconnected) {
             await hubConnection.start();
-            // @ts-ignore
-            void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+            void onReconnect();
         }
         else {
             await hubConnection.stop();
             await hubConnection.start();
-            // @ts-ignore
-            void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+            void onReconnect();
         }
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
         if (buffer.byteLength === 0)
             return;
+        const isConnected = hubConnection.state === HubConnectionState.Connected;
+
 
         if (state === 'encoding') {
             queue.push(buffer);
             if (vadState === 'voice')
                 processQueue();
-            else if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME)
+            else if (isConnected && queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME)
+                queue.shift();
+            else if (!isConnected && queue.length > CHUNKS_WILL_BE_SENT_ON_RECONNECT)
                 queue.shift();
         }
     },
@@ -237,6 +240,10 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 async function startRecording(): Promise<void> {
     const { recorderId, chatId, repliedChatEntryId } = lastInitArguments;
 
+    const isConnected = hubConnection.state === HubConnectionState.Connected;
+    if (!isConnected)
+        return;
+
     recordingSubject?.complete(); // Just in case
     recordingSubject = new signalR.Subject<Uint8Array>();
     if (!encoder)
@@ -247,6 +254,10 @@ async function startRecording(): Promise<void> {
 }
 
 function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
+    const isConnected = hubConnection.state === HubConnectionState.Connected;
+    if (!isConnected)
+        return;
+
     if (isEncoding)
         return;
 
@@ -315,9 +326,17 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     }
 }
 
+async function onReconnect(): Promise<void> {
+    const isConnected = hubConnection.state === HubConnectionState.Connected;
+    void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait);
+    if (isConnected && recordingSubject === null && vadState === 'voice') {
+        await startRecording();
+    }
+}
+
 function getPinkNoiseBuffer(gain: number = 1): Float32Array {
     const buffer = new Float32Array(CHUNK_SIZE);
-    let b0, b1, b2, b3, b4, b5, b6;
+    let b0: number, b1: number, b2: number, b3: number, b4: number, b5: number, b6: number;
     b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
     for (let i = 0; i < buffer.length; i++) {
         const white = Math.random() * 2 - 1;
