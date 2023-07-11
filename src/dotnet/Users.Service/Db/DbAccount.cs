@@ -26,10 +26,10 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         if (user.Id != Id)
             throw new ArgumentOutOfRangeException(nameof(user));
 
-        return new (user, Version) {
+        return new(user, Version) {
             Status = Status,
             Email = Email,
-            Phone = new ActualChat.Phone(Phone),
+            Phone = new Phone(Phone),
             SyncContacts = SyncContacts,
             Name = Name,
             LastName = LastName,

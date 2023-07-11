@@ -34,9 +34,8 @@ public static class AccountsExt
             if (ownAccount.Phone != updatedAccount.Phone) {
                 if (ownAccount.User.HasPhoneIdentity())
                     throw StandardError.Unauthorized("You can't change your phone number.");
-
                 if (!updatedAccount.Phone.IsValid)
-                    throw StandardError.Constraint<Phone>("Phone format is not correct.");
+                    throw StandardError.Constraint<Phone>("Incorrect phone number format.");
             }
             if(!OrdinalIgnoreCaseEquals(ownAccount.Email, updatedAccount.Email) && ownAccount.User.HasEmailIdentity())
                 throw StandardError.Unauthorized("You can't change your email.");
