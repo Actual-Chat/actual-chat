@@ -191,6 +191,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        await Task.Delay(2000);
         var entry = Entry;
         var chatId = entry.ChatId;
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken);
