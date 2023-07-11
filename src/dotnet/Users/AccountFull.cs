@@ -28,8 +28,10 @@ public sealed partial record AccountFull(
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 
     [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
-    [DataMember, MemoryPackOrder(6)] public Phone Phone { get; init; }
+    [Obsolete("Allows legacy clients to deserialize new version of this type.")]
+    [DataMember, MemoryPackOrder(6)] public string LegacyPhone { get; private set; } = "";
     [DataMember, MemoryPackOrder(7)] public bool SyncContacts { get; init; }
+    [DataMember, MemoryPackOrder(12)] public Phone Phone { get; init; }
     [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";
     [DataMember, MemoryPackOrder(10)] public string LastName { get; init; } = "";
@@ -42,4 +44,31 @@ public sealed partial record AccountFull(
     // This record relies on version-based equality
     public bool Equals(AccountFull? other) => EqualityComparer.Equals(this, other);
     public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+
+    // Deserialization handlers
+
+    #pragma warning disable CS0618
+
+    private static readonly Action<AccountFull, Phone> _phoneSetter = typeof(AccountFull)
+        .GetProperty(nameof(Phone))!
+        .GetSetter<AccountFull, Phone>();
+
+    [MemoryPackOnSerializing]
+    private void OnSerializing()
+        => LegacyPhone = Phone.Value;
+
+    [MemoryPackOnDeserialized]
+    private void OnDeserialized()
+    {
+        var legacyPhone = LegacyPhone;
+        if (legacyPhone.IsNullOrEmpty())
+            return;
+        if (!Phone.IsNone)
+            return;
+
+        var phone = new Phone(legacyPhone, ParseOrNone.Option);
+        _phoneSetter.Invoke(this, phone);
+    }
+
+    #pragma warning restore CS0618
 }
