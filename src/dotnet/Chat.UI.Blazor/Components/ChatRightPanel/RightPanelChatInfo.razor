@@ -24,76 +24,54 @@
     </div>
 
     @if (m.Link is { } publicUrl) {
-        <div class="group flex-x overflow-hidden hover:bg-round-hover rounded-lg">
-            <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-                <i class="icon-link-2 text-2xl text-icons-03"></i>
-            </div>
-            <div class="flex-y grow min-w-0 self-center">
-                <div class="text-01 text-headline-1 truncate">
-                    @publicUrl.ShortLocalUrl
-                </div>
-                <div class="text-03 text-caption-2">
-                    @(isPublicGroupChat ? "Public join link" : "User link")
-                </div>
-            </div>
-            <CopyToClipboard
-                @key="@publicUrl.AbsoluteUrl"
-                ButtonClass="btn-sm transparent md:invisible group-hover:md:visible hover:text-primary"
-                Text="@publicUrl.AbsoluteUrl"/>
-        </div>
+        <RightPanelChatInfoItem
+            Class="group"
+            Icon="icon-link-2 text-icons-03"
+            Content="@publicUrl.ShortLocalUrl"
+            Hint="@(isPublicGroupChat ? "Public join link" : "User link")">
+            <Right>
+                <CopyToClipboard
+                    @key="@publicUrl.AbsoluteUrl"
+                    ButtonClass="btn-sm transparent md:invisible group-hover:md:visible hover:text-accent"
+                    Text="@publicUrl.AbsoluteUrl" />
+            </Right>
+        </RightPanelChatInfoItem>
     }
 
     @if (m.Owners is not null) {
         @foreach (var owner in m.Owners) {
-            <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-                 @onclick="@(_ => OnOwnerClick(owner.AuthorId))">
-                <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-                    <i class="icon-person text-2xl text-icons-03"></i>
-                </div>
-                <div class="flex-y min-w-0 self-center">
-                    <div class="text-01 text-headline-1 truncate">
-                        @owner.AvatarName
-                    </div>
-                    <div class="text-03 text-caption-2">
-                        Owner
-                    </div>
-                </div>
-            </div>
+            <RightPanelChatInfoItem
+                Click="@(_ => OnOwnerClick(owner.AuthorId))"
+                Icon="icon-person text-icons-03"
+                Content="@owner.AvatarName"
+                Hint="Owner" />
         }
     }
 
-    <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-         @onclick="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
-         @onclick:preventDefault="true">
-        <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-            <i class="icon-bell text-2xl text-icons-03"></i>
-        </div>
-        <div class="flex-y min-w-0 self-center grow">
-            <div class="text-01 text-headline-1 truncate">
-                Notifications
-            </div>
-            <div class="text-03 text-caption-2">
-                @(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")
-            </div>
-        </div>
-        <div class="flex-x self-center pr-2">
-            <Toggle IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)" />
-        </div>
-    </div>
+    <RightPanelChatInfoItem
+        Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
+        Icon="icon-bell text-icons-03"
+        Content="Notifications"
+        Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
+        <Right>
+            <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
+        </Right>
+    </RightPanelChatInfoItem>
+
+    @* @if (m.Link is not null) { *@
+    @*     <RightPanelChatInfoItem *@
+    @*         Click="@OnShareClick" *@
+    @*         Icon="icon-share text-accent" *@
+    @*         ContentClass="text-accent" *@
+    @*         Content="Share" /> *@
+    @* } *@
 
     @if (m.Rules.CanInvite()) {
-        <div class="flex-x overflow-hidden cursor-pointer hover:bg-round-hover rounded-lg"
-             @onclick="@OnInviteClick"
-             @onclick:preventDefault="true">
-            <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-                <i class="icon-person-add text-2xl text-primary"></i>
-            </div>
-            <div class="flex-y min-w-0 self-center grow">
-                <div class="text-primary text-headline-1 truncate">
-                    Add members
-                </div>
-            </div>
-        </div>
+        <RightPanelChatInfoItem
+            Click="@OnInviteClick"
+            Icon="icon-person-add text-accent"
+            ContentClass="text-accent"
+            Content="Add members" />
     }
 </div>
 
@@ -180,6 +158,9 @@
 
     private Task OnInviteClick()
         => ModalUI.Show(new InviteAuthorModal.Model(Chat));
+
+    private void OnShareClick()
+    {}
 
     public sealed record Model {
         public static Model None { get; } = new();
