@@ -48,12 +48,14 @@ public class SignInStateChangeReloader : WorkerBase
                         .When((x, error) => error == null && !x.IsGuestOrNone, updateDelayer, cancellationToken)
                         .ConfigureAwait(false);
 
-                    _ = History.Dispatcher.InvokeAsync(() => {
-                        var currentUrl = History.LocalUrl;
-                        var targetUrl = currentUrl.IsChatOrChatRoot() ? currentUrl : Links.Chats;
-                        Log.LogInformation("Forced reload on sign-in: {TargetUrl}", targetUrl);
-                        History.ForceReload(targetUrl);
-                    });
+                    var currentUrl = History.LocalUrl;
+                    var targetUrl = currentUrl.IsChatOrChatRoot() ? currentUrl : Links.Chats;
+                    await History.Dispatcher
+                        .InvokeAsync(() => History.NavigateTo(targetUrl, targetUrl == currentUrl, true))
+                        .ConfigureAwait(false);
+
+                    // Cached sign-out state is replaced with the real signed-in one
+                    await UICommander.RunNothing().ConfigureAwait(false);
                 }
                 else {
                     var onboardingUI = Services.GetRequiredService<OnboardingUI>();
