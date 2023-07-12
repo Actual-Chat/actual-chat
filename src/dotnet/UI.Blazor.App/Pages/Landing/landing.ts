@@ -99,6 +99,11 @@ export class Landing {
 
         this.downloadLinksPage = this.landing.querySelector('.page-links');
         let downloadAppButtons = this.landing.querySelectorAll('.download-app');
+        let toMainPageButtons = this.landing.querySelectorAll('.btn-to-main-page');
+
+        fromEvent(toMainPageButtons, 'pointerdown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onToMainPageButtonClick(event));
 
         fromEvent(downloadAppButtons, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
@@ -274,19 +279,16 @@ export class Landing {
         // There are no links covering the header
         this.header.classList.remove('hide-header');
 
-        let button = this.header.querySelector('.download-app');
-        if (button == null)
+        let downloadBtn = this.header.querySelector('.download-app');
+        let mainPageBtn = this.header.querySelector('.btn-to-main-page');
+        if (downloadBtn == null || mainPageBtn == null)
             return;
-        let content = button.querySelector('.c-content');
-        let icon = button.querySelector('.c-icon');
         if (downloadPage.getBoundingClientRect().top <= 0) {
-            content.innerHTML = "Back to Main page";
-            if (!icon.classList.contains('hidden')) {
-                icon.classList.add('hidden');
-            }
+            downloadBtn.classList.add('!hidden');
+            mainPageBtn.classList.remove('!hidden');
         } else {
-            content.innerHTML = "Download App";
-            icon.classList.remove('hidden');
+            downloadBtn.classList.remove('!hidden');
+            mainPageBtn.classList.add('!hidden');
         }
     }
 
@@ -423,15 +425,33 @@ export class Landing {
     }
 
     private onDownloadButtonClick(event: PointerEvent) : void {
-        let top = 0;
-        if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
-            // on links page
-            top = Math.round(this.currentPage.getBoundingClientRect().top);
-        } else {
+        // let top = 0;
+        // if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
+        //     // on links page
+        //     top = Math.round(this.currentPage.getBoundingClientRect().top);
+        // } else {
             // return last viewed page
-            this.currentPage = this.getCurrentPage();
-            top = this.downloadLinksPage.getBoundingClientRect().top;
-        }
+        this.currentPage = this.getCurrentPage();
+        let top = this.downloadLinksPage.getBoundingClientRect().top;
+        // }
+        let landingTop = this.landing.getBoundingClientRect().top;
+        const options = {
+            behavior: 'auto',
+            top: (top - landingTop),
+        } as ScrollToOptions;
+        this.scrollContainer.scrollTo(options);
+    }
+
+    private onToMainPageButtonClick(event: PointerEvent) : void {
+        // let top = 0;
+        // if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
+            // on links page
+        let top = Math.round(this.currentPage.getBoundingClientRect().top);
+        // } else {
+        //     return last viewed page
+            // this.currentPage = this.getCurrentPage();
+            // top = this.downloadLinksPage.getBoundingClientRect().top;
+        // }
         let landingTop = this.landing.getBoundingClientRect().top;
         const options = {
             behavior: 'auto',

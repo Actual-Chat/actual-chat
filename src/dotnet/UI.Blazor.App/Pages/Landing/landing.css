@@ -202,7 +202,7 @@ body.narrow .landing-header .header-text {
     @apply bg-transparent;
     @apply text-04;
 }
-body.app-maui .landing-header .download-btn {
+body.app-maui .landing-header .btn-download {
     @apply hidden;
 }
 .landing-menu {
@@ -431,33 +431,33 @@ body.narrow .landing-links {
     @apply p-4 md:py-8 md:px-16;
     @apply bg-[#EEEEF6];
 }
-.download-btn {
+.btn-download {
     @apply md:flex-none flex-x gap-x-4 items-center justify-center;
     @apply h-10;
     @apply px-6;
     @apply rounded-full;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
 }
-.download-btn.web-signin,
-.download-btn.ios-disabled {
+.btn-download.web-signin,
+.btn-download.ios-disabled {
     @apply justify-center;
     @apply w-full md:w-fit;
     @apply bg-none bg-01;
     @apply border border-text-01;
 }
-.download-btn.web-signin.transparent,
-.download-btn.ios-disabled.transparent {
+.btn-download.web-signin.transparent,
+.btn-download.ios-disabled.transparent {
     @apply justify-center;
     @apply bg-none bg-transparent;
     @apply border border-bg-01;
 }
-.download-btn.ios-disabled {
+.btn-download.ios-disabled {
     @apply opacity-75;
 }
-.download-btn.transparent * {
+.btn-download.transparent * {
     @apply text-04;
 }
-.download-btn .c-content {
+.btn-download .c-content {
     @apply flex items-center;
     @apply text-04 text-headline-1;
 }
@@ -944,7 +944,7 @@ body.hoverable .landing-download-tile:hover .c-text {
     @apply w-20 h-20;
     @apply m-4;
 }
-.landing-header .download-btn {
+.landing-header .btn-download {
     @apply min-w-48;
 }
 .landing-download-tile .c-content {
