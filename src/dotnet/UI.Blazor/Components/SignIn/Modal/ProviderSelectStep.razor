@@ -12,77 +12,76 @@
 }
 
 <div class="sign-in-step provider-select-step">
-    <div>
-        <div class="sign-in-step-title">Sign in</div>
+    <div class="c-auth-providers">
+        @foreach (var schema in _authSchemas!) {
+            <Button
+                Class="btn-modal sign-in sign-in-with"
+                Click="@(_ => OnSignInWith(schema.Name))">
+                @if (schema.Icon != null) {
+                    <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName">
+                }
+                @("Sign in with " + schema.DisplayName)
+            </Button>
+        }
     </div>
-    <div class="flex-y gap-y-4">
-        <div class="text-xl text-02">Enter your phone number</div>
-        <p class="sign-in-step-description">We will send you SMS with verification code on specified number.</p>
+
+    <div class="c-separator">or</div>
+
+    <div class="c-header">
+        <div class="c-title">Sign-in with your phone number</div>
+        <p class="c-description">
+            Enter your phone number and click "Continue" to receive a text message
+            with one-time verification code.
+        </p>
     </div>
-    <div class="flex-y gap-y-8">
-        <Form
-            @ref="_formRef"
-            Class="mt-6 flex-y gap-y-2"
-            Model="@_stepModel"
-            OnValidSubmit="OnSignInWithPhone">
-            <DataAnnotationsValidator/>
-            <div class="flex-x gap-x-4 items-center">
-                <FormSection
-                    For="() => _stepModel.Code"
-                    InputId="@_stepModel.CodeFieldId"
-                    Label="Code"
-                    Class="w-20"
-                    IsLabelInsideInput="true"
-                    IsRequired="true">
-                    @* TODO: seems like we need custom country code control *@
-                    <InputText
-                        id="@_stepModel.CodeFieldId"
-                        @bind-Value="_stepModel.Code"
-                        list="phoneCodes"
-                        pattern="@StepModel.CountryCodePattern"
-                        onfocus="this.select()"/>
-                    <datalist id="phoneCodes">
-                        @foreach (var phoneCode in PhoneCodes.List) {
-                            <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
-                        }
-                    </datalist>
-                </FormSection>
-                <FormSection
-                    For="() => _stepModel.Number"
-                    InputId="@_stepModel.NumberFieldId"
-                    Label="Phone number"
-                    Class="grow"
-                    IsLabelInsideInput="true"
-                    IsRequired="true">
-                    <InputText
-                        id="@_stepModel.NumberFieldId"
-                        @bind-Value="_stepModel.Number"
-                        autocomplete="tel-national"
-                        type="tel"
-                        pattern="@StepModel.NumberPattern"
-                        inputmode="tel"/>
-                </FormSection>
-            </div>
-             <FormButtons IsEndAligned="false">
-                <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Sign in</Button>
-            </FormButtons>
-        </Form>
 
-        <div class="sign-in-separator">or</div>
-
-        <div class="flex-y gap-y-2">
-            @foreach (var schema in _authSchemas!) {
-                <Button
-                    Class="btn-modal sign-in sign-in-with"
-                    Click="@(_ => OnSignInWith(schema.Name))">
-                    @if (schema.Icon != null) {
-                        <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName">
+    <Form
+        @ref="_formRef"
+        Class="c-phone-form"
+        Model="@_stepModel"
+        OnValidSubmit="OnSignInWithPhone">
+        <DataAnnotationsValidator/>
+        <div class="flex-x gap-x-4 items-center">
+            <FormSection
+                For="() => _stepModel.Code"
+                InputId="@_stepModel.CodeFieldId"
+                Label="Code"
+                Class="w-20"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                @* TODO: seems like we need custom country code control *@
+                <InputText
+                    id="@_stepModel.CodeFieldId"
+                    @bind-Value="_stepModel.Code"
+                    list="phoneCodes"
+                    pattern="@StepModel.CountryCodePattern"
+                    onfocus="this.select()"/>
+                <datalist id="phoneCodes">
+                    @foreach (var phoneCode in PhoneCodes.List) {
+                        <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
                     }
-                    @("Sign in with " + schema.DisplayName)
-                </Button>
-            }
+                </datalist>
+            </FormSection>
+            <FormSection
+                For="() => _stepModel.Number"
+                InputId="@_stepModel.NumberFieldId"
+                Label="Phone number"
+                Class="grow"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                <InputText
+                    id="@_stepModel.NumberFieldId"
+                    @bind-Value="_stepModel.Number"
+                    autocomplete="tel-national"
+                    type="tel"
+                    pattern="@StepModel.NumberPattern"
+                    inputmode="tel"/>
+            </FormSection>
         </div>
-    </div>
+         <FormButtons IsEndAligned="false">
+            <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Continue</Button>
+        </FormButtons>
+    </Form>
 </div>
 
 @code {

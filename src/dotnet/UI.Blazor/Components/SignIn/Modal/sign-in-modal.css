@@ -8,6 +8,11 @@
 .sign-in-modal .dialog-body .stepper-content {
     @apply flex grow;
 }
+
+.sign-in-modal .stepper-header {
+    @apply flex-x gap-x-0;
+    @apply mb-4;
+}
 .sign-in-modal-header {
     @apply text-xl font-semibold md:font-medium text-02;
 }
@@ -24,36 +29,63 @@
 .sign-in-with.btn .btn-content {
     @apply text-02;
 }
-/* steps */
+
+/* Sign-in step */
+
 .sign-in-step {
-    @apply flex-y grow justify-start;
+    @apply flex-y grow justify-start gap-y-6;
 }
-.sign-in-step-title {
-    @apply text-2xl font-semibold text-02;
+
+/* Sign-in step - header block */
+
+.sign-in-step .c-header {
+    @apply flex-y gap-y-4;
 }
-.sign-in-step-description {
+.sign-in-step .c-header > .c-title {
+    @apply text-lg font-semibold text-02;
+}
+.sign-in-step .c-header > .c-description {
     @apply text-lg text-icons-01;
 }
-/* provider select step */
-.provider-select-step {
-    @apply gap-y-6;
+
+/* Sign-in step - auth providers block */
+
+.sign-in-step .c-auth-providers {
+    @apply flex-y gap-y-4;
 }
-.sign-in-separator {
+
+/* Sign-in step - phone form */
+
+.sign-in-step .c-phone-form {
+    @apply flex-y gap-y-2;
+}
+
+/* Sign-in step - verify code step */
+
+.sign-in-step .totp-input {
+    @apply flex-y gap-y-6 justify-center items-center;
+}
+.sign-in-step .totp-input:not(.invalid) > .c-error {
+    @apply hidden;
+}
+.sign-in-step .c-resend-code {
+    @apply flex-x justify-center gap-x-1;
+}
+
+/* Sign-in step - separator */
+
+.sign-in-step .c-separator {
     @apply flex items-center text-center text-02;
 }
-.sign-in-separator::before,
-.sign-in-separator::after {
+.sign-in-step .c-separator::before,
+.sign-in-step .c-separator::after {
     @apply flex-1;
     content: '';
     @apply border-b border-solid border-counter;
 }
-.sign-in-separator:not(:empty)::before {
+.sign-in-step .c-separator:not(:empty)::before {
     @apply mr-3;
 }
-.sign-in-separator:not(:empty)::after {
+.sign-in-step .c-separator:not(:empty)::after {
     @apply ml-3;
-}
-/* verify phone step */
-.verify-phone-step {
-    @apply flex-y;
 }

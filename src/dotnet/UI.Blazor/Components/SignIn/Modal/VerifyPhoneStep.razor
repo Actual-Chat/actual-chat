@@ -9,22 +9,24 @@
 
 <UITimer Period="@(TotpTtl)" Tick="OnTotpExpired"/>
 <div class="sign-in-step verify-phone-step" @onclick="@TryFocusTotpInput">
-    <div class="flex-y gap-y-8 items-center">
-        <div class="flex-y gap-y-4">
-            <div class="sign-in-step-title">Enter code</div>
-            <p class="sign-in-step-description">We have sent an SMS with an activation code to your phone @PhoneSignInModel.Phone.Value.ToReadable()</p>
-        </div>
-        <TotpInput @ref="_totpInput" Completed="OnTotpEntered"/>
+    <div class="c-header">
+        <div class="c-title">Phone number verification</div>
+        <p class="c-description">
+            Please enter the code we've sent to @PhoneSignInModel.Phone.Value.ToReadable()
+            to verify you own this phone number.
+        </p>
     </div>
+
+    <TotpInput @ref="_totpInput" Completed="OnTotpEntered"/>
+
     @if (Clocks.SystemClock.Now < PhoneSignInModel.TotpExpiresAt) {
-        <div class="pt-20 flex-x justify-center gap-x-1">
-            <span>You can resend code in</span>
+        <div class="c-resend-code">
+            <span>You can request a new code in</span>
             <Countdown EndsAt="@PhoneSignInModel.TotpExpiresAt.Value"/>
         </div>
     } else {
         <Button Class="btn-primary btn-modal sign-in" Click="OnResendCodeClick">Resend</Button>
     }
-
 </div>
 
 @code {

@@ -5,13 +5,6 @@
     var account = State.Value;
     var isGuest = account is not {IsGuestOrNone: false };
     var avatar = account.Avatar;
-    var platform = HostInfo.Platform switch {
-        Platform.Windows => "Windows",
-        Platform.Android => "Android",
-        Platform.iOS => "iOS",
-        Platform.MacOS => "MacOS",
-        _ => "Web",
-        };
 }
 
 @* Header *@
@@ -77,7 +70,12 @@
                 </Button>
                 @if (isGuest) {
                     <button class="signin-button-group items-center" onclick="@SignIn">
-                        <span class="font-medium">Sign in @platform App</span>
+                        @if (HostInfo.AppKind.IsMauiApp()) {
+                            <span class="font-medium">Sign in</span>
+                        }
+                        else {
+                            <span class="font-medium">Sign-in to web app</span>
+                        }
                         <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
                     <DownloadButton Class="download-app"/>

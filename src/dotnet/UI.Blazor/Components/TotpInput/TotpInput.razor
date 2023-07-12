@@ -34,7 +34,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private FocusUI FocusUI { get; init; } = null!;
 
-    [Parameter] public string ErrorText { get; set; } = "Invalid code. Please try again";
+    [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";
     [Parameter] public EventCallback<int> Completed { get; set; }
 
     public ValueTask DisposeAsync()

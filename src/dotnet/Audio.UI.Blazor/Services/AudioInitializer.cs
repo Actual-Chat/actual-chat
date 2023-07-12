@@ -41,7 +41,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
                 var deviceModel = HostInfo.DeviceModel;
 
                 // ReSharper disable once InconsistentNaming
-                var canUseNNVad = HostInfo.Platform != Platform.iOS || IsIOSDeviceFastEnoughToRunNNVad(deviceModel);
+                var canUseNNVad = HostInfo.ClientKind != ClientKind.Ios || IsIOSDeviceFastEnoughToRunNNVad(deviceModel);
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
                 await JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioInitializer.init",
                     ct,

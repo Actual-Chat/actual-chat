@@ -38,10 +38,8 @@ public partial class History
         => ForceReload(url.ToAbsolute(UrlMapper));
     public void ForceReload(string url, bool mustReplace = true)
     {
-        Log.LogInformation("ForceReload: {Url}", url);
-        _ = JS.InvokeVoidAsync(
-            $"window.location.{(mustReplace ? "replace" : "assign")}",
-            url);
+        Log.LogInformation("ForceReload: {Url} (mustReplace = {MustReplace})", url, mustReplace);
+        _ = JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.forceReload", url, mustReplace, NewItemId());
     }
 
     // Internal and private methods

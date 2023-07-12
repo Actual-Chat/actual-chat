@@ -28,13 +28,23 @@ export class History {
     }
 
     public static async navigateTo(
-        uri: string,
-        mustReplace: boolean = false,
-        force: boolean = false,
-        addInFront: boolean = false
+        url: string,
+        mustReplace = false,
+        force = false,
+        addInFront = false
     ): Promise<void> {
-        infoLog?.log(`navigateTo:`, uri, mustReplace, force, addInFront);
+        infoLog?.log(`navigateTo:`, url, mustReplace, force, addInFront);
         await this.whenReady;
-        await this.backendRef.invokeMethodAsync('NavigateTo', uri, mustReplace, force, addInFront);
+        await this.backendRef.invokeMethodAsync('NavigateTo', url, mustReplace, force, addInFront);
     };
+
+    public static async forceReload(url: string, mustReplace: boolean, historyEntryState: string) {
+        await this.whenReady;
+        const options = {
+            forceLoad : true,
+            replaceHistoryEntry : true,
+            historyEntryState : historyEntryState
+        };
+        this.navigationManager.navigateTo(url, options);
+    }
 }

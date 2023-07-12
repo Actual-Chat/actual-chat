@@ -226,7 +226,6 @@ public static partial class MauiProgram
             Configuration = configuration,
             BaseUrl = AppSettings.BaseUrl,
             DeviceModel = deviceInfo.Model,
-            Platform = PlatformInfoProvider.GetPlatform(),
         };
         return hostInfo;
     }
