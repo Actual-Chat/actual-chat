@@ -4,6 +4,8 @@ import { PromiseSource } from 'promises';
 import { DeviceInfo } from 'device-info';
 import { opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
+import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
+import {EventHandler} from "event-handling";
 
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
@@ -11,18 +13,20 @@ const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly recorderId: string;
+    private readonly onReconnected: EventHandler<void>;
 
     private static whenInitialized: Promise<void> | null;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
 
     public static init(): Promise<void> {
+        if (this.whenInitialized)
+            return this.whenInitialized;
+
         debugLog?.log(`-> init()`);
-        AudioRecorder.whenInitialized = new Promise<void>(resolve => {
+        return this.whenInitialized = new Promise<void>(resolve => {
             DetectRTC.load(resolve);
             debugLog?.log(`<- init(): resolved`);
         });
-
-        return AudioRecorder.whenInitialized;
     }
 
     /** Called from Blazor */
@@ -33,13 +37,15 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject, recorderId: string) {
         this.blazorRef = blazorRef;
         this.recorderId = recorderId;
-        if (!AudioRecorder.whenInitialized)
-            void AudioRecorder.init();
+        this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.reconnect());
+        void AudioRecorder.init();
     }
 
     /** Called from Blazor */
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
+        if (this.onReconnected)
+            BrowserInit.reconnectedEvents.remove(this.onReconnected);
         try {
             await opusMediaRecorder.stop();
         } catch (e) {
@@ -189,6 +195,7 @@ export class AudioRecorder {
 
     /** Called from Blazor */
     public reconnect(): Promise<void> {
+        debugLog?.log(`reconnect()`);
         return opusMediaRecorder.reconnect();
     }
 

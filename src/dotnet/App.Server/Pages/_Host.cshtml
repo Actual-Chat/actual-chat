@@ -17,7 +17,7 @@
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
     var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
-    var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
+    var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_200; // 1h of retries
     var blazorScriptsHash = GetBlazorScriptsHash();
     Layout = null;
 
@@ -141,7 +141,7 @@
             Blazor.start({
                 reconnectionOptions: {
                      maxRetries: @(blazorMaxReconnectRetries),
-                     retryIntervalMilliseconds: 2000,
+                     retryIntervalMilliseconds: 3000,
                 },
             });
             </script>

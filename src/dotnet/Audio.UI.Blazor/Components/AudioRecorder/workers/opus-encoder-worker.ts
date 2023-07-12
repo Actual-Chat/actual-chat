@@ -64,16 +64,6 @@ const serverImpl: OpusEncoderWorker = {
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
 
-        const retryPolicy: signalR.IRetryPolicy = {
-            nextRetryDelayInMilliseconds: (retryContext: signalR.RetryContext): number => {
-                if (retryContext.previousRetryCount < 5)
-                    return 100;
-
-                const averageDelay = Math.min(5000, retryContext.elapsedMilliseconds / retryContext.previousRetryCount);
-                return averageDelay * (1.2 + Math.random());
-            },
-        };
-
         // Connect to SignalR Hub
         debugLog?.log(`create: hub connecting...`);
         hubConnection = new signalR.HubConnectionBuilder()
@@ -81,7 +71,13 @@ const serverImpl: OpusEncoderWorker = {
                 skipNegotiation: true,
                 transport: signalR.HttpTransportType.WebSockets
             })
-            .withAutomaticReconnect(retryPolicy)
+            // We use fixed number of attempts here, because the reconnection is anyway
+            // triggered after SSB / Stl.Rpc reconnect. See:
+            // - C#: ChatAudioUI.ReconnectOnRpcReconnect
+            // - TS: AudioRecorder.ctor.
+            // Some extra attempts are needed, coz there is a chance that the primary connection
+            // stays intact, while this one drops somehow.
+            .withAutomaticReconnect([500, 500, 1000, 1000, 1000])
             .withHubProtocol(new MessagePackHubProtocol())
             .configureLogging(signalR.LogLevel.Information)
             .build();

@@ -1,5 +1,6 @@
-import { Log } from "logging";
+import {EventHandlerSet} from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
+import { Log } from "logging";
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -10,9 +11,11 @@ export class BrowserInit {
     public static apiVersion = "";
     public static sessionHash = "";
     public static windowId = "";
+    public static readonly isMauiApp = document.body.classList.contains('app-maui');
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
-    public static readonly isMauiApp = document.body.classList.contains('app-maui');
+    public static readonly reconnectedEvents = new EventHandlerSet<void>();
+    public static connectionState = "";
 
     public static async init(apiVersion: string, sessionHash: string | null, calls: Array<unknown>): Promise<void> {
         if (this.whenInitialized.isCompleted()) {
@@ -52,7 +55,11 @@ export class BrowserInit {
     }
 
     public static resetAppConnectionState(): void {
+        if (this.connectionState === "")
+            return; // Already reset
+
         this.setAppConnectionState();
+        this.reconnectedEvents.triggerSilently();
     }
 
     public static startReconnecting(mustReconnectBlazor): void {
@@ -190,6 +197,10 @@ export class BrowserInit {
     }
 
     private static setAppConnectionState(state: string = ""): void {
+        if (this.connectionState === state)
+            return;
+
+        this.connectionState = state;
         if (this.whenReloading.isCompleted())
             return;
 
