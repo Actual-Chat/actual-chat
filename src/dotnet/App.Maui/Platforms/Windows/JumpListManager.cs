@@ -10,9 +10,12 @@ public static class JumpListManager
     {
         var jumpList = await JumpList.LoadCurrentAsync();
         var count = jumpList.Items.Count;
-        AddJumpListItem(jumpList, QuitArgs, "Quit Actual Chat", "ms-appx:///Platforms/Windows/Assets/jump_item_quit.png");
+        // NOTE(AY): "x.svg" icon doesn't work (nothing is showing up), but the .png version is displayed
+        // in a wrong color, if your Windows theme is dark. So let's keep it as-is for now.
+        AddJumpListItem(jumpList, QuitArgs, "Quit Actual Chat", "ms-appx:///Platforms/Windows/Assets/x.svg");
         if (jumpList.Items.Count == count)
             return;
+
         await jumpList.SaveAsync();
     }
 
@@ -23,18 +26,17 @@ public static class JumpListManager
         RemoveJumpListItem(jumpList, QuitArgs);
         if (jumpList.Items.Count == count)
             return;
+
         await jumpList.SaveAsync();
     }
 
-    private static void AddJumpListItem(JumpList jumpList, string args, string displayName, string logo)
+    private static void AddJumpListItem(JumpList jumpList, string args, string displayName, string icon = "")
     {
         if (jumpList.Items.Any(c => OrdinalEquals(c.Arguments, args)))
             return;
+
         var item = JumpListItem.CreateWithArguments(args, displayName);
-        if (!string.IsNullOrEmpty(logo))
-            item.Logo = new Uri(logo);
-        else
-            item.Logo = null;
+        item.Logo = icon.IsNullOrEmpty() ? null : new Uri(icon);
         jumpList.Items.Add(item);
     }
 
@@ -43,6 +45,7 @@ public static class JumpListManager
         var quitItem = jumpList.Items.FirstOrDefault(c => OrdinalEquals(c.Arguments, args));
         if (quitItem == null)
             return;
+
         jumpList.Items.Remove(quitItem);
     }
 }
