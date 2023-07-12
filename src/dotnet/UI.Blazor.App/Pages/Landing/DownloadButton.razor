@@ -1,15 +1,10 @@
 <button class="btn-download @Class">
     <div class="c-content">
-        @Text
+        Download App
     </div>
-    @if (!HideIcon) {
-        <i class="icon-download text-2xl font-thin text-04 c-icon"></i>
-    }
+    <i class="icon-download text-2xl font-thin text-04 c-icon"></i>
 </button>
 
 @code {
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public string Text { get; set; } = "Download App";
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool HideIcon { get; set; }
 }
