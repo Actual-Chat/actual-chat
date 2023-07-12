@@ -5,18 +5,18 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.8</AspNetCoreVersion>
+    <AspNetCoreVersion>7.0.9</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>7.0.8</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>7.0.9</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>7.0.4</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>7.0.2</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>7.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>7.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>7.0.4</NpgsqlVersion>
-    <RedisVersion>2.6.116</RedisVersion>
+    <RedisVersion>2.6.122</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>6.1.73</StlFusionVersion>
+    <StlFusionVersion>6.1.76</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.4.0-rc.4</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
@@ -90,7 +90,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsBaseVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsBaseVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="7.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)" />

@@ -22,7 +22,6 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private DeviceAwakeUI? _deviceAwakeUI;
     private ChatEditorUI? _chatEditorUI;
     private UICommander? _uiCommander;
-    private RpcClientConnectionFactory? _rpcClientConnectionFactory;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -40,11 +39,10 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     private UICommander UICommander => _uiCommander ??= Services.UICommander();
-    private RpcClientConnectionFactory RpcClientConnectionFactory => _rpcClientConnectionFactory
-        ??= Services.GetRequiredService<RpcClientConnectionFactory>();
     private MomentClockSet Clocks { get; }
 
     private Moment Now => Clocks.SystemClock.Now;
+
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
     public Task WhenEnabled => _whenEnabledSource.Task;
     public IState<Moment?> AudioStoppedAt => _audioStoppedAt;

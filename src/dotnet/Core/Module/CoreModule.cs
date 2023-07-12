@@ -12,7 +12,6 @@ using Stl.Generators;
 using Stl.Mathematics.Internal;
 using Stl.RestEase;
 using Stl.Rpc;
-using RpcClientConnectionFactory = ActualChat.Rpc.RpcClientConnectionFactory;
 
 namespace ActualChat.Module;
 
@@ -73,9 +72,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
  #pragma warning restore CS0618
             : new DefaultObjectPoolProvider());
 
-        // Rpc
-        services.AddSingleton<RpcClientConnectionFactory>(s => new RpcClientConnectionFactory(s));
-
         // Fusion
         var fusion = services.AddFusion();
         if (appKind.IsServer()) {
@@ -97,8 +93,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             }
             else
                 RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.None;
-            services.RemoveAll(sd => sd.ServiceType == typeof(Stl.Rpc.RpcClientConnectionFactory));
-            services.AddSingleton(s => s.GetRequiredService<RpcClientConnectionFactory>().Invoke);
         }
         fusion.AddComputedGraphPruner();
         fusion.AddFusionTime();
@@ -115,7 +109,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
     private void InjectServerServices(IServiceCollection services)
     {
-        services.AddSingleton(c => new RpcClientPeerDependentReconnectDelayer(c));
         services.AddSingleton<IContentSaver>(c => new ContentSaver(c.GetRequiredService<IBlobStorageProvider>()));
 
         var storageBucket = Settings.GoogleStorageBucket;
@@ -141,6 +134,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
             });
         });
+
+        // Reconnector
+        services.AddSingleton(c => new RpcDependentReconnectDelayer(c));
 
         // Features
         fusion.AddClient<IServerFeaturesClient>();

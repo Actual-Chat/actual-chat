@@ -42,7 +42,6 @@
     protected override void OnInitialized()
     {
         _monitor = Services.GetService<RpcPeerStateMonitor>();
-        _monitor?.Start();
         base.OnInitialized();
     }
 

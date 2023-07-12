@@ -25,7 +25,7 @@ export class AudioRecorder {
         return AudioRecorder.whenInitialized;
     }
 
-    /** Called by Blazor  */
+    /** Called from Blazor */
     public static create(blazorRef: DotNet.DotNetObject, recorderId: string) {
         return new AudioRecorder(blazorRef, recorderId);
     }
@@ -37,7 +37,7 @@ export class AudioRecorder {
             void AudioRecorder.init();
     }
 
-    /** Called by Blazor  */
+    /** Called from Blazor */
     public async dispose(): Promise<void> {
         debugLog?.log(`-> dispose()`);
         try {
@@ -48,7 +48,7 @@ export class AudioRecorder {
         }
     }
 
-    /** Called by Blazor  */
+    /** Called from Blazor  */
     public async requestPermission(): Promise<boolean> {
         debugLog?.log(`-> requestPermission()`);
         try {
@@ -101,7 +101,7 @@ export class AudioRecorder {
         }
     }
 
-    /** Called by Blazor  */
+    /** Called from Blazor  */
     public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         await AudioRecorder.whenInitialized;
@@ -170,7 +170,7 @@ export class AudioRecorder {
         return true;
     }
 
-    /** Called by Blazor  */
+    /** Called from Blazor  */
     public async stopRecording(): Promise<void> {
         try {
             debugLog?.log(`-> stopRecording`);
@@ -187,9 +187,9 @@ export class AudioRecorder {
         }
     }
 
-    /** Called by Blazor  */
-    public async reconnect(): Promise<void> {
-        await opusMediaRecorder.reconnect();
+    /** Called from Blazor */
+    public reconnect(): Promise<void> {
+        return opusMediaRecorder.reconnect();
     }
 
     private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {

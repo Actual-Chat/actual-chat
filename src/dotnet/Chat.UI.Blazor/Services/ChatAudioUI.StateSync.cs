@@ -1,4 +1,5 @@
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -27,7 +28,7 @@ public partial class ChatAudioUI
             new(nameof(PushRealtimePlaybackState), PushRealtimePlaybackState),
             new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
             new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
-            new(nameof(ReconnectAudioHubOnRpcConnect), ReconnectAudioHubOnRpcConnect),
+            new(nameof(ReconnectOnRpcReconnect), ReconnectOnRpcReconnect),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -299,10 +300,18 @@ public partial class ChatAudioUI
         await SetRecordingChatId(ChatId.None).ConfigureAwait(false);
     }
 
-    private async Task ReconnectAudioHubOnRpcConnect(CancellationToken cancellationToken)
+    private async Task ReconnectOnRpcReconnect(CancellationToken cancellationToken)
     {
-        await foreach (var _ in RpcClientConnectionFactory.ReconnectCount.Changes(cancellationToken).ConfigureAwait(false))
+        var rpcDependentReconnectDelayer = Services.GetService<RpcDependentReconnectDelayer>();
+        if (rpcDependentReconnectDelayer == null)
+            return;
+
+        while (true) {
+            await rpcDependentReconnectDelayer.WhenDisconnected(cancellationToken).ConfigureAwait(false);
+            await rpcDependentReconnectDelayer.WhenConnected(cancellationToken).ConfigureAwait(false);
+            // AudioRecorder.Reconnect does nothing if the connection is already there
             await AudioRecorder.Reconnect(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // Helpers
