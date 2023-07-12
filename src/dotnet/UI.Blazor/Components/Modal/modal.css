@@ -65,7 +65,12 @@
     @apply rounded-lg;
     @apply font-medium;
 }
-
+body.narrow .modal-frame.bubble-styled-modal {
+    @apply absolute;
+    @apply bottom-4 left-4 right-4;
+    @apply min-h-fit;
+    @apply rounded-xl;
+}
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }

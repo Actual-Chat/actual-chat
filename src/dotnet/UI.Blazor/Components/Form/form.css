@@ -1,8 +1,10 @@
 .form section {
-    @apply mt-2 flex flex-col;
+    @apply flex-y;
+    @apply mt-2;
 }
 .form-section-content {
-    @apply flex flex-col w-full items-start gap-y-1;
+    @apply flex-y items-start gap-y-1;
+    @apply w-full;
 }
 .form-section-content > * {
     @apply w-full;
@@ -36,6 +38,7 @@
 }
 .form.form-y section .form-section-content {
     @apply mt-1;
+    @apply rounded-t-lg;
 }
 
 .form.form-x section {
@@ -63,7 +66,11 @@
 
 /*Label inside input*/
 .form-section-content.label-inside-input {
-    @apply bg-02 border-b border-accent gap-y-0 px-2;
+    @apply bg-02 border-b border-icons-01 gap-y-0 px-2;
+}
+.form-section-content.label-inside-input:focus-within {
+    @apply border-accent;
+    @apply caret-accent;
 }
 .form section.invalid .form-section-content.label-inside-input {
     @apply border-error;
@@ -122,6 +129,9 @@
 
 .form .tile-item input[type=radio] {
     @apply h-5 w-5;
+}
+.form .tile-item input[type=radio]:focus {
+    box-shadow: none;
 }
 
 .form-block {

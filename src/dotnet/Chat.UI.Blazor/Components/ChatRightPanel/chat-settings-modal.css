@@ -1,5 +1,6 @@
 ﻿.edit-chat-settings-modal {
     @apply text-03;
+    @apply md:w-90;
 }
 
 .edit-chat-settings-modal.modal-frame {
@@ -24,6 +25,10 @@
     @apply px-4;
     @apply pt-4;
     @apply pb-2;
+}
+.edit-chat-settings-modal .dialog-buttons .btn-group {
+    @apply flex-1;
+    @apply max-w-none;
 }
 
 .edit-chat-settings-modal .form-block {

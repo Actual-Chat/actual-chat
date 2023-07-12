@@ -3,6 +3,7 @@
 @using ActualChat.UI.Blazor.Components.FileUpload
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.Media
+@using Stl.Generators
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
@@ -26,12 +27,22 @@
         </FileUpload>
         <label for="@_inputId"
                class="pic-upload-input-file-label">
-            <i class="icon-image text-5xl text-04" aria-hidden="true"></i>
         </label>
+    </div>
+    <div class="flex-1 flex-y justify-center gap-4">
+        <Button Class="btn-modal btn-sm !justify-start" Click="UploadImage">
+            <i class="icon-image text-2xl mx-2"></i>
+            <span class="mx-2">Upload image</span>
+        </Button>
+        <Button Class="btn-modal btn-sm !justify-start" Click="GenerateAvatar">
+            <i class="icon-sync text-2xl mx-2"></i>
+            <span class="mx-2">Generate avatar</span>
+        </Button>
     </div>
 </div>
 
 @code {
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private string _inputId = "";
     private ElementReference _dropZoneRef;
     private IJSObjectReference _jsRef = null!;
@@ -47,6 +58,7 @@
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> PictureClick { get; set; }
     [Parameter] public EventCallback<MediaContent> ImagePicked { get; set; }
+    [Parameter] public EventCallback GenerateAvatar { get; set; }
 
     protected override void OnInitialized() {
         _inputId = ComponentIdGenerator.Next("pic-upload-input-file");
@@ -71,6 +83,15 @@
         return $"hsl({h}, 30%, 80%)";
     }
 
+    private void OnGenerateAvatarClick() {
+        Picture = new Picture(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
+        StateHasChanged();
+    }
+
     private async Task OnUploaded(MediaContent mediaContent)
         => await ImagePicked.InvokeAsync(mediaContent).ConfigureAwait(false);
+
+    private void UploadImage() {
+
+    }
 }

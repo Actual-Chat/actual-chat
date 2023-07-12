@@ -1,0 +1,6 @@
+.text-box .btn {
+    @apply hidden;
+}
+.text-box:focus-within .btn {
+    @apply flex;
+}
