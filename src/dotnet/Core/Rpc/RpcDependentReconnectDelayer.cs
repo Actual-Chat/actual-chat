@@ -36,6 +36,7 @@ public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
             while (true) {
                 try {
                     await connectionState.When(x => x.IsConnected(), cancellationToken).ConfigureAwait(false);
+                    return;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     throw;
@@ -60,7 +61,7 @@ public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
     public RetryDelay GetDelay(int tryIndex, CancellationToken cancellationToken = default)
     {
         var whenConnected = WhenConnected(cancellationToken);
-        return whenConnected.IsCompleted
+        return whenConnected.IsCompletedSuccessfully
             ? RetryDelay.None
             : new RetryDelay(whenConnected, Clock.Now + TimeSpan.FromHours(1)); // EndsAt should be just big enough here
     }
