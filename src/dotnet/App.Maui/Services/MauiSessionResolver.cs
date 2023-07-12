@@ -98,7 +98,7 @@ public sealed class MauiSessionResolver : ISessionResolver
             var sessionId = await storage.GetAsync(SessionIdStorageKey).ConfigureAwait(false);
             if (!sessionId.IsNullOrEmpty()) {
                 Log.LogInformation("Successfully read stored Session ID");
-                return new Session(sessionId);
+                return new Session(sessionId).RequireValid();
             }
             Log.LogInformation("No stored Session ID");
         }

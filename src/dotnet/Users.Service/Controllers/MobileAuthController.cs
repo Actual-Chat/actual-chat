@@ -37,12 +37,11 @@ public sealed class MobileAuthController : Controller
     public async Task<ActionResult> SetupSession(string sessionId, CancellationToken cancellationToken)
     {
         var httpContext = HttpContext;
+        var session = new Session(sessionId).RequireValid();
         var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
         var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
             ? userAgentValues.FirstOrDefault() ?? ""
             : "";
-
-        var session = new Session(sessionId);
 
         var auth = Services.GetRequiredService<IAuth>();
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
@@ -142,18 +141,14 @@ public sealed class MobileAuthController : Controller
     [HttpGet("signIn/{sessionId}/{scheme}")]
     public async Task SignIn(string sessionId, string scheme, CancellationToken cancellationToken)
     {
-        // TODO(DF): Check why sign in works with empty scheme.
+        var session = new Session(sessionId).RequireValid();
+        // TODO(DF): Check why sign in works with empty scheme
         if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
             await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
-        else {
-            var helper = Services.GetRequiredService<ServerAuthHelper>();
-            await helper.UpdateAuthState(
-                new Session(sessionId),
-                HttpContext,
-                cancellationToken).ConfigureAwait(false);
 
-            await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
-        }
+        var serverAuthHelper = Services.GetRequiredService<ServerAuthHelper>();
+        await serverAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
+        await WriteCloseWindowResponse(cancellationToken).ConfigureAwait(false);
     }
 
     [HttpPost("signInAppleWithCode")]
@@ -318,17 +313,24 @@ public sealed class MobileAuthController : Controller
     [HttpGet("signOut/{sessionId}")]
     public async Task SignOut(string sessionId, CancellationToken cancellationToken)
     {
-        var session = new Session(sessionId);
+        var session = new Session(sessionId).RequireValid();
         await Commander.Call(new Auth_SignOut(session), cancellationToken).ConfigureAwait(false);
-        await WriteAutoClosingMessage(cancellationToken).ConfigureAwait(false);
+        await WriteCloseWindowResponse(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task WriteAutoClosingMessage(CancellationToken cancellationToken)
+    private async Task WriteCloseWindowResponse(CancellationToken cancellationToken)
     {
-        string responseString =
-            "<html><head></head><body>We are done, please, return to the app.<script>setTimeout(function() { window.close(); }, 1000)</script></body></html>";
+        var response = """
+            <html>
+                <head></head>
+                <body>
+                    You can close this window and return to the app.
+                    <script>setInterval(function() { window.close(); }, 100)</script>
+                </body>
+            </html>
+            """;
         HttpContext.Response.ContentType = "text/html; charset=utf-8";
-        await HttpContext.Response.WriteAsync(responseString, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await HttpContext.Response.WriteAsync(response, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     private async Task AuthenticateSessionWithPrincipal(
