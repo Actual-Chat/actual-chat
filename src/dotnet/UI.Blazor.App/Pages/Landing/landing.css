@@ -46,7 +46,7 @@ body.narrow .landing .title-text {
     @apply text-4.5xl;
 }
 body.narrow .landing .title-text.main {
-    @apply text-4xl;
+    @apply text-3xl;
 }
 
 /* Header */
