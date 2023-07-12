@@ -425,15 +425,8 @@ export class Landing {
     }
 
     private onDownloadButtonClick(event: PointerEvent) : void {
-        // let top = 0;
-        // if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
-        //     // on links page
-        //     top = Math.round(this.currentPage.getBoundingClientRect().top);
-        // } else {
-            // return last viewed page
         this.currentPage = this.getCurrentPage();
         let top = this.downloadLinksPage.getBoundingClientRect().top;
-        // }
         let landingTop = this.landing.getBoundingClientRect().top;
         const options = {
             behavior: 'auto',
@@ -443,15 +436,7 @@ export class Landing {
     }
 
     private onToMainPageButtonClick(event: PointerEvent) : void {
-        // let top = 0;
-        // if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
-            // on links page
         let top = Math.round(this.currentPage.getBoundingClientRect().top);
-        // } else {
-        //     return last viewed page
-            // this.currentPage = this.getCurrentPage();
-            // top = this.downloadLinksPage.getBoundingClientRect().top;
-        // }
         let landingTop = this.landing.getBoundingClientRect().top;
         const options = {
             behavior: 'auto',
