@@ -57,12 +57,12 @@ public abstract class HubClientBase : IDisposable
             builder.AddMessagePackProtocol();
 
         var connection = builder.Build();
+        connection.Closed += e => {
+            Connector.DropConnection(connection, e);
+            return Task.CompletedTask;
+        };
         try {
             await connection.StartAsync(cancellationToken).ConfigureAwait(false);
-            connection.Closed += e => {
-                Connector.DropConnection(connection, e);
-                return Task.CompletedTask;
-            };
             return connection;
         }
         catch (Exception) {
