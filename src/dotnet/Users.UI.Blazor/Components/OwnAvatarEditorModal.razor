@@ -17,22 +17,14 @@
         <PicUpload
             ImageUploadUrl="@UploadUrl"
             ImagePicked="OnImagePicked"
-            Size="SquareSize.Size30"
+            Size="SquareSize.Size24"
             Title="@_form.Bio"
-            Picture="_form.Picture">
+            Picture="_form.Picture"
+            GenerateAvatar="OnGenerateAvatarClick">
             <NoPicture>
-                <AnonymousIcon Class="w-32 h-32"/>
+                <AnonymousIcon Class="w-24 h-24"/>
             </NoPicture>
         </PicUpload>
-
-        <Button Class="transparent border-none self-center" Click="OnGenerateAvatarClick">
-            <div class="flex min-w-10 items-center justify-center">
-                <i class="icon-sync text-xl text-primary"></i>
-            </div>
-            <div class="flex items-center text-headline-1 text-primary">
-                Generate random avatar
-            </div>
-        </Button>
 
         <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>

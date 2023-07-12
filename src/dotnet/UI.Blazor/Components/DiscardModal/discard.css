@@ -1,0 +1,11 @@
+.modal-frame.discard-modal {
+    @apply md:gap-x-0;
+    @apply w-full md:w-82;
+}
+.modal-frame.discard-modal .c-text {
+    @apply flex-y gap-y-2;
+    @apply text-text-1;
+}
+.narrow .modal-frame.discard-modal .dialog-body {
+    @apply gap-y-4;
+}

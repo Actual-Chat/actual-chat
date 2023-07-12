@@ -7,15 +7,20 @@
     var cls = CssClass + " " + Class;
 }
 
-<input @ref="Ref"
-       id="@Id"
-       type="text"
-       autocomplete="@(Autocomplete ? "on" : "off")"
-       class="@cls"
-       value="@CurrentValue"
-       placeholder="@Placeholder"
-       @attributes="@AdditionalAttributes"
-       @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
+<div class="text-box flex-x">
+    <input @ref="Ref"
+           id="@Id"
+           type="text"
+           autocomplete="@(Autocomplete ? "on" : "off")"
+           class="flex-1 @cls"
+           value="@CurrentValue"
+           placeholder="@Placeholder"
+           @attributes="@AdditionalAttributes"
+           @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
+    @if (ClearButton) {
+        <ButtonX Class="btn-sm transparent" Click="OnClearClick"></ButtonX>
+    }
+</div>
 
 @code {
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -28,6 +33,7 @@
     [Parameter] public bool Autocomplete { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public bool ClearButton { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
@@ -47,4 +53,7 @@
 
     private async Task Focus()
         => await JSRef.InvokeVoidAsync("focus", Ref);
+
+    private void OnClearClick()
+        => CurrentValue = "";
 }

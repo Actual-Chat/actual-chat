@@ -2,6 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
 @using ActualChat.Media
+@using Stl.Generators
 @implements IModalView<ChatSettingsModal.Model>
 @inherits ComputedStateComponent<ChatSettingsModal.ComputedModel>
 @{
@@ -23,13 +24,19 @@
                     <PicUpload
                         ImageUploadUrl="@_form.ImageUploadUrl"
                         ImagePicked="OnImagePicked"
-                        Size="SquareSize.Size30"
+                        Size="SquareSize.Size24"
                         Title="@_form.Title"
-                        Picture="@_form.Picture">
+                        Picture="@_form.Picture"
+                        GenerateAvatar="OnGenerateAvatarClick">
                     </PicUpload>
 
                     <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
-                        <TextBox @bind-Value="@_form.Title" Id="@_form.TitleId" Placeholder="Chat title*" Autofocus="true"/>
+                        <TextBox
+                            @bind-Value="@_form.Title"
+                            Id="@_form.TitleId"
+                            Placeholder="Chat title*"
+                            Autofocus="true"
+                            ClearButton="true"/>
                     </FormSection>
                 </FormBlock>
 
@@ -162,7 +169,7 @@
                 @{
                     var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </div>
         </Buttons>
@@ -170,6 +177,7 @@
 </Form>
 
 @code {
+    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private const int MaxInvitesCount = 5;
     private Form _formRef = null!;
     private FormModel _form = null!;
@@ -256,6 +264,11 @@
         var invite = Invite.New(10000, new ChatInviteOption(ModalModel.Chat.Id));
         invite = await UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
+    }
+
+    private void OnGenerateAvatarClick() {
+        _form.Picture = new Picture(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
+        StateHasChanged();
     }
 
     public sealed class FormModel {

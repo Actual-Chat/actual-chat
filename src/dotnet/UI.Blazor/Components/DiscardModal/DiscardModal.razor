@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IModalView<DiscardModal.Model>
+
+<DialogFrame Class="discard-modal bubble-styled-modal" Title="Discard changes">
+    <Body>
+    <div class="c-text">
+        <p>
+            Are you sure you want to discard all changes?
+        </p>
+    </div>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+        <Button Class="btn-modal danger" Click="@Discard">Discard</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+    [Parameter] public EventCallback Discard { get; set; }
+
+    public sealed record Model;
+}

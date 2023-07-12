@@ -12,5 +12,6 @@ public enum SquareSize
     Size12 = 12, // pic-size-12 w-12 h-12
     Size16 = 16, // pic-size-16 w-16 h-16
     Size20 = 20, // pic-size-20 w-20 h-20
+    Size24 = 24, // pic-size-24 w-24 h-24
     Size30 = 30, // pic-size-30 w-30 h-30
 }

@@ -1,4 +1,4 @@
-.btn {
+.btn, .btn-md {
     @apply inline-flex-x justify-center relative;
     @apply py-1 px-3 fill-current rounded-md border outline-none;
     @apply min-w-32 md:min-w-24 max-w-full md:max-w-max;
