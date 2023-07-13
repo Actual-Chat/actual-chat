@@ -18,7 +18,7 @@ public class TestFeature_ClientUser : FeatureDef<User?>, IClientFeatureDef
 {
     public override async Task<User?> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var session = services.GetRequiredService<Session>();
+        var session = services.Session();
         var auth = services.GetRequiredService<IAuth>();
         var user = await auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         return user;

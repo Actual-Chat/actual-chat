@@ -11,7 +11,7 @@ internal class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
 
     public ChatMentionSearchProvider(IServiceProvider services, ChatId chatId)
     {
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         Chats = services.GetRequiredService<IChats>();
         ChatId = chatId;
     }

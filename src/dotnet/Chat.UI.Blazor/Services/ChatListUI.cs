@@ -50,7 +50,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         Services = services;
         Log = services.LogFor(GetType());
 
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         AccountSettings = services.AccountSettings();
         StateFactory = services.StateFactory();
         HostInfo = services.GetRequiredService<HostInfo>();

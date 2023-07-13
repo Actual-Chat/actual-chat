@@ -24,7 +24,7 @@ public partial class History : IHasServices, IDisposable
 
     // We intentionally expose a number of services here, coz it's convenient to access them via History
     public IServiceProvider Services { get; }
-    public Session Session => _session ??= Services.GetRequiredService<Session>();
+    public Session Session => _session ??= Services.Session();
     public HostInfo HostInfo { get; }
     public UrlMapper UrlMapper { get; }
     public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();

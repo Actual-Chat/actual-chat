@@ -52,7 +52,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
         Services = services;
         Log = services.LogFor(GetType());
 
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         Clocks = services.Clocks();
 
         // Read entry states from other windows / devices are delayed by 1s

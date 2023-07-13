@@ -124,7 +124,7 @@ public sealed class AndroidGoogleSignIn
                 return;
 
             var mobileAuthClient = Services.GetRequiredService<MobileAuthClient>();
-            await mobileAuthClient.SignInGoogle(code).ConfigureAwait(true);
+            await mobileAuthClient.SignInGoogleWithCode(code).ConfigureAwait(true);
         }
 
         public void Dispose()

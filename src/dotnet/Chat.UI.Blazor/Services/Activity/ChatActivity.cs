@@ -18,7 +18,7 @@ public class ChatActivity
     {
         Services = services;
         Log = services.LogFor(GetType());
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         Chats = services.GetRequiredService<IChats>();
         StateFactory = services.StateFactory();
         Clocks = services.Clocks();

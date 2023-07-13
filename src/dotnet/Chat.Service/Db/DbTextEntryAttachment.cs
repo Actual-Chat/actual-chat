@@ -17,9 +17,9 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public string MediaId { get; set; } = "";
     public int Index { get; set; }
 
-    [Obsolete("Use MediaId")]
+    [Obsolete("Use MediaId instead.")]
     public string ContentId { get; set; } = "";
-    [Obsolete("Use MediaId")]
+    [Obsolete("Use MediaId instead.")]
     public string MetadataJson { get; set; } = "";
 
     public static string ComposeId(TextEntryId entryId, int index)

@@ -24,7 +24,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         Log = services.LogFor(GetType());
 
         StateFactory = services.StateFactory();
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         Accounts = services.GetRequiredService<IAccounts>();
 
         var ownAccountTask = Accounts.GetOwn(Session, default);

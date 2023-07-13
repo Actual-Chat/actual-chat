@@ -4,6 +4,9 @@ namespace ActualChat;
 
 public static class ServiceProviderExt
 {
+    public static Session Session(this IServiceProvider services)
+        => services.GetRequiredService<Session>();
+
     public static IHttpClientFactory HttpClientFactory(this IServiceProvider services)
         => services.GetRequiredService<IHttpClientFactory>();
 

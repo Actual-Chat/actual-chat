@@ -9,7 +9,7 @@ internal class ChatMentionResolver : IChatMentionResolver
 
     public ChatMentionResolver(IServiceProvider services, ChatId chatId)
     {
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         Authors = services.GetRequiredService<IAuthors>();
         ChatId = chatId;
     }

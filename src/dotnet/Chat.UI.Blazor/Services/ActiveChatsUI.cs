@@ -33,7 +33,7 @@ public class ActiveChatsUI
         Services = services;
         Log = services.LogFor(GetType());
 
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         LocalSettings = services.LocalSettings();
         StateFactory = services.StateFactory();
         UICommander = services.UICommander();

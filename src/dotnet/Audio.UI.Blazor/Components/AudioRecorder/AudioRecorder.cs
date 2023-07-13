@@ -30,7 +30,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     public AudioRecorder(IServiceProvider services)
     {
         Log = services.LogFor<AudioRecorder>();
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         JS = services.GetRequiredService<IJSRuntime>();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
         Services = services;

@@ -61,7 +61,7 @@ public class AppServiceStarter
         // Initializing them at once
         Tracer.Point("BulkInitUI.Invoke");
         var browserInit = Services.GetRequiredService<BrowserInit>();
-        var session = Services.GetRequiredService<Session>();
+        var session = Services.Session();
         var sessionHash = session == Session.Default ? null : session.Hash; // Session.Default is used only in WASM
         var browserInitTask = browserInit.Initialize(Constants.Api.Version, sessionHash, async initCalls => {
             await jsAppSettings.Initialize(initCalls).ConfigureAwait(false);

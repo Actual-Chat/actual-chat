@@ -14,7 +14,7 @@ public class JavaScriptAppSettings
     {
         var jsMethod = $"{BlazorUICoreModule.ImportName}.AppSettings.init";
         var hostInfo = Services.GetRequiredService<HostInfo>();
-        var session = Services.GetRequiredService<Session>();
+        var session = Services.Session();
         if (initCalls != null) {
             initCalls.Add(jsMethod);
             initCalls.Add(2);

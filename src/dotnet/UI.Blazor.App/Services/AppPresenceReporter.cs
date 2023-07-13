@@ -15,7 +15,7 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private IMutableState<Moment> _lastCheckInAt;
 
     private IServiceProvider Services { get; }
-    private Session Session => _session ??= Services.GetRequiredService<Session>();
+    private Session Session => _session ??= Services.Session();
     private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
     private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private ICommander Commander => _commander ??= Services.Commander();

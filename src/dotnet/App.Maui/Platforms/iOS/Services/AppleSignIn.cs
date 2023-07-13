@@ -11,8 +11,7 @@ public sealed class AppleSignIn
 
     public async Task SignIn()
     {
-        var options = new AppleSignInAuthenticator.Options
-        {
+        var options = new AppleSignInAuthenticator.Options() {
             IncludeEmailScope = true,
             IncludeFullNameScope = true,
         };
@@ -21,6 +20,6 @@ public sealed class AppleSignIn
         var email = result.Properties["email"];
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
-        await _mobileAuthClient.SignInApple(code, name, email, userId).ConfigureAwait(true);
+        await _mobileAuthClient.SignInAppleWithCode(code, name, email, userId).ConfigureAwait(true);
     }
 }

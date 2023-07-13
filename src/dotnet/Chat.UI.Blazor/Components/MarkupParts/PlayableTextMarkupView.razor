@@ -69,7 +69,7 @@
             return;
 
         // We resolve some of the services lazily here, coz they're supposed to be used quite rarely
-        var session = Services.GetRequiredService<Session>();
+        var session = Services.Session();
         var chats = Services.GetRequiredService<IChats>();
 
         var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, entry.AudioEntryId ?? -1, AssumeValid.Option);

@@ -31,6 +31,9 @@ public static class Links
     public static LocalUrl SignOut(LocalUrl redirectUrl = default)
         => $"signOut?returnUrl={redirectUrl.Value.UrlEncode()}";
 
+    public static LocalUrl AutoClose(string flowOrActionName)
+        => "/fusion/close?flow=" + flowOrActionName.UrlEncode();
+
     public static class Apps
     {
         public static readonly string Android = "https://play.google.com/store/apps/details?id=chat.actual.app";

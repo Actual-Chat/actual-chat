@@ -20,7 +20,7 @@ public sealed class AuthorUI
     public AuthorUI(IServiceProvider services)
     {
         Services = services;
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
     }
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)

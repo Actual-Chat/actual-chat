@@ -31,7 +31,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
     public ChatEditorUI(IServiceProvider services)
     {
         Services = services;
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
 
         var type = GetType();
         _relatedChatEntry = services.StateFactory().NewMutable(

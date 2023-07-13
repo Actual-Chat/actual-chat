@@ -1,10 +1,9 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using ActualChat.Users.Module;
+using ActualChat.Web;
 using AspNet.Security.OAuth.Apple;
-using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
@@ -19,136 +18,49 @@ namespace ActualChat.Users.Controllers;
 [ApiController]
 public sealed class MobileAuthController : Controller
 {
-    private const string CallbackScheme = "xamarinessentials";
+    private ServerAuthHelper? _serverAuthHelper;
+    private UrlMapper? _urlMapper;
+    private ICommander? _commander;
+    private ILogger? _log;
 
     private IServiceProvider Services { get; }
-    private ICommander Commander { get; }
-    private ILogger Log { get; }
+    private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
+    private UrlMapper UrlMapper => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
+    private ICommander Commander => _commander ??= Services.Commander();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public MobileAuthController(IServiceProvider services)
+        => Services = services;
+
+    [HttpGet("signIn2/{scheme}")]
+    public ActionResult SignIn2(string scheme, string? returnUrl = null, CancellationToken cancellationToken = default)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-        Commander = services.Commander();
+        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
+        SessionCookies.Write(HttpContext, session);
+        var completeUrl = UrlMapper.ToAbsolute(returnUrl.IsNullOrEmpty()
+            ? Links.AutoClose("Sign-in").Value
+            : $"/mobileAuthV2/updateState?returnUrl={returnUrl.UrlEncode()}");
+        return Redirect($"/signIn/{scheme}?returnUrl={completeUrl.UrlEncode()}");
     }
 
-    [Obsolete("Kept only for compatibility with the old API", true)]
-    [HttpGet("setupSession/{sessionId}")]
-    public async Task<ActionResult> SetupSession(string sessionId, CancellationToken cancellationToken)
+    [HttpGet("signOut2")]
+    public ActionResult SignOut2(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
-        var httpContext = HttpContext;
-        var session = new Session(sessionId).RequireValid();
-        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
-        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
-            ? userAgentValues.FirstOrDefault() ?? ""
-            : "";
-
-        var auth = Services.GetRequiredService<IAuth>();
-        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        if (sessionInfo?.GetGuestId().IsGuest != true) {
-            var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
-            var commander = Services.Commander();
-            await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-        sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-
-        using var sb = ZString.CreateStringBuilder();
-        sb.Append("SessionInfo: ");
-        sb.Append(sessionInfo != null ? sessionInfo.SessionHash : "no-session-info");
-        sb.AppendLine();
-        sb.Append("Account: ");
-        try {
-            var accounts = Services.GetRequiredService<IAccounts>();
-            var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            sb.Append(account.Id.Value);
-        }
-        catch (Exception e) {
-            sb.Append(e);
-        }
-        return Content(sb.ToString());
+        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
+        SessionCookies.Write(HttpContext, session);
+        var completeUrl = UrlMapper.ToAbsolute(returnUrl.IsNullOrEmpty()
+            ? Links.AutoClose("Sign-out").Value
+            : $"/mobileAuthV2/updateState?returnUrl={returnUrl.UrlEncode()}");
+        return Redirect($"/signOut?returnUrl={completeUrl.UrlEncode()}");
     }
 
-    [Obsolete("Kept only for compatibility with the old API", true)]
-    [HttpGet("getSession")]
-    public Task<ActionResult> GetSession(CancellationToken cancellationToken)
-        => GetOrCreateSession(null, cancellationToken);
-
-    [HttpGet("getOrCreateSession/{sid?}")]
-    public async Task<ActionResult> GetOrCreateSession(string? sid, CancellationToken cancellationToken)
+    [HttpGet("updateState")]
+    public async Task<ActionResult> UpdateState(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
-        var httpContext = HttpContext;
-        var sessionResolver = httpContext.RequestServices.GetRequiredService<ISessionResolver>();
-
-        var ipAddress = httpContext.GetRemoteIPAddress()?.ToString() ?? "";
-        var userAgent = httpContext.Request.Headers.TryGetValue("User-Agent", out var userAgentValues)
-            ? userAgentValues.FirstOrDefault() ?? ""
-            : "";
-
-        var auth = Services.GetRequiredService<IAuth>();
-
-        Session? session = null;
-        if (!sid.IsNullOrEmpty()
-            && await auth.GetSessionInfo(new Session(sid), cancellationToken).ConfigureAwait(false) != null)
-            session = new Session(sid);
-        session ??= sessionResolver.Session;
-
-        var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        if (sessionInfo?.GetGuestId().IsGuest != true) {
-            var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
-            var commander = Services.Commander();
-            await commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-
-        return Content(session.Id.Value);
-    }
-
-    // Example is taken from https://github.com/dotnet/maui/blob/main/src/Essentials/samples/Sample.Server.WebAuthenticator/Controllers/MobileAuthController.cs
-    [HttpGet("{scheme}")]
-    public async Task Get([FromRoute] string scheme)
-    {
-        var auth = await Request.HttpContext.AuthenticateAsync(scheme).ConfigureAwait(false);
-
-        if (!auth.Succeeded
-            || auth.Principal == null
-            || !auth.Principal.Identities.Any(id => id.IsAuthenticated)
-            || auth.Properties.GetTokenValue("access_token").IsNullOrEmpty()) {
-            // Not authenticated, challenge
-            await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
-        }
-        else {
-            var claims = auth.Principal.Identities.FirstOrDefault()?.Claims;
-            var email = claims?.FirstOrDefault(c => OrdinalEquals(c.Type, ClaimTypes.Email))?.Value;
-
-            // Get parameters to send back to the callback
-            (string Key, string? Value)[] qs = {
-                ("access_token", auth.Properties.GetTokenValue("access_token")),
-                ("refresh_token", auth.Properties.GetTokenValue("refresh_token")),
-                ("expires_in", auth.Properties.ExpiresUtc?.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)),
-                ("email", email),
-            };
-
-            // Build the result url
-            var url = CallbackScheme + "://#" + string.Join(
-                "&",
-                qs.Where(kv => !kv.Value.IsNullOrEmpty())
-                .Select(kv => $"{WebUtility.UrlEncode(kv.Key)}={WebUtility.UrlEncode(kv.Value)}"));
-
-            // Redirect to final url
-            Request.HttpContext.Response.Redirect(url);
-        }
-    }
-
-    [HttpGet("signIn/{sessionId}/{scheme}")]
-    public async Task SignIn(string sessionId, string scheme, CancellationToken cancellationToken)
-    {
-        var session = new Session(sessionId).RequireValid();
-        // TODO(DF): Check why sign in works with empty scheme
-        if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
-            await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
-
-        var serverAuthHelper = Services.GetRequiredService<ServerAuthHelper>();
-        await serverAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
-        await WriteCloseWindowResponse(cancellationToken).ConfigureAwait(false);
+        var session = SessionCookies.Read(HttpContext).RequireValid();
+        await ServerAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
+        returnUrl = returnUrl.NullIfEmpty() ?? Links.AutoClose("Authentication state update").Value;
+        return Redirect(returnUrl);
     }
 
     [HttpPost("signInAppleWithCode")]
@@ -157,20 +69,14 @@ public sealed class MobileAuthController : Controller
         [FromForm] IFormCollection request,
         CancellationToken cancellationToken)
     {
+        var session = new Session(request["SessionId"].ToString()).RequireValid();
         var userId = request["UserId"].ToString();
-        if (userId.IsNullOrEmpty())
-            throw StandardError.Constraint(nameof(userId), "null or empty");
-
+        userId.RequireNonEmpty(nameof(userId));
         var code = request["Code"].ToString();
-        if (code.IsNullOrEmpty())
-            throw StandardError.Constraint(nameof(code), "null or empty");
-
-        var sessionId = request["SessionId"].ToString();
-        if (sessionId.IsNullOrEmpty())
-            throw StandardError.Constraint(nameof(sessionId), "null or empty");
-
+        code.RequireNonEmpty(nameof(code));
         var email = request["Email"].ToString();
         var name = request["Name"].ToString();
+
         var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
         var userSettings = Services.GetRequiredService<UsersSettings>();
         var handler = await authenticationHandlerProvider
@@ -187,13 +93,11 @@ public sealed class MobileAuthController : Controller
         using var tokenResponse = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
         if (tokenResponse.Error != null) {
             Log.LogError(tokenResponse.Error, $"{nameof(SignInAppleWithCode)} error.");
-
             return BadRequest();
         }
 
         var identity = new ClaimsIdentity(options.ClaimsIssuer);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userId));
-
         if (!email.IsNullOrEmpty())
             identity.AddClaim(new Claim(ClaimTypes.Email, email));
 
@@ -215,19 +119,17 @@ public sealed class MobileAuthController : Controller
         }
 
         var principal = new ClaimsPrincipal(identity);
-        await AuthenticateSessionWithPrincipal(sessionId, principal, cancellationToken).ConfigureAwait(false);
-
+        await UpdateAuthStateWithPrincipal(session, principal, cancellationToken).ConfigureAwait(false);
         return Ok();
     }
 
     [HttpGet("signInGoogleWithCode/{sessionId}/{code}")]
     public async Task<IActionResult> SignInGoogleWithCode(string sessionId, string code, CancellationToken cancellationToken)
     {
-        // https://developers.google.com/identity/protocols/oauth2
-        code = WebUtility.UrlDecode(code);
-
+        var session = new Session(sessionId).RequireValid();
         var schemeName = GoogleDefaults.AuthenticationScheme;
-        var options = Services.GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
+        var options = Services
+            .GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
             .Get(schemeName);
 
         using var tokens = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
@@ -254,15 +156,39 @@ public sealed class MobileAuthController : Controller
         }
         var principal = new ClaimsPrincipal(identity);
 
-        await AuthenticateSessionWithPrincipal(sessionId, principal, cancellationToken).ConfigureAwait(false);
-
+        await UpdateAuthStateWithPrincipal(session, principal, cancellationToken).ConfigureAwait(false);
         return Ok();
     }
 
-    // <summary>
+    // Legacy API endpoints
+
+    [Obsolete("Kept only for compatibility with the old API.")]
+    [HttpGet("signIn/{sessionId}/{scheme}")]
+    public async Task<ActionResult> SignIn(string sessionId, string scheme, CancellationToken cancellationToken)
+    {
+        var session = new Session(sessionId).RequireValid();
+        // TODO(DF): Check why sign in works with empty scheme
+        if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
+            await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
+
+        var serverAuthHelper = Services.GetRequiredService<ServerAuthHelper>();
+        await serverAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
+        return Redirect(Links.AutoClose("Sign-in"));
+    }
+
+    [Obsolete("Kept only for compatibility with the old API.")]
+    [HttpGet("signOut/{sessionId}")]
+    public async Task<ActionResult> SignOut(string sessionId, CancellationToken cancellationToken)
+    {
+        var session = new Session(sessionId).RequireValid();
+        await Commander.Call(new Auth_SignOut(session), cancellationToken).ConfigureAwait(false);
+        return Redirect(Links.AutoClose("Sign-out"));
+    }
+
+    // Private methods
+
     // Exchanges the authorization code for a authorization token from the remote provider.
     // Implementation is a copy from Microsoft.AspNetCore.Authentication.OAuth.OAuthHandler with small modifications.
-    // </summary>
     private async Task<OAuthTokenResponse> ExchangeCodeAsync(string code, OAuthOptions options, CancellationToken requestAborted)
     {
         var tokenRequestParameters = new Dictionary<string, string>(StringComparer.Ordinal) {
@@ -296,11 +222,11 @@ public sealed class MobileAuthController : Controller
             return OAuthTokenResponse.Success(payload);
         }
 
-        var error = "OAuth token endpoint failure: " + await Display(response).ConfigureAwait(false);
-        return OAuthTokenResponse.Failed(new Exception(error));
+        var message = "OAuth token endpoint failure: " + await Format(response).ConfigureAwait(false);
+        return OAuthTokenResponse.Failed(new Exception(message));
     }
 
-    private static async Task<string> Display(HttpResponseMessage response)
+    private static async Task<string> Format(HttpResponseMessage response)
     {
         var output = new StringBuilder();
         output.Append("Status: " + response.StatusCode + ";");
@@ -310,31 +236,8 @@ public sealed class MobileAuthController : Controller
         return output.ToString();
     }
 
-    [HttpGet("signOut/{sessionId}")]
-    public async Task SignOut(string sessionId, CancellationToken cancellationToken)
-    {
-        var session = new Session(sessionId).RequireValid();
-        await Commander.Call(new Auth_SignOut(session), cancellationToken).ConfigureAwait(false);
-        await WriteCloseWindowResponse(cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task WriteCloseWindowResponse(CancellationToken cancellationToken)
-    {
-        var response = """
-            <html>
-                <head></head>
-                <body>
-                    You can close this window and return to the app.
-                    <script>setInterval(function() { window.close(); }, 100)</script>
-                </body>
-            </html>
-            """;
-        HttpContext.Response.ContentType = "text/html; charset=utf-8";
-        await HttpContext.Response.WriteAsync(response, cancellationToken: cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task AuthenticateSessionWithPrincipal(
-        string sessionId,
+    private async Task UpdateAuthStateWithPrincipal(
+        Session session,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -342,7 +245,7 @@ public sealed class MobileAuthController : Controller
         HttpContext.User = principal;
         try {
             var helper = Services.GetRequiredService<ServerAuthHelper>();
-            await helper.UpdateAuthState(new Session(sessionId), HttpContext, cancellationToken).ConfigureAwait(false);
+            await helper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
         }
         finally {
             HttpContext.User = oldUser;

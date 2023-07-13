@@ -55,7 +55,7 @@ public class MauiNavigationInterceptor
         if (MauiSettings.SignIn.UseWebView) {
             var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
             if (pathAndQuery.OrdinalStartsWith("/mobileauth"))
-                return true; // mobileAuth + mobileAuthV2
+                return true;
             if (pathAndQuery.OrdinalStartsWith("/signin"))
                 return true;
             if (pathAndQuery.OrdinalStartsWith("/signout"))

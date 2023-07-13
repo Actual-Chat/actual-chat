@@ -64,7 +64,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => new AccountSettings(
             c.GetRequiredService<IServerKvas>(),
-            c.GetRequiredService<Session>()));
+            c.Session()));
         if (appKind.IsServer()) {
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;

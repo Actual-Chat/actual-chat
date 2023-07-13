@@ -13,7 +13,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
         if (hostInfo.IsDevelopmentInstance)
             return true;
 
-        var session = services.GetRequiredService<Session>();
+        var session = services.Session();
         var accounts = services.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())

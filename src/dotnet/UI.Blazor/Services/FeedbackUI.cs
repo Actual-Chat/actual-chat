@@ -12,7 +12,7 @@ public class FeedbackUI
 
     public FeedbackUI(IServiceProvider services)
     {
-        _session = services.GetRequiredService<Session>();
+        _session = services.Session();
         _modalUI = services.GetRequiredService<ModalUI>();
         _uiCommander = services.GetRequiredService<UICommander>();
     }

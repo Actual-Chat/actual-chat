@@ -41,7 +41,7 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        await SignInOrSignOut($"signIn/{schema}").ConfigureAwait(false);
+        await SignInOrSignOut($"signIn2/{schema}").ConfigureAwait(false);
     }
 
     public async ValueTask SignOut()
@@ -52,7 +52,7 @@ internal sealed class MauiClientAuth : IClientAuth
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif
 
-        await SignInOrSignOut("signOut").ConfigureAwait(false);
+        await SignInOrSignOut("signOut2").ConfigureAwait(false);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
@@ -72,8 +72,8 @@ internal sealed class MauiClientAuth : IClientAuth
     {
         var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("signIn");
         try {
-            var sessionId = Services.GetRequiredService<Session>().Id.Value;
-            var url = $"{MauiSettings.BaseUrl}mobileAuthV2/{endpoint}?s={sessionId.UrlEncode()}";
+            var sessionId = Services.Session().Id.Value;
+            var url = $"{MauiSettings.BaseUrl}mobileAuth/{endpoint}?s={sessionId.UrlEncode()}";
             if (MauiSettings.SignIn.UseWebView) {
                 var returnUrl = History.Nav.ToAbsoluteUri(isSignIn ? Links.Chats : Links.Home).ToString();
                 url = $"{url}&returnUrl={returnUrl.UrlEncode()}";

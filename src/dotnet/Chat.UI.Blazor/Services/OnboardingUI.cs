@@ -19,7 +19,7 @@ public class OnboardingUI
 
     public OnboardingUI(IServiceProvider services)
     {
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         Accounts = services.GetRequiredService<IAccounts>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
         ModalUI = services.GetRequiredService<ModalUI>();

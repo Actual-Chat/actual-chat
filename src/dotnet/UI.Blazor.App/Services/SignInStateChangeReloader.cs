@@ -25,7 +25,7 @@ public class SignInStateChangeReloader : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var session = Services.GetRequiredService<Session>();
+        var session = Services.Session();
         var account = Services.GetRequiredService<IAccounts>();
 
         var updateDelayer = FixedDelayer.Instant;

@@ -73,7 +73,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         Services = services;
         Log = services.LogFor(GetType());
 
-        Session = services.GetRequiredService<Session>();
+        Session = services.Session();
         StateFactory = services.StateFactory();
 
         var type = GetType();
