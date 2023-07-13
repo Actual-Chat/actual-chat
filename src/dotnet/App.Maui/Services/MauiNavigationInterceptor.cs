@@ -52,12 +52,12 @@ public class MauiNavigationInterceptor
 
     private bool IsAllowedHostUri(Uri uri)
     {
-        var pathAndQuery = uri.PathAndQuery;
-        if (pathAndQuery.OrdinalIgnoreCaseStartsWith("/mobileAuth"))
+        var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
+        if (pathAndQuery.OrdinalStartsWith("/mobileauth"))
             return true; // mobileAuth + mobileAuthV2
-        if (pathAndQuery.OrdinalIgnoreCaseStartsWith("/signIn"))
+        if (pathAndQuery.OrdinalStartsWith("/signin"))
             return true;
-        if (pathAndQuery.OrdinalIgnoreCaseStartsWith("/signOut"))
+        if (pathAndQuery.OrdinalStartsWith("/signout"))
             return true;
         return false;
     }
