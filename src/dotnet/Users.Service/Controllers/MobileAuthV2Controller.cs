@@ -30,7 +30,7 @@ public sealed class MobileAuthV2Controller : Controller
         var session = SessionCookies.Read(HttpContext, "s").RequireValid();
         SessionCookies.Write(HttpContext, session);
         var completeUrl = UrlMapper.ToAbsolute(returnUrl.IsNullOrEmpty()
-            ? "/fusion/close"
+            ? "/fusion/close?flow=Sign-in"
             : $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signIn/{scheme}?returnUrl={completeUrl.UrlEncode()}");
     }
@@ -41,7 +41,7 @@ public sealed class MobileAuthV2Controller : Controller
         var session = SessionCookies.Read(HttpContext, "s").RequireValid();
         SessionCookies.Write(HttpContext, session);
         var completeUrl = UrlMapper.ToAbsolute(returnUrl.IsNullOrEmpty()
-            ? "/fusion/close"
+            ? "/fusion/close?flow=Sign-out"
             : $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signOut?returnUrl={completeUrl.UrlEncode()}");
     }
