@@ -39,8 +39,6 @@ public static partial class MauiProgram
 #endif
 
         try {
-            const string baseUrl = "https://" + MauiConstants.Host + "/";
-            AppSettings = new MauiAppSettings(baseUrl);
             _ = MauiSessionResolver.Start();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
@@ -87,7 +85,6 @@ public static partial class MauiProgram
         var services = builder.Services;
 
         // Core services
-        services.AddSingleton(AppSettings);
         services.AddSingleton(HostInfo);
         services.AddSingleton(HostInfo.Configuration);
         services.AddMauiDiagnostics(true);
@@ -141,7 +138,6 @@ public static partial class MauiProgram
         using var _ = Tracer.Region();
 
         // Singleton services visible from lazy services
-        services.AddSingleton(AppSettings);
         services.AddSingleton(HostInfo);
         services.AddSingleton(HostInfo.Configuration);
         services.AddMauiDiagnostics(false);
@@ -224,7 +220,7 @@ public static partial class MauiProgram
             ClientKind = clientKind,
             Environment = environment,
             Configuration = configuration,
-            BaseUrl = AppSettings.BaseUrl,
+            BaseUrl = MauiSettings.BaseUrl,
             DeviceModel = deviceInfo.Model,
         };
         return hostInfo;

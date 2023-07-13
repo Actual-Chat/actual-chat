@@ -23,12 +23,12 @@ public sealed class MobileAuthController : Controller
 
     private IServiceProvider Services { get; }
     private ICommander Commander { get; }
-    private ILogger<MobileAuthController> Logger { get; }
+    private ILogger Log { get; }
 
     public MobileAuthController(IServiceProvider services)
     {
-        Logger = services.GetRequiredService<ILogger<MobileAuthController>>();
         Services = services;
+        Log = services.LogFor(GetType());
         Commander = services.Commander();
     }
 
@@ -186,7 +186,7 @@ public sealed class MobileAuthController : Controller
 
         using var tokenResponse = await ExchangeCodeAsync(code, options, cancellationToken).ConfigureAwait(false);
         if (tokenResponse.Error != null) {
-            Logger.LogError(tokenResponse.Error, $"{nameof(SignInAppleWithCode)} error.");
+            Log.LogError(tokenResponse.Error, $"{nameof(SignInAppleWithCode)} error.");
 
             return BadRequest();
         }

@@ -4,12 +4,14 @@ using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.Users;
 
-public class MobileAuth : IMobileAuth
+#pragma warning disable CS0618
+
+public class MobileSessions : IMobileSessions
 {
     private IAuth Auth { get; }
     private ICommander Commander { get; }
 
-    public MobileAuth(IServiceProvider services)
+    public MobileSessions(IServiceProvider services)
     {
         Auth = services.GetRequiredService<IAuth>();
         Commander = services.Commander();
@@ -25,7 +27,7 @@ public class MobileAuth : IMobileAuth
             : "";
 
         var session = Session.New();
-        var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress ?? "", userAgent ?? "");
+        var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
         await Commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
         return session;
     }

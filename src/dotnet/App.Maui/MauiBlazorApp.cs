@@ -8,9 +8,8 @@ public class MauiBlazorApp : AppBase
     protected override async Task OnInitializedAsync()
     {
         try {
-            var baseUri = AppSettings.BaseUri;
             var session = await SessionResolver.SessionTask.ConfigureAwait(true);
-            MainPage.Current!.SetupSessionCookie(baseUri, session);
+            MainPage.Current!.SetupSessionCookie(session);
 
             try {
                 ScopedServices = Services;

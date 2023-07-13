@@ -134,8 +134,8 @@
     protected override void MarkCompleted()
     { }
 
-    private void OnSignInWith(string name)
-        => ClientAuth.SignIn(name);
+    private void OnSignInWith(string schema)
+        => ClientAuth.SignIn(schema);
 
     private Task OnSignInWithPhone()
         => Stepper.TryMoveForward().AsTask();

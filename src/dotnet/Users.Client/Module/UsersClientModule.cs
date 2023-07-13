@@ -19,7 +19,7 @@ public sealed class UsersClientModule : HostModule
         var fusion = services.AddFusion().AddAuthClient();
 
         fusion.AddClient<ISystemProperties>();
-        fusion.AddClient<IMobileAuth>();
+        fusion.AddClient<IMobileSessions>();
         fusion.AddClient<IServerKvas>();
         fusion.AddClient<IAccounts>();
         fusion.AddClient<IAvatars>();

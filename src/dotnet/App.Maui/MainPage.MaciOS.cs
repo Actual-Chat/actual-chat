@@ -13,29 +13,32 @@ public partial class MainPage
     /// </summary>
     public WKWebView? PlatformWebView { get; private set; }
 
-    public partial void SetupSessionCookie(Uri baseUri, Session session)
+    public partial void SetupSessionCookie(Session session)
     {
-        SetSessionCookie(AppHostAddress, session, false);
-        SetSessionCookie(baseUri.Host, session, true);
+        SetupSessionCookie(MauiSettings.LocalHost, session, false);
+        SetupSessionCookie(MauiSettings.Host, session, true);
     }
 
-    private void SetSessionCookie(string domain, Session session, bool isSecure)
+    private void SetupSessionCookie(string domain, Session session, bool isSecure)
     {
+        var cookieName = Constants.Session.CookieName;
+        var sessionId = session.Id.Value;
+
         var properties = isSecure
             ? new NSDictionary(
-                NSHttpCookie.KeyName, "FusionAuth.SessionId",
-                NSHttpCookie.KeyValue, session.Id.Value,
+                NSHttpCookie.KeyName, cookieName,
+                NSHttpCookie.KeyValue, sessionId,
                 NSHttpCookie.KeyPath, "/",
                 NSHttpCookie.KeyDomain, domain,
                 NSHttpCookie.KeySameSitePolicy, "none",
-                NSHttpCookie.KeyVersion, "1")
+                NSHttpCookie.KeyVersion, "1") // Version 1 supports same site = none
             : new NSDictionary(
-                NSHttpCookie.KeyName, "FusionAuth.SessionId",
-                NSHttpCookie.KeyValue, session.Id.Value,
+                NSHttpCookie.KeyName, cookieName,
+                NSHttpCookie.KeyValue, sessionId,
                 NSHttpCookie.KeyPath, "/",
                 NSHttpCookie.KeyDomain, domain,
                 NSHttpCookie.KeySameSitePolicy, "none",
-                NSHttpCookie.KeyVersion, "1", // version 1 supports same site none
+                NSHttpCookie.KeyVersion, "1", // Version 1 supports same site = none
                 NSHttpCookie.KeySecure,  new NSString ("1"),
                 NSHttpCookie.KeyExpires, NSDate.FromTimeIntervalSinceNow(60*60*24*7)
                 );

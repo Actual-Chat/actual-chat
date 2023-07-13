@@ -9,8 +9,6 @@ namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
-    internal const string AppHostAddress = "0.0.0.0";
-
     private readonly BlazorWebView _webView;
 
     private MauiNavigationInterceptor NavigationInterceptor { get; }
@@ -41,7 +39,7 @@ public partial class MainPage : ContentPage
             });
     }
 
-    public partial void SetupSessionCookie(Uri baseUri, Session session);
+    public partial void SetupSessionCookie(Session session);
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e);
 
@@ -49,13 +47,7 @@ public partial class MainPage : ContentPage
     {
         var uri = eventArgs.Url;
         Tracer.Point($"{nameof(OnWebViewUrlLoading)}: Url: '{uri}'");
-        if (NavigationInterceptor.TryIntercept(uri))
-            // Load cancellation seems not working On Windows platform,
-            // even though the issues were closed a while ago, and  Uri gets opened in WebView.
-            // See:
-            // - https://github.com/MicrosoftEdge/WebView2Feedback/issues/560
-            // - https://github.com/MicrosoftEdge/WebView2Feedback/issues/2072
-            eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
+        NavigationInterceptor.TryIntercept(uri, eventArgs);
     }
 
     private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);

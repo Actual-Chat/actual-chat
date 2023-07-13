@@ -27,7 +27,7 @@ public static class AppLinks
 {
     public static void OnAppLinkRequestReceived(Uri uri)
     {
-        if (!OrdinalIgnoreCaseEquals(uri.Host, MauiConstants.Host))
+        if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host))
             return;
 
         _ = Task.Run(async () => {

@@ -9,7 +9,6 @@ public class AppServicesAccessor
 {
     private static readonly object _lock = new();
     private static ILogger? _log;
-    private static volatile MauiAppSettings? _appSettings;
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
     private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesTask =
@@ -18,18 +17,6 @@ public class AppServicesAccessor
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
 
     public static Task<IServiceProvider> ScopedServicesTask => _scopedServicesTask.Task;
-
-    public static MauiAppSettings AppSettings {
-        get => _appSettings ?? throw Errors.NotInitialized(nameof(AppSettings));
-        set {
-            lock (_lock) {
-                if (value == null!)
-                    throw new ArgumentNullException(nameof(value));
-
-                _appSettings = value;
-            }
-        }
-    }
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));

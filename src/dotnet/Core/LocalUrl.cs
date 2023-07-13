@@ -52,7 +52,7 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     public DisplayUrl ToDisplayUrl(NavigationManager nav)
         => new (this, ToAbsolute(nav));
 
-    public static implicit operator LocalUrl(string url) => new (url);
+    public static implicit operator LocalUrl(string url) => new(url);
     public static implicit operator string(LocalUrl localUrl) => localUrl.Value;
 
     // Equality

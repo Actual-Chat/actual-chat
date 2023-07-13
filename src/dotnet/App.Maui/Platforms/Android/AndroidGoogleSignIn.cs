@@ -42,7 +42,7 @@ public sealed class AndroidGoogleSignIn
     {
         private const int GoogleSignInRequestCode = 800;
         // GoogleClientIds below are taken for Web application since session authentication performed on the web server.
-#if ISDEVMAUI
+#if IS_DEV_MAUI
         private const string ServerGoogleClientId =
             "367046672456-75p2d55jama2mtivjbcgp0hkaa6jsihq.apps.googleusercontent.com";
 #else

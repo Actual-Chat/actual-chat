@@ -34,8 +34,6 @@ public partial class History
         return entry.WhenCompleted;
     }
 
-    public void ForceReload(LocalUrl url, bool mustReplace = true)
-        => ForceReload(url.ToAbsolute(UrlMapper));
     public void ForceReload(string url, bool mustReplace = true)
     {
         Log.LogInformation("ForceReload: {Url} (mustReplace = {MustReplace})", url, mustReplace);

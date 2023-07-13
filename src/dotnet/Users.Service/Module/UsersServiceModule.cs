@@ -190,9 +190,9 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             services.AddTransient<ISmsGateway, TwilioSmsGateway>();
 
         // Mobile-related module's own services
-        fusion.AddService<IMobileAuth, MobileAuth>();
+        fusion.AddService<IMobileSessions, MobileSessions>();
 #pragma warning disable CS0618
-        rpc.AddServer<IMobileSessions, IMobileAuth>();
+        rpc.AddServer<IMobileAuth, IMobileSessions>();
 #pragma warning restore CS0618
 
         // Controllers, etc.

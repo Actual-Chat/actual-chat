@@ -1,5 +1,6 @@
 @using ActualChat.Hosting
 @using ActualChat.Module
+@using ActualChat.Chat.UI.Blazor.Services
 @implements IRootComponent
 @implements IDisposable
 @{
@@ -122,6 +123,9 @@
         Services.GetRequiredService<UIEventHub>();
         _readyToRender = true;
         StateHasChanged();
+
+        var onboardingUI = Services.GetRequiredService<OnboardingUI>();
+        _ = onboardingUI.TryShow();
     }
 
     public void Dispose() {

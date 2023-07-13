@@ -47,7 +47,7 @@
     <IsDevMaui>true</IsDevMaui>
   </PropertyGroup>
   <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
-    <DefineConstants>$(DefineConstants);ISDEVMAUI</DefineConstants>
+    <DefineConstants>$(DefineConstants);IS_DEV_MAUI</DefineConstants>
     <!-- Display name -->
     <ApplicationTitle>Actual Chat (Dev)</ApplicationTitle>
     <!-- App Identifier -->

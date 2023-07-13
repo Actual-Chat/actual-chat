@@ -1,13 +1,12 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Stl.Fusion.Server.Authentication;
-using Stl.Generators;
 
 namespace ActualChat.Web;
 
 public static class SessionCookies
 {
     public static readonly CookieBuilder Cookie = new() {
-        Name = "FusionAuth.SessionId",
+        Name = Constants.Session.CookieName,
         IsEssential = true,
         HttpOnly = true,
         SecurePolicy = CookieSecurePolicy.Always,

@@ -13,10 +13,27 @@ public sealed class MobileAuthClient
         Log = services.GetRequiredService<ILogger<MobileAuthClient>>();
     }
 
+    public async Task SignOut()
+    {
+        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
+        var sessionId = session.Id.Value;
+        var requestUri = $"{MauiSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
+        try {
+            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "SignOut failed");
+            throw;
+        }
+    }
+
+#if false // NOTE(AY): The code below is unused - we keep it here "just in case" for now
+
     public async Task<bool> SignInApple(string code, string name, string email, string userId)
     {
         var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
-        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInAppleWithCode";
+        var requestUri = $"{MauiSettings.BaseUrl}mobileAuth/signInAppleWithCode";
         try {
             var values = new List<KeyValuePair<string, string>> {
                 new ("SessionId", session.Id.Value),
@@ -46,7 +63,7 @@ public sealed class MobileAuthClient
 
         var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
         var sessionId = session.Id.Value;
-        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
+        var requestUri = $"{MauiSettings.BaseUrl}mobileAuth/signInGoogleWithCode/{sessionId.UrlEncode()}/{code.UrlEncode()}";
         try {
             var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
@@ -57,18 +74,5 @@ public sealed class MobileAuthClient
         }
     }
 
-    public async Task SignOut()
-    {
-        var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
-        var sessionId = session.Id.Value;
-        var requestUri = $"{AppSettings.BaseUrl}mobileAuth/signOut/{sessionId.UrlEncode()}";
-        try {
-            var response = await HttpClient.GetAsync(requestUri).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "SignOut failed");
-            throw;
-        }
-    }
+#endif
 }

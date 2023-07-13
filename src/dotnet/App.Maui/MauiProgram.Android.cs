@@ -23,7 +23,7 @@ public static partial class MauiProgram
         var dirPath = Platform.AppContext.GetExternalFilesDir(null);
         if (dirPath == null)
             return null;
-        return Path.Combine(dirPath.Path, MauiConstants.AppSettingsFileName);
+        return Path.Combine(dirPath.Path, MauiSettings.AppSettingsFileName);
     }
 
     private static partial void AddPlatformServices(this IServiceCollection services)

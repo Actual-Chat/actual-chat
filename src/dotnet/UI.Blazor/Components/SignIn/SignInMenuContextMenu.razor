@@ -67,8 +67,8 @@
     private bool CanBeRendered()
         => State.Value.IsGuestOrNone && AuthSchemas != null;
 
-    private void SignIn(string name)
-        => ClientAuth.SignIn(name);
+    private void SignIn(string schema)
+        => ClientAuth.SignIn(schema);
 
     private class AuthSchemaModel {
         public string Name { get; init; } = null!;

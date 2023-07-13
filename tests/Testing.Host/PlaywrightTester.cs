@@ -42,7 +42,7 @@ public sealed class PlaywrightTester : WebClientTester
         });
         await context.AddCookiesAsync(new[] {
             new Cookie() {
-                Name = "FusionAuth.SessionId",
+                Name = Constants.Session.CookieName,
                 Value = Session.Id,
                 Domain = "localhost",
                 Path = "/",

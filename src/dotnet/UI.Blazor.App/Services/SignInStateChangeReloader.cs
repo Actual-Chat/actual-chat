@@ -56,9 +56,6 @@ public class SignInStateChangeReloader : WorkerBase
                     });
                 }
                 else {
-                    var onboardingUI = Services.GetRequiredService<OnboardingUI>();
-                    _ = History.Dispatcher.InvokeAsync(() => onboardingUI.TryShow());
-
                     // Wait for sign-out
                     cAccount = await cAccount
                         .When((x, error) => error == null && x.IsGuestOrNone, updateDelayer, cancellationToken)

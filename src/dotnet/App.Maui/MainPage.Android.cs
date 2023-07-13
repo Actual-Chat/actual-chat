@@ -14,15 +14,18 @@ public partial class MainPage
     /// </summary>
     public AWebView? PlatformWebView { get; private set; }
 
-    public partial void SetupSessionCookie(Uri baseUri, Session session)
+    public partial void SetupSessionCookie(Session session)
     {
         var cookieManager = CookieManager.Instance!;
+        var cookieName = Constants.Session.CookieName;
+        var sessionId = session.Id.Value;
+
         // May be will be required https://stackoverflow.com/questions/2566485/webview-and-cookies-on-android
         cookieManager.SetAcceptCookie(true);
         cookieManager.SetAcceptThirdPartyCookies(PlatformWebView, true);
-        var sessionCookieValue = $"FusionAuth.SessionId={session.Id.Value}; path=/; secure; samesite=none; httponly";
-        cookieManager.SetCookie("https://" + AppHostAddress, sessionCookieValue);
-        cookieManager.SetCookie("https://" + baseUri.Host, sessionCookieValue);
+        var sessionCookieValue = $"{cookieName}={sessionId}; path=/; secure; samesite=none; httponly";
+        cookieManager.SetCookie("https://" + MauiSettings.LocalHost, sessionCookieValue);
+        cookieManager.SetCookie("https://" + MauiSettings.Host, sessionCookieValue);
     }
 
     // Example to control permissions in browser is taken from the comment

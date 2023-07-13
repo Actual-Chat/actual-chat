@@ -8,17 +8,20 @@ public partial class MainPage
 {
     public WebView2Control? PlatformWebView { get; private set; }
 
-    public partial void SetupSessionCookie(Uri baseUri, Session session)
+    public partial void SetupSessionCookie(Session session)
     {
+        var webView = PlatformWebView!.CoreWebView2;
+        var cookieName = Constants.Session.CookieName;
         var sessionId = session.Id.Value;
-        var ctrl = PlatformWebView!.CoreWebView2;
-        var cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", sessionId, AppHostAddress, "/");
-        ctrl.CookieManager.AddOrUpdateCookie(cookie);
-        cookie = ctrl.CookieManager.CreateCookie("FusionAuth.SessionId", sessionId, baseUri.Host, "/");
+
+        var cookie = webView.CookieManager.CreateCookie(cookieName, sessionId, MauiSettings.LocalHost, "/");
+        webView.CookieManager.AddOrUpdateCookie(cookie);
+
+        cookie = webView.CookieManager.CreateCookie(cookieName, sessionId, MauiSettings.Host, "/");
         cookie.SameSite = CoreWebView2CookieSameSiteKind.Lax;
         cookie.IsHttpOnly = true;
         cookie.IsSecure = true;
-        ctrl.CookieManager.AddOrUpdateCookie(cookie);
+        webView.CookieManager.AddOrUpdateCookie(cookie);
     }
 
     private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
