@@ -25,7 +25,7 @@ public sealed class MobileAuthV2Controller : Controller
     }
 
     [HttpGet("signIn/{scheme}")]
-    public ActionResult SignIn(string scheme, string returnUrl, CancellationToken cancellationToken)
+    public ActionResult SignIn(string scheme, string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         var session = SessionCookies.Read(HttpContext, "s").RequireValid();
         SessionCookies.Write(HttpContext, session);
@@ -36,7 +36,7 @@ public sealed class MobileAuthV2Controller : Controller
     }
 
     [HttpGet("signOut")]
-    public ActionResult SignOut(string returnUrl, CancellationToken cancellationToken)
+    public ActionResult SignOut(string? returnUrl = null, CancellationToken cancellationToken = default)
     {
         var session = SessionCookies.Read(HttpContext, "s").RequireValid();
         SessionCookies.Write(HttpContext, session);
@@ -47,7 +47,7 @@ public sealed class MobileAuthV2Controller : Controller
     }
 
     [HttpGet("complete")]
-    public async Task<ActionResult> Complete(string returnUrl, CancellationToken cancellationToken)
+    public async Task<ActionResult> Complete(string returnUrl, CancellationToken cancellationToken = default)
     {
         var session = SessionCookies.Read(HttpContext).RequireValid();
         await ServerAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
