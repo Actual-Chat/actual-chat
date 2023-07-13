@@ -9,9 +9,11 @@ namespace ActualChat.Users.Controllers;
 public sealed class MobileAuthV2Controller : Controller
 {
     private ServerAuthHelper? _serverAuthHelper;
+    private UrlMapper? _urlMapper;
 
     private IServiceProvider Services { get; }
     private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
+    private UrlMapper UrlMapper => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
     private ICommander Commander { get; }
     private ILogger Log { get; }
 
@@ -27,7 +29,7 @@ public sealed class MobileAuthV2Controller : Controller
     {
         var session = SessionCookies.Read(HttpContext, "session").RequireValid();
         SessionCookies.Write(HttpContext, session);
-        var completeUrl = $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}";
+        var completeUrl = UrlMapper.ToAbsolute($"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signIn/{scheme}?returnUrl={completeUrl.UrlEncode()}");
     }
 
@@ -36,7 +38,7 @@ public sealed class MobileAuthV2Controller : Controller
     {
         var session = SessionCookies.Read(HttpContext, "session").RequireValid();
         SessionCookies.Write(HttpContext, session);
-        var completeUrl = $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}";
+        var completeUrl = UrlMapper.ToAbsolute($"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signOut?returnUrl={completeUrl.UrlEncode()}");
     }
 
