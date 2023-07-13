@@ -47,15 +47,18 @@ public static class SessionCookies
 
     public static Session? Read(HttpContext httpContext, string? queryParameterName = null)
     {
+        Session? session;
+        if (!queryParameterName.IsNullOrEmpty()) {
+            var query = httpContext.Request.Query;
+            session = SessionExt.NewValidOrNull(query[queryParameterName].SingleOrDefault() ?? "");
+            if (session != null)
+                return session;
+        }
+
         var cookies = httpContext.Request.Cookies;
         var cookieName = Cookie.Name ?? "";
         cookies.TryGetValue(cookieName, out var sessionId);
-        var session = SessionExt.NewValidOrNull(sessionId);
-
-        if (session == null && !queryParameterName.IsNullOrEmpty()) {
-            var query = httpContext.Request.Query;
-            session = SessionExt.NewValidOrNull(query[queryParameterName].SingleOrDefault() ?? "");
-        }
+        session = SessionExt.NewValidOrNull(sessionId);
         return session;
     }
 
