@@ -80,7 +80,7 @@ internal sealed class MauiClientAuth : IClientAuth
                 History.Nav.NavigateTo(url);
             }
             else
-                await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
+                await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
         }
         catch (Exception ex) {
             Log.LogError(ex, "SignInOrSignOut failed (endpoint: {Endpoint})", endpoint);
