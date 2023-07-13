@@ -5,6 +5,11 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiNavigationInterceptor
 {
+    private static HashSet<string> AllowedExternalHosts { get; } = new(StringComparer.Ordinal) {
+        "accounts.google.com",
+        "appleid.apple.com",
+    };
+
     public void TryIntercept(Uri uri, UrlLoadingEventArgs eventArgs)
     {
         if (OrdinalEquals(uri.Host, MauiSettings.LocalHost)) {
@@ -16,13 +21,14 @@ public class MauiNavigationInterceptor
         var baseUri = MauiSettings.BaseUri;
         if (!baseUri.IsBaseOf(uri)) {
             // Neither local MAUI app URL nor host URL
-            eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenExternally;
+            eventArgs.UrlLoadingStrategy = AllowedExternalHosts.Contains(uri.Host)
+                ? UrlLoadingStrategy.OpenInWebView
+                : UrlLoadingStrategy.OpenExternally;
             return;
         }
         // If we're here, it's a host URL
 
-        if (uri.PathAndQuery.OrdinalIgnoreCaseStartsWith("/mobileAuth")) {
-            // It's a mobileAuth / mobileAuthV2 URL, we open them in WebView
+        if (IsAllowedHostUri(uri)) {
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenInWebView;
             return;
         }
@@ -40,5 +46,19 @@ public class MauiNavigationInterceptor
             var relativeUri = baseUri.MakeRelativeUri(uri);
             history.Nav.NavigateTo(relativeUri.ToString());
         });
+    }
+
+    // Private methods
+
+    private bool IsAllowedHostUri(Uri uri)
+    {
+        var pathAndQuery = uri.PathAndQuery;
+        if (pathAndQuery.OrdinalIgnoreCaseStartsWith("/mobileAuth"))
+            return true; // mobileAuth + mobileAuthV2
+        if (pathAndQuery.OrdinalIgnoreCaseStartsWith("/signIn"))
+            return true;
+        if (pathAndQuery.OrdinalIgnoreCaseStartsWith("/signOut"))
+            return true;
+        return false;
     }
 }
