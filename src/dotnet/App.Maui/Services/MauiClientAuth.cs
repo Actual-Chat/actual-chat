@@ -42,11 +42,10 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        var sessionId = Services.GetRequiredService<Session>().Id.Value;
         var nav = Services.GetRequiredService<NavigationManager>();
         var returnUrl = nav.ToAbsoluteUri(Links.Chats).ToString();
         nav.NavigateTo(
-            $"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{sessionId.UrlEncode()}/{schema}?returnUrl={returnUrl.UrlEncode()}");
+            $"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{schema}?returnUrl={returnUrl.UrlEncode()}");
     }
 
     public async ValueTask SignOut()
@@ -57,11 +56,10 @@ internal sealed class MauiClientAuth : IClientAuth
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif
 
-        var sessionId = Services.GetRequiredService<Session>().Id.Value;
         var nav = Services.GetRequiredService<NavigationManager>();
         var returnUrl = nav.ToAbsoluteUri(Links.Home).ToString();
         nav.NavigateTo(
-            $"{MauiSettings.BaseUrl}mobileAuthV2/signOut/{sessionId.UrlEncode()}?returnUrl={returnUrl.UrlEncode()}");
+            $"{MauiSettings.BaseUrl}mobileAuthV2/signOut?returnUrl={returnUrl.UrlEncode()}");
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()

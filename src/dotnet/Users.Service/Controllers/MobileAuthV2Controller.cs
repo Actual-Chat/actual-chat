@@ -1,5 +1,4 @@
 using ActualChat.Web;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server.Authentication;
 
@@ -23,25 +22,25 @@ public sealed class MobileAuthV2Controller : Controller
         Commander = services.Commander();
     }
 
-    [HttpGet("signIn/{scheme}/{sessionId}")]
-    public ActionResult SignIn(
-        string scheme, string sessionId, string returnUrl,
-        CancellationToken cancellationToken)
+    [HttpGet("signIn/{scheme}")]
+    public ActionResult SignIn(string scheme, string returnUrl, CancellationToken cancellationToken)
     {
-        SessionCookies.Write(HttpContext, new Session(sessionId));
+        var session = SessionCookies.Read(HttpContext, "session").RequireValid();
+        SessionCookies.Write(HttpContext, session);
         var completeUrl = $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}";
         return Redirect($"/signIn/{scheme}?returnUrl={completeUrl.UrlEncode()}");
     }
 
-    [HttpGet("signOut/{sessionId}")]
-    public ActionResult SignOut(string sessionId, string returnUrl, CancellationToken cancellationToken)
+    [HttpGet("signOut")]
+    public ActionResult SignOut(string returnUrl, CancellationToken cancellationToken)
     {
-        SessionCookies.Write(HttpContext, new Session(sessionId));
+        var session = SessionCookies.Read(HttpContext, "session").RequireValid();
+        SessionCookies.Write(HttpContext, session);
         var completeUrl = $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}";
         return Redirect($"/signOut?returnUrl={completeUrl.UrlEncode()}");
     }
 
-    [HttpGet("complete/{sessionId}")]
+    [HttpGet("complete")]
     public async Task<ActionResult> Complete(string returnUrl, CancellationToken cancellationToken)
     {
         var session = SessionCookies.Read(HttpContext).RequireValid();
