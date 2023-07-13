@@ -84,17 +84,8 @@ public class AudioHub : Hub
     private Session? GetSession(string recorderId)
     {
         // TODO(AK): Security: migrate to session lookup / decryption here
-        if (recorderId.IsNullOrEmpty())
-            return null;
         if (OrdinalEquals(recorderId, Constants.Recorder.DefaultId))
-            return null;
-
-        try {
-            var session = new Session(recorderId);
-            return session.IsValid() ? session : null;
-        }
-        catch (ArgumentOutOfRangeException) {
-            return null;
-        }
+            recorderId = "";
+        return SessionExt.NewValidOrNull(recorderId);
     }
 }
