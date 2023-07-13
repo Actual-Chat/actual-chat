@@ -1,20 +1,21 @@
 using ActualChat.UI.Blazor.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui.Services;
 
 internal sealed class MauiClientAuth : IClientAuth
 {
+    private MobileAuthClient? _mobileAuth;
+
     private IServiceProvider Services { get; }
-    private MobileAuthClient MobileAuth { get; }
-    private ISessionResolver SessionResolver { get; }
+    private MobileAuthClient MobileAuth => _mobileAuth ??= Services.GetRequiredService<MobileAuthClient>();
+
     private ILogger Log { get; }
 
     public MauiClientAuth(IServiceProvider services)
     {
         Services = services;
-        SessionResolver = services.GetRequiredService<ISessionResolver>();
         Log = services.LogFor(GetType());
-        MobileAuth = services.GetRequiredService<MobileAuthClient>();
     }
 
     public async ValueTask SignIn(string schema)
@@ -37,15 +38,15 @@ internal sealed class MauiClientAuth : IClientAuth
         {
             var appleSignIn = Services.GetRequiredService<AppleSignIn>();
             await appleSignIn.SignIn().ConfigureAwait(false);
-
             return;
         }
 #endif
 
-        var session = await SessionResolver.GetSession().ConfigureAwait(true);
-        var sessionId = session.Id.Value;
-        var uri = $"{MauiSettings.BaseUrl}mobileAuth/signIn/{sessionId}/{schema}";
-        await OpenInSystemBrowser(uri).ConfigureAwait(false);
+        var sessionId = Services.GetRequiredService<Session>().Id.Value;
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var returnUrl = nav.ToAbsoluteUri(Links.Chats).ToString();
+        nav.NavigateTo(
+            $"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{sessionId.UrlEncode()}/{schema}?returnUrl={returnUrl.UrlEncode()}");
     }
 
     public async ValueTask SignOut()
@@ -55,7 +56,12 @@ internal sealed class MauiClientAuth : IClientAuth
         if (androidGoogleSignIn.IsSignedIn())
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif
-        await MobileAuth.SignOut().ConfigureAwait(true);
+
+        var sessionId = Services.GetRequiredService<Session>().Id.Value;
+        var nav = Services.GetRequiredService<NavigationManager>();
+        var returnUrl = nav.ToAbsoluteUri(Links.Home).ToString();
+        nav.NavigateTo(
+            $"{MauiSettings.BaseUrl}mobileAuthV2/signOut/{sessionId.UrlEncode()}?returnUrl={returnUrl.UrlEncode()}");
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()

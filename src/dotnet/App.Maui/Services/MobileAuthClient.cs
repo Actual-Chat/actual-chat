@@ -28,8 +28,6 @@ public sealed class MobileAuthClient
         }
     }
 
-#if false // NOTE(AY): The code below is unused - we keep it here "just in case" for now
-
     public async Task<bool> SignInApple(string code, string name, string email, string userId)
     {
         var session = await SessionResolver.GetSession(CancellationToken.None).ConfigureAwait(false);
@@ -73,6 +71,4 @@ public sealed class MobileAuthClient
             return false;
         }
     }
-
-#endif
 }
