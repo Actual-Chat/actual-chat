@@ -40,12 +40,9 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        var nav = Services.GetRequiredService<NavigationManager>();
-        var returnUrl = nav.ToAbsoluteUri(Links.Chats).ToString();
-        var sessionPart = HostInfo.ClientKind != ClientKind.Ios ? ""
-            : "&session=" + Services.GetRequiredService<Session>().Id.Value.UrlEncode();
-        nav.NavigateTo(
-            $"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{schema}?returnUrl={returnUrl.UrlEncode()}{sessionPart}");
+        var sessionId = Services.GetRequiredService<Session>().Id.Value;
+        await OpenInBrowser($"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{schema}?s={sessionId.UrlEncode()}")
+            .ConfigureAwait(false);
     }
 
     public async ValueTask SignOut()
@@ -56,12 +53,9 @@ internal sealed class MauiClientAuth : IClientAuth
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif
 
-        var nav = Services.GetRequiredService<NavigationManager>();
-        var returnUrl = nav.ToAbsoluteUri(Links.Home).ToString();
-        var sessionPart = HostInfo.ClientKind != ClientKind.Ios ? ""
-            : "&session=" + Services.GetRequiredService<Session>().Id.Value.UrlEncode();
-        nav.NavigateTo(
-            $"{MauiSettings.BaseUrl}mobileAuthV2/signOut?returnUrl={returnUrl.UrlEncode()}{sessionPart}");
+        var sessionId = Services.GetRequiredService<Session>().Id.Value;
+        await OpenInBrowser($"{MauiSettings.BaseUrl}mobileAuthV2/signOut?s={sessionId.UrlEncode()}")
+            .ConfigureAwait(false);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
@@ -81,7 +75,7 @@ internal sealed class MauiClientAuth : IClientAuth
 
     // Private methods
 
-    private async Task OpenInSystemBrowser(string url)
+    private async Task OpenInBrowser(string url)
     {
         try {
             await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);

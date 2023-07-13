@@ -27,18 +27,22 @@ public sealed class MobileAuthV2Controller : Controller
     [HttpGet("signIn/{scheme}")]
     public ActionResult SignIn(string scheme, string returnUrl, CancellationToken cancellationToken)
     {
-        var session = SessionCookies.Read(HttpContext, "session").RequireValid();
+        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
         SessionCookies.Write(HttpContext, session);
-        var completeUrl = UrlMapper.ToAbsolute($"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
+        var completeUrl = UrlMapper.ToAbsolute(returnUrl.IsNullOrEmpty()
+            ? "/fusion/close"
+            : $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signIn/{scheme}?returnUrl={completeUrl.UrlEncode()}");
     }
 
     [HttpGet("signOut")]
     public ActionResult SignOut(string returnUrl, CancellationToken cancellationToken)
     {
-        var session = SessionCookies.Read(HttpContext, "session").RequireValid();
+        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
         SessionCookies.Write(HttpContext, session);
-        var completeUrl = UrlMapper.ToAbsolute($"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
+        var completeUrl = UrlMapper.ToAbsolute(returnUrl.IsNullOrEmpty()
+            ? "/fusion/close"
+            : $"/mobileAuthV2/complete?returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signOut?returnUrl={completeUrl.UrlEncode()}");
     }
 
