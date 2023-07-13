@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components;
 
@@ -5,18 +6,15 @@ namespace ActualChat.App.Maui.Services;
 
 internal sealed class MauiClientAuth : IClientAuth
 {
-    private MobileAuthClient? _mobileAuth;
+    private ILogger? _log;
+    private HostInfo? _hostInfo;
 
     private IServiceProvider Services { get; }
-    private MobileAuthClient MobileAuth => _mobileAuth ??= Services.GetRequiredService<MobileAuthClient>();
-
-    private ILogger Log { get; }
+    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public MauiClientAuth(IServiceProvider services)
-    {
-        Services = services;
-        Log = services.LogFor(GetType());
-    }
+        => Services = services;
 
     public async ValueTask SignIn(string schema)
     {
@@ -44,8 +42,10 @@ internal sealed class MauiClientAuth : IClientAuth
 
         var nav = Services.GetRequiredService<NavigationManager>();
         var returnUrl = nav.ToAbsoluteUri(Links.Chats).ToString();
+        var sessionPart = HostInfo.ClientKind != ClientKind.Ios ? ""
+            : "&session=" + Services.GetRequiredService<Session>().Id.Value.UrlEncode();
         nav.NavigateTo(
-            $"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{schema}?returnUrl={returnUrl.UrlEncode()}");
+            $"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{schema}?returnUrl={returnUrl.UrlEncode()}{sessionPart}");
     }
 
     public async ValueTask SignOut()
@@ -58,8 +58,10 @@ internal sealed class MauiClientAuth : IClientAuth
 
         var nav = Services.GetRequiredService<NavigationManager>();
         var returnUrl = nav.ToAbsoluteUri(Links.Home).ToString();
+        var sessionPart = HostInfo.ClientKind != ClientKind.Ios ? ""
+            : "&session=" + Services.GetRequiredService<Session>().Id.Value.UrlEncode();
         nav.NavigateTo(
-            $"{MauiSettings.BaseUrl}mobileAuthV2/signOut?returnUrl={returnUrl.UrlEncode()}");
+            $"{MauiSettings.BaseUrl}mobileAuthV2/signOut?returnUrl={returnUrl.UrlEncode()}{sessionPart}");
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
