@@ -6,10 +6,9 @@ namespace ActualChat.App.Maui.Services;
 public class MauiNavigationInterceptor
 {
     // ReSharper disable once CollectionNeverUpdated.Local
-    private static HashSet<string> AllowedExternalHosts { get; } = new(StringComparer.Ordinal) {
-        // "accounts.google.com",
-        // "appleid.apple.com",
-    };
+    private static HashSet<string> AllowedExternalHosts { get; } = MauiSettings.SignIn.UseWebView
+        ? new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" }
+        : new(StringComparer.Ordinal);
 
     public void TryIntercept(Uri uri, UrlLoadingEventArgs eventArgs)
     {
@@ -53,15 +52,15 @@ public class MauiNavigationInterceptor
 
     private bool IsAllowedHostUri(Uri uri)
     {
-#if false
-        var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
-        if (pathAndQuery.OrdinalStartsWith("/mobileauth"))
-            return true; // mobileAuth + mobileAuthV2
-        if (pathAndQuery.OrdinalStartsWith("/signin"))
-            return true;
-        if (pathAndQuery.OrdinalStartsWith("/signout"))
-            return true;
-#endif
+        if (MauiSettings.SignIn.UseWebView) {
+            var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
+            if (pathAndQuery.OrdinalStartsWith("/mobileauth"))
+                return true; // mobileAuth + mobileAuthV2
+            if (pathAndQuery.OrdinalStartsWith("/signin"))
+                return true;
+            if (pathAndQuery.OrdinalStartsWith("/signout"))
+                return true;
+        }
         return false;
     }
 }

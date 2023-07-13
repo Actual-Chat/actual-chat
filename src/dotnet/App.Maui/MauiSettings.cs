@@ -18,4 +18,11 @@ public static class MauiSettings
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
     }
+
+    // Nested types
+
+    public static class SignIn
+    {
+        public static bool UseWebView { get; } = true;
+    }
 }

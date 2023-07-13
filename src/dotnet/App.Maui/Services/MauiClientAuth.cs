@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -8,9 +7,11 @@ internal sealed class MauiClientAuth : IClientAuth
 {
     private ILogger? _log;
     private HostInfo? _hostInfo;
+    private History? _history;
 
     private IServiceProvider Services { get; }
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private History History => _history ??= Services.GetRequiredService<History>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public MauiClientAuth(IServiceProvider services)
@@ -40,9 +41,7 @@ internal sealed class MauiClientAuth : IClientAuth
         }
 #endif
 
-        var sessionId = Services.GetRequiredService<Session>().Id.Value;
-        await OpenInBrowser($"{MauiSettings.BaseUrl}mobileAuthV2/signIn/{schema}?s={sessionId.UrlEncode()}")
-            .ConfigureAwait(false);
+        await SignInOrSignOut($"signIn/{schema}").ConfigureAwait(false);
     }
 
     public async ValueTask SignOut()
@@ -53,35 +52,38 @@ internal sealed class MauiClientAuth : IClientAuth
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif
 
-        var sessionId = Services.GetRequiredService<Session>().Id.Value;
-        await OpenInBrowser($"{MauiSettings.BaseUrl}mobileAuthV2/signOut?s={sessionId.UrlEncode()}")
-            .ConfigureAwait(false);
+        await SignInOrSignOut("signOut").ConfigureAwait(false);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
     {
-        var schemas = DeviceInfo.Platform == DevicePlatform.iOS
-            ? new[] {
-                (IClientAuth.AppleIdSchemeName, "Apple"),
-                (IClientAuth.GoogleSchemeName, "Google"),
-            }
-            : new[] {
-                (IClientAuth.GoogleSchemeName, "Google"),
-                (IClientAuth.AppleIdSchemeName, "Apple"),
-            };
-
+        var schemas = new[] {
+            (IClientAuth.GoogleSchemeName, "Google"),
+            (IClientAuth.AppleIdSchemeName, "Apple"),
+        };
+        if (HostInfo.ClientKind == ClientKind.Ios)
+            Array.Reverse(schemas);
         return ValueTask.FromResult(schemas);
     }
 
     // Private methods
 
-    private async Task OpenInBrowser(string url)
+    private async Task SignInOrSignOut(string endpoint)
     {
+        var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("signIn");
         try {
-            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
+            var sessionId = Services.GetRequiredService<Session>().Id.Value;
+            var url = $"{MauiSettings.BaseUrl}mobileAuthV2/{endpoint}?s={sessionId.UrlEncode()}";
+            if (MauiSettings.SignIn.UseWebView) {
+                var returnUrl = History.Nav.ToAbsoluteUri(isSignIn ? Links.Chats : Links.Home).ToString();
+                url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
+                History.Nav.NavigateTo(url);
+            }
+            else
+                await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
         }
         catch (Exception ex) {
-            Log.LogError(ex, "Failed to authenticate");
+            Log.LogError(ex, "SignInOrSignOut failed (endpoint: {Endpoint})", endpoint);
             throw;
         }
     }
