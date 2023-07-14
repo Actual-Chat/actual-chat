@@ -50,3 +50,6 @@ node_modules/
 
 # Test results
 *.trx
+
+# MAUI replaced index.html
+index.html

@@ -12,20 +12,19 @@
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-Medium.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/TT-Commons-Pro-DemiBold.woff2" as="font" crossorigin />
     <link rel="preload" href="/dist/fonts/forkawesome-webfont.woff2" as="font" crossorigin />
-    <!--
-    <link rel="preload" href="/dist/onDeviceAwakeWorker.js" as="script" crossorigin />
-    <link rel="preload" href="/dist/opusDecoderWorker.js" as="script" crossorigin />
-    <link rel="preload" href="/dist/opusEncoderWorker.js" as="script" crossorigin />
-    <link rel="preload" href="/dist/vadWorker.js" as="script" crossorigin />
-    -->
-    <link href="/dist/bundle.css" rel="stylesheet" />
-    <!--
+    <link rel="prefetch" href="/dist/onDeviceAwakeWorker.js" as="worker" crossorigin />
+    <link rel="prefetch" href="/dist/opusDecoderWorker.js" as="worker" crossorigin />
+    <link rel="prefetch" href="/dist/opusEncoderWorker.js" as="worker" crossorigin />
+    <link rel="prefetch" href="/dist/warmUpWorklet.js" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/dist/vadWorker.js" as="worker" crossorigin />
+    <link rel="prefetch" href="/dist/feederWorklet.js" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/dist/opusEncoderWorklet.js" as="audioworklet" crossorigin />
+    <link rel="prefetch" href="/dist/vadWorklet.js" as="audioworklet" crossorigin />
     <link rel="prefetch" href="/dist/wasm/codec.wasm" as="fetch" crossorigin />
-    <link rel="prefetch" href="/dist/wasm/soxr_wasm.wasm" as="fetch" crossorigin />
-    <link rel="prefetch" href="/dist/wasm/ort-wasm-simd.wasm" as="fetch" crossorigin />
+    <link rel="prefetch" href="/dist/wasm/webrtc-vad.wasm" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/wasm/vad.bin" as="fetch" crossorigin />
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
-    -->
+    <link href="/dist/bundle.css" rel="stylesheet" />
     <script>
         window.App = {
             environment: 'unknown',
@@ -67,7 +66,7 @@
         // Clear history state in case page reload was invoked
         history.replaceState(null, /* ignored title */ '');
     </script>
-    <script async src="/dist/bundle.js"></script>
+    <script src="/dist/bundle.js" async></script>
 </head>
 
 <body class="app-mobile app-maui">

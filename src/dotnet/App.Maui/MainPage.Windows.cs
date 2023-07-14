@@ -18,7 +18,7 @@ public partial class MainPage
         webView.CookieManager.AddOrUpdateCookie(cookie);
 
         cookie = webView.CookieManager.CreateCookie(cookieName, sessionId, MauiSettings.Host, "/");
-        cookie.SameSite = CoreWebView2CookieSameSiteKind.Lax;
+        cookie.SameSite = CoreWebView2CookieSameSiteKind.None;
         cookie.IsHttpOnly = true;
         cookie.IsSecure = true;
         webView.CookieManager.AddOrUpdateCookie(cookie);

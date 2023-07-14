@@ -41,10 +41,17 @@ public partial class MauiBlazorWebViewHandler
             if (resourceResponse == null)
                 return null;
 
+            var url = request?.Url?.ToString();
+            if (url is "https://0.0.0.0/" or "https://0.0.0.0")
+                return resourceResponse;
+
             const string contentTypeKey = "Content-Type";
-            var contentType = resourceResponse.ResponseHeaders?[contentTypeKey];
-            if (OrdinalEquals(contentType, resourceResponse.MimeType) && OrdinalEquals(contentType, "application/wasm"))
-                resourceResponse.ResponseHeaders?.Remove(contentTypeKey);
+            const string cacheControlKey = "Cache-Control";
+            resourceResponse.ResponseHeaders?.Remove(cacheControlKey);
+            resourceResponse.ResponseHeaders?.Add(cacheControlKey, "public, max-age=604800");
+            // We see duplicate Content-Type headers at Android
+            resourceResponse.ResponseHeaders?.Remove(contentTypeKey);
+
             return resourceResponse;
         }
 
