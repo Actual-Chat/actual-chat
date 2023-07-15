@@ -128,7 +128,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             .SetAutoCancel(true) // closes notification after tap
             .SetPriority((int)NotificationPriority.High);
         if (imageUrl != null) {
-            var largeImage = ResolveImage(imageUrl);
+            var largeImage = GetImage(imageUrl);
             if (largeImage != null)
                 notificationBuilder.SetLargeIcon(largeImage);
         }
@@ -137,15 +137,15 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         notificationManager.Notify(tag, 0, notification);
     }
 
-    private Bitmap? ResolveImage(string imageUrl)
+    private Bitmap? GetImage(string imageUrl)
         => imageUrl.IsNullOrEmpty()
             ? null
             : _imagesCache.GetOrCreate(imageUrl, DownloadImage);
 
     private static Bitmap? DownloadImage(string imageUrl)
     {
-        var imageDownloader = FirebaseMessagingUtils.StartImageDownloadInBackground(new Uri(imageUrl));
-        var largeImage = FirebaseMessagingUtils.WaitForAndApplyImageDownload(imageDownloader);
+        var imageDownload = FirebaseMessagingUtils.StartImageDownloadInBackground(imageUrl.ToUri());
+        var largeImage = FirebaseMessagingUtils.WaitForAndApplyImageDownload(imageDownload);
         return largeImage;
     }
 }

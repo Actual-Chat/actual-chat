@@ -102,9 +102,8 @@ public static class TestAuthExt
 
     private static async Task HandleGoogleSignInPopup(string user, string password, IPage page)
     {
-        var googlePage = await page.Context.WaitForPageAsync(new BrowserContextWaitForPageOptions
-        {
-            Predicate = x => new Uri(x.Url).Host == "accounts.google.com"
+        var googlePage = await page.Context.WaitForPageAsync(new BrowserContextWaitForPageOptions {
+            Predicate = x => x.Url.ToUri().Host == "accounts.google.com",
         });
 
         var emailInput = await googlePage.WaitForSelectorAsync("input[type=email][name=identifier]");

@@ -79,9 +79,10 @@ public class FirebaseMessagingUtils
          * to enforce the timeout.
          */
         try {
-            var result = Android.Gms.Tasks.TasksClass.Await(imageDownload.GetTask(),
-                    ImageDownloadTimeoutSeconds,
-                    TimeUnit.Seconds);
+            var result = Android.Gms.Tasks.TasksClass.Await(
+                imageDownload.GetTask(),
+                ImageDownloadTimeoutSeconds,
+                TimeUnit.Seconds);
             return result as Bitmap;
         }
         catch (ExecutionException e) {

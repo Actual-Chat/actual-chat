@@ -125,25 +125,19 @@
     <TrimmerRootAssembly Include="ActualChat.Audio.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.Audio.UI.Blazor" />
     <TrimmerRootAssembly Include="ActualChat.Chat" />
-    <TrimmerRootAssembly Include="ActualChat.Chat.Client" />
     <TrimmerRootAssembly Include="ActualChat.Chat.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.Chat.UI.Blazor" />
     <TrimmerRootAssembly Include="ActualChat.Contacts" />
-    <TrimmerRootAssembly Include="ActualChat.Contacts.Client" />
     <TrimmerRootAssembly Include="ActualChat.Contacts.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Feedback.Client" />
     <TrimmerRootAssembly Include="ActualChat.Feedback.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.Invite" />
-    <TrimmerRootAssembly Include="ActualChat.Invite.Client" />
     <TrimmerRootAssembly Include="ActualChat.Invite.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.MediaPlayback" />
     <TrimmerRootAssembly Include="ActualChat.Notification" />
-    <TrimmerRootAssembly Include="ActualChat.Notification.Client" />
     <TrimmerRootAssembly Include="ActualChat.Notification.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.Notification.UI.Blazor" />
     <TrimmerRootAssembly Include="ActualChat.Transcription.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.Users" />
-    <TrimmerRootAssembly Include="ActualChat.Users.Client" />
     <TrimmerRootAssembly Include="ActualChat.Users.Contracts" />
     <TrimmerRootAssembly Include="ActualChat.Users.UI.Blazor" />
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor" />
@@ -167,4 +161,3 @@
   </ItemGroup>
 
 </Project>
-

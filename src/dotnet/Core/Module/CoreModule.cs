@@ -127,13 +127,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
     private void InjectClientServices(IServiceCollection services)
     {
         var fusion = services.AddFusion();
-        var restEase = services.AddRestEase();
-        restEase.ConfigureHttpClient((c, name, o) => {
-            o.HttpClientActions.Add(client => {
-                client.DefaultRequestVersion = HttpVersion.Version30;
-                client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-            });
-        });
 
         // Reconnector
         services.AddSingleton(c => new RpcDependentReconnectDelayer(c));

@@ -16,11 +16,8 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
-using Stl.Fusion.Client;
-using Stl.Generators;
-// ReSharper disable once RedundantUsingDirective
 using Stl.Interception.Interceptors;
-using Stl.RestEase; // Required for InterceptorBase configuration at Release
+using Stl.RestEase;
 
 namespace ActualChat.UI.Blazor.App
 {
@@ -42,41 +39,30 @@ namespace ActualChat.UI.Blazor.App
             // Fusion services
             var fusion = services.AddFusion();
             var restEase = services.AddRestEase();
-            var isWasm = appKind == AppKind.WasmApp;
-            if (isWasm)
-                restEase.ConfigureHttpClient((c, name, o) => {
-                    var urlMapper = c.GetRequiredService<UrlMapper>();
-                    var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
-                    var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
-                    o.HttpClientActions.Add(client => {
-                        client.BaseAddress = clientBaseUrl.ToUri();
-                        client.DefaultRequestVersion = HttpVersion.Version30;
-                        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-                    });
-                });
-            else
-                restEase.ConfigureHttpClient((c, name, o) => {
-                    var urlMapper = c.GetRequiredService<UrlMapper>();
-                    var isFusionClient = (name ?? "").OrdinalStartsWith("Stl.Fusion");
-                    var clientBaseUrl = isFusionClient ? urlMapper.BaseUrl : urlMapper.ApiBaseUrl;
-                    o.HttpClientActions.Add(client => {
+            restEase.ConfigureHttpClient((c, name, o) => {
+                var urlMapper = c.GetRequiredService<UrlMapper>();
+                var clientBaseUrl = urlMapper.ApiBaseUrl;
+                o.HttpClientActions.Add(client => {
+                    client.BaseAddress = clientBaseUrl.ToUri();
+                    client.DefaultRequestVersion = HttpVersion.Version30;
+                    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                    if (appKind.IsMauiApp()) {
                         var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
-                        client.BaseAddress = clientBaseUrl.ToUri();
-                        client.DefaultRequestVersion = HttpVersion.Version30;
-                        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
                         client.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
-                    });
+                    }
+                });
+                if (appKind.IsMauiApp())
                     o.HttpMessageHandlerBuilderActions.Add(b => {
                         if (b.PrimaryHandler is HttpClientHandler h)
                             h.UseCookies = false;
                     });
-                });
+            });
 
             fusion.Rpc.AddWebSocketClient(c => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
                 return urlMapper.BaseUri.ToString();
             });
-            if (!isWasm) {
+            if (appKind.IsMauiApp()) {
                 services.AddTransient<ClientWebSocket>(_ => {
                     var ws = new ClientWebSocket();
                     var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;

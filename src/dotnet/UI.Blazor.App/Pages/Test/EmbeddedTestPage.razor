@@ -2,7 +2,7 @@
 @using ActualChat.Hosting
 
 @{
-    var baseUri = new Uri(HostInfo.BaseUrl);
+    var baseUri = HostInfo.BaseUrl.ToUri();
     var domain = HostInfo.IsDevelopmentInstance
         ? "cdn.local.actual.chat"
         : baseUri.IdnHost;

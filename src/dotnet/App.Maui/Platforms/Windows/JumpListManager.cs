@@ -30,13 +30,13 @@ public static class JumpListManager
         await jumpList.SaveAsync();
     }
 
-    private static void AddJumpListItem(JumpList jumpList, string args, string displayName, string logo = "")
+    private static void AddJumpListItem(JumpList jumpList, string args, string displayName, string? logo = null)
     {
         if (jumpList.Items.Any(c => OrdinalEquals(c.Arguments, args)))
             return;
 
         var item = JumpListItem.CreateWithArguments(args, displayName);
-        item.Logo = logo.IsNullOrEmpty() ? null : new Uri(logo);
+        item.Logo = logo.ToUri();
         jumpList.Items.Add(item);
     }
 

@@ -7,7 +7,7 @@ public readonly record struct DisplayUrl(LocalUrl LocalUrl, string AbsoluteUrl)
 
     public string ShortAbsoluteUrl {
         get {
-            var uri = new Uri(AbsoluteUrl);
+            var uri = AbsoluteUrl.ToUri();
             return $"{uri.Host}{uri.AbsolutePath}";
         }
     }

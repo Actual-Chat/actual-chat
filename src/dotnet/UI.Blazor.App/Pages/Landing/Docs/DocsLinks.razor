@@ -34,7 +34,7 @@
 
     private async Task GetActiveAnchor()
     {
-        var uri = new Uri(Nav.Uri, UriKind.Absolute);
+        var uri = Nav.Uri.ToUri();
         var fragment = uri.Fragment;
         if (fragment.StartsWith('#')) {
             _activeAnchor = fragment[1..];

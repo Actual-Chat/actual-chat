@@ -2,8 +2,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
-    <PackageReference Include="RestEase" />
-    <PackageReference Include="RestEase.SourceGenerator" />
   </ItemGroup>
 
   <ItemGroup>

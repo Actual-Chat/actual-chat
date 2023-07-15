@@ -28,11 +28,10 @@ public static class AppLinksWorkaround
         if (intent == null)
             return;
         var action = intent.Action;
-        var strLink = intent.DataString;
-        if (!OrdinalEquals(Intent.ActionView, action) || string.IsNullOrWhiteSpace(strLink))
+        var link = intent.DataString.NullIfWhiteSpace();
+        if (link == null || !OrdinalEquals(Intent.ActionView, action))
             return;
 
-        var link = new Uri(strLink);
-        Microsoft.Maui.Controls.Application.Current?.SendOnAppLinkRequestReceived(link);
+        Application.Current?.SendOnAppLinkRequestReceived(link.ToUri());
     }
 }
