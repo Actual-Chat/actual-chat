@@ -9,7 +9,7 @@
 
 <Button
     Class="@btnClass"
-    data-menu="@(MenuRef.New<SignInMenuContextMenu>().ToString())"
+    data-menu="@(MenuRef.New<SignInContextMenu>().ToString())"
     data-menu-trigger="@MenuTrigger.Primary"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     @if (ButtonType == MenuButton.Default) {

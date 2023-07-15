@@ -6,7 +6,7 @@ namespace ActualChat.Chat.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ChatModule : HostModule
 {
-    public ChatModule(IServiceProvider services) : base(services) { }
+    public ChatModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

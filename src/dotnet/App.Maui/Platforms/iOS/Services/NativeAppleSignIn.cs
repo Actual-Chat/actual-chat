@@ -2,11 +2,11 @@ using ActualChat.App.Maui.Services;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AppleSignIn
+public sealed class NativeAppleSignIn
 {
     private readonly MobileAuthClient _mobileAuthClient;
 
-    public AppleSignIn(MobileAuthClient mobileAuthClient)
+    public NativeAppleSignIn(MobileAuthClient mobileAuthClient)
         => _mobileAuthClient = mobileAuthClient;
 
     public async Task SignIn()

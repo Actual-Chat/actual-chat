@@ -10,10 +10,7 @@ namespace ActualChat.Redis.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class RedisModule : HostModule<RedisSettings>
 {
-    private ILogger Log { get; }
-
-    public RedisModule(IServiceProvider services) : base(services)
-        => Log = services.LogFor<RedisModule>();
+     public RedisModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void AddRedisDb<TContext>(
         IServiceCollection services,
@@ -45,4 +42,3 @@ public sealed class RedisModule : HostModule<RedisSettings>
         services.AddRedisDb<TContext>(cfg, keyPrefix);
     }
 }
-

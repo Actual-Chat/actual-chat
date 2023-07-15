@@ -16,10 +16,7 @@ public sealed class DbModule : HostModule<DbSettings>
 {
     private const int CommandTimeout = 3;
 
-    private ILogger Log { get; }
-
-    public DbModule(IServiceProvider services) : base(services)
-        => Log = services.LogFor<DbModule>();
+    public DbModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,

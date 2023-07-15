@@ -37,7 +37,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     public override void OnCreate()
     {
         _utils ??= new FirebaseMessagingUtils(ApplicationContext!);
-        Log = AppServices.LogFor<FirebaseMessagingService>();
+        Log = AppServices.LogFor(GetType());
     }
 
     public override void OnNewToken(string token)

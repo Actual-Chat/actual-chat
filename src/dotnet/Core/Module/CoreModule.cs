@@ -37,7 +37,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 #endif
     }
 
-    public CoreModule(IServiceProvider services) : base(services) { }
+    public CoreModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected internal override void InjectServices(IServiceCollection services)
     {

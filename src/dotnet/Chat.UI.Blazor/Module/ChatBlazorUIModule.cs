@@ -18,7 +18,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "chat";
 
-    public ChatBlazorUIModule(IServiceProvider services) : base(services) { }
+    public ChatBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

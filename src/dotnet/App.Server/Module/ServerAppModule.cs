@@ -27,17 +27,11 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
     public static string AppVersion { get; } =
         typeof(ServerAppModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
-    private ILogger Log { get; }
+    private IWebHostEnvironment? _env;
 
-    public IWebHostEnvironment Env { get; }
-    public IConfiguration Cfg { get; }
+    public IWebHostEnvironment Env => _env ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
-    public ServerAppModule(IServiceProvider serviceProvider) : base(serviceProvider)
-    {
-        Env = serviceProvider.GetRequiredService<IWebHostEnvironment>();
-        Cfg = serviceProvider.GetRequiredService<IConfiguration>();
-        Log = serviceProvider.LogFor<ServerAppModule>();
-    }
+    public ServerAppModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void ConfigureApp(IApplicationBuilder app)
     {

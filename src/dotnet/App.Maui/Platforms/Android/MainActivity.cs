@@ -39,22 +39,24 @@ namespace ActualChat.App.Maui;
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public class MainActivity : MauiAppCompatActivity
 {
-    internal static readonly int NotificationID = 101;
-    internal static readonly int NotificationPermissionID = 832;
-    private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
+    internal static readonly int NotificationId = 101;
+    internal static readonly int NotificationPermissionId = 832;
+    private static volatile MainActivity? _current;
 
+    public static MainActivity Current => _current
+        ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
+
+    private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
     private ActivityResultLauncher _requestPermissionLauncher = null!;
 
     private ILogger Log { get; set; } = NullLogger.Instance;
-
-    public static MainActivity? CurrentActivity { get; private set; }
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         using var _1 = _tracer.Region();
 
         var isLoaded = false;
-        CurrentActivity = this;
+        Interlocked.Exchange(ref _current, this);
         if (TryGetScopedServices(out var scopedServices)) {
             var loadingUI = scopedServices.GetRequiredService<LoadingUI>();
             isLoaded = loadingUI.WhenLoaded.IsCompleted;
@@ -67,7 +69,7 @@ public class MainActivity : MauiAppCompatActivity
             // As result, splash screen is hid very early and user sees index.html and other subsequent views.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
-        Log = AppServices.LogFor<MainActivity>();
+        Log = AppServices.LogFor(GetType());
         Log.LogDebug("OnCreate, is loaded: {IsLoaded}", isLoaded);
 
         base.OnCreate(savedInstanceState);
@@ -82,7 +84,7 @@ public class MainActivity : MauiAppCompatActivity
         // Create launcher to request permissions
         _requestPermissionLauncher = RegisterForActivityResult(
             new ActivityResultContracts.RequestPermission(),
-            new ActivityResultCallback(result => {
+            new AndroidActivityResultCallback(result => {
                 var isGranted = (bool)result!;
                 var notificationState = isGranted
                     ? PermissionState.Granted
@@ -138,6 +140,7 @@ public class MainActivity : MauiAppCompatActivity
         _tracer.Point(nameof(OnDestroy));
         Log.LogDebug(nameof(OnDestroy));
         base.OnDestroy();
+        Interlocked.CompareExchange(ref _current, null, this);
     }
 
     protected override void OnNewIntent(Intent? intent)
@@ -154,7 +157,7 @@ public class MainActivity : MauiAppCompatActivity
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == NotificationPermissionID) {
+        if (requestCode == NotificationPermissionId) {
             var (_, notificationGrant) = permissions
                 .Zip(grantResults)
                 .FirstOrDefault(tuple => OrdinalEquals(tuple.First, Manifest.Permission.PostNotifications));

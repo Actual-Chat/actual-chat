@@ -4,12 +4,20 @@ namespace ActualChat.Hosting;
 
 public abstract class HostModule
 {
-    protected HostInfo HostInfo { get; }
+    private HostInfo? _hostInfo;
+    private IConfiguration? _cfg;
+    private ILogger? _log;
+
+    protected IServiceProvider ModuleServices { get; }
+    protected HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
     protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
+    protected IConfiguration Cfg => _cfg ??= ModuleServices.GetRequiredService<IConfiguration>();
+    protected ILogger Log => _log ??= ModuleServices.LogFor(GetType());
+
     protected ModuleHost Host { get; private set; } = null!;
 
-    protected HostModule(IServiceProvider services)
-        => HostInfo = services.GetRequiredService<HostInfo>();
+    protected HostModule(IServiceProvider moduleServices)
+        => ModuleServices = moduleServices;
 
     protected internal void Initialize(ModuleHost host)
         => Host = host;
@@ -20,13 +28,11 @@ public abstract class HostModule
 public abstract class HostModule<TSettings> : HostModule
     where TSettings : class, new()
 {
-    public TSettings Settings { get; }
+    private TSettings? _settings;
 
-    protected HostModule(IServiceProvider services) : base(services)
-    {
-        var cfg = services.GetRequiredService<IConfiguration>();
-        Settings = cfg.GetSettings<TSettings>();
-    }
+    public TSettings Settings => _settings ??= Cfg.GetSettings<TSettings>();
+
+    protected HostModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected internal override void InjectServices(IServiceCollection services)
         => services.AddSingleton(Settings);

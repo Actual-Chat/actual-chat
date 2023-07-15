@@ -9,7 +9,7 @@ public partial class UsersBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "users";
 
-    public UsersBlazorUIModule(IServiceProvider services) : base(services) { }
+    public UsersBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

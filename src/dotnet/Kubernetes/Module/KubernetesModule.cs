@@ -10,7 +10,7 @@ namespace ActualChat.Kubernetes.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class KubernetesModule : HostModule<KubernetesSettings>
 {
-    public KubernetesModule(IServiceProvider services) : base(services) { }
+    public KubernetesModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

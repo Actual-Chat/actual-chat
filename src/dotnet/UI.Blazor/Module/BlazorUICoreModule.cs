@@ -19,7 +19,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {
     public static string ImportName => "ui";
 
-    public BlazorUICoreModule(IServiceProvider services) : base(services) { }
+    public BlazorUICoreModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

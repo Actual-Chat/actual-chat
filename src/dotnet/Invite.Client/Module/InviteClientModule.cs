@@ -1,14 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using ActualChat.Hosting;
-using Stl.Fusion.Client;
 
 namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class InviteClientModule : HostModule
 {
-    public InviteClientModule(IServiceProvider services) : base(services) { }
+    public InviteClientModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

@@ -374,13 +374,9 @@
       <OutputFile>$(MSBuildThisFileDirectory)\wwwroot\index.html</OutputFile>
       <ArtifactVersion>$(Version)-$([System.DateTime]::UtcNow.Ticks.ToString("X").Substring(7))</ArtifactVersion>
     </PropertyGroup>
-    <WriteLinesToFile
-            File="$(OutputFile)"
-            Lines="$([System.IO.File]::ReadAllText($(InputFile)).Replace('.js&quot; a','.js?v=$(ArtifactVersion)&quot; a').Replace('.css&quot; r','.css?v=$(ArtifactVersion)&quot; r').Replace('.wasm&quot; a','.wasm?v=$(ArtifactVersion)&quot; a'))"
-            Overwrite="true" />
+    <WriteLinesToFile File="$(OutputFile)" Lines="$([System.IO.File]::ReadAllText($(InputFile)).Replace('.js&quot; a','.js?v=$(ArtifactVersion)&quot; a').Replace('.css&quot; r','.css?v=$(ArtifactVersion)&quot; r').Replace('.wasm&quot; a','.wasm?v=$(ArtifactVersion)&quot; a'))" Overwrite="true" />
 
-    <Message Importance="High"
-             Text="$(ArtifactVersion)" />
+    <Message Importance="High" Text="$(ArtifactVersion)" />
   </Target>
 
 </Project>

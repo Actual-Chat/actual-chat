@@ -7,7 +7,7 @@ namespace ActualChat.Transcription.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class TranscriptionServiceModule: HostModule
 {
-    public TranscriptionServiceModule(IServiceProvider services) : base(services) { }
+    public TranscriptionServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

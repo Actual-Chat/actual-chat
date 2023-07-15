@@ -26,7 +26,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     {
         Services = services;
         Messaging = services.GetRequiredService<IFirebaseCloudMessaging>();
-        Log = services.LogFor<PushNotifications>();
+        Log = services.LogFor(GetType());
 
         Messaging.NotificationTapped += OnNotificationTapped;
     }

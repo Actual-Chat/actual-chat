@@ -1,15 +1,13 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using ActualChat.Hosting;
 using ActualChat.Transcription;
-using Stl.Fusion.Client;
 
 namespace ActualChat.Audio.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AudioClientModule : HostModule
 {
-    public AudioClientModule(IServiceProvider services) : base(services) { }
+    public AudioClientModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

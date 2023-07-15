@@ -11,14 +11,13 @@ using Stl.Fusion.Server.Middlewares;
 using Stl.Fusion.Server.Rpc;
 using Stl.RestEase;
 using Stl.Rpc;
-using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.Web.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class WebModule : HostModule, IWebModule
 {
-    public WebModule(IServiceProvider services) : base(services) { }
+    public WebModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

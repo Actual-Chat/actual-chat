@@ -17,15 +17,15 @@ internal sealed class MauiClientAuth : IClientAuth
     public MauiClientAuth(IServiceProvider services)
         => Services = services;
 
-    public async ValueTask SignIn(string schema)
+    public async Task SignIn(string schema)
     {
         if (schema.IsNullOrEmpty())
             throw new ArgumentException(nameof(schema));
 
         if (OrdinalEquals(IClientAuth.GoogleSchemeName, schema)) {
 #if ANDROID
-            var androidGoogleSignIn = Services.GetRequiredService<AndroidGoogleSignIn>();
-            await androidGoogleSignIn.SignIn().ConfigureAwait(false);
+            var googleSignIn = Services.GetRequiredService<NativeGoogleSignIn>();
+            await googleSignIn.SignIn().ConfigureAwait(false);
             return;
 #endif
         }
@@ -35,7 +35,7 @@ internal sealed class MauiClientAuth : IClientAuth
             && DeviceInfo.Platform == DevicePlatform.iOS
             && DeviceInfo.Version.Major >= 13)
         {
-            var appleSignIn = Services.GetRequiredService<AppleSignIn>();
+            var appleSignIn = Services.GetRequiredService<NativeAppleSignIn>();
             await appleSignIn.SignIn().ConfigureAwait(false);
             return;
         }
@@ -44,10 +44,10 @@ internal sealed class MauiClientAuth : IClientAuth
         await SignInOrSignOut($"signIn2/{schema}").ConfigureAwait(false);
     }
 
-    public async ValueTask SignOut()
+    public async Task SignOut()
     {
 #if ANDROID
-        var androidGoogleSignIn = Services.GetRequiredService<AndroidGoogleSignIn>();
+        var androidGoogleSignIn = Services.GetRequiredService<NativeGoogleSignIn>();
         if (androidGoogleSignIn.IsSignedIn())
             await androidGoogleSignIn.SignOut().ConfigureAwait(true);
 #endif

@@ -10,7 +10,7 @@ namespace ActualChat.Feedback.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class FeedbackServiceModule : HostModule<FeedbackSettings>
 {
-    public FeedbackServiceModule(IServiceProvider services) : base(services) { }
+    public FeedbackServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

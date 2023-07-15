@@ -6,7 +6,7 @@ namespace ActualChat.MediaPlayback.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class MediaPlaybackModule : HostModule
 {
-    public MediaPlaybackModule(IServiceProvider services) : base(services) { }
+    public MediaPlaybackModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

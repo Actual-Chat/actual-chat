@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Notification.UI.Blazor.Module;
 
@@ -9,7 +8,7 @@ public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
 {
     public static string ImportName => "notification";
 
-    public NotificationBlazorUIModule(IServiceProvider services) : base(services) { }
+    public NotificationBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

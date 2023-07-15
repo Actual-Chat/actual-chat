@@ -12,7 +12,7 @@ namespace ActualChat.Audio.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
 {
-    public AudioServiceModule(IServiceProvider services) : base(services) { }
+    public AudioServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {

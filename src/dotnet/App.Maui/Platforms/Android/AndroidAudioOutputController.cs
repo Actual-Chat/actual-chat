@@ -27,17 +27,21 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
     public AndroidAudioOutputController(IServiceProvider services)
     {
         _audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
-        Log = services.LogFor<AndroidAudioOutputController>();
+        Log = services.LogFor(GetType());
 
         if (Build.VERSION.SdkInt >= BuildVersionCodes.S) {
             try {
-                _audioManager.AddOnModeChangedListener(Platform.AppContext.MainExecutor!, new ModeChangedListener(services.LogFor<ModeChangedListener>()));
+                _audioManager.AddOnModeChangedListener(
+                    Platform.AppContext.MainExecutor!,
+                    new ModeChangedListener(services.LogFor<ModeChangedListener>()));
             }
             catch(Exception e) {
                 Log.LogWarning(e, "Failed to add ModeChangedListener");
             }
         }
-        _audioSwitch = new AudioSwitch(Platform.AppContext, true, new FocusChangeListener(services.LogFor<FocusChangeListener>()));
+        _audioSwitch = new AudioSwitch(
+            Platform.AppContext, true,
+            new FocusChangeListener(services.LogFor<FocusChangeListener>()));
         _audioSwitch.Start(new StartupCallback());
 
         var stateFactory = services.StateFactory();

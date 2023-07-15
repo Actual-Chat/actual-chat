@@ -127,6 +127,7 @@ public sealed class MobileAuthController : Controller
     public async Task<IActionResult> SignInGoogleWithCode(string sessionId, string code, CancellationToken cancellationToken)
     {
         var session = new Session(sessionId).RequireValid();
+        code = code.UrlDecode(); // Weird, but this is somehow necessary
         var schemeName = GoogleDefaults.AuthenticationScheme;
         var options = Services
             .GetRequiredService<IOptionsSnapshot<GoogleOptions>>()

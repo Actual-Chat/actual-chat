@@ -11,7 +11,7 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "audio";
 
-    public AudioBlazorUIModule(IServiceProvider services) : base(services) { }
+    public AudioBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

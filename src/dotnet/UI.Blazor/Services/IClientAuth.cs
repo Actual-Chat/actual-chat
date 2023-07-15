@@ -6,7 +6,7 @@ public interface IClientAuth
     public const string AppleIdSchemeName = Constants.Auth.Apple.SchemeName;
     public const string PhoneSchemeName = Constants.Auth.Phone.SchemeName;
 
-    ValueTask SignIn(string schema);
-    ValueTask SignOut();
+    Task SignIn(string schema);
+    Task SignOut();
     ValueTask<(string Name, string DisplayName)[]> GetSchemas();
 }

@@ -37,7 +37,7 @@ public static partial class MauiProgram
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationPermissions>(_ => new AndroidNotificationPermissions());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
-        services.AddSingleton<AndroidGoogleSignIn>();
+        services.AddScoped(c => new NativeGoogleSignIn(c));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
@@ -56,7 +56,7 @@ public static partial class MauiProgram
         });
 
     private static void OnActivityResult(Activity activity, int requestCode, Result resultCode, Intent? data)
-        => ActivityResultCallbackRegistry.InvokeCallback(activity, requestCode, resultCode, data);
+        => AndroidActivityResultHandlers.Invoke(activity, requestCode, resultCode, data);
 
     private static async Task HandleBackPressed(Android.App.Activity activity)
     {

@@ -11,7 +11,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 {
     public static string ImportName => "blazorApp";
 
-    public BlazorUIAppModule(IServiceProvider services) : base(services) { }
+    public BlazorUIAppModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

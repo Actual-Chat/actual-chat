@@ -13,7 +13,7 @@ namespace ActualChat.Notification.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class NotificationServiceModule : HostModule<NotificationSettings>
 {
-    public NotificationServiceModule(IServiceProvider services) : base(services) { }
+    public NotificationServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

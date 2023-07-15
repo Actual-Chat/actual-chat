@@ -1,14 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using ActualChat.Hosting;
-using Stl.Fusion.Client;
 
 namespace ActualChat.Chat.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ChatClientModule : HostModule
 {
-    public ChatClientModule(IServiceProvider services) : base(services) { }
+    public ChatClientModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

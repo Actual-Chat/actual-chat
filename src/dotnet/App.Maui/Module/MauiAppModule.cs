@@ -11,7 +11,7 @@ namespace ActualChat.App.Maui.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class MauiAppModule : HostModule, IBlazorUIModule
 {
-    public MauiAppModule(IServiceProvider services) : base(services) { }
+    public MauiAppModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

@@ -1,14 +1,12 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using ActualChat.Hosting;
-using Stl.Fusion.Client;
 
 namespace ActualChat.Feedback.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class FeedbackClientModule : HostModule
 {
-    public FeedbackClientModule(IServiceProvider services) : base(services) { }
+    public FeedbackClientModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
