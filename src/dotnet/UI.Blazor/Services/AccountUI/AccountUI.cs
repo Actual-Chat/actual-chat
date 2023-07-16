@@ -7,16 +7,17 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
-    private History? _history;
+    private AppBlazorCircuitContext? _blazorCircuitContext;
     private IClientAuth? _clientAuth;
     private ILogger? _log;
 
+    private AppBlazorCircuitContext BlazorCircuitContext =>
+        _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IServiceProvider Services { get; }
     public Session Session { get; }
     public IAccounts Accounts { get; }
-    public History History => _history ??= Services.GetRequiredService<History>();
     public IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
 
     public Task WhenLoaded => _whenLoadedSource.Task;

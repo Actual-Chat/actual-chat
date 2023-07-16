@@ -34,14 +34,13 @@ public partial class History
         return entry.WhenCompleted;
     }
 
-    public void ForceReload(string eventName, string url, bool mustReplace = true)
+    public ValueTask ForceReload(string eventName, string url, bool mustReplace = true)
     {
         Log.LogWarning("ForceReload on {EventName}: {Url} (mustReplace = {MustReplace})", eventName, url, mustReplace);
-        _ = JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.forceReload", url, mustReplace, NewItemId());
+        // return JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.forceReload", url, mustReplace, NewItemId());
+        var method = mustReplace ? "replace" : "assign";
+        return JS.InvokeVoidAsync($"window.location.{method}", url);
     }
-
-    public ValueTask OpenNewWindow(string url, string features = "")
-        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.openNewWindow", url, features);
 
     // Internal and private methods
 

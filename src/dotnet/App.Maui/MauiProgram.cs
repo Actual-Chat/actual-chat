@@ -95,7 +95,8 @@ public static partial class MauiProgram
         services.AddBlazorWebViewDeveloperTools();
 #endif
 
-        services.AddTransient(_ => new MainPage(new MauiNavigationInterceptor()));
+        services.AddSingleton(c => new MauiNavigationInterceptor(c));
+        services.AddTransient(c => new MainPage(c));
         builder.ConfigureMauiHandlers(handlers => {
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });

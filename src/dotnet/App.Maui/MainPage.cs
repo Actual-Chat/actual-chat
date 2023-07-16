@@ -1,26 +1,26 @@
 using Microsoft.AspNetCore.Components.WebView;
 using ActualChat.App.Maui.Services;
-using ActualChat.UI.Blazor.Services;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebView.Maui;
-using Microsoft.Maui.Platform;
 
 namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
     private readonly BlazorWebView _webView;
+    private MauiNavigationInterceptor? _navigationInterceptor;
 
-    private MauiNavigationInterceptor NavigationInterceptor { get; }
+    public static MainPage? Current => Application.Current?.MainPage as MainPage;
+
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
+    private MauiNavigationInterceptor NavigationInterceptor =>
+        _navigationInterceptor ??= Services.GetRequiredService<MauiNavigationInterceptor>();
 
-    public static MainPage? Current
-        => Application.Current?.MainPage as MainPage;
+    public IServiceProvider Services { get; } // This is root IServiceProvider!
 
-    public MainPage(MauiNavigationInterceptor navigationInterceptor)
+    public MainPage(IServiceProvider services)
     {
         Tracer.Point(".ctor");
-        NavigationInterceptor = navigationInterceptor;
+        Services = services;
         BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
 
         _webView = new BlazorWebView {
@@ -40,6 +40,10 @@ public partial class MainPage : ContentPage
     }
 
     public partial void SetupSessionCookie(Session session);
+
+    public partial void NavigateTo(string url);
+
+    // Private methods
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e);
 

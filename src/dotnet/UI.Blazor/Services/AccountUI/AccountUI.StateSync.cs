@@ -43,7 +43,8 @@ public partial class AccountUI
             if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
 
-            await History.Dispatcher.InvokeAsync(OnAccountChange).ConfigureAwait(false);
+            await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await BlazorCircuitContext.Dispatcher.InvokeAsync(OnAccountChange).ConfigureAwait(false);
         }
     }
 
@@ -53,18 +54,30 @@ public partial class AccountUI
     {
         var account = OwnAccount.Value;
         var isSignIn = !account.IsGuestOrNone;
-        var targetUrl = History.LocalUrl;
-        if (isSignIn) { // Sign-in or account change
-            if (!targetUrl.IsChatOrChatRoot())
-                targetUrl = Links.Chats;
+
+        for (var i = 0; i < 3; i++) {
+            try {
+                var history = Services.GetRequiredService<History>();
+                var targetUrl = history.LocalUrl;
+                if (isSignIn) { // Sign-in or account change
+                    if (!targetUrl.IsChatOrChatRoot())
+                        targetUrl = Links.Chats;
+                }
+                else { // Sign-out
+                    targetUrl = Links.Home;
+                    // Clear computed cache on sign-out to evict cached account from there
+                    var clientComputedCache = Services.GetService<IClientComputedCache>();
+                    if (clientComputedCache != null)
+                        await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
+                }
+
+                await history.ForceReload(isSignIn ? "sign-in" : "sign-out", targetUrl);
+                return;
+            }
+            catch (InvalidOperationException) {
+                // History may fail due to uninitialized NavigationManager, we'll retry in this case
+                await Task.Delay(100);
+            }
         }
-        else { // Sign-out
-            targetUrl = Links.Home;
-            // Clear computed cache on sign-out to evict cached account from there
-            var clientComputedCache = Services.GetService<IClientComputedCache>();
-            if (clientComputedCache != null)
-                await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
-        }
-        History.ForceReload(isSignIn ? "sign-in" : "sign-out", targetUrl);
     }
 }
