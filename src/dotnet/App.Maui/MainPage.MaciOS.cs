@@ -1,3 +1,4 @@
+using Android.Webkit;
 using AVFoundation;
 using Foundation;
 using Microsoft.AspNetCore.Components.WebView;
@@ -58,9 +59,10 @@ public partial class MainPage
 
     private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
-        var webView = e.WebView;
+        var webView = PlatformWebView = e.WebView;
+        var settings = webView.Settings;
+        settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
         webView.Inspectable = true;
-        PlatformWebView = webView;
     }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)

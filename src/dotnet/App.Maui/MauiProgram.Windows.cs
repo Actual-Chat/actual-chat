@@ -1,10 +1,7 @@
-using ActualChat.Chat.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
-using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.LifecycleEvents;
-using Microsoft.Maui.Platform;
 using Serilog;
 
 namespace ActualChat.App.Maui;

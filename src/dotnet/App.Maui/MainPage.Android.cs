@@ -47,24 +47,24 @@ public partial class MainPage
     private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
         var webView = PlatformWebView = e.WebView;
-
         if (webView.Context?.GetActivity() is not ComponentActivity activity)
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");
 
-        var webViewSettings = webView.Settings;
-        webViewSettings.JavaScriptEnabled = true;
-        webViewSettings.AllowFileAccess = true;
-        webViewSettings.MediaPlaybackRequiresUserGesture = false;
-        // webViewSettings.OffscreenPreRaster = true;
+        var settings = webView.Settings;
+        settings.JavaScriptEnabled = true;
+        settings.AllowFileAccess = true;
+        settings.MediaPlaybackRequiresUserGesture = false;
+        settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
+        // settings.OffscreenPreRaster = true;
  #pragma warning disable CS0618
-        webViewSettings.EnableSmoothTransition();
+        settings.EnableSmoothTransition();
  #pragma warning restore CS0618
-        //webView.Settings.SetGeolocationEnabled(true);
-        //webView.Settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);
+
+        // settings.SetGeolocationEnabled(true);
+        // settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);
         webView.SetWebChromeClient(new PermissionManagingWebChromeClient(webView.WebChromeClient!, activity));
-        webView.SetRendererPriorityPolicy(RendererPriority.Important, true);
-        webView.Visibility = ViewStates.Visible;
+        webView.SetRendererPriorityPolicy(RendererPriority.Bound, true);
     }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)
