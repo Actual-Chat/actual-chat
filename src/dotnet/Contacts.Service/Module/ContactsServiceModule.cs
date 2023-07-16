@@ -12,8 +12,6 @@ public sealed class ContactsServiceModule : HostModule<ContactsSettings>
 {
     public ContactsServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
-    public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }
-
     protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsServer())

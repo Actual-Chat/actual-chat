@@ -26,8 +26,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
 {
     public UsersServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
-    public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
@@ -56,7 +54,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             options.ClientId = Settings.GoogleClientId;
             options.ClientSecret = Settings.GoogleClientSecret;
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-            options.BackchannelHttpHandler = GoogleBackchannelHttpHandler;
         });
         authentication.AddApple(options => {
             options.Events.OnCreatingTicket = context => {
