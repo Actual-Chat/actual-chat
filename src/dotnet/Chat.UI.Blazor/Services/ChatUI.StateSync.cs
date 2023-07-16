@@ -62,7 +62,7 @@ public partial class ChatUI
 
         // Quite rare case, so it's sub-optimal to resolve this dependency in .ctor
         var redirectUrl = cRedirectUrl.Value;
-        History.ForceReload(redirectUrl);
+        History.ForceReload("chat ID fix", redirectUrl);
     }
 
     [ComputeMethod]

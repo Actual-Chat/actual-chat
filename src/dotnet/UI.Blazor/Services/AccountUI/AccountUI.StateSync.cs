@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Events;
+using Stl.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -7,38 +7,64 @@ public partial class AccountUI
     // All state sync logic should be here
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => Task.WhenAll(
-            SyncOwnAccount(cancellationToken),
-            Task.CompletedTask); // Just to add more items w/o need to worry about comma :)
-
-    private async Task SyncOwnAccount(CancellationToken cancellationToken)
     {
-        var uiEventHub = (UIEventHub?)null;
-        var cOwnAccount0 = await Computed
+        var baseChains = new AsyncChain[] {
+            new(nameof(Update), Update),
+        };
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+        return (
+            from chain in baseChains
+            select chain
+                .Log(Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
+    }
+
+    private async Task Update(CancellationToken cancellationToken)
+    {
+        var cOwnAccount = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
-        cOwnAccount0 = await cOwnAccount0.UpdateIfCached(TimeSpan.FromSeconds(2), cancellationToken);
-        var changes = cOwnAccount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var cOwnAccount in changes.ConfigureAwait(false)) {
-            if (cOwnAccount.HasError)
+        cOwnAccount = await cOwnAccount.UpdateIfCached(TimeSpan.FromSeconds(2), cancellationToken);
+        var changes = cOwnAccount.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var (newAccount, error) in changes.ConfigureAwait(false)) {
+            if (error != null || newAccount == null!)
                 continue;
 
-            var ownAccount = cOwnAccount.Value;
-            if (ownAccount is not { Id.IsNone: false })
+            var oldAccount = OwnAccount.Value;
+            if (ReferenceEquals(oldAccount, newAccount))
                 continue;
 
-            var oldAccount = _ownAccount.Value;
-            if (oldAccount == ownAccount)
-                continue;
+            Log.LogInformation("Update: new account: {Account}", newAccount);
+            _ownAccount.Value = newAccount;
+            if (_whenLoadedSource.TrySetResult())
+                continue; // It's an initial account change
 
-            Log.LogDebug("SyncOwnAccount: new OwnAccount: {Account}", ownAccount);
-            _ownAccount.Value = ownAccount;
-            if (!_whenLoadedSource.TrySetResult()) {
-                // We don't publish this event for the initial account change
-                uiEventHub ??= Services.GetRequiredService<UIEventHub>();
-                var @event = new OwnAccountChangedEvent(ownAccount, oldAccount);
-                await uiEventHub.Publish(@event, cancellationToken).ConfigureAwait(false);
-            }
+            if (oldAccount.Id == newAccount.Id)
+                continue; // Only account properties have changed
+
+            await History.Dispatcher.InvokeAsync(OnAccountChange).ConfigureAwait(false);
         }
+    }
+
+    // Private methods
+
+    private async Task OnAccountChange()
+    {
+        var account = OwnAccount.Value;
+        var isSignIn = !account.IsGuestOrNone;
+        var targetUrl = History.LocalUrl;
+        if (isSignIn) { // Sign-in or account change
+            if (!targetUrl.IsChatOrChatRoot())
+                targetUrl = Links.Chats;
+        }
+        else { // Sign-out
+            targetUrl = Links.Home;
+            // Clear computed cache on sign-out to evict cached account from there
+            var clientComputedCache = Services.GetService<IClientComputedCache>();
+            if (clientComputedCache != null)
+                await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
+        }
+        History.ForceReload(isSignIn ? "sign-in" : "sign-out", targetUrl);
     }
 }

@@ -92,7 +92,10 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
 
     public override bool IsCompleted { get; } = false;
@@ -134,8 +137,10 @@
     protected override void MarkCompleted()
     { }
 
-    private void OnSignInWith(string schema)
-        => ClientAuth.SignIn(schema);
+    private void OnSignInWith(string schema) {
+        Modal.Close();
+        ClientAuth.SignIn(schema);
+    }
 
     private Task OnSignInWithPhone()
         => Stepper.TryMoveForward().AsTask();

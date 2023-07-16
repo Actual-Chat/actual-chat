@@ -93,12 +93,8 @@ public class AppServiceStarter
 
     public async Task AfterRender(CancellationToken cancellationToken)
     {
-        // Starting more important UI services
-        await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
-        Services.GetRequiredService<SignInStateChangeReloader>().Start();
-
         // Starting less important UI services
-        await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
         Services.GetRequiredService<AppPresenceReporter>().Start();
         Services.GetRequiredService<AppIconBadgeUpdater>().Start();
         Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client

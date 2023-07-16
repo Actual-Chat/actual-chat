@@ -34,8 +34,8 @@ public partial class ChatAudioUI
         return (
             from chain in baseChains
             select chain
-                .RetryForever(retryDelays, DebugLog)
                 .Log(LogLevel.Debug, DebugLog)
+                .RetryForever(retryDelays, DebugLog)
             ).RunIsolated(cancellationToken);
     }
 

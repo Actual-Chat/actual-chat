@@ -7,6 +7,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
+    private History? _history;
     private IClientAuth? _clientAuth;
     private ILogger? _log;
 
@@ -15,6 +16,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     public IServiceProvider Services { get; }
     public Session Session { get; }
     public IAccounts Accounts { get; }
+    public History History => _history ??= Services.GetRequiredService<History>();
     public IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
 
     public Task WhenLoaded => _whenLoadedSource.Task;

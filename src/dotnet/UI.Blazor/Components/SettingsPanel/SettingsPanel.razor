@@ -177,8 +177,7 @@
     }
 
     private void SignOut() {
-        var modalUI = AccountUI.Services.GetRequiredService<ModalUI>();
-        modalUI.Host.CloseAll(true);
+        Modal.Close();
         AccountUI.ClientAuth.SignOut();
     }
 }

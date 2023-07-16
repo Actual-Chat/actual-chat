@@ -74,14 +74,14 @@ internal sealed class MauiClientAuth : IClientAuth
             var sessionId = Services.Session().Id.Value;
             var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionId.UrlEncode()}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
-                await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
+                await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
                 return;
             }
 
             // WebView-based authentication
             var returnUrl = History.UrlMapper.ToAbsolute( isSignIn ? Links.Chats : Links.Home);
             // NOTE(AY): returnUrl here points to https://[xxx.]actual.chat/xxx ,
-            // but MauiNavigationInterceptor will correct it to the right one anyway.
+            // but MauiNavigationInterceptor will correct it to the local one anyway.
             url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
             History.Nav.NavigateTo(url);
         }

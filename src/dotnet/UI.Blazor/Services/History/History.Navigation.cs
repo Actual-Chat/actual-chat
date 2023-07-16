@@ -34,9 +34,9 @@ public partial class History
         return entry.WhenCompleted;
     }
 
-    public void ForceReload(string url, bool mustReplace = true)
+    public void ForceReload(string eventName, string url, bool mustReplace = true)
     {
-        Log.LogInformation("ForceReload: {Url} (mustReplace = {MustReplace})", url, mustReplace);
+        Log.LogWarning("ForceReload on {EventName}: {Url} (mustReplace = {MustReplace})", eventName, url, mustReplace);
         _ = JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.forceReload", url, mustReplace, NewItemId());
     }
 
