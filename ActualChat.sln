@@ -26,8 +26,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service", "src\dotnet
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.Client", "src\dotnet\Audio.Client\Audio.Client.csproj", "{AAAB715E-AC7B-43C4-9686-14EB1B4EACE7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Client", "src\dotnet\Users.Client\Users.Client.csproj", "{E5854379-1F29-4D9C-B961-82DAFAEF0753}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.Service", "src\dotnet\Transcription.Service\Transcription.Service.csproj", "{36FB127F-BF3B-4792-9F21-0632EBB755CA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor", "src\dotnet\Chat.UI.Blazor\Chat.UI.Blazor.csproj", "{663B0AB3-BF84-42C0-8D10-60A1B6C647DA}"
@@ -118,8 +116,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat", "src\dotnet\Chat\Cha
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Contracts", "src\dotnet\Chat.Contracts\Chat.Contracts.csproj", "{457A3CA8-D1AD-4064-98B3-3A9058BCF3BB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Client", "src\dotnet\Chat.Client\Chat.Client.csproj", "{AA48E558-3F0A-4DD1-ABCE-DC7B67120207}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UnitTests", "tests\Chat.UnitTests\Chat.UnitTests.csproj", "{54296ED7-29EA-47CB-9D6A-4621D4E80E87}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.IntegrationTests", "tests\Chat.IntegrationTests\Chat.IntegrationTests.csproj", "{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95}"
@@ -133,8 +129,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Feedback.Service", "src\dotnet\Feedback.Service\Feedback.Service.csproj", "{3722521C-A1B0-4966-B6FB-49CD434C707B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Feedback.Contracts", "src\dotnet\Feedback.Contracts\Feedback.Contracts.csproj", "{F7AD92BE-C91F-4877-81E5-CC225CFA445E}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Feedback.Client", "src\dotnet\Feedback.Client\Feedback.Client.csproj", "{4BA1F384-E989-4738-B5E4-7430D712D710}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Feedback.Service.Migration", "src\dotnet\Feedback.Service.Migration\Feedback.Service.Migration.csproj", "{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B}"
 EndProject
@@ -156,8 +150,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C
 		src\nodejs\styles\spinkit.css = src\nodejs\styles\spinkit.css
 		src\nodejs\styles\tailwind.css = src\nodejs\styles\tailwind.css
 	EndProjectSection
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Client", "src\dotnet\Notification.Client\Notification.Client.csproj", "{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Contracts", "src\dotnet\Notification.Contracts\Notification.Contracts.csproj", "{18F78214-B24B-42A9-85AC-84F14AEBD6C4}"
 EndProject
@@ -223,8 +215,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Contracts", "src\dot
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Service.Migration", "src\dotnet\Invite.Service.Migration\Invite.Service.Migration.csproj", "{851DA676-E22D-4ED0-976C-40AF2FA46FD0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Invite.Client", "src\dotnet\Invite.Client\Invite.Client.csproj", "{7C181A66-C2AC-4CBB-8B4E-EECB675653A6}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "App.Maui", "src\dotnet\App.Maui\App.Maui.csproj", "{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.App", "src\dotnet\UI.Blazor.App\UI.Blazor.App.csproj", "{C9869B09-9993-4BB2-9235-D2435B313685}"
@@ -251,8 +241,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.Contracts", "src\dotnet\Contacts.Contracts\Contacts.Contracts.csproj", "{F0BDBF15-0A44-44F0-881C-614BB6051574}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.Service", "src\dotnet\Contacts.Service\Contacts.Service.csproj", "{273FA5B4-A41D-4527-84F5-AEC3DE1951CF}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.Client", "src\dotnet\Contacts.Client\Contacts.Client.csproj", "{F8F99599-9170-4F00-820A-A32B8968913D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.Service.Migration", "src\dotnet\Contacts.Service.Migration\Contacts.Service.Migration.csproj", "{C8C7078E-2C76-4DA6-BCEA-837092D36627}"
 EndProject
