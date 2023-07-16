@@ -2,7 +2,7 @@ using RestEase;
 
 namespace ActualChat.Users;
 
-[BasePath("api/native-auth")]
+[BasePath("native-auth")]
 public interface INativeAuthClient
 {
     [Get("sign-in-apple")]
