@@ -79,7 +79,9 @@ internal sealed class MauiClientAuth : IClientAuth
             }
 
             // WebView-based authentication
-            var returnUrl = History.Nav.ToAbsoluteUri(isSignIn ? Links.Chats : Links.Home).ToString();
+            var returnUrl = History.UrlMapper.ToAbsolute( isSignIn ? Links.Chats : Links.Home);
+            // NOTE(AY): returnUrl here points to https://[xxx.]actual.chat/xxx ,
+            // but MauiNavigationInterceptor will correct it to the right one anyway.
             url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
             History.Nav.NavigateTo(url);
         }

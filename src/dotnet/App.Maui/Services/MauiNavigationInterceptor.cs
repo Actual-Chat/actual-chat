@@ -7,8 +7,8 @@ public class MauiNavigationInterceptor
 {
     // ReSharper disable once CollectionNeverUpdated.Local
     private static HashSet<string> AllowedExternalHosts { get; } = MauiSettings.WebAuth.UseSystemBrowser
-        ? new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" }
-        : new(StringComparer.Ordinal);
+        ? new(StringComparer.Ordinal)
+        : new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" };
 
     public void TryIntercept(Uri uri, UrlLoadingEventArgs eventArgs)
     {
@@ -52,15 +52,18 @@ public class MauiNavigationInterceptor
 
     private bool IsAllowedHostUri(Uri uri)
     {
-        if (MauiSettings.WebAuth.UseSystemBrowser) {
-            var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
-            if (pathAndQuery.OrdinalStartsWith("/maui/"))
-                return true;
-            if (pathAndQuery.OrdinalStartsWith("/signin"))
-                return true;
-            if (pathAndQuery.OrdinalStartsWith("/signout"))
-                return true;
-        }
+        if (MauiSettings.WebAuth.UseSystemBrowser)
+            return false;
+
+        var pathAndQuery = uri.PathAndQuery.ToLowerInvariant();
+        if (pathAndQuery.OrdinalStartsWith("/maui-auth/"))
+            return true;
+        if (pathAndQuery.OrdinalStartsWith("/signin"))
+            return true;
+        if (pathAndQuery.OrdinalStartsWith("/signout"))
+            return true;
+        if (pathAndQuery.OrdinalStartsWith("/fusion/close"))
+            return true;
         return false;
     }
 }

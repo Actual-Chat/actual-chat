@@ -46,8 +46,8 @@ public partial class MainPage : ContentPage
     private void OnWebViewUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
     {
         var uri = eventArgs.Url;
-        Tracer.Point($"{nameof(OnWebViewUrlLoading)}: Url: '{uri}'");
         NavigationInterceptor.TryIntercept(uri, eventArgs);
+        Tracer.Point($"{nameof(OnWebViewUrlLoading)}: Url: '{uri}' -> {eventArgs.UrlLoadingStrategy}");
     }
 
     private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);
