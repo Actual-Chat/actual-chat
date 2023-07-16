@@ -1,4 +1,3 @@
-using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server.Authentication;
 
@@ -23,31 +22,37 @@ public sealed class MauiAuthController : Controller
         => Services = services;
 
     [HttpGet("sign-in/{scheme}")]
-    public ActionResult SignIn(string scheme, string? returnUrl = null, CancellationToken cancellationToken = default)
+    public ActionResult SignIn(
+        string scheme, [FromQuery(Name = "s")] string sessionToken, string? returnUrl = null,
+        CancellationToken cancellationToken = default)
     {
-        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
+        var session = new Session(sessionToken).RequireValid();
         if (returnUrl.IsNullOrEmpty())
             returnUrl = UrlMapper.ToAbsolute(Links.AutoClose("Sign-in"));
         var syncUrl = UrlMapper.ToAbsolute(
-            $"{Route}/sync?s={session.Id.Value.UrlEncode()}&returnUrl={returnUrl.UrlEncode()}");
+            $"{Route}/sync?s={session.Id.UrlEncode()}&returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signIn/{scheme}?returnUrl={syncUrl.UrlEncode()}");
     }
 
     [HttpGet("sign-out")]
-    public ActionResult SignOut(string? returnUrl = null, CancellationToken cancellationToken = default)
+    public ActionResult SignOut(
+        [FromQuery(Name = "s")] string sessionToken, string? returnUrl = null,
+        CancellationToken cancellationToken = default)
     {
-        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
+        var session = new Session(sessionToken).RequireValid();
         if (returnUrl.IsNullOrEmpty())
             returnUrl = UrlMapper.ToAbsolute(Links.AutoClose("Sign-out"));
         var syncUrl = UrlMapper.ToAbsolute(
-            $"{Route}/sync?s={session.Id.Value.UrlEncode()}&returnUrl={returnUrl.UrlEncode()}");
+            $"{Route}/sync?s={session.Id.UrlEncode()}&returnUrl={returnUrl.UrlEncode()}");
         return Redirect($"/signOut?returnUrl={syncUrl.UrlEncode()}");
     }
 
     [HttpGet("sync")]
-    public async Task<ActionResult> Sync(string? returnUrl = null, CancellationToken cancellationToken = default)
+    public async Task<ActionResult> Sync(
+        [FromQuery(Name = "s")] string sessionToken, string? returnUrl = null,
+        CancellationToken cancellationToken = default)
     {
-        var session = SessionCookies.Read(HttpContext, "s").RequireValid();
+        var session = new Session(sessionToken).RequireValid();
         await ServerAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
         returnUrl = returnUrl.NullIfEmpty() ?? Links.AutoClose("Authentication state update").Value;
         return Redirect(returnUrl);

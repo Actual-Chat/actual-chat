@@ -108,11 +108,15 @@ public static partial class StringExt
 
     public static string UrlEncode(this string input)
         => WebUtility.UrlEncode(input);
+    public static string UrlEncode(this Symbol input)
+        => WebUtility.UrlEncode(input);
 
     public static string UrlDecode(this string input)
         => WebUtility.UrlDecode(input);
 
     public static string HtmlEncode(this string input)
+        => HtmlEncoder.Default.Encode(input);
+    public static string HtmlEncode(this Symbol input)
         => HtmlEncoder.Default.Encode(input);
 
     // ParseXxx
