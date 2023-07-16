@@ -106,16 +106,12 @@
 
 @if (isCloseWindowRequest) {
     <script>
-        setTimeout(function () {
-            @*
-           // NOTE(AY): This isn't necessary after switching to SessionCookies
-           window.opener && window.opener.location.reload(false);
-           *@
-            window.close();
-        }, 500)
+        setInterval(function () { window.close(); }, 500)
     </script>
-    <div class="alert alert-primary">
-        @(closeWindowFlowName) completed, you can close this window.
+    <div class="fusion-close" data-flow-name="@(closeWindowFlowName)">
+        <div class="c-content">
+            @(closeWindowFlowName) completed, you can close this window.
+        </div>
     </div>
 } else {
     <app id="app" class="flex flex-col h-full">
