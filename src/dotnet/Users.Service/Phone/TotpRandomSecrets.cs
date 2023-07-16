@@ -10,7 +10,7 @@ namespace ActualChat.Users;
 public class TotpRandomSecrets : IComputeService
 {
     private const string RedisKeyPrefix = ".TotpRandomSecret.";
-    private readonly RandomStringGenerator _rng;
+    private readonly RandomStringGenerator _rsg;
 
     private RedisDb<UsersDbContext> RedisDb { get; }
     private UsersSettings Settings { get; }
@@ -22,14 +22,14 @@ public class TotpRandomSecrets : IComputeService
         DataProtector = services.GetRequiredService<IDataProtectionProvider>().CreateProtector(nameof(TotpRandomSecrets));
         Settings = services.GetRequiredService<UsersSettings>();
 
-        _rng = new (Settings.TotpRandomSecretLength);
+        _rsg = new (Settings.TotpRandomSecretLength);
     }
 
     [ComputeMethod]
     public virtual async Task<string> Get(Session session)
     {
         var key = Key(session);
-        var secret = await GetOrSet(key, _rng.Next()).ConfigureAwait(false);
+        var secret = await GetOrSet(key, _rsg.Next()).ConfigureAwait(false);
         var expiresAt = await GetExpiration(key).ConfigureAwait(false);
         var computed = Computed.GetCurrent();
         // make sure security token doesn't change before totp is entered
