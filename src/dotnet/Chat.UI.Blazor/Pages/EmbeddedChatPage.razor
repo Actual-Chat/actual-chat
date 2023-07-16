@@ -91,7 +91,7 @@
 
             // Set new ChatId
             ChatSid = newChat.Id;
-            SelectChat();
+            await SelectChat(ChatSid);
 
             // Subscribe to chat changes
             newChat = await Chats.Get(Session, newChat.Id, cancellationToken);

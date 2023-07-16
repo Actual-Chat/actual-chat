@@ -70,12 +70,12 @@
         ChatAudioUI.Enable();
         // We need to call SelectChat() before ComputeState starts working,
         // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
-        SelectChat();
+        _ = SelectChat(ChatSid);
         base.OnInitialized();
     }
 
     protected override Task OnParametersSetAsync() {
-        SelectChat();
+        _ = SelectChat(ChatSid);
         return base.OnParametersSetAsync();
     }
 
@@ -179,8 +179,14 @@
             || State.HasError
             || State.Value != Rendered;
 
-    protected void SelectChat() {
-        var chatId = new ChatId(ChatSid ?? "", ParseOrNone.Option);
+    protected async ValueTask SelectChat(string? chatSid) {
+        var chatId = new ChatId(chatSid, ParseOrNone.Option);
+        if (ChatSid == null) {
+            await ChatUI.WhenLoaded;
+            chatId = ChatUI.SelectedChatId.Value;
+            if (chatId.IsNone)
+                chatId = Constants.Chat.AnnouncementsChatId;
+        }
         ChatUI.SelectChat(chatId);
     }
 
