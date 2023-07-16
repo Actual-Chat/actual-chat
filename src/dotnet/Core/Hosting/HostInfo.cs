@@ -8,7 +8,7 @@ public sealed record HostInfo
     private readonly BoolOption _isProductionInstance = new();
     private readonly BoolOption _isStagingInstance = new();
     private readonly BoolOption _isDevelopmentInstance = new();
-    private readonly string _baseUrl = "";
+    private string _baseUrl = "";
     private ImmutableHashSet<Symbol>? _requiredServiceScopes;
 
     public static Symbol ProductionEnvironment { get; } = Environments.Production;
@@ -27,14 +27,18 @@ public sealed record HostInfo
             if (!_baseUrl.IsNullOrEmpty())
                 return _baseUrl;
             if (BaseUrlProvider == null)
-                throw StandardError.Constraint<InvalidOperationException>("BaseUrlProvider is not specified");
+                throw StandardError.Internal("Both BaseUrl and BaseUrlProvider are unspecified.");
 
-            return BaseUrlProvider();
+            _baseUrl = BaseUrlProvider.Invoke();
+            if (_baseUrl.IsNullOrEmpty())
+                throw StandardError.Internal("BaseUrlProvider returned empty BaseUrl.");
+
+            return _baseUrl;
         }
         init => _baseUrl = value;
     }
 
-    public Func<string>? BaseUrlProvider { get; init; }
+    public BaseUrlProvider? BaseUrlProvider { get; init; }
 
     public bool IsProductionInstance => _isProductionInstance.Value ??= Environment == ProductionEnvironment;
     public bool IsStagingInstance => _isStagingInstance.Value ??= Environment == StagingEnvironment;

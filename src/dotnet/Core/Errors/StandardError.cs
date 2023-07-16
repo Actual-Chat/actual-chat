@@ -57,6 +57,6 @@ public static partial class StandardError
     public static Exception Internal(string message)
         => new InternalError(message);
 
-    public static Exception WrongSession(string message)
-        => new SessionError(message);
+    public static Exception External(string message)
+        => new ExternalError(message);
 }

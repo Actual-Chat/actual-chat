@@ -17,7 +17,6 @@
     <PackageReference Include="Stl.Fusion" />
     <PackageReference Include="Stl.Fusion.Ext.Contracts" />
     <PackageReference Include="Stl.Rpc" />
-    <PackageReference Include="Stl.RestEase" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
   </ItemGroup>

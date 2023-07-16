@@ -49,24 +49,24 @@
             </SettingsTab>
         }
 
+        @if (NativeAppSettings != null) {
+            <SettingsTab @key="5" Title="Application" Id="app" IconTitle="settings">
+                <ChildContent>
+                    <AppSettingsView NativeAppSettings="@NativeAppSettings"></AppSettingsView>
+                </ChildContent>
+            </SettingsTab>
+        }
+
         @if (showThemeToggle) {
-            <SettingsTab @key="5" Title="Dark theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+            <SettingsTab @key="6" Title="Dark theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
                 <TitleContent>
                     <ThemeToggle/>
                 </TitleContent>
             </SettingsTab>
         }
 
-        @if (WindowsSettings != null) {
-            <SettingsTab @key="6" Title="Windows settings" Id="winApp" IconTitle="settings">
-                <ChildContent>
-                    <WindowsSettingsView WindowsSettings="@WindowsSettings"></WindowsSettingsView>
-                </ChildContent>
-            </SettingsTab>
-        }
-
         @if (showLogout) {
-            <SettingsTab @key="100" Title="Log out" Id="logOut" IconTitle="log-out" HasSeparatorBefore="true">
+            <SettingsTab @key="100" Title="Log out" Id="signOut" IconTitle="log-out" HasSeparatorBefore="true">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
@@ -84,10 +84,10 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private IWindowsSettings? WindowsSettings { get; set; }
+    private INativeAppSettings? NativeAppSettings { get; set; }
 
     protected override async Task OnInitializedAsync() {
-        WindowsSettings = Services.GetService<IWindowsSettings>();
+        NativeAppSettings = Services.GetService<INativeAppSettings>();
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
 

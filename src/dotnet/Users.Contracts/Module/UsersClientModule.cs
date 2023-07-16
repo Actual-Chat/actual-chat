@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using Stl.RestEase;
 
 namespace ActualChat.Users.Module;
 
@@ -14,8 +15,10 @@ public sealed class UsersClientModule : HostModule
         if (!HostInfo.AppKind.IsClient())
             return; // Client-side only module
 
-        var fusion = services.AddFusion().AddAuthClient();
+        if (HostInfo.AppKind.IsMauiApp())
+            services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
 
+        var fusion = services.AddFusion().AddAuthClient();
         fusion.AddClient<ISystemProperties>();
         fusion.AddClient<IMobileSessions>();
         fusion.AddClient<IServerKvas>();

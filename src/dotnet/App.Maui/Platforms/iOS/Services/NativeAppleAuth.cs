@@ -1,13 +1,13 @@
-using ActualChat.App.Maui.Services;
+using ActualChat.Users;
 
 namespace ActualChat.App.Maui;
 
-public sealed class NativeAppleSignIn
+public sealed class NativeAppleAuth
 {
-    private readonly MobileAuthClient _mobileAuthClient;
+    private IServiceProvider Services { get; }
 
-    public NativeAppleSignIn(MobileAuthClient mobileAuthClient)
-        => _mobileAuthClient = mobileAuthClient;
+    public NativeAppleAuth(IServiceProvider services)
+        => Services = services;
 
     public async Task SignIn()
     {
@@ -16,10 +16,13 @@ public sealed class NativeAppleSignIn
             IncludeFullNameScope = true,
         };
         var result = await AppleSignInAuthenticator.AuthenticateAsync(options).ConfigureAwait(false);
+
+        var sessionId = Services.Session().Id.Value;
         var code = result.Properties["authorization_code"];
         var email = result.Properties["email"];
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
-        await _mobileAuthClient.SignInAppleWithCode(code, name, email, userId).ConfigureAwait(true);
+        var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
+        await nativeAuthClient.SignInApple(sessionId, code, name, email, userId).ConfigureAwait(false);
     }
 }

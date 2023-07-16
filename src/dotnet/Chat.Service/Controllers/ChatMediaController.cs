@@ -4,14 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
 
-[ApiController]
-public sealed class FilesController : ControllerBase
+[ApiController, Route("api/chat-media")]
+public sealed class ChatMediaController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
     private ICommander Commander { get; }
 
-    public FilesController(
+    public ChatMediaController(
         IContentSaver contentSaver,
         IEnumerable<IUploadProcessor> uploadProcessors,
         ICommander commander)
@@ -21,8 +21,9 @@ public sealed class FilesController : ControllerBase
         Commander = commander;
     }
 
-    [HttpPost, Route("api/chats/{chatId}/upload-picture")] // TODO: for BC only, remove when not required anymore
-    [HttpPost, Route("api/chats/{chatId}/files")]
+    [HttpPost("{chatId}/upload")]
+    [Route("api/chats/{chatId}/upload-picture")] // TODO: Obsolete, remove in ~ Aug 2023
+    [Route("api/chats/{chatId}/files")] // TODO: Obsolete, remove in ~ Aug 2023
     public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
         var httpRequest = HttpContext.Request;
@@ -63,9 +64,10 @@ public sealed class FilesController : ControllerBase
         using var stream = new MemoryStream(processedFile.Content);
         var content = new Content(media.ContentId, file.ContentType, stream);
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-
         return Ok(new MediaContent(media.Id, media.ContentId));
     }
+
+    // Private methods
 
     private Task<ProcessedFileInfo> ProcessFile(FileInfo file, CancellationToken cancellationToken)
     {

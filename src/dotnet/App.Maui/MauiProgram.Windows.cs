@@ -1,4 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Components;
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration;
@@ -35,7 +36,7 @@ public static partial class MauiProgram
         services.AddTransient<IAppIconBadge>(_ => new WindowsAppIconBadge());
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
         services.AddScoped<INotificationPermissions>(_ => new WindowsNotificationPermissions());
-        services.AddTransient<IWindowsSettings>(_ => new WindowsSettings());
+        services.AddTransient<INativeAppSettings>(_ => new WindowsAppSettings());
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

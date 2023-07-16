@@ -6,6 +6,11 @@
 
   <ItemGroup>
     <PackageReference Include="MemoryPack" />
+    <PackageReference Include="Stl.RestEase" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RestEase.SourceGenerator" />
   </ItemGroup>
 
 </Project>

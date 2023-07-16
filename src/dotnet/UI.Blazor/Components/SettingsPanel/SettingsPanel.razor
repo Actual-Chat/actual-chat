@@ -21,8 +21,8 @@
             </Button>;
     }
 
-    RenderFragment RenderSignOutBtn(SettingsTab tab)
-        => @<Button Class="" Click="@(_ => AccountUI.ClientAuth.SignOut())" data-tab-id="@tab.Id" role="tab">
+    RenderFragment RenderSignOutButton(SettingsTab tab)
+        => @<Button Class="" Click="@SignOut" data-tab-id="@tab.Id" role="tab">
                @RenderTabTitle(tab)
            </Button>;
 
@@ -61,8 +61,8 @@
                     }
                     <div class="c-tab-item @containerCls @activeCls">
                         @switch (tab.Id) {
-                            case "logOut":
-                                @RenderSignOutBtn(tab)
+                            case "signOut":
+                                @RenderSignOutButton(tab)
                                 break;
                             default:
                                 @RenderCommonButton(tab)
@@ -116,6 +116,7 @@
                 return;
             if (value != null && !_tabs.Contains(value))
                 throw StandardError.Constraint("This tab does not belong to the panel.");
+
             _activeTab = value;
             ActiveTabChanged.InvokeAsync(value);
         }
@@ -173,5 +174,11 @@
     public void OnTabArrowClick() {
         _isRightSideVisible = false;
         StateHasChanged();
+    }
+
+    private void SignOut() {
+        var modalUI = AccountUI.Services.GetRequiredService<ModalUI>();
+        modalUI.Host.CloseAll(true);
+        AccountUI.ClientAuth.SignOut();
     }
 }

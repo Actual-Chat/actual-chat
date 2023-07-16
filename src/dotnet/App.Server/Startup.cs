@@ -76,7 +76,7 @@ public class Startup
         services.AddSingleton(c => {
             var hostSettings = Cfg.GetSettings<HostSettings>();
             var baseUrl = hostSettings.BaseUrl;
-            Func<string>? baseUrlProvider = null;
+            BaseUrlProvider? baseUrlProvider = null;
             if (baseUrl.IsNullOrEmpty()) {
                 var server = c.GetRequiredService<IServer>();
                 var serverAddressesFeature =

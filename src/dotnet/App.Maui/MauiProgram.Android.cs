@@ -37,7 +37,7 @@ public static partial class MauiProgram
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
         services.AddScoped<INotificationPermissions>(_ => new AndroidNotificationPermissions());
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
-        services.AddScoped(c => new NativeGoogleSignIn(c));
+        services.AddScoped(c => new NativeGoogleAuth(c));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

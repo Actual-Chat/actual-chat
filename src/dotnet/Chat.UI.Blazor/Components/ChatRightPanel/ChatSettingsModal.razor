@@ -205,7 +205,7 @@
         _form.IsTemplate = chat.IsTemplate;
         _form.AllowGuestAuthors = chat.AllowGuestAuthors;
         _form.AllowAnonymousAuthors = chat.AllowAnonymousAuthors;
-        _form.ImageUploadUrl = $"/api/chats/{chat.Id}/upload-picture";
+        _form.ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload";
     }
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {

@@ -1,11 +1,10 @@
 using ActualChat.Media;
 using ActualChat.Web;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
 
-[ApiController]
+[ApiController, Route("api/avatars")]
 public sealed class AvatarPicturesController : ControllerBase
 {
     private IContentSaver ContentSaver { get; }
@@ -25,7 +24,7 @@ public sealed class AvatarPicturesController : ControllerBase
         Auth = auth;
     }
 
-    [HttpPost, Route("api/avatars/upload-picture")]
+    [HttpPost("upload-picture")]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
     {
         var httpRequest = HttpContext.Request;
@@ -72,7 +71,6 @@ public sealed class AvatarPicturesController : ControllerBase
 
         var content = new Content(media.ContentId, file.ContentType, stream);
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-
         return Ok(new MediaContent(media.Id, media.ContentId));
     }
 }

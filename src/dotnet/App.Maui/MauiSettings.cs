@@ -21,8 +21,8 @@ public static class MauiSettings
 
     // Nested types
 
-    public static class SignIn
+    public static class WebAuth
     {
-        public static bool UseWebView { get; } = true;
+        public static bool UseSystemBrowser { get; } = false;
     }
 }

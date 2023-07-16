@@ -20,39 +20,38 @@ internal sealed class MauiClientAuth : IClientAuth
     public async Task SignIn(string schema)
     {
         if (schema.IsNullOrEmpty())
-            throw new ArgumentException(nameof(schema));
+            throw new ArgumentOutOfRangeException(nameof(schema));
 
-        if (OrdinalEquals(IClientAuth.GoogleSchemeName, schema)) {
 #if ANDROID
-            var googleSignIn = Services.GetRequiredService<NativeGoogleSignIn>();
-            await googleSignIn.SignIn().ConfigureAwait(false);
+        if (OrdinalEquals(IClientAuth.GoogleSchemeName, schema)) {
+            var googleAuth = Services.GetRequiredService<NativeGoogleAuth>();
+            await googleAuth.SignIn().ConfigureAwait(false);
             return;
-#endif
         }
-
+#endif
 #if IOS
         if (OrdinalEquals(IClientAuth.AppleIdSchemeName, schema)
             && DeviceInfo.Platform == DevicePlatform.iOS
             && DeviceInfo.Version.Major >= 13)
         {
-            var appleSignIn = Services.GetRequiredService<NativeAppleSignIn>();
-            await appleSignIn.SignIn().ConfigureAwait(false);
+            var appleAuth = Services.GetRequiredService<NativeAppleAuth>();
+            await appleAuth.SignIn().ConfigureAwait(false);
             return;
         }
 #endif
 
-        await SignInOrSignOut($"signIn2/{schema}").ConfigureAwait(false);
+        await WebSignInOrSignOut($"sign-in/{schema}").ConfigureAwait(false);
     }
 
     public async Task SignOut()
     {
 #if ANDROID
-        var androidGoogleSignIn = Services.GetRequiredService<NativeGoogleSignIn>();
-        if (androidGoogleSignIn.IsSignedIn())
-            await androidGoogleSignIn.SignOut().ConfigureAwait(true);
+        var googleAuth = Services.GetRequiredService<NativeGoogleAuth>();
+        if (googleAuth.IsSignedIn())
+            await googleAuth.SignOut().ConfigureAwait(true);
 #endif
 
-        await SignInOrSignOut("signOut2").ConfigureAwait(false);
+        await WebSignInOrSignOut("sign-out").ConfigureAwait(false);
     }
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
@@ -68,23 +67,24 @@ internal sealed class MauiClientAuth : IClientAuth
 
     // Private methods
 
-    private async Task SignInOrSignOut(string endpoint)
+    private async Task WebSignInOrSignOut(string endpoint)
     {
-        var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("signIn");
+        var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
         try {
             var sessionId = Services.Session().Id.Value;
-            var url = $"{MauiSettings.BaseUrl}mobileAuth/{endpoint}?s={sessionId.UrlEncode()}";
-            if (MauiSettings.SignIn.UseWebView) {
-                var returnUrl = History.Nav.ToAbsoluteUri(isSignIn ? Links.Chats : Links.Home).ToString();
-                url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
-                History.Nav.NavigateTo(url);
-            }
-            else
+            var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionId.UrlEncode()}";
+            if (MauiSettings.WebAuth.UseSystemBrowser) {
                 await Browser.Default.OpenAsync(url, BrowserLaunchMode.External).ConfigureAwait(false);
+                return;
+            }
+
+            // WebView-based authentication
+            var returnUrl = History.Nav.ToAbsoluteUri(isSignIn ? Links.Chats : Links.Home).ToString();
+            url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
+            History.Nav.NavigateTo(url);
         }
         catch (Exception ex) {
-            Log.LogError(ex, "SignInOrSignOut failed (endpoint: {Endpoint})", endpoint);
-            throw;
+            Log.LogError(ex, "WebSignInOrSignOut failed (endpoint: {Endpoint})", endpoint);
         }
     }
 }

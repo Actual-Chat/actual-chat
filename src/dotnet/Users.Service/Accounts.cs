@@ -22,11 +22,11 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         if (user == null) {
             var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
             if (sessionInfo == null)
-                throw StandardError.WrongSession("Session is not found.");
+                throw StandardError.NotFound<Session>();
 
             userId = sessionInfo.GetGuestId();
             if (!userId.IsGuest)
-                throw StandardError.WrongSession("GuestId is not set.");
+                throw StandardError.Internal("GuestId is not set.");
         }
         else
             userId = new UserId(user.Id);

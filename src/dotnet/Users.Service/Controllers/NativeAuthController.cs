@@ -5,66 +5,37 @@ using ActualChat.Users.Module;
 using AspNet.Security.OAuth.Apple;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Stl.Fusion.Server.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Stl.Fusion.Server;
 
 namespace ActualChat.Users.Controllers;
 
-[Obsolete("Kept only for compatibility with the old API.")]
-[ApiController, Route("mobileAuth")]
-public sealed class MobileAuthController : Controller
+[ApiController, JsonifyErrors, Route("api/native-auth")]
+public sealed class NativeAuthController : Controller
 {
-    private ServerAuthHelper? _serverAuthHelper;
-    private UrlMapper? _urlMapper;
-    private ICommander? _commander;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
-    private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
-    private UrlMapper UrlMapper => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
-    private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public MobileAuthController(IServiceProvider services)
+    public NativeAuthController(IServiceProvider services)
         => Services = services;
 
-    [HttpGet("signIn/{sessionId}/{scheme}")]
-    public async Task<ActionResult> SignIn(string sessionId, string scheme, CancellationToken cancellationToken)
-    {
-        var session = new Session(sessionId).RequireValid();
-        // TODO(DF): Check why sign in works with empty scheme
-        if (!HttpContext.User.Identities.Any(id => id.IsAuthenticated)) // Not authenticated, challenge
-            await Request.HttpContext.ChallengeAsync(scheme).ConfigureAwait(false);
-
-        var serverAuthHelper = Services.GetRequiredService<ServerAuthHelper>();
-        await serverAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
-        return Redirect(Links.AutoClose("Sign-in"));
-    }
-
-    [HttpGet("signOut/{sessionId}")]
-    public async Task<ActionResult> SignOut(string sessionId, CancellationToken cancellationToken)
-    {
-        var session = new Session(sessionId).RequireValid();
-        await Commander.Call(new Auth_SignOut(session), cancellationToken).ConfigureAwait(false);
-        return Redirect(Links.AutoClose("Sign-out"));
-    }
-
-    [HttpPost("signInAppleWithCode")]
-    [Consumes("application/x-www-form-urlencoded")]
-    public async Task<IActionResult> SignInAppleWithCode(
-        [FromForm] IFormCollection request,
+    [HttpGet("sign-in-apple")]
+    public async Task SignInApple(
+        string sessionId,
+        string userId,
+        string code,
+        string? email,
+        string? name,
         CancellationToken cancellationToken)
     {
-        var session = new Session(request["SessionId"].ToString()).RequireValid();
-        var userId = request["UserId"].ToString();
+        var session = new Session(sessionId).RequireValid();
         userId.RequireNonEmpty(nameof(userId));
-        var code = request["Code"].ToString();
         code.RequireNonEmpty(nameof(code));
-        var email = request["Email"].ToString();
-        var name = request["Name"].ToString();
 
         var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
         var userSettings = Services.GetRequiredService<UsersSettings>();
@@ -72,19 +43,14 @@ public sealed class MobileAuthController : Controller
             .GetHandlerAsync(HttpContext, AppleAuthenticationDefaults.AuthenticationScheme)
             .ConfigureAwait(false);
         if (handler is not AppleAuthenticationHandler appleAuthHandler)
-            throw new InvalidOperationException($"{nameof(AppleAuthenticationHandler)} is not found.");
+            throw StandardError.NotFound<AppleAuthenticationHandler>();
 
         var options = appleAuthHandler.Options;
         var context = new AppleGenerateClientSecretContext(HttpContext, appleAuthHandler.Scheme, options);
         options.ClientId = userSettings.AppleAppId;
         options.ClientSecret = await options.ClientSecretGenerator.GenerateAsync(context).ConfigureAwait(false);
 
-        using var tokenResponse = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
-        if (tokenResponse.Error != null) {
-            Log.LogError(tokenResponse.Error, $"{nameof(SignInAppleWithCode)} error.");
-            return BadRequest();
-        }
-
+        using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
         var identity = new ClaimsIdentity(options.ClaimsIssuer);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userId));
         if (!email.IsNullOrEmpty())
@@ -109,31 +75,29 @@ public sealed class MobileAuthController : Controller
 
         var principal = new ClaimsPrincipal(identity);
         await UpdateAuthStateWithPrincipal(session, principal, cancellationToken).ConfigureAwait(false);
-        return Ok();
     }
 
-    [HttpGet("signInGoogleWithCode/{sessionId}/{code}")]
-    public async Task<IActionResult> SignInGoogleWithCode(string sessionId, string code, CancellationToken cancellationToken)
+    [HttpGet("sign-in-google")]
+    public async Task SignInGoogle(string sessionId, string code, CancellationToken cancellationToken)
     {
         var session = new Session(sessionId).RequireValid();
-        code = code.UrlDecode(); // Weird, but this is somehow necessary
+        // code = code.UrlDecode(); // Weird, but this is somehow necessary
+        code.RequireNonEmpty(nameof(code));
         var schemeName = GoogleDefaults.AuthenticationScheme;
         var options = Services
             .GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
             .Get(schemeName);
 
-        using var tokens = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
-        if (tokens.Error != null)
-            return BadRequest(tokens.Error);
-        if (tokens.AccessToken.IsNullOrEmpty())
-            return BadRequest("Failed to retrieve access token.");
-
-        // Get the Google user
+        using var token = await ExchangeCode(code, options, cancellationToken).ConfigureAwait(false);
         var request = new HttpRequestMessage(HttpMethod.Get, options.UserInformationEndpoint);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
         var userResponse = await options.Backchannel.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!userResponse.IsSuccessStatusCode)
-            return BadRequest($"An error occurred when retrieving Google user information ({userResponse.StatusCode}). Please check if the authentication information is correct.");
+        if (!userResponse.IsSuccessStatusCode) {
+            var message =
+                $"An error occurred when retrieving Google user information ({userResponse.StatusCode}). "
+                + $"Please check if the authentication information is correct.";
+            throw StandardError.External(message);
+        }
 
         // Build a principal from the Google user
         var claimsIssuer = options.ClaimsIssuer ?? schemeName;
@@ -144,10 +108,9 @@ public sealed class MobileAuthController : Controller
             foreach (var action in options.ClaimActions)
                 action.Run(userData, identity, claimsIssuer);
         }
-        var principal = new ClaimsPrincipal(identity);
 
+        var principal = new ClaimsPrincipal(identity);
         await UpdateAuthStateWithPrincipal(session, principal, cancellationToken).ConfigureAwait(false);
-        return Ok();
     }
 
     // Private methods
@@ -156,7 +119,7 @@ public sealed class MobileAuthController : Controller
     // Implementation is a copy from Microsoft.AspNetCore.Authentication.OAuth.OAuthHandler with small modifications.
     private async Task<OAuthTokenResponse> ExchangeCode(string code, OAuthOptions options, CancellationToken requestAborted)
     {
-        var tokenRequestParameters = new Dictionary<string, string>(StringComparer.Ordinal) {
+        var requestParameters = new Dictionary<string, string>(StringComparer.Ordinal) {
             { "client_id", options.ClientId },
             { "redirect_uri", ""  /* context.RedirectUri */ },
             { "client_secret", options.ClientSecret },
@@ -166,39 +129,28 @@ public sealed class MobileAuthController : Controller
 
         // We do not use PKCE here, TODO(DF): read more about PKCE.
         // // PKCE https://tools.ietf.org/html/rfc7636#section-4.5, see BuildChallengeUrl
-        // if (context.Properties.Items.TryGetValue(OAuthConstants.CodeVerifierKey, out var codeVerifier))
-        // {
+        // if (context.Properties.Items.TryGetValue(OAuthConstants.CodeVerifierKey, out var codeVerifier)) {
         //     tokenRequestParameters.Add(OAuthConstants.CodeVerifierKey, codeVerifier!);
         //     context.Properties.Items.Remove(OAuthConstants.CodeVerifierKey);
         // }
 
         var backChannel = options.Backchannel;
-
-        var requestContent = new FormUrlEncodedContent(tokenRequestParameters!);
-
+        var requestContent = new FormUrlEncodedContent(requestParameters!);
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, options.TokenEndpoint);
         requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         requestMessage.Content = requestContent;
         requestMessage.Version = backChannel.DefaultRequestVersion;
         var response = await backChannel.SendAsync(requestMessage, requestAborted).ConfigureAwait(false);
-        if (response.IsSuccessStatusCode) {
-            var json = await response.Content.ReadAsStringAsync(requestAborted).ConfigureAwait(false);
-            var payload = JsonDocument.Parse(json);
-            return OAuthTokenResponse.Success(payload);
+        if (!response.IsSuccessStatusCode) {
+            var message = "OAuth token endpoint failure: " + await Format(response).ConfigureAwait(false);
+            throw StandardError.External(message);
         }
 
-        var message = "OAuth token endpoint failure: " + await Format(response).ConfigureAwait(false);
-        return OAuthTokenResponse.Failed(new Exception(message));
-    }
-
-    private static async Task<string> Format(HttpResponseMessage response)
-    {
-        var output = new StringBuilder();
-        output.Append("Status: " + response.StatusCode + ";");
-        output.Append("Headers: " + response.Headers + ";");
-        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        output.Append("Body: " + body + ";");
-        return output.ToString();
+        var json = await response.Content.ReadAsStringAsync(requestAborted).ConfigureAwait(false);
+        var result = OAuthTokenResponse.Success(JsonDocument.Parse(json));
+        if (result.AccessToken.IsNullOrEmpty())
+            throw StandardError.External("Failed to retrieve access token.");
+        return result;
     }
 
     private async Task UpdateAuthStateWithPrincipal(
@@ -215,5 +167,15 @@ public sealed class MobileAuthController : Controller
         finally {
             HttpContext.User = oldUser;
         }
+    }
+
+    private static async Task<string> Format(HttpResponseMessage response)
+    {
+        var output = new StringBuilder();
+        output.Append("Status: " + response.StatusCode + "; ");
+        output.Append("Headers: " + response.Headers + "; ");
+        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        output.Append("Body: " + body);
+        return output.ToString();
     }
 }

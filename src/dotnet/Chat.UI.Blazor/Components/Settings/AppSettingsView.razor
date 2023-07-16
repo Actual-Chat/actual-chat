@@ -1,11 +1,11 @@
-﻿<Tile Class="win-settings">
+﻿<Tile Class="app-settings">
     @if (_autoStartState != null) {
         <TileItem Class="auto-launch">
             <Icon>
                 <i class="icon-settings text-xl"></i>
             </Icon>
             <Content>
-                Auto launch with the system start
+                Auto-start Actual Chat when you log on
             </Content>
             <Caption>
                 @if (_autoStartState.Fix != null) {
@@ -26,18 +26,18 @@
 </Tile>
 
 @code {
-    private AutoStartupState? _autoStartState;
+    private AutoStartState? _autoStartState;
 
-    [Parameter, EditorRequired] public IWindowsSettings WindowsSettings { get; set; } = null!;
+    [Parameter, EditorRequired] public INativeAppSettings NativeAppSettings { get; set; } = null!;
 
     protected override Task OnInitializedAsync()
         => UpdateAutoStart();
 
     private async Task UpdateAutoStart()
-        => _autoStartState = await WindowsSettings.GetAutoStartupState();
+        => _autoStartState = await NativeAppSettings.GetAutoStartState();
 
     private async Task OnAutoStartChanged(bool isEnabled) {
-        await WindowsSettings.SetAutoStartup(isEnabled);
+        await NativeAppSettings.SetAutoStart(isEnabled);
         await UpdateAutoStart();
     }
 }

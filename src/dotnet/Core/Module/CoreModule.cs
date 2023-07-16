@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.Rpc;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.Options;
 using Stl.Fusion.Extensions;
 using Stl.Generators;
 using Stl.Mathematics.Internal;
-using Stl.RestEase;
 using Stl.Rpc;
 
 namespace ActualChat.Module;
