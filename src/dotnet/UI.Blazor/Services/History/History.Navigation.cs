@@ -40,6 +40,9 @@ public partial class History
         _ = JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.forceReload", url, mustReplace, NewItemId());
     }
 
+    public ValueTask OpenNewWindow(string url, string features = "")
+        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.openNewWindow", url, features);
+
     // Internal and private methods
 
     private Task NavigateBack(bool addInFront = false)

@@ -47,4 +47,11 @@ export class History {
         };
         this.navigationManager.navigateTo(url, options);
     }
+
+    public static async openNewWindow(url: string, features = "") {
+        if (!!features)
+            window.open(url, "_blank", features);
+        else
+            window.open(url, "_blank");
+    }
 }
