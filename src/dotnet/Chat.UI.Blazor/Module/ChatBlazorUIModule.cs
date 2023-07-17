@@ -81,6 +81,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<AuthorModal.Model, AuthorModal>()
             .Add<DeleteMessageModal.Model, DeleteMessageModal>()
             .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
+            .Add<ForwardMessageModal.Model, ForwardMessageModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

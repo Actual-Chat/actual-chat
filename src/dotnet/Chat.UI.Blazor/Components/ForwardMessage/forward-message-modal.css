@@ -1,0 +1,29 @@
+.forward-message-modal {
+    @apply text-03;
+}
+.forward-message-modal.modal-frame {
+    @apply px-0;
+    @apply gap-y-0;
+}
+.forward-message-modal .no-padding-header-decorator {
+    @apply mx-0;
+}
+.forward-message-modal .modal-header {
+    @apply mx-4 p-0;
+    @apply min-h-12 max-h-12;
+}
+.forward-message-modal .dialog-body {
+    @apply p-0;
+}
+.forward-message-modal .dialog-buttons {
+    @apply -flex-x;
+    @apply px-4;
+    @apply pt-4;
+    @apply pb-2;
+}
+.forward-message-modal .form-block {
+    @apply px-4;
+}
+.forward-message-modal .tile-item {
+    @apply hover:bg-inherit;
+}

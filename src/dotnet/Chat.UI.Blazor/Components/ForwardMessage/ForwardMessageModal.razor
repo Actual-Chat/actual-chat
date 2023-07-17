@@ -1,0 +1,63 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IModalView<ForwardMessageModal.Model>
+@using ActualChat.Search
+@{
+    var canSend = _selectedChats?.Any() == true;
+}
+
+<DialogFrame
+    Class="forward-message-modal"
+    Title="Forward message"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnSend, "Send")">
+    <Body>
+        <SearchBoxNew
+            Placeholder="Who would you like to share with"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelect
+            SearchPhrase="_searchPhrase"
+            SelectionChanged="OnSelectionChanged" />
+    </Body>
+    <Buttons>
+        <div class="btn-group">
+            @{
+                var submitClass = $"btn-primary {(canSend ? "" : "disabled")}";
+            }
+            <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
+            <Button Type="@ButtonType.Submit" Class="@submitClass" Click="OnSend">Send</Button>
+        </div>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private IReadOnlyCollection<ChatId>? _selectedChats;
+
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public sealed record Model(ChatId SourceChatId, Action<IReadOnlyCollection<ChatId>> ChatsSelected);
+
+    private void OnCancel() {
+        Modal.Close();
+    }
+
+    private void OnSend() {
+        if (_selectedChats?.Any() == true)
+            ModalModel.ChatsSelected(_selectedChats);
+
+        Modal.Close();
+    }
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        StateHasChanged();
+    }
+
+    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats) {
+        _selectedChats = selectedChats;
+    }
+}
