@@ -1,0 +1,76 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Search
+@inherits ComputedStateComponent<ContactSelect.ComputedModel>
+
+<div class="contact-select-list">
+    @foreach (var chatInfo in _filteredChats) {
+        var isSelected = _selectedChats.Contains(chatInfo.Id);
+        <div class="contact-select-list-item"
+             @onclick="() => OnContactClick(chatInfo)">
+            <ContactView
+                ChatInfo="chatInfo"
+                SearchPhrase="SearchPhrase"/>
+            <Checkbox
+                IsChecked="@isSelected"
+                Class="!flex-none"
+                Change="() => OnContactClick(chatInfo)"/>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ChatInfo> _filteredChats = new();
+    private readonly List<ChatId> _selectedChats = new();
+
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public SearchPhrase SearchPhrase { get; set; } = null!;
+    [Parameter] public EventCallback<IReadOnlyCollection<ChatId>> SelectionChanged { get; set; }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            Category = GetStateCategory(),
+        };
+
+    protected override void OnParametersSet() {
+        FilterChats(State.Value.Chats);
+        StateHasChanged();
+    }
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var allUnordered = await ChatListUI.ListAllUnordered(ChatListFilter.None, cancellationToken);
+        var chats = allUnordered.Values.OrderBy(ChatListOrder.ByLastEventTime).ToList();
+
+        FilterChats(chats);
+
+        return new ComputedModel {
+            Chats = chats,
+        };
+    }
+
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new() { Chats = Array.Empty<ChatInfo>() };
+        public IReadOnlyCollection<ChatInfo> Chats { get; init; } = null!;
+    }
+
+    private void FilterChats(IReadOnlyCollection<ChatInfo> chats) {
+        _filteredChats = SearchPhrase.IsEmpty
+            ? chats.ToList()
+            : chats
+                .FilterAndOrderBySearchPhrase(SearchPhrase)
+                .ToList();
+    }
+
+    private async Task OnContactClick(ChatInfo contact) {
+        if (_selectedChats.Contains(contact.Id)) {
+            _selectedChats.Remove(contact.Id);
+        } else {
+            _selectedChats.Add(contact.Id);
+        }
+
+        await SelectionChanged.InvokeAsync(_selectedChats.ToList());
+
+        StateHasChanged();
+    }
+}

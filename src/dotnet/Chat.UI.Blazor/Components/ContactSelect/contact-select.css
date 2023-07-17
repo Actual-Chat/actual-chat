@@ -1,0 +1,15 @@
+.contact-select-list {
+    @apply flex-y grow;
+    @apply py-1;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.contact-select-list-item {
+    @apply flex-x items-center;
+    @apply gap-x-1 py-1 px-4;
+    @apply rounded-md;
+    @apply hover:bg-secondary;
+}
+.contact-select-list-item,
+.contact-select-list-item * {
+    @apply cursor-pointer;
+}
