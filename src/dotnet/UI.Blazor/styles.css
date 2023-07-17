@@ -26,6 +26,7 @@
 @import './Components/SettingsPanel/settings-panel.css';
 @import './Components/SignIn/Modal/sign-in-modal.css';
 @import './Components/SideNav/side-nav.css';
+@import './Components/Share/share-modal.css';
 @import './Components/Skeleton/skeleton.css';
 @import './Components/Stepper/stepper.css';
 @import './Components/TabPanel/tab-panel.css';

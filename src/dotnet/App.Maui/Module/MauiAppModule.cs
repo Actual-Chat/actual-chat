@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Stl.Fusion.Client.Caching;
 using Stl.IO;
@@ -22,6 +23,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         // UI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
+        services.AddScoped<IMauiShare>(_ => new MauiShare());
 
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));

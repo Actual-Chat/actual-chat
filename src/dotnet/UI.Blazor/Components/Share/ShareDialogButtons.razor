@@ -1,0 +1,71 @@
+﻿@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="share-dialog-buttons">
+    <CopyTrigger Tooltip="Copy" CopyText="@GetText()">
+        <Button Class="btn-modal">
+            <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+            <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
+            <span>Copy link</span>
+        </Button>
+    </CopyTrigger>
+    @if (_mauiShare != null) {
+        <Button Class="btn-modal" Click="OnShareClicked">
+            <i class="icon-share-more text-2xl"></i>
+            <span>Share</span>
+        </Button>
+    } else if (_canShareWithWeb) {
+        <button class="btn btn-modal"
+                onclick="@($"{BlazorUICoreModule.ImportName}.Share.onClick(event)")"
+                data-share-link="@GetLink()"
+                data-share-text="@Text"
+                data-share-title="@Title">
+            <div class="btn-content" tabindex="-1">
+                <i class="icon-share-more text-2xl"></i>
+                <span>Share</span>
+            </div>
+        </button>
+    }
+</div>
+
+@code {
+    private bool _canShareWithWeb;
+    private IMauiShare? _mauiShare;
+
+    [Inject] IJSRuntime JSRuntime { get; init; } = null!;
+    [Inject] IServiceProvider Services { get; init; } = null!;
+
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public Uri? Link { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        _mauiShare = Services.GetService<IMauiShare>();
+        if (_mauiShare == null) {
+            var webShareInfo = Services.GetRequiredService<WebShareInfo>();
+            await CheckCanShareWithWeb(webShareInfo);
+        }
+    }
+
+    private async Task CheckCanShareWithWeb(WebShareInfo webShareInfo) {
+        if (Link != null)
+            _canShareWithWeb = await webShareInfo.CanShareLink();
+        else if (!Text.IsNullOrEmpty())
+            _canShareWithWeb = await webShareInfo.CanShareText();
+    }
+
+    private string GetText()
+        => Text.NullIfEmpty() ?? GetLink();
+
+    private string GetLink()
+        => Link?.ToString() ?? "";
+
+    private async Task OnShareClicked() {
+        var link = GetLink();
+        if (!link.IsNullOrEmpty())
+            await _mauiShare!.ShareLink(Title, link);
+        else
+            await _mauiShare!.ShareText(Title, Text);
+    }
+}

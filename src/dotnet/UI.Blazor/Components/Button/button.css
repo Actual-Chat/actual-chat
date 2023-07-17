@@ -242,6 +242,9 @@ body.hoverable .btn.btn-square:hover > .btn-content {
 .btn.btn-round.primary-icon .btn-content {
     @apply text-primary;
 }
+.btn.btn-round.accent-icon .btn-content {
+    @apply text-accent;
+}
 .btn.btn-round.hover-primary-icon .btn-content {
     @apply hover:text-primary;
 }

@@ -46,6 +46,7 @@ export type LogScope =
     | 'TuneUI'
     | 'UserActivityUI'
     | 'VibrationUI'
+    | 'Share'
     // Audio
     | 'AudioContextRef'
     | 'AudioContextSource'

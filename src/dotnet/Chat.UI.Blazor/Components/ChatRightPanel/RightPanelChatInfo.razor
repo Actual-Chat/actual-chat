@@ -58,13 +58,13 @@
         </Right>
     </RightPanelChatInfoItem>
 
-    @* @if (m.Link is not null) { *@
-    @*     <RightPanelChatInfoItem *@
-    @*         Click="@OnShareClick" *@
-    @*         Icon="icon-share text-accent" *@
-    @*         ContentClass="text-accent" *@
-    @*         Content="Share" /> *@
-    @* } *@
+    @if (m.Link is { } publicUrl2) {
+        <RightPanelChatInfoItem
+            Click="@(() => OnShareClick(publicUrl2.AbsoluteUrl))"
+            Icon="icon-share text-accent"
+            ContentClass="text-accent"
+            Content="Share" />
+    }
 
     @if (m.Rules.CanInvite()) {
         <RightPanelChatInfoItem
@@ -88,6 +88,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -131,6 +132,7 @@
             Owners = owners,
             NotificationMode = userChatSettings.NotificationMode,
             Rules = rules,
+            EnableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken),
         };
     }
 
@@ -159,8 +161,8 @@
     private Task OnInviteClick()
         => ModalUI.Show(new InviteAuthorModal.Model(Chat));
 
-    private void OnShareClick()
-    {}
+    private void OnShareClick(string link)
+        => ModalUI.Show(new ShareModal.Model(new Uri(link)) { Title = "Share Chat" });
 
     public sealed record Model {
         public static Model None { get; } = new();
@@ -170,6 +172,7 @@
         public ChatNotificationMode NotificationMode { get; init; }
         public List<OwnerModel>? Owners { get; init; }
         public AuthorRules Rules { get; init; } = null!;
+        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed record OwnerModel {
