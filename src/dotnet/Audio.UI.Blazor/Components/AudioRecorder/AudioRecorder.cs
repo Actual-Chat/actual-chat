@@ -1,11 +1,12 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
+using ActualChat.Users;
 using Stl.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
+public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
 {
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
@@ -13,6 +14,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     private readonly AsyncLock _stateLock = AsyncLock.New(LockReentryMode.Unchecked);
     private readonly IMutableState<AudioRecorderState> _state;
     private IJSObjectReference _jsRef = null!;
+    private volatile AuthToken _recorderToken = AuthToken.None;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -22,6 +24,8 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     private Session Session { get; }
     private IJSRuntime JS { get; }
     private IServiceProvider Services { get; }
+    private IAuthTokens AuthTokens { get; }
+    private MomentClockSet Clocks { get; }
 
     public MicrophonePermissionHandler MicrophonePermission { get; }
     public IState<AudioRecorderState> State => _state;
@@ -32,8 +36,10 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         Services = services;
         Log = services.LogFor(GetType());
         Session = services.Session();
+        Clocks = services.Clocks();
         JS = services.GetRequiredService<IJSRuntime>();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
+        AuthTokens = services.GetRequiredService<IAuthTokens>();
 
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,
@@ -44,20 +50,21 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         async Task Initialize()
         {
             var hostInfo = services.GetRequiredService<HostInfo>();
-            // TODO(AK): register recorderId for the session
-            var recorderId = hostInfo.ClientKind == ClientKind.Ios
-                ? Session.Id.Value
-                : Session.Default.Id.Value;
+            _recorderToken = hostInfo.ClientKind == ClientKind.Ios
+                ? await AuthTokens.Create(Session, TokenType.Audio, CancellationToken.None)
+                : AuthToken.None;
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
                     _blazorRef,
-                    recorderId)
+                    _recorderToken.Value)
                 .ConfigureAwait(false);
+
+            this.Start();
         }
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async Task DisposeAsyncCore()
     {
         using var _ = await _stateLock.Lock().ConfigureAwait(false);
         await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
@@ -156,6 +163,36 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     }
 
     // Private methods
+
+    protected override async Task OnRun(CancellationToken cancellationToken)
+    {
+        await WhenInitialized;
+
+        var baseChains = new AsyncChain[] {
+            new (nameof(RefreshRecorderToken), RefreshRecorderToken)
+        };
+        var retryDelays = RetryDelaySeq.Exp(0.1, 5);
+        await (
+            from chain in baseChains
+            select chain
+                .Log(LogLevel.Debug, DebugLog)
+                .RetryForever(retryDelays, DebugLog)
+            ).RunIsolated(cancellationToken);
+    }
+
+    private async Task RefreshRecorderToken(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            var refreshAt = _recorderToken.ExpiresAt - TimeSpan.FromMinutes(2);
+            if (refreshAt >= Clocks.SystemClock.Now + TimeSpan.FromSeconds(30))
+                await Clocks.SystemClock.Delay(refreshAt, cancellationToken).ConfigureAwait(false);
+
+            var recorderToken = await AuthTokens.Create(Session, TokenType.Audio, cancellationToken);
+            _recorderToken = recorderToken;
+            await _jsRef.InvokeVoidAsync("updateRecorderId", cancellationToken, recorderToken.Value)
+                    .ConfigureAwait(false);
+        }
+    }
 
     private async Task<bool> StopRecordingUnsafe()
     {

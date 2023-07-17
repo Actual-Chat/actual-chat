@@ -12,8 +12,9 @@ const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
-    private readonly recorderId: string;
     private readonly onReconnected: EventHandler<void>;
+
+    private recorderId: string;
 
     private static whenInitialized: Promise<void> | null;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
@@ -39,6 +40,12 @@ export class AudioRecorder {
         this.recorderId = recorderId;
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.reconnect());
         void AudioRecorder.init();
+    }
+
+    /** Called from Blazor */
+    public async updateRecorderId(recorderId: string): Promise<void> {
+        this.recorderId = recorderId;
+        await opusMediaRecorder.updateRecorderId(recorderId);
     }
 
     /** Called from Blazor */

@@ -276,6 +276,10 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         debugLog?.log('<- start()');
     }
 
+    public async updateRecorderId(recorderId: string): Promise<void> {
+        await this.encoderWorker.updateRecorderId(recorderId);
+    }
+
     public async stop(): Promise<void> {
         debugLog?.log(`-> stop()`);
         try {
