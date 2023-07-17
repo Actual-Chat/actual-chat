@@ -3,6 +3,7 @@
 @import './Components/AccountDropdown/account-dropdown.css';
 @import './Components/Author/author.css';
 @import './Components/Banners/banners.css';
+@import './Components/ContactView/contact-view.css';
 @import './Components/ChatAudioPanel/chat-audio-panel.css';
 @import './Components/ChatList/chat-list.css';
 @import './Components/ChatRightPanel/chat-settings-modal.css';

@@ -1,0 +1,13 @@
+.contact-view-content {
+    @apply flex-y grow gap-y-1;
+    @apply overflow-hidden;
+}
+.contact-view-headline {
+    @apply text-headline-1 text-02 truncate;
+}
+.contact-view-last-text {
+    @apply text-xs text-03 truncate;
+}
+.contact-view-last-text-author {
+    @apply text-xs text-02 font-medium;
+}

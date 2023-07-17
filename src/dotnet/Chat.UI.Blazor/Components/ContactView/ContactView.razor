@@ -1,0 +1,36 @@
+@using ActualChat.Search
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@{
+    var chatInfo = ChatInfo;
+    var lastTextEntry = ChatInfo.LastTextEntry;
+}
+
+<ChatIcon Chat="chatInfo.Chat" ShowPresence="true"/>
+<div class="contact-view-content">
+    <span class="contact-view-headline">
+        <SearchMatchHighlighter Match="@GetMatch(chatInfo.Chat.Title)"/>
+    </span>
+    @if (lastTextEntry != null) {
+        <div class="contact-view-last-text">
+            @if (chatInfo.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                <span>
+                    <AuthorName
+                        Class="contact-view-last-text-author"
+                        AuthorSid="@lastTextEntry.AuthorId"
+                        ShowDetailsOnClick="false"/>:
+                </span>
+            }
+            @chatInfo.LastTextEntryText
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatInfo ChatInfo { get; set; } = null!;
+    [Parameter] public SearchPhrase? SearchPhrase { get; set; }
+
+    private SearchMatch GetMatch(string text) {
+        return SearchPhrase?.GetMatch(text) ?? SearchMatch.Empty;
+    }
+}
