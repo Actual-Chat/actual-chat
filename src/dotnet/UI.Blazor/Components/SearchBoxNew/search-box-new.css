@@ -1,0 +1,21 @@
+.search-box-new {
+    @apply border-bg-04 border-b border-t;
+}
+.search-box-new label {
+    @apply relative flex-x;
+}
+.search-box-new i {
+    @apply absolute right-0;
+    @apply flex items-center justify-center;
+    @apply w-14 h-14;
+    @apply text-icons-01 text-2xl;
+}
+.search-box-new input {
+    @apply h-14;
+    @apply pl-4 pr-14;
+    @apply w-full;
+    @apply text-left;
+}
+.search-box-new input::placeholder {
+    @apply text-left;
+}

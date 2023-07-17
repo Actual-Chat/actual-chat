@@ -1,0 +1,34 @@
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="@Class search-box-new">
+    <label>
+        <TextInput
+            @ref="_inputRef"
+            Class="dialog-unstyled"
+            Placeholder="@Placeholder"
+            MaxLength="@MaxLength"
+            TextChanged="OnInput">
+        </TextInput>
+        <i class="icon-search"></i>
+    </label>
+</div>
+
+@code {
+    private TextInput? _inputRef;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+
+    public ValueTask Focus()
+        => _inputRef?.Focus() ?? default;
+
+    public ValueTask Cancel()
+        => _inputRef?.Clear() ?? default;
+
+    private Task OnInput(string text)
+        => TextChanged.InvokeAsync(text);
+}
