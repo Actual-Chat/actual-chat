@@ -22,9 +22,6 @@ import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
 import {VoiceActivityChange} from './audio-vad-contract';
 import {Log} from 'logging';
 import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
-import {
-    i
-} from "../../../../../../../../.nuget/packages/microsoft.playwright/1.34.0/.playwright/package/lib/webpack/traceViewer/assets/workbench-cab53a1b";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
